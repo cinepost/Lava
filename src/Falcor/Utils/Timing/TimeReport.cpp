@@ -40,27 +40,4 @@ TimeReport::TimeReport() {
     reset();
 }
 
-void TimeReport::reset() {
-    mLastMeasureTime = CpuTimer::getCurrentTimePoint();
-    mMeasurements.clear();
-}
-
-void TimeReport::printToLog() {
-    for (const auto& [task, duration] : mMeasurements) {
-        LLOG_INF << padStringToLength(task + ":", 25) << " " << std::to_string(duration)<<+ " s";
-    }
-}
-
-void TimeReport::measure(const std::string& name) {
-    auto currentTime = CpuTimer::getCurrentTimePoint();
-    std::chrono::duration<double> duration = currentTime - mLastMeasureTime;
-    mLastMeasureTime = currentTime;
-    mMeasurements.push_back({name, duration.count()});
-}
-
-void TimeReport::addTotal(const std::string name) {
-    double total = std::accumulate(mMeasurements.begin(), mMeasurements.end(), 0.0, [] (double t, auto &&m) { return t + m.second; });
-    mMeasurements.push_back({"Total", total});
-}
-
 }  // namespace Falcor

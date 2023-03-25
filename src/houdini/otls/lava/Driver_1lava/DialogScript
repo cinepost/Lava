@@ -702,6 +702,8 @@
                     "" "Beauty"
                     "EdgeDetectPass" "Edge Detect"
                     "AmbientOcclusionPass" "Ambient Occlusion"
+                    "CryptomatteMaterialPass" "Crypto Material"
+                    "CryptomatteInstancePass" "Crypto Object"
                 }
                 parmtag { "script_callback_language" "python" }
             }
@@ -1125,7 +1127,7 @@
 
             groupcollapsible {
                 name "output6_1_2"
-                label "Render Pases"
+                label "Render Passes"
 
                 parm {
                     name    "lv_plane_edgedetect"
@@ -1144,54 +1146,24 @@
                     disablewhen "{ lv_main_output_source == AmbientOcclusionPass }"
                     parmtag { "script_callback_language" "python" }
                 }
-            }
-
-            groupcollapsible {
-                name "output6_1_4"
-                label "Cryptomatte"
 
                 parm {
-                    name    "lv_quickplane_cryptomatte_mat"
-                    label   "Cryptomatte Material"
+                    name    "lv_plane_cryptomaterial"
+                    label   "CryptoMaterial"
                     type    toggle
-                    joinnext
                     default { "0" }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_quantize_cryptomatte_mat"
-                    label   "Quantize"
-                    type    string
-                    default { "float16" }
-                    hidewhen "{ lv_quickplane_cryptomatte_mat == 0 }"
-                    menu {
-                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
-                        language python
-                    }
+                    disablewhen "{ lv_main_output_source == CryptomatteMaterialPass }"
                     parmtag { "script_callback_language" "python" }
                 }
 
                 parm {
-                    name    "lv_quickplane_cryptomatte_obj"
-                    label   "Cryptomatte Object"
+                    name    "lv_plane_cryptoinstance"
+                    label   "CryptoObject"
                     type    toggle
-                    joinnext
                     default { "0" }
+                    disablewhen "{ lv_main_output_source == CryptomatteInstancePass }"
                     parmtag { "script_callback_language" "python" }
                 }
-                parm {
-                    name    "lv_quantize_cryptomatte_obj"
-                    label   "Quantize"
-                    type    string
-                    default { "float16" }
-                    hidewhen "{ lv_quickplane_cryptomatte_obj == 0 }"
-                    menu {
-                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
-                        language python
-                    }
-                    parmtag { "script_callback_language" "python" }
-                }
-
             }
 
             /*
@@ -1230,7 +1202,16 @@
 
         group {
             name    "output6_3"
-            label   "Meta Data"
+            label   "MPlay"
+
+            parm {
+                name    "lv_image_mplay_zero_image"
+                label   "MPlay Zero Image"
+                help    "Clear new image before rendering."
+                type    toggle
+                default { "1" }
+                parmtag { "spare_category" "MPlay" }
+            }
 
             parm {
                 name    "lv_image_mplay_direction"
@@ -1243,7 +1224,7 @@
                     "bottom"    "Bottom up"
                     "hilbert"   "Hilbert Curve"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
             parm {
                 name    "lv_image_mplay_framemode"
@@ -1254,7 +1235,7 @@
                     "append"    "Append Frames To Sequence"
                     "match"     "Match Houdini Frame Numbers (overwrite frame)"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
             parm {
                 name    "lv_image_mplay_label"
@@ -1267,7 +1248,7 @@
                     "$OS"                                           "One per Output Driver Name (ROP)"
                     ""                                              "One MPlay session only"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
         }
 
@@ -1276,6 +1257,18 @@
     group {
         name    "images_1"
         label   "Rendering"
+
+        parm {
+            name    "lv_primary_raygen_type"
+            label   "Primary Ray Generator"
+            type    string
+            default { "rasterizer" }
+            menu {
+                "rasterizer"   "Rasterizer"
+                "compute"      "Compute"
+            }
+            parmtag { "script_callback_language" "python" }
+        }
 
         parm {
             name    "lv_renderengine"
@@ -1615,69 +1608,6 @@
                 parmtag { "script_callback_language" "python" }
             }
         }
-
-        group {
-            name    "images_4_1_6"
-            label   "Effects"
-            invisibletab
-
-            groupsimple {
-                name    "folder1"
-                label   "Ambient Occlusion"
-
-                parm {
-                    name    "lv_ambient_occlusion"
-                    label   "Ambient Occlusion"
-                    type    toggle
-                    default { "0" }
-                    help    "Use screen space computed ambient occlusion."
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_distance"
-                    label   "Distance"
-                    type    float
-                    default { "0.5" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0 5 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_factor"
-                    label   "Factor"
-                    type    float
-                    default { "1" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0! 1 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_precision"
-                    label   "Precision"
-                    type    float
-                    default { "1" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0! 1 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_bent_normals"
-                    label   "Bent Normals"
-                    type    toggle
-                    default { "0" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_bounce_approx"
-                    label   "Bounce Approximation"
-                    type    toggle
-                    default { "0" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-            }
-        }
     }
 
     group {
@@ -1733,10 +1663,8 @@
         group {
             name    "rpasses_1_1"
             label   "Edge Detect"
-            disablewhen "{ lv_plane_edgedetect == 0 } { lv_main_output_source == \"\" }"
 
             // EdgeDetectPass Depth
-
             parm {
                 name    "lv_edgedetect_pass_trace_depth"
                 label   "Trace Depth"
@@ -1908,10 +1836,10 @@
             }
         }
 
+        // Ambient Occlusion Pass Parameters
         group {
-            name    "rpasses_1_1"
+            name    "rpasses_1_2"
             label   "Ambient Occlusion"
-            disablewhen "{ lv_plane_ambientocclusion == 0 } { lv_main_output_source == \"\" }"
 
             parm {
                 name    "lv_ambocc_pass_shading_rate"
@@ -1919,6 +1847,7 @@
                 type    int
                 default { "1" }
                 range   { 1 64 }
+                disablewhen "{ lv_plane_ambientocclusion == 0  lv_main_output_source != AmbientOcclusionPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -1928,7 +1857,80 @@
                 type    float
                 size    2
                 default { "1.0" "2.0" }
+                disablewhen "{ lv_plane_ambientocclusion == 0  lv_main_output_source != AmbientOcclusionPass }"
                 parmtag { "script_callback_language" "python" }
+            }
+        }
+
+        // Cryptomatte Pass Parameters
+        group {
+            name    "rpasses_1_3"
+            label   "Cryptomatte"
+
+            groupsimple {
+                name    "rpasses_1_3_1"
+                label   "Crypto Material"
+
+                parm {
+                    name    "lv_crypto_material_pass_output_preview"
+                    label   "Output Preview Color"
+                    type    toggle
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_cryptomatte_rank"
+                    label   "Overlap Limit"
+                    type    int
+                    size    1
+                    default { "3" }
+                    range   { 1 10 }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_output_name"
+                    label   "Channel Name"
+                    type    string
+                    default { "CryptoMaterial" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+            }
+
+            groupsimple {
+                name    "rpasses_1_3_2"
+                label   "Crypto Object"
+
+                parm {
+                    name    "lv_crypto_instance_pass_output_preview"
+                    label   "Output Preview Color"
+                    type    toggle
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_cryptomatte_rank"
+                    label   "Overlap Limit"
+                    type    int
+                    size    1
+                    default { "3" }
+                    range   { 1 10 }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_output_name"
+                    label   "Channel Name"
+                    type    string
+                    default { "CryptoObject" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
             }
         }
     }

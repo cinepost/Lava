@@ -31,8 +31,9 @@ AOVPlaneInfo            aovInfoFromLSD(scope::Plane::SharedPtr pPlane);
 Display::SharedPtr      createDisplay(const Session::DisplayInfo& display_info);
 
 void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles);
-bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData);
-bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo,  AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData);
+
+bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane);
+bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo, AOVPlane* pAOVPlane);
 
 void translateLSDPlanePropertiesToLavaDict(scope::Plane::SharedConstPtr pScope, Falcor::Dictionary& dict);
 

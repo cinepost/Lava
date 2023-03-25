@@ -203,9 +203,11 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 	std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
 	std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));
+	std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputnameoverride", std::string(""));
 	Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
 
 	aovInfo.name = AOVName(channel_name);
+	aovInfo.outputOverrideName = output_name_override;
 	aovInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
 	aovInfo.variableName = output_variable_name;
 	aovInfo.pfilterTypeName = pixel_filter_name;
@@ -344,12 +346,13 @@ void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize
 	}
 }
 
-bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
-	if (!pAOVPlane) return false;
+bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane) {
+	assert(pAOVPlane);
 	if (!pDisplay) return false;
 
 	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
-	if(!pAOVPlane->getProcessedImageData(textureData.data())) {
+	const auto pData = pAOVPlane->getProcessedImageData();
+	if(!pData) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
 	}
@@ -359,42 +362,50 @@ bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, std::vec
 	if(!pAOVPlane->getAOVPlaneGeometry(aov_plane_geometry)) {
 		return false;
 	}
-
-	if (!pDisplay->sendImage(hImage, aov_plane_geometry.width, aov_plane_geometry.height, textureData.data())) {
+	
+	if (!pDisplay->sendImage(hImage, aov_plane_geometry.width, aov_plane_geometry.height, pData)) {
         LLOG_ERR << "Error sending image to display !";
         return false;
     }
     return true;
 }
 
-bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo,  AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
+bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo, AOVPlane* pAOVPlane) {
 	assert(pDisplay);
-	assert(pAOVPlane);
-
-	if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight == frameInfo.regionHeight())) {
-		// If sending region that is equal to full frame we just send full image data
-		return sendImageData(hImage, pDisplay, pAOVPlane, textureData);
-	}
-	if (!pAOVPlane) return false;
 	if (!pDisplay) return false;
 
-	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
-	if(!pAOVPlane->getImageData(textureData.data())) {
-		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
-		return false;
-	}
-	LLOG_DBG << "Image data read done!";
+	if(pAOVPlane) {
+		// Send AOV image data
+		if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight == frameInfo.regionHeight())) {
+			// If sending region that is equal to full frame we just send full image data
+			return sendImageData(hImage, pDisplay, pAOVPlane);
+		}
+
+		LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
+		const auto pData = pAOVPlane->getProcessedImageData();
+		if(!pData) {
+			LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+			return false;
+		}
+		LLOG_DBG << "Image data read done!";
 	
-	auto renderRegionDims = frameInfo.renderRegionDims();
-	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
-        LLOG_ERR << "Error sending image region to display !";
-        return false;
-    }
+		if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], frameInfo.regionWidth(), frameInfo.regionHeight(), pData)) {
+			LLOG_ERR << "Error sending image region to display !";
+			return false;
+		}
+
+	} else {
+		// Send zero image data
+		if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], frameInfo.regionWidth(), frameInfo.regionHeight(), nullptr)) {
+			LLOG_ERR << "Error sending image region to display !";
+			return false;
+		}
+	}
     return true;
 }
 
 void translateLSDPlanePropertiesToLavaDict(scope::Plane::SharedConstPtr pScope, Falcor::Dictionary& dict) {
-	pScope->printSummary(std::cout, 4);
+	//pScope->printSummary(std::cout, 4);
 	
 	for (const auto& [key, value] : pScope->to_dict(ast::Style::IMAGE)) {
 		dict[key] = value;

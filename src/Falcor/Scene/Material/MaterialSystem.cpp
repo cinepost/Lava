@@ -28,6 +28,7 @@
 #include "stdafx.h"
 
 #include <numeric>
+#include <mutex>
 
 #include "Falcor/Core/API/RenderContext.h"
 
@@ -35,6 +36,8 @@
 #include "StandardMaterial.h"
 
 #include "MaterialSystem.h"
+
+std::mutex g_materials_mutex;
 
 namespace Falcor {
 
@@ -160,30 +163,34 @@ uint32_t MaterialSystem::addBuffer(const Buffer::SharedPtr& pBuffer) {
 uint32_t MaterialSystem::addMaterial(const Material::SharedPtr& pMaterial) {
 	assert(pMaterial);
 
-	// Reuse previously added materials.
-	if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
-		return (uint32_t)std::distance(mMaterials.begin(), it);
+	{
+    std::scoped_lock lock(g_materials_mutex);
+
+		// Reuse previously added materials.
+		if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
+			return (uint32_t)std::distance(mMaterials.begin(), it);
+		}
+
+		// Add material.
+		if (mMaterials.size() >= std::numeric_limits<uint32_t>::max()) {
+			throw std::runtime_error("Too many materials");
+		}
+		const uint32_t materialID = static_cast<uint32_t>(mMaterials.size());
+
+		if (pMaterial->getDefaultTextureSampler() == nullptr) {
+			pMaterial->setDefaultTextureSampler(mpDefaultTextureSampler);
+		}
+
+		pMaterial->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
+		mMaterials.push_back(pMaterial);
+		mMaterialsChanged = true;
+
+		// Update metadata.
+		mMaterialTypes.insert(pMaterial->getType());
+		if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount++;
+
+		return materialID;
 	}
-
-	// Add material.
-	if (mMaterials.size() >= std::numeric_limits<uint32_t>::max()) {
-		throw std::runtime_error("Too many materials");
-	}
-	const uint32_t materialID = static_cast<uint32_t>(mMaterials.size());
-
-	if (pMaterial->getDefaultTextureSampler() == nullptr) {
-		pMaterial->setDefaultTextureSampler(mpDefaultTextureSampler);
-	}
-
-	pMaterial->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
-	mMaterials.push_back(pMaterial);
-	mMaterialsChanged = true;
-
-	// Update metadata.
-	mMaterialTypes.insert(pMaterial->getType());
-	if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount++;
-
-	return materialID;
 }
 
 uint32_t MaterialSystem::getMaterialCountByType(const MaterialType type) const {

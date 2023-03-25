@@ -56,7 +56,7 @@
 namespace Falcor {
 
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
-static_assert(sizeof(GeometryInstanceData) == 32, "GeometryInstanceData size should be 32");
+static_assert(sizeof(GeometryInstanceData) % 16 == 0, "GeometryInstanceData size should be a multiple of 16");
 static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
 
 namespace {
@@ -140,10 +140,23 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mMetadata = std::move(sceneData.metadata);
 
     // Merge all geometry instance lists into one.
-    mGeometryInstanceData.reserve(sceneData.meshInstanceData.size() + sceneData.curveInstanceData.size() + sceneData.sdfGridInstances.size());
+    assert(sceneData.meshInstanceData.size() == sceneData.meshInstanceNamesData.size());
+    assert(sceneData.curveInstanceData.size() == sceneData.curveInstanceNamesData.size());
+    assert(sceneData.sdfGridInstancesData.size() == sceneData.sdfGridInstanceNamesData.size());
+    mGeometryInstanceData.reserve(sceneData.meshInstanceData.size() + sceneData.curveInstanceData.size() + sceneData.sdfGridInstancesData.size());
     mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.meshInstanceData), std::end(sceneData.meshInstanceData));
     mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.curveInstanceData), std::end(sceneData.curveInstanceData));
-    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.sdfGridInstances), std::end(sceneData.sdfGridInstances));
+    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.sdfGridInstancesData), std::end(sceneData.sdfGridInstancesData));
+
+    mGeometryInstanceNamesData.reserve(sceneData.meshInstanceNamesData.size() + sceneData.curveInstanceNamesData.size() + sceneData.sdfGridInstanceNamesData.size());
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.meshInstanceNamesData), std::end(sceneData.meshInstanceNamesData));
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.curveInstanceNamesData), std::end(sceneData.curveInstanceNamesData));
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.sdfGridInstanceNamesData), std::end(sceneData.sdfGridInstanceNamesData));
+
+    {
+        uint32_t internalID = 0;
+        for(auto& instance: mGeometryInstanceData) instance.internalID = internalID++;
+    }
 
     mMeshDesc = std::move(sceneData.meshDesc);
     mMeshNames = std::move(sceneData.meshNames);
@@ -1131,7 +1144,7 @@ void Scene::updateGeometryStats() {
     s.instancedCurveSegmentCount = 0;
     s.sdfGridCount = getSDFGridCount();
     s.sdfGridDescriptorCount = getSDFGridDescCount();
-    s.sdfGridInstancesCount = 0;
+    s.sdfGridInstancesDataCount = 0;
 
     s.customPrimitiveCount = getCustomPrimitiveCount();
 
@@ -1157,7 +1170,7 @@ void Scene::updateGeometryStats() {
                 break;
             }
             case GeometryType::SDFGrid: {
-                s.sdfGridInstancesCount++;
+                s.sdfGridInstancesDataCount++;
                 break;
             }
         }
@@ -2827,15 +2840,15 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
     // One instance per SDF grid instance.
     if (!mSDFGrids.empty()) {
-        bool sdfGridInstancesHaveUniqueBLASes = true;
+        bool sdfGridInstancesDataHaveUniqueBLASes = true;
         switch (mSDFGridConfig.implementation) {
             case SDFGrid::Type::NormalizedDenseGrid:
             case SDFGrid::Type::SparseVoxelOctree:
-                sdfGridInstancesHaveUniqueBLASes = false;
+                sdfGridInstancesDataHaveUniqueBLASes = false;
                 break;
             case SDFGrid::Type::SparseVoxelSet:
             case SDFGrid::Type::SparseBrickSet:
-                sdfGridInstancesHaveUniqueBLASes = true;
+                sdfGridInstancesDataHaveUniqueBLASes = true;
                 break;
             default:
                 assert(false);
@@ -2844,7 +2857,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         for (const GeometryInstanceData& instance : mGeometryInstanceData) {
             if (instance.getType() != GeometryType::SDFGrid) continue;
 
-            const BlasData& blasData = mBlasData[blasDataIndex + (sdfGridInstancesHaveUniqueBLASes ? instance.geometryID : 0)];
+            const BlasData& blasData = mBlasData[blasDataIndex + (sdfGridInstancesDataHaveUniqueBLASes ? instance.geometryID : 0)];
             const auto& pBlas = mBlasGroups[blasData.blasGroupIndex].pBlas;
 
             RtInstanceDesc desc = {};
@@ -2865,7 +2878,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
             instanceDescs.push_back(desc);
         }
 
-        blasDataIndex += (sdfGridInstancesHaveUniqueBLASes ? mSDFGrids.size() : 1);
+        blasDataIndex += (sdfGridInstancesDataHaveUniqueBLASes ? mSDFGrids.size() : 1);
         instanceContributionToHitGroupIndex += rayCount * (uint32_t)mSDFGridDesc.size();
     }
 

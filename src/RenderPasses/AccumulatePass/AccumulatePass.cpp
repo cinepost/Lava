@@ -252,9 +252,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     float sampleDistanceUniform = sqrt(sampleOffsetUniform.x*sampleOffsetUniform.x+sampleOffsetUniform.y*sampleOffsetUniform.y);
 
     if(mDoHorizontalFiltering || mDoVerticalFiltering ) {
-        //LLOG_DBG << "AccumulatePass maximum sample distance " << to_string(maxSampleOffset);
-        //LLOG_DBG << "AccumulatePass filter size " << to_string(mPixelFilterSize) << ". Half size " << to_string(halfFilterSize);
-        LLOG_DBG << "AccumulatePass sample local distance " << to_string(sampleOffsetUniform);
+        //LLOG_DBG << "AccumulatePass sample local distance " << to_string(sampleOffsetUniform);
     }
 
     // Horizontal filtering pass

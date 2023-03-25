@@ -9,35 +9,46 @@ import Utils.Math.MathHelpers;
 
 #define MAX_CRYPTOMATTE_LAYERS 16
 
-// Input channel
-Texture2D<PackedHitInfo> gVbuffer;
+#ifndef _PREVIEW_COLOR_MODE
+#define _PREVIEW_COLOR_MODE 0
+#endif
 
-// Extra UAV output channels
-RasterizerOrderedTexture2D<float4> gMatColor;
-RasterizerOrderedTexture2D<float4> gObjColor;
-RasterizerOrderedTexture2D<float4> gAttribColor;
-
+#ifndef _DATA_LAYERS_COUNT
+#define _DATA_LAYERS_COUNT 0
+#endif
 
 cbuffer PerFrameCB {
   uint2             gFrameDim;
 };
 
-#if _OUTPUT_MATERIALS
+
+// Input channel
+Texture2D<PackedHitInfo> gVbuffer;
+Buffer<float32_t3> gPreviewHashColorBuffer;
+
 Buffer<float32_t> gMaterialHashBuffer;
-#endif 
-
-#if _OUTPUT_INSTANCES
 Buffer<float32_t> gInstanceHashBuffer;
-#endif 
-
-#if _OUTPUT_CUSTATTRS
 Buffer<float32_t> gCustattrHashBuffer;
+
+// Preview color output channel
+RasterizerOrderedTexture2D<float4> gPreviewLayer;
+
+// Data layers
+#if _DATA_LAYERS_COUNT > 0
+RasterizerOrderedTexture2D<float4> gDataLayer00;
 #endif
 
-#if is_valid(gMatColor)
-Buffer<float32_t3> gMaterialPreviewColorBuffer;
+#if _DATA_LAYERS_COUNT > 1
+RasterizerOrderedTexture2D<float4> gDataLayer01;
 #endif
 
+#if _DATA_LAYERS_COUNT > 2
+RasterizerOrderedTexture2D<float4> gDataLayer02;
+#endif
+
+#if _DATA_LAYERS_COUNT > 3
+RasterizerOrderedTexture2D<float4> gDataLayer03;
+#endif
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
@@ -49,19 +60,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     
-    if (!hit.isValid()) {
-#if is_valid(gMatColor)
-        gMatColor[ipos] = float4(.0f);
-#endif  // gMatColor
-
-#if is_valid(gObjColor)
-        gObjColor[ipos] = float4(.0f);
-#endif  // gObjColor
-
-#if is_valid(gAttribColor)
-        gAttribColor[ipos] = float4(.0f);
-#endif  // gAttribColor
-
+    [[branch]] if (!hit.isValid()) {
+#if is_valid(gPreviewLayer)
+        gPreviewLayer[ipos] = float4(.0f);
+#endif  // gPreviewLayer
         return;
     }
 
@@ -73,20 +75,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     // Write available false color AOVs
-#if is_valid(gMatColor)
-#if _OUTPUT_MATERIALS
-    gMatColor[ipos] = float4(gMaterialPreviewColorBuffer[materialID], 1.0f);
-#else
-    gMatColor[ipos] = float4(0.0f);
-#endif
+#if is_valid(gPreviewLayer) && is_valid(gPreviewHashColorBuffer)
+    gPreviewLayer[ipos] = float4(gPreviewHashColorBuffer[materialID], 1.0f);    
 #endif  // gMatColor
-
-#if is_valid(gObjColor)
-        gObjColor[ipos] = float4(0.0, 1.0, 0.0, 1.0f);
-#endif  // gObjColor
-
-#if is_valid(gAttribColor)
-        gAttribColor[ipos] = float4(0.0, 0.0, 1.0, 1.0f);
-#endif  // gAttribColor
 
 }

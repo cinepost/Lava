@@ -55,7 +55,7 @@ AOVPlane::SharedPtr AOVPlane::create(const AOVPlaneInfo& info) {
 }
 
 
-AOVPlane::AOVPlane(const AOVPlaneInfo& info): mInfo(info) { }
+AOVPlane::AOVPlane(const AOVPlaneInfo& info): mInfo(info) {}
 
 bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
     assert(pTexture);
@@ -69,30 +69,33 @@ bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
     return true;
 }
 
-bool AOVPlane::getTextureData(Texture* pTexture, uint8_t* pData) const {
-    assert(pData);
+const uint8_t* AOVPlane::getTextureData(Texture* pTexture) {
     assert(pTexture);
     assert(mFormat != Falcor::ResourceFormat::Unknown);
     assert(mInfo.format != Falcor::ResourceFormat::Unknown);
 
+    const uint32_t textureDataSize = pTexture->getWidth(0) * pTexture->getHeight(0) * Falcor::getFormatBytesPerBlock(mInfo.format);
+    if (mOutputData.size() != textureDataSize) mOutputData.resize(textureDataSize);
+
+
     if (mInfo.format == pTexture->getFormat()) {
         // Requested and available resource formats are the same
-        pTexture->readTextureData(0, 0, pData);
+        pTexture->readTextureData(0, 0, mOutputData.data());
     } else {
         LLOG_DBG << "Do blit !";
         // Requested and available resource formats are different. Do conversion/blit here
-        pTexture->readConvertedTextureData(0, 0, pData, mInfo.format);
+        pTexture->readConvertedTextureData(0, 0, mOutputData.data(), mInfo.format);
     }
 
-    return true;
+    return mOutputData.data();
 }
 
-bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
+const uint8_t* AOVPlane::getProcessedImageData() {
     auto start = std::chrono::high_resolution_clock::now();
 
     if (!mpInternalRenderGraph || mProcessedPassOutputName.empty() || !mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
         LLOG_DBG << "No AOV plane " << mInfo.name << " post effects exist. Reading raw image data.";
-        return getImageData(pData);
+        return getImageData();
     }
 
     mpInternalRenderGraph->execute();
@@ -100,30 +103,30 @@ bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
     auto pEffectsGraphTexture = pResource ? pResource->asTexture() : nullptr;
     if (!pEffectsGraphTexture) {
         LLOG_WRN << "No effects chain output texture associated with AOV plane " << mInfo.name << "!!! Unable to read data !!!";
-        return false;
+        return nullptr;
     }
 
-    bool result = getTextureData(pEffectsGraphTexture.get(), pData);
+    auto pData = getTextureData(pEffectsGraphTexture.get());
 
     auto stop = std::chrono::high_resolution_clock::now();
     LLOG_DBG << "AOV plane " << name() << " processed image data read from " << mProcessedPassOutputName << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 
-    return result;
+    return pData;
 }
 
-bool AOVPlane::getImageData(uint8_t* pData) const {
+const uint8_t* AOVPlane::getImageData() {
     auto start = std::chrono::high_resolution_clock::now();
 
     if (!mpTexture) {
         LLOG_WRN << "No output texture associated with AOV plane " << mInfo.name << "!!! Unable to read data !!!";
-        return false;
+        return nullptr;
     }
-    bool result = getTextureData(mpTexture.get(), pData);
+    auto pData = getTextureData(mpTexture.get());
 
     auto stop = std::chrono::high_resolution_clock::now();
     LLOG_DBG << "AOV plane " << name() << " image data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 
-    return result;
+    return pData;
 }
 
 bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {

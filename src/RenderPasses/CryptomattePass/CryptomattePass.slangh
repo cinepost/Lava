@@ -1,0 +1,13 @@
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+enum class CryptomattePassMode : uint32_t
+{
+    Material     = 0,
+    Instance     = 1,
+    Asset        = 2
+};
+
+END_NAMESPACE_FALCOR

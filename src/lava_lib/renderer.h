@@ -24,7 +24,6 @@
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 #include "RenderPasses/RTXDIPass/RTXDIPass.h"
 //#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
-#include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 
 #include "aov.h"
 #include "scene_builder.h"
@@ -103,20 +102,20 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     bool init(const Config& config);
     inline bool isInited() const { return mInited; }
 
-    const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
+    inline const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
 
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     bool deleteAOVPlane(const AOVName& name);
     void setAOVPlaneState(const AOVName& name, AOVPlane::State state);
-    AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
+    inline AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
     bool hasAOVPlane(const AOVName& name) const;
 
     bool prepareFrame(const FrameInfo& frame_info); // prepares/resets frame rendering
     void renderSample();
-    bool getAOVPlaneImageData(const AOVName& name, uint8_t* pData);
+    const uint8_t*  getAOVPlaneImageData(const AOVName& name);
 
-    Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
+    inline Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
 
     /** Query AOV output (if exist) geometry
       \param[in] AOV name/path. Example: "AccumulatePass.output"
@@ -133,8 +132,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       \return Dictionary.
     */ 
 
-    Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
-    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
+    inline Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+    inline const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
   
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);

@@ -369,7 +369,8 @@ bool DisplayPrman::sendImageRegion(uint imageHandle, uint x, uint y, uint width,
         uint8_t* pDstData = (uint8_t *)image_data.tmpDataBuffer.data() + ((y * image_data.width) + x) * image_data.entrySize;
 
         for(uint i = y; i < (y + height); i++) {
-            ::memcpy(pDstData, pSrcData, src_data_line_size);
+            if(pData) ::memcpy(pDstData, pSrcData, src_data_line_size);
+            else ::memset(pDstData, 0, src_data_line_size);
             pSrcData += src_data_line_size;
             pDstData += dst_data_line_size;
         }
@@ -401,7 +402,8 @@ bool DisplayPrman::sendImage(uint imageHandle, uint width, uint height, const ui
     }
 
     if(mForceScanLines) {
-        ::memcpy(mImages[imageHandle].tmpDataBuffer.data(), pData, width * height * image_data.entrySize);
+        if (pData) ::memcpy(mImages[imageHandle].tmpDataBuffer.data(), pData, width * height * image_data.entrySize);
+        else ::memset (mImages[imageHandle].tmpDataBuffer.data(), 0, width * height * image_data.entrySize);
     } else {
         return sendImageRegion(imageHandle, 0, 0, width, height, pData);
     }

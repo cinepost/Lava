@@ -13,6 +13,7 @@
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Math/FalcorMath.h"
+#include "Falcor/Utils/Timing/TimeReport.h"
 
 #include "session.h"
 #include "session_helpers.h"
@@ -331,23 +332,29 @@ bool Session::cmdRaytrace() {
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::RENDERER, "renderlabel", std::string(""));
 
+	bool clearImageBeforeRendering = false;
+
+	TimeReport initDisplayTimeReport;
+
 	{
 		std::vector<Display::UserParm> userParams;
 	
 		// houdini display driver section
 		if((pDisplay->type() == DisplayType::HOUDINI) || (pDisplay->type() == DisplayType::MD) || (pDisplay->type() == DisplayType::IP)) {
-			int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
-			int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
-			std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
-			std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
-			std::string mplayLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.label", renderLabel);
-			std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
-			int  mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
+			clearImageBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true));
+			const int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
+			const int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
+			const std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
+			const std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
+			//std::string mplayLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.label", renderLabel);
+			const std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
+			const int mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
 
 			imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
 			
 			
-			if (mplayLabel != "") userParams.push_back(Display::makeStringsParameter("label", {mplayLabel}));
+			//if (mplayLabel != "") userParams.push_back(Display::makeStringsParameter("label", {mplayLabel}));
+			userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
 
 			if (mplayRendermode != "") userParams.push_back(Display::makeStringsParameter("numbering", {mplayRendermode}));
 
@@ -366,6 +373,7 @@ bool Session::cmdRaytrace() {
         	LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
         	return false;
     	}
+    	initDisplayTimeReport.measure("Display main image open");
 	}
 
     // Open secondary aov image planes
@@ -374,20 +382,35 @@ bool Session::cmdRaytrace() {
     	if(!pPlane->isEnabled()) continue;
     	
     	std::string aovImageFileName = imageFileName;
-    	std::string channel_prefix = std::string(pPlane->name());
+    	std::string channel_prefix = std::string(pPlane->outputName());
 
     	std::vector<Display::UserParm> userParams;
+    	userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
 
     	if(!pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, userParams, channel_prefix)) {
-        	LLOG_ERR << "Unable to open AOV image " << pPlane->name() << " !!!";
+        	LLOG_ERR << "Unable to open AOV image " << pPlane->outputName() << " !!!";
     		entry.second = nullptr;
     	}
     }
+    initDisplayTimeReport.measure("Display additional images open");
+
+    if(clearImageBeforeRendering) {
+		sendImageRegionData(hImage, pDisplay, mCurrentFrameInfo, nullptr);
+		initDisplayTimeReport.measure("Display initial zero data sent in");
+	}
+
+	if( 1 == 2 ) {
+		// Simple performace test by sending zero image a bunch of times
+    	for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, pDisplay, mCurrentFrameInfo, nullptr);
+    	initDisplayTimeReport.measure("Display initial zero data sent 100 times in");
+	}
 
 
-	std::vector<uint8_t> textureData;
+    initDisplayTimeReport.addTotal("Display init total time");
+    initDisplayTimeReport.printToLog();
 
     // Frame rendering
+    TimeReport renderingTimeReport;
 	LLOG_INF << "Rendering image started...";
 	setUpCamera(mpRenderer->currentCamera());
     for(const auto& tile: tiles) {
@@ -405,9 +428,6 @@ bool Session::cmdRaytrace() {
 			break;
 		}
 
-		uint32_t textureDataSize = aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel;
-		if (textureData.size() != textureDataSize) textureData.resize(textureDataSize);
-
 		long int sampleUpdateIterations = 0;
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
@@ -417,18 +437,19 @@ bool Session::cmdRaytrace() {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
 					
 					// Send image/region region
-					if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane, textureData)) break;
+					if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
 					sampleUpdateIterations = updateIter;
 				}
 			}
 		}
 
-		mpRenderer->device()->getRenderContext()->flush(false);
-		LLOG_INF << "Rendering image done !";
-
+		mpRenderer->device()->getRenderContext()->flush(true);
+		renderingTimeReport.measure("Image rendering time");
+		LLOG_INF << renderingTimeReport.printToString();
+		
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region
-		if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane, textureData)) break;
+		if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
 		
 		// Send secondary aov image planes data
     	for(auto& entry: aovPlanes) {
@@ -447,7 +468,7 @@ bool Session::cmdRaytrace() {
 				LLOG_DBG << "Sending AOV " << std::string(pPlane->name()) << " data to image handle " << std::to_string(hImage);
 				
 				// Send image region
-				if (!sendImageRegionData(hImage, pDisplay, frameInfo, pPlane, textureData)) {
+				if (!sendImageRegionData(hImage, pDisplay, frameInfo, pPlane)) {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
@@ -477,7 +498,6 @@ bool Session::cmdRaytrace() {
 //    auto profiler = Falcor::Profiler::instance(mpDevice);
 //    profiler.endFrame();
 //#endif
-
 	return true;
 }
 
@@ -1084,7 +1104,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	if(pIDProperty) {
 		exportedInstanceID = pIDProperty->get<uint32_t>();
 	}
-	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
+	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
 	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
 
@@ -1238,15 +1258,20 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    }
 	}
 
-    // instance shading spec
-    SceneBuilder::MeshInstanceShadingSpec shadingSpec;
+	// Instance exported data
+	SceneBuilder::InstanceExportedDataSpec exportedSpec;
+	exportedSpec.id = exportedInstanceID;
+	exportedSpec.name = obj_name;
+
+    // Instance shading spec
+    SceneBuilder::InstanceShadingSpec shadingSpec;
     shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
     shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
     shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
     shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
 
-    // instance visibility spec
-    SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
+    // Instance visibility spec
+    SceneBuilder::InstanceVisibilitySpec visibilitySpec;
     visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
     visibilitySpec.visibleToShadowRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_shadows", true);
     visibilitySpec.visibleToDiffuseRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_diffuse", true);
@@ -1254,10 +1279,14 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
     visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
     
-    // add a mesh instance to a node
-    pSceneBuilder->addMeshInstance(node_id, mesh_id, exportedInstanceID, pMaterial, &shadingSpec, &visibilitySpec);
-    
-	return true;
+    SceneBuilder::MeshInstanceCreationSpec creationSpec;
+    creationSpec.pExportedDataSpec = &exportedSpec;
+    creationSpec.pVisibilitySpec = &visibilitySpec;
+    creationSpec.pShadingSpec = &shadingSpec;
+    creationSpec.pMaterialOverride = pMaterial;
+
+    // Add a mesh instance to a node
+    return pSceneBuilder->addMeshInstance(node_id, mesh_id, &creationSpec);
 }
 
 

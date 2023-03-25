@@ -54,7 +54,9 @@ public:
 					const int off[4]);	// Offsets of each component
 	void	 startTile(const int xres, const int yres);
 	int		 writePixel(const char* pData, const int pixelOffset);
-	int		 closeTile(FILE* fp, const int id, const int x0, const int y0, const int x1, const int y1);
+	int		 writeScanline(const char* pData, const int pixelOffset, const int pixelsCount);
+	int		 writeZeroScanline(const int pixelOffset, const int pixelsCount);
+	bool	 closeTile(FILE* fp, const int id, const int x0, const int y0, const int x1, const int y1);
 
 	const std::string& getName() const {return myName;}
 	inline int getFormat() const {return myFormat;}
@@ -78,11 +80,11 @@ public:
 
 	void	init(const std::string& filename, const int xres, const int yres);
 	void	destroy();
-	int		addChannel(const std::string& name, const int size, const int count, const int off[4]);
+	bool	addChannel(const std::string& name, const int size, const int count, const int off[4]);
     
-    int 	writeChannelHeader(void);
+    bool 	writeChannelHeader(void);
 
-	int		writeData(const int x0, const int x1, const int y0, const int y1,
+	bool	writeData(const int x0, const int x1, const int y0, const int y1,
                       const char* pData, const int bytes_per_pixel,
                       const float tileScaleX, const float tileScaleY);
     
@@ -93,7 +95,7 @@ public:
     int		getOrigYres() const	{return myOrigYres; }
     
     // returns 1 for success.
-	static int openPipe(void);
+	static bool openPipe(void);
 
 	void   parseOptions(const int paramCount, const UserParameter *parameters);
 

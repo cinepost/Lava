@@ -368,7 +368,7 @@ def lightExportPlanes(wrangler, cam, now, lexport,
 
 def quickImagePlanes(wrangler, cam, now, components):
     def _quickPlane(wrangler, cam, now, variable, channel,
-                    lsdtype, quantize, opts, parms_map=None):
+                    lsdtype, quantize, opts, plane_parms_map=None, parms_map=None):
         if LSDhooks.call('pre_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
 
@@ -377,6 +377,15 @@ def quickImagePlanes(wrangler, cam, now, components):
         cmd_property('plane', 'channel', [channel])
         cmd_property('plane', 'type', [lsdtype])
         
+        if plane_parms_map :
+            for rpass_parm_name, parm in iter(plane_parms_map.items()):
+                if parm.Key != rpass_parm_name: 
+                    parm.Key = rpass_parm_name
+
+            _plist = cam.wrangle(wrangler, plane_parms_map, now) or {}
+            for plane_parm_name, parm in iter(_plist.items()):
+                cmd_property('plane', plane_parm_name, [parm.Value])
+
         if quantize != 'float16':
             cmd_property('plane', 'quantize', [quantize])
         
@@ -412,13 +421,17 @@ def quickImagePlanes(wrangler, cam, now, components):
         is_set = plist.get(parmname, None)
         if not is_set or is_set.Value[0] == 0:
             continue
+
         for variable in varnames:
             plane = quickplanedict[variable]
             channel = cam.wrangleString(wrangler, parmname+'_channel', now, [''])[0]
             quantize = cam.wrangleString(wrangler, 'lv_quantize_' + variable, now, [''])[0]
             
             parms_map = None
+            plane_parms_map = None
             if plane.channel in rpassesdict:
+                plane_parms_map = rpassesdict[plane.channel].plane_parms_map
+                variable = rpassesdict[plane.channel].output or variable
                 parms_map = rpassesdict[plane.channel].parms_map
 
             if not quantize:
@@ -436,7 +449,7 @@ def quickImagePlanes(wrangler, cam, now, components):
                                 plane.lsdtype, quantize, plane.opts)
             else:
                 _quickPlane(wrangler, cam, now, variable, channel,
-                            plane.lsdtype, quantize, plane.opts, parms_map=parms_map)
+                            plane.lsdtype, quantize, plane.opts, plane_parms_map=plane_parms_map, parms_map=parms_map)
 
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):
@@ -1608,6 +1621,8 @@ def renderCamera(cam, now, fromlight=False, forphoton=False, cubemap=None, viewc
         cmd_declare('global', parm.Type, 'global:%s' % re.sub('^lv_', '', pname), parm.Value)
 
     type = 'unknown'
+    
+    session_name = cam.wrangleString(wrangler, 'lv_image_mplay_label', now, [''])[0]
     label = [cam.getName()]
     if uvrender:
         type = 'uvrender'
@@ -1621,10 +1636,12 @@ def renderCamera(cam, now, fromlight=False, forphoton=False, cubemap=None, viewc
     if len(label) == 1:
         type = 'beauty'
         label.append(type)
-    label = '.'.join(label)
+
+    label = '_'.join(label)
 
     cmd_property('renderer', 'rendertype', [type])
-    cmd_property('renderer', 'renderlabel', [label])
+    cmd_property('renderer', 'renderlabel', [session_name])
+
 
     LSDmisc.setCameraBlur(cam, now)
     if not outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):

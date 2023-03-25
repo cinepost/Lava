@@ -1,6 +1,8 @@
 /** Edge detection render pass.
 */
 
+#include "Scene/SceneDefines.slangh"
+
 import Scene.Raster;
 import Scene.RaytracingInline;
 import Scene.Shading;
@@ -100,7 +102,14 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
 
                 rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
                 rayQuery.Proceed();
-                occlusion += (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 1.f : 0.f;
+
+                #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
+                    if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+                        const float hitT = rayQuery.CommittedRayT();
+                        const float w = hitT > gDistanceRange.x ? hitT < gDistanceRange.y ? (1.f - smoothstep(gDistanceRange.x, gDistanceRange.y, hitT)) : 0.f : 1.f;
+                        occlusion += (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? w : 0.f;
+                    }
+                #endif
             }
 
             gOutput[pixelPos] = float4(1.f - (occlusion /(float)_SHADING_RATE));

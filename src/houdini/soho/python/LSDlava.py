@@ -91,7 +91,10 @@ def initializeFeatures(settings):
     Renderer("renderer", "rayquality", "bool", "lv_rayquality")
     Renderer("renderer", "refractcomponents", "string", "lv_refractcomponents")
     Renderer("renderer", "relightingbuffer", "bool", "lv_relightingbuffer")
-    Renderer("renderer", "renderengine", "string", "lv_renderengine", skipdefault=False)
+    
+    Renderer("renderer", "renderengine",  "string", "lv_renderengine", skipdefault=False)
+    Renderer("renderer", "primaryraygen", "string", "lv_primary_raygen_type", skipdefault=False)
+
     Renderer("renderer", "renderinterrupt", "bool", "lv_renderinterrupt")
     Renderer("renderer", "samplecachesize", "int", "lv_samplecachesize")
     Renderer("renderer", "shadingfactor", "float", "lv_shadingfactor")
@@ -378,6 +381,7 @@ def initializeFeatures(settings):
     ImageOption("IPlay.lut", "string", "lv_image_mplay_lut")
     ImageOption("IPlay.sockethost", "string", "lv_image_mplay_sockethost")
     ImageOption("IPlay.socketport", "int", "lv_image_mplay_socketport")
+    ImageOption("IPlay.zeroimage", "bool", "lv_image_mplay_zero_image", skipdefault=False)
 
     ImageOption("JPEG.quality", "int", "lv_image_jpeg_quality")
     ImageOption("OpenEXR.attributes", "string", "lv_image_exr_attributes")

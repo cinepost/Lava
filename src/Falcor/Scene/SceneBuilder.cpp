@@ -51,7 +51,6 @@ namespace fs = boost::filesystem;
 #include "lava_utils_lib/logging.h"
 
 std::mutex g_meshes_mutex;
-std::mutex g_materials_mutex;
 std::mutex g_buffers_mutex;
 std::mutex g_buffers_indices_mutex;
 std::mutex g_buffers_static_data_mutex;
@@ -270,7 +269,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
     createMeshInstanceData(tlasInstanceIndex);
     createCurveInstanceData(tlasInstanceIndex);
     // Adjust instance indices of SDF grid instances.
-    for (auto& sdfInstanceData : mSceneData.sdfGridInstances) sdfInstanceData.instanceIndex = tlasInstanceIndex++;
+    for (auto& sdfInstanceData : mSceneData.sdfGridInstancesData) sdfInstanceData.instanceIndex = tlasInstanceIndex++;
 
     mSceneData.useCompressedHitInfo = is_set(mFlags, Flags::UseCompressedHitInfo);
 
@@ -705,12 +704,8 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
-    uint32_t materialID = std::numeric_limits<uint32_t>::max();
-    {
-        std::scoped_lock lock(g_materials_mutex);
-        materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
-        if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
-    }
+    const uint32_t materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
+    //if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
     return materialID;
 }
 
@@ -813,21 +808,21 @@ uint32_t SceneBuilder::addNode(const Node& node) {
     return newNodeID;
 }
 
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
-    addMeshInstance(nodeID, meshID, kInvalidExportedID, nullptr, shadingSpec, visibilitySpec);
-}
+bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* creationSpec) {
+    if (nodeID >= mSceneGraph.size()) {
+        LLOG_ERR << "SceneBuilder::addMeshInstance() - nodeID " << std::to_string(nodeID) << " is out of range. No mesh instance created !!!";
+        return false;
+    }
 
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
-    addMeshInstance(nodeID, meshID, exportedInstanceID, nullptr, shadingSpec, visibilitySpec);
-}
+    if (meshID >= mMeshes.size()) {
+        LLOG_ERR << "SceneBuilder::addMeshInstance() - meshID " << std::to_string(meshID) << " is out of range. No mesh instance created !!!";
+        return false;
+    }
 
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
-    addMeshInstance(nodeID, meshID, kInvalidExportedID, pMaterial, shadingSpec, visibilitySpec);
-}
-
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, const Material::SharedPtr& pMaterial, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
-    if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
-    if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
+    auto pMaterialOverride = creationSpec ? creationSpec->pMaterialOverride : nullptr;
+    auto pShadingSpec = creationSpec ? creationSpec->pShadingSpec : nullptr;
+    auto pVisibilitySpec = creationSpec ? creationSpec->pVisibilitySpec : nullptr;
+    auto pExportedDataSpec = creationSpec ? creationSpec->pExportedDataSpec : nullptr;
 
     {
         std::scoped_lock lock(g_meshes_mutex);
@@ -837,23 +832,25 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t ex
         mMeshes[meshID].instances.push_back({});
         MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
         instance.nodeId = nodeID;
-        instance.exportedInstanceId = exportedInstanceID;
-        instance.overrideMaterial = pMaterial ? true : false;
+        instance.overrideMaterial = pMaterialOverride ? true : false;
 
-        if (instance.overrideMaterial && pMaterial) {
+        if (pMaterialOverride) {
             uint32_t materialID;
-            if(getMaterialID(pMaterial->getName(), materialID)) {
+            if(getMaterialID(pMaterialOverride->getName(), materialID)) {
                 instance.materialId = materialID;
-            } else {
-                instance.materialId = addMaterial(pMaterial);
+            } else if(pMaterialOverride) {
+                instance.materialId = addMaterial(pMaterialOverride);
             }
         }
 
-        if (shadingSpec) instance.shading = *shadingSpec;
-        if (visibilitySpec) instance.visibility = *visibilitySpec;
-        
+        if (pShadingSpec) instance.shading = *pShadingSpec;
+        if (pVisibilitySpec) instance.visibility = *pVisibilitySpec;
+        if (pExportedDataSpec) instance.exported = *pExportedDataSpec;
+    
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
     }
+
+    return true;
 }
 
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
@@ -2189,7 +2186,7 @@ void SceneBuilder::removeDuplicateMaterials() {
             }
         }
 
-        //for (auto& sdfGridInstance : mSceneData.sdfGridInstances) {
+        //for (auto& sdfGridInstance : mSceneData.sdfGridInstancesData) {
         //    sdfGridInstance.materialID = idMap[sdfGridInstance.materialID];
         //}
     }
@@ -2257,7 +2254,7 @@ void SceneBuilder::updateSDFGridID(uint32_t oldID, uint32_t newID) {
         if (sdfGridDesc.sdfGridID == oldID) sdfGridDesc.sdfGridID = newID;
     }
 
-    for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstances) {
+    for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstancesData) {
         if (sdfGridInstance.geometryID == oldID) {
             sdfGridInstance.geometryID = newID;
             InternalNode& node = mSceneGraph[sdfGridInstance.globalMatrixID];
@@ -2372,10 +2369,12 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
     //  <--      MeshGroup 0    --><--     MeshGroup 0     --><-- MeshGroup 1 -->
     //
     assert(mSceneData.meshInstanceData.empty());
+    assert(mSceneData.meshInstanceNamesData.empty());
     assert(mSceneData.meshIdToInstanceIds.empty());
     assert(mSceneData.meshGroups.empty());
 
     auto& instanceData = mSceneData.meshInstanceData;
+    auto& instanceNamesData = mSceneData.meshInstanceNamesData;
     size_t drawCount = 0;
     bool hasDisplaced = false;
     uint32_t displacedMeshInstanceOffset = 0;
@@ -2400,6 +2399,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
         // This case is handled by pre-transforming the vertices in the BLAS build.
         assert(!meshList.empty());
         
+        uint32_t internalID = 0;
         for(size_t meshID: meshList) {   
 
             const auto& mesh = mMeshes[meshID];
@@ -2428,6 +2428,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.globalMatrixID = nodeID;
                     geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
                     geomInstance.geometryID = meshID;
+                    geomInstance.externalID = instance.exported.id;
                     geomInstance.vbOffset = mesh.staticVertexOffset;
                     geomInstance.ibOffset = mesh.indexOffset;
                     
@@ -2450,6 +2451,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;
                     instanceData.push_back(geomInstance);
+                    instanceNamesData.push_back(instance.exported.name);
 
                     blasGeometryIndex++;
                 //}
@@ -2494,7 +2496,11 @@ void SceneBuilder::createCurveData() {
 }
 
 void SceneBuilder::createCurveInstanceData(uint32_t& tlasInstanceIndex) {
+    assert(mSceneData.curveInstanceData.empty());
+    assert(mSceneData.curveInstanceNamesData.empty());
+
     auto& instanceData = mSceneData.curveInstanceData;
+    auto& instanceNamesData = mSceneData.curveInstanceNamesData;
 
     uint32_t blasGeometryIndex = 0;
     size_t maxInstanceCount = 0;
@@ -2506,15 +2512,18 @@ void SceneBuilder::createCurveInstanceData(uint32_t& tlasInstanceIndex) {
         maxInstanceCount = std::max(maxInstanceCount, instanceCount);
 
         for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-            GeometryInstanceData instance(GeometryType::Curve);
-            instance.globalMatrixID = curve.instances[instanceIdx];
-            instance.materialID = curve.materialId;
-            instance.geometryID = curveID;
-            instance.vbOffset = curve.staticVertexOffset;
-            instance.ibOffset = curve.indexOffset;
-            instance.instanceIndex = tlasInstanceIndex + (uint32_t)instanceIdx;
-            instance.geometryIndex = blasGeometryIndex;
-            instanceData.push_back(instance);
+            auto const& instance = curve.instances[instanceIdx];
+            GeometryInstanceData geomInstance(GeometryType::Curve);
+            geomInstance.globalMatrixID = instance;
+            geomInstance.materialID = curve.materialId;
+            geomInstance.geometryID = curveID;
+            //geomInstance.externalID = instance.exported.id;
+            geomInstance.vbOffset = curve.staticVertexOffset;
+            geomInstance.ibOffset = curve.indexOffset;
+            geomInstance.instanceIndex = tlasInstanceIndex + (uint32_t)instanceIdx;
+            geomInstance.geometryIndex = blasGeometryIndex;
+            instanceData.push_back(geomInstance);
+            instanceNamesData.push_back(curve.name);
         }
 
         blasGeometryIndex++;

@@ -42,7 +42,6 @@ InternalDictionary::Value::operator std::string() const {
 
 template<>
 InternalDictionary::Value::operator bool() const {
-    printf("!!!!!!!!!!!!!!!! dict to bool\n");
     if (mValue.type() == typeid(bool)) return std::any_cast<bool>(mValue); 
     else if(mValue.type() == typeid(int)) return std::any_cast<int>(mValue) == 0 ? false : true;
     else if(mValue.type() == typeid(float)) return std::any_cast<float>(mValue) == 0.f ? false : true;
@@ -50,9 +49,7 @@ InternalDictionary::Value::operator bool() const {
     return false;
 }
 
-//template<>
 InternalDictionary::Value::operator uint() const {
-    printf("!!!!!!!!!!!!!!!! dict to uint\n");
     if(mValue.type() == typeid(int)) return static_cast<uint>(std::any_cast<int>(mValue));
     else if(mValue.type() == typeid(float)) return static_cast<uint>(std::any_cast<float>(mValue));
     return std::any_cast<uint>(mValue);

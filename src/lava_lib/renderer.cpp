@@ -25,6 +25,8 @@
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
 #include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
 #include "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -299,11 +301,21 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// VBuffer
 	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDictionary);
-	auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-	pVBufferPass->setScene(pRenderContext, pScene);
-	pVBufferPass->setCullMode(cullMode);
+	
+	if( 1 == 2) {
+		// Rasterizer ray generator
+		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+	} else {
+		// Compute ray generator
+		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+	}
 
-	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 	//mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
 
 	// RTXDIPass
@@ -339,30 +351,59 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 #endif
 
 	// Optional edgedetect pass
-	if(pMainAOV->sourcePassName() == "EdgeDetectPass" || hasAOVPlane(AOVBuiltinName::EdgeDetectPass)) {
-		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pMainAOV->getRenderPassesDict());
-		pEdgeDetectPass->setScene(pRenderContext, pScene);
-		mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
-		mpRenderGraph->addEdge("VBufferPass.vbuffer", "EdgeDetectPass.vbuffer");
+	{
+		auto pOutputPlane = pMainAOV->sourcePassName() == "EdgeDetectPass" ? 
+			pMainAOV : hasAOVPlane(AOVBuiltinName::EdgeDetectPass) ? getAOVPlane(AOVBuiltinName::EdgeDetectPass) : nullptr;
+
+		if(pOutputPlane) {
+			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pOutputPlane->getRenderPassesDict());
+			pEdgeDetectPass->setScene(pRenderContext, pScene);
+			mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", "EdgeDetectPass.vbuffer");
+		}
 	}
 
 	// Optional ambient occlusion pass
-	if(pMainAOV->sourcePassName() == "AmbientOcclusionPass" || hasAOVPlane(AOVBuiltinName::AmbientOcclusionPass)) {
-		auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pMainAOV->getRenderPassesDict());
-		pAmbientOcclusionPass->setScene(pRenderContext, pScene);
-		mpRenderGraph->addPass(pAmbientOcclusionPass, "AmbientOcclusionPass");
-		mpRenderGraph->addEdge("VBufferPass.vbuffer", "AmbientOcclusionPass.vbuffer");
+	{
+		auto pOutputPlane = pMainAOV->sourcePassName() == "AmbientOcclusionPass" ? 
+			pMainAOV : hasAOVPlane(AOVBuiltinName::AmbientOcclusionPass) ? getAOVPlane(AOVBuiltinName::AmbientOcclusionPass) : nullptr;
+
+		if(pOutputPlane) {
+			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pOutputPlane->getRenderPassesDict());
+			pAmbientOcclusionPass->setScene(pRenderContext, pScene);
+			mpRenderGraph->addPass(pAmbientOcclusionPass, "AmbientOcclusionPass");
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", "AmbientOcclusionPass.vbuffer");
+		}
 	}
 
-	// Optional cryptomatte pass
-	if (hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_MAT) || hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_OBJ)) {
-		auto pCryptomattePass = CryptomattePass::create(pRenderContext, {});
-		pCryptomattePass->setScene(pRenderContext, pScene);
+	// Optional cryptomatte passes
+	{
+		auto pOutputPlane = pMainAOV->sourcePassName() == "CryptomatteMaterialPass" ? 
+			pMainAOV : hasAOVPlane(AOVBuiltinName::CryptomatteMaterialPass) ? getAOVPlane(AOVBuiltinName::CryptomatteMaterialPass) : nullptr;
 
-		mpRenderGraph->addPass(pCryptomattePass, "CryptomattePass");
-		mpRenderGraph->addEdge("VBufferPass.vbuffer", "CryptomattePass.vbuffer");
+		if(pOutputPlane) {
+			auto pCryptomatteMaterialPass = CryptomattePass::create(pRenderContext, pOutputPlane->getRenderPassesDict());
+			pCryptomatteMaterialPass->setMode(CryptomattePass::CryptomatteMode::Material);
+			pCryptomatteMaterialPass->setScene(pRenderContext, pScene);
+
+			mpRenderGraph->addPass(pCryptomatteMaterialPass, "CryptomatteMaterialPass");
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", "CryptomatteMaterialPass.vbuffer");
+		}
 	}
 
+	{
+		auto pOutputPlane = pMainAOV->sourcePassName() == "CryptomatteInstancePass" ? 
+			pMainAOV : hasAOVPlane(AOVBuiltinName::CryptomatteInstancePass) ? getAOVPlane(AOVBuiltinName::CryptomatteInstancePass) : nullptr;
+		
+		if(pOutputPlane) {
+			auto pCryptomatteInstancePass = CryptomattePass::create(pRenderContext, pOutputPlane->getRenderPassesDict());
+			pCryptomatteInstancePass->setMode(CryptomattePass::CryptomatteMode::Instance);
+			pCryptomatteInstancePass->setScene(pRenderContext, pScene);
+
+			mpRenderGraph->addPass(pCryptomatteInstancePass, "CryptomatteInstancePass");
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", "CryptomatteInstancePass.vbuffer");
+		}
+	}
 
 	// Create MAIN (beauty) plane accumulation pass and bind with render graph output
 	auto pMainAOVAccumulationPass = pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
@@ -490,23 +531,23 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
-			case AOVBuiltinName::CRYPTOMATTE_MAT:
+			case AOVBuiltinName::CryptomatteMaterialPass:
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("CryptomattePass.material_color", pPlane->accumulationPassColorInputName());
+						mpRenderGraph->addEdge("CryptomatteMaterialPass.CryptoMaterial", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
-			case AOVBuiltinName::CRYPTOMATTE_OBJ:
+			case AOVBuiltinName::CryptomatteInstancePass:
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("CryptomattePass.object_color", pPlane->accumulationPassColorInputName());
+						mpRenderGraph->addEdge("CryptomatteInstancePass.CryptoObject", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
@@ -784,13 +825,13 @@ void Renderer::renderSample() {
 	LLOG_TRC << "Sample " << mCurrentSampleNumber << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 }
 
-bool Renderer::getAOVPlaneImageData(const AOVName& name, uint8_t* pData) {
+const uint8_t* Renderer::getAOVPlaneImageData(const AOVName& name) {
 	assert(pData);
 
 	auto pAOVPlane = getAOVPlane(name);
-	if (!pAOVPlane) return false;
+	if (!pAOVPlane) return nullptr;
 
-	return pAOVPlane->getImageData(pData);
+	return pAOVPlane->getImageData();
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {

@@ -313,7 +313,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         // SDF grid stats
         uint64_t sdfGridCount = 0;                  ///< Number of SDF grids.
         uint64_t sdfGridDescriptorCount = 0;        ///< Number of SDF grid descriptors.
-        uint64_t sdfGridInstancesCount = 0;         ///< Number of SDF grid instances.
+        uint64_t sdfGridInstancesDataCount = 0;         ///< Number of SDF grid instances.
         uint64_t sdfGridMemoryInBytes = 0;          ///< Total memory in bytes used by all SDF grids. Note that this depends on render mode is selected.
 
         // Custom primitive stats
@@ -372,19 +372,19 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         //pybind11::dict toPython() const;
     };
 
-    const SceneStats& getSceneStats() const { return mSceneStats; }
+    inline const SceneStats& getSceneStats() const { return mSceneStats; }
 
     /** Get the render settings.
     */
-    const RenderSettings& getRenderSettings() const { return mRenderSettings; }
+    inline const RenderSettings& getRenderSettings() const { return mRenderSettings; }
 
     /** Get the render settings.
     */
-    RenderSettings& getRenderSettings() { return mRenderSettings; }
+    inline RenderSettings& getRenderSettings() { return mRenderSettings; }
 
     /** Set the render settings.
     */
-    void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
+    inline void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
 
     /** Returns true if ray tracing is enabled for this scene.
     */
@@ -412,23 +412,23 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the metadata.
     */
-    const Metadata& getMetadata() { return mMetadata; }
+    inline const Metadata& getMetadata() { return mMetadata; }
 
     /** Get the scene update callback.
     */
-    UpdateCallback getUpdateCallback() const { return mUpdateCallback; }
+    inline UpdateCallback getUpdateCallback() const { return mUpdateCallback; }
 
     /** Set the scene update callback.
     */
-    void setUpdateCallback(UpdateCallback updateCallback) { mUpdateCallback = updateCallback; }
+    inline void setUpdateCallback(UpdateCallback updateCallback) { mUpdateCallback = updateCallback; }
 
     /** Access the scene's currently selected camera to change properties or to use elsewhere.
     */
-    const Camera::SharedPtr& getCamera() { return mCameras[mSelectedCamera]; }
+    inline const Camera::SharedPtr& getCamera() { return mCameras[mSelectedCamera]; }
 
     /** Get a list of all cameras in the scene.
     */
-    const std::vector<Camera::SharedPtr>& getCameras() { return mCameras; };
+    inline const std::vector<Camera::SharedPtr>& getCameras() { return mCameras; };
 
     /** Select a different camera to use. The camera must already exist in the scene.
     */
@@ -444,12 +444,12 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the camera controller type
     */
-    CameraControllerType getCameraControllerType() const { return mCamCtrlType; }
+    inline CameraControllerType getCameraControllerType() const { return mCamCtrlType; }
 
     /** Toggle whether the currently selected camera is animated.
     */
     deprecate("4.0.2", "Use Camera::setIsAnimated() instead.")
-    void toggleCameraAnimation(bool active) { mCameras[mSelectedCamera]->setIsAnimated(active); }
+    inline void toggleCameraAnimation(bool active) { mCameras[mSelectedCamera]->setIsAnimated(active); }
 
     /** Reset the currently selected camera.
         This function will place the camera at the center of scene and optionally set the depth range to some reasonable pre-determined values
@@ -462,7 +462,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the camera's speed
     */
-    float getCameraSpeed() const { return mCameraSpeed; }
+    inline float getCameraSpeed() const { return mCameraSpeed; }
 
     /** Add the currently selected camera's viewpoint to the list of viewpoints.
     */
@@ -492,16 +492,16 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     void selectViewpoint(uint32_t index);
 
     deprecate("4.0.1", "Use selectViewpoint() instead.")
-    void gotoViewpoint(uint32_t index) { selectViewpoint(index); }
+    inline void gotoViewpoint(uint32_t index) { selectViewpoint(index); }
 
     /** Returns true if there are saved viewpoints (used for dumping to config)
     */
-    bool hasSavedViewpoints() { return mViewpoints.size() > 1; }
+    inline bool hasSavedViewpoints() { return mViewpoints.size() > 1; }
 
     /** Get the set of geometry types used in the scene.
         \return A bit field containing the set of geometry types.
     */
-    GeometryTypeFlags getGeometryTypes() const { return mGeometryTypes; }   
+    inline GeometryTypeFlags getGeometryTypes() const { return mGeometryTypes; }   
 
     /** Get the type of a given geometry.
         \param[in] geometryID Global geometry ID.
@@ -513,17 +513,17 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] type The type to check for.
         \return True if scene has any geometry of this type.
     */
-    bool hasGeometryTypes(GeometryTypeFlags types) const { return is_set(mGeometryTypes, types); }
+    inline bool hasGeometryTypes(GeometryTypeFlags types) const { return is_set(mGeometryTypes, types); }
 
     /** Check if scene has any geometry of the given type.
         \param[in] type The type to check for.
         \return True if scene has any geometry of this type.
     */
-    bool hasGeometryType(GeometryType type) const { return hasGeometryTypes(GeometryTypeFlags(1u << (uint32_t)type)); }
+    inline bool hasGeometryType(GeometryType type) const { return hasGeometryTypes(GeometryTypeFlags(1u << (uint32_t)type)); }
 
     /** Check if scene has any procedural geometry types.
     */
-    bool hasProceduralGeometry() const { return hasGeometryTypes(~GeometryTypeFlags::TriangleMesh); };
+    inline bool hasProceduralGeometry() const { return hasGeometryTypes(~GeometryTypeFlags::TriangleMesh); };
 
     /** Get the material of a given geometry.
         \param[in] geometryID Global geometry ID.
@@ -533,11 +533,11 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the number of meshes
     */
-    uint32_t getMeshCount() const { return (uint32_t)mMeshDesc.size(); }
+    inline uint32_t getMeshCount() const { return (uint32_t)mMeshDesc.size(); }
 
     /** Get a mesh desc
     */
-    const MeshDesc& getMesh(uint32_t meshID) const { return mMeshDesc[meshID]; }
+    inline const MeshDesc& getMesh(uint32_t meshID) const { return mMeshDesc[meshID]; }
 
     /** Get the number of geometries in the scene.
         This includes all types of geometry that exist in the ray tracing acceleration structures.
@@ -549,13 +549,19 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         This includes all types of geometry instances that exist in the ray tracing acceleration structures.
         \return Total number of geometry instances.
     */
-    uint32_t getGeometryInstanceCount() const { return (uint32_t)mGeometryInstanceData.size(); }
+    inline uint32_t getGeometryInstanceCount() const { return (uint32_t)mGeometryInstanceData.size(); }
 
     /** Get the data of a geometry instance.
         \param[in] instanceID Global geometry instance ID.
         \return The data of the geometry instance.
     */
-    const GeometryInstanceData &getGeometryInstance(uint32_t instanceID) const { return mGeometryInstanceData[instanceID]; }
+    inline const GeometryInstanceData& getGeometryInstance(uint32_t instanceID) const { return mGeometryInstanceData[instanceID]; }
+
+    /** Get the  DCC exported name of a geometry instance.
+        \param[in] instanceID Global geometry instance ID.
+        \return The exported name of the geometry instance.
+    */
+    inline const std::string& getInstanceName(uint32_t instanceID) const { return mGeometryInstanceNamesData[instanceID]; }
 
     /** Get a list of all geometry IDs for a given geometry type.
         \param[in] geometryType The geometry type.
@@ -572,43 +578,43 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the number of curves.
     */
-    uint32_t getCurveCount() const { return (uint32_t)mCurveDesc.size(); }
+    inline uint32_t getCurveCount() const { return (uint32_t)mCurveDesc.size(); }
 
     /** Get a curve desc.
     */
-    const CurveDesc& getCurve(uint32_t curveID) const { return mCurveDesc[curveID]; }
+    inline const CurveDesc& getCurve(uint32_t curveID) const { return mCurveDesc[curveID]; }
 
     /** Returns what SDF grid implementation is used for this scene.
     */
-    SDFGrid::Type getSDFGridImplementation() const { return mSDFGridConfig.implementation; }
+    inline SDFGrid::Type getSDFGridImplementation() const { return mSDFGridConfig.implementation; }
 
     /** Returns shared SDF grid implementation data used for this scene.
     */
-    const SDFGridConfig::ImplementationData& getSDFGridImplementationData() const { return mSDFGridConfig.implementationData; }
+    inline const SDFGridConfig::ImplementationData& getSDFGridImplementationData() const { return mSDFGridConfig.implementationData; }
 
     /** Returns what SDF grid gradient intersection method is used for this scene.
     */
-    SDFGridIntersectionMethod getSDFGridIntersectionMethod() const { return mSDFGridConfig.intersectionMethod; }
+    inline SDFGridIntersectionMethod getSDFGridIntersectionMethod() const { return mSDFGridConfig.intersectionMethod; }
 
     /** Returns what SDF grid gradient evaluation method is used for this scene.
     */
-    SDFGridGradientEvaluationMethod getSDFGridGradientEvaluationMethod() const { return mSDFGridConfig.gradientEvaluationMethod; }
+    inline SDFGridGradientEvaluationMethod getSDFGridGradientEvaluationMethod() const { return mSDFGridConfig.gradientEvaluationMethod; }
 
     /** Get the number of SDF grid descriptors.
     */
-    uint32_t getSDFGridDescCount() const { return (uint32_t)mSDFGridDesc.size(); }
+    inline uint32_t getSDFGridDescCount() const { return (uint32_t)mSDFGridDesc.size(); }
 
     /** Get a SDF grid desc.
     */
-    const SDFGridDesc& getSDFGridDesc(uint32_t sdfGridID) const { return mSDFGridDesc[sdfGridID]; }
+    inline const SDFGridDesc& getSDFGridDesc(uint32_t sdfGridID) const { return mSDFGridDesc[sdfGridID]; }
 
     /** Get the number of SDF grids.
     */
-    uint32_t getSDFGridCount() const { return (uint32_t)mSDFGrids.size(); }
+    inline uint32_t getSDFGridCount() const { return (uint32_t)mSDFGrids.size(); }
 
     /** Get an SDF grid.
     */
-    const SDFGrid::SharedPtr& getSDFGrid(uint32_t sdfGridID) const { return mSDFGrids[mSDFGridDesc[sdfGridID].sdfGridID]; }
+    inline const SDFGrid::SharedPtr& getSDFGrid(uint32_t sdfGridID) const { return mSDFGrids[mSDFGridDesc[sdfGridID].sdfGridID]; }
 
     /** Get the number of SDF grid geometries.
     */
@@ -632,7 +638,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the number of custom primitives.
     */
-    uint32_t getCustomPrimitiveCount() const { return (uint32_t)mCustomPrimitiveDesc.size(); }
+    inline uint32_t getCustomPrimitiveCount() const { return (uint32_t)mCustomPrimitiveDesc.size(); }
 
     /** Get the custom primitive index for a geometry.
         \param[in] geometryID Global geometry ID.
@@ -666,7 +672,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         Adding/removing custom primitives is a slow operation as the acceleration structure is rebuilt.
         \param[in] index Index of custom primitive to remove.
     */
-    void removeCustomPrimitive(uint32_t index) { removeCustomPrimitives(index, index + 1); }
+    inline void removeCustomPrimitive(uint32_t index) { removeCustomPrimitives(index, index + 1); }
 
     /** Remove a range [first,last) of custom primitives.
         Note that the last index is non-inclusive. If first == last no action is performed.
@@ -683,32 +689,32 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the material system.
     */
-    const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
-    const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
+    inline const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
+    inline const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
     /** Get a list of all materials in the scene.
     */
-    const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
+    inline const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
 
     /** Get the number of materials in the scene
     */
-    uint32_t getMaterialCount() const { return mpMaterialSystem->getMaterialCount(); }
+    inline uint32_t getMaterialCount() const { return mpMaterialSystem->getMaterialCount(); }
 
     /** Get a material
     */
-    const Material::SharedPtr& getMaterial(uint32_t materialID) const { return mpMaterialSystem->getMaterial(materialID); }
+    inline const Material::SharedPtr& getMaterial(uint32_t materialID) const { return mpMaterialSystem->getMaterial(materialID); }
 
     /** Get a material by name
     */
-    Material::SharedPtr getMaterialByName(const std::string& name) const { return mpMaterialSystem->getMaterialByName(name); }
+    inline Material::SharedPtr getMaterialByName(const std::string& name) const { return mpMaterialSystem->getMaterialByName(name); }
 
     /** Get a list of all grid volumes in the scene.
     */
-    const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mGridVolumes; }
+    inline const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mGridVolumes; }
 
     /** Get a grid volume.
     */
-    const GridVolume::SharedPtr& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
+    inline const GridVolume::SharedPtr& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
 
     /** Get a grid volume by name.
     */
@@ -716,27 +722,27 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the hit info requirements.
     */
-    const HitInfo& getHitInfo() const { return mHitInfo; }
+    inline const HitInfo& getHitInfo() const { return mHitInfo; }
 
     /** Get the scene bounds
     */
-    const AABB& getSceneBounds() const { return mSceneBB; }
+    inline const AABB& getSceneBounds() const { return mSceneBB; }
 
     /** Get a mesh's bounds
     */
-    const AABB& getMeshBounds(uint32_t meshID) const { return mMeshBBs[meshID]; }
+    inline const AABB& getMeshBounds(uint32_t meshID) const { return mMeshBBs[meshID]; }
 
     /** Get a curve's bounds in object space.
     */
-    const AABB& getCurveBounds(uint32_t curveID) const { return mCurveBBs[curveID]; }
+    inline const AABB& getCurveBounds(uint32_t curveID) const { return mCurveBBs[curveID]; }
 
     /** Get the number of lights in the scene
     */
-    uint32_t getLightCount() const { return (uint32_t)mLights.size(); }
+    inline uint32_t getLightCount() const { return (uint32_t)mLights.size(); }
 
     /** Get a light
     */
-    const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
+    inline const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
 
     /** Get a light by name
     */
@@ -744,15 +750,15 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get a list of all active lights in the scene.
     */
-    const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
+    inline const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
 
     /** Get the number of active lights in the scene.
     */
-    uint32_t getActiveLightCount() const { return (uint32_t)mActiveLights.size(); }
+    inline uint32_t getActiveLightCount() const { return (uint32_t)mActiveLights.size(); }
 
     /** Get an active light.
     */
-    const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
+    inline const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
 
 
     /** Get the light collection representing all the mesh lights in the scene.
@@ -765,18 +771,18 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the environment map or nullptr if it doesn't exist.
     */
-    const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    inline const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
     //VkAccelerationStructureKHR getTlas() const;
 
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
     */
-    void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
+    inline void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
 
     /** Get the scene's TLAS update mode when raytracing.
     */
-    UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
+    inline UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
 
     /** Set how the scene's BLASes are updated when raytracing.
         BLASes are REFIT by default
@@ -785,7 +791,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the scene's BLAS update mode when raytracing.
     */
-    UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
+    inline UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
 
     /** Update the scene. Call this once per frame to update the camera location, animations, etc.
         \param pContext
@@ -796,7 +802,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get the changes that happened during the last update
         The flags only change during an `update()` call, if something changed between calling `update()` and `getUpdates()`, the returned result will not reflect it
     */
-    UpdateFlags getUpdates() const { return mUpdates; }
+    inline UpdateFlags getUpdates() const { return mUpdates; }
 
     /** Render the scene using the rasterizer.
         Note the rasterizer state bound to 'pState' is ignored.
@@ -851,16 +857,16 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
         \return VAO object or nullptr if no meshes using 32-bit indices.
     */
-    const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
+    inline const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
 
     /** Get the scene's VAO for 16-bit vertex indices.
         \return VAO object or nullptr if no meshes using 16-bit indices.
     */
-    const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
+    inline const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
 
     /** Get the scene's VAO for curves.
     */
-    const Vao::SharedPtr& getCurveVao() const { return mpCurveVao; }
+    inline const Vao::SharedPtr& getCurveVao() const { return mpCurveVao; }
 
     /** Set an environment map.
         \param[in] pEnvMap Environment map. Can be nullptr.
@@ -874,23 +880,23 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the filename that the scene was loaded from
     */
-    const std::string& getFilename() const { return mFilename; }
+    inline const std::string& getFilename() const { return mFilename; }
 
     /** Get the animation controller.
     */
-    const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
+    inline const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
 
     /** Returns true if scene has animation data.
     */
-    bool hasAnimation() const { return mpAnimationController->hasAnimations(); }
+    inline bool hasAnimation() const { return mpAnimationController->hasAnimations(); }
 
     /** Enable/disable scene animation.
     */
-    void setIsAnimated(bool isAnimated) { mpAnimationController->setEnabled(isAnimated); }
+    inline void setIsAnimated(bool isAnimated) { mpAnimationController->setEnabled(isAnimated); }
 
     /** Returns true if scene animation is enabled.
     */
-    bool isAnimated() const { return mpAnimationController->isEnabled(); };
+    inline bool isAnimated() const { return mpAnimationController->isEnabled(); };
 
     /** Toggle all animations on or off.
     */
@@ -899,7 +905,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get the parameter block with all scene resources.
         Note that the camera is not bound automatically.
     */
-    const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
+    inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
 
     /** Set the BLAS geometry index into the local vars for each geometry.
         This is a workaround before GeometryIndex() is supported in shaders.
@@ -916,11 +922,11 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the name of the mesh with the given ID.
     */
-    std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
+    inline std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
 
     /** Return true if the given mesh ID is valid, false otherwise.
     */
-    bool hasMesh(uint32_t meshID) const { return meshID < mMeshNames.size(); }
+    inline bool hasMesh(uint32_t meshID) const { return meshID < mMeshNames.size(); }
 
     /** Get a list of raytracing BLAS IDs for all meshes. The list is arranged by mesh ID.
     */
@@ -983,6 +989,7 @@ public:
         std::vector<std::string> meshNames;                     ///< List of mesh names.
         std::vector<AABB> meshBBs;                              ///< List of mesh bounding boxes in object space.
         std::vector<GeometryInstanceData> meshInstanceData;     ///< List of mesh instances.
+        std::vector<std::string> meshInstanceNamesData;         ///< List of mesh instances names exported from DCC software.
         uint32_t displacedMeshInstanceCount;                    ///< Number of displaced mesh instances. All displaced mesh instances are at the end of the mesh instance list.
         std::vector<std::vector<uint32_t>> meshIdToInstanceIds; ///< Mapping of what instances belong to which mesh.
         std::vector<MeshGroup> meshGroups;                      ///< List of mesh groups. Each group maps to a BLAS for ray tracing.
@@ -1002,6 +1009,7 @@ public:
         std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
         std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
         std::vector<GeometryInstanceData> curveInstanceData;    ///< List of curve instances.
+        std::vector<std::string> curveInstanceNamesData;        ///< List of curve instances names exported from DCC software.
 
         std::vector<uint32_t> curveIndexData;                   ///< Vertex indices for all curves in 32-bit.
         std::vector<StaticCurveVertexData> curveStaticData;     ///< Vertex attributes for all curves.
@@ -1010,7 +1018,8 @@ public:
         // SDF grid data
         std::vector<SDFGrid::SharedPtr> sdfGrids;               ///< List of SDF grids.
         std::vector<SDFGridDesc> sdfGridDesc;                   ///< List of SDF grid descriptors.
-        std::vector<GeometryInstanceData> sdfGridInstances;     ///< List of SDG grid instances.
+        std::vector<GeometryInstanceData> sdfGridInstancesData; ///< List of SDF grid instances.
+        std::vector<std::string> sdfGridInstanceNamesData;      ///< List of SDF grid instances names exported from DCC software.
         uint32_t sdfGridMaxLODCount = 0;                        ///< The max LOD count of any SDF grid.
 
         // Custom primitive data
@@ -1174,6 +1183,7 @@ public:
 
     GeometryTypeFlags mGeometryTypes;                           ///< Set of geometry types that exist in the scene.
     std::vector<GeometryInstanceData> mGeometryInstanceData;    ///< Geometry instance data (for all types of geometry).
+    std::vector<std::string> mGeometryInstanceNamesData;        ///< List of geometry instances names exported from DCC software.
 
     bool mUseCompressedHitInfo = false;                         ///< True if scene should used compressed HitInfo (on scenes with triangles meshes only).
     bool mHas16BitIndices = false;                              ///< True if any meshes use 16-bit indices.

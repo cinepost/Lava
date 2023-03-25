@@ -309,7 +309,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   ThreadPool& pool = ThreadPool::instance();
 
 	// Push pages loading job into ThreadPool
-	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture, pageIds]
+	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, &pTexture, &pageIds]
   {
   	if(!pTexture) return (Texture*)nullptr;
   	if(pageIds.size() < 1) return (Texture*)nullptr;

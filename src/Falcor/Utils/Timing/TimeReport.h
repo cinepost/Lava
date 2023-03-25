@@ -31,6 +31,12 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <numeric>
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "lava_utils_lib/logging.h"
+
 #include "CpuTimer.h"
 
 namespace Falcor {
@@ -43,22 +49,47 @@ namespace Falcor {
 
         /** Resets the recorded measurements and the internal timer.
         */
-        void reset();
+        inline void reset() {
+            mLastMeasureTime = CpuTimer::getCurrentTimePoint();
+            mMeasurements.clear();
+        }
 
         /** Prints the recorded measurements to the logfile.
         */
-        void printToLog();
+        inline void printToLog() const {
+            for (const auto& [task, duration] : mMeasurements) {
+                LLOG_INF << padStringToLength(task + ":", 25) << " " << std::to_string(duration)<<+ " s";
+            }
+        }
+
+        /** Prints the recorded measurements to string.
+        */
+        inline std::string printToString() const {
+            std::stringstream ss;
+            for (const auto& [task, duration] : mMeasurements) {
+                ss << padStringToLength(task + ":", 25) << " " << std::to_string(duration)<<+ " s";
+            }
+            return ss.str();
+        }
 
         /** Records a time measurement.
             Measures time since last call to reset() or reportTime(), whichever happened more recently.
             \param[in] name Name of the record.
         */
-        void measure(const std::string& name);
+        inline void measure(const std::string& name) {
+            auto currentTime = CpuTimer::getCurrentTimePoint();
+            std::chrono::duration<double> duration = currentTime - mLastMeasureTime;
+            mLastMeasureTime = currentTime;
+            mMeasurements.push_back({name, duration.count()});
+        }
 
         /** Add a record containing the total of all measurements.
             \param[in] name Name of the record.
         */
-        void addTotal(const std::string name = "Total");
+        inline void addTotal(const std::string name = "Total") {
+            double total = std::accumulate(mMeasurements.begin(), mMeasurements.end(), 0.0, [] (double t, auto &&m) { return t + m.second; });
+            mMeasurements.push_back({"Total", total});
+        }
 
      private:
         CpuTimer::TimePoint mLastMeasureTime;

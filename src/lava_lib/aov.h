@@ -41,6 +41,8 @@ enum class AOVBuiltinName: uint8_t {
 
   EdgeDetectPass,
   AmbientOcclusionPass,
+  CryptomatteMaterialPass,
+  CryptomatteInstancePass,
 
   UNKNOWN ,
 };
@@ -66,6 +68,8 @@ inline std::string to_string(AOVBuiltinName name) {
 
     type_2_string(EdgeDetectPass);
     type_2_string(AmbientOcclusionPass);
+    type_2_string(CryptomatteMaterialPass);
+    type_2_string(CryptomatteInstancePass);
   default:
     should_not_get_here();
     return "unknown";
@@ -118,6 +122,7 @@ struct AOVPlaneInfo {
 
   Falcor::ResourceFormat  format;
   AOVName                 name;                                         // AOVBuiltinName::MAIN is a reserved name for beauty pass
+  std::string             outputOverrideName;                           // Plane output override name
   std::string             variableName;
   std::string             pfilterTypeName;                              // Pixel filter type name e.g "Box" or "box"
   Falcor::uint2           pfilterSize;                                  // Pixel filter kernel size (in pixels)
@@ -146,6 +151,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline const std::string&      outputVariableName() const { return mInfo.variableName; }
     inline const AOVName&          name() const { return mInfo.name; }
+    inline std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
     inline Falcor::ResourceFormat  format() const { return mInfo.format; }
     inline const AOVPlaneInfo&     info() const { return mInfo; }
 
@@ -155,8 +161,8 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline const std::string&      sourcePassName() const { return mInfo.sourcePassName; }
 
-    bool getImageData(uint8_t* pData) const;
-    bool getProcessedImageData(uint8_t* pData) const;
+    const uint8_t* getImageData();
+    const uint8_t* getProcessedImageData();
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
@@ -196,7 +202,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     void createInternalRenderGraph(Falcor::RenderContext* pContext, bool force = false);
     bool compileInternalRenderGraph(Falcor::RenderContext* pContext);
 
-    bool getTextureData(Texture* pTexture, uint8_t* pData) const;
+    const uint8_t* getTextureData(Texture* pTexture);
 
   private:
     void setState(State state) { mState = state; }         
@@ -223,7 +229,9 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     std::string                         mProcessedPassOutputName;
 
-    Falcor::Dictionary              mRenderPassesDictionary;
+    Falcor::Dictionary                  mRenderPassesDictionary;
+
+    std::vector<uint8_t>                mOutputData;
 
     Falcor::Resource::Type              mType;
 
