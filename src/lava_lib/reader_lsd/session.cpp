@@ -204,6 +204,8 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 		pCamera->setFocalDistance(camera_focus_distance);
 		pCamera->setApertureRadius(apertureRadius);
 
+		LLOG_WRN << "apertureRadius " << apertureRadius;
+
 		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
@@ -223,6 +225,7 @@ bool Session::cmdRaytrace() {
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
+	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "useDOF", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 	passDict["primaryraygen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "primaryraygen", std::string("raster"));

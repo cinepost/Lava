@@ -73,6 +73,8 @@ namespace {
     const char kShaderFile[] = "RenderPasses/AccumulatePass/Accumulate.cs.slang";
     const char kFilterFile[] = "RenderPasses/AccumulatePass/Accumulate.SeparableFilter.cs.slang";
 
+    const std::string kShaderModel = "6_5";
+
     const char kInputChannel[] = "input";
     const char kOutputChannel[] = "output";
     const char kInputDepthChannel[] = "depth";
@@ -131,22 +133,12 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
     mpProgram[Precision::Single] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
     
-    // Create filtering programs.
-    mFilterPasses[0].pProgram = ComputeProgram::createFromFile(pDevice, kFilterFile, "filterH", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    mFilterPasses[1].pProgram = ComputeProgram::createFromFile(pDevice, kFilterFile, "filterV", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-
     for(auto& [key, pProgram]: mpProgram) {
         pProgram->addDefine("is_valid_gDepth", "0");
     }
 
     mpVars = ComputeVars::create(pDevice, mpProgram[mPrecisionMode]->getReflector());
     mpState = ComputeState::create(pDevice);
-
-    mFilterPasses[0].pVars = ComputeVars::create(pDevice, mFilterPasses[0].pProgram->getReflector());
-    mFilterPasses[1].pVars = ComputeVars::create(pDevice, mFilterPasses[1].pProgram->getReflector());
-
-    mFilterPasses[0].pState = ComputeState::create(pDevice);
-    mFilterPasses[1].pState = ComputeState::create(pDevice);
 }
 
 Dictionary AccumulatePass::getScriptingDictionary() {
@@ -259,91 +251,97 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     if(mDoHorizontalFiltering) {
         auto& filterPass = mFilterPasses[0];
 
-        auto pProgram = filterPass.pProgram;
-        
-        auto pVars = filterPass.pVars;
-        pVars["PerFrameCB"]["gResolution"] = resolution;
-        pVars["PerFrameCB"]["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
-        pVars["PerFrameCB"]["gSampleOffsetUniform"] = sampleOffsetUniform;
-        pVars["PerFrameCB"]["gSampleDistanceUniform"] = sampleDistanceUniform;
-        pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
-        pVars["PerFrameCB"]["gMaxSampleOffset"] = maxSampleOffset;
-        pVars["PerFrameCB"]["gSampleNumber"] = mFrameCount;
+        if(!filterPass.pPass || mDirty) {
+            Program::Desc desc;
+            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterH");
 
-        pVars["gInput"] = pSrc;
-        pVars["gDepth"] = pSrcDepth;
+            auto defines = Program::DefineList();
+
+            defines.add(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+            defines.add("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
+            defines.add("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
+            defines.add("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
+            defines.add("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
+            defines.add("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+            if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
+
+            filterPass.pPass = ComputePass::create(mpDevice, desc, defines, true);
+        }
+        
+        auto cb_var = filterPass.pPass["PerFrameCB"];
+        cb_var["gResolution"] = resolution;
+        cb_var["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
+        cb_var["gSampleOffsetUniform"] = sampleOffsetUniform;
+        cb_var["gSampleDistanceUniform"] = sampleDistanceUniform;
+        cb_var["gFilterSize"] = mPixelFilterSize;
+        cb_var["gMaxSampleOffset"] = maxSampleOffset;
+        cb_var["gSampleNumber"] = mFrameCount;
+
+        auto& pPass = filterPass.pPass;
+        pPass["gInput"] = pSrc;
+        pPass["gDepth"] = pSrcDepth;
 
         // Optional textures
-        pVars["gSampleOffsets"] = pSrcOffsets;
-        pVars["gKernelTexture"] = mpKernelTexture;
-        pVars["gKernelSampler"] = mpKernelSampler;
-        pVars["gImageSampler"] = mpImageSampler;
+        pPass["gSampleOffsets"] = pSrcOffsets;
+        pPass["gKernelTexture"] = mpKernelTexture;
+        pPass["gKernelSampler"] = mpKernelSampler;
+        pPass["gImageSampler"] = mpImageSampler;
 
         pFilteredImage = mDoVerticalFiltering ? mpTmpFilteredImage : mpFilteredImage;
         pFilteredDepth = mDoVerticalFiltering ? mpTmpFilteredDepth : mpFilteredDepth;
-        pVars["gOutputFilteredImage"] = pFilteredImage;
-        pVars["gOutputFilteredDepth"] = pFilteredDepth;
+        pPass["gOutputFilteredImage"] = pFilteredImage;
+        pPass["gOutputFilteredDepth"] = pFilteredDepth;
 
-        if(mDirty) {
-            pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
-            pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
-            pProgram->addDefine("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
-            pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
-            pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
-            pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
-            if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());
-        }
-
-        filterPass.pState->setProgram(pProgram);
-
-        uint3 numGroupsFH = div_round_up(uint3(resolution.x, resolution.y, 1u), mFilterPasses[0].pProgram->getReflector()->getThreadGroupSize());    
-        pRenderContext->dispatch(mFilterPasses[0].pState.get(), mFilterPasses[0].pVars.get(), numGroupsFH);
+        pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
     
     // Horizontal filtering pass
     if(mDoVerticalFiltering) {
         auto& filterPass = mFilterPasses[1];
 
-        auto pProgram = filterPass.pProgram;
+        if(!filterPass.pPass || mDirty) {
+            Program::Desc desc;
+            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterH");
 
-        auto pVars = filterPass.pVars;
-        pVars["PerFrameCB"]["gResolution"] = resolution;
-        pVars["PerFrameCB"]["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
-        pVars["PerFrameCB"]["gSampleOffsetUniform"] = sampleOffsetUniform;
-        pVars["PerFrameCB"]["gSampleDistanceUniform"] = sampleDistanceUniform;
-        pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
-        pVars["PerFrameCB"]["gMaxSampleOffset"] = maxSampleOffset;
-        pVars["PerFrameCB"]["gSampleNumber"] = mFrameCount;
+            auto defines = Program::DefineList();
 
-        pVars["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
-        pVars["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
+            defines.add(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+            defines.add("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
+            defines.add("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
+            defines.add("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
+            defines.add("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
+            defines.add("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+            if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
+
+            filterPass.pPass = ComputePass::create(mpDevice, desc, defines, true);
+        }
+
+        auto cb_var = filterPass.pPass["PerFrameCB"];
+        cb_var["gResolution"] = resolution;
+        cb_var["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
+        cb_var["gSampleOffsetUniform"] = sampleOffsetUniform;
+        cb_var["gSampleDistanceUniform"] = sampleDistanceUniform;
+        cb_var["gFilterSize"] = mPixelFilterSize;
+        cb_var["gMaxSampleOffset"] = maxSampleOffset;
+        cb_var["gSampleNumber"] = mFrameCount;
+
+        auto& pPass = filterPass.pPass;
+        pPass["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
+        pPass["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
         
         // Optional textures
-        pVars["gSampleOffsets"] = pSrcOffsets;
-        pVars["gKernelTexture"] = mpKernelTexture;
-        pVars["gKernelSampler"] = mpKernelSampler;
-        pVars["gImageSampler"] = mpImageSampler;
+        pPass["gSampleOffsets"] = pSrcOffsets;
+        pPass["gKernelTexture"] = mpKernelTexture;
+        pPass["gKernelSampler"] = mpKernelSampler;
+        pPass["gImageSampler"] = mpImageSampler;
 
 
         pFilteredImage = mpFilteredImage;
         pFilteredDepth = mpFilteredDepth;
-        pVars["gOutputFilteredImage"] = pFilteredImage;
-        pVars["gOutputFilteredDepth"] = pFilteredDepth;
+        pPass["gOutputFilteredImage"] = pFilteredImage;
+        pPass["gOutputFilteredDepth"] = pFilteredDepth;
 
-        if(mDirty) {
-            pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
-            pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
-            pProgram->addDefine("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
-            pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
-            pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
-            pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
-            if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());
-        }
-
-        filterPass.pState->setProgram(pProgram);
-
-        uint3 numGroupsFV = div_round_up(uint3(resolution.x, resolution.y, 1u), mFilterPasses[1].pProgram->getReflector()->getThreadGroupSize());
-        pRenderContext->dispatch(mFilterPasses[1].pState.get(), mFilterPasses[1].pVars.get(), numGroupsFV);
+        pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
 
     // If accumulation is disabled, just blit the source to the destination and return.

@@ -63,9 +63,9 @@ class AccumulatePass : public RenderPass {
     };
 
     struct FilterPass {
-        ComputeProgram::SharedPtr pProgram;
-        ComputeVars::SharedPtr    pVars;
-        ComputeState::SharedPtr   pState;
+        ComputePass::SharedPtr      pPass;
+        ComputeVars::SharedPtr      pVars;
+        ComputeState::SharedPtr     pState;
     };
 
     static const Info kInfo;

@@ -156,6 +156,7 @@ def initializeFeatures(settings):
     
     Image("image", "primaryraygen", "string", "lv_primary_raygen_type", skipdefault=False)
 
+    Image("image", "useDOF", "bool", "lv_dof", skipdefault=False)
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
