@@ -103,6 +103,13 @@ namespace Falcor {
             return it != mContainer.end() ? it->second : defaultValue;
         }
 
+        template<typename T>
+        T getValue(const char* key, const T& defaultValue) {
+            if(!key) return defaultValue;
+            auto it = mContainer.find(std::string(key));
+            return it != mContainer.end() ? it->second : defaultValue;
+        }
+
         std::string toString() const {
             return "";
         }

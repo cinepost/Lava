@@ -66,8 +66,7 @@ private:
     bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
     SampleGenerator::SharedPtr mpSampleGenerator;
 
-    // UI variables
-    bool mUseTraceRayInline = false;
+    bool mUseCompute = true;
     bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
 
     struct

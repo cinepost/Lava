@@ -302,15 +302,18 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// VBuffer
 	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDictionary);
 	
-	if( 1 == 2) {
-		// Rasterizer ray generator
-		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+	const std::string primaryRaygenType = mRenderPassesDictionary.getValue("primaryraygen", std::string("raster"));
+	LLOG_INF << "Primary ray generation type set to \"" << primaryRaygenType << "\"";
+
+	if( primaryRaygenType == std::string("compute")) {
+		// Compute ray generator
+		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
 		pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 	} else {
-		// Compute ray generator
-		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
+		// Rasterizer ray generator
+		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
 		pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");

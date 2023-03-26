@@ -137,6 +137,7 @@ Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const
         // RawBuffer
         if (resolveBindFlags) bindFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
     }
+    
     Resource::SharedPtr pResource;
 
     switch (field.getType()) {

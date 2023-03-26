@@ -93,7 +93,6 @@ def initializeFeatures(settings):
     Renderer("renderer", "relightingbuffer", "bool", "lv_relightingbuffer")
     
     Renderer("renderer", "renderengine",  "string", "lv_renderengine", skipdefault=False)
-    Renderer("renderer", "primaryraygen", "string", "lv_primary_raygen_type", skipdefault=False)
 
     Renderer("renderer", "renderinterrupt", "bool", "lv_renderinterrupt")
     Renderer("renderer", "samplecachesize", "int", "lv_samplecachesize")
@@ -155,6 +154,8 @@ def initializeFeatures(settings):
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
     
+    Image("image", "primaryraygen", "string", "lv_primary_raygen_type", skipdefault=False)
+
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)

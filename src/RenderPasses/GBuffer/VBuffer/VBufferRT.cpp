@@ -40,7 +40,7 @@ namespace
     const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.cs.slang";
 
     // Scripting options.
-    const char kUseTraceRayInline[] = "useTraceRayInline";
+    const char kUseCompute[] = "useCompute";
     const char kUseDOF[] = "useDOF";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
@@ -109,7 +109,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
     }
 
-    mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
+    mUseCompute ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
 
     mFrameCount++;
 }
@@ -118,7 +118,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 Dictionary VBufferRT::getScriptingDictionary()
 {
     Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kUseTraceRayInline] = mUseTraceRayInline;
+    dict[kUseCompute] = mUseCompute;
     dict[kUseDOF] = mUseDOF;
 
     return dict;
@@ -146,6 +146,7 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
+        defines.add("FALCOR_NVAPI_AVAILABLE", "0");
 
         // Create ray tracing program.
         RtProgram::Desc desc;
@@ -215,6 +216,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
+        defines.add("FALCOR_NVAPI_AVAILABLE", "0");
 
         mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
@@ -281,7 +283,7 @@ void VBufferRT::parseDictionary(const Dictionary& dict)
 
     for (const auto& [key, value] : dict)
     {
-        if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        if (key == kUseCompute) mUseCompute = value;
         else if (key == kUseDOF) mUseDOF = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
