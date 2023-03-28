@@ -367,7 +367,7 @@ def lightExportPlanes(wrangler, cam, now, lexport,
                 excludedcm=excludedcm)
 
 def quickImagePlanes(wrangler, cam, now, components):
-    def _quickPlane(wrangler, cam, now, variable, channel,
+    def _outputPlane(wrangler, cam, now, variable, channel,
                     lsdtype, quantize, opts, plane_parms_map=None, parms_map=None):
         if LSDhooks.call('pre_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
@@ -409,33 +409,50 @@ def quickImagePlanes(wrangler, cam, now, components):
     quickplanedict = quickplanes.getPlaneDict()
     toggleplanedict = quickplanes.getTogglePlaneDict()
 
+    renderpassdict = renderpasses.getRenderPassDict()
+    togglerenderpassdict = renderpasses.getToggleRenderPassDict()
+
     plist = {}
+    # Check toggled quick planes
     for p in toggleplanedict.keys():
+        plist[p] = SohoParm(p, 'int', [0])
+
+    # Check toggled render passes
+    for p in togglerenderpassdict.keys():
+        if p in plist:
+            raise Exception("Error: " + p + "already present in quick planes !!!")
+
         plist[p] = SohoParm(p, 'int', [0])
 
     plist = cam.wrangle(wrangler, plist, now)
 
-    rpassesdict = renderpasses.getRenderPassesDict()
+    import copy
 
-    for parmname, varnames in iteritems(toggleplanedict):
+    planes_dict = copy.deepcopy(toggleplanedict)
+    planes_dict.update(togglerenderpassdict)
+    for parmname, varnames in iteritems(planes_dict):
         is_set = plist.get(parmname, None)
         if not is_set or is_set.Value[0] == 0:
             continue
 
         for variable in varnames:
-            plane = quickplanedict[variable]
-            channel = cam.wrangleString(wrangler, parmname+'_channel', now, [''])[0]
-            quantize = cam.wrangleString(wrangler, 'lv_quantize_' + variable, now, [''])[0]
-            
-            parms_map = None
-            plane_parms_map = None
-            if plane.channel in rpassesdict:
-                plane_parms_map = rpassesdict[plane.channel].plane_parms_map
-                variable = rpassesdict[plane.channel].output or variable
-                parms_map = rpassesdict[plane.channel].parms_map
+            if variable in quickplanedict:
+                plane = quickplanedict[variable]
+                channel = cam.wrangleString(wrangler, parmname +'_channel', now, [''])[0]
+                quantize = cam.wrangleString(wrangler, 'lv_quantize_' + variable, now, [''])[0]
+                parms_map = None
+                plane_parms_map = None
+            elif variable in renderpassdict:
+                plane = renderpassdict[variable]
+                if not isinstance(plane, renderpasses.RenderPass):
+                    raise ValueError("Plane " + variable + " not a RenderPass instance!!!")
 
-            if not quantize:
+                channel = variable
                 quantize = plane.quantize
+                plane_parms_map = plane.plane_parms_map
+                variable = plane.output or variable
+                parms_map = plane.parms_map
+
             
             if not channel:
                 channel = variable if len(plane.channel) == 0 else plane.channel
@@ -445,10 +462,10 @@ def quickImagePlanes(wrangler, cam, now, components):
                 for comp in components.split():
                     compvariable = re.sub('_comp$', "_" + comp, variable)
                     compchannel = re.sub('_comp$', "_" + comp, channel)
-                    _quickPlane(wrangler, cam, now, compvariable, compchannel,
+                    _outputPlane(wrangler, cam, now, compvariable, compchannel,
                                 plane.lsdtype, quantize, plane.opts)
             else:
-                _quickPlane(wrangler, cam, now, variable, channel,
+                _outputPlane(wrangler, cam, now, variable, channel,
                             plane.lsdtype, quantize, plane.opts, plane_parms_map=plane_parms_map, parms_map=parms_map)
 
 def cameraDisplay(wrangler, cam, now):
@@ -508,7 +525,7 @@ def cameraDisplay(wrangler, cam, now):
     # Main/Beauty output channel
     #defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize)
 
-    rpassesdict = renderpasses.getRenderPassesDict()
+    rpassesdict = renderpasses.getRenderPassDict()
 
     if sourcepass in rpassesdict:
         rpass = rpassesdict[sourcepass]

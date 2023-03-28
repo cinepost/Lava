@@ -4,9 +4,7 @@ import collections
 # Named tuple to define an image plane
 #
 # varname and channel of planes with "percomp" set must end with _comp
-QuickPlane = collections.namedtuple(
-    "QuickPlane",
-    ["channel", "lsdtype", "quantize", "percomp", "opts"])
+QuickPlane = collections.namedtuple("QuickPlane", ["channel", "lsdtype", "quantize", "percomp", "opts"])
 
 
 # Define a dictionary of standard planes with the relevant parameters.
@@ -40,14 +38,6 @@ __quickplanes = {
 
     "op_id":            QuickPlane("Op_Id",                    "float",         "float32",    False,      {}),
     "prim_id":          QuickPlane("Prim_Id",                  "float",         "float32",    False,      {}),
-
-    # render passes as aovs
-    "edgedetect":       QuickPlane("EdgeDetectPass",           "vector4",       "float16",    False,      {'pfilter':['box']}),
-
-    "ambientocclusion": QuickPlane("AmbientOcclusionPass",     "float",         "float16",    False,      {'pfilter':['box']}),
-
-    "cryptomaterial":   QuickPlane("CryptomatteMaterialPass",  "vector4",       "float16",    False,      {}),
-    "cryptoinstance":   QuickPlane("CryptomatteInstancePass",  "vector4",       "float16",    False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -66,15 +56,6 @@ __toggleplanedict = {
     # ipr/diagnistics
     'lv_quickplane_op_id':                  ['op_id'],
     'lv_quickplane_prim_id':                ['prim_id'],
-
-#    'lv_quickplane_cryptomatte_mat':        ['crypto_mat'],
-#    'lv_quickplane_cryptomatte_obj':        ['crypto_obj'],
-
-    # render passes as aovs
-    'lv_plane_edgedetect':                  ['edgedetect'],
-    'lv_plane_ambientocclusion':            ['ambientocclusion'],
-    'lv_plane_cryptomaterial':              ['cryptomaterial'],
-    'lv_plane_cryptoinstance':              ['cryptoinstance'],
 }
 
 def getPlaneDict():

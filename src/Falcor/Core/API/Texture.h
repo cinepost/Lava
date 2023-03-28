@@ -333,7 +333,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	// Call before sparse binding to update memory bind list etc.
 	void updateSparseBindInfo();
 
-	bool isSparse() const { return mIsSparse; };
+	inline bool isSparse() const { return mIsSparse; };
 
 	inline const std::vector<VirtualTexturePage::SharedPtr>& sparseDataPages() { return mSparseDataPages; };
 
@@ -341,7 +341,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	static uint8_t getMaxMipCount(const uint3& size);
 
-	uint3 sparseDataPageRes() const { return mSparsePageRes; }
+	inline uint3 sparseDataPageRes() const { return mSparsePageRes; }
 
 	inline uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
 
@@ -355,9 +355,9 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	void setUDIM_ID(uint16_t id);
 
-	uint16_t getUDIM_ID() const { return mUDIM_ID; }
+	inline uint16_t getUDIM_ID() const { return mUDIM_ID; }
 
-	bool isSolid() const { return mIsSolid; }
+	inline bool isSolid() const { return mIsSolid; }
 
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);

@@ -35,6 +35,8 @@ class CryptomattePass : public RenderPass {
 
 		void setMode(CryptomatteMode mode);
 		void setRank(uint32_t rank);
+		
+		inline uint32_t dataLayersCount() const { return(mRank >> 1) + (mRank - 2 * (mRank >> 1)); }
 
 	private:
 		struct HashResolveCounter {
@@ -45,8 +47,6 @@ class CryptomattePass : public RenderPass {
 	private:
 		void calculateHashTables( const RenderData& renderData);
 		CryptomattePass(Device::SharedPtr pDevice);
-
-		void setLayerNames();
 
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpPass;
@@ -61,10 +61,6 @@ class CryptomattePass : public RenderPass {
 
 		bool                            mOutputPreview = true;
 
-		std::string                     mMasterLayerName = "unknown"; ///< Preview layer name and data layers name prefix
-		std::vector<std::string>				mDataLayerNames;							///< Cryptomatte layer names (excluding preview layer)
-		uint32_t                        mDataLayersCount = 0;					///< Cryptomatte data layers
-
 		Cryptomatte::CryptoNameFlags    mMaterialNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
 		Cryptomatte::CryptoNameFlags    mInstanceNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
 
@@ -74,5 +70,16 @@ class CryptomattePass : public RenderPass {
 		
 		bool mDirty = true;
 };
+
+#define pftype2str(a) case CryptomattePass::CryptomatteMode::a: return #a
+inline std::string to_string(CryptomattePass::CryptomatteMode a) {
+    switch (a) {
+        pftype2str(Material);
+        pftype2str(Instance);
+        pftype2str(Asset);
+        default: should_not_get_here(); return "";
+    }
+}
+#undef pftype2str
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEFERREDLIGHTINGPASS_CRYPTOMATTEPASS_H_

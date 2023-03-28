@@ -238,7 +238,8 @@ Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "vextype", std::string("vector4"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "channel", std::string("C"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "sourcepass", std::string(""), Property::Owner::SYS)) return nullptr;
-	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "outputnameoverride", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "outputname_override", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pPlane->declareProperty(Style::PLANE, Type::BOOL, "accumulation", bool(true), Property::Owner::SYS)) return nullptr;
 
 	return std::move(pPlane);
 }

@@ -190,12 +190,13 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
 
-		float camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
-		float camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
-		float camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
-	
+		const float camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
+		const float camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
+		const float camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
+		const bool use_dof = pSegment->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
+
 		float apertureRadius = 0.0f;
-		{
+		if (use_dof) {
 			float sceneUnit = 1.0f;
 			float focalLength = camera_focal;
 	 		apertureRadius = apertureFNumberToRadius(camera_fstop, focalLength, sceneUnit);
@@ -225,7 +226,7 @@ bool Session::cmdRaytrace() {
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
-	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "useDOF", bool(false));
+	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 	passDict["primaryraygen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "primaryraygen", std::string("raster"));
@@ -901,7 +902,7 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 			return false;
 	}
 
-	return true;
+	return mpCurrentScope ? true : false;
 }
 
 bool Session::cmdEnd() {

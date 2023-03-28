@@ -41,18 +41,15 @@ namespace {
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraOutputChannels = {
-        { kPreviewColorOutput,   "gPreviewLayer",          "Cryptomatte preview false color",         true /* optional */, ResourceFormat::RGBA32Float },
+        { kPreviewColorOutput,   "gPreviewColor",          "Cryptomatte preview false color",         true /* optional */, ResourceFormat::RGBA32Float },
     };
 
     const std::string kMode = "outputMode";
     const std::string kRank = "rank";
 
-    const std::array<std::string, 16> kLayersPostfix = {"00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"};
-
-    const std::string kMaterialLayerBaseName = "CryptoMaterial";
-    const std::string kInstanceLayerBaseName = "CryptoObject";
-    const std::string kAssetLayerBaseName = "CryptoAsset";
-
+    const std::array<std::string, 16> kDataOutputNames = 
+        {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07", "output08", 
+         "output09", "output10", "output11", "output12", "output13", "output14", "output15"};
 }
 
 CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -63,7 +60,7 @@ CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext
         else if (key == kRank) pThis->setRank(value);
     }
 
-    return pThis;
+    return std::move(pThis);
 }
 
 Dictionary CryptomattePass::getScriptingDictionary() {
@@ -72,7 +69,6 @@ Dictionary CryptomattePass::getScriptingDictionary() {
 }
 
 CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
-    setLayerNames();
 }
 
 RenderPassReflection CryptomattePass::reflect(const CompileData& compileData) {
@@ -83,11 +79,9 @@ RenderPassReflection CryptomattePass::reflect(const CompileData& compileData) {
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
 
-    reflector.addOutput(mMasterLayerName, "Cryptomatte preview layer").format(ResourceFormat::RGBA16Float).bindFlags(Resource::BindFlags::UnorderedAccess).flags(RenderPassReflection::Field::Flags::Optional);
-
-    LLOG_DBG << "CryptomattePass " << mMasterLayerName << " data layers count " << mDataLayersCount;
-    for(uint32_t i = 0; i < mDataLayersCount; i++) {
-        reflector.addOutput(mDataLayerNames[i], "Cryptomatte data layer").format(ResourceFormat::RGBA32Float).bindFlags(Resource::BindFlags::UnorderedAccess).flags(RenderPassReflection::Field::Flags::Optional);
+    LLOG_DBG << "CryptomattePass " << to_string(mMode) << " data layers count " << dataLayersCount();
+    for(uint32_t i = 0; i < dataLayersCount(); i++) {
+        reflector.addOutput(kDataOutputNames[i], "Cryptomatte data layer").format(ResourceFormat::RGBA32Float).bindFlags(Resource::BindFlags::UnorderedAccess).flags(RenderPassReflection::Field::Flags::Optional);
     }
 
     return reflector;
@@ -119,12 +113,12 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         
-        auto pPreviewOutputTex = renderData[mMasterLayerName]->asTexture();
+        auto pPreviewOutputTex = renderData[kPreviewColorOutput]->asTexture();
 
         // Cryptomatte layers
         defines.add("_OUTPUT_PREVIEW", mOutputPreview ? "1" : "0");
         defines.add("_MODE", std::to_string(static_cast<uint32_t>(mMode)));
-        defines.add("_DATA_LAYERS_COUNT", std::to_string(mDataLayersCount));
+        defines.add("_DATA_LAYERS_COUNT", std::to_string(dataLayersCount()));
 
         defines.add("is_valid_gMaterialHashBuffer", mpMaterialHashBuffer ? "1" : "0");
         defines.add("is_valid_gInstanceHashBuffer", mpInstanceHashBuffer ? "1" : "0");
@@ -144,15 +138,15 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         mpPass["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
 
         // Bind crypto data output layers as UAV buffers.
-        assert(mDataLayersCount == mDataLayerNames.size() == mDataLayerTextures.size());
+        assert(dataLayersCount() == kDataOutputNames.size() == mDataLayerTextures.size());
 
-        for (size_t i = 0; i < mDataLayersCount; i++) {
-            Texture::SharedPtr pTex = renderData[mDataLayerNames[i]]->asTexture();
-            mpPass["gDataLayer" + kLayersPostfix[i]] = pTex;
+        for (size_t i = 0; i < dataLayersCount(); i++) {
+            Texture::SharedPtr pTex = renderData[kDataOutputNames[i]]->asTexture();
+            mpPass["gDataLayer" + (boost::format("%02d") % i).str()] = pTex;
         }
 
         // Bind preview output
-        mpPass["gPreviewLayer"] = pPreviewOutputTex;
+        mpPass["gPreviewColor"] = pPreviewOutputTex;
     }
 
     auto cb_var = mpPass["PerFrameCB"];
@@ -186,7 +180,7 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                  << " hex " << hash_float_to_hexidecimal(util_hash_to_float(hash3));
     }
 
-    const bool outputPreview = renderData[mMasterLayerName]->asTexture() && mOutputPreview ? true : false;
+    const bool outputPreview = renderData[kPreviewColorOutput]->asTexture() && mOutputPreview ? true : false;
     if (!outputPreview) mpPreviewHashColorBuffer = nullptr;
 
 
@@ -272,28 +266,10 @@ void CryptomattePass::setMode(CryptomatteMode mode) {
     if (mMode == mode) return;
     mMode = mode;
     mDirty = true;
-    setLayerNames();
-}
-
-void CryptomattePass::setLayerNames() {
-    if(!mDirty) return;
-
-    if (mMode == CryptomatteMode::Material) mMasterLayerName = kMaterialLayerBaseName;
-    else if (mMode == CryptomatteMode::Instance) mMasterLayerName = kInstanceLayerBaseName;
-    else mMasterLayerName = kAssetLayerBaseName;
-
-    mDataLayerNames.clear();
-    mDataLayerNames.resize(mDataLayersCount);
-
-    for(uint32_t i = 0; i < mDataLayersCount; i++) {
-        mDataLayerNames[i] = mMasterLayerName + kLayersPostfix[i];
-    }
 }
 
 void CryptomattePass::setRank(uint32_t rank) {
     if(mRank == rank) return;
     mRank = rank;
-    mDataLayersCount = (rank >> 1) + (mRank - 2 * (rank >> 1));
     mDirty = true;
-    setLayerNames();
 }

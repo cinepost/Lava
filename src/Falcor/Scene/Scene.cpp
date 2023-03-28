@@ -367,35 +367,26 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     bool isIndexed = hasIndexBuffer();
 
     LLOG_TRC << "mDrawArgs size " << std::to_string(mDrawArgs.size());
-    auto _start = std::chrono::high_resolution_clock::now();
     for (const auto& draw : mDrawArgs) {
-        //LLOG_WRN << "draw count " << std::to_string(draw.count) << " with count buffer " << (draw.pCountBuffer ? "yes" : "no");
-        // Set state.
-        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
+        //auto loop_start = std::chrono::high_resolution_clock::now();
 
+        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
+        
         if (draw.ccw) {
-            if(draw.cullBackface) {
-                pState->setRasterizerState(mFrontCounterClockwiseRS[RasterizerState::CullMode::Back]);
-            } else {
-                pState->setRasterizerState(pRasterizerStateCCW);
-            }
+            if(draw.cullBackface) pState->setRasterizerState(mFrontCounterClockwiseRS[RasterizerState::CullMode::Back]);
+            else pState->setRasterizerState(pRasterizerStateCCW);
         } else {
-            if(draw.cullBackface) {
-                pState->setRasterizerState(mFrontClockwiseRS[RasterizerState::CullMode::Front]);
-            } else {
-                pState->setRasterizerState(pRasterizerStateCW);
-            }
+            if(draw.cullBackface) pState->setRasterizerState(mFrontClockwiseRS[RasterizerState::CullMode::Front]);
+            else pState->setRasterizerState(pRasterizerStateCW);
         }
+        
         // Draw the primitives.
-        if (isIndexed) {
-            //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
-            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
-        } else {
-            pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
-        }
+        if (isIndexed) pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
+        else pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+    
+        //auto loop_stop = std::chrono::high_resolution_clock::now();
+        //LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(loop_stop - loop_start).count() << " ms.";
     }
-    auto _stop = std::chrono::high_resolution_clock::now();
-    LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(_stop - _start).count() << " ms.";
 
     pState->setRasterizerState(pCurrentRS);
 

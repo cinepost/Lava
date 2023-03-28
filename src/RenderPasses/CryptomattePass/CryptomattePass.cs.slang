@@ -31,7 +31,7 @@ Buffer<float32_t> gInstanceHashBuffer;
 Buffer<float32_t> gCustattrHashBuffer;
 
 // Preview color output channel
-RasterizerOrderedTexture2D<float4> gPreviewLayer;
+RasterizerOrderedTexture2D<float4> gPreviewColor;
 
 // Data layers
 #if _DATA_LAYERS_COUNT > 0
@@ -60,12 +60,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     
+#if is_valid(gPreviewColor)
     [[branch]] if (!hit.isValid()) {
-#if is_valid(gPreviewLayer)
-        gPreviewLayer[ipos] = float4(.0f);
-#endif  // gPreviewLayer
+        gPreviewColor[ipos] = float4(.0f);
         return;
     }
+#endif  // gPreviewColor
 
     uint materialID = 0;
 
@@ -75,8 +75,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     // Write available false color AOVs
-#if is_valid(gPreviewLayer) && is_valid(gPreviewHashColorBuffer)
-    gPreviewLayer[ipos] = float4(gPreviewHashColorBuffer[materialID], 1.0f);    
-#endif  // gMatColor
+#if is_valid(gPreviewColor) && is_valid(gPreviewHashColorBuffer)
+    gPreviewColor[ipos] = float4(gPreviewHashColorBuffer[materialID], 1.0f);    
+#endif  // gPreviewColor
 
 }

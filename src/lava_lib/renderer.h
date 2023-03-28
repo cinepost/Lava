@@ -132,7 +132,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       \return Dictionary.
     */ 
 
-    inline Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+    inline Falcor::Dictionary& getRenderPassesDict() { mDirty = true; return mRenderPassesDictionary; };
     inline const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
   
 #ifdef SCRIPTING

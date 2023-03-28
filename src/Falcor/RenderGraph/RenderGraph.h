@@ -53,7 +53,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     ~RenderGraph();
 
-    std::shared_ptr<Device> device() { return mpDevice; }
+    inline std::shared_ptr<Device> device() { return mpDevice; }
 
     /** Create a new render graph.
         \param[in] name Name of the render graph.
@@ -129,7 +129,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Returns true if a render pass exists by this name in the graph.
      */
-    bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
+    inline bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
 
     /** Return the index of a pass from a name, or kInvalidIndex if the pass doesn't exists
     */

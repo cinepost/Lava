@@ -35,14 +35,11 @@ enum class AOVBuiltinName: uint8_t {
   INSTANCE_ID,
   Prim_Id,
   Op_Id,
-  CRYPTOMATTE_MAT,
-  CRYPTOMATTE_OBJ,
   EMISSION,
 
   EdgeDetectPass,
   AmbientOcclusionPass,
-  CryptomatteMaterialPass,
-  CryptomatteInstancePass,
+  CryptomattePass,
 
   UNKNOWN ,
 };
@@ -62,14 +59,11 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(INSTANCE_ID);
     type_2_string(Prim_Id);
     type_2_string(Op_Id);
-    type_2_string(CRYPTOMATTE_MAT);
-    type_2_string(CRYPTOMATTE_OBJ);
     type_2_string(EMISSION);
 
     type_2_string(EdgeDetectPass);
     type_2_string(AmbientOcclusionPass);
-    type_2_string(CryptomatteMaterialPass);
-    type_2_string(CryptomatteInstancePass);
+    type_2_string(CryptomattePass);
   default:
     should_not_get_here();
     return "unknown";
@@ -128,6 +122,7 @@ struct AOVPlaneInfo {
   Falcor::uint2           pfilterSize;                                  // Pixel filter kernel size (in pixels)
   Precision               precision = Precision::AUTO;                  // Keep it on AUTO
   std::string             sourcePassName;                               // Render pass name to bind. If empty main output pass used.
+  bool                    enableAccumulation = true;                    // Enable sample accumulation.
 };
 
 struct AOVPlaneGeometry {
@@ -149,7 +144,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
       Disabled,
     };
 
-    inline const std::string&      outputVariableName() const { return mInfo.variableName; }
+    inline std::string             outputVariableName() const { return (mInfo.variableName != "") ? mInfo.variableName : "output"; }
     inline const AOVName&          name() const { return mInfo.name; }
     inline std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
     inline Falcor::ResourceFormat  format() const { return mInfo.format; }

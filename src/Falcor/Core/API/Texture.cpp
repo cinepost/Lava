@@ -89,42 +89,42 @@ Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, 
 	pTexture->mApiHandle = handle;
 	pTexture->mState.global = initState;
 	pTexture->mState.isGlobal = true;
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::create1D(std::shared_ptr<Device> device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool sparse) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::createCube(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, false, 1, format, "Texture2DMultisample");
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags);
 	pTexture->apiInit(nullptr, false);
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::createUDIMFromFile(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -141,7 +141,7 @@ Texture::SharedPtr Texture::createUDIMFromFile(std::shared_ptr<Device> pDevice, 
 		pTexture->mUDIMTileInfos[i].pTileTexture = nullptr;
 	}
 
-	return pTexture;
+	return std::move(pTexture);
 }
 
 Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {

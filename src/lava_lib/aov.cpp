@@ -183,7 +183,7 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
         return nullptr;
     }
 
-    mpAccumulatePass->enableAccumulation(true); // Redundant ? Should be resolved later based on filter type ?
+    mpAccumulatePass->enableAccumulation(mInfo.enableAccumulation);
     mpAccumulatePass->setPixelFilterType(mInfo.pfilterTypeName);
     mpAccumulatePass->setPixelFilterSize(mInfo.pfilterSize);
 

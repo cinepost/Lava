@@ -199,12 +199,13 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 		LLOG_ERR << "No plane variable specified for plane !!!";
 	}
 
-	std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
-	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
-	std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
-	std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));
-	std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputnameoverride", std::string(""));
-	Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
+	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
+	const std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
+	const std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
+	const std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));
+	const std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputname_override", std::string(""));
+	const Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
+	const bool enable_accumulation = pPlane->getPropertyValue(ast::Style::PLANE, "accumulation", bool(true));
 
 	aovInfo.name = AOVName(channel_name);
 	aovInfo.outputOverrideName = output_name_override;
@@ -213,6 +214,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	aovInfo.pfilterTypeName = pixel_filter_name;
 	aovInfo.pfilterSize = to_uint2(pixel_filter_size);
 	aovInfo.sourcePassName = source_pass_name;
+	aovInfo.enableAccumulation = enable_accumulation;
 
 	return aovInfo;
 }
@@ -240,7 +242,7 @@ Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
 	for(auto const& parm: display_info.displayFloatParameters)
 		pDisplay->setFloatParameter(parm.first, parm.second);
 
-	return pDisplay;
+	return std::move(pDisplay);
 }
 
 void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {

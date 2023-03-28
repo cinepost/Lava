@@ -1,5 +1,6 @@
 from __future__ import print_function
 import collections
+import copy
 
 from soho import SohoParm
 
@@ -32,34 +33,58 @@ ambienOcclusionPassParms = {
 }
 
 
-cryptomatteMaterialPassParms = {
-    'outputPreview'             : SohoParm('lv_crypto_material_pass_output_preview',     'bool',      [1], skipdefault=False),
-    'rank'                      : SohoParm('lv_crypto_material_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
-}
+# cryptomatteMaterialPassParms = {
+#     'outputMode'                : SohoParm('lv_crypto_material_pass_output_mode',        'int',       [0], skipdefault=False),
+#     'outputPreview'             : SohoParm('lv_crypto_material_pass_output_preview',     'bool',      [1], skipdefault=False),
+#     'rank'                      : SohoParm('lv_crypto_material_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
+# }
 
-cryptomatteInstancePassParms = {
-    'outputPreview'             : SohoParm('lv_crypto_instance_pass_output_preview',     'bool',      [1], skipdefault=False),
-    'rank'                      : SohoParm('lv_crypto_instance_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
-}
+# cryptomatteInstancePassParms = {
+#     'outputMode'                : SohoParm('lv_crypto_instance_pass_output_mode',        'int',       [1], skipdefault=False),
+#     'outputPreview'             : SohoParm('lv_crypto_instance_pass_output_preview',     'bool',      [1], skipdefault=False),
+#     'rank'                      : SohoParm('lv_crypto_instance_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
+# }
 
-cryptoMaterialPlaneParms = {
-    'outputnameoverride' : SohoParm('lv_crypto_material_pass_output_name',     'string',      [''], skipdefault=False)
-}
+# cryptoMaterialPlaneParms = {
+#     'sourcepass'          : SohoParm('lv_crypto_material_source_pass',          'string',      ['CryptomattePass'], skipdefault=False),
+#     'outputname_override' : SohoParm('lv_crypto_material_pass_output_name',     'string',      [''], skipdefault=False)
+# }
 
-cryptoInstancePlaneParms = {
-    'outputnameoverride' : SohoParm('lv_crypto_instance_pass_output_name',     'string',      [''], skipdefault=False)
-}
+# cryptoInstancePlaneParms = {
+#     'sourcepass'          : SohoParm('lv_crypto_instance_source_pass',          'string',      ['CryptomattePass'], skipdefault=False),
+#     'outputname_override' : SohoParm('lv_crypto_instance_pass_output_name',     'string',      [''], skipdefault=False)
+# }
+
 # Define a dictionary of standard passes with the relevant parameters.
 __renderpasses = {
-    # pass name                           pass out resource name     type        quantize     percomp   opts                    render pass parms              output plane parms    
-    "EdgeDetectPass":          RenderPass("output",                 "vector4",  "float16",    False,   {'pfilter':['box']},     edgeDetectPassParms,           None),
+    # pass name                             pass resource name        type        quantize     percomp   opts                    render pass parms              output plane parms    
+    "EdgeDetectPass"          : RenderPass("output",                 "vector4",  "float16",    False,   {'pfilter':['box']},     edgeDetectPassParms,           None),
     
-    "AmbientOcclusionPass":    RenderPass("output",                 "float",    "float16",    False,   {'pfilter':['box']},     ambienOcclusionPassParms,      None),
+    "AmbientOcclusionPass"    : RenderPass("output",                 "float",    "float16",    False,   {'pfilter':['box']},     ambienOcclusionPassParms,      None),
 
-    "CryptomatteMaterialPass": RenderPass("CryptoMaterial",         "vector4",  "float16",    False,   {},                      cryptomatteMaterialPassParms,  cryptoMaterialPlaneParms ),
+    #"CryptomatteMaterialPass" : RenderPass("preview_color",          "vector4",  "float16",    False,   {},                      cryptomatteMaterialPassParms,  cryptoMaterialPlaneParms ),
 
-    "CryptomatteInstancePass": RenderPass("CryptoObject",           "vector4",  "float16",    False,   {},                      cryptomatteInstancePassParms,  cryptoInstancePlaneParms ),
+    #"CryptomatteInstancePass" : RenderPass("preview_color",          "vector4",  "float16",    False,   {},                      cryptomatteInstancePassParms,  cryptoInstancePlaneParms ),
 }
 
-def getRenderPassesDict():
-    return __renderpasses
+
+# Define a list of renderpasses.
+__togglerenderpassdict = {
+    # render passes as output planes
+    'lv_plane_edgedetect':                  ['EdgeDetectPass'],
+    'lv_plane_ambientocclusion':            ['AmbientOcclusionPass'],
+    #'lv_plane_cryptomaterial':              ['CryptomatteMaterialPass'],
+    #'lv_plane_cryptoinstance':              ['CryptomatteInstancePass'],
+}
+
+def getRenderPassDict():
+    import lava_cryptomattepasses
+    renderpasses = copy.deepcopy(__renderpasses)
+    renderpasses.update(lava_cryptomattepasses.getRenderPassDict())
+    return renderpasses
+
+def getToggleRenderPassDict():
+    import lava_cryptomattepasses
+    togglerenderpasses = copy.deepcopy(__togglerenderpassdict)
+    togglerenderpasses.update(lava_cryptomattepasses.getToggleRenderPassDict())
+    return togglerenderpasses
