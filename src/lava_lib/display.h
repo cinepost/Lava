@@ -57,6 +57,7 @@ class Display {
     virtual bool setIntParameter(const std::string& name, const std::vector<int>& ints) = 0;
     virtual bool setFloatParameter(const std::string& name, const std::vector<float>& floats) = 0;
 
+    virtual bool supportsMetaData() const { return false; }
     inline bool supportsLiveUpdate() const { return mInteractiveSupport; }
     inline DisplayType type() const { return mDisplayType; };
 

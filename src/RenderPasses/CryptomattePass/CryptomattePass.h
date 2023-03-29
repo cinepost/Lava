@@ -35,6 +35,9 @@ class CryptomattePass : public RenderPass {
 		*/
 		CryptomattePass& setColorFormat(ResourceFormat format);
 
+		void setSamplesPerFrame(uint32_t value);
+		void setManifestFilename(const std::string& name);
+		void setOutputPreviewColor(bool value);
 		void setMode(CryptomatteMode mode);
 		void setRank(uint32_t rank);
 		
@@ -63,17 +66,20 @@ class CryptomattePass : public RenderPass {
 
 		CryptomatteMode                 mMode = CryptomatteMode::Material;
 		uint32_t                        mRank = 0;
+		std::string 					mManifestFilename;
+		uint32_t                        mSamplesPerFrame = 0; // If set to zero we update data channels on every invocation on execute()
 
-		bool                            mOutputPreview = true;
+		bool                            mOutputPreview = false;
 
 		Cryptomatte::CryptoNameFlags    mMaterialNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
 		Cryptomatte::CryptoNameFlags    mInstanceNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
+		Cryptomatte::CryptoNameFlags    mAssetNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
 
-		uint2 mFrameDim = { 0, 0 };
+		uint2 		mFrameDim = { 0, 0 };
 
-		uint32_t 		mSampleNumber = 0;
+		uint32_t 	mSampleNumber = 0;
 		
-		bool mDirty = true;
+		bool 		mDirty = true;
 };
 
 #define pftype2str(a) case CryptomattePass::CryptomatteMode::a: return #a

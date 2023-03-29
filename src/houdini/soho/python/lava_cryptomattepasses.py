@@ -9,15 +9,19 @@ from lava_renderpasses import RenderPass
 __crytomatteLayerPostfix = ["00", "01", "02", "03", "04", "05", "06", "07"]
 
 cryptomatteMaterialPassParms = {
-    'outputMode'                : SohoParm('lv_crypto_material_pass_output_mode',        'int',       [0], skipdefault=False),
-    'outputPreview'             : SohoParm('lv_crypto_material_pass_output_preview',     'bool',      [1], skipdefault=False),
-    'rank'                      : SohoParm('lv_crypto_material_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
+    'samplesPerFrame'           : SohoParm('lv_samples',                                 'int',       [0],  skipdefault=False),
+    'outputMode'                : SohoParm('lv_crypto_material_pass_output_mode',        'int',       [0],  skipdefault=False),
+    'outputPreview'             : SohoParm('lv_crypto_material_pass_output_preview',     'bool',      [1],  skipdefault=False),
+    'rank'                      : SohoParm('lv_crypto_material_pass_cryptomatte_rank',   'int',       [3],  skipdefault=False),
+    'manifestFilename'          : SohoParm('lv_crypto_material_pass_manifest_file',      'string',    [''], skipdefault=False),
 }
 
 cryptomatteInstancePassParms = {
+    'samplesPerFrame'           : SohoParm('lv_samples',                                 'int',       [0],  skipdefault=False),
     'outputMode'                : SohoParm('lv_crypto_instance_pass_output_mode',        'int',       [1], skipdefault=False),
     'outputPreview'             : SohoParm('lv_crypto_instance_pass_output_preview',     'bool',      [1], skipdefault=False),
     'rank'                      : SohoParm('lv_crypto_instance_pass_cryptomatte_rank',   'int',       [3], skipdefault=False),
+    'manifestFilename'          : SohoParm('lv_crypto_instance_pass_manifest_file',      'string',    [''], skipdefault=False),
 }
 
 cryptoMaterialPlaneParms = {

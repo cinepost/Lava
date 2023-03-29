@@ -9,12 +9,6 @@ import Utils.Math.MathHelpers;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-#define MAX_CRYPTOMATTE_LAYERS 16
-
-#ifndef _PREVIEW_COLOR_MODE
-#define _PREVIEW_COLOR_MODE 0
-#endif
-
 #ifndef _DATA_LAYERS_COUNT
 #define _DATA_LAYERS_COUNT 0
 #endif
@@ -22,6 +16,8 @@ import Utils.Math.MathHelpers;
 cbuffer PerFrameCB {
   uint2             gFrameDim;
   float             gSumWeight;
+  uint              gSampleNumber;    // Sample number starting from 1
+  uint              gSamplesPerFrame;
   uint              gRanksCount;
   uint              gDataLayersCount;
 };
@@ -62,7 +58,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #if is_valid(gPreviewColor)
             gPreviewColor[ipos] = float4(.0f);
         #endif  // gPreviewColor
-        return;
+
+        // Early out if we update data channels on every run
+        if(gSamplesPerFrame == 0 || (gSampleNumber < gSamplesPerFrame)) return;
     }
 
 
@@ -73,7 +71,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #endif
 
         #if (_MODE == 1)
-        //instanceID.index
         classID = gScene.getInternalID(triangleHit.instanceID);
         #endif
     }
@@ -102,7 +99,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         CryptomattePassSortingPair pair = gSortBuffers[i][bpos];
 
         [[branch]]
-        if ( pair.hash == currFloatHash || pair.hash == 0) {
+        if ( pair.hash == currFloatHash || (pair.hash == 0 && pair.counter == 0)) {
             pair.hash = currFloatHash;
             pair.counter++;
             gSortBuffers[i][bpos] = pair;
@@ -112,18 +109,16 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
 
-    // Write available false color AOVs
+    //// Write available false color AOVs
+
 #if is_valid(gPreviewColor) && is_valid(gPreviewHashColorBuffer)
     gPreviewColor[ipos] = float4(gPreviewHashColorBuffer[classID], 1.0f);    
 #endif  // gPreviewColor
 
-    // Write data layers
-#if is_valid(gDataLayer00)
-    {
-        //const CryptomattePassSortingPair pair1 = gSortBuffers[0][bpos];
-        //const CryptomattePassSortingPair pair2 = gSortBuffers[1][bpos];
-        //gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    //// Write data layers
 
+#if is_valid(gDataLayer00)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
         const CryptomattePassSortingPair pair1 = localPairs[0];
         const CryptomattePassSortingPair pair2 = localPairs[1];
         gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
@@ -131,16 +126,27 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif // gDataLayer00
 
 #if is_valid(gDataLayer01)
-    {
-        //const CryptomattePassSortingPair pair1 = gSortBuffers[2][bpos];
-        //const CryptomattePassSortingPair pair2 = gSortBuffers[3][bpos];
-        //gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
-
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
         const CryptomattePassSortingPair pair1 = localPairs[2];
         const CryptomattePassSortingPair pair2 = localPairs[3];
         gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
     }
 #endif // gDataLayer01
 
+#if is_valid(gDataLayer02)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[4];
+        const CryptomattePassSortingPair pair2 = localPairs[5];
+        gDataLayers[2][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer02
+
+#if is_valid(gDataLayer03)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[6];
+        const CryptomattePassSortingPair pair2 = localPairs[7];
+        gDataLayers[3][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer03
 
 }

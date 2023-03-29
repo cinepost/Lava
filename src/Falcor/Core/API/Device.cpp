@@ -248,6 +248,7 @@ void Device::toggleVSync(bool enable) {
 void Device::cleanup() {
     toggleFullScreen(false);
     mpRenderContext->flush(true);
+    mGfxCommandQueue.setNull();
 
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {

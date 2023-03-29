@@ -69,20 +69,22 @@ namespace Falcor {
         */
         static SharedPtr create() { return SharedPtr(new InternalDictionary); }
 
-        Value& operator[](const std::string& key) { return mContainer[key]; }
-        const Value& operator[](const std::string& key) const { return mContainer.at(key); }
+        inline Value& operator[](const std::string& key) { return mContainer[key]; }
+        inline const Value& operator[](const std::string& key) const { return mContainer.at(key); }
 
-        Container::const_iterator begin() const { return mContainer.begin(); }
-        Container::const_iterator end() const { return mContainer.end(); }
+        inline Container::const_iterator begin() const { return mContainer.begin(); }
+        inline Container::const_iterator end() const { return mContainer.end(); }
 
-        Container::iterator begin() { return mContainer.begin(); }
-        Container::iterator end() { return mContainer.end(); }
+        inline Container::iterator begin() { return mContainer.begin(); }
+        inline Container::iterator end() { return mContainer.end(); }
 
-        size_t size() const { return mContainer.size(); }
+        inline size_t size() const { return mContainer.size(); }
+
+        inline bool isEmpty() const { return mContainer.size() == 0; }
 
         /** Check if a key exists.
         */
-        bool keyExists(const std::string& key) const {
+        inline bool keyExists(const std::string& key) const {
             return mContainer.find(key) != mContainer.end();
         }
 

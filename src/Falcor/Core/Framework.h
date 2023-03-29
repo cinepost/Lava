@@ -28,20 +28,24 @@
 #ifndef SRC_FALCOR_CORE_FRAMEWORK_H_
 #define SRC_FALCOR_CORE_FRAMEWORK_H_
 
+#include "FalcorPlatform.h"
+
+#if FALCOR_GCC
 // save compiler switches
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
 
 // Define DLL export/import
-#ifdef _MSC_VER
+#if FALCOR_MSVC
 #define falcorexport __declspec(dllexport)
 #define falcorimport __declspec(dllimport)
 #define FALCOR_API_EXPORT __declspec(dllexport)
 #define FALCOR_API_IMPORT __declspec(dllimport)
-#elif defined(__GNUC__)  // _MSC_VER
+#elif FALCOR_GCC
 #define falcorexport __attribute__ ((visibility ("default")))
 #define falcorimport  // extern
 #define FALCOR_API_EXPORT __attribute__ ((visibility ("default")))
@@ -158,12 +162,12 @@ namespace fs = boost::filesystem;
 #define FALCOR_ASSERT(a) {}
 #define FALCOR_ASSERT_MSG(a, msg) {}
 #define FALCOR_ASSERT_OP(a, b, OP) {}
-#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
-#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
-#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
-#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
-#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
-#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+#define FALCOR_ASSERT_EQ(a, b) {}
+#define FALCOR_ASSERT_NE(a, b) {}
+#define FALCOR_ASSERT_GE(a, b) {}
+#define FALCOR_ASSERT_GT(a, b) {}
+#define FALCOR_ASSERT_LE(a, b) {}
+#define FALCOR_ASSERT_LT(a, b) {}
 
 #endif // _DEBUG
 
@@ -317,11 +321,7 @@ public:
 
 }  // namespace Falcor
 
-#if defined(FALCOR_D3D12)
-#include "Falcor/Core/API/D3D12/FalcorD3D12.h"
-#elif defined(FALCOR_VK)
-#include "Falcor/Core/API/Vulkan/FalcorVK.h"
-#elif defined(FALCOR_GFX_VK)
+#if defined(FALCOR_GFX_VK)
 #include "Core/API/GFX/FalcorGFX.h"
 #else
 #error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
@@ -424,7 +424,7 @@ std::enable_if_t<has_iterator<T>::value, std::string> to_string(const T& t) {
 
 }  // namespace Falcor
 
-#if defined(_MSC_VER)
+#if FALCOR_MSVC
 // Enable Windows visual styles
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function has been deprecated in " ##  _ver_ ## ". " ## _msg_))
@@ -432,7 +432,7 @@ std::enable_if_t<has_iterator<T>::value, std::string> to_string(const T& t) {
 using DllHandle = HMODULE;
 using SharedLibraryHandle = HMODULE;
 #define suppress_deprecation __pragma(warning(suppress : 4996));
-#elif defined(__GNUC__)
+#elif FALCOR_GCC
 #define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function has been deprecated in " _ver_ ". " _msg_)))
 #define forceinline __attribute__((always_inline))
 using DllHandle = void*;
@@ -449,7 +449,9 @@ using SharedLibraryHandle = void*;
 #pragma comment(lib, "nvapi64.lib")
 #endif
 
+#if FALCOR_GCC
 // restore compiler switches
 #pragma GCC diagnostic pop
+#endif
 
 #endif  // SRC_FALCOR_CORE_FRAMEWORK_H_

@@ -95,7 +95,7 @@ def lsdTypeStringFromSohoParm(parm):
     if parm.Type == 'bool':
         return 'bool'
 
-    elif parm.Type == 'str':
+    elif parm.Type in ['str', 'string']:
         return 'string'
     
     elif parm.Type == 'float':

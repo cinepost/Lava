@@ -166,10 +166,13 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual void resolvePerSampleSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {}
 
-
     /** Get a dictionary that can be used to reconstruct the object
     */
     virtual Dictionary getScriptingDictionary() { return {}; }
+
+    /** Get a meta data dictionary. This can be used as EXR metadata output or as hinst to other render passes.
+    */
+    virtual const Dictionary& getMetaData() { return mMetaData; } 
 
     /** Reset frame dependent data
     */
@@ -200,6 +203,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     const Info mInfo;
     std::string mName;
+    Dictionary  mMetaData;
 
     std::function<void(void)> mPassChangedCB = [] {};
     Device::SharedPtr mpDevice;

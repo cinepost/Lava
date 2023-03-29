@@ -270,8 +270,6 @@ bool DisplayOIIO::closeImage(uint imageHandle) {
         LLOG_DBG << "Sending " <<  std::to_string(imData.height) << " forced scan lines from temporary buffer";
     }
 
-    if(!imData.isSubImage()) imData.pOut->close();
-
     imData.opened = false;
     imData.closed = true;
     return true;
@@ -341,6 +339,10 @@ bool DisplayOIIO::setIntParameter(const std::string& name, const std::vector<int
 }
 
 bool DisplayOIIO::setFloatParameter(const std::string& name, const std::vector<float>& floats) {
+    return true;
+}
+
+bool DisplayOIIO::supportsMetaData() const {
     return true;
 }
 

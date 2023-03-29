@@ -216,10 +216,12 @@ void Session::cmdQuit() {
 bool Session::cmdRaytrace() {
 	PROFILE(mpDevice, "cmdRaytrace");
 
+	// Set up image sampling
+	const int imageSamples = mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
 
-	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
-	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
+	const Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
+	const bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
@@ -265,8 +267,6 @@ bool Session::cmdRaytrace() {
 	}
 
 	Display* pDisplay = mpDisplay.get();
-
-	bool doLiveUpdate = pDisplay->supportsLiveUpdate();
 
 	if (!pDisplay->supportsLiveUpdate()) {
 		// Non interactive display. No need to make intermediate updates
@@ -317,9 +317,6 @@ bool Session::cmdRaytrace() {
 	LLOG_INF << "Rendering image tiles:";
 	for(const TileInfo& tileInfo: tiles) LLOG_INF << to_string(tileInfo);
 
-	// Set up image sampling
-	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
-
 	// Get renderer aov planes
 	std::vector<std::pair<uint, AOVPlane::SharedPtr>> aovPlanes;
 	for(auto& entry: mpRenderer->aovPlanes()) {
@@ -335,6 +332,15 @@ bool Session::cmdRaytrace() {
 	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::RENDERER, "renderlabel", std::string(""));
 
 	bool clearImageBeforeRendering = false;
+	bool delayedImageFilesCreation = false;
+	for(auto& entry: aovPlanes) {
+		if(entry.second->delayedImageOpen() || entry.second->hasMetaData()) {
+			delayedImageFilesCreation = true;
+			break;
+		}
+	}
+
+	std::vector<std::function<bool()>> delayedImageOpens; // Tasks to open display images if requested to be opened later
 
 	TimeReport initDisplayTimeReport;
 
@@ -353,9 +359,7 @@ bool Session::cmdRaytrace() {
 			const int mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
 
 			imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
-			
-			
-			//if (mplayLabel != "") userParams.push_back(Display::makeStringsParameter("label", {mplayLabel}));
+
 			userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
 
 			if (mplayRendermode != "") userParams.push_back(Display::makeStringsParameter("numbering", {mplayRendermode}));
@@ -371,32 +375,53 @@ bool Session::cmdRaytrace() {
 		}
 
     	// Open main image plane
-    	if(!pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage, userParams)) {
-        	LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
-        	return false;
+    	Falcor::ResourceFormat format = pMainAOVPlane->format();
+    	auto _openMainImage = [this, imageFileName, format, userParams, &pDisplay, &hImage]() { 	
+    		bool result = 
+    			pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams);
+        	
+    		if(!result) LLOG_FTL << "Unable to open main output plane image !!!";
+    		return result;
+    	};
+
+    	if(delayedImageFilesCreation) {
+    		delayedImageOpens.push_back(_openMainImage);
+    	} else {
+    		if(!_openMainImage()) {
+    			return false;
+    		}
     	}
     	initDisplayTimeReport.measure("Display main image open");
 	}
 
-    // Open secondary aov image planes
-    for(auto& entry: aovPlanes) {
+	for(auto& entry: aovPlanes) {
     	auto& pPlane = entry.second;
     	if(!pPlane->isEnabled()) continue;
     	
     	std::string aovImageFileName = imageFileName;
     	std::string channel_prefix = std::string(pPlane->outputName());
-
+    	Falcor::ResourceFormat format = pPlane->format();
     	std::vector<Display::UserParm> userParams;
     	userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
 
-    	if(!pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, userParams, channel_prefix)) {
-        	LLOG_ERR << "Unable to open AOV image " << pPlane->outputName() << " !!!";
-    		entry.second = nullptr;
+    	auto _openImage = [this, aovImageFileName, format, userParams, channel_prefix, &pDisplay, &entry]() { 	
+    		bool result = 
+    			pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, entry.first, userParams, channel_prefix); 
+    		if(!result) LLOG_ERR << "Unable to open output plane image " << channel_prefix << " !!!";
+    		return result;
+    	};
+
+    	if(delayedImageFilesCreation) {
+    		delayedImageOpens.push_back(_openImage);
+    	} else {
+    		if(!_openImage()) {
+    			entry.second = nullptr;
+    		}
     	}
     }
     initDisplayTimeReport.measure("Display additional images open");
 
-    if(clearImageBeforeRendering) {
+    if(clearImageBeforeRendering && !delayedImageFilesCreation) {
 		sendImageRegionData(hImage, pDisplay, mCurrentFrameInfo, nullptr);
 		initDisplayTimeReport.measure("Display initial zero data sent in");
 	}
@@ -431,14 +456,16 @@ bool Session::cmdRaytrace() {
 		}
 
 		long int sampleUpdateIterations = 0;
+		const bool doInteractiveImageUpdate = pDisplay->supportsLiveUpdate() && !delayedImageFilesCreation;
+
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
-			if (doLiveUpdate && (sampleUpdateInterval > 0)) {
+			if (doInteractiveImageUpdate && (sampleUpdateInterval > 0)) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
 					
-					// Send image/region region
+					// Send image/region region for interactive/live image update
 					if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
 					sampleUpdateIterations = updateIter;
 				}
@@ -449,6 +476,12 @@ bool Session::cmdRaytrace() {
 		renderingTimeReport.measure("Image rendering time");
 		LLOG_INF << renderingTimeReport.printToString();
 		
+		// Open delayed images 
+		LLOG_DBG << "Open delayed images.";
+		for(size_t i = 0; i < delayedImageOpens.size(); i++) {
+			delayedImageOpens[i]();
+		}
+
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region
 		if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
@@ -476,10 +509,6 @@ bool Session::cmdRaytrace() {
 				}
 	    	}
 	    }
-
-		//if (!sendImageData(hImage, pDisplay, pMainAOVPlane, textureData)) {
-		//	break;
-		//}
 	}
 
 	LLOG_DBG << "Closing display...";

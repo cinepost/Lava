@@ -297,6 +297,14 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
 
+    /* Return the GFX command queue.
+    */
+    gfx::IDevice* getGfxDevice() const { return mGfxDevice; }
+    
+    /* Return the GFX command queue.
+    */
+    gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
+
  private:
     Device(Window::SharedPtr pWindow, const Desc& desc);
 
@@ -334,6 +342,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     std::vector<VkQueue>            mCmdNativeQueues[kQueueTypeCount];
 #endif
+
+    Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<gfx::IDevice> mGfxDevice;
 
     Window::SharedPtr mpWindow = nullptr;
     DeviceApiData* mpApiData;

@@ -1884,7 +1884,7 @@
                     label   "Overlap Limit"
                     type    int
                     size    1
-                    default { "3" }
+                    default { "4" }
                     range   { 1 10 }
                     disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
                     parmtag { "script_callback_language" "python" }
@@ -1895,6 +1895,15 @@
                     label   "Channel Name"
                     type    string
                     default { "CryptoMaterial" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_manifest_file"
+                    label   "Manifest File"
+                    type    string
+                    default { "" }
                     disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
                     parmtag { "script_callback_language" "python" }
                 }
@@ -1917,7 +1926,7 @@
                     label   "Overlap Limit"
                     type    int
                     size    1
-                    default { "3" }
+                    default { "4" }
                     range   { 1 10 }
                     disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
                     parmtag { "script_callback_language" "python" }
@@ -1928,6 +1937,15 @@
                     label   "Channel Name"
                     type    string
                     default { "CryptoObject" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_manifest_file"
+                    label   "Manifest File"
+                    type    string
+                    default { "" }
                     disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
                     parmtag { "script_callback_language" "python" }
                 }

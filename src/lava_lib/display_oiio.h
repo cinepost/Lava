@@ -39,6 +39,7 @@ class DisplayOIIO: private Display {
     virtual bool opened(uint imageHandle) const final;
     virtual bool closed(uint imageHandle) const final;
 
+    virtual bool supportsMetaData() const override;
     virtual const std::string& imageName(uint imageHandle) const final;
     virtual uint imageWidth(uint imageHandle) const final;
     virtual uint imageHeight(uint imageHandle) const final;

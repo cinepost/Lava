@@ -206,6 +206,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	const std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputname_override", std::string(""));
 	const Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
 	const bool enable_accumulation = pPlane->getPropertyValue(ast::Style::PLANE, "accumulation", bool(true));
+	const bool delay_imageopen = pPlane->getPropertyValue(ast::Style::PLANE, "delayed", bool(false));
 
 	aovInfo.name = AOVName(channel_name);
 	aovInfo.outputOverrideName = output_name_override;
@@ -214,6 +215,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	aovInfo.pfilterTypeName = pixel_filter_name;
 	aovInfo.pfilterSize = to_uint2(pixel_filter_size);
 	aovInfo.sourcePassName = source_pass_name;
+	aovInfo.delayedImageOpen = delay_imageopen;
 	aovInfo.enableAccumulation = enable_accumulation;
 
 	return aovInfo;

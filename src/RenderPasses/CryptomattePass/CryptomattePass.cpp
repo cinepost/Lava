@@ -47,10 +47,13 @@ namespace {
         { kPreviewColorOutput,   "gPreviewColor",          "Cryptomatte preview false color",         true /* optional */, ResourceFormat::RGBA32Float },
     };
 
+    const std::string kOutputPreview = "outputPreview";
     const std::string kMode = "outputMode";
     const std::string kRank = "rank";
+    const std::string kManifestFilename = "manifestFilename";
+    const std::string kSamplesPerFrame = "samplesPerFrame";
 
-    const std::array<std::string, 16> kDataOutputNames = 
+    const std::array<std::string, kMaxDataLayersCount> kDataOutputNames = 
         {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07"};
 }
 
@@ -60,6 +63,9 @@ CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext
     for (const auto& [key, value] : dict) {
         if (key == kMode) pThis->setMode(static_cast<CryptomatteMode>((uint32_t)value));
         else if (key == kRank) pThis->setRank(value);
+        else if (key == kOutputPreview) pThis->setOutputPreviewColor(value);
+        else if (key == kManifestFilename) pThis->setManifestFilename(value);
+        else if (key == kSamplesPerFrame) pThis->setSamplesPerFrame(value);
     }
 
     return pThis;
@@ -165,11 +171,15 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         mpPass["gPreviewColor"] = pPreviewOutputTex;
     }
 
+    LLOG_WRN << "CryptomattePass samples per frame " << mSamplesPerFrame;
+
     auto cb_var = mpPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
-    cb_var["gSumWeight"] = float(++mSampleNumber);
     cb_var["gRanksCount"] = mRank;
     cb_var["gDataLayersCount"] = dataLayersCount();
+    cb_var["gSampleNumber"] = ++mSampleNumber;
+    cb_var["gSumWeight"] = float(mSampleNumber);
+    cb_var["gSamplesPerFrame"] = mSamplesPerFrame;
 
     mpPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 
@@ -292,6 +302,24 @@ void CryptomattePass::setMode(CryptomatteMode mode) {
 
 void CryptomattePass::setRank(uint32_t rank) {
     if(mRank == rank) return;
-    mRank = rank;
+    mRank = std::min(kMaxRanks, rank);
+    mDirty = true;
+}
+
+void CryptomattePass::setOutputPreviewColor(bool value) {
+    if(mOutputPreview == value) return;
+    mOutputPreview = value;
+    mDirty = true;
+}
+
+void CryptomattePass::setManifestFilename(const std::string& name) {
+    if(mManifestFilename == name) return;
+    mManifestFilename = name;
+    mDirty = true;
+}
+
+void CryptomattePass::setSamplesPerFrame(uint32_t value) {
+    if(mSamplesPerFrame == value) return;
+    mSamplesPerFrame = value;
     mDirty = true;
 }
