@@ -104,8 +104,6 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
     // TODO: lazy data buffers write.
     if (!mpScene) return;
     
-    LLOG_WRN << "CryptomattePass::execute";
-
     calculateHashTables(renderData);
     createSortingBuffers();
 
@@ -169,7 +167,7 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
 
     auto cb_var = mpPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
-    cb_var["gSampleNumber"] = float(mSampleNumber++);
+    cb_var["gSumWeight"] = float(++mSampleNumber);
     cb_var["gRanksCount"] = mRank;
     cb_var["gDataLayersCount"] = dataLayersCount();
 
@@ -178,28 +176,15 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
     mDirty = false;
 }
 
+void CryptomattePass::reset() {
+    mSampleNumber = 0;
+    mDirty = true;
+}
+
 void CryptomattePass::calculateHashTables( const RenderData& renderData) {
     if(!mDirty) return;
 
     assert(mpScene);
-
-    // tests
-    if( 1 == 2) {
-        const std::string name1 = "torus";
-        const uint32_t hash1 = util_murmur_hash3(name1.c_str(), name1.size(), 0);
-        LLOG_WRN << "Test hash name " << name1 << " uint " << std::to_string(hash1) << " float " << boost::lexical_cast<std::string>(util_hash_to_float(hash1))
-                 << " hex " << hash_float_to_hexidecimal(util_hash_to_float(hash1));
-
-        const std::string name2 = "равнина";
-        const uint32_t hash2 = util_murmur_hash3(name2.c_str(), name2.size(), 0);
-        LLOG_WRN << "Test hash name " << name2 << " uint " << std::to_string(hash2) << " float " << boost::lexical_cast<std::string>(util_hash_to_float(hash2))
-                 << " hex " << hash_float_to_hexidecimal(util_hash_to_float(hash2));
-
-        const std::string name3 = "bunny";
-        const uint32_t hash3 = util_murmur_hash3(name3.c_str(), name3.size(), 0);
-        LLOG_WRN << "Test hash name " << name3 << " uint " << std::to_string(hash3) << " float " << boost::lexical_cast<std::string>(util_hash_to_float(hash3))
-                 << " hex " << hash_float_to_hexidecimal(util_hash_to_float(hash3));
-    }
 
     const bool outputPreview = renderData[kPreviewColorOutput]->asTexture() && mOutputPreview ? true : false;
     if (!outputPreview) mpPreviewHashColorBuffer = nullptr;
@@ -227,9 +212,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 materialHashBuffer[materialID] = hash;
                 materialHashFloatBuffer[materialID] = fhash;
 
-                LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
-                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
-                    << " float " << boost::lexical_cast<std::string>(fhash);
+                //LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
+                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
+                //    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {
@@ -263,9 +248,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 instanceHashBuffer[instance.internalID] = hash;
                 instanceHashFloatBuffer[instance.internalID] = fhash;
 
-                LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
-                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
-                    << " float " << boost::lexical_cast<std::string>(fhash);
+                //LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
+                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
+                //    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {

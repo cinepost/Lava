@@ -21,7 +21,7 @@ import Utils.Math.MathHelpers;
 
 cbuffer PerFrameCB {
   uint2             gFrameDim;
-  float             gSampleNumber;
+  float             gSumWeight;
   uint              gRanksCount;
   uint              gDataLayersCount;
 };
@@ -46,7 +46,7 @@ RWStructuredBuffer<CryptomattePassSortingPair> gSortBuffers[_RANK];
 // TODO: test groupshared buffers for counters
 //groupshared CryptomattePassSortingPair gLocalPairs[16 * 16];
 
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // pixel position
     const uint2 ipos = dispatchThreadId.xy;
@@ -122,11 +122,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     {
         //const CryptomattePassSortingPair pair1 = gSortBuffers[0][bpos];
         //const CryptomattePassSortingPair pair2 = gSortBuffers[1][bpos];
-        //gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSampleNumber, asfloat(pair2.hash), float(pair2.counter) / gSampleNumber);
+        //gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
 
         const CryptomattePassSortingPair pair1 = localPairs[0];
         const CryptomattePassSortingPair pair2 = localPairs[1];
-        gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSampleNumber, asfloat(pair2.hash), float(pair2.counter) / gSampleNumber);
+        gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
     }
 #endif // gDataLayer00
 
@@ -134,11 +134,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     {
         //const CryptomattePassSortingPair pair1 = gSortBuffers[2][bpos];
         //const CryptomattePassSortingPair pair2 = gSortBuffers[3][bpos];
-        //gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSampleNumber, asfloat(pair2.hash), float(pair2.counter) / gSampleNumber);
+        //gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
 
         const CryptomattePassSortingPair pair1 = localPairs[2];
         const CryptomattePassSortingPair pair2 = localPairs[3];
-        gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSampleNumber, asfloat(pair2.hash), float(pair2.counter) / gSampleNumber);
+        gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
     }
 #endif // gDataLayer01
 

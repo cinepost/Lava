@@ -190,7 +190,7 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 	: Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format), mIsSparse(false), 
 	  mIsSolid(false) {
 	
-	LLOG_DBG << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
+	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
 
 	assert(width > 0 && height > 0 && depth > 0);

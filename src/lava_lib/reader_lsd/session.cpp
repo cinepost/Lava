@@ -204,9 +204,6 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 
 		pCamera->setFocalDistance(camera_focus_distance);
 		pCamera->setApertureRadius(apertureRadius);
-
-		LLOG_WRN << "apertureRadius " << apertureRadius;
-
 		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}

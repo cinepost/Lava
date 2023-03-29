@@ -13,8 +13,6 @@ enum class CryptomattePassMode : uint32_t
 struct CryptomattePassSortingPair {
     uint32_t hash = 0;
     uint32_t counter = 0;
-    uint32_t _pad0;
-    uint32_t _pad1;
 
 #ifdef HOST_CODE
     CryptomattePassSortingPair()

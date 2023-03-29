@@ -29,6 +29,8 @@ class CryptomattePass : public RenderPass {
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual Dictionary getScriptingDictionary() override;
 
+		virtual void reset() override;
+
 		/** Set the preview color target format. This is always enabled
 		*/
 		CryptomattePass& setColorFormat(ResourceFormat format);

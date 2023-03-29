@@ -403,9 +403,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
-			LLOG_WRN << "CryptomattePass planeName " << planeName;
-			LLOG_WRN << "CryptomattePass renderPassName " << renderPassName;
-			LLOG_WRN << "CryptomattePass RenderGraph pass name is  " << planeName;
 			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
 			pCryptomattePass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
@@ -416,13 +413,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
 			}
 			continue;
-		}
-
-		{
-
-			LLOG_WRN << "Unknown pass planeName " << planeName;
-			LLOG_WRN << "Unknown pass renderPassName " << renderPassName;
-			LLOG_WRN << "Unknown pass renderPassOutputName " << renderPassOutputName;
 		}
 
 		// Optional existing pass edditional output
