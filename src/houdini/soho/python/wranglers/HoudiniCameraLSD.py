@@ -59,10 +59,13 @@ class hcameraLSD:
         self.Version = version
 
     def evalParm(self, obj, parm, now):
-        key = parm.Houdini      # Which houdini parameter is being evaluated?
-        if key in parmMap:
-            return parmMap[key](obj, now, parm.Value)
-        return obj.evalParm(parm, now)
+        if isinstance(parm, SohoParm):
+            key = parm.Houdini      # Which houdini parameter is being evaluated?
+            if key in parmMap:
+                return parmMap[key](obj, now, parm.Value)
+            return obj.evalParm(parm, now)
+        else:
+            return parm
 
 def registerCamera(list):
     key = 'HoudiniCamera-lava'

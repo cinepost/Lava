@@ -62,9 +62,10 @@ class dlldecl MaterialX : public std::enable_shared_from_this<MaterialX> {
      */
     void setDevice(std::shared_ptr<Device> pDevice);
 
-  private:
+  public:
     MaterialX(std::shared_ptr<Device> pDevice, const std::string& name);
 
+  private:
     std::string mName;
     std::shared_ptr<Device> mpDevice = nullptr;
 

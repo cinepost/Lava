@@ -35,6 +35,9 @@ namespace {
 
     const uint32_t gSeed = 0;
 
+    const uint32_t kMaxDataLayersCount = 8;
+    constexpr uint32_t kMaxRanks = kMaxDataLayersCount * 2;
+
     const std::string kInputVBuffer = "vbuffer";
     const std::string kPreviewColorOutput = "preview_color";
     
@@ -48,8 +51,7 @@ namespace {
     const std::string kRank = "rank";
 
     const std::array<std::string, 16> kDataOutputNames = 
-        {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07", "output08", 
-         "output09", "output10", "output11", "output12", "output13", "output14", "output15"};
+        {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07"};
 }
 
 CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -60,7 +62,7 @@ CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext
         else if (key == kRank) pThis->setRank(value);
     }
 
-    return std::move(pThis);
+    return pThis;
 }
 
 Dictionary CryptomattePass::getScriptingDictionary() {
@@ -99,9 +101,13 @@ void CryptomattePass::setScene(RenderContext* pRenderContext, const Scene::Share
 }
 
 void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderData) {
+    // TODO: lazy data buffers write.
     if (!mpScene) return;
     
+    LLOG_WRN << "CryptomattePass::execute";
+
     calculateHashTables(renderData);
+    createSortingBuffers();
 
     // Prepare program and vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
@@ -118,12 +124,21 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         // Cryptomatte layers
         defines.add("_OUTPUT_PREVIEW", mOutputPreview ? "1" : "0");
         defines.add("_MODE", std::to_string(static_cast<uint32_t>(mMode)));
+        defines.add("_RANK", std::to_string(mRank));
         defines.add("_DATA_LAYERS_COUNT", std::to_string(dataLayersCount()));
 
-        defines.add("is_valid_gMaterialHashBuffer", mpMaterialHashBuffer ? "1" : "0");
-        defines.add("is_valid_gInstanceHashBuffer", mpInstanceHashBuffer ? "1" : "0");
+        defines.add("is_valid_gFloatHashBuffer", mpFloatHashBuffer ? "1" : "0");
+        defines.add("is_valid_gHashBuffer", mpHashBuffer ? "1" : "0");
         defines.add("is_valid_gPreviewHashColorBuffer", mpPreviewHashColorBuffer ? "1" : "0");
         defines.add("is_valid_gPreviewLayer", pPreviewOutputTex ? "1" : "0");
+
+        std::array<Texture::SharedPtr, kMaxDataLayersCount> dataTextures;
+
+        for (size_t i = 0; i < kMaxDataLayersCount; i++) {
+            dataTextures[i] = renderData[kDataOutputNames[i]]->asTexture();
+            const std::string layerName = "is_valid_gDataLayer" + (boost::format("%02d") % i).str();
+            defines.add(layerName, dataTextures[i] ? "1" : "0");
+        }
 
         mpPass = ComputePass::create(mpDevice, desc, defines, true);
 
@@ -133,16 +148,19 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         mpPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
 
         // Bind hash buffers
-        mpPass["gMaterialHashBuffer"] = mpMaterialHashBuffer;
-        mpPass["gInstanceHashBuffer"] = mpInstanceHashBuffer;
+        mpPass["gFloatHashBuffer"] = mpFloatHashBuffer;
+        mpPass["gHashBuffer"] = mpHashBuffer;
         mpPass["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
 
         // Bind crypto data output layers as UAV buffers.
         assert(dataLayersCount() == kDataOutputNames.size() == mDataLayerTextures.size());
 
         for (size_t i = 0; i < dataLayersCount(); i++) {
-            Texture::SharedPtr pTex = renderData[kDataOutputNames[i]]->asTexture();
-            mpPass["gDataLayer" + (boost::format("%02d") % i).str()] = pTex;
+            mpPass["gDataLayers"][i] = dataTextures[i];
+        }
+
+        for (size_t i = 0; i < mRank; i++) {
+            mpPass["gSortBuffers"][i] = mDataSortingBuffers[i];
         }
 
         // Bind preview output
@@ -151,6 +169,9 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
 
     auto cb_var = mpPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
+    cb_var["gSampleNumber"] = float(mSampleNumber++);
+    cb_var["gRanksCount"] = mRank;
+    cb_var["gDataLayersCount"] = dataLayersCount();
 
     mpPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 
@@ -219,7 +240,8 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, materialPreviewColorBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialPreviewColorBuffer.data());
             }
 
-            mpMaterialHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
+            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, materialHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashBuffer.data());
+            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
         }
     } else if (mMode == CryptomatteMode::Instance) {
         // Calculate instance name hashes
@@ -234,7 +256,7 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 const auto& instance = mpScene->getGeometryInstance(i);
                 
                 memset(clean_name_buffer,0,Cryptomatte::MAX_STRING_LENGTH);
-                Cryptomatte::getCleanMaterialName(mpScene->getInstanceName(i).c_str(), clean_name_buffer, mInstanceNameCleaningFlags);
+                Cryptomatte::getCleanMaterialName(mpScene->getInstanceName(instance.internalID).c_str(), clean_name_buffer, mInstanceNameCleaningFlags);
 
                 const uint32_t hash = util_murmur_hash3(clean_name_buffer, strlen(clean_name_buffer), gSeed);
                 const float fhash = util_hash_to_float(hash);
@@ -249,17 +271,32 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
             if (outputPreview) {
                 std::vector<float3> instancePreviewColorBuffer(instanceHashBuffer.size());
                 for(size_t i = 0; i < instanceHashBuffer.size(); i++) {
-                    instancePreviewColorBuffer[i] = util_hash_to_rgb(instanceHashBuffer[i]);
+                    instancePreviewColorBuffer[i] = saturate(util_hash_to_rgb(instanceHashBuffer[i]));
                 }
                 mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, instancePreviewColorBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instancePreviewColorBuffer.data());
             }
 
-            mpInstanceHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
+            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, instanceHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashBuffer.data());
+            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
         }
     } else {
-        mpInstanceHashBuffer = nullptr;
+        mpHashBuffer = nullptr;
+        mpFloatHashBuffer = nullptr;
         mpPreviewHashColorBuffer = nullptr;
     }
+}
+
+void CryptomattePass::createSortingBuffers() {
+    if(!mDirty) return;
+    
+    mDataSortingBuffers.clear();
+    mDataSortingBuffers.resize(mRank);
+
+    std::vector<SortingPair> clearBuffer(mFrameDim.x * mFrameDim.y);
+    for(size_t i = 0; i < mDataSortingBuffers.size(); ++i) {
+        mDataSortingBuffers[i] = 
+            Buffer::createStructured(mpDevice, sizeof(SortingPair), clearBuffer.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, clearBuffer.data());
+    }   
 }
 
 void CryptomattePass::setMode(CryptomatteMode mode) {

@@ -2,9 +2,11 @@ from __future__ import print_function
 import collections
 import copy
 
+import hou
 from soho import SohoParm
 from lava_renderpasses import RenderPass
 
+__crytomatteLayerPostfix = ["00", "01", "02", "03", "04", "05", "06", "07"]
 
 cryptomatteMaterialPassParms = {
     'outputMode'                : SohoParm('lv_crypto_material_pass_output_mode',        'int',       [0], skipdefault=False),
@@ -28,29 +30,52 @@ cryptoInstancePlaneParms = {
     'outputname_override' : SohoParm('lv_crypto_instance_pass_output_name',     'string',      ['CryptoObject'], skipdefault=False)
 }
 
-def getRenderPassDict():
+def getRenderPassDict(cam = None, now = None):
     renderpasses = {
-        "CryptomatteMaterialPass"   : RenderPass("preview_color",   "vector3",  "float16",    False,   {}, cryptomatteMaterialPassParms,    cryptoMaterialPlaneParms ),
-        "CryptomatteInstancePass"   : RenderPass("preview_color",   "vector3",  "float16",    False,   {}, cryptomatteInstancePassParms,    cryptoInstancePlaneParms ),
+        "CryptomatteMaterialPass"   : RenderPass("CryptomatteMaterialPass", "preview_color",   "vector3",  "float16",    False,   {}, cryptomatteMaterialPassParms,    cryptoMaterialPlaneParms ),
+        "CryptomatteInstancePass"   : RenderPass("CryptomatteInstancePass", "preview_color",   "vector3",  "float16",    False,   {}, cryptomatteInstancePassParms,    cryptoInstancePlaneParms ),
     }
-    for i in ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"]:
-        materialPlaneParms = copy.deepcopy(cryptoMaterialPlaneParms)
-        materialPlaneParms['outputname_override'] = SohoParm('lv_crypto_material_pass_output'+i+'_name',     'string',      ['CryptoMaterial'+i], skipdefault=False)
-        renderpasses["CryptomatteMaterialPass"+i] = RenderPass("output"+i,   "vector4",  "float32",    False,   {}, {},    materialPlaneParms )
 
-        instancePlaneParms = copy.deepcopy(cryptoMaterialPlaneParms)
-        instancePlaneParms['outputname_override'] = SohoParm('lv_crypto_instance_pass_output'+i+'_name',     'string',      ['CryptoObject'+i], skipdefault=False)
-        renderpasses["CryptomatteInstancePass"+i] = RenderPass("output"+i,   "vector4",  "float32",    False,   {}, {},    instancePlaneParms )
+    material_rank = cam.getDefaultedInt('lv_crypto_material_pass_cryptomatte_rank', now, [0])[0]
+    instance_rank = cam.getDefaultedInt('lv_crypto_instance_pass_cryptomatte_rank', now, [0])[0]
+    material_data_layers_count = (material_rank >> 1) + (material_rank - 2 * (material_rank >> 1))
+    instance_data_layers_count = (instance_rank >> 1) + (instance_rank - 2 * (instance_rank >> 1))
+
+    for i in range(material_data_layers_count):
+        postfix = __crytomatteLayerPostfix[i]
+        materialPlaneParms = copy.deepcopy(cryptoMaterialPlaneParms)
+        materialPlaneParms['accumulation'] = SohoParm('__fake_parm_name__', 'bool', [False], skipdefault=False)
+        materialPlaneParms['sourcepass'] = SohoParm('__fake_parm_name__', 'string', ['CryptomatteMaterialPass'], skipdefault=False)
+        materialPlaneParms['outputname_override'] = SohoParm('lv_crypto_material_pass_output' + postfix + '_name',     'string',      ['CryptoMaterial' + postfix], skipdefault=False)
+        renderpasses["CryptomatteMaterialPass" + postfix] = RenderPass("CryptomatteMaterialPass", "output" + postfix,   "vector4",  "float32",    False,   {}, {},    materialPlaneParms )
+
+    for i in range(instance_data_layers_count):
+        postfix = __crytomatteLayerPostfix[i]
+        instancePlaneParms = copy.deepcopy(cryptoInstancePlaneParms)
+        instancePlaneParms['accumulation'] = SohoParm('__fake_parm_name__', 'bool', [False], skipdefault=False)
+        instancePlaneParms['sourcepass'] = SohoParm('__fake_parm_name__', 'string', ['CryptomatteInstancePass'], skipdefault=False)
+        instancePlaneParms['outputname_override'] = SohoParm('lv_crypto_instance_pass_output' + postfix + '_name',     'string',      ['CryptoObject' + postfix], skipdefault=False)
+        renderpasses["CryptomatteInstancePass" + postfix] = RenderPass("CryptomatteInstancePass", "output" + postfix,   "vector4",  "float32",    False,   {}, {},    instancePlaneParms )
 
     return renderpasses
 
-def getToggleRenderPassDict():
+def getToggleRenderPassDict(cam = None, now = None):
     togglerenderpassdict = {
         'lv_plane_cryptomaterial':              ['CryptomatteMaterialPass'],
         'lv_plane_cryptoinstance':              ['CryptomatteInstancePass'],
     }
-    for i in ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"]:
-        togglerenderpassdict['lv_plane_cryptomaterial'+i] = ['CryptomatteMaterialPass' + i]
-        togglerenderpassdict['lv_plane_cryptoinstance'+i] = ['CryptomatteMaterialPass' + i]
+    
+    material_rank = cam.getDefaultedInt('lv_crypto_material_pass_cryptomatte_rank', now, [0])[0]
+    instance_rank = cam.getDefaultedInt('lv_crypto_instance_pass_cryptomatte_rank', now, [0])[0]
+    material_data_layers_count = (material_rank >> 1) + (material_rank - 2 * (material_rank >> 1))
+    instance_data_layers_count = (instance_rank >> 1) + (instance_rank - 2 * (instance_rank >> 1))
+
+    for i in range(material_data_layers_count):
+        postfix = __crytomatteLayerPostfix[i]
+        togglerenderpassdict['lv_plane_cryptomaterial'] += ['CryptomatteMaterialPass' + postfix]
+
+    for i in range(instance_data_layers_count):
+        postfix = __crytomatteLayerPostfix[i]
+        togglerenderpassdict['lv_plane_cryptoinstance'] += ['CryptomatteInstancePass' + postfix]
 
     return togglerenderpassdict

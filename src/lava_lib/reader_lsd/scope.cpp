@@ -75,7 +75,7 @@ void Transformable::addTransform(const lsd::Matrix4& mat) {
 /* Global */
 
 Global::SharedPtr Global::create() {
-	auto pGlobal = Global::SharedPtr(new Global());
+	auto pGlobal = std::make_shared<Global>();
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "rendertype", std::string(""), Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "renderlabel", std::string(""), Property::Owner::SYS)) return nullptr;
 	
@@ -96,7 +96,7 @@ Global::SharedPtr Global::create() {
 	if(!pGlobal->declareProperty(Style::OBJECT, Type::FLOAT, "velocityscale", 1.0 , Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::OBJECT, Type::INT, "xformsamples", 1 , Property::Owner::SYS)) return nullptr;
 
-	return std::move(pGlobal);
+	return pGlobal;
 }
 
 // TODO: get rid of mPlanes, mObjects ... etc. use std::move
@@ -172,8 +172,8 @@ ika::bgeo::Bgeo::SharedPtr Geo::bgeo() {
 }
 
 Geo::SharedPtr Geo::create(ScopeBase::SharedPtr pParent) {
-	auto pSegment = Geo::SharedPtr(new Geo(pParent));
-	return std::move(pSegment);
+	auto pSegment = std::make_shared<Geo>(pParent);
+	return pSegment;
 }
 
 void Geo::setDetailFilePath(const fs::path& path) {
@@ -199,7 +199,7 @@ void Geo::cleanUpGeometry() {
 /* Object */
 
 Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
-	auto pObject = Object::SharedPtr(new Object(pParent));
+	auto pObject = std::make_shared<Object>(pParent);
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
 	if(!pObject->declareProperty(Style::OBJECT, Type::BOOL, "matte", bool(false), Property::Owner::SYS)) return nullptr;
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "surface", std::string(), Property::Owner::SYS)) return nullptr;	
@@ -227,13 +227,13 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "ior", 1.5, Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "metallic", 0.0, Property::Owner::SYS);
 
-	return std::move(pObject);
+	return pObject;
 }
 
 /* Plane */
 
 Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
-	auto pPlane = Plane::SharedPtr(new Plane(pParent));
+	auto pPlane = std::make_shared<Plane>(pParent);
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "variable", std::string("Cf+Af"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "vextype", std::string("vector4"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "channel", std::string("C"), Property::Owner::SYS)) return nullptr;
@@ -241,13 +241,13 @@ Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "outputname_override", std::string(""), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::BOOL, "accumulation", bool(true), Property::Owner::SYS)) return nullptr;
 
-	return std::move(pPlane);
+	return pPlane;
 }
 
 /* Light */
 
 Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
-	auto pLight = Light::SharedPtr(new Light(pParent));
+	auto pLight = std::make_shared<Light>(pParent);
 	if(!pLight->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
 	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "projection", std::string("perspective"), Property::Owner::SYS)) return nullptr;
 	if(!pLight->declareProperty(Style::LIGHT, Type::VECTOR2, "zoom", lsd::Vector2{0.01, 1000.0}, Property::Owner::SYS)) return nullptr;
@@ -273,28 +273,28 @@ Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 	pShadowSubContainer->declareProperty(Style::LIGHT, Type::STRING, "shadowtype", std::string(""), Property::Owner::SYS);
 	pShadowSubContainer->declareProperty(Style::LIGHT, Type::VECTOR3, "shadow_color", lsd::Vector3{0.0, 0.0, 0.0}, Property::Owner::SYS);
 
-	return std::move(pLight);
+	return pLight;
 }
 
 /* Segment */
 
 Segment::SharedPtr Segment::create(ScopeBase::SharedPtr pParent) {
-	auto pSegment = Segment::SharedPtr(new Segment(pParent));
+	auto pSegment = std::make_shared<Segment>(pParent);
 	if(!pSegment->declareProperty(Style::CAMERA, Type::FLOAT, "orthowidth", 3.427819, Property::Owner::SYS)) return nullptr;
 	if(!pSegment->declareProperty(Style::CAMERA, Type::FLOAT, "zoom", 1.0, Property::Owner::SYS)) return nullptr;
 	if(!pSegment->declareProperty(Style::IMAGE, Type::VECTOR4, "window", lsd::Vector4{0.0, 1.0, 0.0, 1.0}, Property::Owner::SYS)) return nullptr;
 
-	return std::move(pSegment);
+	return pSegment;
 }
 
 /* Material */
 
 Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
-	auto pMat = Material::SharedPtr(new Material(pParent));
+	auto pMat = std::make_shared<Material>(pParent);
 
 	if(!pMat->declareProperty(Style::OBJECT, Type::STRING, "material_name", std::string(""), Property::Owner::SYS)) return nullptr;
 	
-	return std::move(pMat);
+	return pMat;
 }
 
 bool Material::insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode) {
@@ -319,7 +319,7 @@ Falcor::MxNode::SharedPtr Material::node(const NodeUUID& uuid) {
 /* Node */
 
 Node::SharedPtr Node::create(ScopeBase::SharedPtr pParent) {
-	auto pNode = Node::SharedPtr(new Node(pParent));
+	auto pNode = std::make_shared<Node>(pParent);
 
 	if(!pNode->declareProperty(Style::OBJECT, Type::BOOL, "is_subnet", bool(false), Property::Owner::SYS)) return nullptr;
 	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_namespace", std::string(""), Property::Owner::SYS)) return nullptr;
@@ -327,7 +327,7 @@ Node::SharedPtr Node::create(ScopeBase::SharedPtr pParent) {
 	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_type", std::string(""), Property::Owner::SYS)) return nullptr;
 	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_path", std::string(""), Property::Owner::SYS)) return nullptr;
 
-	return std::move(pNode);
+	return pNode;
 }
 
 Node::SharedPtr Node::addChildNode() {

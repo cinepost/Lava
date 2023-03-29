@@ -242,7 +242,7 @@ Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
 	for(auto const& parm: display_info.displayFloatParameters)
 		pDisplay->setFloatParameter(parm.first, parm.second);
 
-	return std::move(pDisplay);
+	return pDisplay;
 }
 
 void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {

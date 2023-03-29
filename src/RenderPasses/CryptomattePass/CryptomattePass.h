@@ -36,7 +36,7 @@ class CryptomattePass : public RenderPass {
 		void setMode(CryptomatteMode mode);
 		void setRank(uint32_t rank);
 		
-		inline uint32_t dataLayersCount() const { return(mRank >> 1) + (mRank - 2 * (mRank >> 1)); }
+		inline uint32_t dataLayersCount() const { return (mRank >> 1) + (mRank - 2 * (mRank >> 1)); }
 
 	private:
 		struct HashResolveCounter {
@@ -44,16 +44,19 @@ class CryptomattePass : public RenderPass {
 			float    weight = 0.f;
 		};
 
+		using SortingPair = CryptomattePassSortingPair;
+
 	private:
-		void calculateHashTables( const RenderData& renderData);
+		void calculateHashTables(const RenderData& renderData);
+		void createSortingBuffers();
 		CryptomattePass(Device::SharedPtr pDevice);
 
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpPass;
 
-		Buffer::SharedPtr               mpMaterialHashBuffer;
-		Buffer::SharedPtr               mpInstanceHashBuffer;
-		Buffer::SharedPtr               mpCustattrHashBuffer;
+		Buffer::SharedPtr               mpHashBuffer;
+		Buffer::SharedPtr               mpFloatHashBuffer;
+		std::vector<Buffer::SharedPtr>  mDataSortingBuffers;
 		Buffer::SharedPtr               mpPreviewHashColorBuffer;
 
 		CryptomatteMode                 mMode = CryptomatteMode::Material;

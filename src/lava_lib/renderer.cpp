@@ -357,13 +357,19 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	for(const auto &entry: mAOVPlanes) {
 		const auto& pPlane = entry.second;
 		const std::string renderPassName = (pPlane->sourcePassName() == "") ? entry.first : pPlane->sourcePassName();
+		const std::string planeName = pPlane->name();
 		const std::string planeOutputName = pPlane->outputName();
 		const std::string planeOutputVariable = pPlane->outputVariableName();
-		const std::string renderPassOutputName = planeOutputName + "." + planeOutputVariable;
+		const std::string renderPassOutputName = planeName + "." + planeOutputVariable;
 
 		auto pPlaneAccumulationPass = pPlane->accumulationPass() ? pPlane->accumulationPass() : pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 		if(!pPlaneAccumulationPass) {
-			LLOG_WRN << "Plane " << planeOutputName << " has no accumulation pass. This might lead to an error to wrong plane rendering!";
+			LLOG_WRN << "Plane " << planeName << " has no accumulation pass. This might lead to an error to wrong plane rendering!";
+			continue;
+		}
+
+		// Main pass
+		if (renderPassName == to_string(AOVBuiltinName::MAIN)) {
 			continue;
 		}
 
@@ -371,44 +377,67 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		if (renderPassName == "EdgeDetectPass") {
 			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
 			pEdgeDetectPass->setScene(pRenderContext, pScene);
-			mpRenderGraph->addPass(pEdgeDetectPass, planeOutputName);
-			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeOutputName + ".vbuffer");
+			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
 			if(pPlaneAccumulationPass) {
 				pPlaneAccumulationPass->setScene(pScene);
 				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
 			}
+			continue;
 		}
 
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
-		auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
+			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
 			pAmbientOcclusionPass->setScene(pRenderContext, pScene);
-			mpRenderGraph->addPass(pAmbientOcclusionPass, planeOutputName);
-			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeOutputName + ".vbuffer");
+			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
 			if(pPlaneAccumulationPass) {
 				pPlaneAccumulationPass->setScene(pScene);
 				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
 			}
+			continue;
 		}
 
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
-		auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
+			LLOG_WRN << "CryptomattePass planeName " << planeName;
+			LLOG_WRN << "CryptomattePass renderPassName " << renderPassName;
+			LLOG_WRN << "CryptomattePass RenderGraph pass name is  " << planeName;
+			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
 			pCryptomattePass->setScene(pRenderContext, pScene);
-			mpRenderGraph->addPass(pCryptomattePass, planeOutputName);
-			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeOutputName + ".vbuffer");
+			mpRenderGraph->addPass(pCryptomattePass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
 			if(pPlaneAccumulationPass) {
 				pPlaneAccumulationPass->setScene(pScene);
 				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
 			}
+			continue;
+		}
+
+		{
+
+			LLOG_WRN << "Unknown pass planeName " << planeName;
+			LLOG_WRN << "Unknown pass renderPassName " << renderPassName;
+			LLOG_WRN << "Unknown pass renderPassOutputName " << renderPassOutputName;
+		}
+
+		// Optional existing pass edditional output
+		if (mpRenderGraph->doesPassExist(renderPassName)) {
+			if(pPlaneAccumulationPass) {
+				pPlaneAccumulationPass->setScene(pScene);
+				const std::string renderPassOutputName = renderPassName + "." + planeOutputVariable;
+				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
+			}
+			continue;
 		}
 	}
 
-	// Create MAIN (beauty) plane accumulation pass and bind with render graph output
-	auto pMainAOVAccumulationPass = pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
+	// MAIN (beauty) plane accumulation pass and bind with render graph output
+	auto pMainAOVAccumulationPass = pMainAOV->accumulationPass() ? pMainAOV->accumulationPass() : pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
 	if(pMainAOVAccumulationPass) {
 		pMainAOVAccumulationPass->setScene(pScene);
 		if(pMainAOV->sourcePassName() == "EdgeDetectPass") {

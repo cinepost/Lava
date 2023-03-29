@@ -94,7 +94,7 @@ class AccumulatePass : public RenderPass {
 
     inline Falcor::ResourceFormat format() const { return mOutputFormat; }
 
-    void reset();
+    virtual void reset() override;
 
     // Get the number of singular values of a filter according to SVD theorem. This might be an overenginered for our use case.. 
     static size_t pixelFilterSingularValueCountSVD(PixelFilterType pixelFilterType, uint32_t width, uint32_t height);

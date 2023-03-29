@@ -57,13 +57,11 @@ MaterialX::MaterialX(std::shared_ptr<Device> pDevice, const std::string& name) :
 }
 
 MaterialX::SharedPtr MaterialX::createShared(std::shared_ptr<Device> pDevice, const std::string& name) {
-    MaterialX* pMaterial = new MaterialX(pDevice, name);
-    return SharedPtr(pMaterial);
+    return std::make_shared<MaterialX>(pDevice, name);
 }
 
 MaterialX::UniquePtr MaterialX::createUnique(std::shared_ptr<Device> pDevice, const std::string& name) {
-    MaterialX* pMaterial = new MaterialX(pDevice, name);
-    return std::move(UniquePtr(pMaterial));
+    return std::make_unique<MaterialX>(pDevice, name);
 }
 
 MaterialX::~MaterialX() = default;

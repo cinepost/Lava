@@ -379,12 +379,16 @@ def quickImagePlanes(wrangler, cam, now, components):
         
         if plane_parms_map :
             for rpass_parm_name, parm in iter(plane_parms_map.items()):
-                if parm.Key != rpass_parm_name: 
-                    parm.Key = rpass_parm_name
+                if isinstance(parm, SohoParm):
+                    if parm.Key != rpass_parm_name: 
+                        parm.Key = rpass_parm_name
 
             _plist = cam.wrangle(wrangler, plane_parms_map, now) or {}
             for plane_parm_name, parm in iter(_plist.items()):
-                cmd_property('plane', plane_parm_name, [parm.Value])
+                if isinstance(parm, SohoParm):
+                    cmd_property('plane', plane_parm_name, [parm.Value])
+                else:
+                    cmd_property('plane', plane_parm_name, [str(parm)])
 
         if quantize != 'float16':
             cmd_property('plane', 'quantize', [quantize])
@@ -409,8 +413,8 @@ def quickImagePlanes(wrangler, cam, now, components):
     quickplanedict = quickplanes.getPlaneDict()
     toggleplanedict = quickplanes.getTogglePlaneDict()
 
-    renderpassdict = renderpasses.getRenderPassDict()
-    togglerenderpassdict = renderpasses.getToggleRenderPassDict()
+    renderpassdict = renderpasses.getRenderPassDict(cam, now)
+    togglerenderpassdict = renderpasses.getToggleRenderPassDict(cam, now)
 
     plist = {}
     # Check toggled quick planes
@@ -448,6 +452,7 @@ def quickImagePlanes(wrangler, cam, now, components):
                     raise ValueError("Plane " + variable + " not a RenderPass instance!!!")
 
                 channel = variable
+                pass_type_name = plane.pass_type_name
                 quantize = plane.quantize
                 plane_parms_map = plane.plane_parms_map
                 variable = plane.output or variable
@@ -525,7 +530,7 @@ def cameraDisplay(wrangler, cam, now):
     # Main/Beauty output channel
     #defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize)
 
-    rpassesdict = renderpasses.getRenderPassDict()
+    rpassesdict = renderpasses.getRenderPassDict(cam, now)
 
     if sourcepass in rpassesdict:
         rpass = rpassesdict[sourcepass]

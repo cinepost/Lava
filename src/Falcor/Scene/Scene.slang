@@ -240,6 +240,15 @@ struct Scene
         return geometryInstances[instanceID.index].materialID;
     };
 
+    /** Return the internal ID for a geometry instance.
+        \param[in] instanceID Global geometry instance ID.
+        \return internal ID.
+    */
+    uint getInternalID(const GeometryInstanceID instanceID)
+    {
+        return geometryInstances[instanceID.index].internalID;
+    };
+
     // Lights access
 
     uint getLightCount()

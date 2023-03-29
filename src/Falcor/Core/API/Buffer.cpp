@@ -75,7 +75,7 @@ Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, B
 	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(pDevice, size, bindFlags, cpuAccess);
 	pBuffer->apiInit(pInitData != nullptr);
 	if (pInitData) pBuffer->setBlob(pInitData, 0, size);
-	return std::move(pBuffer);
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createTyped(std::shared_ptr<Device> pDevice, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
@@ -85,7 +85,7 @@ Buffer::SharedPtr Buffer::createTyped(std::shared_ptr<Device> pDevice, ResourceF
 
 	pBuffer->mFormat = format;
 	pBuffer->mElementCount = elementCount;
-	return std::move(pBuffer);
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createStructured(
@@ -108,7 +108,7 @@ Buffer::SharedPtr Buffer::createStructured(
 	if (createCounter) {
 		pBuffer->mpUAVCounter = Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 	}
-	return std::move(pBuffer);
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createStructured(
@@ -168,15 +168,13 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
 	return pBuffer;
 }
 
-#ifdef FALCOR_GFX
 Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
 	assert(handle);
 	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(pDevice, size, bindFlags, cpuAccess);
 	pBuffer->mApiHandle = handle;
-	return std::move(pBuffer);
+	return pBuffer;
 }
-#endif
 
 uint32_t Buffer::getElementSize() const {
 	if(isStructured()) return getStructSize();
@@ -204,16 +202,13 @@ typename ViewClass::SharedPtr findViewCommon(Buffer* pBuffer, uint32_t firstElem
 	if (viewMap.find(view) == viewMap.end()) {
 		viewMap[view] = createFunc(pBuffer, firstElement, elementCount);
 	}
-
 	return viewMap[view];
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV(uint32_t firstElement, uint32_t elementCount) {
 	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-		//return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-		return std::move(ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount));
+		return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
 	};
-
 	return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
 }
 
@@ -223,10 +218,8 @@ ShaderResourceView::SharedPtr Buffer::getSRV() {
 
 UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t elementCount) {
 	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-		//return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-		return std::move(UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount));
+		return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
 	};
-
 	return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
 }
 

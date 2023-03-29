@@ -171,6 +171,10 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual Dictionary getScriptingDictionary() { return {}; }
 
+    /** Reset frame dependent data
+    */
+    virtual void reset() {}
+
     /** Set a scene into the render-pass
     */
     virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
