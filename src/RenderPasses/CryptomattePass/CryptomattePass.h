@@ -28,7 +28,7 @@ class CryptomattePass : public RenderPass {
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual Dictionary getScriptingDictionary() override;
-
+		virtual bool hasMetaData() override { return true; };
 		virtual void reset() override;
 
 		/** Set the preview color target format. This is always enabled
@@ -40,7 +40,9 @@ class CryptomattePass : public RenderPass {
 		void setOutputPreviewColor(bool value);
 		void setMode(CryptomatteMode mode);
 		void setRank(uint32_t rank);
-		
+		void setTypeName(const std::string& type_name = "");
+		const std::string& getTypeName() const { return mTypeName; }
+
 		inline uint32_t dataLayersCount() const { return (mRank >> 1) + (mRank - 2 * (mRank >> 1)); }
 
 	private:
@@ -68,6 +70,8 @@ class CryptomattePass : public RenderPass {
 		uint32_t                        mRank = 0;
 		std::string 					mManifestFilename;
 		uint32_t                        mSamplesPerFrame = 0; // If set to zero we update data channels on every invocation on execute()
+
+		std::string                     mTypeName;
 
 		bool                            mOutputPreview = false;
 

@@ -13,6 +13,8 @@
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
+#include "display.h"
+
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
 #include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
 #include "RenderPasses/OpenDenoisePass/OpenDenoisePass.h"
@@ -122,8 +124,8 @@ struct AOVPlaneInfo {
   Falcor::uint2           pfilterSize;                                  // Pixel filter kernel size (in pixels)
   Precision               precision = Precision::AUTO;                  // Keep it on AUTO
   std::string             sourcePassName;                               // Render pass name to bind. If empty main output pass used.
-  bool                    delayedImageOpen = false;                     // Hint to a renderer. Is set the renderer may opt to open image after rendering is done.
   bool                    enableAccumulation = true;                    // Enable sample accumulation.
+  std::string             filenameOverride;                             // When set sepate image output display is created.
 };
 
 struct AOVPlaneGeometry {
@@ -150,6 +152,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     inline std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
     inline Falcor::ResourceFormat  format() const { return mInfo.format; }
     inline const AOVPlaneInfo&     info() const { return mInfo; }
+    const std::string&             filename() const { return mInfo.filenameOverride; }
 
     inline bool isMain() const { return name() == AOVBuiltinName::MAIN; }
 
@@ -157,9 +160,21 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline const std::string&      sourcePassName() const { return mInfo.sourcePassName; }
 
+    void addMetaDataCallback(std::function<Falcor::Dictionary()> func) { mMetaDataCallbacks.push_back(func); }
+    void addMetaDataProvider(Falcor::RenderPass::SharedPtr pPass) { if(pPass) mMetaDataRenderPasses.push_back(pPass); }
+    void addMetaData(const Falcor::Dictionary& meta_data);
+    void addMetaData(const std::string& key, const std::string& value) { mMetaData[key] = value; }
+    void addMetaData(const std::string& key, int value) { mMetaData[key] = value; }
+    void addMetaData(const std::string& key, float value) { mMetaData[key] = value; }
+
     const uint8_t* getImageData();
-    inline const Falcor::Dictionary& getMetaData() const { return mMetaData; }
-    inline bool hasMetaData() const { return !mMetaData.isEmpty(); }
+    Falcor::Dictionary getMetaData() const;
+    inline bool hasMetaData() const { return !mMetaData.isEmpty() || (mMetaDataCallbacks.size() > 0) || (mMetaDataRenderPasses.size() > 0); }
+
+    void setDisplay(Display::SharedPtr pDisplay) { mpDisplay = pDisplay; }
+    inline Display::SharedPtr getDisplay() const { return mpDisplay; }
+    inline bool hasDisplay() const { return mpDisplay != nullptr; }
+
     const uint8_t* getProcessedImageData();
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
@@ -173,8 +188,6 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline bool isEnabled() const { return (mState == State::Enabled); }
     inline State getState() const { return mState; }
-
-    inline bool delayedImageOpen() const { return mInfo.delayedImageOpen; }
 
   private:
     AOVPlane(const AOVPlaneInfo& info);
@@ -233,8 +246,12 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     std::vector<uint8_t>                mOutputData;
     Falcor::Dictionary                  mMetaData;
+    std::vector<std::function<Falcor::Dictionary()>>  mMetaDataCallbacks;
+    std::vector<Falcor::RenderPass::SharedPtr>        mMetaDataRenderPasses;
 
     Falcor::Resource::Type              mType;
+
+    Display::SharedPtr                  mpDisplay;
 
     State                               mState = State::Enabled;
 

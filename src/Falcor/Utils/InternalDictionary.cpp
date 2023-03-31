@@ -1,4 +1,5 @@
 #include "InternalDictionary.h"
+#include <sstream>
 
 
 namespace Falcor {
@@ -38,6 +39,26 @@ InternalDictionary::Value::operator std::string() const {
         return to_string(std::any_cast<Falcor::int4>(mValue));
 
     return "Unknown";
+}
+
+std::string InternalDictionary::Value::toJsonString() const {
+    if(mValue.type() == typeid(std::string)) {
+        return "\"" + std::string(*this) + "\"";
+    }
+    return std::string(*this);
+}
+
+std::string InternalDictionary::toJsonString() const {
+    std::stringstream ss; ss << "{";
+    
+    size_t i = 0;
+    const size_t c_size = mContainer.size();
+    for(const auto[key, value]: mContainer) {
+        ss << "\"" << key << "\"" << ":" << value.toJsonString() << ((++i != c_size) ? ",":"");
+    }
+
+    ss << "}";
+    return ss.str();
 }
 
 template<>

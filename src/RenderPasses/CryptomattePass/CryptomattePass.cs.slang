@@ -51,20 +51,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(ipos >= gFrameDim)) return;
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
-    
+    const bool validHit = hit.isValid();
+    float4 previewColor = float4(0.);
+
     uint classID = 0;
-
-    [[branch]] if (!hit.isValid()) {
-        #if is_valid(gPreviewColor)
-            gPreviewColor[ipos] = float4(.0f);
-        #endif  // gPreviewColor
-
-        // Early out if we update data channels on every run
-        if(gSamplesPerFrame == 0 || (gSampleNumber < gSamplesPerFrame)) return;
-    }
-
-
-    if (hit.getType() == HitType::Triangle) {
+    if (validHit && hit.getType() == HitType::Triangle) {
         TriangleHit triangleHit = hit.getTriangleHit();
         #if (_MODE == 0)
         classID = gScene.getMaterialID(triangleHit.instanceID);
@@ -73,17 +64,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #if (_MODE == 1)
         classID = gScene.getInternalID(triangleHit.instanceID);
         #endif
+
+        #if defined(_OUTPUT_PREVIEW) && is_valid(gPreviewColor) && is_valid(gPreviewHashColorBuffer)
+        previewColor = float4(gPreviewHashColorBuffer[classID], 1.0f);   
+        #endif  // gPreviewColor
     }
 
-#if is_valid(gHashBuffer)
-    const uint32_t  currHash = gHashBuffer[classID];
-#else
-    const uint32_t  currHash = 0;
-#endif
+    // Output preview color if needed
+    #if defined(_OUTPUT_PREVIEW) && is_valid(gPreviewColor)
+        gPreviewColor[ipos] = previewColor;    
+    #endif  // gPreviewColor
 
 // Current floas hash as uint (for comparsion accuracy)
 #if is_valid(gFloatHashBuffer)
-    const uint32_t currFloatHash = asuint(gFloatHashBuffer[classID]);
+    const uint32_t currFloatHash = validHit ? asuint(gFloatHashBuffer[classID]) : 0;
 #else
     const uint32_t currFloatHash = 0;
 #endif
@@ -94,26 +88,22 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     [[unroll]] for(uint i = 0; i < _RANK; i++) localPairs[i].init();
 
     // Check and modify sorting buffer
-    [[unroll]]
+    //[[unroll]]
     for(uint i = 0; i < _RANK; i++) {
-        CryptomattePassSortingPair pair = gSortBuffers[i][bpos];
+        CryptomattePassSortingPair bufferedPair = gSortBuffers[i][bpos];
 
-        [[branch]]
-        if ( pair.hash == currFloatHash || (pair.hash == 0 && pair.counter == 0)) {
-            pair.hash = currFloatHash;
-            pair.counter++;
-            gSortBuffers[i][bpos] = pair;
-            localPairs[i] = pair;
+        if (!validHit) {
+            localPairs[i] = bufferedPair;
+        }
+        else if (bufferedPair.hash == currFloatHash || bufferedPair.hash == 0) {
+            bufferedPair.hash = currFloatHash;
+            bufferedPair.counter += 1;
+            gSortBuffers[i][bpos] = bufferedPair;
+            localPairs[i] = bufferedPair;
             break;
         }
     }
 
-
-    //// Write available false color AOVs
-
-#if is_valid(gPreviewColor) && is_valid(gPreviewHashColorBuffer)
-    gPreviewColor[ipos] = float4(gPreviewHashColorBuffer[classID], 1.0f);    
-#endif  // gPreviewColor
 
     //// Write data layers
 

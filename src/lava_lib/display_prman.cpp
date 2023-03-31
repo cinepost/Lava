@@ -150,7 +150,9 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
     return SharedPtr((Display*)pDisplay);
 }
 
-bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
+    const std::vector<UserParameter>& userParams, const std::string& channel_prefix, const MetaData* pMetaData) {
+    
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -160,10 +162,12 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
         uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
         channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
     }
-    return openImage(image_name, width, height, channels, imageHandle, userParams);
+    return openImage(image_name, width, height, channels, imageHandle, userParams, pMetaData);
 }
 
-bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, 
+    const std::vector<UserParameter>& userParams, const MetaData* pMetaData) {
+
     if( width == 0 || height == 0) {
         LLOG_FTL << "Wrong image dimensions !!!";
         return false;

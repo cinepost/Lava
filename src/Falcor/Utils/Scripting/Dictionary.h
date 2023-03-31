@@ -105,6 +105,8 @@ class __attribute__((visibility("default"))) Dictionary {
 
 		size_t size() const { return mMap.size(); }
 
+		bool isEmpty() const { return mMap.size() == 0; }
+
 		bool keyExists(const std::string& key) const {
 			return mMap.contains(key.c_str());
 		}

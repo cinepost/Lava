@@ -248,10 +248,10 @@ bool Session::cmdRaytrace() {
 	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
 	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 
-	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
+	auto pMainOutputPlane = mpRenderer->getAOVPlane("MAIN");
 
-	if(!pMainAOVPlane) {
-		LLOG_ERR << "NO main AOV plane specified !!!";
+	if(!pMainOutputPlane) {
+		LLOG_ERR << "No main output plane exists !";
 		return false;
 	}
 
@@ -264,11 +264,9 @@ bool Session::cmdRaytrace() {
 		if(!mpDisplay) {
 			return false;
 		}
-	}
+	};
 
-	Display* pDisplay = mpDisplay.get();
-
-	if (!pDisplay->supportsLiveUpdate()) {
+	if (!mpDisplay->isInteractive()) {
 		// Non interactive display. No need to make intermediate updates
 		sampleUpdateInterval = 0;
 	}
@@ -326,20 +324,15 @@ bool Session::cmdRaytrace() {
 	// Open display image
 	uint hImage;
 
-    if(!mIPR) pDisplay->closeAll(); // close previous frame display images (if still opened) 
+    if(!mIPR) mpDisplay->closeAll(); // close previous frame display images (if still opened) 
 
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::RENDERER, "renderlabel", std::string(""));
 
-	bool clearImageBeforeRendering = false;
-	bool delayedImageFilesCreation = false;
-	for(auto& entry: aovPlanes) {
-		if(entry.second->delayedImageOpen() || entry.second->hasMetaData()) {
-			delayedImageFilesCreation = true;
-			break;
-		}
-	}
+	bool clearDisplayBeforeRendering = false;
 
+	// In case display supports metadata output and there are planes that has metadata we need to open images
+	// after the rendring process is completed as there is no mechanism to such metadata after image already opened
 	std::vector<std::function<bool()>> delayedImageOpens; // Tasks to open display images if requested to be opened later
 
 	TimeReport initDisplayTimeReport;
@@ -348,8 +341,8 @@ bool Session::cmdRaytrace() {
 		std::vector<Display::UserParm> userParams;
 	
 		// houdini display driver section
-		if((pDisplay->type() == DisplayType::HOUDINI) || (pDisplay->type() == DisplayType::MD) || (pDisplay->type() == DisplayType::IP)) {
-			clearImageBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true));
+		if((mpDisplay->type() == DisplayType::HOUDINI) || (mpDisplay->type() == DisplayType::MD) || (mpDisplay->type() == DisplayType::IP)) {
+			clearDisplayBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true));
 			const int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
 			const int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
 			const std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
@@ -375,66 +368,82 @@ bool Session::cmdRaytrace() {
 		}
 
     	// Open main image plane
-    	Falcor::ResourceFormat format = pMainAOVPlane->format();
-    	auto _openMainImage = [this, imageFileName, format, userParams, &pDisplay, &hImage]() { 	
-    		bool result = 
-    			pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams);
-        	
+    	const bool delayedMainImageFileCreation = mpDisplay->supportsMetaData();
+    	auto _openMainImage = [this, imageFileName, userParams, pMainOutputPlane, &hImage]() {
+    		bool result = false;
+    		Falcor::ResourceFormat format = pMainOutputPlane->format();
+    		if(pMainOutputPlane->hasMetaData()) {
+    			auto metaData = pMainOutputPlane->getMetaData();	
+    			result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C", &metaData);
+        	} else {
+        		result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C");
+        	}
     		if(!result) LLOG_FTL << "Unable to open main output plane image !!!";
     		return result;
     	};
 
-    	if(delayedImageFilesCreation) {
+    	if(delayedMainImageFileCreation) {
     		delayedImageOpens.push_back(_openMainImage);
     	} else {
-    		if(!_openMainImage()) {
-    			return false;
-    		}
+    		if(!_openMainImage()) return false;
     	}
     	initDisplayTimeReport.measure("Display main image open");
 	}
 
+	// Auxiliary image planes
 	for(auto& entry: aovPlanes) {
     	auto& pPlane = entry.second;
     	if(!pPlane->isEnabled()) continue;
     	
-    	std::string aovImageFileName = imageFileName;
-    	std::string channel_prefix = std::string(pPlane->outputName());
-    	Falcor::ResourceFormat format = pPlane->format();
+    	const std::string aovImageFileName = (pPlane->filename() != "") ? pPlane->filename() : imageFileName;
     	std::vector<Display::UserParm> userParams;
     	userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
+    	auto pPlaneDisplay = pPlane->hasDisplay() ? pPlane->getDisplay() : mpDisplay;
+    	const bool delayedImagFileCreation = pPlaneDisplay->supportsMetaData();
 
-    	auto _openImage = [this, aovImageFileName, format, userParams, channel_prefix, &pDisplay, &entry]() { 	
-    		bool result = 
-    			pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, entry.first, userParams, channel_prefix); 
-    		if(!result) LLOG_ERR << "Unable to open output plane image " << channel_prefix << " !!!";
+    	auto _openImage = [this, aovImageFileName, userParams, pPlaneDisplay, pPlane, &entry]() {
+    		bool result = false;
+    		const std::string channel_prefix = pPlane->outputName();
+    		const Falcor::ResourceFormat format = pPlane->format();
+    		if(pPlane->hasMetaData()) {
+    			auto metaData = pPlane->getMetaData();
+    			result = pPlaneDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, entry.first, userParams, channel_prefix, &metaData); 
+    		} else {
+    			result = pPlaneDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, entry.first, userParams, channel_prefix);
+    		}
+    		if(!result) LLOG_ERR << "Unable to open image file " << aovImageFileName << " for output plane " << channel_prefix << " !!!";
     		return result;
     	};
 
-    	if(delayedImageFilesCreation) {
+    	if(delayedImagFileCreation) {
     		delayedImageOpens.push_back(_openImage);
     	} else {
-    		if(!_openImage()) {
-    			entry.second = nullptr;
-    		}
+    		if(!_openImage()) entry.second = nullptr;
     	}
     }
     initDisplayTimeReport.measure("Display additional images open");
 
-    if(clearImageBeforeRendering && !delayedImageFilesCreation) {
-		sendImageRegionData(hImage, pDisplay, mCurrentFrameInfo, nullptr);
-		initDisplayTimeReport.measure("Display initial zero data sent in");
-	}
-
+///////
 	if( 1 == 2 ) {
 		// Simple performace test by sending zero image a bunch of times
-    	for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, pDisplay, mCurrentFrameInfo, nullptr);
+    	for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
     	initDisplayTimeReport.measure("Display initial zero data sent 100 times in");
 	}
+///////
+
+	// It there was request to fill image with zero data before the rendering starts, we have to check out configuration meets certain criteria
+	// First fo all there should be no additional displays that refers to the same image as main output plane driver (mpDisplay) that are postponed
+	// to be opened later (after frame is rendered). Aslo we skip this step if the main output driver is not interactive, e.g it writes to a filesystem
+	// as there is no benifit in doing this.
+	// TODO: mark displays that we are going to open later and check they are writing to the same image as main mpDisplay!
+	if(clearDisplayBeforeRendering && mpDisplay->isInteractive()) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
 
 
     initDisplayTimeReport.addTotal("Display init total time");
     initDisplayTimeReport.printToLog();
+
+    uint percent = 50;
+    fprintf(stdout, "ALF_PROGRESS %d%%\n", percent);
 
     // Frame rendering
     TimeReport renderingTimeReport;
@@ -450,23 +459,22 @@ bool Session::cmdRaytrace() {
     	mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
-		if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
+		if(!pMainOutputPlane->getAOVPlaneGeometry(aov_geometry)) {
 			LLOG_FTL << "No AOV !!!";
 			break;
 		}
 
 		long int sampleUpdateIterations = 0;
-		const bool doInteractiveImageUpdate = pDisplay->supportsLiveUpdate() && !delayedImageFilesCreation;
+		const bool doInteractiveImageUpdates = (sampleUpdateInterval > 0) && mpDisplay->isInteractive() && mpDisplay->opened(hImage);
 
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
-			if (doInteractiveImageUpdate && (sampleUpdateInterval > 0)) {
+			if (doInteractiveImageUpdates) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
-					
 					// Send image/region region for interactive/live image update
-					if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
+					if (!sendImageRegionData(hImage, mpDisplay.get(), frameInfo, pMainOutputPlane.get())) break;
 					sampleUpdateIterations = updateIter;
 				}
 			}
@@ -477,19 +485,19 @@ bool Session::cmdRaytrace() {
 		LLOG_INF << renderingTimeReport.printToString();
 		
 		// Open delayed images 
-		LLOG_DBG << "Open delayed images.";
+		LLOG_DBG << "Open " << delayedImageOpens.size() << " delayed images.";
 		for(size_t i = 0; i < delayedImageOpens.size(); i++) {
 			delayedImageOpens[i]();
 		}
 
-		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
+		LLOG_DBG << "Sending MAIN output " << std::string(pMainOutputPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region
-		if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane)) break;
+		if (!sendImageRegionData(hImage, mpDisplay.get(), frameInfo, pMainOutputPlane.get())) break;
 		
 		// Send secondary aov image planes data
     	for(auto& entry: aovPlanes) {
     		uint hImage = entry.first;
-	    	auto pPlane = entry.second.get();
+	    	auto& pPlane = entry.second;
 	    	if (pPlane && pPlane->isEnabled()) {
 	    		AOVPlaneGeometry aov_geometry;
 				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
@@ -497,13 +505,10 @@ bool Session::cmdRaytrace() {
 					continue;
 				}
 
-				uint32_t textureDataSize = aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel;
-				std::vector<uint8_t> textureData(textureDataSize);
-
 				LLOG_DBG << "Sending AOV " << std::string(pPlane->name()) << " data to image handle " << std::to_string(hImage);
-				
 				// Send image region
-				if (!sendImageRegionData(hImage, pDisplay, frameInfo, pPlane)) {
+				auto pDisplay = pPlane->hasDisplay() ? pPlane->getDisplay() : mpDisplay;
+				if (!sendImageRegionData(hImage, pDisplay.get(), frameInfo, pPlane.get())) {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
@@ -512,13 +517,14 @@ bool Session::cmdRaytrace() {
 	}
 
 	LLOG_DBG << "Closing display...";
-    if(!mIPR) pDisplay->closeImage(hImage);
+    if(!mIPR) mpDisplay->closeImage(hImage);
 
     // Close secondary aov images
 	for(auto& entry: aovPlanes) {
 		uint hImage = entry.first;
     	auto& pPlane = entry.second;
     	if (pPlane) {
+    		auto pDisplay = pPlane->hasDisplay() ? pPlane->getDisplay() : mpDisplay;
     		if(!mIPR) pDisplay->closeImage(hImage);
     	}
     }
@@ -980,8 +986,29 @@ bool Session::cmdEnd() {
 			{
 				scope::Plane::SharedPtr pScopePlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
 				auto pPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pScopePlane));
-				if (!pPlane) return false;
-
+				
+				// Check if output plane wants own display for image output
+				const std::string& display_filename = pPlane->filename();
+				if(display_filename != "" && !pPlane->hasDisplay()) {
+					Display::SharedPtr pDisplay;
+					if (mDisplays.find(display_filename) != mDisplays.end()) {
+						pDisplay = mDisplays[display_filename];
+					}else {
+						DisplayInfo createDisplayInfo;
+						createDisplayInfo.displayType = resolveDisplayTypeByFileName(display_filename);
+						mDisplays[display_filename] = pDisplay = createDisplay(createDisplayInfo);
+					}
+					if(!pDisplay) {
+						LLOG_FTL << "Output plane " << pPlane->name() << " needs own display but has none!";
+						return false;
+					}
+					pPlane->setDisplay(pDisplay);
+				}
+				
+				if (!pPlane) {
+					LLOG_FTL << "Error creating output plane " << pPlane->name();
+					return false;
+				}
 				translateLSDPlanePropertiesToLavaDict(pScopePlane, pPlane->getRenderPassesDict());
 			}
 			break;

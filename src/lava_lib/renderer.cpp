@@ -408,6 +408,9 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
+			pPlane->addMetaData("Leonid", std::string("vonyuchka"));
+			pPlane->addMetaDataProvider(pCryptomattePass);
+
 			if(pPlaneAccumulationPass) {
 				pPlaneAccumulationPass->setScene(pScene);
 				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());

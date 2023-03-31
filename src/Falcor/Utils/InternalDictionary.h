@@ -53,6 +53,10 @@ namespace Falcor {
 
             operator std::string() const;
 
+            std::string toJsonString() const;
+
+            const std::type_info& type() const { return mValue.type(); }
+
          private:
             std::any mValue;
         };
@@ -69,22 +73,22 @@ namespace Falcor {
         */
         static SharedPtr create() { return SharedPtr(new InternalDictionary); }
 
-        inline Value& operator[](const std::string& key) { return mContainer[key]; }
-        inline const Value& operator[](const std::string& key) const { return mContainer.at(key); }
+        Value& operator[](const std::string& key) { return mContainer[key]; }
+        const Value& operator[](const std::string& key) const { return mContainer.at(key); }
 
-        inline Container::const_iterator begin() const { return mContainer.begin(); }
-        inline Container::const_iterator end() const { return mContainer.end(); }
+        Container::const_iterator begin() const { return mContainer.begin(); }
+        Container::const_iterator end() const { return mContainer.end(); }
 
-        inline Container::iterator begin() { return mContainer.begin(); }
-        inline Container::iterator end() { return mContainer.end(); }
+        Container::iterator begin() { return mContainer.begin(); }
+        Container::iterator end() { return mContainer.end(); }
 
-        inline size_t size() const { return mContainer.size(); }
+        size_t size() const { return mContainer.size(); }
 
-        inline bool isEmpty() const { return mContainer.size() == 0; }
+        bool isEmpty() const { return mContainer.size() == 0; }
 
         /** Check if a key exists.
         */
-        inline bool keyExists(const std::string& key) const {
+        bool keyExists(const std::string& key) const {
             return mContainer.find(key) != mContainer.end();
         }
 
@@ -115,6 +119,8 @@ namespace Falcor {
         std::string toString() const {
             return "";
         }
+
+        std::string toJsonString() const;
 
     private:
         Container mContainer;

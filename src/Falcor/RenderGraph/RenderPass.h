@@ -172,7 +172,9 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Get a meta data dictionary. This can be used as EXR metadata output or as hinst to other render passes.
     */
-    virtual const Dictionary& getMetaData() { return mMetaData; } 
+    virtual const Dictionary& getMetaData() const { return mMetaData; }
+
+    virtual bool hasMetaData() { return mMetaData.size() > 0; } 
 
     /** Reset frame dependent data
     */

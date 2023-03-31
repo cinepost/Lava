@@ -210,22 +210,22 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pSubContainer = pProp->createSubContainer();
 	if(!pSubContainer) return nullptr;
 
-	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "basecolor_useTexture", bool(false), Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "basecolor_texture", std::string(), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	"basecolor_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING, "basecolor_texture", std::string(), Property::Owner::SYS);
 
-	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "baseBumpAndNormal_enable", bool(false), Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT,   "baseNormal_scale", 0.5, Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "baseNormal_texture", std::string(), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	"baseBumpAndNormal_enable", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT,  "baseNormal_scale", 0.5, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING, "baseNormal_texture", std::string(), Property::Owner::SYS);
 
-	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "metallic_useTexture", bool(false), Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "metallic_texture", std::string(), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	"metallic_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING, "metallic_texture", std::string(), Property::Owner::SYS);
 
-	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "rough_useTexture", bool(false), Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "rough_texture", std::string(), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	"rough_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING, "rough_texture", std::string(), Property::Owner::SYS);
 	
-	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "rough", 0.3, Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "ior", 1.5, Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "metallic", 0.0, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, 	"rough", 0.3, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, 	"ior", 1.5, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, 	"metallic", 0.0, Property::Owner::SYS);
 
 	return pObject;
 }
@@ -234,12 +234,13 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 
 Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
 	auto pPlane = std::make_shared<Plane>(pParent);
+	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "filename", std::string(""), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "variable", std::string("Cf+Af"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "vextype", std::string("vector4"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "channel", std::string("C"), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "sourcepass", std::string(""), Property::Owner::SYS)) return nullptr;
 	if(!pPlane->declareProperty(Style::PLANE, Type::STRING, "outputname_override", std::string(""), Property::Owner::SYS)) return nullptr;
-	if(!pPlane->declareProperty(Style::PLANE, Type::BOOL, "accumulation", bool(true), Property::Owner::SYS)) return nullptr;
+	if(!pPlane->declareProperty(Style::PLANE, Type::BOOL,   "accumulation", bool(true), Property::Owner::SYS)) return nullptr;
 
 	return pPlane;
 }

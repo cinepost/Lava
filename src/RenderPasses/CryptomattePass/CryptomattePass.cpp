@@ -48,6 +48,7 @@ namespace {
     };
 
     const std::string kOutputPreview = "outputPreview";
+    const std::string kTypeName = "typeName";
     const std::string kMode = "outputMode";
     const std::string kRank = "rank";
     const std::string kManifestFilename = "manifestFilename";
@@ -66,6 +67,7 @@ CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext
         else if (key == kOutputPreview) pThis->setOutputPreviewColor(value);
         else if (key == kManifestFilename) pThis->setManifestFilename(value);
         else if (key == kSamplesPerFrame) pThis->setSamplesPerFrame(value);
+        else if (key == kTypeName) pThis->setTypeName(value);
     }
 
     return pThis;
@@ -77,6 +79,7 @@ Dictionary CryptomattePass::getScriptingDictionary() {
 }
 
 CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+    setTypeName();
 }
 
 RenderPassReflection CryptomattePass::reflect(const CompileData& compileData) {
@@ -113,6 +116,16 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
     calculateHashTables(renderData);
     createSortingBuffers();
 
+    auto pOutputPreviewTex = renderData[kPreviewColorOutput]->asTexture();
+
+    if(mSampleNumber == 0) {
+        if(pOutputPreviewTex) pContext->clearUAV(pOutputPreviewTex->getUAV().get(), float4(0.f));
+        for (size_t i = 0; i < kMaxDataLayersCount; i++) {
+            auto pDataTex = renderData[kDataOutputNames[i]]->asTexture();
+            if(pDataTex) pContext->clearUAV(pDataTex->getUAV().get(), float4(0.f));
+        }
+    }
+
     // Prepare program and vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     if (!mpPass || mDirty) {
@@ -122,8 +135,6 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
 
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
-        
-        auto pPreviewOutputTex = renderData[kPreviewColorOutput]->asTexture();
 
         // Cryptomatte layers
         defines.add("_OUTPUT_PREVIEW", mOutputPreview ? "1" : "0");
@@ -134,7 +145,7 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         defines.add("is_valid_gFloatHashBuffer", mpFloatHashBuffer ? "1" : "0");
         defines.add("is_valid_gHashBuffer", mpHashBuffer ? "1" : "0");
         defines.add("is_valid_gPreviewHashColorBuffer", mpPreviewHashColorBuffer ? "1" : "0");
-        defines.add("is_valid_gPreviewLayer", pPreviewOutputTex ? "1" : "0");
+        defines.add("is_valid_gPreviewLayer", pOutputPreviewTex ? "1" : "0");
 
         std::array<Texture::SharedPtr, kMaxDataLayersCount> dataTextures;
 
@@ -168,16 +179,15 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         }
 
         // Bind preview output
-        mpPass["gPreviewColor"] = pPreviewOutputTex;
+        mpPass["gPreviewColor"] = pOutputPreviewTex;
     }
 
-    LLOG_WRN << "CryptomattePass samples per frame " << mSamplesPerFrame;
-
+    mSampleNumber++;
     auto cb_var = mpPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
     cb_var["gRanksCount"] = mRank;
     cb_var["gDataLayersCount"] = dataLayersCount();
-    cb_var["gSampleNumber"] = ++mSampleNumber;
+    cb_var["gSampleNumber"] = mSampleNumber;
     cb_var["gSumWeight"] = float(mSampleNumber);
     cb_var["gSamplesPerFrame"] = mSamplesPerFrame;
 
@@ -199,6 +209,17 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
     const bool outputPreview = renderData[kPreviewColorOutput]->asTexture() && mOutputPreview ? true : false;
     if (!outputPreview) mpPreviewHashColorBuffer = nullptr;
 
+    std::string typeName = getTypeName();
+    typeName.resize(7);
+    const uint32_t typeNameHash = util_murmur_hash3(typeName.c_str(), typeName.size(), 0u);
+    const std::string typeNameHashString = hash_float_to_hexidecimal(util_hash_to_float(typeNameHash));
+
+    static const std::string hashTypeName = "MurmurHash3_32";
+    static const std::string convTypeName = "uint32_to_float32";
+
+    mMetaData[(boost::format("cryptomatte/%s/name") % typeNameHashString).str()] = getTypeName();
+    mMetaData[(boost::format("cryptomatte/%s/hash") % typeNameHashString).str()] = hashTypeName;
+    mMetaData[(boost::format("cryptomatte/%s/conversion") % typeNameHashString).str()] = convTypeName;
 
     // Calculate material name hashes
     if (mMode == CryptomatteMode::Material) {
@@ -207,6 +228,7 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
         const auto& materials = pMaterialSystem->getMaterials();
 
         if (materialsCount > 0) {
+            Falcor::Dictionary manifest;
             std::vector<uint32_t> materialHashBuffer(materialsCount);
             std::vector<float> materialHashFloatBuffer(materialsCount);
 
@@ -215,10 +237,12 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 const auto& pMaterial = materials[materialID];
 
                 memset(clean_name_buffer,0,Cryptomatte::MAX_STRING_LENGTH);
-                Cryptomatte::getCleanMaterialName(pMaterial->getName().c_str(), clean_name_buffer, mMaterialNameCleaningFlags);
+                const std::string& materialName = pMaterial->getName();
+                Cryptomatte::getCleanMaterialName(materialName.c_str(), clean_name_buffer, mMaterialNameCleaningFlags);
 
                 const uint32_t hash = util_murmur_hash3(clean_name_buffer, strlen(clean_name_buffer), gSeed);
                 const float fhash = util_hash_to_float(hash);
+                manifest[materialName] = hash_float_to_hexidecimal(fhash);
                 materialHashBuffer[materialID] = hash;
                 materialHashFloatBuffer[materialID] = fhash;
 
@@ -237,12 +261,14 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
 
             mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, materialHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashBuffer.data());
             mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
+            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = manifest.toJsonString();
         }
     } else if (mMode == CryptomatteMode::Instance) {
         // Calculate instance name hashes
         const uint32_t instancesCount = mpScene->getGeometryInstanceCount();
 
         if(instancesCount > 0) {
+            Falcor::Dictionary manifest;
             std::vector<uint32_t> instanceHashBuffer(instancesCount);
             std::vector<float> instanceHashFloatBuffer(instancesCount);
 
@@ -251,10 +277,12 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 const auto& instance = mpScene->getGeometryInstance(i);
                 
                 memset(clean_name_buffer,0,Cryptomatte::MAX_STRING_LENGTH);
-                Cryptomatte::getCleanMaterialName(mpScene->getInstanceName(instance.internalID).c_str(), clean_name_buffer, mInstanceNameCleaningFlags);
+                const std::string& instanceName = mpScene->getInstanceName(instance.internalID);
+                Cryptomatte::getCleanMaterialName(instanceName.c_str(), clean_name_buffer, mInstanceNameCleaningFlags);
 
                 const uint32_t hash = util_murmur_hash3(clean_name_buffer, strlen(clean_name_buffer), gSeed);
                 const float fhash = util_hash_to_float(hash);
+                manifest[instanceName] = hash_float_to_hexidecimal(fhash);
                 instanceHashBuffer[instance.internalID] = hash;
                 instanceHashFloatBuffer[instance.internalID] = fhash;
 
@@ -273,6 +301,7 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
 
             mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, instanceHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashBuffer.data());
             mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
+            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = manifest.toJsonString();
         }
     } else {
         mpHashBuffer = nullptr;
@@ -287,7 +316,11 @@ void CryptomattePass::createSortingBuffers() {
     mDataSortingBuffers.clear();
     mDataSortingBuffers.resize(mRank);
 
+    //SortingPair clearValue;
     std::vector<SortingPair> clearBuffer(mFrameDim.x * mFrameDim.y);
+    //std::fill (clearBuffer.begin(),clearBuffer.end(),clearValue);
+    memset(clearBuffer.data(), 0, clearBuffer.size() * sizeof(SortingPair));
+
     for(size_t i = 0; i < mDataSortingBuffers.size(); ++i) {
         mDataSortingBuffers[i] = 
             Buffer::createStructured(mpDevice, sizeof(SortingPair), clearBuffer.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, clearBuffer.data());
@@ -315,6 +348,18 @@ void CryptomattePass::setOutputPreviewColor(bool value) {
 void CryptomattePass::setManifestFilename(const std::string& name) {
     if(mManifestFilename == name) return;
     mManifestFilename = name;
+    mDirty = true;
+}
+
+void CryptomattePass::setTypeName(const std::string& type_name) {
+    std::string _name = type_name;
+    if(_name == "") {
+        if(mMode == CryptomatteMode::Material) _name = "CryptoMaterial";
+        else if(mMode == CryptomatteMode::Instance) _name = "CryptoObject";
+        else _name = "CryptoAsset";
+    }
+    if(mTypeName == _name) return;
+    mTypeName = _name;
     mDirty = true;
 }
 

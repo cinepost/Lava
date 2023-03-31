@@ -187,7 +187,7 @@ Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_patte
 }
 
 AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
-	AOVPlaneInfo aovInfo;
+	AOVPlaneInfo aovCreateInfo;
 
 	std::string channel_name = pPlane->getPropertyValue(ast::Style::PLANE, "channel", std::string());
 	if(channel_name.size() == 0) {
@@ -199,6 +199,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 		LLOG_ERR << "No plane variable specified for plane !!!";
 	}
 
+	const std::string filename = pPlane->getPropertyValue(ast::Style::PLANE, "filename", std::string(""));
 	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
 	const std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 	const std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
@@ -206,19 +207,18 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	const std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputname_override", std::string(""));
 	const Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
 	const bool enable_accumulation = pPlane->getPropertyValue(ast::Style::PLANE, "accumulation", bool(true));
-	const bool delay_imageopen = pPlane->getPropertyValue(ast::Style::PLANE, "delayed", bool(false));
 
-	aovInfo.name = AOVName(channel_name);
-	aovInfo.outputOverrideName = output_name_override;
-	aovInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
-	aovInfo.variableName = output_variable_name;
-	aovInfo.pfilterTypeName = pixel_filter_name;
-	aovInfo.pfilterSize = to_uint2(pixel_filter_size);
-	aovInfo.sourcePassName = source_pass_name;
-	aovInfo.delayedImageOpen = delay_imageopen;
-	aovInfo.enableAccumulation = enable_accumulation;
+	aovCreateInfo.name = AOVName(channel_name);
+	aovCreateInfo.outputOverrideName = output_name_override;
+	aovCreateInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
+	aovCreateInfo.variableName = output_variable_name;
+	aovCreateInfo.pfilterTypeName = pixel_filter_name;
+	aovCreateInfo.pfilterSize = to_uint2(pixel_filter_size);
+	aovCreateInfo.sourcePassName = source_pass_name;
+	aovCreateInfo.enableAccumulation = enable_accumulation;
+	aovCreateInfo.filenameOverride = filename;
 
-	return aovInfo;
+	return aovCreateInfo;
 }
 
 Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {

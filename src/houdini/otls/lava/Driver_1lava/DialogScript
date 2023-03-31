@@ -1907,6 +1907,25 @@
                     disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
                     parmtag { "script_callback_language" "python" }
                 }
+
+                parm {
+                    name    "lv_crypto_material_filenameenable"
+                    type    toggle
+                    nolabel
+                    joinnext
+                    default { 0 }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_filename"
+                    label   "Different File"
+                    type    string
+                    default { "$HIP/CryptoMaterial.exr" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass} {lv_crypto_material_filenameenable != 1}"
+                    parmtag { "script_callback_language" "python" }
+                }
             }
 
             groupsimple {
@@ -1947,6 +1966,25 @@
                     type    string
                     default { "" }
                     disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_filenameenable"
+                    type    toggle
+                    nolabel
+                    joinnext
+                    default { 0 }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_filename"
+                    label   "Different File"
+                    type    string
+                    default { "$HIP/CryptoObject.exr" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass lv_crypto_instance_filenameenable != 1}"
                     parmtag { "script_callback_language" "python" }
                 }
             }
