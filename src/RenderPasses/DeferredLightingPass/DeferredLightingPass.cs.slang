@@ -65,6 +65,8 @@ cbuffer PerFrameCB {
   uint              gRayReflectLimit = 0;
   uint              gRayRefractLimit = 0;
   float             gRayBias = 0.0001;
+  float             gRayContribThresh = 0.1;
+  uint              gRussRouletteLevel = 2;
   uint2             gFrameDim;
   uint              gSamplesPerFrame;
 
@@ -158,10 +160,9 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 
     float3 surfaceColor = float3(0.0);
 
-    const float lumaThreshold = 0.1f;
-    const float lumaWeight = LUMA_CCIR601(sampleWeight) / lumaThreshold;
-    const float rrThreshold = rnd.x * ((float)rayLevel / (float) maxRayLevel);
-    if(rayLevel > 0 && lumaWeight < rrThreshold) {
+    const float lumaWeight = LUMA_CCIR601(sampleWeight) / gRayContribThresh;
+    const float rrThreshold = rnd.x;// * ((float)rayLevel / (float)min(1, maxRayLevel));  // range should be [0, 1]
+    if(rayLevel >= gRussRouletteLevel && lumaWeight < rrThreshold) {
         sampleWeight = float3(0.f);
         return surfaceColor;
     }

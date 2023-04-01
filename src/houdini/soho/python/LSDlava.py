@@ -174,6 +174,8 @@ def initializeFeatures(settings):
     Image("image", "diffuselimit", "int", "lv_diffuse_limit")
     Image("image", "reflectlimit", "int", "lv_reflect_limit")
     Image("image", "refractlimit", "int", "lv_refract_limit")
+    Image("image", "rrouletlevel", "int", "lv_russianroulette_level")
+    Image("image", "raythreshold", "float", "lv_ray_contribution_threshold")
 
     Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
     Image("image", "OpenDenoisePass.useAlbedo", "bool", "lv_denoise_use_albedo")

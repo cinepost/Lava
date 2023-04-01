@@ -1418,6 +1418,16 @@
                 label   "Experimental"
 
                 parm {
+                    name    "lv_diffuse_limit"
+                    label   "Diffuse Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_reflect_limit"
                     label   "Reflect Limit"
                     type    int
@@ -1438,11 +1448,23 @@
                 }
 
                 parm {
-                    name    "lv_diffuse_limit"
-                    label   "Diffuse Limit"
+                    name    "lv_russianroulette_level"
+                    label   "Russian Roulette Cutoff Depth"
                     type    int
-                    default { "0" }
-                    range   { 0 5 }
+                    help    "Ray level at which russian roulette path termination starts."
+                    default { "2" }
+                    range   { 0 10 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_ray_contribution_threshold"
+                    label   "Ray Contribution Threshold"
+                    type    float
+                    help    "Minimum Ray Contribution Weight. Works with russian roulette path termination."
+                    default { "0.1" }
+                    range   { 0! 1! }
                     disablewhen "{ lv_enable_rt == 0 }"
                     parmtag { "script_callback_language" "python" }
                 }

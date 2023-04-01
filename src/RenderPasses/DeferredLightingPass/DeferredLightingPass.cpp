@@ -73,6 +73,8 @@ namespace {
     const std::string kRayRefractLimit = "rayRefractLimit";
     const std::string kRayDiffuseLimit = "rayDiffuseLimit";
     const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
+    const std::string kRussianRouletteLevel = "russRoulleteLevel";
+    const std::string kRayContributionThreshold = "rayContribThreshold";
 }
 
 DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -89,6 +91,8 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
         else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
+        else if (key == kRussianRouletteLevel) pThis->setRussRoulleteLevel((uint)value);
+        else if (key == kRayContributionThreshold) pThis->setRayContribThreshold(value);
     }
 
     return pThis;
@@ -221,6 +225,8 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gRayReflectLimit"] = mRayReflectLimit;
     cb_var["gRayRefractLimit"] = mRayRefractLimit;
     cb_var["gRayBias"] = mRayBias;
+    cb_var["gRayContribThresh"] = mRayContribThreshold;
+    cb_var["gRussRouletteLevel"] = mRussRouletteLevel;
     
     if(shadingRateInShader) {
         mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
@@ -325,4 +331,15 @@ DeferredLightingPass& DeferredLightingPass::setSuperSampling(bool enable) {
     mEnableSuperSampling = enable;
     mDirty = true;
     return *this;
+}
+
+void DeferredLightingPass::setRayContribThreshold(float value) {
+    float _value = std::min(1.f, std::max(0.f, value));
+    if(mRayContribThreshold == _value) return;
+    mRayContribThreshold = _value;
+}
+
+void DeferredLightingPass::setRussRoulleteLevel(uint value) {
+    if(mRussRouletteLevel == value) return;
+    mRussRouletteLevel = value;
 }

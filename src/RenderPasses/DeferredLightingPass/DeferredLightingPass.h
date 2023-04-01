@@ -76,6 +76,9 @@ class DeferredLightingPass : public RenderPass {
 		DeferredLightingPass& setRayRefractLimit(int limit);
 		DeferredLightingPass& setRayDiffuseLimit(int limit);
 
+		void setRayContribThreshold(float value = 0.1f);
+    void setRussRoulleteLevel(uint value = 2u);
+
 	private:
 		DeferredLightingPass(Device::SharedPtr pDevice);
 		
@@ -95,6 +98,9 @@ class DeferredLightingPass : public RenderPass {
 		uint 				mRayReflectLimit = 0;
 		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
+
+		float 			mRayContribThreshold = 0.1f;
+		uint        mRussRouletteLevel = 2u;
 
 		Sampler::SharedPtr                  mpNoiseSampler;
 		Texture::SharedPtr                  mpBlueNoiseTexture;
