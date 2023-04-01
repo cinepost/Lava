@@ -28,6 +28,11 @@ import DeferredLightingAOV;
 #define _USE_MULTIPLE_IMPORTANCE_SAMPLING
 #define _CACHE_NEXT_RAY
 
+#define LUMA_REC709(f3color) dot(f3color, float3(0.2126f, 0.7152f, 0.0722f))
+#define LUMA_CCIR601(f3color) dot(f3color, float3(0.299f, 0.587f, 0.114f))
+
+#define GREY(f3color) (LUMA_REC709(f3color) + 0.5f)
+
 // Extra input channels
 Texture2D<float> gDepth;
 Texture2D<PackedHitInfo> gVbuffer;
@@ -149,10 +154,18 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
     }
 }
 
-float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, TriangleHit triangleHit, ShadingData sd, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, uint maxRayLevel){
+float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, TriangleHit triangleHit, ShadingData sd, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, const uint maxRayLevel){
 
     float3 surfaceColor = float3(0.0);
-    
+
+    const float lumaThreshold = 0.1f;
+    const float lumaWeight = LUMA_CCIR601(sampleWeight) / lumaThreshold;
+    const float rrThreshold = rnd.x * ((float)rayLevel / (float) maxRayLevel);
+    if(rayLevel > 0 && lumaWeight < rrThreshold) {
+        sampleWeight = float3(0.f);
+        return surfaceColor;
+    }
+
     ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
 
     float3 rayOrigin = sd.posW;
@@ -556,7 +569,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #if is_valid(gOutFresnel)
     {
         aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.N));
-        //aov_data.fresnel = evalFresnelDielectric(primaryShadingData.IoR, dot(primaryShadingData.N, -rayDir));
     }
 #endif
 

@@ -408,8 +408,10 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
-			pPlane->addMetaData("Leonid", std::string("vonyuchka"));
-			pPlane->addMetaDataProvider(pCryptomattePass);
+			auto pMetaDataTargetPlane = (pPlane->filename() != "") ? pPlane : pMainAOV;
+
+			pMetaDataTargetPlane->addMetaData("Leonid", std::string("vonyuchka ;)"));
+			pMetaDataTargetPlane->addMetaDataProvider(pCryptomattePass);
 
 			if(pPlaneAccumulationPass) {
 				pPlaneAccumulationPass->setScene(pScene);

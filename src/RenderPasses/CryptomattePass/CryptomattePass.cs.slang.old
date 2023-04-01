@@ -84,22 +84,23 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const uint bpos = gFrameDim.x * ipos.y + ipos.x;
 
-    const bool finalRound = gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber);
     CryptomattePassSortingPair localPairs[_RANK];
     [[unroll]] for(uint i = 0; i < _RANK; i++) localPairs[i].init();
 
-    bool hashFound = false;
     // Check and modify sorting buffer
     //[[unroll]]
     for(uint i = 0; i < _RANK; i++) {
-        CryptomattePassSortingPair bufferedPair = localPairs[i] = gSortBuffers[i][bpos];
+        CryptomattePassSortingPair bufferedPair = gSortBuffers[i][bpos];
 
-        if (!hashFound && validHit && (bufferedPair.hash == currFloatHash || bufferedPair.hash == 0)) {
+        if (!validHit) {
+            localPairs[i] = bufferedPair;
+        }
+        else if (bufferedPair.hash == currFloatHash || bufferedPair.hash == 0) {
             bufferedPair.hash = currFloatHash;
             bufferedPair.counter += 1;
-            gSortBuffers[i][bpos] = localPairs[i] = bufferedPair;
-            hashFound = true;
-            if(!finalRound) break; // We don't break on final round so all sorted pairs are loaded to localPairs buffer. If not it's ok to stop here and save some loading ops
+            gSortBuffers[i][bpos] = bufferedPair;
+            localPairs[i] = bufferedPair;
+            break;
         }
     }
 

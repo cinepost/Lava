@@ -145,6 +145,8 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
+
+    const bool shadingRateInShader = true;
     
     // Prepare program and vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
@@ -164,7 +166,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         }
 
         // Sampling / Shading
-        if (mShadingRate > 1) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
+        if (mShadingRate > 1 && shadingRateInShader) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
         if (mUseSTBN) defines.add("_USE_STBN_SAMPLING", "1");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         
@@ -220,7 +222,14 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gRayRefractLimit"] = mRayRefractLimit;
     cb_var["gRayBias"] = mRayBias;
     
-    mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    if(shadingRateInShader) {
+        mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    } else {
+        for(uint32_t i; i < mShadingRate; ++i){
+            mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+            cb_var["gSampleNumber"] = mSampleNumber++;
+        }
+    }
 }
 
 DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {
