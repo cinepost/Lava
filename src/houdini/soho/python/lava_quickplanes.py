@@ -30,14 +30,11 @@ __quickplanes = {
 
     "instance_id":      QuickPlane("INSTANCE_ID",              "int",           "uint32",     False,      {}),
 
-#    "crypto_mat":       QuickPlane("CRYPTOMATTE_MAT",        "vector3",       "float16",    False,      {}),
-
-#    "crypto_obj":       QuickPlane("CRYPTOMATTE_OBJ",        "vector3",       "float16",    False,      {}),
-
     # ipr/diagnostics
 
     "op_id":            QuickPlane("Op_Id",                    "float",         "float32",    False,      {}),
     "prim_id":          QuickPlane("Prim_Id",                  "float",         "float32",    False,      {}),
+    "variance":         QuickPlane("VARIANCE",                 "float",         "float16",    False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -52,6 +49,7 @@ __toggleplanedict = {
     'lv_quickplane_object_id':              ['object_id'],
     'lv_quickplane_material_id':            ['material_id'],
     'lv_quickplane_instance_id':            ['instance_id'],
+    'lv_quickplane_variance':               ['variance'],
 
     # ipr/diagnistics
     'lv_quickplane_op_id':                  ['op_id'],

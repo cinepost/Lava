@@ -1073,13 +1073,11 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+            }
 
-                parm {
-                    name    "sepparm4"
-                    label   "Separator"
-                    type    separator
-                    default { "" }
-                }
+            groupcollapsible {
+                name "output6_1_2"
+                label "Diagnostic Variables"
 
                 parm {
                     name    "lv_quickplane_op_id"
@@ -1123,10 +1121,30 @@
                     parmtag { "script_callback_language" "python" }
                 }
 
+                parm {
+                    name    "lv_quickplane_variance"
+                    label   "Variance"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_variance"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_variance == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
             }
 
             groupcollapsible {
-                name "output6_1_2"
+                name "output6_1_3"
                 label "Render Passes"
 
                 parm {

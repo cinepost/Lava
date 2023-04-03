@@ -82,6 +82,8 @@ class DeferredLightingPass : public RenderPass {
 	private:
 		DeferredLightingPass(Device::SharedPtr pDevice);
 		
+		void createBuffers(RenderContext* pContext, const RenderData& renderData);
+
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpLightingPass;
 
@@ -99,6 +101,8 @@ class DeferredLightingPass : public RenderPass {
 		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
 
+		bool        mUseVariance = true;
+
 		float 			mRayContribThreshold = 0.1f;
 		uint        mRussRouletteLevel = 2u;
 
@@ -107,6 +111,8 @@ class DeferredLightingPass : public RenderPass {
 		CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
 		SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
 		
+		Texture::SharedPtr                  mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
+
 		EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
 		EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 

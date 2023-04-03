@@ -527,6 +527,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::VARIANCE:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						pAccPass->enableAccumulation(false);
+						mpRenderGraph->addEdge("ShadingPass.variance", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}
