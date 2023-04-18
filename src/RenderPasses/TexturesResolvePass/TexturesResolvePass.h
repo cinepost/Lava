@@ -70,7 +70,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		TexturesResolvePass& 	setRayReflectLimit(int limit);
 		TexturesResolvePass& 	setRayRefractLimit(int limit);
 		TexturesResolvePass&  setRayDiffuseLimit(int limit);
-
+		
 	private:
 		TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict);

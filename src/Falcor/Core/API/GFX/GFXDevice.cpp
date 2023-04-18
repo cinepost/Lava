@@ -334,14 +334,18 @@ namespace Falcor {
 		if (pDevice->hasFeature("rasterizer-ordered-views")) {
 			result |= Device::SupportedFeatures::RasterizerOrderedViews;
 		}
-
 		if (pDevice->hasFeature("programmable-sample-positions-2")) {
 			result |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
 		}
-		else if (pDevice->hasFeature("programmable-sample-positions-1")) {
+		if (pDevice->hasFeature("programmable-sample-positions-1")) {
 			result |= Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly;
 		}
-
+		if (pDevice->hasFeature("atomic-int64")) {
+			result |= Device::SupportedFeatures::AtomicInt64;
+		}
+		if (pDevice->hasFeature("atomic-float")) {
+			result |= Device::SupportedFeatures::AtomicFloat;
+		}
 		if (pDevice->hasFeature("barycentrics")) {
 			result |= Device::SupportedFeatures::Barycentrics;
 		}

@@ -197,7 +197,7 @@ namespace Falcor
         auto err = [&](const std::string& msg) {
             std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
 
-            s += "base mipCount " + to_string(getMipCount()) + " newField mipCount " + to_string(other.getMipCount());
+            s += "base mipCount " + to_string(getMipCount()) + " newField mipCount " + to_string(other.getMipCount()) + "\n";
 
             throw std::runtime_error((s + msg).c_str());
         };

@@ -1038,13 +1038,15 @@ bool Program::link() const {
 			return true;
 		}
 
-#ifndef _DEPLOY_BUILD
+#ifdef _DEBUG
 		char choice;
 		std::cout << "Would you like to try again ? (Y/N)" << std::endl;
 		std::cin >> choice;
 		if ( choice =='N' || choice =='n' ){
 			break;
 		}
+#else
+		break;
 #endif
 		
 	}

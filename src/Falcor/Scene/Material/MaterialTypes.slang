@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,12 +35,12 @@ BEGIN_NAMESPACE_FALCOR
 // TODO: Specify the backing type when Slang issue has been resolved
 enum class MaterialType // : uint32_t
 {
+    Unknown,    ///< Unknown material type, e.g. type is not yet registered.
+
     Standard,
     Cloth,
     Hair,
-    MERL,
-
-    Count // Must be last
+    BuiltinCount       // Must be last
 };
 
 /** Alpha mode. This specifies how alpha testing should be done.
@@ -49,8 +49,7 @@ enum class AlphaMode
 {
     Opaque,     ///< No alpha test.
     Mask,       ///< Alpha mask.
-
-    Count // Must be last
+    Count       // Must be last
 };
 
 /** Shading models supported by the standard material.
@@ -59,7 +58,6 @@ enum class ShadingModel
 {
     MetalRough,
     SpecGloss,
-
     Count // Must be last
 };
 
@@ -70,8 +68,7 @@ enum class NormalMapType
     None,       ///< Normal map is not used.
     RGB,        ///< Normal encoded in RGB channels in [0,1].
     RG,         ///< Tangent space encoding in RG channels in [0,1].
-
-    Count // Must be last
+    Count       // Must be last
 };
 
 END_NAMESPACE_FALCOR

@@ -187,7 +187,6 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
     mpFence = GpuFence::create(mpDevice);
     mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
-    mSceneData.pCryptomatteSystem = CryptomatteSystem::create(mpDevice);
 };
 
 SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags) {

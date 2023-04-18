@@ -19,14 +19,16 @@
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
-#include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
+#include "RenderPasses/DebugShadingPass/DebugShadingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
 #include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
 #include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
 #include "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.h"
+#include "RenderPasses/PathTracer/PathTracer.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferSW.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -232,13 +234,99 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
-	// Virtual textures resolve render graph
+	// Main render graph
+	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
+	
+	// Depth pass
+	Falcor::Dictionary depthPassDictionary(mRenderPassesDict);
+	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
+
+	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
+	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
+	mpDepthPass->setScene(pRenderContext, pScene);
+	mpDepthPass->setCullMode(cullMode);
+	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
+
+	// Lighting (shading) pass
+	Falcor::Dictionary lightingPassDictionary(mRenderPassesDict);
+
+	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
+
+
+	const std::string shadingPassType = mRendererConfDict.getValue("shadingpasstype", std::string("deferred"));
+
+	if (shadingPassType == std::string("pathtracer")) {
+
+		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
+		pPathTracerPass->setScene(pRenderContext, pScene);
+		//pPathTracerPass->setColorFormat(ResourceFormat::RGBA16Float);
+		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
+
+  } else if (shadingPassType == std::string("deferred")) {
+
+		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+		pDeferredLightingPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
+
+	} else if (shadingPassType == std::string("debug")) {
+
+		auto pDebugShadingPass = DebugShadingPass::create(pRenderContext, {});
+		pDebugShadingPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
+
+	} else {
+		LLOG_FTL << "Unsupported shading pass type \"" << shadingPassType << "\" requested!!!";
+		mpRenderGraph = nullptr;
+		return;
+	}
+
+
+	// VBuffer
+	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDict);
+	
+	static const std::string kPrimaryRayGenTypeKey = "primaryraygentype";
+	const std::string primaryRaygenType = mRendererConfDict.getValue<std::string>(kPrimaryRayGenTypeKey);
+	LLOG_INF << "Primary ray generation type set to \"" << primaryRaygenType << "\"";
+
+	if( primaryRaygenType == std::string("compute")) {
+
+		// Compute raytraced (rayquery) vbuffer generator
+		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else if ( primaryRaygenType == std::string("hwraster")) {
+
+		// Hardware rasterizer vbuffer generator
+		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else if ( primaryRaygenType == std::string("swraster")) {
+
+		// Compute shader rasterizer vbuffer generator
+		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else {
+
+		LLOG_FTL << "Unsupported primary ray (vbuffer) generator type \"" << primaryRaygenType << "\" requested!!!";
+		mpRenderGraph = nullptr;
+		return;
+
+	}
+
+		// Virtual textures resolve render graph
 	if(pScene->materialSystem()->hasSparseTextures()) {
 		auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
 		mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
 		// Depth pre-pass
-		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDictionary);
+		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDict);
 		depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
 
 		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
@@ -261,68 +349,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpTexturesResolvePass = nullptr;
 	}
 
-	// Main render graph
-	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
-	
-	// Depth pass
-	Falcor::Dictionary depthPassDictionary(mRenderPassesDictionary);
-	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
-
-	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
-	mpDepthPass->setScene(pRenderContext, pScene);
-	mpDepthPass->setCullMode(cullMode);
-	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-
-	// Forward lighting
-	Falcor::Dictionary lightingPassDictionary(mRenderPassesDictionary);
-
-	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
-
-#ifdef USE_FORWARD_LIGHTING_PASS
-
-	auto pForwardLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
-	pForwardLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
-	pForwardLightingPass->setScene(pRenderContext, pScene);
-	pForwardLightingPass->setColorFormat(ResourceFormat::RGBA16Float);
-
-	mpRenderGraph->addPass(pForwardLightingPass, "ShadingPass");
-
-#else
-
-	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-	//auto pDeferredLightingPass = DeferredLightingCachedPass::create(pRenderContext, lightingPassDictionary);
-	pDeferredLightingPass->setScene(pRenderContext, pScene);
-	
-	mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
-
-#endif
-
-
-	// VBuffer
-	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDictionary);
-	
-	const std::string primaryRaygenType = mRenderPassesDictionary.getValue("primaryraygen", std::string("raster"));
-	LLOG_INF << "Primary ray generation type set to \"" << primaryRaygenType << "\"";
-
-	if( primaryRaygenType == std::string("compute")) {
-		// Compute ray generator
-		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
-		pVBufferPass->setCullMode(cullMode);
-		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
-	} else {
-		// Rasterizer ray generator
-		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
-		pVBufferPass->setCullMode(cullMode);
-		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
-	}
-
-	//mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
-
 	// RTXDIPass
-	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
+	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDict);
 	//auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
 	//pRTXDIPass->setScene(pRenderContext, pScene);
 	//mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
@@ -553,25 +581,25 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Once rendering graph compiled we can create additional AOV processing (tonemapping, denoising, etc.) if required
 
 	// MAIN (Beauty) pass image processing
-	if(mRenderPassesDictionary.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
+	if(mRenderPassesDict.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
 		Falcor::Dictionary lightingPassDictionary({});
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.operator"))
-			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDictionary["MAIN.ToneMappingPass.operator"]));
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.operator"))
+			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.filmSpeed"))
-			lightingPassDictionary["filmSpeed"] = mRenderPassesDictionary["MAIN.ToneMappingPass.filmSpeed"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.filmSpeed"))
+			lightingPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.exposureValue"))
-			lightingPassDictionary["exposureValue"] = mRenderPassesDictionary["MAIN.ToneMappingPass.exposureValue"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.exposureValue"))
+			lightingPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.autoExposure"))
-			lightingPassDictionary["autoExposure"] = mRenderPassesDictionary["MAIN.ToneMappingPass.autoExposure"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.autoExposure"))
+			lightingPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
 	
 		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, lightingPassDictionary);
 	}
 
-	if(mRenderPassesDictionary.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
+	if(mRenderPassesDict.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
 		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
@@ -788,6 +816,10 @@ void Renderer::renderSample() {
 		// First frame sample
 		if(mpTexturesResolvePassGraph) {
 			mpTexturesResolvePassGraph->execute(pRenderContext);
+			{
+				Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
+				pOutTex->captureToFile(0, 0, "/home/max/vtex_dbg.png");
+			}
 		}
 	}
 

@@ -166,7 +166,7 @@ Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const
     }
 
     if(!pResource) {
-        LLOG_FTL << "Fatal error creating resource !!!";
+        LLOG_FTL << "Error creating resource !!!";
     }
 
     pResource->setName(resourceName);

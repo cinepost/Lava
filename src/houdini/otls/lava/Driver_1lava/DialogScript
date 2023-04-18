@@ -1280,22 +1280,25 @@
             name    "lv_primary_raygen_type"
             label   "Primary Ray Generator"
             type    string
-            default { "rasterizer" }
+            default { "hwraster" }
             menu {
-                "rasterizer"   "Rasterizer"
-                "compute"      "Compute"
+                "hwraster"     "Rasterizer_HW"
+                "compute"      "Raytracer"
+                "swraster"     "Rasterizer_SW"
             }
             parmtag { "script_callback_language" "python" }
         }
 
         parm {
-            name    "lv_renderengine"
-            label   "Rendering Engine"
+            name    "lv_shading_pass_type"
+            label   "Shading Type"
             type    string
-            default { "hybrid" }
+            help    "This controls the type of shading pass/algorithm we are using to shade actual samples/pixels. Deferred stands for a generic shading. PathTracer is... well it's path tracer. Debug is special type shading pass for development purposes."
+            default { "deferred" }
             menu {
-                "hybrid"      "Hybrid"
-                "pathtracer"  "Path Tracer"
+                "debug"      "Debug"
+                "deferred"   "Deferred"
+                "pathtracer" "PathTracer"
             }
             parmtag { "script_callback_language" "python" }
         }

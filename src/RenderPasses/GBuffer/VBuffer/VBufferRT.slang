@@ -56,7 +56,7 @@ struct VBufferRT
     {
         if (kComputeDepthOfField)
         {
-            SampleGenerator sg = SampleGenerator.create(pixel, frameCount);
+            SampleGenerator sg = SampleGenerator(pixel, frameCount);
             return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg));
         }
         else

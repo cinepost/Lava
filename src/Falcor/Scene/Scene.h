@@ -32,15 +32,12 @@
 
 #include "Falcor/Core/Framework.h"
 
-#ifdef FALCOR_VK
-#include "Falcor/Core/API/Vulkan/FalcorVK.h"
-#endif
-
 #include "Falcor/Core/API/VAO.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 #include "Falcor/Scene/Animation/Animation.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Lights/LightProfile.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Material/Material.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
@@ -65,7 +62,6 @@
 #include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Scene/Material/MaterialSystem.h"
-#include "Falcor/Utils/Cryptomatte/CryptomatteSystem.h"
 
 #include "SDFs/SDFGrid.h"
 
@@ -165,6 +161,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         bool useAnalyticLights = true;  ///< Enable lighting from analytic lights.
         bool useEmissiveLights = true;  ///< Enable lighting from emissive lights.
         bool useGridVolumes = true;     ///< Enable rendering of heterogeneous volumes.
+
+        float diffuseAlbedoMultiplier = 1.f;    ///< Fixed multiplier applied to material diffuse albedo.
 
         bool operator==(const RenderSettings& other) const {
             return (useEnvLight == other.useEnvLight) &&
@@ -689,32 +687,36 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the material system.
     */
-    inline const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
-    inline const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
+    const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
+    const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
     /** Get a list of all materials in the scene.
     */
-    inline const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
+    const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
 
     /** Get the number of materials in the scene
     */
-    inline uint32_t getMaterialCount() const { return mpMaterialSystem->getMaterialCount(); }
+    uint32_t getMaterialCount() const { return mpMaterialSystem->getMaterialCount(); }
+
+    /** Get the number of materials of the given type.
+    */
+    uint32_t getMaterialCountByType(MaterialType type) const { return mpMaterialSystem->getMaterialCountByType(type); }
 
     /** Get a material
     */
-    inline const Material::SharedPtr& getMaterial(uint32_t materialID) const { return mpMaterialSystem->getMaterial(materialID); }
+    const Material::SharedPtr& getMaterial(uint32_t materialID) const { return mpMaterialSystem->getMaterial(materialID); }
 
     /** Get a material by name
     */
-    inline Material::SharedPtr getMaterialByName(const std::string& name) const { return mpMaterialSystem->getMaterialByName(name); }
+    Material::SharedPtr getMaterialByName(const std::string& name) const { return mpMaterialSystem->getMaterialByName(name); }
 
     /** Get a list of all grid volumes in the scene.
     */
-    inline const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mGridVolumes; }
+    const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mGridVolumes; }
 
     /** Get a grid volume.
     */
-    inline const GridVolume::SharedPtr& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
+    const GridVolume::SharedPtr& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
 
     /** Get a grid volume by name.
     */
@@ -722,7 +724,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the hit info requirements.
     */
-    inline const HitInfo& getHitInfo() const { return mHitInfo; }
+    const HitInfo& getHitInfo() const { return mHitInfo; }
 
     /** Get the scene bounds
     */
@@ -972,9 +974,9 @@ public:
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
-        
+        LightProfile::SharedPtr pLightProfile;                  ///< Global light profile.
+
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
-        CryptomatteSystem::SharedPtr    pCryptomatteSystem;     ///< Cryptomatte system. This holds material name, instance name and custom attribute hashes.
 
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
         std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
@@ -1256,6 +1258,7 @@ public:
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
+    LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.
 
     // Scene Metadata (CPU Only)
     std::vector<AABB> mMeshBBs;                                 ///< Bounding boxes for meshes (not instances) in object space.
@@ -1297,9 +1300,6 @@ public:
     };
     std::vector<Viewpoint> mViewpoints;
     uint32_t mCurrentViewpoint = 0;
-
-    // Cryptomatte
-    CryptomatteSystem::SharedPtr mpCryptomatteSystem = nullptr;
 
     // Rendering
     std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontClockwiseRS;

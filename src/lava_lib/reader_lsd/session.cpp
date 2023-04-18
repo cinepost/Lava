@@ -223,6 +223,11 @@ bool Session::cmdRaytrace() {
 	const Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
 	const bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
+	// Renderer and it's rendergraph configuration
+	auto& confDict = mpRenderer->getRendererConfDict();
+	confDict["primaryraygentype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "primaryraygentype", std::string("hwraster"));
+	confDict["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
+
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
 
@@ -231,7 +236,7 @@ bool Session::cmdRaytrace() {
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
-	passDict["primaryraygen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "primaryraygen", std::string("raster"));
+
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
 	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));

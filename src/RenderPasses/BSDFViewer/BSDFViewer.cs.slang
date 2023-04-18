@@ -31,7 +31,7 @@
 import Scene.Scene;
 import Scene.Shading;
 import Scene.TextureSampler;
-import Experimental.Scene.Material.MaterialShading;
+import Experimental.Scene.Materials.MaterialShading;
 import Experimental.Scene.Lights.EnvMap;
 import Utils.Sampling.SampleGenerator;
 import Utils.Debug.PixelDebug;

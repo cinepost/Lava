@@ -23,7 +23,6 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 #include "RenderPasses/RTXDIPass/RTXDIPass.h"
-//#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
 
 #include "aov.h"
 #include "scene_builder.h"
@@ -132,15 +131,18 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       \return Dictionary.
     */ 
 
-    inline Falcor::Dictionary& getRenderPassesDict() { mDirty = true; return mRenderPassesDictionary; };
-    inline const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
+    Falcor::Dictionary& getRenderPassesDict() { mDirty = true; return mRenderPassesDict; };
+    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDict; };
+
+    Falcor::Dictionary& getRendererConfDict() { mDirty = true; return mRendererConfDict; }
+    const Falcor::Dictionary& getRendererConfDict() const { return mRendererConfDict; };
   
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
 #endif
 
   protected:
-    inline Falcor::RenderGraph::SharedConstPtr  renderGraph() const { return mpRenderGraph; };
+    Falcor::RenderGraph::SharedConstPtr  renderGraph() const { return mpRenderGraph; };
 
   private:
  	  void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);
@@ -203,8 +205,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
 
-    Falcor::Dictionary              mRendererConfigurationDictionary;
-    Falcor::Dictionary              mRenderPassesDictionary;
+    Falcor::Dictionary              mRendererConfDict;
+    Falcor::Dictionary              mRenderPassesDict;
 
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 

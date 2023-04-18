@@ -11,7 +11,7 @@ __exported import Scene.Scene;
 __exported import Scene.Shading;
 __exported import Scene.HitInfo;
 
-import Experimental.Scene.Material.StandardMaterial;
+import Experimental.Scene.Materials.StandardMaterial;
 import Scene.Material.ShadingUtils;
 
 import Utils.Math.MathHelpers;

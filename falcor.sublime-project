@@ -6,6 +6,10 @@
       "path": "."
     }
 	],
+  "syntax_override": {
+    "\\.slang$": ["slang"],
+    "\\.slangh$": ["slang"]
+  },
 	"settings": {
 		"working_dir":".",
     

@@ -122,6 +122,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
         RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
         WaveOperations = 0x200,
+        AtomicInt64 = 0x400,
+        AtomicFloat = 0x800,
     };
 
     enum class ShaderModel : uint32_t {

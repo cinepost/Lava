@@ -32,7 +32,7 @@
 #include "FalcorExperimental.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Experimental/Scene/Material/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
+#include "Experimental/Scene/Materials/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
 #include "WhittedRayTracerTypes.slang"
 
 #include "Falcor/Core/API/Device.h"

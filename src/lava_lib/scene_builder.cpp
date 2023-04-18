@@ -29,6 +29,7 @@
 #include <thread>
 #include <cmath>
 #include <limits>
+#include <numeric>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -68,6 +69,46 @@ SceneBuilder::SharedPtr SceneBuilder::create(Falcor::Device::SharedPtr pDevice, 
 
 Falcor::Scene::SharedPtr SceneBuilder::getScene() {
     return Falcor::SceneBuilder::getScene();
+}
+
+// Simple ear-clipping triangulation
+static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions, std::vector<uint32_t>& indices, uint32_t startIdx, uint32_t edgesCount) {
+    assert(edgesCount > 2u);
+
+    uint32_t face_count = 0;
+
+    std::vector<uint32_t> _indices(edgesCount + 1);
+    std::iota(std::begin(_indices), std::end(_indices), startIdx); // Fill with startIdx, startIdx+1, ...
+    _indices.back() = startIdx; // start index at he end to close poly
+
+    while(_indices.size() > 3) {
+        std::vector<uint32_t> inner_indices;
+        auto indices_count = _indices.size();
+        bool evenEdgeCount = indices_count % 2;
+        for(uint32_t i = 0; i < (evenEdgeCount ? (indices_count - 1) : (indices_count - 2)); i+=2) {
+            uint32_t i0 = _indices[i];
+            uint32_t i1 = _indices[i+1];
+            uint32_t i2 = _indices[i+2];
+            
+            // TODO: check if outer triangle edges are concave
+            //float a = glm::dot(positions[i2] - positions[i1], positions[i0] - positions[i1]);   
+            //if(concave) inner_indices.push_back(_indices[i]) {
+            //
+            //}    
+
+            indices.push_back(i2);
+            indices.push_back(i1);
+            indices.push_back(i0);
+            inner_indices.push_back(i0);
+            face_count++;
+        }
+        if(!evenEdgeCount)inner_indices.push_back(_indices[indices_count - 2]);
+        inner_indices.push_back(_indices[0]);
+        _indices = inner_indices;
+
+    }
+
+    return face_count;
 }
 
 uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
@@ -187,7 +228,6 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     uint32_t face_count = 0;
     std::vector<uint32_t> indices;
-    std::vector<int32_t> vtx_list;
     std::vector<int32_t> prim_start_indices;
 
     for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); p_i++) {
@@ -214,7 +254,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     for( uint32_t i = 0; i < (prim_start_indices.size() - 1); i++){
                         csi = prim_start_indices[i];
                         nsi = prim_start_indices[i+1];
-                        switch(nsi-csi) { // number of face sides literally
+                        uint edgesCount = nsi-csi;
+                        switch(edgesCount) { // number of face sides literally
                             case 0:
                             case 1:
                             case 2:
@@ -226,6 +267,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 indices.push_back(csi);
                                 face_count += 1;
                                 break;
+                            /*    
                             case 4:
                                 indices.push_back(csi+2);
                                 indices.push_back(csi+1);
@@ -273,8 +315,9 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
                                 face_count += 4;
                                 break;
+                            */
                             default:
-                                LLOG_WRN << "Poly sides more than 6 unsupported for now !";
+                                face_count += tesselatePolySimple(positions, indices, csi, edgesCount);
                                 break;
                         }
                     }

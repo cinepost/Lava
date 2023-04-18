@@ -72,7 +72,7 @@ Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags
 }
 
 Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(pDevice, size, bindFlags, cpuAccess);
+	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, cpuAccess);
 	pBuffer->apiInit(pInitData != nullptr);
 	if (pInitData) pBuffer->setBlob(pInitData, 0, size);
 	return pBuffer;
@@ -161,7 +161,7 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
 		return nullptr;
 	}
 
-	SharedPtr pBuffer = std::make_shared<Buffer>(pDevice, size, bindFlags, CpuAccess::None);
+	SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, CpuAccess::None);
 	pBuffer->mpAliasedResource = pBaseResource;
 	pBuffer->mApiHandle = pBaseResource->getApiHandle();
 	pBuffer->mGpuVaOffset = offset;
@@ -171,7 +171,7 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
 Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
 	assert(handle);
-	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(pDevice, size, bindFlags, cpuAccess);
+	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, cpuAccess);
 	pBuffer->mApiHandle = handle;
 	return pBuffer;
 }

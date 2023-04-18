@@ -27,7 +27,7 @@
  **************************************************************************/
 import Scene.ShadingData;
 import Scene.Camera.Camera;
-import Experimental.Scene.Material.MaterialHelpers;
+import Experimental.Scene.Materials.MaterialHelpers;
 import Utils.Color.ColorHelpers;
 import PixelInspectorData;
 

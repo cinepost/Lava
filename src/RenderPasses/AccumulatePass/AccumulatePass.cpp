@@ -301,7 +301,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
         if(!filterPass.pPass || mDirty) {
             Program::Desc desc;
-            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterH");
+            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterV");
 
             auto defines = Program::DefineList();
 
@@ -341,6 +341,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pPass["gOutputFilteredImage"] = pFilteredImage;
         pPass["gOutputFilteredDepth"] = pFilteredDepth;
 
+        LLOG_WRN << "execute veritcal filtering";
         pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
 
@@ -387,10 +388,10 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pAccProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pAccProgram);
 
-    mDirty = false;
-
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
     mLastSampleDistanceUniform = sampleDistanceUniform;
+
+    mDirty = false;
 }
 
 void AccumulatePass::reset() { 

@@ -31,9 +31,9 @@ namespace {
 	const std::string kTexResolveData = "gTexResolveData";
 	const std::string kParameterBlockName = "gResolveData";
 
-    const std::string kRayReflectLimit = "rayReflectLimit";
-    const std::string kRayRefractLimit = "rayRefractLimit";
-    const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+  const std::string kRayReflectLimit = "rayReflectLimit";
+  const std::string kRayRefractLimit = "rayRefractLimit";
+  const std::string kRayDiffuseLimit = "rayDiffuseLimit";
 
 }  // namespace
 
@@ -75,8 +75,8 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 	mpState = GraphicsState::create(pDevice);
 
 	DepthStencilState::Desc dsDesc;
-	dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-	//dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+	//dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
 	mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 	mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
@@ -84,7 +84,7 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 
 	parseDictionary(dict);
 
- 	if (1 == 2) {
+ 	if (1 == 1) {
 		mpState->getProgram()->addDefine("_OUTPUT_DEBUG_IMAGE");
 	}
 }
@@ -163,7 +163,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	if(mDirty) {
 		uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
-        mpState->getProgram()->addDefine("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
+		mpState->getProgram()->addDefine("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
 	}
 
 	initDepth(pContext, renderData);
@@ -404,9 +404,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << std::to_string(textureID);
 		
-		// It's important to sort page ids for later fseek() & fread() calls
-		std::sort(pageIDs.begin(), pageIDs.end());
-		
 		if(mLoadPagesAsync) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
 			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
@@ -458,8 +455,8 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 
 	// Now. Let's make multiple calibration textures. This time only one particlar mip level contains non-zero data
 	size_t buff_size = mpMipCalibrationTexture->getWidth() * mpMipCalibrationTexture->getHeight();
-	std::vector<float> zero_buff(buff_size, 0.0f);
-	std::vector<float> full_buff(buff_size, 1.0f);
+	static const std::vector<float> zero_buff(buff_size, 0.0f);
+	static const std::vector<float> full_buff(buff_size, 1.0f);
 	mMipCalibrationTextures.resize(mpMipCalibrationTexture->getMipCount());
 
 	for(uint32_t i = 0; i < mpMipCalibrationTexture->getMipCount(); i++) {

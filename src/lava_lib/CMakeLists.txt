@@ -32,9 +32,8 @@ target_link_libraries(
     AmbientOcclusionPass
     EdgeDetectPass
     DepthPass
-    ForwardLightingPass
+    DebugShadingPass
     DeferredLightingPass
-    DeferredLightingCachedPass
     PathTracer
     CryptomattePass
     ToneMapperPass

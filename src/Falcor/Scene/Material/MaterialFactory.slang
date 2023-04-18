@@ -25,15 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Experimental.Scene.Material.IMaterial;
+__exported import Experimental.Scene.Materials.IMaterial;
 import Scene.Material.ShadingUtils;
 import Scene.Material.AlphaTest;
 
 // All supported materials must be imported here for createDynamicObject() to work.
-import Experimental.Scene.Material.StandardMaterial;
-import Experimental.Scene.Material.HairMaterial;
-import Experimental.Scene.Material.ClothMaterial;
-import Experimental.Scene.Material.MERLMaterial;
+import Experimental.Scene.Materials.StandardMaterial;
+import Experimental.Scene.Materials.HairMaterial;
+import Experimental.Scene.Materials.ClothMaterial;
+import Experimental.Scene.Materials.MERLMaterial;
 
 /** Extension to add shading and material factory to MaterialSystem.
     Making this an extension avoids a circular dependency on MaterialSystem.
@@ -58,19 +58,20 @@ extension MaterialSystem
         return createDynamicObject<IMaterial, MaterialDataBlob>(int(type), materialData[materialID]);
     }
 
-    /** Create a `IBSDF` instance for the given shading location.
-        This operation first creates a material instance for the shading location.
-        Then the material is queried to create the BSDF instance, in which step
+    /** Create a `IMaterialInstance` instance for the given shading location.
+        This operation first creates a material for the shading location.
+        Then the material is queried to create the material instance, in which step
         pattern generation is performed to pre-compute all material parameters.
         This may involve sampling textures, executing procedural functions, etc.
         \param[in] sd Shading data.
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
-        \return A BSDF instance.
+        \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
+        \return A material instance.
     */
-    IBSDF getBSDF<L:ITextureSampler>(const ShadingData sd, L lod)
+    IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None)
     {        
         let material = getMaterial(sd.materialID);
-        return material.setupBSDF(this, sd, lod);
+        return material.setupMaterialInstance(this, sd, lod, hints);
     }
 
     /** Prepares shading data at a hit point.
@@ -86,12 +87,12 @@ extension MaterialSystem
         ShadingData sd = {};
 
         sd.posW = v.posW;
-
         sd.uv = v.texC;
         sd.V = viewDir;
         sd.N = v.normalW;
 
         const bool validTangentSpace = computeTangentSpace(sd, v.tangentW);
+        sd.tangentW = validTangentSpace ? v.tangentW : float4(sd.T, 1.f);
 
         // Primitive data
         sd.faceN = v.faceNormalW;
@@ -119,7 +120,7 @@ extension MaterialSystem
             // Apply normal mapping only if we have a valid tangent space.
             if (validTangentSpace)
             {
-                material.modifyTangentSpace(this, v.tangentW, lod, sd);
+                material.modifyTangentSpace(this, lod, sd);
             }
 
             // Finalize the normal.

@@ -8,12 +8,10 @@ import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
-import Experimental.Scene.Lights.EnvMapLighting;
 
-import Experimental.Scene.Material.Fresnel;
-import Experimental.Scene.Material.Microfacet;
-import Experimental.Scene.Material.StandardMaterial;
-import Experimental.Scene.Material.IBxDF;
+import Experimental.Scene.Materials.Fresnel;
+import Experimental.Scene.Materials.Microfacet;
+import Experimental.Scene.Materials.StandardMaterial;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -75,8 +73,6 @@ cbuffer PerFrameCB {
 
   EnvMapSampler     gEnvMapSampler;
 };
-
-EnvMapLighting gEnvMapLighting; 
 
 SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
@@ -151,12 +147,12 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
     \return Texture sampler instance.
 */
 ITextureSampler createTextureSampler(const uint2 pixel_pos) {
-    if (is_valid(gTextureGrads)) {
-        float4 texGrads = gTextureGrads[pixel_pos];
+    #if is_valid(gTextureGrads)
+        const float4 texGrads = gTextureGrads[pixel_pos];
         return ExplicitGradientTextureSampler(texGrads.xy, texGrads.zw);
-    } else {
-        return ExplicitLodTextureSampler(0.f);
-    }
+    #else
+        return ExplicitLodTextureSampler(4.f);
+    #endif
 }
 
 float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, TriangleHit triangleHit, ShadingData sd, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, const uint maxRayLevel){
@@ -171,7 +167,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     }
 
     ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
-
+    
     float3 rayOrigin = sd.posW;
     float3 rayShadow = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
@@ -188,8 +184,9 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
-    let bsdf = gScene.materials.getBSDF(sd, _lod);
-    let bsdfProperties = bsdf.getProperties(sd);
+    // Create BSDF instance and query its properties.
+    const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod);
+    BSDFProperties bsdfProperties = mi.getProperties(sd);
 
     uint shadingLobes = (uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission;
     
@@ -211,7 +208,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     BSDFSample bsdfSample;
 
     sd.mtl.setActiveLobes(shadingLobes);
-    bool validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
+    bool validBsdfSample = mi.sample(sd, sg, bsdfSample, true);
     float3 nextRayDir = normalize(bsdfSample.wo);
 
     float3 diffuseColor  = float3(0.f);
@@ -262,30 +259,30 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING            
             [[branch ]] if (!light.isDeltaLight() && (ls.pdf > .0f)) {
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                misDiffWeight = evalMIS(1.0f, ls.pdf, 1.0f, bsdf.evalPdf(sd, ls.dir));
+                misDiffWeight = evalMIS(1.0f, ls.pdf, 1.0f, mi.evalPdf(sd, ls.dir));
                 misDiffWeight /= ls.pdf;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                misSpecWeight = evalMIS(1.0f, ls.pdf, 1.0f, bsdf.evalPdf(sd, ls.dir));
+                misSpecWeight = evalMIS(1.0f, ls.pdf, 1.0f, mi.evalPdf(sd, ls.dir));
                 misSpecWeight /= ls.pdf;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
-                misRefrWeight = evalMIS(1.0f, ls.pdf, 1.0f, bsdf.evalPdf(sd, ls.dir));
+                misRefrWeight = evalMIS(1.0f, ls.pdf, 1.0f, mi.evalPdf(sd, ls.dir));
                 misRefrWeight /= ls.pdf;
             }
 #endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
 
             [[branch ]] if ((rayLevel == 0 && light.contributesDirectDiffuseIllumination()) || (rayLevel > 0 && light.contributesIndirectDiffuseIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
+                diffuseColor += mi.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
             }
 
             [[branch ]] if ((rayLevel == 0 && light.contributesDirectSpecularIllumination()) || (rayLevel > 0 && light.contributesIndirectSpecularIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
+                specularColor += mi.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
-                specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misRefrWeight;
+                specularColor += mi.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misRefrWeight;
             }
 
             shadowColor *= shadowFactor;
@@ -312,7 +309,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 _shadingLobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission;
             }
             sd.mtl.setActiveLobes(_shadingLobes);
-            validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
+            validBsdfSample = mi.sample(sd, sg, bsdfSample, true);
             
             if((1 == 1) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
                 
@@ -342,15 +339,15 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     [branch]
                     if(bsdfSample.isLobe(LobeType::DiffuseReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                        float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
+                        float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         diffuseColor += bsdfSample.weight * ls.i * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                        float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
+                        float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         specularColor += bsdfSample.weight * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                        float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
+                        float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         specularColor += bsdfSample.weight * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
                     }
                 }
@@ -365,7 +362,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     float3 _surfaceColor = diffuseColor + specularColor;
 
     bool emissionIllumnatesObjects = false;
-    _surfaceColor += ((rayLevel == 0) || emissionIllumnatesObjects) ? bsdf.getProperties(sd).emission : float3(0.0);
+    _surfaceColor += ((rayLevel == 0) || emissionIllumnatesObjects) ? mi.getProperties(sd).emission : float3(0.0);
     _surfaceColor *= sampleWeight;
     
     float3 colorLimit = rayLevel == 0 ? (float3)gColorLimit : (float3)gIndirectColorLimit;
@@ -403,7 +400,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     } else {
         // Find next hit
 
-        if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
+        if(mi.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
             RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayQuery;
             let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE;
 
@@ -478,12 +475,19 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const uint2 ipos = dispatchThreadId.xy;
 
     // early out
-    [[branch ]] if (any(ipos >= gFrameDim)) return;
+    if (any(ipos >= gFrameDim)) return;
+
+
+    #if is_valid(gTextureGrads)
+        const float4 texGrads = gTextureGrads[ipos];
+        //gInOutColor[ipos] = texGrads;
+        //return;
+    #endif
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     AOVData aov_data = AOVData.create();
     
-    [[branch ]] if (!hit.isValid() || hit.getType() != HitType::Triangle) {
+    if (!hit.isValid() || hit.getType() != HitType::Triangle) {
         writeAOV(ipos, aov_data);        
         return;
     }
@@ -497,7 +501,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if(!calcShadingData(rayDir, hit, lod, primaryShadingData, primaryTriangleHit)) return;
 
     // Sample generator
-    SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
+    SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
 
     float2 screenUV = float2(ipos) / float2(gFrameDim); 
 
@@ -533,9 +537,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     // Spatio temporal blue noise
 #ifdef _USE_STBN_SAMPLING
-    float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((ipos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
+    const float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((ipos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
 #else
-    float4 rnd = float4(sampleNext2D(sg), sampleNext2D(sg));
+    const float4 rnd = float4(sampleNext2D(sg), sampleNext2D(sg));
 #endif
     
     float3 _sampleWeight = float3(1.0);

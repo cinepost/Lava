@@ -90,6 +90,7 @@ namespace {
     const std::string kCameras = "cameras";
     const std::string kCameraSpeed = "cameraSpeed";
     const std::string kLights = "lights";
+    const std::string kLightProfile = "lightProfile";
     const std::string kAnimated = "animated";
     const std::string kRenderSettings = "renderSettings";
     const std::string kUpdateCallback = "updateCallback";
@@ -131,11 +132,11 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mLights = std::move(sceneData.lights);
 
     mpMaterialSystem = std::move(sceneData.pMaterialSystem);
-    mpCryptomatteSystem = std::move(sceneData.pCryptomatteSystem);
     mMaterialXs = std::move(sceneData.materialxs);
     mGridVolumes = std::move(sceneData.gridVolumes);
     mGrids = std::move(sceneData.grids);
     mpEnvMap = sceneData.pEnvMap;
+    mpLightProfile = sceneData.pLightProfile;
     mSceneGraph = std::move(sceneData.sceneGraph);
     mMetadata = std::move(sceneData.metadata);
 
@@ -257,6 +258,9 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_HAS_INDEXED_VERTICES", "0");
     defines.add("SCENE_HAS_16BIT_INDICES", "0");
     defines.add("SCENE_HAS_32BIT_INDICES", "0");
+    defines.add("SCENE_USE_LIGHT_PROFILE", "0");
+
+    defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
     defines.add(MaterialSystem::getDefaultDefines());
 
@@ -272,6 +276,9 @@ Shader::DefineList Scene::getSceneDefines() const {
     defines.add("SCENE_HAS_INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
     defines.add("SCENE_HAS_16BIT_INDICES", mHas16BitIndices ? "1" : "0");
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
+    defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
+
+    defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
 
     defines.add(mHitInfo.getDefines());
     defines.add(mpMaterialSystem->getDefines());
@@ -1083,6 +1090,11 @@ void Scene::finalize() {
     mpAnimationController->animate(mpDevice->getRenderContext(), 0); // Requires Scene block to exist
     updateGeometry(true);
     updateGeometryInstances(true);
+
+    if (mpLightProfile) {
+        mpLightProfile->bake(mpDevice->getRenderContext());
+        mpLightProfile->setShaderData(mpSceneBlock[kLightProfile]);
+    }
 
     updateBounds();
     createDrawList();

@@ -269,6 +269,12 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		// TODO: Remove this helper later
 		std::shared_ptr<BasicMaterial> toBasicMaterial();
 
+		/** Size of the material instance the material produces.
+        Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.
+        Large material instances can have a singificant performance impact.
+    */
+    virtual size_t getMaterialInstanceByteSize() { return 128; }
+
 		inline Device::SharedPtr device() const { return mpDevice; }
 
 		size_t getTextureCount() const;
@@ -321,7 +327,6 @@ inline std::string to_string(MaterialType type) {
 		tostr(Standard);
 		tostr(Cloth);
 		tostr(Hair);
-		tostr(MERL);
 #undef tostr
 	default:
 		throw std::runtime_error("Invalid material type");

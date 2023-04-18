@@ -193,6 +193,7 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;
+
     float2 currentSampleOffset = float2(0.f);
     float W = 1.f; // total samples weight
 

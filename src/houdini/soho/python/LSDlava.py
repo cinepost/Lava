@@ -91,8 +91,6 @@ def initializeFeatures(settings):
     Renderer("renderer", "rayquality", "bool", "lv_rayquality")
     Renderer("renderer", "refractcomponents", "string", "lv_refractcomponents")
     Renderer("renderer", "relightingbuffer", "bool", "lv_relightingbuffer")
-    
-    Renderer("renderer", "renderengine",  "string", "lv_renderengine", skipdefault=False)
 
     Renderer("renderer", "renderinterrupt", "bool", "lv_renderinterrupt")
     Renderer("renderer", "samplecachesize", "int", "lv_samplecachesize")
@@ -118,6 +116,9 @@ def initializeFeatures(settings):
     Renderer("renderer", "verbose", "int", "lv_verbose", skipdefault=False)
     Renderer("renderer", "vexprofile", "int", "lv_vexprofile")
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
+
+    Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
+    Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
     
     # -- Image --
     Image("image", "background", "string", "lv_background")
@@ -153,8 +154,6 @@ def initializeFeatures(settings):
     Image("image", "readcheckpoint", "bool", "lv_readcheckpoint")
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
-    
-    Image("image", "primaryraygen", "string", "lv_primary_raygen_type", skipdefault=False)
 
     Image("image", "usedof", "bool", "lv_dof", skipdefault=False)
     Image("image", "samples", "int", "lv_samples", skipdefault=False)

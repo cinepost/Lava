@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,7 +38,6 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Scene.Scene;
-import Scene.ShadingData;
 __exported import Scene.Lights.LightCollection;
 import Utils.Math.MathHelpers;
 import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
@@ -77,7 +76,16 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
 
     // Evaluate emitted radiance.
     float2 uv = tri.getTexCoord(barycentrics);
-    ls.Le = gScene.getEmissive(tri.materialID, uv, gScene.materialResources[tri.materialID]);
+    ls.Le = gScene.materials.evalEmissive(tri.materialID, uv);
+
+    // DEMO21: Evaluate light profile.
+    if (Scene::kUseLightProfile)
+    {
+        if (gScene.materials.getMaterialHeader(tri.materialID).isLightProfileEnabled())
+        {
+            ls.Le *= gScene.lightProfile.eval(dot(ls.normalW, -ls.dir));
+        }
+    }
 
     // Compute probability density with respect to solid angle from the shading point.
     // The farther away the light is and the larger the angle it is at, the larger the pdf becomes. The probability goes to infinity in the limit.
