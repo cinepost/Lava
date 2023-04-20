@@ -181,9 +181,6 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         }
     }
 
-    psOut.output = float4(1.f, 0.5f, 0.f, 1.f);
-    return psOut;
-
 #ifdef _OUTPUT_DEBUG_IMAGE
     //psOut.output = grad_test;
     psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 0, 1);

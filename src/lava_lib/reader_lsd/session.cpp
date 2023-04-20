@@ -731,7 +731,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	}
 
 	if(pLight) {
-		LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
+		LLOG_DBG << "Light " << light_name << "  type " << Falcor::to_string(pLight->getData().type);
 
 		if (light_name != "") {
 			pLight->setName(light_name);

@@ -816,7 +816,8 @@ void Renderer::renderSample() {
 		// First frame sample
 		if(mpTexturesResolvePassGraph) {
 			mpTexturesResolvePassGraph->execute(pRenderContext);
-			{
+			if( 1 == 2) {
+				// internal texture debugging 
 				Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
 				pOutTex->captureToFile(0, 0, "/home/max/vtex_dbg.png");
 			}

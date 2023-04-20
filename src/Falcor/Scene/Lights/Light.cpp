@@ -64,18 +64,22 @@ void Light::setActive(bool active) {
 
 void Light::setDiffuseIntensity(const float3& intensity) {
     mData.directDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    update();
 }
 
 void Light::setSpecularIntensity(const float3& intensity) {
     mData.directSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    update();
 }
 
 void Light::setIndirectDiffuseIntensity(const float3& intensity) {
     mData.indirectDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    update();
 }
 
 void Light::setIndirectSpecularIntensity(const float3& intensity) {
     mData.indirectSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    update();
 }
 
 void Light::setShadowColor(const float3& shadowColor) {
