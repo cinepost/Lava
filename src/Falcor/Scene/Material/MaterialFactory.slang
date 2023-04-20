@@ -33,7 +33,6 @@ import Scene.Material.AlphaTest;
 import Experimental.Scene.Materials.StandardMaterial;
 import Experimental.Scene.Materials.HairMaterial;
 import Experimental.Scene.Materials.ClothMaterial;
-import Experimental.Scene.Materials.MERLMaterial;
 
 /** Extension to add shading and material factory to MaterialSystem.
     Making this an extension avoids a circular dependency on MaterialSystem.

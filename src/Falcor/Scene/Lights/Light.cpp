@@ -251,6 +251,7 @@ void PointLight::updateFromAnimation(const glm::mat4& transform) {
 
 DirectionalLight::DirectionalLight(const std::string& name) : Light(name, LightType::Directional) {
     mData.flags |= (uint32_t)LightDataFlags::DeltaDirection; 
+    update();
     mPrevData = mData;
 }
 

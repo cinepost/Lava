@@ -31,7 +31,7 @@ import Scene.Material.TextureSampler;
 __exported import Scene.SceneTypes;
 __exported import Scene.Displacement.DisplacementData;
 __exported import Scene.Material.BasicMaterialData;
-__exported import Scene.Material.HomogeneousVolumeData;
+__exported import Scene.Material.VolumeProperties;
 
 #if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT) || \
     !defined(MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT)
@@ -296,23 +296,6 @@ struct MaterialSystem
         displacementData.samplerState = materialSamplers[samplerID];
         displacementData.samplerStateMin = materialSamplers[displacementMinSamplerID];
         displacementData.samplerStateMax = materialSamplers[displacementMaxSamplerID];
-    }
-
-    /** Get the homogeneous medium properties of a material.
-        \param[in] materialID Material ID.
-        \return Returns the homogeneous volume data.
-    */
-    HomogeneousVolumeData getHomogeneousVolumeData(const uint materialID)
-    {
-        // This function fetches the volume parameters from a basic material, where these fields are readily available.
-        // Other materials are assigned default values of all zeros.
-        // TODO: Refactor volume support to handle arbitrary materials (#1313).
-        BasicMaterialData md = {};
-        if (isBasicMaterial(materialID))
-        {
-            md = getBasicMaterialData(materialID);
-        }
-        return { md.volumeAbsorption, md.volumeScattering, md.volumeAnisotropy };
     }
 };
 
