@@ -90,6 +90,44 @@ objGeoMotion = [
 ]
 
 
+def lsdTypeStringFromSohoParm(parm):
+    value = parm.Value
+    if parm.Type == 'bool':
+        return 'bool'
+
+    elif parm.Type in ['str', 'string']:
+        return 'string'
+    
+    elif parm.Type == 'float':
+        if isinstance(value, list):
+            if len(value) == 1:
+                return 'float'
+            elif all(isinstance(v, float) for v in value) and len(value) > 1 and len(value) < 5:
+                return 'vector%d' % len(value)
+            elif all(isinstance(v, float) for v in value) and (len(value) == 9 or len(value) == 16):
+                if len(value) == 9:
+                    return 'matrix3'
+                else:
+                    return 'matrix4'
+        elif isinstance(value, float):
+            return 'float'
+    
+    elif parm.Type == 'int':
+        if isinstance(value, list):
+            if len(value) == 1:
+                return 'int'
+            elif all(isinstance(v, int) for v in value) and len(value) > 1 and len(value) < 5:
+                return 'int%d' % len(value)
+            elif all(isinstance(v, float) for v in value) and (len(value) == 9 or len(value) == 16):
+                if len(value) == 9:
+                    return 'matrix3'
+                else:
+                    return 'matrix4'
+        elif isinstance(value, int):
+            return 'int'
+    
+    raise ValueError("Unsupported SohoParm type %s with value %s" % (type(parm.Value), value))
+
 def fullFilePath(file):
     path = sys.path
     for dir in path:

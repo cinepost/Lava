@@ -29,7 +29,7 @@ import Utils.Math.PackedFormats;
 __exported import Scene.HitInfo;
 __exported import Utils.Math.Ray;
 __exported import Utils.Sampling.SampleGenerator;
-__exported import Rendering.Materials.InteriorList;
+__exported import Experimental.Scene.Materials.InteriorList;
 __exported import GuideData;
 
 static const uint kMaxRejectedHits = 16; // Maximum number of rejected hits along a path. The path is terminated if the limit is reached to avoid getting stuck in pathological cases.

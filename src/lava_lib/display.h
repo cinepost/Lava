@@ -10,6 +10,7 @@
 
 //#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
+#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "prman/ndspy.h"
 
 namespace lava {
@@ -18,6 +19,7 @@ namespace lava {
 
 class LAVA_API Display {
   public:
+    using MetaData = Falcor::Dictionary;
     using UserParm = UserParameter;
     enum class DisplayType { NONE, NUL, IP, MD, HOUDINI, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type
     enum class TypeFormat { FLOAT32, FLOAT16, UNSIGNED32, SIGNED32, UNSIGNED16, SIGNED16, UNSIGNED8, SIGNED8, UNKNOWN };
@@ -42,8 +44,13 @@ class LAVA_API Display {
 
     virtual ~Display() {};
     
-    virtual bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) = 0;
-    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix = "") = 0;
+    virtual bool openImage(
+      const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, 
+      const std::vector<UserParameter>& userParams, const MetaData* pMetaData = nullptr) = 0;
+    
+    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
+      const std::vector<UserParameter>& userParams, const std::string& channel_prefix, const MetaData* pMetaData = nullptr) = 0;
+    
     virtual bool closeImage(uint imageHandle) = 0;
     virtual bool closeAll() = 0;
 
@@ -61,7 +68,8 @@ class LAVA_API Display {
     virtual bool setIntParameter(const std::string& name, const std::vector<int>& ints) = 0;
     virtual bool setFloatParameter(const std::string& name, const std::vector<float>& floats) = 0;
 
-    inline bool supportsLiveUpdate() const { return mInteractiveSupport; }
+    virtual bool supportsMetaData() const { return false; }
+    inline bool isInteractive() const { return mInteractiveSupport; }
     inline DisplayType type() const { return mDisplayType; };
 
   public:

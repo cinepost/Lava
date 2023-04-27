@@ -56,7 +56,7 @@
 namespace Falcor {
 
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
-static_assert(sizeof(GeometryInstanceData) == 32, "GeometryInstanceData size should be 32");
+static_assert(sizeof(GeometryInstanceData) % 16 == 0, "GeometryInstanceData size should be a multiple of 16");
 static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
 
 namespace {
@@ -90,6 +90,7 @@ namespace {
     const std::string kCameras = "cameras";
     const std::string kCameraSpeed = "cameraSpeed";
     const std::string kLights = "lights";
+    const std::string kLightProfile = "lightProfile";
     const std::string kAnimated = "animated";
     const std::string kRenderSettings = "renderSettings";
     const std::string kUpdateCallback = "updateCallback";
@@ -131,19 +132,32 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mLights = std::move(sceneData.lights);
 
     mpMaterialSystem = std::move(sceneData.pMaterialSystem);
-    mpCryptomatteSystem = std::move(sceneData.pCryptomatteSystem);
     mMaterialXs = std::move(sceneData.materialxs);
     mGridVolumes = std::move(sceneData.gridVolumes);
     mGrids = std::move(sceneData.grids);
     mpEnvMap = sceneData.pEnvMap;
+    mpLightProfile = sceneData.pLightProfile;
     mSceneGraph = std::move(sceneData.sceneGraph);
     mMetadata = std::move(sceneData.metadata);
 
     // Merge all geometry instance lists into one.
-    mGeometryInstanceData.reserve(sceneData.meshInstanceData.size() + sceneData.curveInstanceData.size() + sceneData.sdfGridInstances.size());
+    assert(sceneData.meshInstanceData.size() == sceneData.meshInstanceNamesData.size());
+    assert(sceneData.curveInstanceData.size() == sceneData.curveInstanceNamesData.size());
+    assert(sceneData.sdfGridInstancesData.size() == sceneData.sdfGridInstanceNamesData.size());
+    mGeometryInstanceData.reserve(sceneData.meshInstanceData.size() + sceneData.curveInstanceData.size() + sceneData.sdfGridInstancesData.size());
     mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.meshInstanceData), std::end(sceneData.meshInstanceData));
     mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.curveInstanceData), std::end(sceneData.curveInstanceData));
-    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.sdfGridInstances), std::end(sceneData.sdfGridInstances));
+    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.sdfGridInstancesData), std::end(sceneData.sdfGridInstancesData));
+
+    mGeometryInstanceNamesData.reserve(sceneData.meshInstanceNamesData.size() + sceneData.curveInstanceNamesData.size() + sceneData.sdfGridInstanceNamesData.size());
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.meshInstanceNamesData), std::end(sceneData.meshInstanceNamesData));
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.curveInstanceNamesData), std::end(sceneData.curveInstanceNamesData));
+    mGeometryInstanceNamesData.insert(std::end(mGeometryInstanceNamesData), std::begin(sceneData.sdfGridInstanceNamesData), std::end(sceneData.sdfGridInstanceNamesData));
+
+    {
+        uint32_t internalID = 0;
+        for(auto& instance: mGeometryInstanceData) instance.internalID = internalID++;
+    }
 
     mMeshDesc = std::move(sceneData.meshDesc);
     mMeshNames = std::move(sceneData.meshNames);
@@ -244,6 +258,9 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_HAS_INDEXED_VERTICES", "0");
     defines.add("SCENE_HAS_16BIT_INDICES", "0");
     defines.add("SCENE_HAS_32BIT_INDICES", "0");
+    defines.add("SCENE_USE_LIGHT_PROFILE", "0");
+
+    defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
     defines.add(MaterialSystem::getDefaultDefines());
 
@@ -259,6 +276,9 @@ Shader::DefineList Scene::getSceneDefines() const {
     defines.add("SCENE_HAS_INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
     defines.add("SCENE_HAS_16BIT_INDICES", mHas16BitIndices ? "1" : "0");
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
+    defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
+
+    defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
 
     defines.add(mHitInfo.getDefines());
     defines.add(mpMaterialSystem->getDefines());
@@ -354,35 +374,26 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     bool isIndexed = hasIndexBuffer();
 
     LLOG_TRC << "mDrawArgs size " << std::to_string(mDrawArgs.size());
-    auto _start = std::chrono::high_resolution_clock::now();
     for (const auto& draw : mDrawArgs) {
-        //LLOG_WRN << "draw count " << std::to_string(draw.count) << " with count buffer " << (draw.pCountBuffer ? "yes" : "no");
-        // Set state.
-        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
+        //auto loop_start = std::chrono::high_resolution_clock::now();
 
+        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
+        
         if (draw.ccw) {
-            if(draw.cullBackface) {
-                pState->setRasterizerState(mFrontCounterClockwiseRS[RasterizerState::CullMode::Back]);
-            } else {
-                pState->setRasterizerState(pRasterizerStateCCW);
-            }
+            if(draw.cullBackface) pState->setRasterizerState(mFrontCounterClockwiseRS[RasterizerState::CullMode::Back]);
+            else pState->setRasterizerState(pRasterizerStateCCW);
         } else {
-            if(draw.cullBackface) {
-                pState->setRasterizerState(mFrontClockwiseRS[RasterizerState::CullMode::Front]);
-            } else {
-                pState->setRasterizerState(pRasterizerStateCW);
-            }
+            if(draw.cullBackface) pState->setRasterizerState(mFrontClockwiseRS[RasterizerState::CullMode::Front]);
+            else pState->setRasterizerState(pRasterizerStateCW);
         }
+        
         // Draw the primitives.
-        if (isIndexed) {
-            //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
-            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
-        } else {
-            pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
-        }
+        if (isIndexed) pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
+        else pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+    
+        //auto loop_stop = std::chrono::high_resolution_clock::now();
+        //LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(loop_stop - loop_start).count() << " ms.";
     }
-    auto _stop = std::chrono::high_resolution_clock::now();
-    LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(_stop - _start).count() << " ms.";
 
     pState->setRasterizerState(pCurrentRS);
 
@@ -1080,6 +1091,11 @@ void Scene::finalize() {
     updateGeometry(true);
     updateGeometryInstances(true);
 
+    if (mpLightProfile) {
+        mpLightProfile->bake(mpDevice->getRenderContext());
+        mpLightProfile->setShaderData(mpSceneBlock[kLightProfile]);
+    }
+
     updateBounds();
     createDrawList();
     if (mCameras.size() == 0) {
@@ -1131,7 +1147,7 @@ void Scene::updateGeometryStats() {
     s.instancedCurveSegmentCount = 0;
     s.sdfGridCount = getSDFGridCount();
     s.sdfGridDescriptorCount = getSDFGridDescCount();
-    s.sdfGridInstancesCount = 0;
+    s.sdfGridInstancesDataCount = 0;
 
     s.customPrimitiveCount = getCustomPrimitiveCount();
 
@@ -1157,7 +1173,7 @@ void Scene::updateGeometryStats() {
                 break;
             }
             case GeometryType::SDFGrid: {
-                s.sdfGridInstancesCount++;
+                s.sdfGridInstancesDataCount++;
                 break;
             }
         }
@@ -2827,15 +2843,15 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
     // One instance per SDF grid instance.
     if (!mSDFGrids.empty()) {
-        bool sdfGridInstancesHaveUniqueBLASes = true;
+        bool sdfGridInstancesDataHaveUniqueBLASes = true;
         switch (mSDFGridConfig.implementation) {
             case SDFGrid::Type::NormalizedDenseGrid:
             case SDFGrid::Type::SparseVoxelOctree:
-                sdfGridInstancesHaveUniqueBLASes = false;
+                sdfGridInstancesDataHaveUniqueBLASes = false;
                 break;
             case SDFGrid::Type::SparseVoxelSet:
             case SDFGrid::Type::SparseBrickSet:
-                sdfGridInstancesHaveUniqueBLASes = true;
+                sdfGridInstancesDataHaveUniqueBLASes = true;
                 break;
             default:
                 assert(false);
@@ -2844,7 +2860,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         for (const GeometryInstanceData& instance : mGeometryInstanceData) {
             if (instance.getType() != GeometryType::SDFGrid) continue;
 
-            const BlasData& blasData = mBlasData[blasDataIndex + (sdfGridInstancesHaveUniqueBLASes ? instance.geometryID : 0)];
+            const BlasData& blasData = mBlasData[blasDataIndex + (sdfGridInstancesDataHaveUniqueBLASes ? instance.geometryID : 0)];
             const auto& pBlas = mBlasGroups[blasData.blasGroupIndex].pBlas;
 
             RtInstanceDesc desc = {};
@@ -2865,7 +2881,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
             instanceDescs.push_back(desc);
         }
 
-        blasDataIndex += (sdfGridInstancesHaveUniqueBLASes ? mSDFGrids.size() : 1);
+        blasDataIndex += (sdfGridInstancesDataHaveUniqueBLASes ? mSDFGrids.size() : 1);
         instanceContributionToHitGroupIndex += rayCount * (uint32_t)mSDFGridDesc.size();
     }
 

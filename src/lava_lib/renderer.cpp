@@ -19,11 +19,16 @@
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
-#include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
+#include "RenderPasses/DebugShadingPass/DebugShadingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
 #include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
 #include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
+#include "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.h"
+#include "RenderPasses/PathTracer/PathTracer.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferSW.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -123,6 +128,11 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 		return nullptr;
 	}
 
+	if(info.name != AOVBuiltinName::MAIN && !mMainAOVPlaneExist) {
+		LLOG_ERR << "Error creating AOV plane \"" << info.name << "\" without MAIN output plane!"; 
+		return nullptr;
+	}
+
 	auto pAOVPlane = AOVPlane::create(info);
 	if (!pAOVPlane) {
 		LLOG_ERR << "Error creating AOV plane \"" << pAOVPlane->name() << "\" !!!";
@@ -131,6 +141,12 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 
 	mAOVPlanes[pAOVPlane->name()] = pAOVPlane;
 	if (info.name == AOVBuiltinName::MAIN) mMainAOVPlaneExist = true; 
+
+	// Check if this output plane is the same as main place source render pass. If so then just disable it...
+	if (pAOVPlane->name() != AOVBuiltinName::MAIN) {
+		auto pMainAOV = getAOVPlane(AOVBuiltinName::MAIN);
+		if(pMainAOV->sourcePassName() == to_string(pAOVPlane->name())) pAOVPlane->setState(AOVPlane::State::Disabled);
+	}
 
 	mDirty = true;
 	return pAOVPlane;
@@ -218,13 +234,99 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
-	// Virtual textures resolve render graph
+	// Main render graph
+	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
+	
+	// Depth pass
+	Falcor::Dictionary depthPassDictionary(mRenderPassesDict);
+	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
+
+	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
+	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
+	mpDepthPass->setScene(pRenderContext, pScene);
+	mpDepthPass->setCullMode(cullMode);
+	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
+
+	// Lighting (shading) pass
+	Falcor::Dictionary lightingPassDictionary(mRenderPassesDict);
+
+	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
+
+
+	const std::string shadingPassType = mRendererConfDict.getValue("shadingpasstype", std::string("deferred"));
+
+	if (shadingPassType == std::string("pathtracer")) {
+
+		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
+		pPathTracerPass->setScene(pRenderContext, pScene);
+		//pPathTracerPass->setColorFormat(ResourceFormat::RGBA16Float);
+		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
+
+  } else if (shadingPassType == std::string("deferred")) {
+
+		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+		pDeferredLightingPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
+
+	} else if (shadingPassType == std::string("debug")) {
+
+		auto pDebugShadingPass = DebugShadingPass::create(pRenderContext, {});
+		pDebugShadingPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
+
+	} else {
+		LLOG_FTL << "Unsupported shading pass type \"" << shadingPassType << "\" requested!!!";
+		mpRenderGraph = nullptr;
+		return;
+	}
+
+
+	// VBuffer
+	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDict);
+	
+	static const std::string kPrimaryRayGenTypeKey = "primaryraygentype";
+	const std::string primaryRaygenType = mRendererConfDict.getValue<std::string>(kPrimaryRayGenTypeKey);
+	LLOG_INF << "Primary ray generation type set to \"" << primaryRaygenType << "\"";
+
+	if( primaryRaygenType == std::string("compute")) {
+
+		// Compute raytraced (rayquery) vbuffer generator
+		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else if ( primaryRaygenType == std::string("hwraster")) {
+
+		// Hardware rasterizer vbuffer generator
+		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else if ( primaryRaygenType == std::string("swraster")) {
+
+		// Compute shader rasterizer vbuffer generator
+		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setScene(pRenderContext, pScene);
+		pVBufferPass->setCullMode(cullMode);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else {
+
+		LLOG_FTL << "Unsupported primary ray (vbuffer) generator type \"" << primaryRaygenType << "\" requested!!!";
+		mpRenderGraph = nullptr;
+		return;
+
+	}
+
+		// Virtual textures resolve render graph
 	if(pScene->materialSystem()->hasSparseTextures()) {
 		auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
 		mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
 		// Depth pre-pass
-		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDictionary);
+		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDict);
 		depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
 
 		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
@@ -247,55 +349,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpTexturesResolvePass = nullptr;
 	}
 
-	// Main render graph
-	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
-	
-	// Depth pass
-	Falcor::Dictionary depthPassDictionary(mRenderPassesDictionary);
-	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
-
-	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
-	mpDepthPass->setScene(pRenderContext, pScene);
-	mpDepthPass->setCullMode(cullMode);
-	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-
-	// Forward lighting
-	Falcor::Dictionary lightingPassDictionary(mRenderPassesDictionary);
-
-	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
-
-#ifdef USE_FORWARD_LIGHTING_PASS
-
-	auto pForwardLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
-	pForwardLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
-	pForwardLightingPass->setScene(pRenderContext, pScene);
-	pForwardLightingPass->setColorFormat(ResourceFormat::RGBA16Float);
-
-	mpRenderGraph->addPass(pForwardLightingPass, "ShadingPass");
-
-#else
-
-	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-	//auto pDeferredLightingPass = DeferredLightingCachedPass::create(pRenderContext, lightingPassDictionary);
-	pDeferredLightingPass->setScene(pRenderContext, pScene);
-	
-	mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
-
-#endif
-
-
-	// VBuffer
-	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDictionary);
-	auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-	pVBufferPass->setScene(pRenderContext, pScene);
-	pVBufferPass->setCullMode(cullMode);
-
-	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
-	//mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
-
 	// RTXDIPass
-	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
+	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDict);
 	//auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
 	//pRTXDIPass->setScene(pRenderContext, pScene);
 	//mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
@@ -326,34 +381,92 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #endif
 
-	// Optional edgedetect pass
-	if(pMainAOV->sourcePassName() == "EdgeDetectPass" || hasAOVPlane(AOVBuiltinName::EDGE_DETECT_PASS)) {
-		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, {});
-		pEdgeDetectPass->setScene(pRenderContext, pScene);
-		mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
-		mpRenderGraph->addEdge("VBufferPass.depth", "EdgeDetectPass.depth");
-		mpRenderGraph->addEdge("VBufferPass.vbuffer", "EdgeDetectPass.vbuffer");
+	// Create optional render passes
+	for(const auto &entry: mAOVPlanes) {
+		const auto& pPlane = entry.second;
+		const std::string renderPassName = (pPlane->sourcePassName() == "") ? entry.first : pPlane->sourcePassName();
+		const std::string planeName = pPlane->name();
+		const std::string planeOutputName = pPlane->outputName();
+		const std::string planeOutputVariable = pPlane->outputVariableName();
+		const std::string renderPassOutputName = planeName + "." + planeOutputVariable;
+
+		auto pPlaneAccumulationPass = pPlane->accumulationPass() ? pPlane->accumulationPass() : pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+		if(!pPlaneAccumulationPass) {
+			LLOG_WRN << "Plane " << planeName << " has no accumulation pass. This might lead to an error to wrong plane rendering!";
+			continue;
+		}
+
+		// Main pass
+		if (renderPassName == to_string(AOVBuiltinName::MAIN)) {
+			continue;
+		}
+
+		// Optional edgedetect pass
+		if (renderPassName == "EdgeDetectPass") {
+			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
+			pEdgeDetectPass->setScene(pRenderContext, pScene);
+			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
+
+			if(pPlaneAccumulationPass) {
+				pPlaneAccumulationPass->setScene(pScene);
+				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
+			}
+			continue;
+		}
+
+		// Optional ambient occlusion pass
+		if (renderPassName == "AmbientOcclusionPass") {
+			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
+			pAmbientOcclusionPass->setScene(pRenderContext, pScene);
+			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
+
+			if(pPlaneAccumulationPass) {
+				pPlaneAccumulationPass->setScene(pScene);
+				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
+			}
+			continue;
+		}
+
+		// Optional cryptomatte pass
+		if (renderPassName == "CryptomattePass") {
+			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
+			pCryptomattePass->setScene(pRenderContext, pScene);
+			mpRenderGraph->addPass(pCryptomattePass, planeName);
+			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
+
+			auto pMetaDataTargetPlane = (pPlane->filename() != "") ? pPlane : pMainAOV;
+
+			pMetaDataTargetPlane->addMetaData("Leonid", std::string("vonyuchka ;)"));
+			pMetaDataTargetPlane->addMetaDataProvider(pCryptomattePass);
+
+			if(pPlaneAccumulationPass) {
+				pPlaneAccumulationPass->setScene(pScene);
+				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
+			}
+			continue;
+		}
+
+		// Optional existing pass edditional output
+		if (mpRenderGraph->doesPassExist(renderPassName)) {
+			if(pPlaneAccumulationPass) {
+				pPlaneAccumulationPass->setScene(pScene);
+				const std::string renderPassOutputName = renderPassName + "." + planeOutputVariable;
+				mpRenderGraph->addEdge(renderPassOutputName, pPlane->accumulationPassColorInputName());
+			}
+			continue;
+		}
 	}
 
-	// Optional cryptomatte pass
-	if (hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_MAT) || hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_OBJ)) {
-		auto pCryptomattePass = CryptomattePass::create(pRenderContext, {});
-		pCryptomattePass->setScene(pRenderContext, pScene);
-
-		mpRenderGraph->addPass(pCryptomattePass, "CryptomattePass");
-		mpRenderGraph->addEdge("VBufferPass.vbuffer", "CryptomattePass.vbuffer");
-	}
-
-
-	// Create MAIN (beauty) plane accumulation pass and bind with render graph output
-	auto pMainAOVAccumulationPass = pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
+	// MAIN (beauty) plane accumulation pass and bind with render graph output
+	auto pMainAOVAccumulationPass = pMainAOV->accumulationPass() ? pMainAOV->accumulationPass() : pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
 	if(pMainAOVAccumulationPass) {
 		pMainAOVAccumulationPass->setScene(pScene);
 		if(pMainAOV->sourcePassName() == "EdgeDetectPass") {
 			mpRenderGraph->addEdge("EdgeDetectPass.output", pMainAOV->accumulationPassColorInputName());	
-		} else if (pMainAOV->sourcePassName() == "OcclusionPass"){
-			assert(false);
-			LLOG_ERR << "OCCLUSION_PASS output not implemented !!!";
+		} else if (pMainAOV->sourcePassName() == "AmbientOcclusionPass"){
+			mpRenderGraph->addEdge("AmbientOcclusionPass.output", pMainAOV->accumulationPassColorInputName());
 		} else {
 			mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassColorInputName());
 		}
@@ -364,20 +477,13 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Create and bind additional AOV planes
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
-		if(!pPlane->isEnabled()) continue;
+		if(!pPlane || !pPlane->isEnabled()) continue;
+
+		auto pAccPass = pPlane->accumulationPass() ? pPlane->accumulationPass() : pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+
 		switch(pPlane->name()) {
-			case AOVBuiltinName::EDGE_DETECT_PASS:
-				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
-					if(pAccPass) {
-						pAccPass->setScene(pScene);
-						mpRenderGraph->addEdge("EdgeDetectPass.output", pPlane->accumulationPassColorInputName());
-					}
-				}
-				break;
 			case AOVBuiltinName::DEPTH:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
@@ -387,7 +493,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				break;
 			case AOVBuiltinName::POSITION:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.posW", pPlane->accumulationPassColorInputName());
@@ -396,56 +501,38 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				break;
 			case AOVBuiltinName::NORMAL:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.normals", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
 			case AOVBuiltinName::SHADOW:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.shadows", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
 			case AOVBuiltinName::ALBEDO:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
 			case AOVBuiltinName::EMISSION:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.emission", pPlane->accumulationPassColorInputName());
-					}
-				}
-				break;
-			case AOVBuiltinName::OCCLUSION:
-				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
-					if(pAccPass) {
-						pAccPass->setScene(pScene);
-						mpRenderGraph->addEdge("ShadingPass.occlusion", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
 			case AOVBuiltinName::FRESNEL:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.fresnel", pPlane->accumulationPassColorInputName());
@@ -454,41 +541,26 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				break;
 			case AOVBuiltinName::Prim_Id:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.prim_id", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
 			case AOVBuiltinName::Op_Id:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.op_id", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
-			case AOVBuiltinName::CRYPTOMATTE_MAT:
+			case AOVBuiltinName::VARIANCE:
 				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("CryptomattePass.material_color", pPlane->accumulationPassColorInputName());
-					}
-				}
-				break;
-			case AOVBuiltinName::CRYPTOMATTE_OBJ:
-				{
-					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
-					if(pAccPass) {
-						pAccPass->setScene(pScene);
-						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("CryptomattePass.object_color", pPlane->accumulationPassColorInputName());
+						pAccPass->enableAccumulation(false);
+						mpRenderGraph->addEdge("ShadingPass.variance", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
@@ -509,25 +581,25 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Once rendering graph compiled we can create additional AOV processing (tonemapping, denoising, etc.) if required
 
 	// MAIN (Beauty) pass image processing
-	if(mRenderPassesDictionary.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
+	if(mRenderPassesDict.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
 		Falcor::Dictionary lightingPassDictionary({});
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.operator"))
-			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDictionary["MAIN.ToneMappingPass.operator"]));
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.operator"))
+			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.filmSpeed"))
-			lightingPassDictionary["filmSpeed"] = mRenderPassesDictionary["MAIN.ToneMappingPass.filmSpeed"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.filmSpeed"))
+			lightingPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.exposureValue"))
-			lightingPassDictionary["exposureValue"] = mRenderPassesDictionary["MAIN.ToneMappingPass.exposureValue"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.exposureValue"))
+			lightingPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
 
-		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.autoExposure"))
-			lightingPassDictionary["autoExposure"] = mRenderPassesDictionary["MAIN.ToneMappingPass.autoExposure"];
+		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.autoExposure"))
+			lightingPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
 	
 		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, lightingPassDictionary);
 	}
 
-	if(mRenderPassesDictionary.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
+	if(mRenderPassesDict.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
 		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
@@ -722,8 +794,6 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 }
 
 void Renderer::renderSample() {
-	auto start = std::chrono::high_resolution_clock::now();
-
 	if (mDirty) {
 		prepareFrame(mCurrentFrameInfo);
 	}
@@ -746,6 +816,11 @@ void Renderer::renderSample() {
 		// First frame sample
 		if(mpTexturesResolvePassGraph) {
 			mpTexturesResolvePassGraph->execute(pRenderContext);
+			if( 1 == 2) {
+				// internal texture debugging 
+				Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
+				pOutTex->captureToFile(0, 0, "/home/max/vtex_dbg.png");
+			}
 		}
 	}
 
@@ -761,18 +836,15 @@ void Renderer::renderSample() {
 
 	mCurrentSampleNumber++;
 
-
-	auto stop = std::chrono::high_resolution_clock::now();
-	LLOG_TRC << "Sample " << mCurrentSampleNumber << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 }
 
-bool Renderer::getAOVPlaneImageData(const AOVName& name, uint8_t* pData) {
+const uint8_t* Renderer::getAOVPlaneImageData(const AOVName& name) {
 	assert(pData);
 
 	auto pAOVPlane = getAOVPlane(name);
-	if (!pAOVPlane) return false;
+	if (!pAOVPlane) return nullptr;
 
-	return pAOVPlane->getImageData(pData);
+	return pAOVPlane->getImageData();
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {

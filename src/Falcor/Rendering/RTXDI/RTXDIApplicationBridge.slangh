@@ -34,8 +34,8 @@
 */
 
 import Utils.Sampling.TinyUniformSampleGenerator;
-import Experimental.Scene.Material.Microfacet;
-import Experimental.Scene.Material.Fresnel;
+import Experimental.Scene.Materials.Microfacet;
+import Experimental.Scene.Materials.Fresnel;
 import SurfaceData;
 
 // Only sample specular lobe when BRDF sampling is enabled.

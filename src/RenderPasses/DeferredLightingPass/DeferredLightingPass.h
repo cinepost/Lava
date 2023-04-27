@@ -76,9 +76,14 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		DeferredLightingPass& setRayRefractLimit(int limit);
 		DeferredLightingPass& setRayDiffuseLimit(int limit);
 
+		void setRayContribThreshold(float value = 0.1f);
+    void setRussRoulleteLevel(uint value = 2u);
+
 	private:
 		DeferredLightingPass(Device::SharedPtr pDevice);
 		
+		void createBuffers(RenderContext* pContext, const RenderData& renderData);
+
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpLightingPass;
 
@@ -91,16 +96,23 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		float16_t3  mIndirectColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
 		bool     		mUseSTBN = false;
 		float    		mRayBias = 0.001f;
-		int      		mShadingRate = 1;
+		uint      	mShadingRate = 1;
 		uint 				mRayReflectLimit = 0;
 		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
+
+		bool        mUseVariance = true;
+
+		float 			mRayContribThreshold = 0.1f;
+		uint        mRussRouletteLevel = 2u;
 
 		Sampler::SharedPtr                  mpNoiseSampler;
 		Texture::SharedPtr                  mpBlueNoiseTexture;
 		CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
 		SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
 		
+		Texture::SharedPtr                  mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
+
 		EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
 		EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 

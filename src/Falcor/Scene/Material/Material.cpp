@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "BasicMaterial.h"
-#include "Falcor/Experimental/Scene/Material/LobeType.slang"
+#include "Falcor/Experimental/Scene/Materials/LobeType.slang"
 
 #include "MaterialSystem.h"
 #include "Material.h"
@@ -40,7 +40,7 @@ namespace {
     static_assert(sizeof(MaterialHeader) == 8);
     static_assert(sizeof(MaterialPayload) == 120);
     static_assert(sizeof(MaterialDataBlob) == 128);
-    static_assert(static_cast<uint32_t>(MaterialType::Count) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
+    static_assert(static_cast<uint32_t>(MaterialType::BuiltinCount) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
     static_assert(static_cast<uint32_t>(AlphaMode::Count) <= (1u << MaterialHeader::kAlphaModeBits), "AlphaMode bit count exceeds the maximum");
     static_assert(static_cast<uint32_t>(LobeType::All) < (1u << MaterialHeader::kLobeTypeBits), "LobeType bit count exceeds the maximum");
     static_assert(static_cast<uint32_t>(TextureHandle::Mode::Count) <= (1u << TextureHandle::kModeBits), "TextureHandle::Mode bit count exceeds the maximum");

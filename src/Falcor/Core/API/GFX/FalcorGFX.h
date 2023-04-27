@@ -102,10 +102,10 @@ inline std::string convertBlobToString(BlobType* pBlob)
 
 #define UNSUPPORTED_IN_GFX(msg_) {LLOG_WRN << msg_ << " is not supported in GFX. Ignoring call.";}
 
-#pragma comment(lib, "gfx.lib")
+//#pragma comment(lib, "gfx.lib")
 
 //TODO: (yhe) Figure out why this is still required.
-#pragma comment(lib, "comsuppw.lib")
+//#pragma comment(lib, "comsuppw.lib")
 
 namespace Falcor {
 

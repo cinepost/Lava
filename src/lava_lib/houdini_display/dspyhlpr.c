@@ -51,16 +51,13 @@ int _aiTypeClass[] = {
 
 
 PRMANAPI PtDspyError DspyFindStringInParamList(const char *string, char **result, int paramCount, const UserParameter *parameters) {
-	int i;
-
-	for (i = 0; i < paramCount; i++) {
+	for (int i = 0; i < paramCount; i++) {
 		if (!strcmp(string, parameters[i].name)) {
 		    if ('s' == parameters[i].vtype) {
 			    *result = *(char **)parameters[i].value;
 			    return PkDspyErrorNone;
 			}
   		}
-
 	}
 	return PkDspyErrorNoResource;
 }
@@ -219,7 +216,7 @@ DspyFindIntsInParamList(const char *string,
 		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    int k;
-		    RtInt j ;
+		    RtInt j = 0;
 
 		    if (parameters[i].vcount < *resultCount)
 			*resultCount = parameters[i].vcount;

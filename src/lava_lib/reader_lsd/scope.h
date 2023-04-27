@@ -98,8 +98,10 @@ class Global: public Transformable {
     const std::vector<std::shared_ptr<Segment>>&    segments() { return mSegments; };
     const std::vector<std::shared_ptr<Material>>&   materials() { return mMaterials; };
 
-  private:
+  public:
     Global():Transformable(nullptr) {};
+
+  private:
     std::vector<std::shared_ptr<Geo>>       mGeos;
     std::vector<std::shared_ptr<Plane>>     mPlanes;
     std::vector<std::shared_ptr<Object>>    mObjects;
@@ -130,7 +132,7 @@ class Geo: public ScopeBase {
 
     ika::bgeo::Bgeo::SharedPtr bgeo();
 
- private:
+ public:
     Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent), mFilePath(""), mIsInline(false) {};
 
  private:
@@ -175,7 +177,7 @@ class Node: public ScopeBase {
 
     virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
 
-  protected:
+  public:
     Node(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 
   private:
@@ -199,9 +201,10 @@ class Material: public Node {
     bool insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode);
     Falcor::MxNode::SharedPtr node(const NodeUUID& uuid);
 
-  private:
+  public:
     Material(ScopeBase::SharedPtr pParent): Node(pParent) {};
 
+  private:
     std::map<NodeUUID, Falcor::MxNode::SharedPtr> mNodesMap; // uuid to shading node map
 };
 
@@ -216,7 +219,7 @@ class Object: public Transformable {
     inline const std::string& geometryName() const { return mGeometryName; };
     inline void setGeometryName(const std::string& name) { mGeometryName = name; };
 
- private:
+ public:
     Object(ScopeBase::SharedPtr pParent): Transformable(pParent), mGeometryName() {};
 
  private:
@@ -231,7 +234,7 @@ class Plane: public ScopeBase {
 
     inline ast::Style type() const override { return ast::Style::PLANE; };
 
- private:
+ public:
     Plane(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 };
 
@@ -243,7 +246,7 @@ class Light: public Transformable {
 
     inline ast::Style type() const override { return ast::Style::LIGHT; };
 
- private:
+ public:
     Light(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
 };
 
@@ -255,7 +258,7 @@ class Segment: public ScopeBase {
 
     inline ast::Style type() const override { return ast::Style::SEGMENT; };
 
- private:
+ public:
     Segment(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 };
 

@@ -32,6 +32,8 @@
 #include <unordered_map>
 #include <any>
 
+#include "Falcor/Utils/Math/Vector.h"
+
 namespace Falcor {
 
     class InternalDictionary {
@@ -46,6 +48,14 @@ namespace Falcor {
 
             template<typename T>
             operator T() const { return std::any_cast<T>(mValue); }
+
+            operator uint() const;
+
+            operator std::string() const;
+
+            std::string toJsonString() const;
+
+            const std::type_info& type() const { return mValue.type(); }
 
          private:
             std::any mValue;
@@ -74,6 +84,8 @@ namespace Falcor {
 
         size_t size() const { return mContainer.size(); }
 
+        bool isEmpty() const { return mContainer.size() == 0; }
+
         /** Check if a key exists.
         */
         bool keyExists(const std::string& key) const {
@@ -85,7 +97,7 @@ namespace Falcor {
         template<typename T>
         T getValue(const std::string& key) {
             auto it = mContainer.find(key);
-            if (it == mContainer.end()) throw std::runtime_error(("Key '" + key + "' does not exist").c_str());
+            if (it == mContainer.end()) throw std::runtime_error(("Key '" + key + "' does not exist !").c_str());
             return it->second;
         }
 
@@ -101,9 +113,15 @@ namespace Falcor {
             return "";
         }
 
+        std::string toJsonString() const;
+
     private:
         Container mContainer;
     };
+
+inline std::string to_string(InternalDictionary::Value value) {
+    return value;
+}
 
 }  // namespace Falcor
 

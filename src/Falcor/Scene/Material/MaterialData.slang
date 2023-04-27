@@ -64,8 +64,10 @@ struct MaterialHeader
     static const uint kAlphaThresholdOffset = 0;
     static const uint kAlphaModeOffset = kAlphaThresholdOffset + kAlphaThresholdBits;
     static const uint kSamplerIDOffset = kAlphaModeOffset + kAlphaModeBits;
+    static const uint kEnableLightProfileOffset = kSamplerIDOffset + kSamplerIDBits;
+    static const uint kDeltaSpecularFlagOffset = kEnableLightProfileOffset + 1;
 
-    static const uint kTotalHeaderBitsY = kSamplerIDOffset + kSamplerIDBits;
+    static const uint kTotalHeaderBitsY = kDeltaSpecularFlagOffset + 1;
 
 
     /** Set material type.
@@ -150,6 +152,22 @@ struct MaterialHeader
     /** Get basic material flag. This flag is an optimization to allow quick type checking.
     */
     bool isBasicMaterial() CONST_FUNCTION { return packedData.x & (1u << kIsBasicMaterialFlagOffset); }
+
+    /** Set light profile enable flag. // DEMO21
+    */
+    SETTER_DECL void setEnableLightProfile(bool enableLightProfile) { packedData.y = PACK_BITS(1, kEnableLightProfileOffset, packedData.y, enableLightProfile ? 1 : 0); }
+
+    /** Get light profile enable flag.
+    */
+    bool isLightProfileEnabled() CONST_FUNCTION { return packedData.y & (1u << kEnableLightProfileOffset); }
+
+    /** Set delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
+    */
+    SETTER_DECL void setDeltaSpecular(bool deltaSpecular) { packedData.y = PACK_BITS(1, kDeltaSpecularFlagOffset, packedData.y, deltaSpecular ? 1 : 0); }
+
+    /** Get delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
+    */
+    bool isDeltaSpecular() CONST_FUNCTION { return packedData.y & (1u << kDeltaSpecularFlagOffset); }
 
 #ifdef HOST_CODE
     friend bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs);

@@ -91,7 +91,7 @@ def initializeFeatures(settings):
     Renderer("renderer", "rayquality", "bool", "lv_rayquality")
     Renderer("renderer", "refractcomponents", "string", "lv_refractcomponents")
     Renderer("renderer", "relightingbuffer", "bool", "lv_relightingbuffer")
-    Renderer("renderer", "renderengine", "string", "lv_renderengine", skipdefault=False)
+
     Renderer("renderer", "renderinterrupt", "bool", "lv_renderinterrupt")
     Renderer("renderer", "samplecachesize", "int", "lv_samplecachesize")
     Renderer("renderer", "shadingfactor", "float", "lv_shadingfactor")
@@ -116,6 +116,9 @@ def initializeFeatures(settings):
     Renderer("renderer", "verbose", "int", "lv_verbose", skipdefault=False)
     Renderer("renderer", "vexprofile", "int", "lv_vexprofile")
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
+
+    Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
+    Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
     
     # -- Image --
     Image("image", "background", "string", "lv_background")
@@ -151,7 +154,8 @@ def initializeFeatures(settings):
     Image("image", "readcheckpoint", "bool", "lv_readcheckpoint")
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
-    
+
+    Image("image", "usedof", "bool", "lv_dof", skipdefault=False)
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
@@ -169,6 +173,8 @@ def initializeFeatures(settings):
     Image("image", "diffuselimit", "int", "lv_diffuse_limit")
     Image("image", "reflectlimit", "int", "lv_reflect_limit")
     Image("image", "refractlimit", "int", "lv_refract_limit")
+    Image("image", "rrouletlevel", "int", "lv_russianroulette_level")
+    Image("image", "raythreshold", "float", "lv_ray_contribution_threshold")
 
     Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
     Image("image", "OpenDenoisePass.useAlbedo", "bool", "lv_denoise_use_albedo")
@@ -378,6 +384,7 @@ def initializeFeatures(settings):
     ImageOption("IPlay.lut", "string", "lv_image_mplay_lut")
     ImageOption("IPlay.sockethost", "string", "lv_image_mplay_sockethost")
     ImageOption("IPlay.socketport", "int", "lv_image_mplay_socketport")
+    ImageOption("IPlay.zeroimage", "bool", "lv_image_mplay_zero_image", skipdefault=False)
 
     ImageOption("JPEG.quality", "int", "lv_image_jpeg_quality")
     ImageOption("OpenEXR.attributes", "string", "lv_image_exr_attributes")

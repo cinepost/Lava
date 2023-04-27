@@ -36,7 +36,7 @@
 #include "Falcor/Experimental/Scene/Lights/LightBVHSampler.h"
 #include "Falcor/Experimental/Scene/Lights/EmissivePowerSampler.h"
 #include "Falcor/Experimental/Scene/Lights/EnvMapSampler.h"
-#include "Falcor/Experimental/Scene/Material/TexLODTypes.slang"
+#include "Falcor/Experimental/Scene/Materials/TexLODTypes.slang"
 #include "Falcor/Rendering/Utils/PixelStats.h"
 #include "Falcor/Rendering/RTXDI/RTXDI.h"
 

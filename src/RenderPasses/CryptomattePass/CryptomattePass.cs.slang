@@ -1,45 +1,48 @@
 #include "Utils/Math/MathConstants.slangh"
+#include "CryptomattePass.slangh"
 
 import Scene.Raster;
 import Scene.Shading;
 
 import Utils.Math.MathHelpers;
 
+
 #define is_valid(name) (is_valid_##name != 0)
 
-#define MAX_CRYPTOMATTE_LAYERS 16
-
-// Input channel
-Texture2D<PackedHitInfo> gVbuffer;
-
-// Extra UAV output channels
-RasterizerOrderedTexture2D<float4> gMatColor;
-RasterizerOrderedTexture2D<float4> gObjColor;
-RasterizerOrderedTexture2D<float4> gAttribColor;
-
+#ifndef _DATA_LAYERS_COUNT
+#define _DATA_LAYERS_COUNT 0
+#endif
 
 cbuffer PerFrameCB {
   uint2             gFrameDim;
+  float             gSumWeight;
+  uint              gSampleNumber;    // Sample number starting from 1
+  uint              gSamplesPerFrame;
+  uint              gRanksCount;
+  uint              gDataLayersCount;
 };
 
-#if _OUTPUT_MATERIALS
-Buffer<float32_t> gMaterialHashBuffer;
-#endif 
 
-#if _OUTPUT_INSTANCES
-Buffer<float32_t> gInstanceHashBuffer;
-#endif 
+// Input channel
+Texture2D<PackedHitInfo> gVbuffer;
+Buffer<float32_t3> gPreviewHashColorBuffer;
 
-#if _OUTPUT_CUSTATTRS
-Buffer<float32_t> gCustattrHashBuffer;
+Buffer<float32_t> gFloatHashBuffer;
+Buffer<uint32_t> gHashBuffer;
+
+// Preview color output channel
+RasterizerOrderedTexture2D<float4> gPreviewColor;
+
+// Data layers
+#if _DATA_LAYERS_COUNT > 0
+RasterizerOrderedTexture2D<float4> gDataLayers[_DATA_LAYERS_COUNT];
+RWStructuredBuffer<CryptomattePassSortingPair> gSortBuffers[_RANK];
 #endif
 
-#if is_valid(gMatColor)
-Buffer<float32_t3> gMaterialPreviewColorBuffer;
-#endif
+// TODO: test groupshared buffers for counters
+//groupshared CryptomattePassSortingPair gLocalPairs[16 * 16];
 
-
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // pixel position
     const uint2 ipos = dispatchThreadId.xy;
@@ -48,45 +51,91 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(ipos >= gFrameDim)) return;
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
-    
-    if (!hit.isValid()) {
-#if is_valid(gMatColor)
-        gMatColor[ipos] = float4(.0f);
-#endif  // gMatColor
+    const bool validHit = hit.isValid();
+    float4 previewColor = float4(0.);
 
-#if is_valid(gObjColor)
-        gObjColor[ipos] = float4(.0f);
-#endif  // gObjColor
-
-#if is_valid(gAttribColor)
-        gAttribColor[ipos] = float4(.0f);
-#endif  // gAttribColor
-
-        return;
-    }
-
-    uint materialID = 0;
-
-    if (hit.getType() == HitType::Triangle) {
+    uint classID = 0;
+    if (validHit && hit.getType() == HitType::Triangle) {
         TriangleHit triangleHit = hit.getTriangleHit();
-        materialID = gScene.getMaterialID(triangleHit.instanceID);
+        #if (_MODE == 0)
+        classID = gScene.getMaterialID(triangleHit.instanceID);
+        #endif
+
+        #if (_MODE == 1)
+        classID = gScene.getInternalID(triangleHit.instanceID);
+        #endif
+
+        #if defined(_OUTPUT_PREVIEW) && is_valid(gPreviewColor) && is_valid(gPreviewHashColorBuffer)
+        previewColor = float4(gPreviewHashColorBuffer[classID], 1.0f);   
+        #endif  // gPreviewColor
     }
 
-    // Write available false color AOVs
-#if is_valid(gMatColor)
-#if _OUTPUT_MATERIALS
-    gMatColor[ipos] = float4(gMaterialPreviewColorBuffer[materialID], 1.0f);
+    // Output preview color if needed
+    #if defined(_OUTPUT_PREVIEW) && is_valid(gPreviewColor)
+        gPreviewColor[ipos] = previewColor;    
+    #endif  // gPreviewColor
+
+// Current floas hash as uint (for comparsion accuracy)
+#if is_valid(gFloatHashBuffer)
+    const uint32_t currFloatHash = validHit ? asuint(gFloatHashBuffer[classID]) : 0;
 #else
-    gMatColor[ipos] = float4(0.0f);
+    const uint32_t currFloatHash = 0;
 #endif
-#endif  // gMatColor
 
-#if is_valid(gObjColor)
-        gObjColor[ipos] = float4(0.0, 1.0, 0.0, 1.0f);
-#endif  // gObjColor
+    const uint bpos = gFrameDim.x * ipos.y + ipos.x;
 
-#if is_valid(gAttribColor)
-        gAttribColor[ipos] = float4(0.0, 0.0, 1.0, 1.0f);
-#endif  // gAttribColor
+    const bool finalRound = gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber);
+    CryptomattePassSortingPair localPairs[_RANK];
+    [[unroll]] for(uint i = 0; i < _RANK; i++) localPairs[i].init();
+
+    bool hashFound = false;
+    // Check and modify sorting buffer
+    //[[unroll]]
+    for(uint i = 0; i < _RANK; i++) {
+        CryptomattePassSortingPair bufferedPair = localPairs[i] = gSortBuffers[i][bpos];
+
+        if (!hashFound && validHit && (bufferedPair.hash == currFloatHash || bufferedPair.hash == 0)) {
+            bufferedPair.hash = currFloatHash;
+            bufferedPair.counter += 1;
+            gSortBuffers[i][bpos] = localPairs[i] = bufferedPair;
+            hashFound = true;
+            if(!finalRound) break; // We don't break on final round so all sorted pairs are loaded to localPairs buffer. If not it's ok to stop here and save some loading ops
+        }
+    }
+
+
+    //// Write data layers
+
+#if is_valid(gDataLayer00)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[0];
+        const CryptomattePassSortingPair pair2 = localPairs[1];
+        gDataLayers[0][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer00
+
+#if is_valid(gDataLayer01)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[2];
+        const CryptomattePassSortingPair pair2 = localPairs[3];
+        gDataLayers[1][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer01
+
+#if is_valid(gDataLayer02)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[4];
+        const CryptomattePassSortingPair pair2 = localPairs[5];
+        gDataLayers[2][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer02
+
+#if is_valid(gDataLayer03)
+    [[branch]] if(gSamplesPerFrame == 0 || (gSamplesPerFrame == gSampleNumber)){
+        const CryptomattePassSortingPair pair1 = localPairs[6];
+        const CryptomattePassSortingPair pair2 = localPairs[7];
+        gDataLayers[3][ipos] = float4(asfloat(pair1.hash), float(pair1.counter) / gSumWeight, asfloat(pair2.hash), float(pair2.counter) / gSumWeight);
+    }
+#endif // gDataLayer03
 
 }

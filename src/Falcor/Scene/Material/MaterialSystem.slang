@@ -31,7 +31,7 @@ import Scene.Material.TextureSampler;
 __exported import Scene.SceneTypes;
 __exported import Scene.Displacement.DisplacementData;
 __exported import Scene.Material.BasicMaterialData;
-__exported import Scene.Material.HomogeneousVolumeData;
+__exported import Scene.Material.VolumeProperties;
 
 #if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT) || \
     !defined(MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT)
@@ -241,18 +241,16 @@ struct MaterialSystem
         \return Sampled color.
     */
     float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) {
+
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
+                //return materialTextures[handle.getTextureID()].SampleLevel(s, uv, 2.f);
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
-                //return float4(1.0, 0.1, 0.5, 1.0);
-
                 float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
                 uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                //ExplicitLodTextureSampler explicitLOD = { 4.0 };
-                //return explicitLOD.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
                 return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);
@@ -298,23 +296,6 @@ struct MaterialSystem
         displacementData.samplerState = materialSamplers[samplerID];
         displacementData.samplerStateMin = materialSamplers[displacementMinSamplerID];
         displacementData.samplerStateMax = materialSamplers[displacementMaxSamplerID];
-    }
-
-    /** Get the homogeneous medium properties of a material.
-        \param[in] materialID Material ID.
-        \return Returns the homogeneous volume data.
-    */
-    HomogeneousVolumeData getHomogeneousVolumeData(const uint materialID)
-    {
-        // This function fetches the volume parameters from a basic material, where these fields are readily available.
-        // Other materials are assigned default values of all zeros.
-        // TODO: Refactor volume support to handle arbitrary materials (#1313).
-        BasicMaterialData md = {};
-        if (isBasicMaterial(materialID))
-        {
-            md = getBasicMaterialData(materialID);
-        }
-        return { md.volumeAbsorption, md.volumeScattering, md.volumeAnisotropy };
     }
 };
 

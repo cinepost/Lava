@@ -50,7 +50,7 @@ namespace Falcor
         All = (1 << (uint32_t)ShaderType::Count) - 1,
     };
 
-    FALCOR_ENUM_CLASS_OPERATORS(ShaderVisibility);
+    enum_class_operators(ShaderVisibility);
 
     class FALCOR_API D3D12DescriptorSet
     {

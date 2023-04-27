@@ -122,6 +122,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
         RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
         WaveOperations = 0x200,
+        AtomicInt64 = 0x400,
+        AtomicFloat = 0x800,
     };
 
     enum class ShaderModel : uint32_t {
@@ -297,6 +299,14 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
 
+    /* Return the GFX command queue.
+    */
+    gfx::IDevice* getGfxDevice() const { return mGfxDevice; }
+    
+    /* Return the GFX command queue.
+    */
+    gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
+
  private:
     Device(Window::SharedPtr pWindow, const Desc& desc);
 
@@ -334,6 +344,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     std::vector<VkQueue>            mCmdNativeQueues[kQueueTypeCount];
 #endif
+
+    Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<gfx::IDevice> mGfxDevice;
 
     Window::SharedPtr mpWindow = nullptr;
     DeviceApiData* mpApiData;

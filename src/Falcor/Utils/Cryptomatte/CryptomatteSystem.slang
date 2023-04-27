@@ -36,5 +36,4 @@ struct CryptomatteSystem {
 #ifdef CRYPTOMATTE_SYSTEM_PARAMETER_BLOCK
 // Declare parameter block used for shader reflection.
 ParameterBlock<CryptomatteSystem> gCryptomatteBlock;
-void main() {};
 #endif

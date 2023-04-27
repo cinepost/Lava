@@ -51,11 +51,11 @@ class StateGraph {
         return SharedPtr(new StateGraph());
     }
 
-    bool isEdgeExists(const EdgeType& e) const  {
+    inline bool isEdgeExists(const EdgeType& e) const  {
         return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());
     }
 
-    bool walk(const EdgeType& e) {
+    inline bool walk(const EdgeType& e) {
         if (isEdgeExists(e)) {
             mCurrentNode = getEdgeIt(e)->second;
             return true;
@@ -69,15 +69,15 @@ class StateGraph {
         }
     }
     
-    const NodeType& getCurrentNode() const {
+    inline const NodeType& getCurrentNode() const {
         return mGraph[mCurrentNode].data;
     }
 
-    void setCurrentNodeData(const NodeType& data) {
+    inline void setCurrentNodeData(const NodeType& data) {
         mGraph[mCurrentNode].data = data;
     }
 
-    bool scanForMatchingNode(CompareFunc cmpFunc) {
+    inline bool scanForMatchingNode(CompareFunc cmpFunc) {
         for (uint32_t i = 0 ; i < (uint32_t)mGraph.size() ; i++) {
             if(i != mCurrentNode) {
                 if (cmpFunc(mGraph[i].data)) {
@@ -100,7 +100,7 @@ class StateGraph {
  private:
     using edge_map = std::unordered_map<EdgeType, uint32_t, EdgeHashType>;
     
-    const auto getEdgeIt(const EdgeType& e) const {
+    inline const auto getEdgeIt(const EdgeType& e) const {
         const Node& n = mGraph[mCurrentNode];
         return n.edges.find(e);
     }

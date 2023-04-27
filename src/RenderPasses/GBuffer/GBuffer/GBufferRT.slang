@@ -30,8 +30,8 @@ __exported import Utils.Timing.GpuTimer;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.TexLODTypes;
-import Experimental.Scene.Material.TexLODHelpers;
+import Experimental.Scene.Materials.TexLODTypes;
+import Experimental.Scene.Materials.TexLODHelpers;
 import GBufferHelpers;
 
 // GBuffer channels

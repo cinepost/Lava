@@ -174,7 +174,7 @@ struct GeometryInstanceData
     static const uint kTypeBits = 3;
     static const uint kTypeOffset = 32 - kTypeBits;
 
-    uint32_t flags;             ///< Upper kTypeBits bits are reserved for storing the type.
+    uint32_t flags;         ///< Upper kTypeBits bits are reserved for storing the type.
     uint globalMatrixID;
     uint materialID;
     uint geometryID;
@@ -183,6 +183,11 @@ struct GeometryInstanceData
     uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
     uint instanceIndex;     ///< InstanceIndex in TLAS.
     uint geometryIndex;     ///< GeometryIndex in BLAS.
+
+    uint internalID;        ///< Internal scene id.
+    uint externalID;        ///< External dcc id.
+    uint _pad0;
+    uint _pad1;
 
 #ifdef HOST_CODE
     GeometryInstanceData() = default;

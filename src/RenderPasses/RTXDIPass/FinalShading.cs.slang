@@ -27,7 +27,7 @@
  **************************************************************************/
 import LoadShadingData;
 import Scene.RaytracingInline;
-import Experimental.Scene.Material.Microfacet;
+import Experimental.Scene.Materials.Microfacet;
 import Rendering.RTXDI.RTXDI;
 import Utils.Sampling.TinyUniformSampleGenerator;
 

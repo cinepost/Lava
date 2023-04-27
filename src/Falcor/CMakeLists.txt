@@ -37,6 +37,7 @@ file( GLOB SOURCES
     # ./Scene/SDFs/SparseVoxelSet/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
+    ./Utils/InternalDictionary.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -58,7 +59,7 @@ file( GLOB SOURCES
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
-    ./Experimental/Scene/Material/*.cpp
+    ./Experimental/Scene/Materials/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 )

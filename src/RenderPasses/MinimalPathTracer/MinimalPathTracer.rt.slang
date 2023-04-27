@@ -57,8 +57,8 @@
 import Scene.Raytracing;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.StandardMaterial;
-import Experimental.Scene.Material.MaterialHelpers;
+import Experimental.Scene.Materials.StandardMaterial;
+import Experimental.Scene.Materials.MaterialHelpers;
 import Experimental.Scene.Lights.LightHelpers;
 
 cbuffer CB

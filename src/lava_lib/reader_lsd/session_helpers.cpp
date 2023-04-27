@@ -187,7 +187,7 @@ Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_patte
 }
 
 AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
-	AOVPlaneInfo aovInfo;
+	AOVPlaneInfo aovCreateInfo;
 
 	std::string channel_name = pPlane->getPropertyValue(ast::Style::PLANE, "channel", std::string());
 	if(channel_name.size() == 0) {
@@ -199,20 +199,26 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 		LLOG_ERR << "No plane variable specified for plane !!!";
 	}
 
-	std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
-	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
-	std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
-	std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));
-	Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
+	const std::string filename = pPlane->getPropertyValue(ast::Style::PLANE, "filename", std::string(""));
+	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
+	const std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
+	const std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
+	const std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));
+	const std::string output_name_override = pPlane->getPropertyValue(ast::Style::PLANE, "outputname_override", std::string(""));
+	const Int2 pixel_filter_size = pPlane->getPropertyValue(ast::Style::PLANE, "pfiltersize", Int2{1, 1});
+	const bool enable_accumulation = pPlane->getPropertyValue(ast::Style::PLANE, "accumulation", bool(true));
 
-	aovInfo.name = AOVName(channel_name);
-	aovInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
-	aovInfo.variableName = output_variable_name;
-	aovInfo.pfilterTypeName = pixel_filter_name;
-	aovInfo.pfilterSize = to_uint2(pixel_filter_size);
-	aovInfo.sourcePassName = source_pass_name;
+	aovCreateInfo.name = AOVName(channel_name);
+	aovCreateInfo.outputOverrideName = output_name_override;
+	aovCreateInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
+	aovCreateInfo.variableName = output_variable_name;
+	aovCreateInfo.pfilterTypeName = pixel_filter_name;
+	aovCreateInfo.pfilterSize = to_uint2(pixel_filter_size);
+	aovCreateInfo.sourcePassName = source_pass_name;
+	aovCreateInfo.enableAccumulation = enable_accumulation;
+	aovCreateInfo.filenameOverride = filename;
 
-	return aovInfo;
+	return aovCreateInfo;
 }
 
 Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
@@ -241,7 +247,174 @@ Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
 	return pDisplay;
 }
 
+void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
+	assert(frameInfo.renderRegion[0] <= frameInfo.renderRegion[2]);
+	assert(frameInfo.renderRegion[1] <= frameInfo.renderRegion[3]);
 
+	auto imageRegionDims = frameInfo.renderRegionDims();
+	uint32_t imageRegionWidth = imageRegionDims[0];
+	uint32_t imageRegionHeight = imageRegionDims[1];
+
+	tileSize[0] = std::min(imageRegionWidth, tileSize[0]);
+	tileSize[1] = std::min(imageRegionHeight, tileSize[1]);
+
+	auto hdiv = ldiv((uint32_t)imageRegionWidth, (uint32_t)tileSize[0]);
+	auto vdiv = ldiv((uint32_t)imageRegionHeight, (uint32_t)tileSize[1]);
+
+	tiles.clear();
+	// First put whole tiles
+	for( int x = 0; x < hdiv.quot; x++) {
+		for( int y = 0; y < vdiv.quot; y++) {
+			Falcor::uint2 offset = {tileSize[0] * x, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+			};
+
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// bottom row tiles
+	if( vdiv.rem > 0) {
+		for ( int x = 0; x < hdiv.quot; x++) {
+			Falcor::uint2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// right row tiles
+	if( hdiv.rem > 0) {
+		for ( int y = 0; y < vdiv.quot; y++) {
+			Falcor::uint2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// last corner tile
+	if ((hdiv.rem >= 1) && (vdiv.rem >=1)) {
+		Falcor::uint2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * vdiv.quot};
+		Falcor::uint4 tileRegion = {
+			frameInfo.renderRegion[0] + offset[0],
+			frameInfo.renderRegion[1] + offset[1],
+			frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+			frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+		};
+		tiles.push_back({
+			{tileRegion}, // image rendering region
+			{             // camera crop region
+				tileRegion[0] / (float)frameInfo.imageWidth,
+				tileRegion[1] / (float)frameInfo.imageHeight,
+				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+			}
+		});
+	}
+}
+
+bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane) {
+	assert(pAOVPlane);
+	if (!pDisplay) return false;
+
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
+	const auto pData = pAOVPlane->getProcessedImageData();
+	if(!pData) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	LLOG_DBG << "Image data read done!";
+	
+	AOVPlaneGeometry aov_plane_geometry;
+	if(!pAOVPlane->getAOVPlaneGeometry(aov_plane_geometry)) {
+		return false;
+	}
+	
+	if (!pDisplay->sendImage(hImage, aov_plane_geometry.width, aov_plane_geometry.height, pData)) {
+        LLOG_ERR << "Error sending image to display !";
+        return false;
+    }
+    return true;
+}
+
+bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo, AOVPlane* pAOVPlane) {
+	assert(pDisplay);
+	if (!pDisplay) return false;
+
+	if(pAOVPlane) {
+		// Send AOV image data
+		if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight == frameInfo.regionHeight())) {
+			// If sending region that is equal to full frame we just send full image data
+			return sendImageData(hImage, pDisplay, pAOVPlane);
+		}
+
+		LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
+		const auto pData = pAOVPlane->getProcessedImageData();
+		if(!pData) {
+			LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+			return false;
+		}
+		LLOG_DBG << "Image data read done!";
+	
+		if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], frameInfo.regionWidth(), frameInfo.regionHeight(), pData)) {
+			LLOG_ERR << "Error sending image region to display !";
+			return false;
+		}
+
+	} else {
+		// Send zero image data
+		if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], frameInfo.regionWidth(), frameInfo.regionHeight(), nullptr)) {
+			LLOG_ERR << "Error sending image region to display !";
+			return false;
+		}
+	}
+    return true;
+}
+
+void translateLSDPlanePropertiesToLavaDict(scope::Plane::SharedConstPtr pScope, Falcor::Dictionary& dict) {
+	//pScope->printSummary(std::cout, 4);
+	
+	for (const auto& [key, value] : pScope->to_dict(ast::Style::IMAGE)) {
+		dict[key] = value;
+	}
+}
 
 }  // namespace lsd
 

@@ -52,12 +52,12 @@ import Scene.Raytracing;
 import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.MaterialHelpers;
-import Experimental.Scene.Material.StandardMaterial;
+import Experimental.Scene.Materials.MaterialHelpers;
+import Experimental.Scene.Materials.StandardMaterial;
 import Experimental.Scene.Lights.LightHelpers;
-import Experimental.Scene.Material.TexLODHelpers;
-import Experimental.Scene.Material.TexLODTypes;
-import Experimental.Scene.Material.Fresnel;
+import Experimental.Scene.Materials.TexLODHelpers;
+import Experimental.Scene.Materials.TexLODTypes;
+import Experimental.Scene.Materials.Fresnel;
 import WhittedRayTracerTypes;
 
 cbuffer CB

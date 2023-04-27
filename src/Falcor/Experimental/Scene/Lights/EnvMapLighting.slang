@@ -27,7 +27,7 @@
  **************************************************************************/
 import Scene.Scene;
 import Scene.ShadingData;
-import Experimental.Scene.Material.IBSDF;
+import Experimental.Scene.Materials.IBSDF;
 import Utils.Math.MathHelpers;
 
 /** Implementation of image-based lighting using an environment map probe.

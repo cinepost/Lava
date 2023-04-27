@@ -32,6 +32,7 @@ __exported import Scene.SceneTypes;
 __exported import Scene.Camera.Camera;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightCollection;
+__exported import Scene.Lights.LightProfile;
 __exported import Scene.Lights.EnvMap;
 __exported import Scene.Material.MaterialSystem;
 __exported import Scene.Volume.GridVolume;
@@ -42,7 +43,7 @@ import Utils.Math.MathHelpers;
 import Utils.Geometry.GeometryHelpers;
 import Scene.SDFs.SDFVoxelCommon;
 import Scene.Displacement.DisplacementMapping;
-import Experimental.Scene.Material.TexLODHelpers;
+import Experimental.Scene.Materials.TexLODHelpers;
 
 #ifndef SCENE_GEOMETRY_TYPES
 // This error occurs when a shader imports Scene.slang without setting the defines
@@ -54,6 +55,9 @@ import Experimental.Scene.Material.TexLODHelpers;
 */
 struct Scene
 {
+
+    static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
+    static float kDiffuseAlbedoMultiplier = SCENE_DIFFUSE_ALBEDO_MULTIPLIER;
 
     // Raytracing
 #ifndef DISABLE_RAYTRACING
@@ -108,6 +112,7 @@ struct Scene
     uint lightCount;
     StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
+    LightProfile lightProfile;
     EnvMap envMap;
     Camera camera;
 
@@ -238,6 +243,15 @@ struct Scene
     uint getMaterialID(const GeometryInstanceID instanceID)
     {
         return geometryInstances[instanceID.index].materialID;
+    };
+
+    /** Return the internal ID for a geometry instance.
+        \param[in] instanceID Global geometry instance ID.
+        \return internal ID.
+    */
+    uint getInternalID(const GeometryInstanceID instanceID)
+    {
+        return geometryInstances[instanceID.index].internalID;
     };
 
     // Lights access

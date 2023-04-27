@@ -28,13 +28,18 @@
 #include "stdafx.h"
 
 #include <numeric>
+#include <mutex>
 
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "Falcor/Utils/StringUtils.h"
+#include "MaterialTypeRegistry.h"
+
 #include "StandardMaterial.h"
 
 #include "MaterialSystem.h"
+
+std::mutex g_materials_mutex;
 
 namespace Falcor {
 
@@ -66,7 +71,7 @@ MaterialSystem::SharedPtr MaterialSystem::create(Device::SharedPtr pDevice) {
 
 MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	mpFence = GpuFence::create(mpDevice);
-	mMaterialCountByType.resize((size_t)MaterialType::Count, 0);
+	mMaterialCountByType.resize((size_t)MaterialType::BuiltinCount, 0);
 
 	// Create a default texture sampler.
 	Sampler::Desc desc;
@@ -160,30 +165,34 @@ uint32_t MaterialSystem::addBuffer(const Buffer::SharedPtr& pBuffer) {
 uint32_t MaterialSystem::addMaterial(const Material::SharedPtr& pMaterial) {
 	assert(pMaterial);
 
-	// Reuse previously added materials.
-	if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
-		return (uint32_t)std::distance(mMaterials.begin(), it);
+	{
+    std::scoped_lock lock(g_materials_mutex);
+
+		// Reuse previously added materials.
+		if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
+			return (uint32_t)std::distance(mMaterials.begin(), it);
+		}
+
+		// Add material.
+		if (mMaterials.size() >= std::numeric_limits<uint32_t>::max()) {
+			throw std::runtime_error("Too many materials");
+		}
+		const uint32_t materialID = static_cast<uint32_t>(mMaterials.size());
+
+		if (pMaterial->getDefaultTextureSampler() == nullptr) {
+			pMaterial->setDefaultTextureSampler(mpDefaultTextureSampler);
+		}
+
+		pMaterial->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
+		mMaterials.push_back(pMaterial);
+		mMaterialsChanged = true;
+
+		// Update metadata.
+		mMaterialTypes.insert(pMaterial->getType());
+		if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount++;
+
+		return materialID;
 	}
-
-	// Add material.
-	if (mMaterials.size() >= std::numeric_limits<uint32_t>::max()) {
-		throw std::runtime_error("Too many materials");
-	}
-	const uint32_t materialID = static_cast<uint32_t>(mMaterials.size());
-
-	if (pMaterial->getDefaultTextureSampler() == nullptr) {
-		pMaterial->setDefaultTextureSampler(mpDefaultTextureSampler);
-	}
-
-	pMaterial->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
-	mMaterials.push_back(pMaterial);
-	mMaterialsChanged = true;
-
-	// Update metadata.
-	mMaterialTypes.insert(pMaterial->getType());
-	if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount++;
-
-	return materialID;
 }
 
 uint32_t MaterialSystem::getMaterialCountByType(const MaterialType type) const {
@@ -430,17 +439,23 @@ Shader::DefineList MaterialSystem::getDefaultDefines() {
 	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", "0");
+	defines.add("FALCOR_MATERIAL_INSTANCE_SIZE", "0");
 
 	return defines;
 }
 
 Shader::DefineList MaterialSystem::getDefines() const {
+	size_t materialInstanceByteSize = 0;
+	for (auto& it : mMaterials)
+		materialInstanceByteSize = std::max(materialInstanceByteSize, it->getMaterialInstanceByteSize());
+
 	Shader::DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
 	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", std::to_string(mUDIMTextureCount));
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", std::to_string(mBufferDescCount));
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", mSpecGlossMaterialCount > 0 ? "1" : "0");
+	defines.add("FALCOR_MATERIAL_INSTANCE_SIZE", std::to_string(materialInstanceByteSize));
 
 	return defines;
 }
@@ -458,7 +473,6 @@ Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialT
 		case MaterialType::Standard: return Program::TypeConformanceList{ {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
 		case MaterialType::Hair: return Program::TypeConformanceList{ {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
 		case MaterialType::Cloth: return Program::TypeConformanceList{ {{"ClothMaterial", "IMaterial"}, (uint32_t)MaterialType::Cloth} };
-		case MaterialType::MERL: return Program::TypeConformanceList{ {{"MERLMaterial", "IMaterial"}, (uint32_t)MaterialType::MERL} };
 		default: throw std::runtime_error("Unsupported material type");
 	}
 }

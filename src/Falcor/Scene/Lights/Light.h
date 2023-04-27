@@ -518,6 +518,23 @@ private:
 
 enum_class_operators(Light::Changes);
 
+inline std::string to_string(LightType lt) {
+#define t2s(t_) case LightType::t_: return #t_;
+    switch (lt) {
+        t2s(Point);
+        t2s(Directional);
+        t2s(Distant);
+        t2s(Rect);
+        t2s(Disc);
+        t2s(Sphere);
+        t2s(Env);
+        default:
+            should_not_get_here();
+            return "";
+    }
+#undef t2s
+}
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_SCENE_LIGHTS_LIGHT_H_

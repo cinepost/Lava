@@ -113,11 +113,11 @@ endfunction()
 
 
 makeRenderPassLib(NAME "AccumulatePass")
+makeRenderPassLib(NAME "AmbientOcclusionPass")
 makeRenderPassLib(NAME "DepthPass")
 makeRenderPassLib(NAME "TexturesResolvePass")
-makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "DeferredLightingPass")
-makeRenderPassLib(NAME "DeferredLightingCachedPass")
+makeRenderPassLib(NAME "DebugShadingPass")
 makeRenderPassLib(NAME "ToneMapperPass")
 makeRenderPassLib(NAME "OpenDenoisePass")
 makeRenderPassLib(NAME "CryptomattePass")
@@ -128,7 +128,7 @@ makeRenderPassLib(NAME "RTXDIPass")
 makeRenderPassLib(NAME "PathTracer")
 
 
-
+#makeRenderPassLib(NAME "DeferredLightingCachedPass")
 #makeRenderPassLib(NAME "WhittedRayTracer")
 #makeRenderPassLib(NAME "MinimalPathTracer")
 #makeRenderPassLib(NAME "MegakernelPathTracer")

@@ -31,7 +31,7 @@
 
 import Scene.SceneTypes;
 import Scene.ShadingData;
-import Experimental.Scene.Material.IBSDF;
+import Experimental.Scene.Materials.IBSDF;
 import Utils.Math.MathHelpers;
 import Utils.Math.FormatConversion;
 __exported import Scene.Material.ShadingUtils;

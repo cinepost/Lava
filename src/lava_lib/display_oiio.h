@@ -24,8 +24,12 @@ class LAVA_API DisplayOIIO: private Display {
 
     static bool isDiplayTypeSupported(Display::DisplayType display_type);
 
-    virtual bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) override;
-    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix = "") override;
+    virtual bool openImage(const std::string& image_name, uint width, uint height, 
+      const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams, const MetaData* pMetaData = nullptr) override;
+    
+    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
+      const std::vector<UserParameter>& userParams, const std::string& channel_prefix, const MetaData* pMetaData = nullptr) override;
+    
     virtual bool closeImage(uint imageHandle) override;
     virtual bool closeAll() override;
 
@@ -39,6 +43,7 @@ class LAVA_API DisplayOIIO: private Display {
     virtual bool opened(uint imageHandle) const final;
     virtual bool closed(uint imageHandle) const final;
 
+    virtual bool supportsMetaData() const override;
     virtual const std::string& imageName(uint imageHandle) const final;
     virtual uint imageWidth(uint imageHandle) const final;
     virtual uint imageHeight(uint imageHandle) const final;

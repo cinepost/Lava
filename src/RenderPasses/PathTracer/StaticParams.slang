@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Rendering.Materials.TexLODTypes;
+__exported import Experimental.Scene.Materials.TexLODTypes;
 
 /** Translation of defines set by the host to compile-time constants used to
     configure the path tracer without overhead from dynamic control flow.

@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFViewer.h"
-#include "Experimental/Scene/Material/BxDFConfig.slangh"
+#include "Experimental/Scene/Materials/BxDFConfig.slangh"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir()

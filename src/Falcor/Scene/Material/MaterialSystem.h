@@ -127,7 +127,7 @@ class dlldecl MaterialSystem {
 
 		/** Get a texture sampler by ID.
 		*/
-		inline const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
+		const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
 
 		/** Add a buffer resource to be managed.
 			\param[in] pBuffer The buffer.
@@ -148,19 +148,19 @@ class dlldecl MaterialSystem {
 
 		/** Get a list of all materials.
 		*/
-		inline const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
+		const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
 
 		/** Get the total number of materials.
 		*/
 		uint32_t getMaterialCount() const { return (uint32_t)mMaterials.size(); }
 
 		/** Get the number of materials of the given type.
-		*/
-		uint32_t getMaterialCountByType(const MaterialType type) const;
+    */
+    uint32_t getMaterialCountByType(const MaterialType type) const;
 
 		/** Get the set of all material types used.
 		*/
-		inline std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
+		std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
 
 		/** Get a material by ID.
 		*/

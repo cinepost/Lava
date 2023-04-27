@@ -57,8 +57,11 @@ namespace {
         { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
         { "fresnel",          "gOutFresnel",        "Surface fresnel buffer",        true /* optional */, ResourceFormat::R16Float },
         { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
+        
+        // Service outputs
         { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
         { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
+        { "variance",         "gVariance",          "Ray variance",                  true /* optional */, ResourceFormat::R16Float },
     };
 
     const std::string kFrameSampleCount = "frameSampleCount";
@@ -73,6 +76,8 @@ namespace {
     const std::string kRayRefractLimit = "rayRefractLimit";
     const std::string kRayDiffuseLimit = "rayDiffuseLimit";
     const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
+    const std::string kRussianRouletteLevel = "russRoulleteLevel";
+    const std::string kRayContributionThreshold = "rayContribThreshold";
 }
 
 DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -89,6 +94,8 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
         else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(static_cast<const std::string&>(value));
+        else if (key == kRussianRouletteLevel) pThis->setRussRoulleteLevel((uint)value);
+        else if (key == kRayContributionThreshold) pThis->setRayContribThreshold(value);
     }
 
     return pThis;
@@ -145,6 +152,12 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
+
+    mUseVariance = false;
+
+    createBuffers(pContext, renderData);
+
+    const bool shadingRateInShader = true;
     
     // Prepare program and vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
@@ -164,8 +177,10 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         }
 
         // Sampling / Shading
-        if (mShadingRate > 1) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
-        if (mUseSTBN) defines.add("_USE_STBN_SAMPLING", "1");
+        if ((mShadingRate > 1) && shadingRateInShader) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
+        defines.add("_USE_STBN_SAMPLING", mUseSTBN ? "1" : "0");
+        defines.add("_USE_VARIANCE", mUseVariance ? "1" : "0");
+        defines.add("is_valid_gLastFrameSum", mpLastFrameSum != nullptr ? "1" : "0");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         
         uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
@@ -201,7 +216,8 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
             mpLightingPass[channel.texname] = pTex;
         }
-        mDirty = false;
+
+        mpLightingPass["gLastFrameSum"] = mpLastFrameSum;
     }
 
     float2 f = mpNoiseOffsetGenerator->next();
@@ -219,8 +235,30 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gRayReflectLimit"] = mRayReflectLimit;
     cb_var["gRayRefractLimit"] = mRayRefractLimit;
     cb_var["gRayBias"] = mRayBias;
+    cb_var["gRayContribThresh"] = mRayContribThreshold;
+    cb_var["gRussRouletteLevel"] = mRussRouletteLevel;
     
-    mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    if(shadingRateInShader) {
+        mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    } else {
+        for(uint32_t i; i < mShadingRate; ++i){
+            mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+            cb_var["gSampleNumber"] = mSampleNumber++;
+        }
+    }
+    mDirty = false;
+}
+
+void DeferredLightingPass::createBuffers(RenderContext* pContext, const RenderData& renderData) {
+    if(!mDirty) return;
+
+    if(mUseVariance) {
+        // RGB - Last fram sum, A - variance
+        mpLastFrameSum = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        pContext->clearUAV(mpLastFrameSum->getUAV().get(), float4(0.f, 0.f, 0.f, 1.f));
+    } else {
+        mpLastFrameSum = nullptr;
+    }
 }
 
 DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {
@@ -316,4 +354,15 @@ DeferredLightingPass& DeferredLightingPass::setSuperSampling(bool enable) {
     mEnableSuperSampling = enable;
     mDirty = true;
     return *this;
+}
+
+void DeferredLightingPass::setRayContribThreshold(float value) {
+    float _value = std::min(1.f, std::max(0.f, value));
+    if(mRayContribThreshold == _value) return;
+    mRayContribThreshold = _value;
+}
+
+void DeferredLightingPass::setRussRoulleteLevel(uint value) {
+    if(mRussRouletteLevel == value) return;
+    mRussRouletteLevel = value;
 }

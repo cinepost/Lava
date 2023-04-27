@@ -31,7 +31,7 @@ import Scene.Raster;
 import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 import GBufferHelpers;
-import Experimental.Scene.Material.TexLODHelpers;
+import Experimental.Scene.Materials.TexLODHelpers;
 
 // UAV output channels
 RasterizerOrderedTexture2D<PackedHitInfo> gVBuffer;

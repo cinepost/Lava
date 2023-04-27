@@ -48,11 +48,11 @@ target_link_libraries(
     lava_utils_lib
     TexturesResolvePass
     AccumulatePass
+    AmbientOcclusionPass
     EdgeDetectPass
     DepthPass
-    ForwardLightingPass
+    DebugShadingPass
     DeferredLightingPass
-    DeferredLightingCachedPass
     PathTracer
     CryptomattePass
     ToneMapperPass

@@ -309,12 +309,15 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   ThreadPool& pool = ThreadPool::instance();
 
 	// Push pages loading job into ThreadPool
-	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture, pageIds]
+	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, &pTexture, pageIds = std::move(pageIds)]
   {
   	if(!pTexture) return (Texture*)nullptr;
-  	if(pageIds.size() < 1) return (Texture*)nullptr;
+  	if(pageIds.size() == 0) return (Texture*)nullptr;
 
   	bool loadForRTX = true;
+
+  	std::vector<uint32_t> _pageIds = pageIds;
+  	std::sort(_pageIds.begin(), _pageIds.end());
 
     std::thread::id thread_id = std::this_thread::get_id();
     auto pContext = pTexture->device()->getRenderContext();
@@ -331,8 +334,12 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 		std::string ltxFilename = pLtxBitmap->getFileName();
 		auto pFile = fopen(ltxFilename.c_str(), "rb");
 
-		for( uint32_t pageIndex: pageIds ) {
-  		//const auto& pPage = mSparseDataPages[pageIndex];
+		for( uint32_t pageIndex: _pageIds ) {
+			if(pageIndex >= texturePages.size()) {
+				LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
+				continue;
+			}
+
   		const auto& pPage = texturePages[pageIndex];
     
   		uint32_t page_index = pPage->index();
@@ -366,7 +373,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 }
 
 void TextureManager::updateSparseBindInfo() {
-	if(mTextureLoadingTasks.size() < 1) return;
+	if(mTextureLoadingTasks.size() == 0) return;
 
 	std::vector<Texture*> textures;
 	for(size_t i = 0; i < mTextureLoadingTasks.size(); i++) {

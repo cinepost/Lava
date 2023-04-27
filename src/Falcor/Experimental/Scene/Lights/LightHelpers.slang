@@ -543,7 +543,7 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
     // Setup incident radiance. For directional lights there is no falloff or cosine term.
     ls.i = 1.0f;
     ls.Li = light.directDiffuseIntensity;
-    
+
     // For a directional light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
 

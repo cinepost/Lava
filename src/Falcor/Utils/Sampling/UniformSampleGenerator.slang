@@ -44,9 +44,11 @@ struct UniformSampleGenerator : ISampleGenerator
         UniformSampleGenerator internal;
     }
 
-    /** Create sample generator.
+    /** Initializes the sample generator for a given pixel and sample number.
+        \param[in] pixel Pixel id.
+        \param[in] sampleNumber Sample number.
     */
-    static UniformSampleGenerator create(uint2 pixel, uint sampleNumber)
+    __init(uint2 pixel, uint sampleNumber)
     {
         UniformSampleGenerator sampleGenerator;
 

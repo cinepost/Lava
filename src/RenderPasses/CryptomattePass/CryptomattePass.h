@@ -7,13 +7,16 @@
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Scene/Scene.h"
 
-using namespace Falcor;
+#include "Falcor/Utils/Cryptomatte/Cryptomatte.h"
+#include "CryptomattePass.slangh"
 
+
+using namespace Falcor;
 
 class PASS_API CryptomattePass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<CryptomattePass>;
-
+		using CryptomatteMode = CryptomattePassMode;
 		static const Info kInfo;
 
 		/** Create a new object
@@ -25,35 +28,73 @@ class PASS_API CryptomattePass : public RenderPass {
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual Dictionary getScriptingDictionary() override;
+		virtual bool hasMetaData() override { return true; };
+		virtual void reset() override;
 
-		/** Set the color target format. This is always enabled
+		/** Set the preview color target format. This is always enabled
 		*/
 		CryptomattePass& setColorFormat(ResourceFormat format);
 
+		void setSamplesPerFrame(uint32_t value);
+		void setManifestFilename(const std::string& name);
+		void setOutputPreviewColor(bool value);
+		void setMode(CryptomatteMode mode);
+		void setRank(uint32_t rank);
+		void setTypeName(const std::string& type_name = "");
+		const std::string& getTypeName() const { return mTypeName; }
+
+		inline uint32_t dataLayersCount() const { return (mRank >> 1) + (mRank - 2 * (mRank >> 1)); }
+
 	private:
-		void calculateHashTables( const RenderData& renderData);
+		struct HashResolveCounter {
+			uint32_t hash;
+			float    weight = 0.f;
+		};
+
+		using SortingPair = CryptomattePassSortingPair;
+
+	private:
+		void calculateHashTables(const RenderData& renderData);
+		void createSortingBuffers();
 		CryptomattePass(Device::SharedPtr pDevice);
-		
+
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpPass;
 
-		Buffer::SharedPtr               mpMaterialHashBuffer;
-		Buffer::SharedPtr               mpInstanceHashBuffer;
-		Buffer::SharedPtr               mpCustattrHashBuffer;
+		Buffer::SharedPtr               mpHashBuffer;
+		Buffer::SharedPtr               mpFloatHashBuffer;
+		std::vector<Buffer::SharedPtr>  mDataSortingBuffers;
+		Buffer::SharedPtr               mpPreviewHashColorBuffer;
 
-		Buffer::SharedPtr               mpMaterialPreviewColorBuffer;
-		Buffer::SharedPtr               mpInstancePreviewColorBuffer;
-		Buffer::SharedPtr               mpCustattrPreviewColorBuffer;
+		CryptomatteMode                 mMode = CryptomatteMode::Material;
+		uint32_t                        mRank = 0;
+		std::string 					mManifestFilename;
+		uint32_t                        mSamplesPerFrame = 0; // If set to zero we update data channels on every invocation on execute()
 
-		bool                            mOutputMaterialPreview = false;
-		bool                            mOutputInstancePreview = false;
-		bool                            mOutputCustattrPreview = false;
+		std::string                     mTypeName;
 
-		uint2 mFrameDim = { 0, 0 };
+		bool                            mOutputPreview = false;
 
-		uint32_t 		mSampleNumber = 0;
+		Cryptomatte::CryptoNameFlags    mMaterialNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
+		Cryptomatte::CryptoNameFlags    mInstanceNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
+		Cryptomatte::CryptoNameFlags    mAssetNameCleaningFlags = Cryptomatte::CryptoNameFlags::CRYPTO_NAME_NONE;
+
+		uint2 		mFrameDim = { 0, 0 };
+
+		uint32_t 	mSampleNumber = 0;
 		
-		bool mDirty = true;
+		bool 		mDirty = true;
 };
+
+#define pftype2str(a) case CryptomattePass::CryptomatteMode::a: return #a
+inline std::string to_string(CryptomattePass::CryptomatteMode a) {
+    switch (a) {
+        pftype2str(Material);
+        pftype2str(Instance);
+        pftype2str(Asset);
+        default: should_not_get_here(); return "";
+    }
+}
+#undef pftype2str
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEFERREDLIGHTINGPASS_CRYPTOMATTEPASS_H_

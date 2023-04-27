@@ -334,14 +334,18 @@ namespace Falcor {
 		if (pDevice->hasFeature("rasterizer-ordered-views")) {
 			result |= Device::SupportedFeatures::RasterizerOrderedViews;
 		}
-
 		if (pDevice->hasFeature("programmable-sample-positions-2")) {
 			result |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
 		}
-		else if (pDevice->hasFeature("programmable-sample-positions-1")) {
+		if (pDevice->hasFeature("programmable-sample-positions-1")) {
 			result |= Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly;
 		}
-
+		if (pDevice->hasFeature("atomic-int64")) {
+			result |= Device::SupportedFeatures::AtomicInt64;
+		}
+		if (pDevice->hasFeature("atomic-float")) {
+			result |= Device::SupportedFeatures::AtomicFloat;
+		}
 		if (pDevice->hasFeature("barycentrics")) {
 			result |= Device::SupportedFeatures::Barycentrics;
 		}
@@ -379,8 +383,6 @@ namespace Falcor {
 
 #if FALCOR_GFX_VK
 		desc.deviceType = DeviceType::Vulkan;
-#elif FALCOR_GFX_D3D12
-		desc.deviceType = DeviceType::DirectX12;
 #endif
 		
 		desc.slang.slangGlobalSession = getSlangGlobalSession();
@@ -521,21 +523,6 @@ namespace Falcor {
 	bool Device::isWindowOccluded() const {
 		return mCurrentBackBufferIndex == -1;
 	}
-
-#if FALCOR_D3D12_AVAILABLE
-	const D3D12DeviceHandle Device::getD3D12Handle() {
-		gfx::IDevice::InteropHandles interopHandles = {};
-		mApiHandle->getNativeDeviceHandles(&interopHandles);
-		FALCOR_ASSERT(interopHandles.handles[0].api == gfx::InteropHandleAPI::D3D12);
-		return reinterpret_cast<ID3D12Device*>(interopHandles.handles[0].handleValue);
-	}
-#endif
-
-//#else
-//	const D3D12DeviceHandle Device::getD3D12Handle() {
-//		return nullptr;
-//	}
-//#endif // FALCOR_D3D12_AVAILABLE
 
 	Device::~Device() { 
 	}

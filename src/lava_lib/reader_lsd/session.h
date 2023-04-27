@@ -30,7 +30,7 @@ class Session {
     ~Session();
 
     struct DisplayInfo {
-      Display::DisplayType                                            displayType;    // __HYDRA__ is a special virtual type
+      Display::DisplayType                                            displayType;
       Display::TypeFormat                                             typeFormat;
       std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
       std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
@@ -126,6 +126,7 @@ class Session {
     scope::Global::SharedPtr		    mpGlobal;
 
     Display::SharedPtr              mpDisplay;
+    std::unordered_map<std::string, Display::SharedPtr> mDisplays;
 
     Renderer::Config                mRendererConfig;
 

@@ -167,7 +167,8 @@ namespace Falcor
     {
         assert(fNumber > 0.0f && focalLength > 0.f && sceneUnit > 0.f);
         float radius = 0.5f * focalLength / fNumber; // in mm
-        return radius * 0.001f / sceneUnit;
+        return radius / sceneUnit;
+        //return radius * 0.001f / sceneUnit;
     }
 
     /** Calculates camera aperture f-number from camera parameters.

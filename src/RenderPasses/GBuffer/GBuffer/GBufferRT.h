@@ -32,7 +32,7 @@
 #include "GBuffer.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 
-#include "Falcor/Experimental/Scene/Material/TexLODTypes.slang"
+#include "Falcor/Experimental/Scene/Materials/TexLODTypes.slang"
 
 using namespace Falcor;
 

@@ -1,0 +1,35 @@
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+enum class CryptomattePassMode : uint32_t
+{
+    Material     = 0,
+    Instance     = 1,
+    Asset        = 2
+};
+
+struct CryptomattePassSortingPair {
+    uint32_t hash = 0;
+    uint32_t counter = 0;
+
+#ifdef HOST_CODE
+    CryptomattePassSortingPair()
+    {
+        init();
+    }
+#endif
+
+#ifdef HOST_CODE
+    void init()
+#else
+    [mutating] void init()
+#endif
+    {
+        hash = 0;
+        counter = 0;
+    }
+};
+
+END_NAMESPACE_FALCOR

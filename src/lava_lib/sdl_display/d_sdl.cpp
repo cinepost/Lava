@@ -289,16 +289,20 @@ PtDspyError DspyImageQuery(PtDspyImageHandle,PtDspyQueryType querytype, int data
   return ret;
 }
 
-PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int ymax, int entrysize,const unsigned char *data) {
+PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int ymax, int entrysize,const unsigned char *pData) {
   int oldx;
   oldx = xmin;
 
   for (;ymin < ymax; ++ymin) {
     for (xmin = oldx; xmin < xmax; ++xmin) {
-      const void *ptr = reinterpret_cast<const void*>(data);
-      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(g_pixelType);
-      memcpy(&g_pixels[offset], ptr, entrysize);
-      data += entrysize;
+      const size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(g_pixelType);
+      
+      if(pData) {
+        memcpy(&g_pixels[offset], reinterpret_cast<const void*>(pData), entrysize);
+        pData += entrysize;
+      } else {
+        memset(&g_pixels[offset], 0, entrysize);
+      }
     }
   }
 

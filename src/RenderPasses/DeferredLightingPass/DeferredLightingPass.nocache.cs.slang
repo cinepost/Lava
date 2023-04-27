@@ -10,10 +10,10 @@ import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
 import Experimental.Scene.Lights.EnvMapLighting;
 
-import Experimental.Scene.Material.Fresnel;
-import Experimental.Scene.Material.Microfacet;
-import Experimental.Scene.Material.StandardMaterial;
-import Experimental.Scene.Material.IBxDF;
+import Experimental.Scene.Materials.Fresnel;
+import Experimental.Scene.Materials.Microfacet;
+import Experimental.Scene.Materials.StandardMaterial;
+import Experimental.Scene.Materials.IBxDF;
 
 #define is_valid(name) (is_valid_##name != 0)
 

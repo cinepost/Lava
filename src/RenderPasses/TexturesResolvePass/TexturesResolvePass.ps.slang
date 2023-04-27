@@ -1,7 +1,7 @@
 import Scene.Raster;
 import Scene.Shading;
 // import Utils.Helpers;
-import Experimental.Scene.Material.TexLODHelpers;
+import Experimental.Scene.Materials.TexLODHelpers;
 
 import TexturesResolveCommon;
 
@@ -57,6 +57,9 @@ struct gl_TextureFootprint2DNV {
     uint lod;
     uint granularity;
 };
+
+//    SpvOpImageSparseSampleImplicitLod = 305,
+
 
 // OpImageSampleFootprintNV
 [[vk::spirv_instruction(5283)]]
@@ -118,7 +121,7 @@ float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualT
 }
 
 #if _MAX_RAY_LEVEL == 0
-[earlydepthstencil]
+//[earlydepthstencil]
 #endif
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC : TEXCOORD) {
 

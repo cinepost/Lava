@@ -37,10 +37,10 @@ import Experimental.Scene.Lights.EnvMapSampler;
 import Experimental.Scene.Lights.EnvMapLighting;
 
 
-import Experimental.Scene.Material.Fresnel;
-import Experimental.Scene.Material.Microfacet;
-import Experimental.Scene.Material.StandardMaterial;
-import Experimental.Scene.Material.IBxDF;
+import Experimental.Scene.Materials.Fresnel;
+import Experimental.Scene.Materials.Microfacet;
+import Experimental.Scene.Materials.StandardMaterial;
+import Experimental.Scene.Materials.IBxDF;
 
 #define _FIX_SHADOW_TERMINATOR
 #define _USE_MULTIPLE_IMPORTANCE_SAMPLING

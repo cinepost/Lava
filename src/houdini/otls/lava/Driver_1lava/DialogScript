@@ -701,7 +701,9 @@
                 menu {
                     "" "Beauty"
                     "EdgeDetectPass" "Edge Detect"
-                    "OcclusionPass" "Occlusion"
+                    "AmbientOcclusionPass" "Ambient Occlusion"
+                    "CryptomatteMaterialPass" "Crypto Material"
+                    "CryptomatteInstancePass" "Crypto Object"
                 }
                 parmtag { "script_callback_language" "python" }
             }
@@ -1052,27 +1054,6 @@
                 }
 
                 parm {
-                    name    "lv_quickplane_occlusion"
-                    label   "Occlusion"
-                    type    toggle
-                    joinnext
-                    default { "0" }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_quantize_occlusion"
-                    label   "Quantize"
-                    type    string
-                    default { "float16" }
-                    hidewhen "{ lv_quickplane_occlusion == 0 }"
-                    menu {
-                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
-                        language python
-                    }
-                    parmtag { "script_callback_language" "python" }
-                }
-
-                parm {
                     name    "lv_quickplane_fresnel"
                     label   "Fresnel"
                     type    toggle
@@ -1092,13 +1073,11 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+            }
 
-                parm {
-                    name    "sepparm4"
-                    label   "Separator"
-                    type    separator
-                    default { "" }
-                }
+            groupcollapsible {
+                name "output6_1_2"
+                label "Diagnostic Variables"
 
                 parm {
                     name    "lv_quickplane_op_id"
@@ -1142,84 +1121,67 @@
                     parmtag { "script_callback_language" "python" }
                 }
 
-            }
-
-            groupcollapsible {
-                name "output6_1_2"
-                label "Edge Detect"
-
                 parm {
-                    name    "lv_plane_edgedetect"
-                    label   "Enable Edge Detection"
+                    name    "lv_quickplane_variance"
+                    label   "Variance"
                     type    toggle
                     joinnext
                     default { "0" }
                     parmtag { "script_callback_language" "python" }
                 }
-
+                parm {
+                    name    "lv_quantize_variance"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_variance == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
             }
 
             groupcollapsible {
                 name "output6_1_3"
-                label "Occlusion"
+                label "Render Passes"
 
                 parm {
-                    name    "lv_plane_occlusion"
-                    label   "Enable Occlusion"
+                    name    "lv_plane_edgedetect"
+                    label   "Edge Detect"
                     type    toggle
-                    joinnext
                     default { "0" }
+                    disablewhen "{ lv_main_output_source == EdgeDetectPass }"
                     parmtag { "script_callback_language" "python" }
                 }
 
-            }
-
-            groupcollapsible {
-                name "output6_1_4"
-                label "Cryptomatte"
-
                 parm {
-                    name    "lv_quickplane_cryptomatte_mat"
-                    label   "Cryptomatte Material"
+                    name    "lv_plane_ambientocclusion"
+                    label   "Ambient Occlusion"
                     type    toggle
-                    joinnext
                     default { "0" }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_quantize_cryptomatte_mat"
-                    label   "Quantize"
-                    type    string
-                    default { "float16" }
-                    hidewhen "{ lv_quickplane_cryptomatte_mat == 0 }"
-                    menu {
-                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
-                        language python
-                    }
+                    disablewhen "{ lv_main_output_source == AmbientOcclusionPass }"
                     parmtag { "script_callback_language" "python" }
                 }
 
                 parm {
-                    name    "lv_quickplane_cryptomatte_obj"
-                    label   "Cryptomatte Object"
+                    name    "lv_plane_cryptomaterial"
+                    label   "CryptoMaterial"
                     type    toggle
-                    joinnext
                     default { "0" }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_quantize_cryptomatte_obj"
-                    label   "Quantize"
-                    type    string
-                    default { "float16" }
-                    hidewhen "{ lv_quickplane_cryptomatte_obj == 0 }"
-                    menu {
-                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
-                        language python
-                    }
+                    disablewhen "{ lv_main_output_source == CryptomatteMaterialPass }"
                     parmtag { "script_callback_language" "python" }
                 }
 
+                parm {
+                    name    "lv_plane_cryptoinstance"
+                    label   "CryptoObject"
+                    type    toggle
+                    default { "0" }
+                    disablewhen "{ lv_main_output_source == CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
             }
 
             /*
@@ -1258,7 +1220,16 @@
 
         group {
             name    "output6_3"
-            label   "Meta Data"
+            label   "MPlay"
+
+            parm {
+                name    "lv_image_mplay_zero_image"
+                label   "MPlay Zero Image"
+                help    "Clear new image before rendering."
+                type    toggle
+                default { "1" }
+                parmtag { "spare_category" "MPlay" }
+            }
 
             parm {
                 name    "lv_image_mplay_direction"
@@ -1271,7 +1242,7 @@
                     "bottom"    "Bottom up"
                     "hilbert"   "Hilbert Curve"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
             parm {
                 name    "lv_image_mplay_framemode"
@@ -1282,7 +1253,7 @@
                     "append"    "Append Frames To Sequence"
                     "match"     "Match Houdini Frame Numbers (overwrite frame)"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
             parm {
                 name    "lv_image_mplay_label"
@@ -1295,7 +1266,7 @@
                     "$OS"                                           "One per Output Driver Name (ROP)"
                     ""                                              "One MPlay session only"
                 }
-                parmtag { "spare_category" "Meta Data" }
+                parmtag { "spare_category" "MPlay" }
             }
         }
 
@@ -1306,13 +1277,28 @@
         label   "Rendering"
 
         parm {
-            name    "lv_renderengine"
-            label   "Rendering Engine"
+            name    "lv_primary_raygen_type"
+            label   "Primary Ray Generator"
             type    string
-            default { "hybrid" }
+            default { "hwraster" }
             menu {
-                "hybrid"      "Hybrid"
-                "pathtracer"  "Path Tracer"
+                "hwraster"     "Rasterizer_HW"
+                "compute"      "Raytracer"
+                "swraster"     "Rasterizer_SW"
+            }
+            parmtag { "script_callback_language" "python" }
+        }
+
+        parm {
+            name    "lv_shading_pass_type"
+            label   "Shading Type"
+            type    string
+            help    "This controls the type of shading pass/algorithm we are using to shade actual samples/pixels. Deferred stands for a generic shading. PathTracer is... well it's path tracer. Debug is special type shading pass for development purposes."
+            default { "deferred" }
+            menu {
+                "debug"      "Debug"
+                "deferred"   "Deferred"
+                "pathtracer" "PathTracer"
             }
             parmtag { "script_callback_language" "python" }
         }
@@ -1453,6 +1439,16 @@
                 label   "Experimental"
 
                 parm {
+                    name    "lv_diffuse_limit"
+                    label   "Diffuse Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_reflect_limit"
                     label   "Reflect Limit"
                     type    int
@@ -1473,11 +1469,23 @@
                 }
 
                 parm {
-                    name    "lv_diffuse_limit"
-                    label   "Diffuse Limit"
+                    name    "lv_russianroulette_level"
+                    label   "Russian Roulette Cutoff Depth"
                     type    int
-                    default { "0" }
-                    range   { 0 5 }
+                    help    "Ray level at which russian roulette path termination starts."
+                    default { "2" }
+                    range   { 0 10 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_ray_contribution_threshold"
+                    label   "Ray Contribution Threshold"
+                    type    float
+                    help    "Minimum Ray Contribution Weight. Works with russian roulette path termination."
+                    default { "0.1" }
+                    range   { 0! 1! }
                     disablewhen "{ lv_enable_rt == 0 }"
                     parmtag { "script_callback_language" "python" }
                 }
@@ -1643,69 +1651,6 @@
                 parmtag { "script_callback_language" "python" }
             }
         }
-
-        group {
-            name    "images_4_1_6"
-            label   "Effects"
-            invisibletab
-
-            groupsimple {
-                name    "folder1"
-                label   "Ambient Occlusion"
-
-                parm {
-                    name    "lv_ambient_occlusion"
-                    label   "Ambient Occlusion"
-                    type    toggle
-                    default { "0" }
-                    help    "Use screen space computed ambient occlusion."
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_distance"
-                    label   "Distance"
-                    type    float
-                    default { "0.5" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0 5 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_factor"
-                    label   "Factor"
-                    type    float
-                    default { "1" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0! 1 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_precision"
-                    label   "Precision"
-                    type    float
-                    default { "1" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    range   { 0! 1 }
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_bent_normals"
-                    label   "Bent Normals"
-                    type    toggle
-                    default { "0" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-                parm {
-                    name    "lv_ambient_occlusion_bounce_approx"
-                    label   "Bounce Approximation"
-                    type    toggle
-                    default { "0" }
-                    disablewhen "{ lv_ambient_occlusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-            }
-        }
     }
 
     group {
@@ -1751,6 +1696,341 @@
             type    toggle
             default { "1" }
             disablewhen "{ sololight != \"\" }"
+        }
+    }
+
+    group {
+        name    "rpasses_1"
+        label   "Render Passes"
+
+        group {
+            name    "rpasses_1_1"
+            label   "Edge Detect"
+
+            // EdgeDetectPass Depth
+            parm {
+                name    "lv_edgedetect_pass_trace_depth"
+                label   "Trace Depth"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_depth_distance_range"
+                label   "Depth Distance Range"
+                type    float
+                size    2
+                default { "5.0" "10.0" }
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_depth_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_1"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Normals
+
+            parm {
+                name    "lv_edgedetect_pass_trace_normal"
+                label   "Trace Normal"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_normal_threshold_range"
+                label   "Normal Threshold"
+                type    float
+                size    2
+                default { "0.2" "0.5" }
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_normal_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_2"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Materials
+
+            parm {
+                name    "lv_edgedetect_pass_trace_material_id"
+                label   "Trace Materials"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_material_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_3"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Instances
+
+            parm {
+                name    "lv_edgedetect_pass_trace_instance_id"
+                label   "Trace Objects"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_instance_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_4"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Alpha
+
+            parm {
+                name    "lv_edgedetect_pass_ignore_alpha"
+                label   "Ignore Alpha"
+                type    toggle
+                default { 0 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_lowpass_filter_size"
+                label   "Low Pass Filter"
+                type    integer
+                size    1
+                menu usetokenvalue {
+                    "0"   "Off"
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+        }
+
+        // Ambient Occlusion Pass Parameters
+        group {
+            name    "rpasses_1_2"
+            label   "Ambient Occlusion"
+
+            parm {
+                name    "lv_ambocc_pass_shading_rate"
+                label   "Shading Rate"
+                type    int
+                default { "1" }
+                range   { 1 64 }
+                disablewhen "{ lv_plane_ambientocclusion == 0  lv_main_output_source != AmbientOcclusionPass }"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_ambocc_pass_distance_range"
+                label   "Distance Range"
+                type    float
+                size    2
+                default { "1.0" "2.0" }
+                disablewhen "{ lv_plane_ambientocclusion == 0  lv_main_output_source != AmbientOcclusionPass }"
+                parmtag { "script_callback_language" "python" }
+            }
+        }
+
+        // Cryptomatte Pass Parameters
+        group {
+            name    "rpasses_1_3"
+            label   "Cryptomatte"
+
+            groupsimple {
+                name    "rpasses_1_3_1"
+                label   "Crypto Material"
+
+                parm {
+                    name    "lv_crypto_material_pass_output_preview"
+                    label   "Output Preview Color"
+                    type    toggle
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_cryptomatte_rank"
+                    label   "Overlap Limit"
+                    type    int
+                    size    1
+                    default { "4" }
+                    range   { 1 10 }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_output_name"
+                    label   "Channel Name"
+                    type    string
+                    default { "CryptoMaterial" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_pass_manifest_file"
+                    label   "Manifest File"
+                    type    string
+                    default { "" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_filenameenable"
+                    type    toggle
+                    nolabel
+                    joinnext
+                    default { 0 }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_material_filename"
+                    label   "Different File"
+                    type    string
+                    default { "$HIP/CryptoMaterial.exr" }
+                    disablewhen "{ lv_plane_cryptomaterial == 0  lv_main_output_source != CryptomatteMaterialPass} {lv_crypto_material_filenameenable != 1}"
+                    parmtag { "script_callback_language" "python" }
+                }
+            }
+
+            groupsimple {
+                name    "rpasses_1_3_2"
+                label   "Crypto Object"
+
+                parm {
+                    name    "lv_crypto_instance_pass_output_preview"
+                    label   "Output Preview Color"
+                    type    toggle
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_cryptomatte_rank"
+                    label   "Overlap Limit"
+                    type    int
+                    size    1
+                    default { "4" }
+                    range   { 1 10 }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_output_name"
+                    label   "Channel Name"
+                    type    string
+                    default { "CryptoObject" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_pass_manifest_file"
+                    label   "Manifest File"
+                    type    string
+                    default { "" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_filenameenable"
+                    type    toggle
+                    nolabel
+                    joinnext
+                    default { 0 }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_crypto_instance_filename"
+                    label   "Different File"
+                    type    string
+                    default { "$HIP/CryptoObject.exr" }
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass lv_crypto_instance_filenameenable != 1}"
+                    parmtag { "script_callback_language" "python" }
+                }
+            }
         }
     }
 
