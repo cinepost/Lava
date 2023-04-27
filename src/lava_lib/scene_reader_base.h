@@ -1,18 +1,19 @@
 #ifndef SRC_LAVA_LIB_SCENE_READER_BASE_H_
 #define SRC_LAVA_LIB_SCENE_READER_BASE_H_
 
+#include "lava_dll.h"
+
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <memory>
 
-
 namespace lava {
 
 class Renderer;
 
-class ReaderBase {
+class LAVA_API ReaderBase {
  public:
   	using SharedPtr = std::shared_ptr<ReaderBase>;
 

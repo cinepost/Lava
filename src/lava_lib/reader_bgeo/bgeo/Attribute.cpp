@@ -57,7 +57,7 @@ void Attribute::getStrings(std::vector<std::string>& data) const
     data = m_attribute.strings;
 }
 
-void Attribute::getData(u_int8_t* bytes, int64_t byteCount) const
+void Attribute::getData(uint8_t* bytes, int64_t byteCount) const
 {
     m_attribute.data.getUnpackedData(bytes, byteCount,
                    parser::storage::sizeInBytes(m_attribute.data.storage));

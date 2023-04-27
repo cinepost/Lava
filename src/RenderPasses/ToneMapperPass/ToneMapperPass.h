@@ -37,7 +37,7 @@
 
 using namespace Falcor;
 
-class ToneMapperPass : public RenderPass {
+class PASS_API ToneMapperPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<ToneMapperPass>;
 		using SharedConstPtr = std::shared_ptr<const ToneMapperPass>;

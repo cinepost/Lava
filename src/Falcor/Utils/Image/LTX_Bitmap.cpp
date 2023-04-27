@@ -32,8 +32,8 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
-#include <boost/filesystem.hpp>
-namespace fs = boost::filesystem;
+// #include <boost/filesystem.hpp>
+// namespace fs = boost::filesystem;
 
 #include "blosc.h"
 
@@ -51,6 +51,8 @@ namespace fs = boost::filesystem;
 
 
 namespace Falcor {
+
+	using uint = uint32_t;
 
 namespace oiio = OIIO;
 
@@ -446,7 +448,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 	header.width = dstDims.x;
 	header.height = dstDims.y;
 	header.depth = dstDims.z;
-	header.pageDims = {mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z};
+	header.pageDims = {static_cast<uint16_t>(mipInfo.pageDims.x), static_cast<uint16_t>(mipInfo.pageDims.y), static_cast<uint16_t>(mipInfo.pageDims.z)};
 	header.pageDataSize = kLtxPageSize;
 	header.pagesCount = 0;
 	header.arrayLayersCount = 1;

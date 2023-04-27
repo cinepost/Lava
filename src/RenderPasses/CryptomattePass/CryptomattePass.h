@@ -10,7 +10,7 @@
 using namespace Falcor;
 
 
-class CryptomattePass : public RenderPass {
+class PASS_API CryptomattePass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<CryptomattePass>;
 

@@ -33,7 +33,7 @@
 
 using namespace Falcor;
 
-class ImageLoaderPass : public RenderPass {
+class PASS_API ImageLoaderPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<ImageLoaderPass>;
 		using SharedConstPtr = std::shared_ptr<const ImageLoaderPass>;

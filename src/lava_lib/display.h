@@ -1,6 +1,8 @@
 #ifndef SRC_LAVA_LIB_DISPLAY_H_
 #define SRC_LAVA_LIB_DISPLAY_H_
 
+#include "lava_dll.h"
+
 #include <map>
 #include <string>
 #include <vector>
@@ -12,7 +14,9 @@
 
 namespace lava {
 
-class Display {
+  using uint = uint32_t;
+
+class LAVA_API Display {
   public:
     using UserParm = UserParameter;
     enum class DisplayType { NONE, NUL, IP, MD, HOUDINI, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type

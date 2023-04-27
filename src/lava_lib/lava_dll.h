@@ -1,7 +1,5 @@
-#ifndef LAVA_LIB_VERSION_H_
-#define LAVA_LIB_VERSION_H_
-
-#include <string>
+#ifndef LAVA_LAVA_DLL_H_
+#define LAVA_LAVA_DLL_H_
 
 // Define DLL export/import
 #ifdef _MSC_VER
@@ -22,14 +20,4 @@
 #define LAVA_API LAVA_API_IMPORT
 #endif  // BUILDING_SHARED_DLL
 
-namespace lava {
-
-const char* liblib_git_version(void);
-const char* liblib_git_revision(void);
-const char* liblib_git_branch(void);
-
-std::string LAVA_API versionString(void);
-
-} // namespace lava
-
-#endif // LAVA_LIB_VERSION_H_
+#endif  // LAVA_LAVA_DLL_H_

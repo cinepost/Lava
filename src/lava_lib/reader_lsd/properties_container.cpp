@@ -47,7 +47,7 @@ const Int2 Property::get() const {
         return boost::get<Int2>(mValue);
     } catch (...) {
         auto v = boost::get<Vector2>(mValue);
-        return Int2{static_cast<unsigned int>(v[0]), static_cast<unsigned int>(v[1])};
+        return Int2{static_cast<int>(v[0]), static_cast<int>(v[1])};
     }
 }
 

@@ -365,6 +365,7 @@ Result DebugDevice::createTextureResource(
 
 Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 	baseObject->allocateTailMemory(pTexture, force);
+	return SLANG_OK;
 }
 
 void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {

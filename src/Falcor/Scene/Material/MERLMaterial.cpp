@@ -228,7 +228,7 @@ namespace Falcor
 
         assert(mpAlbedoLUT);
 #ifdef WIN32
-        ImageIO::saveToDDS(mpDevice->getRenderContext(), texPath, mpAlbedoLUT, ImageIO::CompressionMode::None, false);
+        // ImageIO::saveToDDS(mpDevice->getRenderContext(), texPath, mpAlbedoLUT, ImageIO::CompressionMode::None, false);
 #else
         // Cache lookup table in texture on disk.
         // TODO: Capture texture to DDS is not yet supported. Calling ImageIO directly for now.

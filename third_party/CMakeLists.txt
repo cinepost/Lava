@@ -30,6 +30,10 @@ find_program(MAKE_EXECUTABLE
   DOC "GNU Make"
 )
 
+if(WIN32)
+  set(MAKE_EXECUTABLE cmake --build . -j 8 --config ${DEPS_BUILD_TYPE})
+endif()
+
 find_program(CHMOD_EXECUTABLE
   NAMES chmod
   NAMES_PER_DIR
@@ -102,7 +106,7 @@ endif()
 #######################
 
 if( NOT EXTERNAL_TBB_VERSION )
-  set(EXTERNAL_TBB_VERSION 2020.2)
+  set(EXTERNAL_TBB_VERSION 2021.8.0)  
 endif()
 
 set(TBB_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -124,17 +128,27 @@ else()
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
     
-    CONFIGURE_COMMAND ""
+    # CONFIGURE_COMMAND ""
+    # CONFIGURE_COMMAND cmake -DTBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build -DTBB_BUILD_PREFIX=${TBB_PREFIX}
+    CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
+    CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
+    # CMAKE_ARGS -D CMAKE_INSTALL_PREFIX=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
     
-    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+    # BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
-    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-    
-    INSTALL_COMMAND ${CMAKE_COMMAND}
-      -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
-      -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
-      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
+    # INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+
+    INSTALL_COMMAND cmake --install . --config ${DEPS_BUILD_TYPE}
+
+    # INSTALL_COMMAND ${CMAKE_COMMAND}
+    #   -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
+    #   -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
+    #   -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+    #   -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
@@ -195,6 +209,8 @@ else()
     CMAKE_ARGS -D CMAKE_C_FLAGS:STRING="-fPIC"
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
@@ -226,7 +242,9 @@ find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT COMPONENTS json filesystem sy
 if(Boost_FOUND)
 
   message("Boost version ${Boost_VERSION} found ...")
+  message(Boost_INCLUDE_DIR "${Boost_INCLUDE_DIR}")
   add_custom_target( Boost COMMAND echo "Boost ${EXTERNAL_BOOST_VERSION} build exists, skipping rebuild ...")
+  
 
 else()
   
@@ -254,18 +272,29 @@ else()
     GIT_REPOSITORY https://github.com/boostorg/boost.git
     GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
     UPDATE_DISCONNECTED true
-    CONFIGURE_COMMAND ./bootstrap.sh
-      --with-libraries=filesystem
-      --with-libraries=system
-      --with-libraries=date_time
-      --with-libraries=iostreams
-      --with-libraries=program_options
-      --with-libraries=regex
-      --with-libraries=log 
-      --with-libraries=thread
-      --with-libraries=json
-      --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    # CONFIGURE_COMMAND ./bootstrap.sh
+    #   --with-libraries=filesystem
+    #   --with-libraries=system
+    #   --with-libraries=date_time
+    #   --with-libraries=iostreams
+    #   --with-libraries=program_options
+    #   --with-libraries=regex
+    #   --with-libraries=log 
+    #   --with-libraries=thread
+    #   --with-libraries=json
+    #   --prefix=<INSTALL_DIR>
+    CONFIGURE_COMMAND ./bootstrap.bat
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+      --with-filesystem
+      --with-system
+      --with-date_time
+      --with-iostreams
+      --with-program_options
+      --with-regex
+      --with-log 
+      --with-thread
+      --with-json
+      --prefix=${EXTERNALS_INSTALL_DIR}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
@@ -308,6 +337,8 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/pybind
@@ -364,6 +395,8 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openexr
@@ -418,6 +451,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/assimp
@@ -462,7 +497,13 @@ else()
   else()
     set(OPENVDB_USE_BOOST_STATIC_RUNTIME OFF)
     set(OPENVDB_BUILD_CORE_SHARED ON)
-    set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
+    set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")    
+  endif()
+
+  if(DEPS_BUILD_TYPE STREQUAL "Release")
+    set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Release/lib/tbb12.lib")
+  else()
+    set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Debug/lib/tbb12_debug.lib")
   endif()
 
   ExternalProject_Add ( OpenVDB
@@ -494,12 +535,16 @@ else()
     CMAKE_ARGS -D TBB_INCLUDEDIR:PATH=${EXTERNALS_INSTALL_DIR}/include/
     CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_INSTALL_DIR}/lib/
     
-    CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
+    # CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS="/EHsc"
+    CMAKE_ARGS -D CMAKE_CXX_STANDARD_LIBRARIES=${OPENVDB_CXX_STANDARD_LIBRARIES}
     CMAKE_ARGS -D CMAKE_C_FLAGS=${OPENVDB_C_FLAGS}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openvdb
@@ -542,8 +587,10 @@ else()
   endif()
 
   set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
-  find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
-  message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
+  set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
+  # find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+  # find_package(ZLIB REQUIRED)
+  # message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
   
   ExternalProject_Add ( png
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpng-${EXTERNAL_PNG_VERSION}
@@ -557,6 +604,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${PNG_PREFIX}
@@ -564,6 +613,59 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${PNG_PREFIX}
   )
   ExternalProject_Add_StepDependencies(png configure zlib)
+endif()
+
+#######################
+# JPEG
+#######################
+
+if( NOT EXTERNAL_JPEG_VERSION )
+  set(EXTERNAL_JPEG_VERSION 2.1.0)
+endif()
+
+set(JPEG_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(JPEG ${EXTERNAL_JPEG_VERSION} EXACT)
+
+if(JPEG_FOUND)
+
+  message("JPEG found ...")
+  add_custom_target( jpeg COMMAND echo "JPEG build exists, skipping rebuild ...")
+
+else()
+
+  message("JPEG not found! Running external build ...")
+  set(JPEG_PREFIX jpeg)
+
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(JPEG_BUILD_STATIC_LIB ON)
+    set(JPEG_BUILD_SHARED_LIB OFF)
+  else()
+    set(JPEG_BUILD_STATIC_LIB OFF)
+    set(JPEG_BUILD_SHARED_LIB ON)
+  endif()
+
+  ExternalProject_Add ( jpeg
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${JPEG_PREFIX}
+    GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo
+    GIT_TAG ${EXTERNAL_JPEG_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    # CMAKE_ARGS -D JPEG_TESTS:BOOL=OFF
+    # CMAKE_ARGS -D JPEG_STATIC:BOOL=${JPEG_BUILD_STATIC_LIB}
+    CMAKE_ARGS -D ENABLE_SHARED:BOOL=${JPEG_BUILD_SHARED_LIB}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${JPEG_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${JPEG_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${JPEG_PREFIX}
+  )
+  # ExternalProject_Add_StepDependencies(jpeg configure)
 endif()
 
 #######################
@@ -597,7 +699,7 @@ else()
     set(OPENCOLORIO_BUILD_SHARED_LIBS ON)
   endif()
 
-  if(${DEPS_BUILD_TYPE} STREQUAL "release")
+  if(DEPS_BUILD_TYPE STREQUAL "Release")
     set(OPENCOLORIO_BUILD_TYPE "Release")
   else()
     set(OPENCOLORIO_BUILD_TYPE "Debug")
@@ -623,6 +725,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/ocio
@@ -710,13 +814,15 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/oiio
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB png tiff)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB png tiff jpeg)
 
 endif()
 
@@ -763,6 +869,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
@@ -808,6 +916,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${TIFF_PREFIX}
@@ -860,6 +970,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
@@ -901,6 +1013,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
@@ -934,7 +1048,8 @@ else()
 
   ExternalProject_Add ( ispc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
-    URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
+    # URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
+    URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-windows.zip
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -963,6 +1078,9 @@ else()
   message("OpenImageDenoise not found! Running external build ...")
   set(OIDN_PREFIX openimagedenoise)
 
+  if(NOT ISPC_EXECUTABLE)
+    find_package(ISPC ${EXTERNAL_ISPC_VERSION} EXACT)
+  endif()
   get_filename_component(ISPC_EXECUTABLE_DIR ${ISPC_EXECUTABLE} DIRECTORY)
   
   if(LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -979,6 +1097,7 @@ else()
 
     CMAKE_ARGS -D ISPC_DIR_HINT=${ISPC_EXECUTABLE_DIR}
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    # CMAKE_ARGS -D TBB_ROOT=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=${OIDN_BUILD_STATIC_LIBS}
@@ -992,6 +1111,8 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
+    # BUILD_COMMAND ${MAKE_EXECUTABLE}
+    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${OIDN_PREFIX}
@@ -1207,11 +1328,13 @@ else()
     CONFIGURE_COMMAND ""
 
     BUILD_COMMAND 
-      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
+      # COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
+      COMMAND msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
 
     INSTALL_COMMAND ${CMAKE_COMMAND}
       -D STATIC_LIB=${LAVA_3RD_LIB_LINK_WITH_STATIC}
-      -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
+      # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
+      -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage
       -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
 
@@ -1240,9 +1363,10 @@ if( Slang_FOUND )
 else()
 
 set(SLANG_PREFIX slang)
-set(SLANG_PLATFORM linux-x64)
+# set(SLANG_PLATFORM linux-x64)
+set(SLANG_PLATFORM windows-x64)
 
-set(SLANG_BUILD_LIBS "slang slang-glslang")
+set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
@@ -1281,23 +1405,28 @@ ExternalProject_Add( Slang
   USES_TERMINAL_CONFIGURE ON
 
   CONFIGURE_COMMAND
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
     COMMAND ${CMAKE_COMMAND}
-      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
-      -D OUTPUT_FILE=<SOURCE_DIR>/premake5
+      # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
+      -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
     COMMAND ${CMAKE_COMMAND}
       -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
       -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
       -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-    COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+    COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
   BUILD_COMMAND 
     #COMMAND ${CMAKE_COMMAND}
     #  -D SOURCE_DIR=<SOURCE_DIR>
     #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
     COMMAND
-      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
+      # ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
+      msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
+
+      # BUILD_COMMAND cmake --build . -j 8 --config Release
 
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
@@ -1335,5 +1464,6 @@ add_dependencies( dummy_target
   zmq
   cppzmq
   tiff
+  jpeg
   FreeImage
 )

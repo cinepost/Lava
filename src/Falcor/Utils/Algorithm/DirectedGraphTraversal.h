@@ -33,6 +33,8 @@
 
 #include "DirectedGraph.h"
 
+#include <stack>
+
 namespace Falcor {
 
     class DirectedGraphTraversal {

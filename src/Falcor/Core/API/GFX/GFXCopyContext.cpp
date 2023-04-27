@@ -412,7 +412,8 @@ void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pD
 
 		std::vector<uint8_t> tmpData(width * height * 4);
 		randomPattern(tmpData.data(), width, height);
-		const void * dataPtr = tmpData.data();
+		// const void * dataPtr = tmpData.data();
+		const uint8_t * dataPtr = tmpData.data();
 
 		gfx::ITextureResource::SubresourceData data = {};
 		data.data = dataPtr;
@@ -420,7 +421,7 @@ void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pD
 		data.strideZ = data.strideY * (height / formatInfo.blockHeight);
 		dataPtr += data.strideZ * depth;
 
-		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, {0, 0, 0}, {width, height, 1}, &data, 1);
+		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, {0, 0, 0}, {static_cast<gfx::GfxCount>(width), static_cast<gfx::GfxCount>(height), 1}, &data, 1);
 	}
 }
 

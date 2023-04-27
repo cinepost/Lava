@@ -38,13 +38,13 @@
 #include "Falcor/Scene/Material/HairMaterial.h"
 #include "Falcor/Scene/Material/ClothMaterial.h"
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 namespace Falcor {
 

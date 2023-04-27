@@ -9,8 +9,11 @@ set (SOURCES
 )
 
 # Find BOOST
+set(BOOST_ROOT ${DEPS_DIR})
+set(Boost_USE_STATIC_LIBS OFF)
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS program_options log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
+add_definitions(-DBOOST_ALL_DYN_LINK)
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )

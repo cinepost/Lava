@@ -34,6 +34,8 @@
 
 #include <slang/slang.h>
 
+#include <set>
+
 namespace Falcor
 {
     void ProgramVars::addSimpleEntryPointGroups()

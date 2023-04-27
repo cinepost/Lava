@@ -27,6 +27,8 @@
  **************************************************************************/
 #pragma once
 
+#include <stack>
+
 #include "Falcor/Core/API/Device.h"
 
 #include "Core/API/GraphicsStateObject.h"

@@ -44,8 +44,8 @@ class Bgeo: public std::enable_shared_from_this<Bgeo> {
 
     ~Bgeo(); // dtor required for unique_ptr
 
-    bool readInlineGeo(const std::string& bgeoString, bool checkVersion = false);
-    bool readGeoFromFile(const char* bgeoPath, bool checkVersion = false);
+    void readInlineGeo(const std::string& bgeoString, bool checkVersion = false);
+    void readGeoFromFile(const char* bgeoPath, bool checkVersion = false);
 
     int64_t getPointCount() const;
     int64_t getTotalVertexCount() const;

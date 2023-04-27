@@ -343,7 +343,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint3 sparseDataPageRes() const { return mSparsePageRes; }
 
-	inline uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
+	inline uint32_t sparseDataPagesCount() const { return static_cast<uint32_t>(mSparseDataPages.size()); }
 
 	uint32_t getMipTailStart() const;
 

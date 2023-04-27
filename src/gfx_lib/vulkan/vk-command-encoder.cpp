@@ -490,7 +490,7 @@ void ResourceCommandEncoder::uploadTexturePageData(
 		region.imageSubresource.baseArrayLayer = 0;
 		region.imageSubresource.layerCount = 1;
 		region.imageOffset = {offset.x, offset.y, offset.z};
-		region.imageExtent = {extent.width, extent.height, extent.depth};
+		region.imageExtent = {static_cast<uint32_t>(extent.width), static_cast<uint32_t>(extent.height), static_cast<uint32_t>(extent.depth)};
 
 		// Do the copy (do all depths in a single go)
 		vkApi.vkCmdCopyBufferToImage(

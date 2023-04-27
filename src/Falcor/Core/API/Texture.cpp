@@ -565,7 +565,7 @@ bool Texture::compareDesc(const Texture* pOther) const {
 		mArraySize == pOther->mArraySize &&
 		mFormat == pOther->mFormat &&
 		mIsSparse == pOther->mIsSparse &&
-		mSparsePageRes == pOther->mSparsePageRes;
+		mSparsePageRes == pOther->mSparsePageRes &&
 		mIsUDIMTexture == pOther->mIsUDIMTexture;
 }
 

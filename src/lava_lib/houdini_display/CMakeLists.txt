@@ -7,6 +7,8 @@ set (SOURCES
 
 # Find Boost libs
 set(Boost_USE_MULTITHREADED ON)
+set(BOOST_ROOT ${DEPS_DIR})
+set(Boost_USE_STATIC_LIBS OFF)
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 
 # OpenMP
@@ -16,6 +18,8 @@ include_directories(
 	${CMAKE_SOURCE_DIR}
 	${Boost_INCLUDE_DIRS} 
 )
+
+add_definitions( -D_HAS_STD_BYTE=0 )
 
 add_library( d_houdini SHARED ${SOURCES} )
 

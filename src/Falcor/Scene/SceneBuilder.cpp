@@ -29,13 +29,13 @@
 #include <thread>
 #include <numeric>
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 #include "stdafx.h"
 #include "SceneBuilder.h"
@@ -164,7 +164,7 @@ bool compareVertices(const SceneBuilder::Mesh::Vertex& lhs, const SceneBuilder::
 
 std::vector<uint32_t> compact16BitIndices(const std::vector<uint32_t>& indices) {
     if (indices.empty()) return {};
-    size_t sz = div_round_up(indices.size(), 2ul); // Storing two 16-bit indices per dword.
+    size_t sz = div_round_up(indices.size(), (size_t)2); // Storing two 16-bit indices per dword.
     std::vector<uint32_t> indexData(sz);
     uint16_t* pIndices = reinterpret_cast<uint16_t*>(indexData.data());
     for (size_t i = 0; i < indices.size(); i++) {
@@ -1584,7 +1584,11 @@ void SceneBuilder::createMeshGroups() {
         const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId);
         if (pMaterial->isDisplaced()) mesh.isDisplaced = true;
 
-        instances inst({mesh.instances.begin()->nodeId, mesh.instances.end()->nodeId});
+        //instances inst({mesh.instances.begin()->nodeId, mesh.instances.end()->nodeId});
+        instances inst;
+        for (const auto& i : mesh.instances) {
+            inst.insert(i.nodeId);
+        }
 
         if (mesh.isDisplaced) {
             displacedInstancesToMeshList[inst].push_back(meshID);

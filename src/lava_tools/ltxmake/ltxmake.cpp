@@ -5,10 +5,12 @@
 #include <csignal>
 #include <chrono>
 
-#include <unistd.h>
+// #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
+// #include <getopt.h>
+
+using uint = uint32_t;
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
@@ -18,13 +20,13 @@
 #include <boost/algorithm/string/join.hpp>
 namespace po = boost::program_options;
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 
 #include "Falcor/Utils/Image/LTX_Bitmap.h"

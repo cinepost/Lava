@@ -44,16 +44,16 @@ enum class NormalizationMode: uint8_t {
 };
 
 namespace Gaussian {
-  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float sigma= 6.f, bool generateHalfTable = true, NormalizationMode normalization = NormalizationMode::Peak);
+  std::vector<float> dlldecl createKernelData1D(uint32_t kernelHalfWidth, float sigma= 6.f, bool generateHalfTable = true, NormalizationMode normalization = NormalizationMode::Peak);
   
-  Texture::SharedPtr createKernelTexture1D(
+  Texture::SharedPtr dlldecl createKernelTexture1D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     float sigma = 6.f, 
     bool generateHalfTable = true, 
     NormalizationMode normalization = NormalizationMode::Peak);
   
-  Texture::SharedPtr createKernelTexture2D(
+  Texture::SharedPtr dlldecl createKernelTexture2D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     uint32_t kernelHalfHeight, 
@@ -62,15 +62,15 @@ namespace Gaussian {
 }
 
 namespace Blackman {
-  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, bool generateHalfTable = true, bool normalize = true);
+  std::vector<float> dlldecl createKernelData1D(uint32_t kernelHalfWidth, bool generateHalfTable = true, bool normalize = true);
   
-  Texture::SharedPtr createKernelTexture1D(
+  Texture::SharedPtr dlldecl createKernelTexture1D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     bool generateHalfTable = true, 
     NormalizationMode normalization = NormalizationMode::Peak);
   
-  Texture::SharedPtr createKernelTexture2D(
+  Texture::SharedPtr dlldecl createKernelTexture2D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     uint32_t kernelHalfHeight, 
@@ -79,9 +79,9 @@ namespace Blackman {
 }
 
 namespace Mitchell {
-  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float B, float C, bool generateHalfTable = true, bool normalize = true);
+  std::vector<float> dlldecl createKernelData1D(uint32_t kernelHalfWidth, float B, float C, bool generateHalfTable = true, bool normalize = true);
   
-  Texture::SharedPtr createKernelTexture1D(
+  Texture::SharedPtr dlldecl createKernelTexture1D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     float B, 
@@ -89,7 +89,7 @@ namespace Mitchell {
     bool generateHalfTable = true, 
     NormalizationMode normalization = NormalizationMode::Peak);
   
-  Texture::SharedPtr createKernelTexture2D(
+  Texture::SharedPtr dlldecl createKernelTexture2D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     uint32_t kernelHalfHeight, 
@@ -100,16 +100,16 @@ namespace Mitchell {
 }
 
 namespace Sinc {
-  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float T = 3.f, bool generateHalfTable = true, bool normalize = true);
+  std::vector<float> dlldecl createKernelData1D(uint32_t kernelHalfWidth, float T = 3.f, bool generateHalfTable = true, bool normalize = true);
   
-  Texture::SharedPtr createKernelTexture1D(
+  Texture::SharedPtr dlldecl createKernelTexture1D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     float T = 3.f, 
     bool generateHalfTable = true, 
     NormalizationMode normalization = NormalizationMode::Peak);
   
-  Texture::SharedPtr createKernelTexture2D(
+  Texture::SharedPtr dlldecl createKernelTexture2D(
     Device::SharedPtr pDevice, 
     uint32_t kernelHalfWidth, 
     uint32_t kernelHalfHeight, 

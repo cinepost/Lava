@@ -1,7 +1,11 @@
 include(CheckIncludeFile)
 
-if(NOT HOUDINI_ROOT)
-    message(AUTHOR WARNING " No HOUDINI_ROOT path specified! Some Houdini tools for Lava will not be built !!!")
+if(WIN32 OR NOT HOUDINI_ROOT)
+    set(HYTHON_VERSION_MAJOR "3")
+    set(HYTHON_VERSION_MINOR "7")
+    set(HYTHON_VERSION "${HYTHON_VERSION_MAJOR}.${HYTHON_VERSION_MINOR}")
+    # message(AUTHOR WARNING " No HOUDINI_ROOT path specified! Some Houdini tools for Lava will not be built !!!")
+    message(STATUS "Using python version " ${HYTHON_VERSION} " for Houdini-Lava integration.")
 else()
     message(STATUS "Houdini root set to " ${HOUDINI_ROOT} ". Finding required components...")
     foreach(_HVAR IN ITEMS HB HH HHP HT)

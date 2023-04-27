@@ -82,6 +82,7 @@ Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode m
 
 Sampler::Desc& Sampler::Desc::setUnnormalizedCoordinates(bool state) {
     mUnnormalizedCoordinates = state;
+    return *this;
 }
 
 Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {

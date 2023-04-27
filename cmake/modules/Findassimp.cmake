@@ -18,7 +18,7 @@ if(WIN32)
 	if(MSVC12)
 		set(ASSIMP_MSVC_VERSION "vc120")
 	elseif(MSVC14)	
-		set(ASSIMP_MSVC_VERSION "vc140")
+		set(ASSIMP_MSVC_VERSION "vc142")
 	endif(MSVC12)
 	
 	if(MSVC12 OR MSVC14)

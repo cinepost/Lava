@@ -1,6 +1,8 @@
 #ifndef SRC_LAVA_LIB_SCENEBUILDER_H_
 #define SRC_LAVA_LIB_SCENEBUILDER_H_
 
+#include "lava_dll.h"
+
 #include <map>
 #include <future>
 #include <atomic>
@@ -20,7 +22,7 @@ using namespace Falcor;
 
 namespace lava {
 
-class SceneBuilder: public Falcor::SceneBuilder {
+class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 	public:
 		using SharedPtr = std::shared_ptr<lava::SceneBuilder>;
 		using Flags = Falcor::SceneBuilder::Flags;

@@ -19,7 +19,7 @@ const uint8_t kLtxVersionBuild = 2;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', '0', '0', '0', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 4,5,6 used to store major,minor,build versions
 
-struct LTX_Header {
+struct dlldecl LTX_Header {
     unsigned char   magic[12];
     time_t          srcLastWriteTime; // Source texture creation time
     uint32_t        width = 0;

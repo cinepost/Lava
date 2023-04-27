@@ -443,7 +443,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 			m_features.add("sparse-binding");
 		}
 
-		deviceCreateInfo.pNext = &deviceFeatures2;
+		//deviceCreateInfo.pNext = &deviceFeatures2;
 
 		// If we have float16 features then enable
 		if (extendedFeatures.float16Features.shaderFloat16) {
@@ -1314,7 +1314,7 @@ Result DeviceImpl::createTextureResource(
 
 	if (pTexture && sparse) {
 #ifdef _DEBUG
-		LOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
+		LLOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
 #endif		
 
 		// Check requested image size against hardware sparse limit            

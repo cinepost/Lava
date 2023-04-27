@@ -55,7 +55,7 @@ bool Renderer::init(const Config& config) {
 
 	mCurrentConfig = config;
 
-	Falcor::OSServices::start();
+	// Falcor::OSServices::start();
 
 #ifdef SCRIPTING
 	Falcor::Scripting::start();
@@ -113,7 +113,7 @@ Renderer::~Renderer() {
 
 	//mpDevice.reset();
 
-	Falcor::OSServices::stop();
+	// Falcor::OSServices::stop();
 }
 
 AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {

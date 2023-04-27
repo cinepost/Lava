@@ -28,9 +28,11 @@ else()
     string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
 endif()
 
-set(CPP_VERSION "const char* LAVA_GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
-const char* LAVA_GIT_TAG=\"${GIT_TAG}\";
-const char* LAVA_GIT_BRANCH=\"${GIT_BRANCH}\";")
+set(CPP_VERSION "extern \"C\" {
+    extern const char* LAVA_GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
+    extern const char* LAVA_GIT_TAG=\"${GIT_TAG}\";
+    extern const char* LAVA_GIT_BRANCH=\"${GIT_BRANCH}\";
+}")
 
 if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp)
     file(READ ${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp CPP_VERSION_)

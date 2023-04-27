@@ -5,12 +5,13 @@
 #include <csignal>
 #include <chrono>
 
-#include <unistd.h>
+#include <windows.h>
+// #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
+// #include <getopt.h>
 
-#include <execinfo.h>
+// #include <execinfo.h>
 #include <signal.h>
 
 #include <boost/log/core.hpp>
@@ -39,31 +40,31 @@ namespace po = boost::program_options;
 
 using namespace lava;
 
-void signalHandler( int signum ){
-  exit(signum);
-}
+// void signalHandler( int signum ){
+//   exit(signum);
+// }
 
-void signalTraceHandler( int signum ){
-#ifdef PRE_RELEASE_TRACEBACK_HANDLER
-  fprintf(stderr, "****************************************\n");
-  fprintf(stderr, "************ Lava Traceback ************\n");
-  fprintf(stderr, "****************************************\n");
-  fprintf(stderr, "Error: signal %d:\n", signum);
-  void *array[30];
-  size_t size;
+// void signalTraceHandler( int signum ){
+// #ifdef PRE_RELEASE_TRACEBACK_HANDLER
+//   fprintf(stderr, "****************************************\n");
+//   fprintf(stderr, "************ Lava Traceback ************\n");
+//   fprintf(stderr, "****************************************\n");
+//   fprintf(stderr, "Error: signal %d:\n", signum);
+//   void *array[30];
+//   size_t size;
 
-  // get void*'s for all entries on the stack
-  size = backtrace(array, 30);
+//   // get void*'s for all entries on the stack
+//   size = backtrace(array, 30);
 
-  // print out all the frames to stderr
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-#endif
-  exit(signum);
-}
+//   // print out all the frames to stderr
+//   backtrace_symbols_fd(array, size, STDERR_FILENO);
+// #endif
+//   exit(signum);
+// }
 
-void atexitHandler()  {
-  lava::ut::log::shutdown_log();
-}
+// void atexitHandler()  {
+//   lava::ut::log::shutdown_log();
+// }
 
 void listGPUs() {
   auto pDeviceManager = DeviceManager::create();
@@ -104,10 +105,10 @@ int main(int argc, char** argv){
     bool echo_input = false;
 #endif
 
-    std::atexit(atexitHandler);
-    signal(SIGTERM, signalHandler);
-    signal(SIGABRT, signalTraceHandler);
-    signal(SIGSEGV, signalTraceHandler);
+    // std::atexit(atexitHandler);
+    // signal(SIGTERM, signalHandler);
+    // signal(SIGABRT, signalTraceHandler);
+    // signal(SIGSEGV, signalTraceHandler);
 
 
     /// Program options

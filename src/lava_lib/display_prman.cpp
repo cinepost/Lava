@@ -2,6 +2,7 @@
 #include <array>
 
 #include <dlfcn.h>
+#include "dlfcn-win32/include/dlfcn.h"
 #include <stdlib.h>
 #include <boost/format.hpp>
 
@@ -83,7 +84,7 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
         return nullptr;
     }
 
-	boost::format libdspy_name("%1%/etc/d_%2%.so");
+	boost::format libdspy_name("%1%/etc/d_%2%.dll");
 	libdspy_name % lava_home % display_driver_name;
 
 	void* mLibHandle = dlopen(libdspy_name.str().c_str(), RTLD_NOW);

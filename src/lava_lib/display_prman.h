@@ -1,6 +1,8 @@
 #ifndef SRC_LAVA_LIB_DISPLAY_PRMAN_H_
 #define SRC_LAVA_LIB_DISPLAY_PRMAN_H_
 
+#include "lava_dll.h"
+
 #include <map>
 #include <string>
 #include <vector>
@@ -11,7 +13,7 @@
 
 namespace lava {
 
-class DisplayPrman: private Display {
+class LAVA_API DisplayPrman: private Display {
   public:
     
     ~DisplayPrman();

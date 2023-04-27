@@ -56,6 +56,12 @@
 #define dlldecl falcorimport
 #endif  // BUILDING_SHARED_DLL
 
+#ifdef PASS_DLL
+#define PASS_API FALCOR_API_EXPORT
+#else   // BUILDING_SHARED_DLL
+#define PASS_API FALCOR_API_IMPORT
+#endif  // BUILDING_SHARED_DLL
+
 #include "Falcor/Core/ErrorHandling.h"
 
 #include <stdint.h>
@@ -71,14 +77,14 @@
 #include <type_traits>
 
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/format.hpp"
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Math/Vector.h"

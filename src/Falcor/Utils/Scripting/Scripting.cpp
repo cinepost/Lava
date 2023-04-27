@@ -28,13 +28,13 @@
 #include <vector>
 #include <string>
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 #include "Falcor/stdafx.h"
 #include "Dictionary.h"

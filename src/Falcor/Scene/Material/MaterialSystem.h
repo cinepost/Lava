@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_ 
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_
 
+#include <set>
+
 #include "Material.h"
 
 #include "Falcor/Core/Framework.h"

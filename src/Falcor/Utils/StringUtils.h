@@ -41,13 +41,13 @@
 #include <cxxabi.h>
 #endif
 
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
+// #ifdef _WIN32
+// #include <filesystem>
+// namespace fs = std::filesystem;
+// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-#endif
+// #endif
 
 namespace Falcor {
 
@@ -55,7 +55,8 @@ namespace Falcor {
     inline fs::path appendExtension(const fs::path& path, const fs::path& ext) {
         auto sz_ext = ext.c_str();
         if ('.' == *sz_ext) ++sz_ext;
-        return path.string<std::string>() + "." + sz_ext;
+        // return path.string<std::string>() + "." + sz_ext;
+        return path / "." / sz_ext;
     }
 
     // String/string_View append operators missing from the spec
@@ -329,8 +330,8 @@ namespace Falcor {
         }
         std::string typeName(demangled);
         free(demangled);
-#endif
         auto v = splitString(typeName, "::");
+#endif
         return v.back();
     }
 

@@ -39,10 +39,10 @@
 #include <sstream>
 #include <fstream>
 
-#ifdef _WIN32
-#define USE_PIX
-#include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
-#endif
+// #ifdef _WIN32
+// #define USE_PIX
+// #include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
+// #endif
 
 #include "Profiler.h"
 

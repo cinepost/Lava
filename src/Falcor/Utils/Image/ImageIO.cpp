@@ -31,7 +31,7 @@
 
 #include "Falcor/Core/Framework.h"
 
-#ifdef WIN32
+#ifdef WIN32__
 #include "dds_header/DDSHeader.h"
 #endif
 
@@ -297,7 +297,7 @@ void setImage(const void* subresourceData, nvtt::Surface& surface, ExportData im
 
 #endif  // _NVTT
 
-#ifdef WIN32
+#ifdef WIN32__
 // Saves image data to a DDS file using the specified compression mode. Optionally generates mips.
 void exportDDS(const std::filesystem::path& path, ExportData& image, ImageIO::CompressionMode mode, bool generateMips) {
     nvtt::CompressionOptions compressionOptions;
@@ -513,7 +513,7 @@ void loadDDS(const std::filesystem::path& path, bool loadAsSrgb, ImportData& dat
 
 }  // namespace
 
-#ifdef WIN32
+#ifdef WIN32__
 Bitmap::UniqueConstPtr ImageIO::loadBitmapFromDDS(const fs::path& path) {
     std::filesystem::path fullPath;
     if (!findFileInDataDirectories(path, fullPath)) {

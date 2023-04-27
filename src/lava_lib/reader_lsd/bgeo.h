@@ -12,6 +12,8 @@
 
 namespace lava {
 
+    using uint = uint32_t;
+
 namespace bgeo {
 
 class Bgeo {

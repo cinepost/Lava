@@ -1,6 +1,8 @@
 #ifndef SRC_LAVA_LIB_RENDERER_H_
 #define SRC_LAVA_LIB_RENDERER_H_
 
+#include "lava_dll.h"
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -33,7 +35,7 @@ namespace lava {
 
 class MaterialX;
 
-class Renderer: public std::enable_shared_from_this<Renderer> {
+class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
   public:
     struct Config {
       // Rendering options

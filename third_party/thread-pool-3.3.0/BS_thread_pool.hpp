@@ -27,7 +27,7 @@
 #include <utility>            // std::forward, std::move, std::swap
 #include <vector>             // std::vector
 
-#define THREADPOOL_USE_CPU_AFFINITY
+// #define THREADPOOL_USE_CPU_AFFINITY
 
 namespace BS {
 /**

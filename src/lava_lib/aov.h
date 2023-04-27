@@ -1,6 +1,8 @@
 #ifndef SRC_LAVA_LIB_AOV_H_
 #define SRC_LAVA_LIB_AOV_H_
 
+#include "lava_dll.h"
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -77,7 +79,7 @@ inline std::string to_string(AOVBuiltinName name) {
 #undef type_2_string
 }
 
-class aov_name_visitor : public boost::static_visitor<std::string> {
+class LAVA_API aov_name_visitor : public boost::static_visitor<std::string> {
   public:
     std::string operator()(AOVBuiltinName name) const;
     const std::string& operator()(const std::string& str) const;
@@ -135,7 +137,7 @@ struct AOVPlaneGeometry {
   uint32_t channelsCount;         // Calculated from resourceFormat.
 };
 
-class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
+class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
   public:
     using SharedPtr = std::shared_ptr<AOVPlane>;
     using SharedConstPtr = std::shared_ptr<const AOVPlane>;

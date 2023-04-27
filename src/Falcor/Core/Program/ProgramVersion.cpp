@@ -34,6 +34,8 @@
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "ProgramVersion.h"
 
+#include <set>
+
 namespace Falcor
 {
 

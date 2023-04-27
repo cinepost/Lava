@@ -9,6 +9,8 @@
 
 namespace Falcor {
 
+	using uint = uint32_t;
+
 static int32_t gBloscForceBlocksize = 0;
 
 static const int kDoBloscShuffle = BLOSC_NOSHUFFLE;; //BLOSC_SHUFFLE;

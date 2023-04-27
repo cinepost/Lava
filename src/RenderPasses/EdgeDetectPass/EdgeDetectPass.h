@@ -18,7 +18,7 @@ using namespace Falcor;
 /** Edge detection render pass.
 
 */
-class EdgeDetectPass : public RenderPass {
+class PASS_API EdgeDetectPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<EdgeDetectPass>;
 		using SharedConstPtr = std::shared_ptr<const EdgeDetectPass>;

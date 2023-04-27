@@ -16,7 +16,7 @@ namespace lava {
 
 namespace oiio = OIIO;
 
-class DisplayOIIO: private Display {
+class LAVA_API DisplayOIIO: private Display {
   public:
     
     ~DisplayOIIO();

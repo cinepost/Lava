@@ -56,3 +56,9 @@ third_party/external/
 
 # lava textures
 *.ltx
+
+third_party/freeimage/
+third_party/downloads/
+install/
+.vs/
+.vscode/

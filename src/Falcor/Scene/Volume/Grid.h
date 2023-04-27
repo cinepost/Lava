@@ -39,8 +39,8 @@
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Utils/Math/AABB.h"
 
-#include <boost/filesystem.hpp>
-namespace fs = boost::filesystem;
+// #include <boost/filesystem.hpp>
+// namespace fs = boost::filesystem;
 
 namespace Falcor
 {

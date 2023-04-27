@@ -2,10 +2,20 @@ string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_LIBS_LIST})
 
 # copy libs
 foreach (entry IN LISTS SLANG_BUILD_LIBS_LIST)
-    set(INPUT_FILE   ${BIN_DIR}/lib${entry}.so)
-    set(OUTPUT_FILE  ${DEST_DIR}/lib/lib${entry}.so)
+    if(WIN32)
+        set(INPUT_FILE   ${BIN_DIR}/${entry}.lib)
+        set(OUTPUT_FILE  ${DEST_DIR}/lib/${entry}.lib)
+        set(INPUT_FILE_DLL   ${BIN_DIR}/${entry}.dll)
+        set(OUTPUT_FILE_DLL  ${DEST_DIR}/bin/${entry}.dll)
+    elseif()
+        set(INPUT_FILE   ${BIN_DIR}/lib${entry}.so)
+        set(OUTPUT_FILE  ${DEST_DIR}/lib/lib${entry}.so)
+    endif()
 
     message("Copy ${INPUT_FILE} to ${OUTPUT_FILE} ")
+    if(WIN32)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${INPUT_FILE_DLL} ${OUTPUT_FILE_DLL})
+    endif()
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${INPUT_FILE} ${OUTPUT_FILE})
 endforeach()
 

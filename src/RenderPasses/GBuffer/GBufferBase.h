@@ -50,7 +50,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
-class GBufferBase : public RenderPass {
+class PASS_API GBufferBase : public RenderPass {
  public:
     enum class SamplePattern : uint32_t {
         Center,

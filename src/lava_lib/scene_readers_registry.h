@@ -12,7 +12,7 @@ namespace lava {
 typedef std::vector<std::string> *(*ReaderExtensions)();
 typedef ReaderBase::SharedPtr (*ReaderConstructor)();
 
-class SceneReadersRegistry {
+class LAVA_API SceneReadersRegistry {
  public:
 	static SceneReadersRegistry& getInstance() {
 		static SceneReadersRegistry instance;

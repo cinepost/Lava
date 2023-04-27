@@ -49,7 +49,7 @@ using namespace Falcor;
     is not always sufficient. The pass supports higher precision modes using
     either error compensation (Kahan summation) or double precision math.
 */
-class AccumulatePass : public RenderPass {
+class PASS_API AccumulatePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
     using SharedConstPtr = std::shared_ptr<const AccumulatePass>;

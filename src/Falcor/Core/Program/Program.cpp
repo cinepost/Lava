@@ -34,6 +34,8 @@
 #include "Falcor/Utils/Timing/CpuTimer.h"
 #include "Program.h"
 
+#include <set>
+
 namespace Falcor {
 
 const std::string kSupportedShaderModels[] = { "6_0", "6_1", "6_2", "6_3", "6_4", "6_5"

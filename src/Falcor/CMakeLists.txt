@@ -1,4 +1,4 @@
-set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
+set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
 
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
@@ -12,7 +12,8 @@ file( GLOB SOURCES
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
-    ./Core/Platform/Linux/Linux.cpp
+    # ./Core/Platform/Linux/Linux.cpp
+    ./Core/Platform/Windows/Windows.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
@@ -20,6 +21,7 @@ file( GLOB SOURCES
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
     ./Rendering/RTXDI/*.cpp
+    ./Rendering/Utils/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
     ./Scene/Animation/*.cpp
@@ -28,6 +30,11 @@ file( GLOB SOURCES
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
+    # ./Scene/SDFs/*.cpp
+    # ./Scene/SDFs/NormalizedDenseSDFGrid/*.cpp
+    # ./Scene/SDFs/SparseBrickSet/*.cpp
+    # ./Scene/SDFs/SparseVoxelOctree/*.cpp
+    # ./Scene/SDFs/SparseVoxelSet/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/Cryptomatte/*.cpp
@@ -70,7 +77,9 @@ list (APPEND SOURCES ${BACKEND_API_SOURCES})
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
 if(MSVC)
-    target_compile_options(falcor_lib PUBLIC /arch:SSE4.1)
+    # target_compile_options(falcor_lib PUBLIC /arch:SSE4.1)
+    # set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+    target_link_options(falcor_lib PRIVATE "/FORCE:UNRESOLVED")
 else()
     target_compile_options(falcor_lib PUBLIC -march=native -msse4.1)
 endif()
@@ -78,6 +87,7 @@ endif()
 # Blosc
 set(BLOSC_USE_STATIC_LIBS ON)
 set(Blosc_ROOT ${DEPS_DIR})
+set(Blosc_LIBRARY ${DEPS_DIR}/lib/libblosc.lib)
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT REQUIRED)
 
 # PyBind11
@@ -85,17 +95,37 @@ set(pybind11_ROOT ${DEPS_DIR})
 find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT REQUIRED CONFIG)
 
 # Python
+# set(CMAKE_BUILD_TYPE_ ${CMAKE_BUILD_TYPE})
+# set(CMAKE_BUILD_TYPE Release)
 find_package( Python3 REQUIRED COMPONENTS Development )
 target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
+# set(CMAKE_BUILD_TYPE_ ${CMAKE_BUILD_TYPE_})
 
 # Assimp
 set(assimp_ROOT ${DEPS_DIR})
 find_package(assimp ${EXTERNAL_ASSIMP_VERSION} REQUIRED)
+if (DEPS_BUILD_TYPE STREQUAL "Release")
+    set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_RELEASE})
+else()
+    set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_DEBUG})
+endif()
+message ("assimp_LIBRARIES: ${assimp_LIBRARIES}")
+message ("Using ASSIMP_LIBRARY: ${ASSIMP_LIBRARY}")
 
 # LZ4
+set(LZ4_ROOT ${DEPS_DIR}/lz4)
 find_package( LZ4 REQUIRED )
+include_directories( ${LZ4_INCLUDE_DIR} )
+# include_directories( ${LZ4_ROOT}/include )
+# set(LZ4_LIBRARY ${LZ4_ROOT}/lib/lz4.lib)
 
 # ZLIB
+set(ZLIB_ROOT ${DEPS_DIR})
+if (DEPS_BUILD_TYPE STREQUAL "Debug")
+    set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlibd.lib )
+else()
+    set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlib.lib )
+endif()
 find_package( ZLIB REQUIRED )
 if(ZLIB_FOUND)
     set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
@@ -127,16 +157,18 @@ include_directories( ${OPENIMAGEIO_INCLUDES} )
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     message(STATUS "Using module to find Vulkan")
-    find_package(Vulkan)
+    find_package(Vulkan REQUIRED)
 endif()
 
-if (NOT Vulkan_FOUND)
-    find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR/libs/vulkan}" REQUIRED)
-    if (Vulkan_LIBRARY)
-        set(Vulkan_FOUND OK)
-        message("Using bundled vulkan library version")
-    endif()
-endif()
+# if (NOT Vulkan_FOUND)
+#     find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR/libs/vulkan}" REQUIRED)
+#     if (Vulkan_LIBRARY)
+#         set(Vulkan_FOUND OK)
+#         message("Using bundled vulkan library version")
+#     endif()
+# endif()
+
+# include_directories( ${Vulkan_INCLUDE_DIRS} )
 
 # FreeImage
 set(FreeImage_ROOT ${DEPS_DIR})
@@ -151,6 +183,7 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${DEPS_DIR})
+set(Boost_USE_STATIC_LIBS OFF)
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS json filesystem system thread EXACT REQUIRED )
 target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
@@ -166,6 +199,7 @@ find_package(OpenVDB ${EXTERNAL_OPENVDB_VERSION} REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
 # OpenSSL
+set(OpenSSL_ROOT ${DEPS_DIR}/openssl)
 find_package(OpenSSL REQUIRED)
 
 message("OpenVDB ${OpenVDB_LIBRARY}")
@@ -187,7 +221,7 @@ set(GLFW_ROOT ${DEPS_DIR})
 find_package(GLFW ${EXTERNAL_GLFW_VERSION} EXACT REQUIRED)
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
-add_definitions(-DFALCOR_DLL)
+add_definitions(-DFALCOR_DLL -DUNICODE )
 
 if(USE_MEGALIB)
     target_link_libraries(
@@ -197,31 +231,36 @@ if(USE_MEGALIB)
             stdc++fs
     )
 else()
-    add_definitions( -DBOOST_LOG_DYN_LINK )
+    # add_definitions( -DBOOST_LOG_DYN_LINK )
+    add_definitions(-DBOOST_ALL_DYN_LINK)
     target_link_libraries(
         falcor_lib
         PUBLIC
-            stdc++fs
+            # stdc++fs
             Blosc::blosc
             ${GLFW_LIBRARY}
             OpenSSL::SSL
             OpenImageIO::OpenImageIO
             OpenVDB::openvdb
             OpenEXR::IlmImf
-            ${assimp_LIBRARIES}
+            # ${assimp_LIBRARIES}
+            ${ASSIMP_LIBRARY}
             ${SLANG_LIBRARY}
             Boost::system
             Boost::filesystem
             Boost::thread
             Boost::json
-            ${Vulkan_LIBRARY}
+            # ${Vulkan_LIBRARY}
+            Vulkan::Vulkan
             ${GTK3_LIBRARIES}
             ${TIFF_LIBRARIES}
-            ${ZLIB_LIBRARY}
+            # ${ZLIB_LIBRARY}
+            ZLIB::ZLIB
             ${LZ4_LIBRARY}
             Python3::Python
             FreeImage::FreeImage
             ${OIDN_LIBRARIES}
+            "Comctl32.lib"
     )
 endif()
 
@@ -248,7 +287,7 @@ file(
     DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
-if(UNIX)
+if(UNIX OR WIN32)
     install( 
         TARGETS falcor_lib
         DESTINATION lib 

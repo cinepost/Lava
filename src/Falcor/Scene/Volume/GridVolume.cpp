@@ -28,6 +28,7 @@
 #include "stdafx.h"
 #include "GridVolume.h"
 
+#include <set>
 
 namespace Falcor
 {

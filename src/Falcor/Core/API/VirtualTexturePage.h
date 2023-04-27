@@ -49,7 +49,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 #if defined(FALCOR_GFX)
 		inline gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		inline gfx::ITextureResource::Extents extentGFX() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+		inline gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
 #endif
 
 		size_t usedMemSize() const;

@@ -15,7 +15,7 @@ using namespace Falcor;
 
 //static constexpr float16_t MAX_COLOR_COMPONENT_VALUE = std::numeric_limits<float16_t>::max();
 
-class DeferredLightingPass : public RenderPass {
+class PASS_API DeferredLightingPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<DeferredLightingPass>;
 

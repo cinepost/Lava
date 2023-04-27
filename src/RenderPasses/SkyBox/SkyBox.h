@@ -38,7 +38,7 @@
 
 using namespace Falcor;
 
-class SkyBox : public RenderPass {
+class PASS_API SkyBox : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<SkyBox>;
     static const Info kInfo;
@@ -65,7 +65,7 @@ class SkyBox : public RenderPass {
 
  private:
     SkyBox(Device::SharedPtr pDevice);
-    void loadImage();
+   //  void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
     glm::mat4 mTransformMatrix;

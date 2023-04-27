@@ -131,11 +131,11 @@ Bgeo::SharedPtr Bgeo::create(std::shared_ptr<parser::Detail> detail) {
 
 Bgeo::Bgeo() {}
 
-bool Bgeo::readInlineGeo(const std::string& bgeoString, bool checkVersion) {
+void Bgeo::readInlineGeo(const std::string& bgeoString, bool checkVersion) {
     m_pimpl = std::make_unique<Impl>(bgeoString, checkVersion);
 }
 
-bool Bgeo::readGeoFromFile(const char* bgeoPath, bool checkVersion) {
+void Bgeo::readGeoFromFile(const char* bgeoPath, bool checkVersion) {
     m_pimpl = std::make_unique<Impl>(bgeoPath, checkVersion);
 }
 

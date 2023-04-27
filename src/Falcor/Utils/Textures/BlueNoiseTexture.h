@@ -37,7 +37,7 @@ class Texture;
 
 namespace BlueNoiseTexture {
 
-std::shared_ptr<Texture> create(std::shared_ptr<Device> pDevice);
+std::shared_ptr<Texture> dlldecl create(std::shared_ptr<Device> pDevice);
 
 }
 

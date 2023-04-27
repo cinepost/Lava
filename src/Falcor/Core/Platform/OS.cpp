@@ -55,6 +55,8 @@ uint32_t getLowerPowerOf2(uint32_t a) {
 }
 
 inline std::vector<fs::path> getInitialShaderDirectories() {
+    fs::path tmp(std::string(LAVA_INSTALL_DIR) + "/shaders");
+    LLOG_DBG << tmp;
     std::vector<fs::path> developmentDirectories = {
         // First we search in source folders.
         //std::string(PROJECT_DIR),

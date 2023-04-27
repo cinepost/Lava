@@ -40,6 +40,8 @@
 
 namespace Falcor {
 
+    using uint = uint32_t;
+
 class Device;
 class Scene;
 
