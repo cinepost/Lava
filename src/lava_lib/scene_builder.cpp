@@ -285,6 +285,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
         }
     }
 
+    LLOG_TRC << "Bgeo primitives iteration done.";
+
     Mesh mesh;
     mesh.faceCount = face_count;
 

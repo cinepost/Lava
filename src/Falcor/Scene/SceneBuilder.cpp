@@ -77,24 +77,28 @@ const float kMaxTexelError = 0.5f;
 
 class MikkTSpaceWrapper {
   public:
-    static std::vector<float4> generateTangents(const SceneBuilder::Mesh& mesh) {
+    static void generateTangents(SceneBuilder::Mesh& mesh, std::vector<float4>& tangents) {
+        if (mesh.indexCount == 0) {
+            LLOG_WRN << "Can't generate tangent space on non-indexed meshes.";
+            tangents = {};
+        }
         if (!mesh.positions.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have positions !!!";
-            return {};
+            tangents = {};
         }
         if (!mesh.normals.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have normals !!!";
-            return {};
+            tangents = {};
         }
         if (!mesh.texCrds.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
-            return {};
+            tangents = {};
         }
 
         // TODO: Is this still relevant !?
         if (!mesh.pIndices) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
-            return {};
+            tangents = {};
         }
 
         // Generate new tangent space.
@@ -106,26 +110,37 @@ class MikkTSpaceWrapper {
         mikktspace.m_getTexCoord = [](const SMikkTSpaceContext* pContext, float texCrd[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getTexCrd(texCrd, face, vert); };
         mikktspace.m_setTSpaceBasic = [](const SMikkTSpaceContext* pContext, const float tangent[], float sign, int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->setTangent(tangent, sign, face, vert); };
 
-        MikkTSpaceWrapper wrapper(mesh);
+        const size_t tangentsArraySize = static_cast<size_t>(mesh.indexCount); 
+        if(tangents.size() <tangentsArraySize) {
+            tangents.resize(static_cast<size_t>(mesh.indexCount), float4(0));
+        } else {
+            std::fill_n(tangents.begin(), tangentsArraySize, float4(0));
+        }
+
+        MikkTSpaceWrapper wrapper(mesh, tangents);
         SMikkTSpaceContext context = {};
         context.m_pInterface = &mikktspace;
         context.m_pUserData = &wrapper;
 
-        if (genTangSpaceDefault(&context) == false) {
-            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
-            return {};
-        }
+        bool meshHasQuadFaces = false;
 
-        return wrapper.mTangents;
+        if (genTangSpaceDefault(&context, meshHasQuadFaces) == false) {
+            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
+            tangents = {};
+        }
+        //tangents.clear();
     }
 
   private:
-    MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh) : mMesh(mesh) {
+    MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh, std::vector<float4>& tangents): mMesh(mesh), mTangents(tangents) {
         assert(mesh.indexCount > 0);
-        mTangents.resize(mesh.indexCount, float4(0));
+        //mTangents.resize(static_cast<size_t>(mMesh.indexCount), float4(0));
     }
+     MikkTSpaceWrapper(SceneBuilder::Mesh&&) = delete;
+
     const SceneBuilder::Mesh& mMesh;
-    std::vector<float4> mTangents;
+    std::vector<float4>& mTangents;
+    
     int32_t getFaceCount() const { return (int32_t)mMesh.faceCount; }
     void getPosition(float position[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(position) = mMesh.getPosition(face, vert); }
     void getNormal(float normal[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(normal) = mMesh.getNormal(face, vert); }
@@ -326,6 +341,7 @@ uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleM
 }
 
 SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAttributeIndices* pAttributeIndices) const {
+    LLOG_DBG << "processing mesh " << mesh_.name;
     // This function preprocesses a mesh into the final runtime representation.
     // Note the function needs to be thread safe. The following steps are performed:
     //  - Error checking
@@ -374,6 +390,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     // Generate tangent space if that's required.
     std::vector<float4> tangents;
     if (!(is_set(mFlags, Flags::UseOriginalTangentSpace) || mesh.useOriginalTangentSpace) || !mesh.tangents.pData) {
+        LLOG_DBG << "generating tangents for mesh " << mesh_.name;
         generateTangents(mesh, tangents);
     }
 
@@ -381,6 +398,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     std::vector<float2> transformedTexCoords;
 
     if (mesh.texCrds.pData != nullptr) {
+        LLOG_DBG << "pretransforming texture coordinates for mesh " << mesh_.name; 
         const glm::mat4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
         if (xform != glm::identity<glm::mat4>()) {
             size_t texCoordCount = mesh.getAttributeCount(mesh.texCrds);
@@ -419,6 +437,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     }
 
     if (mesh.mergeDuplicateVertices) {
+        LLOG_DBG << "merging duplicate vertices for mesh " << mesh_.name;
         vertices.reserve(mesh.vertexCount);
 
         std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
@@ -505,7 +524,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     const uint32_t vertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
     // Build meshlets. If needed...
-    bool generateMeshlets = true; // TODO: fetch scene meshlets generation settings
+    bool generateMeshlets = false; // TODO: fetch scene meshlets generation settings
 
     processedMesh.meshletSpecs.clear();
     if(generateMeshlets && isIndexed) {
@@ -609,9 +628,10 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 }
 
 void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) const {
-    tangents = MikkTSpaceWrapper::generateTangents(mesh);
-    if (!tangents.empty()) {
-        assert(tangents.size() == mesh.indexCount);
+    MikkTSpaceWrapper::generateTangents(mesh, tangents);
+    if(tangents.empty()) return;
+
+    if (tangents.size() == mesh.indexCount) {
         mesh.tangents.pData = tangents.data();
         mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
     } else {

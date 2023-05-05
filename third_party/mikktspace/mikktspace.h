@@ -58,6 +58,8 @@ extern "C" {
  * and also quad triangulator plugin.
  */
 
+#define TFALSE       0
+#define TTRUE        1
 
 typedef int tbool;
 typedef struct SMikkTSpaceContext SMikkTSpaceContext;
@@ -110,8 +112,8 @@ struct SMikkTSpaceContext
 };
 
 // these are both thread safe!
-tbool genTangSpaceDefault(const SMikkTSpaceContext * pContext);    // Default (recommended) fAngularThreshold is 180 degrees (which means threshold disabled)
-tbool genTangSpace(const SMikkTSpaceContext * pContext, const float fAngularThreshold);
+tbool genTangSpaceDefault(const SMikkTSpaceContext * pContext, tbool meshHasQuadFaces);    // Default (recommended) fAngularThreshold is 180 degrees (which means threshold disabled)
+tbool genTangSpace(const SMikkTSpaceContext * pContext, const float fAngularThreshold, tbool meshHasQuadFaces);
 
 
 // To avoid visual errors (distortions/unwanted hard edges in lighting), when using sampled normal maps, the
