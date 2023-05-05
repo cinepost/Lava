@@ -52,6 +52,7 @@ class dlldecl SceneBuilder {
 
     static const uint32_t kInvalidNode = Animatable::kInvalidNode;
     static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
 
     struct InstanceShadingSpec {
         bool        isMatte = false;
@@ -67,6 +68,7 @@ class dlldecl SceneBuilder {
         bool        visibleToReflectionRays = true;
         bool        visibleToRefractionRays = true;
         bool        receiveShadows = true;
+        bool        receiveSelfShadows = true;
     };
 
     /** This struct holds per instance arbitrary data that might be used map renderer internal mesh data to one was exported from some software.
@@ -273,6 +275,13 @@ class dlldecl SceneBuilder {
         }
     };
 
+    struct MeshletSpec {
+        MeshletType type = MeshletType::Triangles;
+        std::vector<uint32_t> vertices;         ///< Meshlet vertices that point to global scene vertex data.
+        std::vector<uint8_t>  indices;          ///< Indices of a primitive verices. Vector size should be equal to indexCount.
+        std::vector<uint32_t> primitiveIDs;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+    };
+
     /** Pre-processed mesh data.
         This data is formatted such that it can directly be copied
         to the global scene buffers.
@@ -289,6 +298,8 @@ class dlldecl SceneBuilder {
         std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
+
+        std::vector<MeshletSpec> meshletSpecs;
     };
 
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
@@ -641,6 +652,7 @@ protected:
         bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
         bool isDisplaced = false;               ///< True if mesh has displacement map.
         bool isAnimated = false;                ///< True if mesh has vertex animations.
+        bool hasMeshlets = false;               ///< True if mesh has generated meshlets.
         AABB boundingBox;                       ///< Mesh bounding-box in object space.
         std::vector<MeshInstanceSpec> instances;    ///< All instances of this mesh.
 
@@ -668,7 +680,7 @@ protected:
         }
     };
 
-     // TODO: Add support for dynamic curves
+    // TODO: Add support for dynamic curves
     struct CurveSpec {
         std::string name;
         Vao::Topology topology;
@@ -688,6 +700,7 @@ protected:
 
     using SceneGraph = std::vector<InternalNode>;
     using MeshList = std::vector<MeshSpec>;
+    using MeshletList = std::vector<Meshlet>;
     using MeshGroup = Scene::MeshGroup;
     using MeshGroupList = std::vector<MeshGroup>;
     using CurveList = std::vector<CurveSpec>;
@@ -702,9 +715,18 @@ protected:
     SceneGraph mSceneGraph;
     const Flags mFlags;
 
+    // Meshlets
     MeshList mMeshes;
+    std::vector<MeshletList> mMeshletLists;
+    std::vector<uint32_t> mMeshletVertices;    ///< Meshlet vertices that point to global scene vertex data.
+    std::vector<uint8_t>  mMeshletIndices;     ///< Indices of a primitive verices. Vector size should be equal to indexCount.
+    std::vector<uint32_t> mMeshletPrimIDs;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+
+    // Meshes
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
 
+
+    // Curves
     CurveList mCurves;
 
     std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
@@ -764,6 +786,7 @@ protected:
 
     // Scene setup
     void createMeshData();
+    void createMeshletsData();
     void createMeshInstanceData(uint32_t& tlasInstanceIndex);
     void createCurveData();
     void createCurveInstanceData(uint32_t& tlasInstanceIndex);

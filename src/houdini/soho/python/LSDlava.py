@@ -281,7 +281,7 @@ def initializeFeatures(settings):
     Object("visible_reflect", "bool", "lv_visibility_reflect", skipdefault=True)
     Object("visible_refract", "bool", "lv_visibility_refract", skipdefault=True)
     Object("receive_shadows", "bool", "lv_visibility_shadows_recv", skipdefault=True)
-
+    Object("receive_self_shadows", "bool", "lv_visibility_shadows_self", skipdefault=True)
 
     # -- Light --
     Light("__nondiffuse", "bool", "lv_nondiffuse")

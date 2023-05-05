@@ -28,6 +28,7 @@
 #pragma once
 #include "../GBufferBase.h"
 #include "Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Scene/SceneTypes.slang"
 
 #include "VBufferSW.Meshlet.slangh"
 
@@ -62,9 +63,7 @@ class VBufferSW : public GBufferBase {
 
 		void recreateBuffers();
 		void recreatePrograms();
-		void recreateMeshlets();
-
-		void buildMeshlets(const MeshDesc& meshDesc, MeshletsList& meshlets, VerticesList& vertices, TrianglesList& triangles);
+		void recreateMeshletDrawList();
 
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
@@ -81,12 +80,8 @@ class VBufferSW : public GBufferBase {
 		ComputePass::SharedPtr mpComputeRasterizerPass;
 
 		// Local buffers
-		Texture::SharedPtr     mpLocalDepth;
+		Texture::SharedPtr     mpLocalDepth;  ///< Local depth-triangle "render target" buffer
 
 		// Meshlets part
 		Buffer::SharedPtr      mpMeshletDrawListBuffer;
-		Buffer::SharedPtr      mpMeshletsBuffer;
-		Buffer::SharedPtr      mpMeshletsVerticesBuffer;
-		Buffer::SharedPtr      mpMeshletsTrianglesBuffer;
-
 };

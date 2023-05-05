@@ -50,7 +50,7 @@ __exported import Experimental.Scene.Materials.IBSDF;
 // In some computations, we can avoid clamps etc. if 1.0 - alpha^2 != 1.0, so the epsilon should be 1.72666361e-4 or
 // larger in fp32. The the value below is sufficient to avoid visible artifacts. Falcor used to clamp roughness to 0.08
 // before the clamp was removed for allowing delta events. We continue to use the same threshold.
-static const float kMinGGXAlpha = 0.0064f;
+static const float kMinGGXAlpha = 0.0001f; //0.0064f;
 
 // TODO: Reduce to 52B
 /**

@@ -450,9 +450,6 @@ bool Session::cmdRaytrace() {
     initDisplayTimeReport.addTotal("Display init total time");
     initDisplayTimeReport.printToLog();
 
-    uint percent = 50;
-    fprintf(stdout, "ALF_PROGRESS %d%%\n", percent);
-
     // Frame rendering
     TimeReport renderingTimeReport;
 	LLOG_INF << "Rendering image started...";
@@ -1262,8 +1259,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3f);
     	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0f);
 
-    	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
-    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0f);
+    	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 0.0f);
 
     	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
     	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
@@ -1344,6 +1341,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     visibilitySpec.visibleToReflectionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_reflect", true);
     visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
     visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
+    visibilitySpec.receiveSelfShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_self_shadows", true);
     
     SceneBuilder::MeshInstanceCreationSpec creationSpec;
     creationSpec.pExportedDataSpec = &exportedSpec;

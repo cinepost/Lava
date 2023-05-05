@@ -68,6 +68,10 @@ namespace {
     const std::string kParameterBlockName = "gScene";
     const std::string kGeometryInstanceBufferName = "geometryInstances";
     const std::string kMeshBufferName = "meshes";
+    const std::string kMeshletGroupsBufferName = "meshletGroups";
+    const std::string kMeshletIndicesBufferName = "meshletIndexData";
+    const std::string kMeshletVerticesBufferName = "meshletVertices";
+    const std::string kMeshletsBufferName = "meshlets";
     const std::string kIndexBufferName = "indexData";
     const std::string kVertexBufferName = "vertices";
     const std::string kPrevVertexBufferName = "prevVertices";
@@ -168,6 +172,11 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mUseCompressedHitInfo = sceneData.useCompressedHitInfo;
     mHas16BitIndices = sceneData.has16BitIndices;
     mHas32BitIndices = sceneData.has32BitIndices;
+
+    mMeshletGroups = std::move(sceneData.meshletGroups);
+    mMeshlets = std::move(sceneData.meshlets);
+    mMeshletVertices = std::move(sceneData.meshletVertices);
+    mMeshletIndices = std::move(sceneData.meshletIndices);
 
     mCurveDesc = std::move(sceneData.curveDesc);
     mCurveBBs = std::move(sceneData.curveBBs);
@@ -692,17 +701,53 @@ void Scene::initResources() {
         mpGridVolumesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kGridVolumesBufferName], (uint32_t)mGridVolumes.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpGridVolumesBuffer->setName("Scene::mpGridVolumesBuffer");
     }
+
+    if (!mMeshletGroups.empty()) {
+        mpMeshletGroupsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletGroupsBufferName], (uint32_t)mMeshletGroups.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshletGroupsBuffer->setName("Scene::mpMeshletGroupsBuffer");
+    }
+    
+    if (!mMeshlets.empty()) {
+        mpMeshletsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletsBufferName], (uint32_t)mMeshlets.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshletsBuffer->setName("Scene::mpMeshletsBuffer");
+    }
+
+    if (!mMeshletIndices.empty()) {
+        mpMeshletIndicesBuffer = Buffer::create(mpDevice, mMeshletIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+        mpMeshletIndicesBuffer->setName("Scene::mpMeshletIndicesBuffer");
+    }
+
+    if (!mMeshletVertices.empty()) {
+        mpMeshletVerticesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletVerticesBufferName], (uint32_t)mMeshletVertices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshletVerticesBuffer->setName("Scene::mpMeshletVeticesBuffer");
+    }
 }
 
 void Scene::uploadResources() {
     assert(mpAnimationController);
 
     // Upload geometry.
+
+    // Meshes.
     if (!mMeshDesc.empty()) mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
+
+    // Meshlets.
+    if (!mMeshletGroups.empty()) mpMeshletGroupsBuffer->setBlob(mMeshletGroups.data(), 0, sizeof(MeshletGroup) * mMeshletGroups.size());
+    if (!mMeshlets.empty()) mpMeshletsBuffer->setBlob(mMeshlets.data(), 0, sizeof(Meshlet) * mMeshlets.size());
+    if (!mMeshletVertices.empty()) mpMeshletVerticesBuffer->setBlob(mMeshletVertices.data(), 0, sizeof(uint32_t) * mMeshletVertices.size());
+    if (!mMeshletIndices.empty()) mpMeshletIndicesBuffer->setBlob(mMeshletIndices.data(), 0, sizeof(uint8_t) * mMeshletIndices.size());
+
+    // Curves
     if (!mCurveDesc.empty()) mpCurvesBuffer->setBlob(mCurveDesc.data(), 0, sizeof(CurveDesc) * mCurveDesc.size());
 
     mpSceneBlock->setBuffer(kGeometryInstanceBufferName, mpGeometryInstancesBuffer);
     mpSceneBlock->setBuffer(kMeshBufferName, mpMeshesBuffer);
+
+    mpSceneBlock->setBuffer(kMeshletGroupsBufferName, mpMeshletGroupsBuffer);
+    mpSceneBlock->setBuffer(kMeshletsBufferName, mpMeshletsBuffer);
+    mpSceneBlock->setBuffer(kMeshletIndicesBufferName, mpMeshletIndicesBuffer);
+    mpSceneBlock->setBuffer(kMeshletVerticesBufferName, mpMeshletVerticesBuffer);
+
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
 
     auto sdfGridsVar = mpSceneBlock[kSDFGridsArrayName];
@@ -1190,6 +1235,14 @@ void Scene::updateGeometryStats() {
         s.uniqueCurvePointCount += curve.vertexCount;
         s.uniqueCurveSegmentCount += curve.getSegmentCount();
     }
+
+    // Meshlets
+    s.meshletsCount = mMeshlets.size();
+    s.meshletsMemoryInBytes += s.meshletsCount * sizeof(Meshlet);
+    s.meshletsMemoryInBytes += mMeshletGroups.size() * sizeof(MeshletGroup);
+    s.meshletsMemoryInBytes += mMeshletVertices.size() * sizeof(uint32_t);
+    s.meshletsMemoryInBytes += mMeshletIndices.size() * sizeof(uint8_t);
+
 
     // Calculate memory usage.
     s.indexMemoryInBytes = 0;
