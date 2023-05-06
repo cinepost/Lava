@@ -128,13 +128,11 @@ class MikkTSpaceWrapper {
             LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
             tangents = {};
         }
-        //tangents.clear();
     }
 
   private:
     MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh, std::vector<float4>& tangents): mMesh(mesh), mTangents(tangents) {
         assert(mesh.indexCount > 0);
-        //mTangents.resize(static_cast<size_t>(mMesh.indexCount), float4(0));
     }
      MikkTSpaceWrapper(SceneBuilder::Mesh&&) = delete;
 

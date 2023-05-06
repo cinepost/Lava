@@ -113,7 +113,7 @@ struct SMikkTSpaceContext
 
 // these are both thread safe!
 tbool genTangSpaceDefault(const SMikkTSpaceContext * pContext, tbool meshHasQuadFaces);    // Default (recommended) fAngularThreshold is 180 degrees (which means threshold disabled)
-tbool genTangSpace(const SMikkTSpaceContext * pContext, const float fAngularThreshold, tbool meshHasQuadFaces);
+tbool genTangSpace(const SMikkTSpaceContext * pContext, float fAngularThreshold, tbool meshHasQuadFaces);
 
 
 // To avoid visual errors (distortions/unwanted hard edges in lighting), when using sampled normal maps, the

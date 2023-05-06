@@ -204,14 +204,13 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod);
     BSDFProperties bsdfProperties = mi.getProperties(sd);
 
-    uint shadingLobes = (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission;
+    uint shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission;
     
     // Ray level common stuff
     if (rayData.level > 0) { 
         // Ray level 1+
 
         // Terminate specular caustics.
-        shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::SpecularReflection;
     } else {
         // Ray level 0 (camera ray)
         aov_data.position = sd.posW;
