@@ -1230,8 +1230,7 @@ public:
     std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
 
      // Displacement mapping.
-    struct
-    {
+    struct {
         bool needsUpdate = true;                                ///< True if displacement data has changed and a AABB update is required.
         struct DisplacementMeshData { uint32_t AABBOffset = 0; uint32_t AABBCount = 0; };
         std::vector<DisplacementMeshData> meshData;             ///< List of displacement mesh data (reference to AABBs).
@@ -1347,12 +1346,7 @@ public:
 
     // Ray tracing acceleration structure
     struct TlasData {
-//#ifdef FALCOR_VK
-//        TopLevelAccelerationStructure::SharedPtr pTlasObject;
-//#else
         RtAccelerationStructure::SharedPtr pTlasObject;
-//#endif
-
         Buffer::SharedPtr pTlasBuffer;
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
         UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
@@ -1367,14 +1361,9 @@ public:
     /** Describes one BLAS.
     */
     struct BlasData {
-//#ifdef FALCOR_VK
-//        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
-//        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
-//#else
         RtAccelerationStructurePrebuildInfo prebuildInfo = {};
         RtAccelerationStructureBuildInputs buildInputs = {};
         std::vector<RtGeometryDesc> geomDescs;
-//#endif
 
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 

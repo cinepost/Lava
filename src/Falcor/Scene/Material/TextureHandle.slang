@@ -48,6 +48,7 @@ struct TextureHandle {
     enum class Mode {
         Uniform,
         Texture,
+        Virtual,
         UDIM_Texture,
         Count // Must be last
     };

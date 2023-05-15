@@ -66,6 +66,12 @@ public:
 		Loaded,         ///< Texture has finished loading.
 	};
 
+	/** Sparse (virtual) texture info structure.
+	*/
+
+//	struct VirtualTextureInfo {
+//	};
+
 	/** Handle to a managed texture.
 	*/
 	struct TextureHandle {
@@ -73,6 +79,7 @@ public:
 		enum class Mode {
 			Uniform,
 			Texture,       ///< Normal texture.
+			Virtual,       ///< Virtual texture.
 			UDIM_Texture,  ///< UDIM texture. No actual data/resource associated.
 		};
 
@@ -257,7 +264,9 @@ private:
 inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
 #define mode_2_string(a) case TextureManager::TextureHandle::Mode::a: return #a;
   switch (mode) {
+  		mode_2_string(Uniform);
       mode_2_string(Texture);
+      mode_2_string(Virtual);
       mode_2_string(UDIM_Texture);
     default:
       assert(false);

@@ -181,7 +181,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         return surfaceColor;
     }
 
-    ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
+    //ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
+    ITextureSampler _lod = ExplicitLodTextureSampler(8.0);
     
     float3 rayOrigin = sd.posW;
     float3 rayShadowOrigin = rayOrigin;
@@ -495,6 +496,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     let lod = createTextureSampler(ipos);
+    //let lod = ExplicitLodTextureSampler(7.0);
 
     // Primary ray surface data
     TriangleHit primaryTriangleHit;

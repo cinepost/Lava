@@ -1469,8 +1469,10 @@ Result DeviceImpl::createTextureResource(
 
 				pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
-				pTexture->mMipBases[sparseMemoryReq.imageMipTailFirstLod] = pTexture->mSparsePagesCount;                    
-				pTexture->mSparsePagesCount += 1;
+				for(uint32_t tailMipLevel = sparseMemoryReq.imageMipTailFirstLod; tailMipLevel < 16; ++ tailMipLevel) {
+					pTexture->mMipBases[tailMipLevel] = pTexture->mSparsePagesCount;           
+				}         
+				//pTexture->mSparsePagesCount += 1;
 			}
 		} // end layers and mips
 
@@ -1502,7 +1504,7 @@ Result DeviceImpl::createTextureResource(
 		LLOG_DBG << "Texture info:";
 		LLOG_DBG << "\tDim: " << pTexture->mWidth << " x " << pTexture->mHeight;
 		LLOG_DBG << "\tVirtual pages: " << pTexture->sparseDataPages().size();
-		LLOG_DBG << "\tSingle mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No");
+		LLOG_DBG << "\tAll layers single mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No");
 		LLOG_DBG << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod;
 		LLOG_DBG << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize;
 

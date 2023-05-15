@@ -251,7 +251,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 				auto textureHandle = pMaterial->getTextureHandle(slot);
 				auto currentPagesStartOffset = totalPagesToUpdateCount;
-				calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexDataBuffer.back());
+				calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexData);
 
 				if(!pTexture->isUDIMTexture()) {
 					if(texturePagesStartMap.size() <= textureID) {
@@ -349,12 +349,17 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	uint32_t resolvedTexturesCount = currTextureResolveID + 1;
 
-#ifdef _DEBUG
-	printf("Total pages to update for %u textures is %u\n", resolvedTexturesCount, totalPagesToUpdateCount);
-#endif
+	// ensure pages buffer is aligned to 4 bytes
+	auto totalPagesToUpdateCountAligned = totalPagesToUpdateCount;
+	auto dv = std::div(totalPagesToUpdateCount, 4);
+	if(dv.rem != 0) {
+		totalPagesToUpdateCountAligned = (dv.quot + 1) * 4;
+	}
 
-	std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount, 0);
-	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
+	if(mPagesInitDataVetcor.size() != totalPagesToUpdateCount) mPagesInitDataVetcor.resize(totalPagesToUpdateCount);
+	memset(mPagesInitDataVetcor.data(), totalPagesToUpdateCount, 0);
+
+	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCountAligned, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mPagesInitDataVetcor.data());
 	mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
 
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
@@ -372,10 +377,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["gCalibrationSampler"] = mpSampler;
 	mpVars["gCalibrationMinSampler"] = mpMinSampler;
 	mpVars["gCalibrationMaxSampler"] = mpMaxSampler;
-
-#ifdef _DEBUG
-	printf("%u textures needs to be resolved\n", resolvedTexturesCount);
-#endif
 
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
 	pContext->flush(true);
@@ -395,12 +396,13 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		std::vector<uint32_t> pageIDs;
 
 		// index 'i' is a page index relative to the texture. starts with 0
-		for(uint32_t i = 0; i < texturePagesCount; i++) {
+		for(uint32_t i = 0; i < texturePagesCount; ++i) {
 			if (pOutPagesData[i + pagesStartOffset] != 0) {
-				//pageIDs.push_back(i + pagesStartOffset);
 				pageIDs.push_back(i);
 			}
 		}
+
+		//pageIDs.push_back(1364);
 
 		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << std::to_string(textureID);
 		
