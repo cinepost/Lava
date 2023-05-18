@@ -25,11 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Scene/SceneDefines.slangh"
+#include "Utils/Math/MathConstants.slangh"
 import VBufferSW;
-
-#ifndef MESHLET_MAX_ELEMENTS_SIZE // Meshlet max triangles/verices size
-#deine  MESHLET_MAX_ELEMENTS_SIZE 128
-#endif
 
 #ifndef MICROPOLY_MAX_BB_SIZE
 #define MICROPOLY_MAX_BB_SIZE 8.f // 4x4 pixel micropoly
@@ -37,16 +35,20 @@ import VBufferSW;
 
 ConstantBuffer<VBufferSW> gVBufferSW;
 
-groupshared uint num_triangles; // triangles
+groupshared uint triangleCount; // triangles
 groupshared uint num_vertices;
 groupshared uint base_index;
 groupshared uint base_vertex;
 
+groupshared float4x4 worldMat;
+groupshared GeometryInstanceID instanceID;
+groupshared GeometryInstanceData instance;
+groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
 groupshared Meshlet meshlet;
 
-groupshared uint   indices[MESHLET_MAX_ELEMENTS_SIZE * 3u];
-groupshared float3 positions[MESHLET_MAX_ELEMENTS_SIZE];
+groupshared uint   indices[MESHLET_MAX_POLYGONS_COUNT * 4];
+groupshared float3 positions[MESHLET_MAX_VERTICES_COUNT];
 
 
 float3 transformPoint(const float3 p) {
@@ -71,7 +73,7 @@ void rasterizeMicroTriangle(float3 p0, float3 p1, float3 p2, float2 min_p, float
     }
 }
 
-void rasterizeTriangle(float3 p0, float3 p1, float3 p2, bool cullCCW) {
+void rasterizeTriangle(float3 p0, float3 p1, float3 p2, GeometryInstanceID instanceID, bool cullCCW) {
     [[branch]] if(p0.z < 0.0f || p1.z < 0.0f || p2.z < 0.0f) return;
 
     const float2 frame_size = gVBufferSW.frameDimF;
@@ -84,6 +86,9 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, bool cullCCW) {
 
     float2 min_p = floor(min(min(p0.xy, p1.xy), p2.xy));
     float2 max_p = ceil(max(max(p0.xy, p1.xy), p2.xy));
+
+    //float2 min_p = round(min(min(p0.xy, p1.xy), p2.xy));
+    //float2 max_p = round(max(max(p0.xy, p1.xy), p2.xy));
 
     // Cut offscreen triangle
     [[branch]] if(max_p.x < 0.0f || max_p.y < 0.0f || min_p.x >= frame_size.x || min_p.y >= frame_size.y) return;
@@ -104,16 +109,23 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, bool cullCCW) {
         for(float x = min_p.x; x <= max_p.x; x += 1.0f) {
             if(texcoord.x >= 0.0f && texcoord.y >= 0.0f && texcoord.x + texcoord.y <= 1.0f) {
                 float z = p10.z * texcoord.x + p20.z * texcoord.y + p0.z;
-                const uint uint_z = asuint(z);
-                uint max_z;
-                InterlockedMin(gLocalDepth[uint2(x, y)], uint_z, max_z);
+                uint2 pixelPos = uint2(x, y);
+                const uint uint_z = uint((uint)UINT32_MAX * z); //asuint(z);
+                
+                uint max_z = UINT32_MAX; //gLocalDepth[pixelPos];
+                InterlockedMin(gLocalDepth[pixelPos], uint_z, max_z);
+
+                
+                //uint64_t value = uint64_t((uint)UINT32_MAX * z) << 32;
+                //uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) * 16;
+                //gLocalDepthPrimBuffer.InterlockedMaxU64(idx, value);
             
                 if(uint_z < max_z) {
                     TriangleHit triangleHit = {};
-                    //GeometryInstanceID instanceID;
+                    triangleHit.instanceID = instanceID;
                     triangleHit.primitiveIndex = 1;
-                    triangleHit.barycentrics = texcoord;
-                    gVBufferSW.writeHit(uint2(x, y), HitInfo(triangleHit.pack()));
+                    triangleHit.barycentrics = texcoord;   
+                    gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
                 }
             }
             texcoord += texcoord_dx;
@@ -134,65 +146,72 @@ void rasterizePoint(float3 p, float radius = .5f) {
     gVBufferSW.writeHit(uint2(p.x, p.y), HitInfo(triangleHit.pack()));
 }
 
-[numthreads(MESHLET_MAX_ELEMENTS_SIZE, 1, 1)]
+[numthreads(THREADS_COUNT, 1, 1)]
 void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
-    const uint group_id = groupID.y * gVBufferSW.dispatchX + groupID.x;  // Sequential group index.
-    const uint thread_id = groupIdx;                                      // Local thread index in group (range 0..MESHLET_MAX_ELEMENTS_SIZE-1).
-    const uint global_id = group_id * MESHLET_MAX_ELEMENTS_SIZE + thread_id;             // Global element index
+    const uint group_id = groupID.y * gVBufferSW.dispatchX + groupID.x;       // Sequential group index.
+    const uint thread_id = groupIdx;                                          // Local thread index in group (range 0..THREADS_COUNT-1).
+    const uint global_id = group_id * THREADS_COUNT + thread_id;              // Global element index
     
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;
-    
+
+    /// Group shared data stage
+
     // meshlet parameters
     [[branch]] if(thread_id == 0u) {
-      draw = gMeshletDrawList[group_id];
-      if(draw.drawCount == 0u) return;
-      meshlet = gMeshlets[draw.meshletID];
+        draw = gMeshletDrawList[group_id];
+        if(draw.drawCount > 0u) {
+            instanceID.index = draw.instanceID;
+            instance = gScene.getGeometryInstance(instanceID);
+            meshDesc = gScene.getMeshDesc(instanceID);
+            worldMat = gScene.getWorldMatrix(instanceID);
+            meshlet = gScene.meshlets[draw.meshletID];
+            triangleCount = meshlet.indexCount / 3;
+        }  
     }
-    GroupMemoryBarrier();
-    
-    //if (thread_id >= meshlet.vertex_count) return;
+    GroupMemoryBarrierWithGroupSync();
+
+    [[branch]] if(draw.drawCount == 0u) return;
+
+    /// Fetch and transform stage
+
+    // Fetch indices
+    [[branch]] if(thread_id < triangleCount) {
+        const uint meshletTriangleRootIndex = thread_id * 3u;
+
+        const uint3 _indices = gScene.meshletIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
+
+        indices[meshletTriangleRootIndex] = _indices[0];
+        indices[meshletTriangleRootIndex + 1] = _indices[1];
+        indices[meshletTriangleRootIndex + 2] = _indices[2];
+    }
+
+    //GroupMemoryBarrierWithGroupSync();
+
+    // Transform vertices
+    uint vi = thread_id;
+    uint vi2 = thread_id + THREADS_COUNT;
+    if(vi < meshlet.vertexCount) {
+        uint vertexOffset = meshlet.vertexOffset + gScene.meshletVertices[vi];
+        positions[vi] = transformPoint(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
+
+    }
+
+    //GroupMemoryBarrierWithGroupSync();
+
+    // Transform more vertices if needed
+    if(vi2 < meshlet.vertexCount) {
+        uint vertexOffset = meshlet.vertexOffset + gScene.meshletVertices[vi2];
+        positions[vi2] = transformPoint(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    /// Rasterizing stage
+    [[branch]]if(thread_id >= triangleCount) return;
 
     const bool cullCCW = false;
 
-    let vtx = gScene.getVertex(global_id);
-
-    rasterizePoint(transformPoint(vtx.position));
-
-    // Test draws
-    rasterizeTriangle(float3(group_id*4, thread_id*4, 0.1), float3(group_id*4 + 4, thread_id*4, 0.1), float3(group_id*4, thread_id*4 + 4, 0.1), cullCCW);
-
-/*    
-    // Test world triangle
-    {
-        float3 pS0 = transformPoint(float3(0.f, 0.f, 0.0f));
-        float3 pS1 = transformPoint(float3(1.f, 0.f, 0.0f));
-        float3 pS2 = transformPoint(float3(0.f, 0.f, 1.0f));
-        rasterizeTriangle(pS0, pS1, pS2, cullCCW);
-    }
-
-    // Test world triangle
-    {
-        float3 pS0 = transformPoint(float3(1.f, 0.f, 1.0f));
-        float3 pS1 = transformPoint(float3(0.f, 0.f, 1.0f));
-        float3 pS2 = transformPoint(float3(1.f, 0.f, 0.0f));
-        rasterizeTriangle(pS0, pS1, pS2, cullCCW);
-    }
-
-    // Test lower world triangle
-    {
-        float3 pS0 = transformPoint(float3(1.f, -.1f, 0.0f));
-        float3 pS1 = transformPoint(float3(0.f, -.1f, 1.0f));
-        float3 pS2 = transformPoint(float3(0.f, -.1f, 0.0f));
-        rasterizeTriangle(pS0, pS1, pS2, cullCCW);
-    }
-
-    // Test micro triangle
-    {
-        float3 pS0 = transformPoint(float3(2.0f, 0.f, 2.0f));
-        float3 pS1 = transformPoint(float3(2.02f, 0.f, 2.0f));
-        float3 pS2 = transformPoint(float3(2.0f, 0.f, 2.02f));
-        rasterizeTriangle(pS0, pS1, pS2, cullCCW);
-    }
-*/
+    const uint meshletTriangleRootIndex = thread_id * 3;
+    rasterizeTriangle(positions[indices[meshletTriangleRootIndex]], positions[indices[meshletTriangleRootIndex + 1]], positions[indices[meshletTriangleRootIndex + 2]], instanceID, cullCCW);
 }

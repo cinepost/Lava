@@ -387,7 +387,7 @@ static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
 	}
 }
 
-void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData) {
+void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData, bool tailDataInOnePage) {
 	assert(pTexture);
 	if(!pData) return;
 
@@ -397,6 +397,8 @@ void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pD
 
 	gfx::FormatInfo formatInfo = {};
 	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
+
+	uint8_t *dataPtr = (uint8_t*)pData;
 
 	for (uint32_t mipLevel = pTexture->getMipTailStart(); mipLevel < pTexture->getMipCount(); mipLevel++) {
 
@@ -412,22 +414,23 @@ void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pD
 
 		std::vector<uint8_t> tmpData(width * height * 4);
 		randomPattern(tmpData.data(), width, height);
-		// const void * dataPtr = tmpData.data();
-		const uint8_t * dataPtr = tmpData.data();
+		
 
 		gfx::ITextureResource::SubresourceData data = {};
 		data.data = dataPtr;
 		data.strideY = (int64_t)(width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
 		data.strideZ = data.strideY * (height / formatInfo.blockHeight);
-		dataPtr += data.strideZ * depth;
+		dataPtr += tailDataInOnePage ? (data.strideZ * depth) : 65536;
 
 		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, {0, 0, 0}, {static_cast<gfx::GfxCount>(width), static_cast<gfx::GfxCount>(height), 1}, &data, 1);
 	}
+	mCommandsPending = true;
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
   assert(pPage);
-  assert(pData);
+  
+  if(!pData) return;
 
   if(!pPage->isResident()) {
     LLOG_ERR << "Unable to update non-resident texture page !!!";

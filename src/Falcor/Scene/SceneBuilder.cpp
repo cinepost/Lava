@@ -77,24 +77,28 @@ const float kMaxTexelError = 0.5f;
 
 class MikkTSpaceWrapper {
   public:
-    static std::vector<float4> generateTangents(const SceneBuilder::Mesh& mesh) {
+    static void generateTangents(SceneBuilder::Mesh& mesh, std::vector<float4>& tangents) {
+        if (mesh.indexCount == 0) {
+            LLOG_WRN << "Can't generate tangent space on non-indexed meshes.";
+            tangents = {};
+        }
         if (!mesh.positions.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have positions !!!";
-            return {};
+            tangents = {};
         }
         if (!mesh.normals.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have normals !!!";
-            return {};
+            tangents = {};
         }
         if (!mesh.texCrds.pData) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
-            return {};
+            tangents = {};
         }
 
         // TODO: Is this still relevant !?
         if (!mesh.pIndices) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
-            return {};
+            tangents = {};
         }
 
         // Generate new tangent space.
@@ -106,26 +110,35 @@ class MikkTSpaceWrapper {
         mikktspace.m_getTexCoord = [](const SMikkTSpaceContext* pContext, float texCrd[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getTexCrd(texCrd, face, vert); };
         mikktspace.m_setTSpaceBasic = [](const SMikkTSpaceContext* pContext, const float tangent[], float sign, int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->setTangent(tangent, sign, face, vert); };
 
-        MikkTSpaceWrapper wrapper(mesh);
+        const size_t tangentsArraySize = static_cast<size_t>(mesh.indexCount); 
+        if(tangents.size() <tangentsArraySize) {
+            tangents.resize(static_cast<size_t>(mesh.indexCount), float4(0));
+        } else {
+            std::fill_n(tangents.begin(), tangentsArraySize, float4(0));
+        }
+
+        MikkTSpaceWrapper wrapper(mesh, tangents);
         SMikkTSpaceContext context = {};
         context.m_pInterface = &mikktspace;
         context.m_pUserData = &wrapper;
 
-        if (genTangSpaceDefault(&context) == false) {
-            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
-            return {};
-        }
+        bool meshHasQuadFaces = false;
 
-        return wrapper.mTangents;
+        if (genTangSpaceDefault(&context, meshHasQuadFaces) == false) {
+            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
+            tangents = {};
+        }
     }
 
   private:
-    MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh) : mMesh(mesh) {
+    MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh, std::vector<float4>& tangents): mMesh(mesh), mTangents(tangents) {
         assert(mesh.indexCount > 0);
-        mTangents.resize(mesh.indexCount, float4(0));
     }
+     MikkTSpaceWrapper(SceneBuilder::Mesh&&) = delete;
+
     const SceneBuilder::Mesh& mMesh;
-    std::vector<float4> mTangents;
+    std::vector<float4>& mTangents;
+    
     int32_t getFaceCount() const { return (int32_t)mMesh.faceCount; }
     void getPosition(float position[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(position) = mMesh.getPosition(face, vert); }
     void getNormal(float normal[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(normal) = mMesh.getNormal(face, vert); }
@@ -259,6 +272,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
     // Prepare scene resources.
     createSceneGraph();
     createMeshData();
+    createMeshletsData();
     createMeshBoundingBoxes();
     createCurveData();
     calculateCurveBoundingBoxes();
@@ -325,6 +339,7 @@ uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleM
 }
 
 SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAttributeIndices* pAttributeIndices) const {
+    LLOG_DBG << "processing mesh " << mesh_.name;
     // This function preprocesses a mesh into the final runtime representation.
     // Note the function needs to be thread safe. The following steps are performed:
     //  - Error checking
@@ -372,8 +387,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
     // Generate tangent space if that's required.
     std::vector<float4> tangents;
-    if (!(is_set(mFlags, Flags::UseOriginalTangentSpace) || mesh.useOriginalTangentSpace) || !mesh.tangents.pData)
-    {
+    if (!(is_set(mFlags, Flags::UseOriginalTangentSpace) || mesh.useOriginalTangentSpace) || !mesh.tangents.pData) {
+        LLOG_DBG << "generating tangents for mesh " << mesh_.name;
         generateTangents(mesh, tangents);
     }
 
@@ -381,9 +396,9 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     std::vector<float2> transformedTexCoords;
 
     if (mesh.texCrds.pData != nullptr) {
+        LLOG_DBG << "pretransforming texture coordinates for mesh " << mesh_.name; 
         const glm::mat4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
-        if (xform != glm::identity<glm::mat4>())
-        {
+        if (xform != glm::identity<glm::mat4>()) {
             size_t texCoordCount = mesh.getAttributeCount(mesh.texCrds);
             transformedTexCoords.resize(texCoordCount);
             // The given matrix transforms the texture (e.g., scaling > 1 enlarges the texture).
@@ -395,8 +410,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
             coordTransform[1] = invXform[1].xy;
             coordTransform[2] = invXform[3].xy;
 
-            for (size_t i = 0; i < texCoordCount; ++i)
-            {
+            for (size_t i = 0; i < texCoordCount; ++i) {
                 transformedTexCoords[i] = coordTransform * float3(mesh.texCrds.pData[i], 1.f);
             }
             mesh.texCrds.pData = transformedTexCoords.data();
@@ -421,6 +435,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     }
 
     if (mesh.mergeDuplicateVertices) {
+        LLOG_DBG << "merging duplicate vertices for mesh " << mesh_.name;
         vertices.reserve(mesh.vertexCount);
 
         std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
@@ -506,6 +521,70 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
     const uint32_t vertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
+    // Build meshlets. If needed...
+    bool generateMeshlets = false; // TODO: fetch scene meshlets generation settings
+
+    processedMesh.meshletSpecs.clear();
+    if(generateMeshlets && isIndexed) {
+        LLOG_DBG << "Generating meshlets for mesh \"" << mesh.name << "\".";
+        
+        auto& meshletSpecs = processedMesh.meshletSpecs;
+        static constexpr uint32_t maximumMeshletTriangleIndices = MESHLET_MAX_POLYGONS_COUNT * 3u;
+        static constexpr uint32_t maximumMeshletQuadIndices = MESHLET_MAX_POLYGONS_COUNT * 4u;
+        
+        uint32_t mesh_start_index = 0;
+        while(mesh_start_index < indices.size()) {
+            std::vector<uint32_t> meshletVertices;
+            std::vector<uint32_t> meshletPrimIdList;
+            std::vector<uint8_t>  meshletIndices;
+
+            std::set<uint32_t> pointIndices; // this set is used to avoid having duplicate vertices within meshlet
+
+            MeshletSpec meshletSpec = {};
+            meshletSpec.type = MeshletType::Triangles;
+            // Run through mesh indices until we reach max number of elements (points or tris)
+            for(uint32_t i = mesh_start_index; i < indices.size(); i+=3) {
+                size_t unique_vertices_count = pointIndices.size();
+
+                std::set<uint32_t>::iterator it0 = pointIndices.find(indices[i]);
+                std::set<uint32_t>::iterator it1 = pointIndices.find(indices[i+1]);
+                std::set<uint32_t>::iterator it2 = pointIndices.find(indices[i+2]);
+
+                size_t new_vertices_count = (it0 == pointIndices.end() ? 1 : 0) + (it1 == pointIndices.end() ? 1 : 0) + (it2 == pointIndices.end() ? 1 : 0);
+
+                bool maxVerticesPerMeshletReached = (unique_vertices_count + new_vertices_count) > MESHLET_MAX_VERTICES_COUNT || (pointIndices.size() > MESHLET_MAX_VERTICES_COUNT);
+                bool maxIndicesPerMeshletReached =  ((meshletSpec.type == MeshletType::Triangles) && (meshletIndices.size() > maximumMeshletTriangleIndices)) ||
+                                                    ((meshletSpec.type == MeshletType::Quads) && (meshletIndices.size() > maximumMeshletQuadIndices));
+
+                if (maxVerticesPerMeshletReached || maxIndicesPerMeshletReached) {
+                        LLOG_TRC << (maxIndicesPerMeshletReached ? std::string("Maximum meshlet polys reached for mesh ") : std::string("Maximum meshlet vertices reached for mesh ")) << mesh.name;
+                    mesh_start_index = i;
+                    break;
+                }
+
+                // These are per meshlet local indices. Guaranteed not to exceed value of 255 (by default we use max 128 elements)
+                meshletIndices.push_back(std::distance(pointIndices.begin(), it0 == pointIndices.end() ? pointIndices.insert(indices[i]).first : it0));
+                meshletIndices.push_back(std::distance(pointIndices.begin(), it1 == pointIndices.end() ? pointIndices.insert(indices[i+1]).first : it1));
+                meshletIndices.push_back(std::distance(pointIndices.begin(), it2 == pointIndices.end() ? pointIndices.insert(indices[i+2]).first : it2));
+                meshletPrimIdList.push_back(i / 3u);
+                mesh_start_index += 3;
+            }
+            for(auto pi : pointIndices) {
+              meshletVertices.push_back(pi);
+            }  
+
+            meshletSpec.vertices = std::move(meshletVertices);
+            meshletSpec.indices = std::move(meshletIndices);
+            meshletSpec.primitiveIDs = std::move(meshletPrimIdList);
+            LLOG_TRC << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+                " vertices. " << meshletSpec.indices.size() << " indices.";
+
+
+            meshletSpecs.push_back(std::move(meshletSpec));
+        }
+        LLOG_DBG << "Generated " << meshletSpecs.size() << " meshlet specs for mesh \"" << mesh.name;
+    }
+
     // Copy indices into processed mesh.
     if (isIndexed) {
         processedMesh.indexCount = indices.size();
@@ -547,9 +626,10 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 }
 
 void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) const {
-    tangents = MikkTSpaceWrapper::generateTangents(mesh);
-    if (!tangents.empty()) {
-        assert(tangents.size() == mesh.indexCount);
+    MikkTSpaceWrapper::generateTangents(mesh, tangents);
+    if(tangents.empty()) return;
+
+    if (tangents.size() == mesh.indexCount) {
         mesh.tangents.pData = tangents.data();
         mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
     } else {
@@ -563,7 +643,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
     MeshSpec spec;
 
-    spec.isAnimated = true; // ?? TODO: for interactive scene we have to make them non static (animated). This is default for now
+    spec.isAnimated = true; // TODO: for interactive scene we have to make them non static (animated). This is default for now
+                            // So it's better to provide some hints from the outside. For the LSD case it's quite easy. If the mesh is not time dependent set a flag.
 
     // Add the mesh to the scene.
     spec.name = mesh.name;
@@ -591,6 +672,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
         spec.prevVertexCount = spec.skinningVertexCount;
     }
 
+    spec.hasMeshlets = mesh.meshletSpecs.size() > 0;
+
     uint32_t ret = 0;
     { // thread safety
         std::scoped_lock lock(g_meshes_mutex);
@@ -602,6 +685,29 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
         }
 
         ret = (uint32_t)(mMeshes.size() - 1);
+    
+        // Meshlets part
+        if(mesh.meshletSpecs.size() > 0) {
+            MeshletList meshlets;
+            for(const auto& spec: mesh.meshletSpecs) {
+                
+                Meshlet meshlet;
+                meshlet.vertexOffset = mMeshletVertices.size();
+                meshlet.indexOffset =  mMeshletIndices.size();
+                meshlet.vertexCount = spec.vertices.size();
+                meshlet.indexCount =  spec.indices.size();
+
+                mMeshletVertices.insert(mMeshletVertices.end(), spec.vertices.begin(), spec.vertices.end());
+                mMeshletIndices.insert(mMeshletIndices.end(), spec.indices.begin(), spec.indices.end());
+
+                meshlets.push_back(std::move(meshlet));
+            }
+            mMeshletLists.push_back(std::move(meshlets));
+        } else {
+            mMeshletLists.push_back({});
+        }
+        assert(mMeshletLists.size() == mMeshes.size());
+
     }
 
     return ret;
@@ -1156,11 +1262,16 @@ void SceneBuilder::removeUnusedMeshes() {
         LLOG_WRN << "Scene has " << std::to_string(unusedCount) << " unused meshes that will be removed.";
 
         const size_t meshCount = mMeshes.size();
+        
         MeshList meshes;
+        std::vector<MeshletList> meshletLists;
+
         meshes.reserve(meshCount);
 
         for (uint32_t meshID = 0; meshID < (uint32_t)meshCount; meshID++) {
             auto& mesh = mMeshes[meshID];
+            auto& meshletList = mMeshletLists[meshID];
+
             if (mesh.instances.empty()) continue; // Skip unused meshes
 
             // Get new mesh ID.
@@ -1174,13 +1285,16 @@ void SceneBuilder::removeUnusedMeshes() {
                 std::replace(node.meshes.begin(), node.meshes.end(), meshID, newMeshID);
             }
 
+            // Meshlet list
+            meshletLists.push_back(std::move(meshletList));
             meshes.push_back(std::move(mesh));
         }
 
         mMeshes = std::move(meshes);
+        mMeshletLists = std::move(meshletLists);
 
         // Validate scene graph.
-        assert(mMeshes.size() == meshCount - unusedCount);
+        assert((mMeshes.size() == meshCount - unusedCount) && (mMeshes.size() == mMeshletLists.size()));
         for (const auto& node : mSceneGraph) {
             for (uint32_t meshID : node.meshes) assert(meshID < mMeshes.size());
         }
@@ -2321,6 +2435,7 @@ void SceneBuilder::createMeshData() {
         meshFlags |= mesh.isFrontFaceCW ? (uint32_t)MeshFlags::IsFrontFaceCW : 0;
         meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
         meshFlags |= mesh.isAnimated ? (uint32_t)MeshFlags::IsAnimated : 0;
+        meshFlags |= mesh.hasMeshlets ? (uint32_t)MeshFlags::HasMeshlets : 0;
         meshData[meshID].flags = meshFlags;
 
         if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
@@ -2340,6 +2455,34 @@ void SceneBuilder::createMeshData() {
                 s.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0].nodeId : mesh.skeletonNodeID;
             }
         }
+    }
+}
+
+void SceneBuilder::createMeshletsData() {
+    uint32_t globalMeshletOffset = 0;
+
+    mSceneData.meshletGroups.clear();
+    mSceneData.meshletIndices.clear();
+    mSceneData.meshletVertices.clear();
+
+    for(uint32_t meshID = 0; meshID < mMeshletLists.size(); ++meshID) {
+        const auto& meshletList = mMeshletLists[meshID];
+
+        MeshletGroup meshletGroup = {};
+        meshletGroup.meshlet_offset = kInvalidMeshletID;
+        meshletGroup.meshlets_count = 0;
+
+        if(meshletList.size() > 0) {
+            meshletGroup.meshlet_offset = globalMeshletOffset;
+            for(const auto& meshlet: meshletList) {
+                mSceneData.meshlets.push_back(meshlet);
+                meshletGroup.meshlets_count++;
+                globalMeshletOffset++;
+            }
+        }
+        mSceneData.meshletGroups.push_back(std::move(meshletGroup));
+        mSceneData.meshletIndices.insert(mSceneData.meshletIndices.end(), mMeshletIndices.begin(), mMeshletIndices.end());
+        mSceneData.meshletVertices.insert(mSceneData.meshletVertices.end(), mMeshletVertices.begin(), mMeshletVertices.end());
     }
 }
 
@@ -2450,6 +2593,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
                     geomInstance.flags |= instance.visibility.receiveShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
+                    geomInstance.flags |= instance.visibility.receiveSelfShadows ? (uint32_t)GeometryInstanceFlags::ReceiveSelfShadows : 0;
 
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;

@@ -76,6 +76,12 @@ struct Scene
     // Triangle meshes
     StructuredBuffer<MeshDesc> meshes;
 
+    // Meshlets
+    StructuredBuffer<MeshletGroup> meshletGroups;
+    StructuredBuffer<Meshlet> meshlets;
+    StructuredBuffer<uint> meshletVertices;                         ///< Meshlet point indices data. Maps to vertices buffer.  
+    ByteAddressBuffer meshletIndexData;                             ///< Local meshlet point indices, three indices per triangle. Maps to meshletPoints buffer.
+
     [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
     StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, for dynamic meshes only.
 #if SCENE_HAS_INDEXED_VERTICES
@@ -202,6 +208,10 @@ struct Scene
 
     bool isObjectShadowsReceiving(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::ReceiveShadows)) != 0;
+    }
+
+    bool isObjectSelfShadowsReceiving(const GeometryInstanceID instanceID) {
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::ReceiveSelfShadows)) != 0;
     }
 
     bool doFixShadowTerminator(const GeometryInstanceID instanceID) {

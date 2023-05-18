@@ -267,55 +267,6 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 indices.push_back(csi);
                                 face_count += 1;
                                 break;
-                            /*    
-                            case 4:
-                                indices.push_back(csi+2);
-                                indices.push_back(csi+1);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+3);
-                                indices.push_back(csi+2);
-                                indices.push_back(csi);
-                                face_count += 2;
-                                break;
-                            case 5:
-                                indices.push_back(csi+2);
-                                indices.push_back(csi+1);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+3);
-                                indices.push_back(csi+2);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+4);
-                                indices.push_back(csi+3);
-                                indices.push_back(csi);
-                                face_count += 3;
-                                break;
-                            case 6:
-                                indices.push_back(csi+2);
-                                indices.push_back(csi+1);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+3);
-                                indices.push_back(csi+2);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+4);
-                                indices.push_back(csi+3);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+4);
-                                indices.push_back(csi+3);
-                                indices.push_back(csi);
-
-                                indices.push_back(csi+5);
-                                indices.push_back(csi+4);
-                                indices.push_back(csi);
-
-                                face_count += 4;
-                                break;
-                            */
                             default:
                                 face_count += tesselatePolySimple(positions, indices, csi, edgesCount);
                                 break;
@@ -333,6 +284,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                 break;
         }
     }
+
+    LLOG_TRC << "Bgeo primitives iteration done.";
 
     Mesh mesh;
     mesh.faceCount = face_count;

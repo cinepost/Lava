@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Formats.h"
 
 
 namespace Falcor {
@@ -14,8 +15,8 @@ class ResourceManager;
 
 const size_t kLtxPageSize = 65536;
 const uint8_t kLtxVersionMajor = 1;
-const uint8_t kLtxVersionMinor = 1;
-const uint8_t kLtxVersionBuild = 2;
+const uint8_t kLtxVersionMinor = 2;
+const uint8_t kLtxVersionBuild = 1;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', '0', '0', '0', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 4,5,6 used to store major,minor,build versions
 
@@ -43,10 +44,15 @@ struct dlldecl LTX_Header {
 
     ResourceFormat  format;
     
+    enum class Flags: uint8_t {
+        NONE              = 0x0,
+        ONE_PAGE_MIP_TAIL = 0x1,
+    } flags = Flags::NONE;
+
     struct CompressionRatio {
         uint8_t width;
         uint8_t height;
-    } textureCompressionRatio = {1, 1}; // texture data comression ratio
+    } textureCompressionRatio = {1, 1}; // texture data compression ratio
 
     enum TopLevelCompression: uint8_t {
         NONE,
@@ -121,46 +127,53 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     /** Get data size in bytes
     */
-    inline size_t getDataSize() const { return mDataSize; }
+    size_t getDataSize() const { return mDataSize; }
 
     /** Get resident data size in bytes
     */
     size_t getResidentDataSize() const;
 
-    inline const LTX_Header& header() const { return mHeader; }
+    const LTX_Header& header() const { return mHeader; }
+
+    uint32_t getMipTailStart() const { return mHeader.mipTailStart; }
 
     /** Get a pointer to the bitmap's data store
     */
-    inline uint8_t* getData() const { return mpData; }
+    uint8_t* getData() const { return mpData; }
 
     /** Get the width of the bitmap
     */
-    inline uint32_t getWidth() const { return mHeader.width; }
+    uint32_t getWidth() const { return mHeader.width; }
 
     /** Get the height of the bitmap
     */
-    inline uint32_t getHeight() const { return mHeader.height; }
+    uint32_t getHeight() const { return mHeader.height; }
 
     /** Get the depth of the bitmap
     */
-    inline uint32_t getDepth() const { return mHeader.depth; }
+    uint32_t getDepth() const { return mHeader.depth; }
 
     /** Get mip levels count of ltx bitmap
     */
-    inline uint8_t getMipLevelsCount() const { return mHeader.mipLevelsCount; }
+    uint8_t getMipLevelsCount() const { return mHeader.mipLevelsCount; }
+
+    uint8_t getPagesCount() const { return mHeader.pagesCount; }
+
+    LTX_Header::Flags getFlags() const { return mHeader.flags; }
 
     /** Get the number of bytes per pixel
     */
-    inline ResourceFormat getFormat() const { return mHeader.format; }
+    ResourceFormat getFormat() const { return mHeader.format; }
 
-    inline const fs::path& getFilePath() const { return mFilePath; }
-    inline const std::string getFileName() const { return mFilePath.string(); }
+    const fs::path& getFilePath() const { return mFilePath; }
+    const std::string getFileName() const { return mFilePath.string(); }
 
     
  protected:
     bool readPageData (size_t pageNum, void *pData) const;
     bool readPageData (size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
-    void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
+    void readTailData(std::vector<uint8_t>& data) const;
+    void readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const;
 
     friend class ResourceManager;
     friend class TextureManager;
@@ -196,6 +209,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 };
 
 enum_class_operators(LTX_Bitmap::ExportFlags);
+enum_class_operators(LTX_Header::Flags);
 
 const std::string dlldecl to_string(LTX_Header::TopLevelCompression);
 const char* getBloscCompressionName(LTX_Header::TopLevelCompression);

@@ -10,17 +10,4 @@ struct MeshletDraw {
     uint pad;
 };
 
-struct Meshlet {   
-    /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
-    uint vertex_offset;
-    uint triangle_offset;
-
-    /* Number of vertices and triangles used in the meshlet; data is stored in consecutive range defined by offset and count */
-    uint vertex_count;
-    uint triangle_count;
-
-    float4 bounding_sphere; // xyz -> object space origin, w -> radius
-    float4 visibility_cone; // xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
-};
-
 END_NAMESPACE_FALCOR

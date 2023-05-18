@@ -41,8 +41,8 @@ groupshared uint base_vertex;
 groupshared MeshletDraw draw;
 groupshared Meshlet meshlet;
 
-groupshared uint   indices[MESHLET_MAX_ELEMENTS_SIZE * 3u];
-groupshared float3 positions[MESHLET_MAX_ELEMENTS_SIZE];
+groupshared uint   indices[MESHLET_MAX_ELEMENTS_COUNT * 3u];
+groupshared float3 positions[MESHLET_MAX_ELEMENTS_COUNT];
 
 
 // Build meshlets from specs, one meshlet per thread
@@ -50,8 +50,8 @@ groupshared float3 positions[MESHLET_MAX_ELEMENTS_SIZE];
 [numthreads(GROUP_SIZE, 1, 1)]
 void build(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     const uint group_id = groupID.y * gVBufferSW.dispatchX + groupID.x;         // Sequential group index.
-    const uint thread_id = groupIdx;                                            // Local thread index in group (range 0..MESHLET_MAX_ELEMENTS_SIZE-1).
-    const uint global_id = group_id * MESHLET_MAX_ELEMENTS_SIZE + thread_id;    // Global element index
+    const uint thread_id = groupIdx;                                            // Local thread index in group (range 0..MESHLET_MAX_ELEMENTS_COUNT-1).
+    const uint global_id = group_id * MESHLET_MAX_ELEMENTS_COUNT + thread_id;    // Global element index
     
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;

@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+__exported import Scene.Scene;
 __exported import Scene.Shading;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
@@ -35,10 +36,7 @@ RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<uint> gLocalDepth;
 
 // Meshlets related buffers
-StructuredBuffer<Meshlet> gMeshlets;
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
-Buffer<uint32_t> gMeshletsVertices;
-Buffer<uint32_t> gMeshletsTriangles;
 
 // Optional buffers
 RWTexture2D<float>  gDepth;
@@ -59,7 +57,6 @@ struct VBufferSW {
     uint2 frameDim;
     float2 frameDimF;
     uint dispatchX;
-    uint meshletsCount;
     uint meshletDrawsCount;
 
     void writeHit(uint2 pixel, const HitInfo hit) {

@@ -95,6 +95,7 @@ enum class MeshFlags : uint32_t
     IsFrontFaceCW = 0x4,    ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsDisplaced = 0x8,      ///< Mesh has displacement map.
     IsAnimated = 0x10,      ///< Mesh is affected by vertex-animations.
+    HasMeshlets = 0x20,     ///< This mesh uses meshlets.
 };
 
 
@@ -145,6 +146,11 @@ struct MeshDesc
     {
         return (flags & (uint)MeshFlags::IsDisplaced) != 0;
     }
+
+    bool hasMeshlets() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::HasMeshlets) != 0;
+    }
 };
 
 enum class GeometryInstanceFlags : uint32_t
@@ -166,7 +172,8 @@ enum class GeometryInstanceFlags : uint32_t
     VisibleToShadowRays = 0x200,   
     VisibleToDiffuseRays = 0x400,
     ReceiveShadows = 0x800,
-    DoubleSided = 0x1000,
+    ReceiveSelfShadows = 0x1000,
+    DoubleSided = 0x2000,
 };
 
 struct GeometryInstanceData
@@ -362,6 +369,35 @@ struct CustomPrimitiveDesc
 {
     uint userID;        ///< User-defined ID that is specified during scene creation. This can be used to identify different sub-types of custom primitives.
     uint aabbOffset;    ///< Offset into list of procedural primitive AABBs.
+};
+
+/** Meshlet types in the scene.
+*/
+enum class MeshletType : uint32_t
+{
+    Triangles               = GEOMETRY_TYPE_TRIANGLE_MESH,
+    Quads                   = GEOMETRY_TYPE_QUAD_MESH,
+    Count
+};
+
+/** Struct representing meshlet data.
+*/
+struct Meshlet {   
+    /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
+    uint vertexOffset;
+    uint indexOffset;
+
+    /* Number of vertices and triangles used in the meshlet; data is stored in a consecutive range defined by offset and count */
+    uint vertexCount;
+    uint indexCount;
+
+    float4 bounding_sphere; ///< xyz -> object space origin, w -> radius
+    float4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
+};
+
+struct MeshletGroup {
+    uint meshlet_offset;    ///< Offset into scene meshlets buffer.
+    uint meshlets_count;    ///< Number of meshlets within this group.
 };
 
 END_NAMESPACE_FALCOR

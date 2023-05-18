@@ -96,7 +96,7 @@ TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPt
 	} else {
 		// Texture is not already managed. Add new texture desc.
 		TextureDesc desc = { TextureState::Loaded, pTexture };
-		handle = addDesc(desc);
+		handle = addDesc(desc, pTexture->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
 
 		// Add to texture-to-handle map.
 		mTextureToHandle[pTexture.get()] = handle;
@@ -262,30 +262,37 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   std::array<uint8_t, kLtxPageSize> scratchBuffer;
   auto pScratchBufferData = scratchBuffer.data();
 
-  bool loadTailData = false;
+  bool loadTailData = true; // always load texture tail data
 
   const auto& texturePages = pTexture->sparseDataPages();
 
   for( uint32_t pageIndex: _pageIds ) {
-    //const auto& pPage = mSparseDataPages[pageIndex];
-  	const auto& pPage = texturePages[pageIndex];
+  	if(pageIndex >= texturePages.size()) {
+			LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
+			continue;
+		}
 
-    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile, pScratchBufferData)) {
-    	if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
-    		loadTailData = true;
-    	} else {
-    		// Load non-tail texture data page
-    		pPage->allocate();
-    		mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
-    		LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
-  		}
+    const auto& pPage = texturePages[pageIndex];
+    if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
+
+    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile, pScratchBufferData)) {	
+    	// Load non-tail texture data page
+    	pPage->allocate();
+    	mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
+    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
   	} else {
   		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
   		pPage->release();
   	}
   }
 
-  if (loadTailData) mpDevice->getRenderContext()->fillMipTail(pTexture, nullptr);
+	if(loadTailData) {
+		LLOG_DBG << "Loading tail data for " << ltxFilename;
+		std::vector<uint8_t> tailData;
+		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
+		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
+		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+	}
 
   fclose(pFile);
   pTexture->updateSparseBindInfo();
@@ -314,8 +321,6 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   	if(!pTexture) return (Texture*)nullptr;
   	if(pageIds.size() == 0) return (Texture*)nullptr;
 
-  	bool loadForRTX = true;
-
   	std::vector<uint32_t> _pageIds = pageIds;
   	std::sort(_pageIds.begin(), _pageIds.end());
 
@@ -328,7 +333,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
     std::array<uint8_t, kLtxPageSize> scratchBuffer;
     auto pScratchBufferData = scratchBuffer.data();
 
-    bool loadTailData = false;
+    bool loadTailData = true; // alway load texture tail data
     const auto& texturePages = pTexture->sparseDataPages();
 
 		std::string ltxFilename = pLtxBitmap->getFileName();
@@ -341,31 +346,31 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 			}
 
   		const auto& pPage = texturePages[pageIndex];
-    
+  		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
+
   		uint32_t page_index = pPage->index();
 
   		if(!pPage->isResident()) {
     		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {
-  				if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
-  					loadTailData = true;
-  				} else {
-  					// Load non-tail texture data page
-  					{
-  						std::unique_lock<std::mutex> lock(mPageMutex);
-  						pPage->allocate();
-  						pContext->updateTexturePage(pPage.get(), pTmpPageData);
-  					}
-  					LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel());
-					}
+  				// Load non-tail texture data page
+  				std::unique_lock<std::mutex> lock(mPageMutex);
+  				pPage->allocate();
+  				pContext->updateTexturePage(pPage.get(), pTmpPageData);
+  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel());
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
-					//pPage->release();
+					pPage->release();
 				}
 			}
-
 		}
 
-		if(loadTailData) pContext->fillMipTail(pTexture, nullptr);
+		if(loadTailData) {
+			LLOG_DBG << "Loading tail data for " << ltxFilename;
+			std::vector<uint8_t> tailData;
+			pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
+			LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
+			if(!tailData.empty()) pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+		}
 
 		fclose(pFile);
     return pTexture.get();
@@ -503,7 +508,10 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 			desc.pTexture = pTexture;
 
 			// Add to texture-to-handle map.
-			if (pTexture) mTextureToHandle[pTexture.get()] = handle;
+			if (pTexture) {
+				handle.mMode = pTexture->isSparse() ? TextureHandle::Mode::Vitrual : TextureHandle::Mode::Texture;
+				mTextureToHandle[pTexture.get()] = handle;
+			}
 
 			mLoadRequestsInProgress--;
 			mCondition.notify_all();
@@ -529,7 +537,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 
 			// Add new texture desc.
 			TextureDesc desc = { TextureState::Loaded, pTexture };
-			handle = addDesc(desc);
+			handle = addDesc(desc, pTexture->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
 
 			// Add to key-to-handle map.
 			mKeyToHandle[textureKey] = handle;
@@ -588,7 +596,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 					LLOG_DBG << "Loaded " << (loadAsSparse ? "sparse": "" ) << " UDIM tile texture: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
 					
 					TextureDesc udim_tile_desc = { TextureState::Loaded, pUdimTileTex };
-					udim_tile_handle = addDesc(udim_tile_desc, TextureHandle::Mode::Texture);
+					udim_tile_handle = addDesc(udim_tile_desc, pUdimTileTex->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
 		
 					// Add tile handle to key-to-handle map.
 					mKeyToHandle[udimTileTextureKey] = udim_tile_handle;

@@ -298,6 +298,10 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         uint64_t geometryMemoryInBytes = 0;         ///< Total memory in bytes used by the geometry data (meshes, curves, custom primitives, instances etc.).
         uint64_t animationMemoryInBytes = 0;        ///< Total memory in bytes used by the animation system (transforms, skinning buffers).
 
+        // Meshlet stats
+        uint64_t meshletsCount = 0;                 ///< Number of meshlets;
+        uint64_t meshletsMemoryInBytes = 0;         ///< Total memory in bytes used by the meshlet buffers;
+
         // Curve stats
         uint64_t curveCount = 0;                    ///< Number of curves.
         uint64_t curveInstanceCount = 0;            ///< Number of curve instances.
@@ -924,11 +928,19 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the name of the mesh with the given ID.
     */
-    inline std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
+    std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
 
     /** Return true if the given mesh ID is valid, false otherwise.
     */
-    inline bool hasMesh(uint32_t meshID) const { return meshID < mMeshNames.size(); }
+    bool hasMesh(uint32_t meshID) const { return meshID < mMeshNames.size(); }
+
+    bool hasMeshlets(uint32_t meshID) const { return (meshID < mMeshDesc.size() ? mMeshDesc[meshID].hasMeshlets() : false); }
+
+    bool hasMeshletGroup(uint32_t meshID) const { return meshID < mMeshletGroups.size(); }
+
+    const MeshletGroup& meshletGroup(uint32_t meshID) const { return mMeshletGroups[meshID]; }
+
+    const std::vector<Meshlet>& meshlets() const { return mMeshlets; }
 
     /** Get a list of raytracing BLAS IDs for all meshes. The list is arranged by mesh ID.
     */
@@ -1002,6 +1014,12 @@ public:
         bool has16BitIndices = false;                           ///< True if 16-bit mesh indices are used.
         bool has32BitIndices = false;                           ///< True if 32-bit mesh indices are used.
         uint32_t meshDrawCount = 0;                             ///< Number of meshes to draw.
+
+        // Meshlet data
+        std::vector<MeshletGroup> meshletGroups;                ///< Meshlet groups. Elements index is a mesh is essentialy.
+        std::vector<Meshlet>  meshlets;                         ///< Meshlet list.
+        std::vector<uint32_t> meshletVertices;
+        std::vector<uint8_t>  meshletIndices;
 
         std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
         std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
@@ -1199,14 +1217,20 @@ public:
     //std::map<Material::SharedPtr, size_t> mMaterialDrawArgs;
     std::vector<std::vector<size_t>> mMaterialDrawArgs;
 
+    // Meshlets
+    std::vector<MeshletGroup> mMeshletGroups;                   ///< MeshletGroups represent meshlet collections that represent mesh. One group per mesh.
+    std::vector<Meshlet> mMeshlets;                             ///< Meshlets data.
+    std::vector<uint32_t> mMeshletVertices;
+    std::vector<uint8_t> mMeshletIndices;
+
+    // Meshes
     std::vector<MeshDesc> mMeshDesc;                            ///< Copy of mesh data GPU buffer (mpMeshesBuffer).
     std::vector<MeshGroup> mMeshGroups;                         ///< Groups of meshes. Each group maps to a BLAS for ray tracing.
     std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
     std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
 
      // Displacement mapping.
-    struct
-    {
+    struct {
         bool needsUpdate = true;                                ///< True if displacement data has changed and a AABB update is required.
         struct DisplacementMeshData { uint32_t AABBOffset = 0; uint32_t AABBCount = 0; };
         std::vector<DisplacementMeshData> meshData;             ///< List of displacement mesh data (reference to AABBs).
@@ -1276,6 +1300,10 @@ public:
     // Scene block resources
     Buffer::SharedPtr mpGeometryInstancesBuffer;
     Buffer::SharedPtr mpMeshesBuffer;
+    Buffer::SharedPtr mpMeshletGroupsBuffer;
+    Buffer::SharedPtr mpMeshletsBuffer;
+    Buffer::SharedPtr mpMeshletVerticesBuffer;
+    Buffer::SharedPtr mpMeshletIndicesBuffer;
     Buffer::SharedPtr mpCurvesBuffer;
     Buffer::SharedPtr mpCustomPrimitivesBuffer;
     Buffer::SharedPtr mpLightsBuffer;
@@ -1318,12 +1346,7 @@ public:
 
     // Ray tracing acceleration structure
     struct TlasData {
-//#ifdef FALCOR_VK
-//        TopLevelAccelerationStructure::SharedPtr pTlasObject;
-//#else
         RtAccelerationStructure::SharedPtr pTlasObject;
-//#endif
-
         Buffer::SharedPtr pTlasBuffer;
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
         UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
@@ -1338,14 +1361,9 @@ public:
     /** Describes one BLAS.
     */
     struct BlasData {
-//#ifdef FALCOR_VK
-//        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
-//        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
-//#else
         RtAccelerationStructurePrebuildInfo prebuildInfo = {};
         RtAccelerationStructureBuildInputs buildInputs = {};
         std::vector<RtGeometryDesc> geomDescs;
-//#endif
 
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 

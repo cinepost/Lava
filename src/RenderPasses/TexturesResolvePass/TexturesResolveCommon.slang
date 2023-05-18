@@ -129,16 +129,15 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
 
     int _mipLevel = max(0, mipLevel);
 
+    //if( _mipLevel >= vtexData.mipTailStart) {
+    //    return vtexData.mipBases[_mipLevel] + vtexData.pagesStartOffset;
+    //}
+
     // Put texture coordinates in 0-1 range
     float2 tx = float2(texCoord.x - floor(texCoord.x), texCoord.y - floor(texCoord.y));
 
     // Now map them to texels
     tx = float2(((float)vtexData.width - 1) * (tx.x / (float)vtexData.width), (float)(vtexData.height - 1) * (tx.y / (float)vtexData.height));
-
-    // all mip levels greater or equal to mipTailStart stored in last page block
-    //if( _mipLevel >= vtexData.mipTailStart) {
-    //    _mipLevel = vtexData.mipTailStart - 1; // TODO: safety measure. Remove when mip tails work
-    //}
 
     float currentMipTextureWidth = vtexData.width / pow(2, _mipLevel);
     float currentMipTextureHeight = vtexData.height / pow(2, _mipLevel);
