@@ -9,7 +9,7 @@
 
 using namespace Falcor;
 
-class DebugShadingPass : public RenderPass {
+class PASS_API DebugShadingPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<DebugShadingPass>;
 

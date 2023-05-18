@@ -46,7 +46,7 @@ using namespace Falcor;
 
 /** Fast path tracer.
 */
-class PathTracer : public RenderPass
+class PASS_API PathTracer : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<PathTracer>;

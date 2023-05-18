@@ -16,7 +16,7 @@ using namespace Falcor;
 /** Ambient occlusion render pass.
 
 */
-class AmbientOcclusionPass : public RenderPass {
+class PASS_API AmbientOcclusionPass : public RenderPass {
 	public:
 		using SharedPtr = std::shared_ptr<AmbientOcclusionPass>;
 		using SharedConstPtr = std::shared_ptr<const AmbientOcclusionPass>;

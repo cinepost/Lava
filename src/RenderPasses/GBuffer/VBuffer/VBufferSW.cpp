@@ -306,7 +306,7 @@ struct MeshDesc
             const MeshDesc& meshDesc = mpScene->getMesh(meshID);
             const uint meshlets_prev_count = meshlets.size();
             buildMeshlets(meshDesc, meshlets, meshletsVerticesList, meshletsTrianglesList);
-            meshToMeshletGroupMap[meshID] = {meshlets_prev_count, meshlets.size() - meshlets_prev_count};
+            meshToMeshletGroupMap[meshID] = {meshlets_prev_count, static_cast<Falcor::uint>(meshlets.size()) - meshlets_prev_count};
         }
 
         const auto& meshletGroup = meshToMeshletGroupMap[meshID];

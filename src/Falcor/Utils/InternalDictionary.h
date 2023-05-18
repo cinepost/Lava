@@ -33,12 +33,15 @@
 #include <any>
 
 #include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Core/Framework.h"
 
 namespace Falcor {
 
-    class InternalDictionary {
+    using uint = uint32_t;
+
+    class dlldecl InternalDictionary {
      public:
-        class Value {
+        class dlldecl Value {
          public:
             Value() = default;
             Value(std::any& value) : mValue(value) {};

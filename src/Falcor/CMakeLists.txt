@@ -262,6 +262,8 @@ else()
             FreeImage::FreeImage
             ${OIDN_LIBRARIES}
             "Comctl32.lib"
+            # "comsupp.lib"
+            "comsuppw.lib"
     )
 endif()
 

@@ -37,7 +37,7 @@ using namespace Falcor;
     The visibility buffer encodes the mesh instance ID and primitive index,
     as well as the barycentrics at the hit point.
 */
-class VBufferRT : public GBufferBase
+class PASS_API VBufferRT : public GBufferBase
 {
 public:
     using SharedPtr = std::shared_ptr<VBufferRT>;

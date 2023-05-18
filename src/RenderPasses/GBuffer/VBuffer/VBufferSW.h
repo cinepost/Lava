@@ -37,7 +37,7 @@ using namespace Falcor;
 
 /** Software rasterized V-buffer pass.
 */
-class VBufferSW : public GBufferBase {
+class PASS_API VBufferSW : public GBufferBase {
 	public:
 		using SharedPtr = std::shared_ptr<VBufferSW>;
 		using MeshletsList = std::vector<Meshlet>;
