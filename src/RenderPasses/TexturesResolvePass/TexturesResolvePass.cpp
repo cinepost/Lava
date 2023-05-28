@@ -76,7 +76,8 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 
 	DepthStencilState::Desc dsDesc;
 	//dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+	//dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Equal);
 	mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 	mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
@@ -404,7 +405,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		//pageIDs.push_back(1364);
 
-		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << std::to_string(textureID);
+		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTexture->getSourceFilename();
 		
 		if(mLoadPagesAsync) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
@@ -465,7 +466,7 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 		mMipCalibrationTextures[i] = nullptr;
 		auto pMipCalibrationTexture = Texture::create2D(pRenderContext->device(), mpMipCalibrationTexture->getWidth(),  mpMipCalibrationTexture->getHeight(), ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
 		if (!pMipCalibrationTexture) {
-			LLOG_ERR << "Error creating calibraiotn texture for mip level " << std::to_string(i) << " !!!";
+			LLOG_ERR << "Error creating calibration texture for mip level " << std::to_string(i) << " !!!";
 			continue;
 		}
 

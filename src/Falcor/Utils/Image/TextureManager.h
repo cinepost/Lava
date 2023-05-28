@@ -190,6 +190,8 @@ public:
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
 	void setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const;
 
+	void setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount);
+
 	void setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const;
 
 	void finalize();
@@ -243,6 +245,8 @@ private:
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
 
+	Buffer::SharedPtr mpExtendedTexturesDataBuffer;
+
 	bool mSparseTexturesEnabled = false;
 	bool mHasSparseTextures = false;
 	bool mHasUDIMTextures = false;
@@ -252,6 +256,8 @@ private:
 	size_t mLoadRequestsInProgress = 0;                         ///< Number of load requests currently in progress.
 	size_t mUDIMTextureTilesCount = 0;                          ///< Number of managed UDIM tile textures
 	size_t mUDIMTexturesCount = 0;
+
+	std::atomic<uint32_t> mSparseTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 

@@ -333,31 +333,35 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	// Call before sparse binding to update memory bind list etc.
 	void updateSparseBindInfo();
 
-	inline bool isSparse() const { return mIsSparse; };
+	bool isSparse() const { return mIsSparse; };
 
-	inline const std::vector<VirtualTexturePage::SharedPtr>& sparseDataPages() { return mSparseDataPages; };
+	const std::vector<VirtualTexturePage::SharedPtr>& sparseDataPages() { return mSparseDataPages; };
 
 	uint32_t memoryTypeIndex() const { return mMemoryTypeIndex; }
 
 	static uint8_t getMaxMipCount(const uint3& size);
 
-	inline uint3 sparseDataPageRes() const { return mSparsePageRes; }
+	uint3 sparseDataPageRes() const { return mSparsePageRes; }
 
-	inline uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
+	uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
 
 	uint32_t getMipTailStart() const;
 
-	inline const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
+	const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
 
-	inline bool isUDIMTexture() const { return mIsUDIMTexture; }
+	bool isUDIMTexture() const { return mIsUDIMTexture; }
 
-	inline const std::array<UDIMTileInfo, 100>& getUDIMTileInfos() const { return mUDIMTileInfos; }
+	const std::array<UDIMTileInfo, 100>& getUDIMTileInfos() const { return mUDIMTileInfos; }
 
 	void setUDIM_ID(uint16_t id);
 
-	inline uint16_t getUDIM_ID() const { return mUDIM_ID; }
+	void setVirtualID(uint32_t id);
 
-	inline bool isSolid() const { return mIsSolid; }
+	uint16_t getUDIM_ID() const { return mUDIM_ID; }
+
+	uint32_t getVirtualID() const { return mVirtualID; }
+
+	bool isSolid() const { return mIsSolid; }
 
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
@@ -386,6 +390,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		bool mIsSparse = false;
 		bool mIsSolid = false;
 		uint16_t mUDIM_ID = 0;
+		uint32_t mVirtualID = 0;
 
 		uint3 mSparsePageRes = int3(0);
 		uint32_t mSparsePagesCount = 0;

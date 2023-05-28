@@ -56,6 +56,9 @@ struct MaterialSystem
     Texture2D<float4> materialTextures[1]; // Zero-length arrays are not supported.
 #endif
 
+
+    StructuredBuffer<ExtendedTextureData> extendedTexturesData;
+
 #if MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT > 0
     uint udimTextureTilesTable[MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT * 100];
 #else
@@ -244,13 +247,16 @@ struct MaterialSystem
 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
-                //return materialTextures[handle.getTextureID()].SampleLevel(s, uv, 2.f);
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+            case TextureHandle::Mode::Virtual:
+                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
+                uint udimID = extendedTexturesData[handle.getTextureID()].udimID;
                 float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
-                uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
                 return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);

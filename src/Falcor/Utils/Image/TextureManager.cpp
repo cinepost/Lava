@@ -38,6 +38,8 @@
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 
+#include "Scene/Material/TextureHandle.slang"
+
 #include "TextureManager.h"
 
 
@@ -230,6 +232,8 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   }
   //mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
   
+  pTexture->setVirtualID(mSparseTexturesCount++);
+
 	return pTexture;
 }
 
@@ -716,7 +720,7 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	size_t ii = 0; // Current material system textures index
 
 	// Fill in textures
-	for (size_t i = 0; i < mTextureDescs.size(); i++) {
+	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && !pTex->isUDIMTexture()) {
 			var[ii] = pTex;
@@ -730,6 +734,35 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	for (size_t i = ii; i < descCount; i++) {	
 		var[i] = nullTexture;
 	}
+}
+
+void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount) {
+	LLOG_DBG << "Setting extened textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
+
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	if (mTextureDescs.size() < descCount) {
+		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
+		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
+	}
+
+
+	std::vector<ExtendedTextureData> extendedTexturesData;
+
+	// Fill in extended data
+	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
+		extendedTexturesData.push_back({});
+		const auto& pTex = mTextureDescs[i].pTexture;
+		if(pTex) {
+			auto& handleExt = extendedTexturesData.back(); 
+			handleExt.udimID = pTex->isUDIMTexture() ? pTex->getUDIM_ID() : 0;
+			handleExt.virtualID = pTex->isSparse() ? pTex->getVirtualID() : 0;
+		}
+	}
+
+	mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
+	var.setBuffer(mpExtendedTexturesDataBuffer);
+
 }
 
 void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {

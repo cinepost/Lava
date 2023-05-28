@@ -68,6 +68,7 @@
 #define M_1_SQRT2           0.707106781186547524401 // 1/sqrt(2)
 
 // Numeric limits from <stdint.h>
+#define UINT16_MAX          65535
 #define UINT32_MAX          4294967295
 #define INT32_MIN           -2147483648
 #define INT32_MAX           2147483647

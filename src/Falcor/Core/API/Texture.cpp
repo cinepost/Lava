@@ -532,6 +532,14 @@ void Texture::setUDIM_ID(uint16_t id) {
 	mUDIM_ID = id;
 }
 
+void Texture::setVirtualID(uint32_t id) {
+	if(!mIsSparse) {
+		LLOG_ERR << "Unable to set texture virtual ID to Non-virtual texture !";
+		return;
+	}
+	mVirtualID = id;
+}
+
 void Texture::addUDIMTileTexture(const UDIMTileInfo& udim_tile_info) {
 	if(!mIsUDIMTexture) {
 		LLOG_ERR << "Unable to add UDIM texture tile to Non-UDIM texture !";

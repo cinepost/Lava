@@ -164,7 +164,7 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
         const float4 texGrads = gTextureGrads[pixel_pos];
         return ExplicitGradientTextureSampler(texGrads.xy, texGrads.zw);
     #else
-        return ExplicitLodTextureSampler(4.f);
+        return ExplicitLodTextureSampler(0.f);
     #endif
 }
 
@@ -182,8 +182,12 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     }
 
     //ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
-    ITextureSampler _lod = ExplicitLodTextureSampler(8.0);
-    
+
+    //if(rayData.level > 0) {
+    //    _lod = ExplicitLodTextureSampler(7.0);
+        //lod = createDynamicObject<L, float>(1, 7.0);
+    //}
+
     float3 rayOrigin = sd.posW;
     float3 rayShadowOrigin = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
@@ -495,13 +499,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
-    let lod = createTextureSampler(ipos);
-    //let lod = ExplicitLodTextureSampler(7.0);
-
+    ITextureSampler primaryLod = createTextureSampler(ipos);
+    //ITextureSampler primaryLod = ExplicitLodTextureSampler(2.f);
+    
     // Primary ray surface data
     TriangleHit primaryTriangleHit;
     ShadingData primaryShadingData;
-    [[branch]] if(!calcShadingData(rayDir, hit, lod, primaryShadingData, primaryTriangleHit)) return;
+    [[branch]] if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) return;
 
     // Sample generator
     SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
@@ -551,18 +555,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     
     TriangleHit _triangleHit = primaryTriangleHit;
     ShadingData _shadingData = primaryShadingData;
+    ITextureSampler _lod = primaryLod;
     
 #if _MAX_RAY_LEVEL != 0
     [loop]
     for(uint rayLevel = 0; rayLevel <= maxRayLevel; rayLevel++) {
         if(rayLevel > 0) {
-            if(!calcShadingData(rayData.dir, rayData.hit, lod, _shadingData, _triangleHit)) break;
+            _lod = ExplicitLodTextureSampler(7.0);
+            if(!calcShadingData(rayData.dir, rayData.hit, _lod, _shadingData, _triangleHit)) break;
         }
 #else
         const uint rayLevel = 0;
 #endif
         rayData.level = rayLevel;
-        surfaceColor += calcIlluminance(rayData, _triangleHit, _shadingData, sg, aov_data, rnd, lod, maxRayLevel);
+        surfaceColor += calcIlluminance(rayData, _triangleHit, _shadingData, sg, aov_data, rnd, _lod, maxRayLevel);
 
 #if _MAX_RAY_LEVEL != 0
         if(!rayData.hit.isValid()) break;
@@ -608,7 +614,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if is_valid(gOutEmission)
     {
-        let bsdf = gScene.materials.getBSDF(primaryShadingData, lod);
+        let bsdf = gScene.materials.getBSDF(primaryShadingData, primaryLod);
         aov_data.emission = bsdf.getProperties(primaryShadingData).emission;
     }
 #endif  // gOutEmission

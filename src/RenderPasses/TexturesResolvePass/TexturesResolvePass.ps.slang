@@ -123,6 +123,7 @@ float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualT
 #if _MAX_RAY_LEVEL == 0
 //[earlydepthstencil]
 #endif
+//[earlydepthstencil]
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC : TEXCOORD) {
 
     PsOut psOut;
@@ -149,11 +150,12 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             case TextureHandle::Mode::UDIM_Texture:
                 uint2 udim_idx = uint2((uint)floor(uv.x), (uint)floor(uv.y));
                 uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
-                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + udim_idx.x + udim_idx.y * 10];
+                uint udimID = gScene.materials.extendedTexturesData[vtexData.textureHandle.getTextureID()].udimID;
+                uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
                 vtexDataID = textureIdToVtexDataIdBuffer[tileID];
                 vtexData = virtualTextureDataBuffer[vtexDataID];
                 break;
-            case TextureHandle::Mode::Texture:
+            case TextureHandle::Mode::Virtual:
                 uv = float2(uv.x , 1.0 - uv.y);
                 break;
             default:
@@ -171,9 +173,12 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_lo = loMipLevel / 255.0f;
             debug_mip_level_hi = hiMipLevel / 255.0f;
 
-            for( int m = loMipLevel; m <= hiMipLevel; m++) {
-                if(m < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, m, vtexData));
-            }
+            //for( int m = loMipLevel; m <= hiMipLevel; m++) {
+            //    if(m < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, m, vtexData));
+            //}
+
+            if(loMipLevel < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
+            if(hiMipLevel < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
 
             //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
         }
