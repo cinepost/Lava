@@ -5,10 +5,15 @@
 #include <csignal>
 #include <chrono>
 
-// #include <unistd.h>
+#ifdef _WIN32
 #include <stdio.h>
 #include <stdlib.h>
-// #include <getopt.h>
+#else
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#endif
 
 using uint = uint32_t;
 

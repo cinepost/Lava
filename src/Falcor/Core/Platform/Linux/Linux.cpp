@@ -48,8 +48,8 @@
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-// #include "boost/filesystem.hpp"
-// namespace fs = boost::filesystem;
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 
 namespace Falcor {

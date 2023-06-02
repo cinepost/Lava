@@ -11,8 +11,11 @@ file( GLOB SOURCES
 include_directories(
   ${HOUDINI_ROOT}/toolkit/include
 )
-# add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
+if(WIN32)
 add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL)
+else()
+add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
+endif()
 
 add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
@@ -21,11 +24,9 @@ add_subdirectory(sdl_display)
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 
-# Use FindVulkan module added with CMAKE 3.7
-if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
+if(WIN32)
     message(STATUS "Using module to find Vulkan")
     find_package(Vulkan REQUIRED)
-endif()
 
 include_directories( ${Vulkan_INCLUDE_DIRS} )
 
@@ -38,6 +39,7 @@ add_definitions(-DBOOST_ALL_DYN_LINK)
 add_compile_definitions(
     $<$<CONFIG:DEBUG>:__TBB_LIB_NAME=tbb.lib>
 )
+endif()
 
 add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )
 
@@ -61,11 +63,16 @@ target_link_libraries(
     SkyBox
     RTXDIPass
     GBuffer
+)
+
+if(WIN32)
+target_link_libraries(
     # ${dlfcn-win32_LIBRARIES}
     dlfcn-win32::dl
     # ${HOUDINI_ROOT}/custom/houdini/dsolib/OpenImageIO_sidefx.lib
     # ${HOUDINI_ROOT}/custom/houdini/dsolib/OpenImageIO_Util_sidefx.lib
 )
+endif()
 
 if(UNIX OR WIN32)
     install(TARGETS lava_lib

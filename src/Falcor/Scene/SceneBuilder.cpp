@@ -1694,7 +1694,6 @@ void SceneBuilder::createMeshGroups() {
         const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId);
         if (pMaterial->isDisplaced()) mesh.isDisplaced = true;
 
-        //instances inst({mesh.instances.begin()->nodeId, mesh.instances.end()->nodeId});
         instances inst;
         for (const auto& i : mesh.instances) {
             inst.insert(i.nodeId);

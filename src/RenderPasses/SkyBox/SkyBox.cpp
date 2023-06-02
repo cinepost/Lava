@@ -182,14 +182,14 @@ void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pSc
     }
 }
 
-// void SkyBox::loadImage() {
-//     std::string filename;
-//     FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"}, {"exr"} };
-//     if (openFileDialog(filters, filename)) {
-//         mpTexture = Texture::createFromFile(mpDevice, filename, false, mLoadSrgb);
-//         setTexture(mpTexture);
-//     }
-// }
+void SkyBox::loadImage() {
+    // std::string filename;
+    // FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"}, {"exr"} };
+    // if (openFileDialog(filters, filename)) {
+    //     mpTexture = Texture::createFromFile(mpDevice, filename, false, mLoadSrgb);
+    //     setTexture(mpTexture);
+    // }
+}
 
 void SkyBox::setTexture(const std::string& texName, bool loadAsSrgb) {
     std::shared_ptr<Texture> pTexture;

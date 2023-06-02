@@ -28,22 +28,26 @@ bool readEmbeddedFileUU(std::istream* pParserStream, size_t size, std::vector<un
     in.setf(std::ios::skipws);
 
     // decode data
-    // FILE* inMemFile = fmemopen((void *)buff.data(), size, "rw");
+    #ifdef _WIN32
+        // not implemented
+    #else
+    FILE* inMemFile = fmemopen((void *)buff.data(), size, "rw");
     
-    // FILE* outTestFile = fopen("/home/max/Desktop/mistery_file_decoded", "w");
+    FILE* outTestFile = fopen("/home/max/Desktop/mistery_file_decoded", "w");
 
-    // if(!uu::decodeUU(inMemFile, outTestFile)) {
-    //     LLOG_DBG << "Error decoding embedded data !!!";
-    // }
+    if(!uu::decodeUU(inMemFile, outTestFile)) {
+        LLOG_DBG << "Error decoding embedded data !!!";
+    }
 
-    // fclose(inMemFile);
+    fclose(inMemFile);
     
-    // if(outTestFile)
-    //     fclose(outTestFile);
+    if(outTestFile)
+        fclose(outTestFile);
     // test write
     //std::ofstream fout("/home/max/Desktop/mistery_file", std::ios::out | std::ios::binary);
     //fout.write((char*)&buff[0], buff.size() * sizeof(unsigned char));
     //fout.close();
+    #endif
 
     return result;
 }

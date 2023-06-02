@@ -44,7 +44,7 @@ namespace Falcor
         after end() is called. These stats are summarized in a reduction pass, which are
         available in getStats() or printStats() after async readback to the CPU.
     */
-    class dlldecl PixelStats
+    class FALCOR_API PixelStats
     {
     public:
         struct Stats

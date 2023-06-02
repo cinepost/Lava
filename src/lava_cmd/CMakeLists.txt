@@ -9,11 +9,15 @@ set (SOURCES
 )
 
 # Find BOOST
+if(WIN32)
 set(BOOST_ROOT ${DEPS_DIR})
 set(Boost_USE_STATIC_LIBS OFF)
+endif()
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS program_options log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
+if(WIN32)
 add_definitions(-DBOOST_ALL_DYN_LINK)
+endif()
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )

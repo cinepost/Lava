@@ -32,9 +32,9 @@
 #include <unordered_map>
 #include <memory>
 
-// #include <boost/filesystem.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/json.hpp>
-// namespace fs = boost::filesystem;
+namespace fs = boost::filesystem;
 
 #include "CpuTimer.h"
 #include "FrameRate.h"

@@ -106,7 +106,11 @@ endif()
 #######################
 
 if( NOT EXTERNAL_TBB_VERSION )
+  if(WIN32)
   set(EXTERNAL_TBB_VERSION 2021.8.0)  
+  else()
+  set(EXTERNAL_TBB_VERSION 2020.2)
+  endif()
 endif()
 
 set(TBB_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -121,6 +125,7 @@ else()
   message("TBB not found! Running external build ...")
   set(TBB_PREFIX tbb)
 
+  if(WIN32)
   ExternalProject_Add( Tbb
     PREFIX ${EXTERNALS_SOURCE_DIR}/${TBB_PREFIX}
     GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
@@ -153,6 +158,30 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
   )
+  else()
+  ExternalProject_Add( Tbb
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${TBB_PREFIX}
+    GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
+    GIT_TAG v${EXTERNAL_TBB_VERSION}
+    UPDATE_DISCONNECTED true
+    BUILD_IN_SOURCE 1
+    
+    CONFIGURE_COMMAND ""
+    
+    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+
+    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+    
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
+      -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
+      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
+  )
+  endif()
 
 endif()
 
@@ -209,8 +238,6 @@ else()
     CMAKE_ARGS -D CMAKE_C_FLAGS:STRING="-fPIC"
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
@@ -244,7 +271,6 @@ if(Boost_FOUND)
   message("Boost version ${Boost_VERSION} found ...")
   message(Boost_INCLUDE_DIR "${Boost_INCLUDE_DIR}")
   add_custom_target( Boost COMMAND echo "Boost ${EXTERNAL_BOOST_VERSION} build exists, skipping rebuild ...")
-  
 
 else()
   
@@ -267,6 +293,7 @@ else()
     set(BOOST_BUILD_TYPE "release")
   endif()
 
+  if(WIN32)
   ExternalProject_Add ( Boost
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
     GIT_REPOSITORY https://github.com/boostorg/boost.git
@@ -301,6 +328,31 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/boost
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
   )
+  else()
+  ExternalProject_Add ( Boost
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
+    GIT_REPOSITORY https://github.com/boostorg/boost.git
+    GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
+    UPDATE_DISCONNECTED true
+    CONFIGURE_COMMAND ./bootstrap.sh
+      --with-libraries=filesystem
+      --with-libraries=system
+      --with-libraries=date_time
+      --with-libraries=iostreams
+      --with-libraries=program_options
+      --with-libraries=regex
+      --with-libraries=log 
+      --with-libraries=thread
+      --with-libraries=json
+      --prefix=<INSTALL_DIR>
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+    TMP_DIR ${EXTERNALS_TMP_DIR}/boost
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
+  )
+  endif()
 endif()
 
 #######################
@@ -337,8 +389,6 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/pybind
@@ -395,8 +445,6 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openexr
@@ -451,8 +499,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/assimp
@@ -497,13 +543,18 @@ else()
   else()
     set(OPENVDB_USE_BOOST_STATIC_RUNTIME OFF)
     set(OPENVDB_BUILD_CORE_SHARED ON)
-    set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")    
+    set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
   endif()
 
+  if(WIN32)
+  set(OPENVDB_CXX_FLAGS "/EHsc")
   if(DEPS_BUILD_TYPE STREQUAL "Release")
     set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Release/lib/tbb12.lib")
   else()
     set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Debug/lib/tbb12_debug.lib")
+  endif()
+  elseif(UNIX)
+    # set(OPENVDB_CXX_STANDARD_LIBRARIES "")
   endif()
 
   ExternalProject_Add ( OpenVDB
@@ -535,16 +586,13 @@ else()
     CMAKE_ARGS -D TBB_INCLUDEDIR:PATH=${EXTERNALS_INSTALL_DIR}/include/
     CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_INSTALL_DIR}/lib/
     
-    # CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
-    CMAKE_ARGS -D CMAKE_CXX_FLAGS="/EHsc"
-    CMAKE_ARGS -D CMAKE_CXX_STANDARD_LIBRARIES=${OPENVDB_CXX_STANDARD_LIBRARIES}
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
+    # CMAKE_ARGS -D CMAKE_CXX_STANDARD_LIBRARIES=${OPENVDB_CXX_STANDARD_LIBRARIES}
     CMAKE_ARGS -D CMAKE_C_FLAGS=${OPENVDB_C_FLAGS}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openvdb
@@ -587,10 +635,12 @@ else()
   endif()
 
   set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
+  if(WIN32)
   set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
-  # find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
-  # find_package(ZLIB REQUIRED)
-  # message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
+  else()
+  find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+  message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
+  endif()
   
   ExternalProject_Add ( png
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpng-${EXTERNAL_PNG_VERSION}
@@ -604,8 +654,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${PNG_PREFIX}
@@ -615,6 +663,7 @@ else()
   ExternalProject_Add_StepDependencies(png configure zlib)
 endif()
 
+if(WIN32)
 #######################
 # JPEG
 #######################
@@ -666,6 +715,7 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${JPEG_PREFIX}
   )
   # ExternalProject_Add_StepDependencies(jpeg configure)
+endif()
 endif()
 
 #######################
@@ -725,8 +775,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/ocio
@@ -824,15 +872,17 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/oiio
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
+  if(WIN32)
   ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
+  else()
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
+  endif()
 
 endif()
 
@@ -879,8 +929,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
@@ -926,8 +974,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${TIFF_PREFIX}
@@ -980,8 +1026,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
@@ -1023,8 +1067,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
@@ -1056,6 +1098,7 @@ if(ISPC_EXECUTABLE)
 else()
   message("Intel SPMD Compiler not found! Downloading ...")
 
+  if(WIN32)
   ExternalProject_Add ( ispc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
     # URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
@@ -1064,6 +1107,15 @@ else()
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
   )
+  else()
+  ExternalProject_Add ( ispc
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
+    URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+  )
+  endif()
 
 endif()
 
@@ -1088,8 +1140,10 @@ else()
   message("OpenImageDenoise not found! Running external build ...")
   set(OIDN_PREFIX openimagedenoise)
 
+  if(WIN32)
   if(NOT ISPC_EXECUTABLE)
     find_package(ISPC ${EXTERNAL_ISPC_VERSION} EXACT)
+  endif()
   endif()
   get_filename_component(ISPC_EXECUTABLE_DIR ${ISPC_EXECUTABLE} DIRECTORY)
   
@@ -1105,9 +1159,8 @@ else()
     GIT_TAG v${EXTERNAL_OIDN_VERSION}
     UPDATE_DISCONNECTED true
 
-    CMAKE_ARGS -D ISPC_DIR_HINT=${ISPC_EXECUTABLE_DIR}
+    CMAKE_ARGS -D ISPC_DIR_HINT=${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}/src/ispc/bin
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
-    # CMAKE_ARGS -D TBB_ROOT=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=${OIDN_BUILD_STATIC_LIBS}
@@ -1121,8 +1174,6 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${OIDN_PREFIX}
@@ -1327,6 +1378,18 @@ else()
   set(TIFF_ROOT ${EXTERNALS_INSTALL_DIR})
   find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
   
+  if(WIN32)
+    # COMMAND msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
+    set(FREE_COMMAND "msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64")
+    # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage
+    set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage)
+  else()
+    # COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
+    set(FREE_COMMAND "${MAKE_EXECUTABLE} -f Makefile.gnu")
+    # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
+    set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build)
+  endif()
+
   ExternalProject_Add( FreeImage
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/freeimage
     UPDATE_DISCONNECTED ON
@@ -1338,13 +1401,11 @@ else()
     CONFIGURE_COMMAND ""
 
     BUILD_COMMAND 
-      # COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
-      COMMAND msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
+      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
 
     INSTALL_COMMAND ${CMAKE_COMMAND}
       -D STATIC_LIB=${LAVA_3RD_LIB_LINK_WITH_STATIC}
-      # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
-      -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage
+      -D SRC_DIR=${FREE_SRC_DIR}
       -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
 
@@ -1373,10 +1434,17 @@ if( Slang_FOUND )
 else()
 
 set(SLANG_PREFIX slang)
-# set(SLANG_PLATFORM linux-x64)
+if(WIN32)
 set(SLANG_PLATFORM windows-x64)
+else()
+set(SLANG_PLATFORM linux-x64)
+endif()
 
+if(WIN32)
 set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
+else()
+set(SLANG_BUILD_LIBS "slang slang-glslang")
+endif()
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
@@ -1404,6 +1472,15 @@ message("Slang build config " ${SLANG_BUILD_CONFIG})
 
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
+# if(WIN32)
+# # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
+# set(CONF_PREMAKE_URL "https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true")
+# else()
+# # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+# set(CONF_PREMAKE_URL "https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true")
+# endif()
+
+if(WIN32)
 ExternalProject_Add( Slang
   PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
   GIT_REPOSITORY https://github.com/shader-slang/slang.git
@@ -1417,7 +1494,6 @@ ExternalProject_Add( Slang
   CONFIGURE_COMMAND
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
     COMMAND ${CMAKE_COMMAND}
-      # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
       -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
       -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
@@ -1429,9 +1505,6 @@ ExternalProject_Add( Slang
     COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
   BUILD_COMMAND 
-    #COMMAND ${CMAKE_COMMAND}
-    #  -D SOURCE_DIR=<SOURCE_DIR>
-    #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
     COMMAND
       # ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
       msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
@@ -1448,6 +1521,47 @@ ExternalProject_Add( Slang
   TMP_DIR ${EXTERNALS_TMP_DIR}/slang
   STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
 )
+else()
+ExternalProject_Add( Slang
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
+  GIT_REPOSITORY https://github.com/shader-slang/slang.git
+  GIT_TAG v${EXTERNAL_SLANG_VERSION}
+  UPDATE_DISCONNECTED ON
+  BUILD_IN_SOURCE   TRUE
+  LOG_BUILD ON
+  USES_TERMINAL ON
+  USES_TERMINAL_CONFIGURE ON
+
+  CONFIGURE_COMMAND
+    COMMAND ${CMAKE_COMMAND}
+      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+      -D OUTPUT_FILE=<SOURCE_DIR>/premake5
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
+    COMMAND ${CMAKE_COMMAND}
+      -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+      -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
+      -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
+    COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+  
+  BUILD_COMMAND 
+    #COMMAND ${CMAKE_COMMAND}
+    #  -D SOURCE_DIR=<SOURCE_DIR>
+    #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
+    COMMAND
+      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
+
+  INSTALL_COMMAND ${CMAKE_COMMAND}
+    -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
+    -D SOURCE_DIR=<SOURCE_DIR>
+    -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
+    -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
+)
+endif()
 
 endif()
 
@@ -1474,6 +1588,8 @@ add_dependencies( dummy_target
   zmq
   cppzmq
   tiff
-  jpeg
   FreeImage
 )
+if(WIN32)
+  add_dependencies( dummy_target jpeg )
+endif()

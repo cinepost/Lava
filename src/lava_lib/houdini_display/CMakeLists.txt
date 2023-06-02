@@ -7,8 +7,10 @@ set (SOURCES
 
 # Find Boost libs
 set(Boost_USE_MULTITHREADED ON)
+if(WIN32)
 set(BOOST_ROOT ${DEPS_DIR})
 set(Boost_USE_STATIC_LIBS OFF)
+endif()
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 
 # OpenMP
@@ -19,7 +21,9 @@ include_directories(
 	${Boost_INCLUDE_DIRS} 
 )
 
+if(WIN32)
 add_definitions( -D_HAS_STD_BYTE=0 )
+endif()
 
 add_library( d_houdini SHARED ${SOURCES} )
 

@@ -65,7 +65,7 @@ class PASS_API SkyBox : public RenderPass {
 
  private:
     SkyBox(Device::SharedPtr pDevice);
-   //  void loadImage();
+    void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
     glm::mat4 mTransformMatrix;

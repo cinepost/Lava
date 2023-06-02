@@ -7,24 +7,22 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 # Python
 find_package( Python3 REQUIRED COMPONENTS Development )
 
-# Use FindVulkan module added with CMAKE 3.7
-if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
-    message(STATUS "Using module to find Vulkan")
-    find_package(Vulkan REQUIRED)
-endif()
-
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
     ${Python3_INCLUDE_DIRS}
-    ${Vulkan_INCLUDE_DIRS}
 )
 
 # external passes (can also be made built-in)
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)
 add_definitions(-DBUILD_GAUSSIAN_PASS=TRUE)
 
-add_definitions(-DBOOST_ALL_DYN_LINK)
-add_definitions(-DPASS_DLL)
+if(WIN32)
+    message(STATUS "Using module to find Vulkan")
+    find_package(Vulkan REQUIRED)
+    include_directories(${Vulkan_INCLUDE_DIRS})
+    add_definitions(-DBOOST_ALL_DYN_LINK)
+    add_definitions(-DPASS_DLL)
+endif()
 
 # This function builds render pass library
 function (makeRenderPassLib)

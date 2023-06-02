@@ -55,8 +55,11 @@ namespace Falcor {
     inline fs::path appendExtension(const fs::path& path, const fs::path& ext) {
         auto sz_ext = ext.c_str();
         if ('.' == *sz_ext) ++sz_ext;
-        // return path.string<std::string>() + "." + sz_ext;
-        return path / "." / sz_ext;
+        #ifdef _WIN32
+        return path.string<std::wstring>() + L"." + sz_ext;
+        #else
+        return path.string<std::string>() + "." + sz_ext;
+        #endif
     }
 
     // String/string_View append operators missing from the spec

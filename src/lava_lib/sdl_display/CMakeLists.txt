@@ -21,25 +21,33 @@ endif()
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # Boost
+if(WIN32)
 set(BOOST_ROOT ${DEPS_DIR})
 set(Boost_USE_STATIC_LIBS OFF)
+endif()
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} )
-add_definitions(-DBOOST_ALL_DYN_LINK)
 
-# set(SDL2_ROOT "${EXTERNALS_INSTALL_DIR}/SDL2-2.0.22")
-# find_package( SDL2 REQUIRED )
+if(WIN32)
+add_definitions(-DBOOST_ALL_DYN_LINK)
 set(SDL2_INCLUDE_DIRS "${EXTERNALS_INSTALL_DIR}/SDL2-2.0.22/include")
 set(SDL2_LIBRARIES "${EXTERNALS_INSTALL_DIR}/SDL2-2.0.22/lib/x64/SDL2.lib")
 include_directories(${SDL2_INCLUDE_DIRS})
 message("SDL2_LIBRARIES ${SDL2_LIBRARIES}")
+else()
+set(SDL2_ROOT "${EXTERNALS_INSTALL_DIR}/SDL2-2.0.22")
+find_package( SDL2 REQUIRED )
+include_directories( ${SDL2_INCLUDE_DIRS} )
+endif()
 
 # OpenGL
 find_package( OpenGL REQUIRED )
 
 find_library(OpenGL_LIBRARY OpenGL )
 
+if(WIN32)
 add_definitions( -DIMGUI_IMPL_OPENGL_LOADER_GLEW )
+endif()
 
 # ImGui
 add_library(imgui STATIC
@@ -77,7 +85,9 @@ find_package( Threads )
 # GLEW
 #set(GLEW_USE_STATIC_LIBS ON)
 
+if(WIN32)
 set(GLEW_ROOT "${EXTERNALS_INSTALL_DIR}/glew-2.0.0")
+endif()
 find_package(GLEW 2.0 REQUIRED)
 if(NOT GLEW_FOUND)
   message(WARNING "GLEW NOT found, can't build sdl display driver")
@@ -85,7 +95,9 @@ if(NOT GLEW_FOUND)
   return()
 endif()
 
+if(WIN32)
 include_directories( ${GLEW_INCLUDE_DIRS} )
+endif()
 
 message("GLEW ${GLEW_LIBRARIES}")
 message("GLEW STATIC ${GLEW_STATIC_LIBRARIES}")
@@ -101,20 +113,31 @@ target_link_libraries(
 	imgui 
 	Boost::log 
 	Threads::Threads 
-	# ${OpenGL_LIBRARY}
-	OpenGL::GL
+	${OpenGL_LIBRARY}
 	${SDL2_LIBRARIES}
 	${GLEW_LIBRARIES}
 )
+
+if(WIN32)
+target_link_libraries( sdl_display
+	OpenGL::GL
+)
+endif()
 
 set_target_properties( sdl_display PROPERTIES
 	CXX_STANDARD 17
 	CXX_STANDARD_REQUIRED ON
 	CXX_EXTENSIONS ON
 	PREFIX "d_"
-	SUFFIX ".dll"
+	SUFFIX ".so"
 	OUTPUT_NAME "sdl"
 )
+
+if(WIN32)
+set_target_properties( sdl_display PROPERTIES
+	SUFFIX ".dll"
+)
+endif()
 
 
 install(

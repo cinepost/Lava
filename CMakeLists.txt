@@ -1,7 +1,9 @@
 cmake_minimum_required( VERSION 3.21 )
 
-# set(CMAKE_C_COMPILER gcc-7)
-# set(CMAKE_CXX_COMPILER g++-7)
+if(UNIX)
+set(CMAKE_C_COMPILER gcc-7)
+set(CMAKE_CXX_COMPILER g++-7)
+endif()
 
 set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
@@ -88,8 +90,9 @@ set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
 # Set python virtualenv for USD
-# set( PYTHON_EXECUTABLE "python3.8")
-# set( PYTHON_EXECUTABLE "python3.7")
+if(UNIX)
+set( PYTHON_EXECUTABLE "python3.8")
+endif()
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -103,10 +106,11 @@ if(APPLE)
 elseif(UNIX)
   set( CMAKE_INSTALL_PREFIX "/opt/lava" )
 elseif(WIN32)
-  set( CMAKE_INSTALL_PREFIX "D:/Lava/install" )
+  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "D:/Lava/install" CACHE PATH "Lava install prefix" FORCE)
+  endif()
+  message("CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
 endif()
-
-message("CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
 
 # Specify build paths
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
@@ -126,10 +130,9 @@ endif(WIN32 OR APPLE)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-# elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-#   add_definitions(-DNDEBUG)
 endif ()
 
+if(WIN32)
 add_compile_definitions(
   $<$<CONFIG:RELEASE>:NDEBUG>
   # $<$<CONFIG:DEBUG>:DEBUG>
@@ -140,6 +143,7 @@ add_compile_definitions(
   # $<$<CONFIG:DEBUG>:__TBB_LIB_NAME=tbb.lib>
   # $<$<CONFIG:DEBUG>:__TBB_NO_IMPLICIT_LINKAGE=1>
 )
+endif()
 
 set(FALCOR_API_BACKEND "Vulkan" CACHE STRING "Rendering API")
 
@@ -148,19 +152,20 @@ if(WIN32)
   set(HOUDINI_USER "$ENV{USERPROFILE}/Documents/houdini19.5" CACHE PATH "Houdini home user path")
   set(HOUDINI_ROOT "C:/Program Files/Side Effects Software/Houdini 19.5.534" CACHE PATH "Houdini installation path")
   add_definitions(
-    # -DNDEBUG
     -DNOMINMAX
     -D_USE_MATH_DEFINES
     -DWIN32
-    -D_WIN32
+    # -D_WIN32
     # -DUNICODE
+    # -DAMD64
+    # -DSIZEOF_VOID_P=8
     -DHAVE_SNPRINTF
     -D_SCL_SECURE_NO_WARNINGS
     -D_CRT_SECURE_NO_WARNINGS
     -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
-elseif()
-  set(HOUDINI_USER "$ENV{HOME}/houdini19.5" CACHE PATH "Houdini home user path")
-  set(HOUDINI_ROOT "/opt/hfs19.5" CACHE PATH "Houdini installation path")
+else()
+set(HOUDINI_USER "$ENV{HOME}/houdini19.5" CACHE PATH "Houdini home user path")
+set(HOUDINI_ROOT "/opt/hfs19.5" CACHE PATH "Houdini installation path")
 endif()
 
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
@@ -177,7 +182,7 @@ if (PROFILING_LOG)
 endif ()
 
 if ( MSVC )
-  ADD_DEFINITIONS(/W3 /std:c++17 /MP /wd4005 /wd4068) #/
+  ADD_DEFINITIONS(/W3 /std:c++17 /MP /wd4005 /wd4068)
   add_compile_options($<$<CONFIG:DEBUG>:/bigobj>)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
   ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
@@ -251,14 +256,22 @@ install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
 #------------------------------------------
 
 # third party libs
+if(WIN32)
+install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+FILES_MATCHING PATTERN "*.dll"
+PATTERN "*.lib"
+PATTERN "cmake" EXCLUDE
+PATTERN "pkgconfig" EXCLUDE
+PATTERN "libpng" EXCLUDE
+)
+else()
 install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
         FILES_MATCHING PATTERN "*.so*"
-        PATTERN "*.dll"
-        PATTERN "*.lib"
         PATTERN "cmake" EXCLUDE
         PATTERN "pkgconfig" EXCLUDE
         PATTERN "libpng" EXCLUDE
 )
+endif()
 
 # third additional shaders and dependencies
 install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
@@ -361,14 +374,14 @@ endif()
 
 if(WIN32 AND COLLECT)
   install(CODE "set(DEPS_INSTALL_DIR \"${EXTERNALS_INSTALL_DIR}/lib\")")
-  
+
   install(CODE [[
-      
+
       message(" ")
       message("Collecting and installing portable build dependencies ...")
 
       # Feel free to add some missing system dependecies here ;)
-      # set(REQ_SYS_LIBS 
+      # set(REQ_SYS_LIBS
       #     "libpython"
       #     "libOpenColorIO"
       #     "libicui18n"
@@ -392,7 +405,7 @@ if(WIN32 AND COLLECT)
           CONFLICTING_DEPENDENCIES_PREFIX _c_deps
           #DIRECTORIES ${DEPS_INSTALL_DIR}
       )
-      
+
       # foreach(_file ${_r_deps})
       #     if(${_file} MATCHES "^/usr/*|^/lib/*")
       #         foreach(REQ_SYS_LIB_NAME ${REQ_SYS_LIBS})
@@ -407,7 +420,7 @@ if(WIN32 AND COLLECT)
       #         endforeach()
       #     endif()
       # endforeach()
-      
+
       foreach(_file ${_u_deps})
           find_library(UNRESOLVED_LIBRARY
             NAMES ${_file}
@@ -428,7 +441,7 @@ if(WIN32 AND COLLECT)
             message("Dependency " ${_file} " resolved !")
           endif()
       endforeach()
-      
+
       foreach(_file ${_c_deps_FILENAMES})
           find_library(CONFLICT_LIBRARY
             NAMES ${_file}

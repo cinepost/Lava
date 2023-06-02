@@ -45,7 +45,6 @@ class dlldecl Scripting {
     public:
         static const FileDialogFilterVec kFileExtensionFilters;
 
-        // class __attribute__((visibility("default"))) Context {
         class FALCOR_API_EXPORT Context {
          public:
             template<typename T>

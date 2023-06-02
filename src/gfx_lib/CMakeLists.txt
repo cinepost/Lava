@@ -1,15 +1,9 @@
 set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
 
-find_package(Vulkan REQUIRED)
-add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
-
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}/include
-    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source  
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
-
-# find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log thread filesystem system EXACT REQUIRED)
-add_definitions(-DBOOST_ALL_DYN_LINK)
 
 file( GLOB SOURCES
     ./*.cpp
@@ -24,14 +18,17 @@ file( GLOB SOURCES
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
-find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
 
 add_library( gfx_lib SHARED ${SOURCES} ${HEADERS} )
 
-if (MSVC)
+if(WIN32)
+    find_package(Vulkan REQUIRED)
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+    add_definitions(-DBOOST_ALL_DYN_LINK)
+    find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
+
     set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
     # target_link_options(gfx_lib PRIVATE "/FORCE:UNRESOLVED")
-endif()
 
 target_link_libraries(
     gfx_lib
@@ -44,6 +41,13 @@ target_link_libraries(
     # falcor_lib "../../Release/lib/Release/falcor_lib"
     ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/falcor_lib.lib
 )
+else()
+target_link_libraries(
+    gfx_lib
+    lava_utils_lib
+    ${SLANG_LIBRARY}
+)
+endif()
 
 if(UNIX OR WIN32)
     install(TARGETS gfx_lib

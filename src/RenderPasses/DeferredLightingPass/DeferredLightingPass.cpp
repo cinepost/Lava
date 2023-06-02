@@ -93,7 +93,7 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
         else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
-        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(static_cast<const std::string&>(value));
+        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
         else if (key == kRussianRouletteLevel) pThis->setRussRoulleteLevel((uint)value);
         else if (key == kRayContributionThreshold) pThis->setRayContribThreshold(value);
     }

@@ -391,7 +391,6 @@ namespace Falcor
         }
         else
         {
-            // logError("Error when loading icon. Can't find the file " + iconFile + ".");
             LLOG_ERR << "Error when loading icon. Can't find the file " + iconFile + ".";
         }
     }
@@ -463,7 +462,6 @@ namespace Falcor
         STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
         if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
         {
-            // logError("Unable to execute the render graph editor");
             LLOG_ERR << "Unable to execute the render graph editor";
             return 0;
         }
@@ -515,7 +513,6 @@ namespace Falcor
             if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
                 FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
             {
-                // logError("Failed to read directory changes for shared file.");
                 LLOG_ERR << "Failed to read directory changes for shared file.";
                 CloseHandle(hFile);
                 return;
@@ -523,7 +520,6 @@ namespace Falcor
 
             if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
             {
-                // logError("Failed to read directory changes for shared file.");
                 LLOG_ERR << "Failed to read directory changes for shared file.";
                 CloseHandle(hFile);
                 return;
@@ -629,7 +625,6 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            // logWarning("setThreadAffinity failed with error: " + to_string(err));
             LLOG_WRN << "setThreadAffinity failed with error: " + to_string(err);
             LocalFree(lpMsgBuf);
         }
@@ -652,7 +647,6 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            // logWarning("setThreadPriority failed with error: " + to_string(err));
             LLOG_WRN << "setThreadPriority failed with error: " + to_string(err);
             LocalFree(lpMsgBuf);
         }
@@ -663,7 +657,6 @@ namespace Falcor
         struct stat s;
         if (stat(filename.c_str(), &s) != 0)
         {
-            // logError("Can't get file time for '" + filename + "'");
             LLOG_ERR << "Can't get file time for '" + filename + "'";
             return 0;
         }

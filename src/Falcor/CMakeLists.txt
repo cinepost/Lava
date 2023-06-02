@@ -13,7 +13,6 @@ file( GLOB SOURCES
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
     # ./Core/Platform/Linux/Linux.cpp
-    ./Core/Platform/Windows/Windows.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
@@ -21,7 +20,6 @@ file( GLOB SOURCES
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
     ./Rendering/RTXDI/*.cpp
-    ./Rendering/Utils/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
     ./Scene/Animation/*.cpp
@@ -30,11 +28,6 @@ file( GLOB SOURCES
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
-    # ./Scene/SDFs/*.cpp
-    # ./Scene/SDFs/NormalizedDenseSDFGrid/*.cpp
-    # ./Scene/SDFs/SparseBrickSet/*.cpp
-    # ./Scene/SDFs/SparseVoxelOctree/*.cpp
-    # ./Scene/SDFs/SparseVoxelSet/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/InternalDictionary.cpp
@@ -64,6 +57,24 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 )
 
+if(WIN32)
+    file( GLOB SOURCES_ARCH
+        ./Core/Platform/Windows/Windows.cpp
+        ./Rendering/Utils/*.cpp
+        # ./Scene/SDFs/*.cpp
+        # ./Scene/SDFs/NormalizedDenseSDFGrid/*.cpp
+        # ./Scene/SDFs/SparseBrickSet/*.cpp
+        # ./Scene/SDFs/SparseVoxelOctree/*.cpp
+        # ./Scene/SDFs/SparseVoxelSet/*.cpp
+    )
+else()
+    file( GLOB SOURCES_ARCH
+        ./Core/Platform/Linux/Linux.cpp
+    )
+endif()
+
+list(APPEND SOURCES ${SOURCES_ARCH})
+
 string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
 if(backend_type STREQUAL "gfx")
     add_definitions(-D_FLACOR_API_BACKEND_GFX)
@@ -77,7 +88,7 @@ list (APPEND SOURCES ${BACKEND_API_SOURCES})
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
-if(MSVC)
+if(WIN32)
     # target_compile_options(falcor_lib PUBLIC /arch:SSE4.1)
     # set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
     target_link_options(falcor_lib PRIVATE "/FORCE:UNRESOLVED")
@@ -88,7 +99,9 @@ endif()
 # Blosc
 set(BLOSC_USE_STATIC_LIBS ON)
 set(Blosc_ROOT ${DEPS_DIR})
-set(Blosc_LIBRARY ${DEPS_DIR}/lib/libblosc.lib)
+if(WIN32)
+    set(Blosc_LIBRARY ${DEPS_DIR}/lib/libblosc.lib)
+endif()
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT REQUIRED)
 
 # PyBind11
@@ -96,36 +109,39 @@ set(pybind11_ROOT ${DEPS_DIR})
 find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT REQUIRED CONFIG)
 
 # Python
-# set(CMAKE_BUILD_TYPE_ ${CMAKE_BUILD_TYPE})
-# set(CMAKE_BUILD_TYPE Release)
 find_package( Python3 REQUIRED COMPONENTS Development )
 target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
-# set(CMAKE_BUILD_TYPE_ ${CMAKE_BUILD_TYPE_})
 
 # Assimp
 set(assimp_ROOT ${DEPS_DIR})
 find_package(assimp ${EXTERNAL_ASSIMP_VERSION} REQUIRED)
-if (DEPS_BUILD_TYPE STREQUAL "Release")
-    set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_RELEASE})
-else()
-    set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_DEBUG})
+if(WIN32)
+    if (DEPS_BUILD_TYPE STREQUAL "Release")
+        set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_RELEASE})
+    else()
+        set(ASSIMP_LIBRARY ${ASSIMP_LIBRARY_DEBUG})
+    endif()
+    message ("assimp_LIBRARIES: ${assimp_LIBRARIES}")
+    message ("Using ASSIMP_LIBRARY: ${ASSIMP_LIBRARY}")
 endif()
-message ("assimp_LIBRARIES: ${assimp_LIBRARIES}")
-message ("Using ASSIMP_LIBRARY: ${ASSIMP_LIBRARY}")
 
 # LZ4
-set(LZ4_ROOT ${DEPS_DIR}/lz4)
+if(WIN32)
+    set(LZ4_ROOT ${DEPS_DIR}/lz4)
+endif()
 find_package( LZ4 REQUIRED )
-include_directories( ${LZ4_INCLUDE_DIR} )
-# include_directories( ${LZ4_ROOT}/include )
-# set(LZ4_LIBRARY ${LZ4_ROOT}/lib/lz4.lib)
+if(WIN32)
+    include_directories( ${LZ4_INCLUDE_DIR} )
+endif()
 
 # ZLIB
-set(ZLIB_ROOT ${DEPS_DIR})
-if (DEPS_BUILD_TYPE STREQUAL "Debug")
-    set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlibd.lib )
-else()
-    set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlib.lib )
+if(WIN32)
+    set(ZLIB_ROOT ${DEPS_DIR})
+    if (DEPS_BUILD_TYPE STREQUAL "Release")
+        set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlib.lib )
+    else()
+        set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlibd.lib )
+    endif()
 endif()
 find_package( ZLIB REQUIRED )
 if(ZLIB_FOUND)
@@ -155,21 +171,25 @@ set(OPENIMAGEIO_ROOT ${DEPS_DIR})
 find_package( OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT REQUIRED )
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
+if(WIN32)
+    message(STATUS "Using module to find Vulkan")
+    find_package(Vulkan REQUIRED)
+    include_directories( ${Vulkan_INCLUDE_DIRS} )
+else()
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     message(STATUS "Using module to find Vulkan")
-    find_package(Vulkan REQUIRED)
+    find_package(Vulkan)
 endif()
 
-# if (NOT Vulkan_FOUND)
-#     find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR/libs/vulkan}" REQUIRED)
-#     if (Vulkan_LIBRARY)
-#         set(Vulkan_FOUND OK)
-#         message("Using bundled vulkan library version")
-#     endif()
-# endif()
-
-# include_directories( ${Vulkan_INCLUDE_DIRS} )
+if (NOT Vulkan_FOUND)
+    find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR/libs/vulkan}" REQUIRED)
+    if (Vulkan_LIBRARY)
+        set(Vulkan_FOUND OK)
+        message("Using bundled vulkan library version")
+    endif()
+endif()
+endif()
 
 # FreeImage
 set(FreeImage_ROOT ${DEPS_DIR})
@@ -184,7 +204,9 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${DEPS_DIR})
-set(Boost_USE_STATIC_LIBS OFF)
+if(WIN32)
+    set(Boost_USE_STATIC_LIBS OFF)
+endif()
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS json filesystem system thread EXACT REQUIRED )
 target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
@@ -200,7 +222,9 @@ find_package(OpenVDB ${EXTERNAL_OPENVDB_VERSION} REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
 # OpenSSL
-set(OpenSSL_ROOT ${DEPS_DIR}/openssl)
+if(WIN32)
+    set(OpenSSL_ROOT ${DEPS_DIR}/openssl)
+endif()
 find_package(OpenSSL REQUIRED)
 
 message("OpenVDB ${OpenVDB_LIBRARY}")
@@ -222,7 +246,10 @@ set(GLFW_ROOT ${DEPS_DIR})
 find_package(GLFW ${EXTERNAL_GLFW_VERSION} EXACT REQUIRED)
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
-add_definitions(-DFALCOR_DLL -DUNICODE )
+add_definitions(-DFALCOR_DLL)
+if(WIN32)
+    add_definitions(-DUNICODE)
+endif()
 
 if(USE_MEGALIB)
     target_link_libraries(
@@ -232,39 +259,62 @@ if(USE_MEGALIB)
             stdc++fs
     )
 else()
-    # add_definitions( -DBOOST_LOG_DYN_LINK )
-    add_definitions(-DBOOST_ALL_DYN_LINK)
+    if(WIN32)
+        add_definitions(-DBOOST_ALL_DYN_LINK)
+        target_link_libraries(
+            falcor_lib
+            PUBLIC
+                Blosc::blosc
+                ${GLFW_LIBRARY}
+                OpenSSL::SSL
+                OpenImageIO::OpenImageIO
+                OpenVDB::openvdb
+                OpenEXR::IlmImf
+                ${ASSIMP_LIBRARY}
+                ${SLANG_LIBRARY}
+                Boost::system
+                Boost::filesystem
+                Boost::thread
+                Boost::json
+                Vulkan::Vulkan
+                ${GTK3_LIBRARIES}
+                ${TIFF_LIBRARIES}
+                ZLIB::ZLIB
+                ${LZ4_LIBRARY}
+                Python3::Python
+                FreeImage::FreeImage
+                ${OIDN_LIBRARIES}
+                "Comctl32.lib"
+                "comsuppw.lib"
+        )
+    else()
+    add_definitions( -DBOOST_LOG_DYN_LINK )
     target_link_libraries(
         falcor_lib
         PUBLIC
-            # stdc++fs
+            stdc++fs
             Blosc::blosc
             ${GLFW_LIBRARY}
             OpenSSL::SSL
             OpenImageIO::OpenImageIO
             OpenVDB::openvdb
             OpenEXR::IlmImf
-            # ${assimp_LIBRARIES}
-            ${ASSIMP_LIBRARY}
+            ${assimp_LIBRARIES}
             ${SLANG_LIBRARY}
             Boost::system
             Boost::filesystem
             Boost::thread
             Boost::json
-            # ${Vulkan_LIBRARY}
-            Vulkan::Vulkan
+            ${Vulkan_LIBRARY}
             ${GTK3_LIBRARIES}
             ${TIFF_LIBRARIES}
-            # ${ZLIB_LIBRARY}
-            ZLIB::ZLIB
+            ${ZLIB_LIBRARY}
             ${LZ4_LIBRARY}
             Python3::Python
             FreeImage::FreeImage
             ${OIDN_LIBRARIES}
-            "Comctl32.lib"
-            # "comsupp.lib"
-            "comsuppw.lib"
     )
+    endif()
 endif()
 
 if(backend_type STREQUAL "gfx")

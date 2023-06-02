@@ -5,15 +5,20 @@
 #include <thread>
 #include <type_traits>
 
-// #ifdef __linux__
+#ifdef __linux__
   #include <GL/glew.h>
   #include <GL/gl.h>
-// #endif
+#endif
 
-// #include <SDL2/SDL.h>
-// #include <SDL2/SDL_opengl.h>
+#ifdef _WIN32
+#include <GL/glew.h>
+#include <GL/gl.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
+#else
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
+#endif
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_sdl.h"

@@ -113,8 +113,10 @@ if(NOT TIFF_LIBRARY)
       NO_DEFAULT_PATH
     )
 
-  # include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
-  include(SelectLibraryConfigurations)
+  if(WIN32)
+    include(SelectLibraryConfigurations)
+  endif()
+  #include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
   select_library_configurations(TIFF)
   mark_as_advanced(TIFF_LIBRARY_RELEASE TIFF_LIBRARY_DEBUG)
 endif()

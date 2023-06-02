@@ -89,9 +89,12 @@ class dlldecl MxGeneratorsLibrary {
       DllHandle module = nullptr;
 
       ExtendedDesc& operator=(ExtendedDesc& a) { return a; }
-      ExtendedDesc& operator=(const ExtendedDesc& a) { return *this; }
 
-      // ExtendedDesc& operator=(ExtendedDesc&& other) { return *this; }
+      #ifdef _WIN32
+      ExtendedDesc& operator=(const ExtendedDesc& a) { return *this; }
+      #else
+      ExtendedDesc& operator=(ExtendedDesc&& other) { return *this; }
+      #endif
     };
 
     void registerInternal(const MxGeneratorBase::Info& info, CreateFunc func, DllHandle hmodule);
