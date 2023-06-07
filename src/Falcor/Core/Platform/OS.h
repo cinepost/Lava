@@ -57,7 +57,7 @@ class Window;
 
 /** Utility class to start/stop OS services
 */
-class OSServices {
+class dlldecl OSServices {
  public:
     static void start();
     static void stop();

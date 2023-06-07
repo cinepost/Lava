@@ -78,10 +78,11 @@
 
 #ifndef WIN32
 #define HWND void*
-#endif
+// #endif
 
 #define HANDLE void*
 #define HRESULT uint32_t
+#endif
 #endif
 
 #if FALCOR_GFX_VK

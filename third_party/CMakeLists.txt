@@ -587,7 +587,7 @@ else()
     CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_INSTALL_DIR}/lib/
     
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
-    # CMAKE_ARGS -D CMAKE_CXX_STANDARD_LIBRARIES=${OPENVDB_CXX_STANDARD_LIBRARIES}
+    CMAKE_ARGS $<$<PLATFORM_ID:Windows>:-DCMAKE_CXX_STANDARD_LIBRARIES=${OPENVDB_CXX_STANDARD_LIBRARIES}>
     CMAKE_ARGS -D CMAKE_C_FLAGS=${OPENVDB_C_FLAGS}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
@@ -822,14 +822,14 @@ else()
   find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
 
   if(NOT TARGET ZLIB::ZLIB)
-    message(FATAL_ERROR "ZLIB library missing !!! Required by OpenimageIO")
+    message(WARNING "ZLIB library missing !!! Required by OpenimageIO")
   endif()
 
   set(PNG_ROOT ${EXTERNALS_INSTALL_DIR})
   find_package(PNG ${EXTERNAL_PNG_VERSION} EXACT)
 
   if(NOT TARGET PNG::PNG)
-    message(FATAL_ERROR "PNG library missing !!! Required by OpenimageIO")
+    message(WARNING "PNG library missing !!! Required by OpenimageIO")
   endif()
 
   set(OpenColorIO_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -1380,12 +1380,12 @@ else()
   
   if(WIN32)
     # COMMAND msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
-    set(FREE_COMMAND "msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64")
+    set(FREE_COMMAND "msbuild;-m;FreeImage.2017.sln;/property:Configuration=${DEPS_BUILD_TYPE};/property:Platform=x64")
     # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage
     set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage)
   else()
     # COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
-    set(FREE_COMMAND "${MAKE_EXECUTABLE} -f Makefile.gnu")
+    set(FREE_COMMAND "${MAKE_EXECUTABLE};-f;Makefile.gnu")
     # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
     set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build)
   endif()
@@ -1400,8 +1400,8 @@ else()
 
     CONFIGURE_COMMAND ""
 
-    BUILD_COMMAND 
-      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
+    LIST_SEPARATOR " "
+    BUILD_COMMAND ${FREE_COMMAND}
 
     INSTALL_COMMAND ${CMAKE_COMMAND}
       -D STATIC_LIB=${LAVA_3RD_LIB_LINK_WITH_STATIC}

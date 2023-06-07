@@ -113,16 +113,11 @@ target_link_libraries(
 	imgui 
 	Boost::log 
 	Threads::Threads 
-	${OpenGL_LIBRARY}
+	$<$<PLATFORM_ID:Linux>:${OpenGL_LIBRARY}>
+	$<$<PLATFORM_ID:Windows>:OpenGL::GL>
 	${SDL2_LIBRARIES}
 	${GLEW_LIBRARIES}
 )
-
-if(WIN32)
-target_link_libraries( sdl_display
-	OpenGL::GL
-)
-endif()
 
 set_target_properties( sdl_display PROPERTIES
 	CXX_STANDARD 17

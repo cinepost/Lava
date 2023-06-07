@@ -66,7 +66,7 @@ target_link_libraries(
 )
 
 if(WIN32)
-target_link_libraries(
+target_link_libraries( lava_lib
     # ${dlfcn-win32_LIBRARIES}
     dlfcn-win32::dl
     # ${HOUDINI_ROOT}/custom/houdini/dsolib/OpenImageIO_sidefx.lib

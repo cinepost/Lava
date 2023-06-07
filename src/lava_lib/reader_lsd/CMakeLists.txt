@@ -43,6 +43,7 @@ endif()
 
 target_link_libraries(
     reader_lsd_lib
+    PUBLIC
     reader_bgeo_lib
     ${Boost_LIBRARIES}
 )
@@ -52,8 +53,6 @@ target_link_libraries(
     reader_lsd_lib
     PUBLIC
     falcor_lib
-    reader_bgeo_lib
-    ${Boost_LIBRARIES}
     ${SLANG_GFX_LIBRARY}
     PRIVATE
     ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/lava_lib.lib

@@ -654,7 +654,7 @@ void Scene::initSDFGrids() {
 
     for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids) {
         pSDFGrid->createResources(mpDevice->getRenderContext());
-
+        #ifndef _WIN32
         if (mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet) {
             const SDFSBS* pSBS = reinterpret_cast<const SDFSBS*>(pSDFGrid.get());
             mSDFGridConfig.implementationData.SBS.virtualBrickCoordsBitCount = std::max(mSDFGridConfig.implementationData.SBS.virtualBrickCoordsBitCount, pSBS->getVirtualBrickCoordsBitCount());
@@ -665,6 +665,7 @@ void Scene::initSDFGrids() {
             const SDFSVO* pSVO = reinterpret_cast<const SDFSVO*>(pSDFGrid.get());
             mSDFGridConfig.implementationData.SVO.svoIndexBitCount = std::max(mSDFGridConfig.implementationData.SVO.svoIndexBitCount, pSVO->getSVOIndexBitCount());
         }
+        #endif
     }
 }
 

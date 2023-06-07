@@ -43,9 +43,9 @@ InternalDictionary::Value::operator std::string() const {
 
 std::string InternalDictionary::Value::toJsonString() const {
     if(mValue.type() == typeid(std::string)) {
-        return "\"" + std::string(*this) + "\"";
+        return "\"" + std::string{*this} + "\"";
     }
-    return std::string(*this);
+    return std::string{*this};
 }
 
 std::string InternalDictionary::toJsonString() const {

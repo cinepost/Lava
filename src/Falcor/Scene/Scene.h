@@ -43,11 +43,13 @@
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/Volume/GridVolume.h"
 #include "Falcor/Scene/Volume/Grid.h"
+#ifndef _WIN32
 #include "Falcor/Scene/SDFs/SDFGrid.h"
 #include "Falcor/Scene/SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
 #include "Falcor/Scene/SDFs/SparseVoxelSet/SDFSVS.h"
 #include "Falcor/Scene/SDFs/SparseBrickSet/SDFSBS.h"
 #include "Falcor/Scene/SDFs/SparseVoxelOctree/SDFSVO.h"
+#endif
 
 #include "Falcor/Utils/Math/AABB.h"
 
