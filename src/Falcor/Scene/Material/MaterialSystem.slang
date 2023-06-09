@@ -28,10 +28,13 @@
 import Scene.Material.ShadingUtils;
 import Scene.Material.TextureHandle;
 import Scene.Material.TextureSampler;
+import Scene.Material.VirtualTextureData;
+
 __exported import Scene.SceneTypes;
 __exported import Scene.Displacement.DisplacementData;
 __exported import Scene.Material.BasicMaterialData;
 __exported import Scene.Material.VolumeProperties;
+
 
 #if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT) || \
     !defined(MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT)
@@ -58,6 +61,9 @@ struct MaterialSystem
 
 
     StructuredBuffer<ExtendedTextureData> extendedTexturesData;
+
+    StructuredBuffer<VirtualTextureData>  virtualTexturesData;
+    RWByteAddressBuffer virtualPagesResidencyData;
 
 #if MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT > 0
     uint udimTextureTilesTable[MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT * 100];
@@ -247,10 +253,11 @@ struct MaterialSystem
 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
+                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Virtual:
-                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
-                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                //return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:

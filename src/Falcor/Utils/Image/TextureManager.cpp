@@ -739,30 +739,126 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount) {
 	LLOG_DBG << "Setting extened textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
 
+	if (mTextureDescs.size() < descCount) {
+		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
+		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
+	}
+
 	std::lock_guard<std::mutex> lock(mMutex);
+
+	if(!mpExtendedTexturesDataBuffer || mDirty) {
+		std::vector<ExtendedTextureData> extendedTexturesData;
+
+		// Fill in extended data
+		for (size_t i = 0; i < mTextureDescs.size(); ++i) {
+			extendedTexturesData.push_back({});
+			const auto& pTex = mTextureDescs[i].pTexture;
+			if(!pTex) continue;
+
+			auto& handleExt = extendedTexturesData.back(); 
+			handleExt.udimID = pTex->isUDIMTexture() ? pTex->getUDIM_ID() : 0;
+			handleExt.virtualID = pTex->isSparse() ? pTex->getVirtualID() : 0;
+		}
+
+		mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
+	}
+	var.setBuffer(mpExtendedTexturesDataBuffer);
+}
+
+void TextureManager::buildSparseResidencyData() {
+	if(!mDirtySparseResidency && !mDirty) return;
+
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	uint32_t virtualTexturesCount = 0;
+	size_t totalPagesToUpdateCount = 0;
+
+	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
+		const auto& pTexture = mTextureDescs[i].pTexture; 
+		if(pTexture && pTexture->isSparse()) {
+			virtualTexturesCount += 1;
+		}
+	}
+
+	mVirtualTexturesData.resize(virtualTexturesCount);
+	mVirtualPagesData.clear();
+
+	// Fill in virtual texture data
+	for (const auto& entry : mTextureToHandle) {
+
+		const auto& pTexture = entry.first;
+		if(!pTexture || !pTexture->isSparse()) continue;
+		
+		auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
+
+		vtexData.empty = false;
+		vtexData.textureID = pTexture->id();
+
+		vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
+		vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
+		vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
+		vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
+		vtexData.pagesStartOffset = mVirtualPagesData.size();
+		mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
+
+		auto const& pageRes = pTexture->sparseDataPageRes();
+		vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
+		vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
+		vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
+
+		auto const& mipBases = pTexture->getMipBases();
+		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
+	
+		mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataPagesCount());
+
+		// TODO: prefill pages residency info
+	}
+
+	// ensure pages buffer is aligned to 4 bytes
+	auto dv = std::div(totalPagesToUpdateCount, 4);
+	if(dv.rem != 0) mVirtualPagesData.resize((dv.quot + 1) * 4);
+	memset(mVirtualPagesData.data(), 0, mVirtualPagesData.size() * sizeof(uint8_t));
+
+	LLOG_WRN << "Virtual textures data size " << mVirtualTexturesData.size();
+	LLOG_WRN << "Virtual pages data size " << mVirtualPagesData.size();
+
+	mpVirtualTexturesDataBuffer = 
+		Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), (uint32_t)mVirtualTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mVirtualTexturesData.data(), false);
+	mpVirtualPagesResidencyDataBuffer = 
+		Buffer::create(mpDevice, mVirtualPagesData.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mVirtualPagesData.data());
+
+	mDirtySparseResidency = false;
+}
+
+size_t TextureManager::getVirtualTexturePagesStartIndex(const Texture* pTexture) {
+	assert(pTexture);
+	if(!pTexture->isSparse()) {
+		LLOG_ERR << "Non virtual texture requested in getVirtualTexturePagesStartIndex() !!!";
+		return std::numeric_limits<size_t>::max();
+	}
+
+	buildSparseResidencyData();
+
+	if (auto search = mVirtualPagesStartMap.find(pTexture); search != mVirtualPagesStartMap.end()) return search->second;
+
+	LLOG_ERR << "Virtual texture start page offset not found !";
+	return std::numeric_limits<size_t>::max();
+}
+
+void TextureManager::setVirtualTexturesShaderData(const ShaderVar& var, const ShaderVar& pagesBufferVar, const size_t descCount) {
+	if(!mHasSparseTextures || !mSparseTexturesEnabled) return;
+
+	LLOG_DBG << "Setting virtual textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
 
 	if (mTextureDescs.size() < descCount) {
 		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
 		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
 	}
 
+	buildSparseResidencyData();
 
-	std::vector<ExtendedTextureData> extendedTexturesData;
-
-	// Fill in extended data
-	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
-		extendedTexturesData.push_back({});
-		const auto& pTex = mTextureDescs[i].pTexture;
-		if(pTex) {
-			auto& handleExt = extendedTexturesData.back(); 
-			handleExt.udimID = pTex->isUDIMTexture() ? pTex->getUDIM_ID() : 0;
-			handleExt.virtualID = pTex->isSparse() ? pTex->getVirtualID() : 0;
-		}
-	}
-
-	mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
-	var.setBuffer(mpExtendedTexturesDataBuffer);
-
+	var.setBuffer(mpVirtualTexturesDataBuffer);
+	pagesBufferVar.setBuffer(mpVirtualPagesResidencyDataBuffer);
 }
 
 void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {

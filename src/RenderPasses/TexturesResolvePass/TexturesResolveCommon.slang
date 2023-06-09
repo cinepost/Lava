@@ -123,37 +123,6 @@ float2 calculateAnisoMipMapLevel2D2(float2 texCoord, float2 texDims, float mipBi
     return float2(max(0.0, log2(p1)), max(0.0, log2(p2)));
 }
 
-
-// computes tile ID for a given mipLevel of a virtual texture at given tex_coord
-int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData) {
-
-    int _mipLevel = max(0, mipLevel);
-
-    //if( _mipLevel >= vtexData.mipTailStart) {
-    //    return vtexData.mipBases[_mipLevel] + vtexData.pagesStartOffset;
-    //}
-
-    // Put texture coordinates in 0-1 range
-    float2 tx = float2(texCoord.x - floor(texCoord.x), texCoord.y - floor(texCoord.y));
-
-    // Now map them to texels
-    tx = float2(((float)vtexData.width - 1) * (tx.x / (float)vtexData.width), (float)(vtexData.height - 1) * (tx.y / (float)vtexData.height));
-
-    float currentMipTextureWidth = vtexData.width / pow(2, _mipLevel);
-    float currentMipTextureHeight = vtexData.height / pow(2, _mipLevel);
-
-    uint cellsNumX = uint(ceil(currentMipTextureWidth / (float)vtexData.pageSizeW)); // number of pages including partial last page on this mip level(_mipLevel)
-    uint cellsNumY = uint(ceil(currentMipTextureHeight / (float)vtexData.pageSizeH)); // number of pages including partial last page on this mip level(_mipLevel)
-
-    float k_u = currentMipTextureWidth / ((float)vtexData.pageSizeW * (float)cellsNumX); // texture coordinate renormalization coefficient (addresses partial tiles)
-    float k_v = currentMipTextureHeight / ((float)vtexData.pageSizeH * (float)cellsNumY); // texture coordinate renormalization coefficient (addresses partial tiles)
-
-    int tX = int(tx.x * k_u * cellsNumX); //column index in current level of detail
-    int tY = int(tx.y * k_v * cellsNumY); //row index in current level of detail
-
-    return vtexData.mipBases[_mipLevel] + tX + tY * cellsNumX + vtexData.pagesStartOffset;
-}
-
 // computes anisotropy factor. 0 - no anisotropy, 1 - maximum anisotropy
 float _calculateAnisotropyFactor(float2 texCoord, float2 texDims) {
     float2 dx_vtc = ddx(texCoord) * texDims.x;

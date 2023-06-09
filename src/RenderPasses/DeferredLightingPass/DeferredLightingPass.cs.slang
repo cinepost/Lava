@@ -500,7 +500,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     ITextureSampler primaryLod = createTextureSampler(ipos);
-    //ITextureSampler primaryLod = ExplicitLodTextureSampler(2.f);
+    //ITextureSampler primaryLod = ExplicitLodTextureSampler(7.f);
     
     // Primary ray surface data
     TriangleHit primaryTriangleHit;
@@ -561,7 +561,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     [loop]
     for(uint rayLevel = 0; rayLevel <= maxRayLevel; rayLevel++) {
         if(rayLevel > 0) {
-            _lod = ExplicitLodTextureSampler(7.0);
+            _lod = ExplicitLodTextureSampler(5.0);
             if(!calcShadingData(rayData.dir, rayData.hit, _lod, _shadingData, _triangleHit)) break;
         }
 #else

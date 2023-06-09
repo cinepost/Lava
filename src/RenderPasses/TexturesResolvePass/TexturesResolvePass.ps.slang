@@ -1,10 +1,17 @@
+//#include "Scene/Material/VirtualTextureData.slangh"
+
 import Scene.Raster;
 import Scene.Shading;
 // import Utils.Helpers;
 import Experimental.Scene.Materials.TexLODHelpers;
 
+import Scene.Material.TextureUtils;
+import Scene.Material.VirtualTextureData;
 import TexturesResolveCommon;
 
+#ifndef _MAX_RAY_LEVEL
+#define _MAX_RAY_LEVEL 0
+#endif
 
 cbuffer PerFrameCB {
     float2 gRenderTargetDim;
@@ -13,15 +20,12 @@ cbuffer PerFrameCB {
     int    numberOfMipCalibrationTextures = 0;
 };
 
-StructuredBuffer<VirtualTextureData>  virtualTextureDataBuffer;
 StructuredBuffer<MaterialResolveData> materialsResolveDataBuffer;
 Buffer<uint32_t> textureIdToVtexDataIdBuffer;
 
 Texture2D<float> mipCalibrationTexture;
 Texture2D ltxCalibrationTexture;
 Texture2D<float> mipCalibrationTextures[16];
-
-RWByteAddressBuffer resolvedPagesBuff; // all virtual pages needed buffer, 0 means unused page
 
 SamplerState gCalibrationSampler;
 SamplerState gCalibrationMinSampler;
@@ -47,7 +51,7 @@ struct PsOut {
 void writeTileID(int tileID) {
     uint byte4_addr = int(floor(float(tileID) / 4.0) * 4);
     uint byte_num = tileID - byte4_addr;
-    resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
+    gScene.materials.virtualPagesResidencyData.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
 }
 
 struct gl_TextureFootprint2DNV {
@@ -135,25 +139,25 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     float debug_mip_level_lo = 0.0;
     float debug_mip_level_hi = 0.0;
     float debug_mip_level_f  = 0.0;
-    
-    float4 grad_test;
 
     [loop]
     for(uint v = 0; v < matData.virtualTexturesCount; v++) {
         SamplerState currTextureSampler = gCalibrationSampler; // TODO: use actual texture sampler
         
         float2 uv = vOut.texC;
-        uint32_t vtexDataID = matData.virtualTextureDataIDs[v];
-        VirtualTextureData vtexData = virtualTextureDataBuffer[vtexDataID];
+        TextureHandle textureHandle = matData.virtualTextureHandles[v];
+        uint32_t textureID = textureHandle.getTextureID();
+        uint32_t virtualTextureID = gScene.materials.extendedTexturesData[textureID].virtualID;
+        VirtualTextureData vtexData = gScene.materials.virtualTexturesData[virtualTextureID];
 
-        switch (vtexData.textureHandle.getMode()) {
+        switch (textureHandle.getMode()) {
             case TextureHandle::Mode::UDIM_Texture:
                 uint2 udim_idx = uint2((uint)floor(uv.x), (uint)floor(uv.y));
                 uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
-                uint udimID = gScene.materials.extendedTexturesData[vtexData.textureHandle.getTextureID()].udimID;
+                uint udimID = gScene.materials.extendedTexturesData[textureID].udimID;
                 uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
-                vtexDataID = textureIdToVtexDataIdBuffer[tileID];
-                vtexData = virtualTextureDataBuffer[vtexDataID];
+                virtualTextureID = textureIdToVtexDataIdBuffer[tileID];
+                vtexData = gScene.materials.virtualTexturesData[virtualTextureID];
                 break;
             case TextureHandle::Mode::Virtual:
                 uv = float2(uv.x , 1.0 - uv.y);
@@ -173,20 +177,14 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_lo = loMipLevel / 255.0f;
             debug_mip_level_hi = hiMipLevel / 255.0f;
 
-            //for( int m = loMipLevel; m <= hiMipLevel; m++) {
-            //    if(m < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, m, vtexData));
-            //}
-
-            if(loMipLevel < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
-            if(hiMipLevel < vtexData.mipTailStart) writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
-
-            //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
+            for( int m = loMipLevel; m <= hiMipLevel; m++) {
+                if(m < vtexData.mipTailStart) writeTileID(calculatePageID2D(uv, m, vtexData));
+            }
         }
     }
 
 
 #ifdef _OUTPUT_DEBUG_IMAGE
-    //psOut.output = grad_test;
     psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 0, 1);
     return psOut;
 #else
