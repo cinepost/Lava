@@ -253,11 +253,11 @@ struct MaterialSystem
 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
-                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Virtual:
-                //return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
-                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
