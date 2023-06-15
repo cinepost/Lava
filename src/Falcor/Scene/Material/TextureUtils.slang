@@ -3,13 +3,11 @@ import Scene.Material.VirtualTextureData;
 
 
 // Calculates texture page ID for a given mipLevel of a virtual texture at given tex_coord
-int calculatePageID2D(float2 texCoord, int mipLevel, const VirtualTextureData vtexData) {
+uint calculatePageID2D(float2 texCoord, int mipLevel, const VirtualTextureData vtexData, out uint pageID) {
 
-    int _mipLevel = max(0, mipLevel);
+    const uint _mipLevel = max(0, mipLevel);
 
-    //if( _mipLevel >= vtexData.mipTailStart) {
-    //    return vtexData.mipBases[_mipLevel] + vtexData.pagesStartOffset;
-    //}
+    if( _mipLevel >= vtexData.mipTailStart) return false;
 
     // Put texture coordinates in 0-1 range
     float2 tx = float2(texCoord.x - floor(texCoord.x), texCoord.y - floor(texCoord.y));
@@ -29,7 +27,8 @@ int calculatePageID2D(float2 texCoord, int mipLevel, const VirtualTextureData vt
     int tX = int(tx.x * k_u * cellsNumX); //column index in current level of detail
     int tY = int(tx.y * k_v * cellsNumY); //row index in current level of detail
 
-    return vtexData.mipBases[_mipLevel] + tX + tY * cellsNumX + vtexData.pagesStartOffset;
+    pageID = vtexData.mipBases[_mipLevel] + tX + tY * cellsNumX + vtexData.pagesStartOffset;
+    return true;
 }
 
 void ellips(in float2x2 M, out float2 A0, out float2 A1, out float r0, out float r1) {

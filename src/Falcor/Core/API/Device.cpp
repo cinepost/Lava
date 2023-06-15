@@ -113,7 +113,7 @@ bool Device::init() {
     desc.setMaxAnisotropy(16);
     desc.setLodParams(0.0f, 1000.0f, -0.0f);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+    desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.

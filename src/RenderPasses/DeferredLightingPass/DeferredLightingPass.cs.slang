@@ -181,13 +181,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         return surfaceColor;
     }
 
-    //ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
-
-    //if(rayData.level > 0) {
-    //    _lod = ExplicitLodTextureSampler(7.0);
-        //lod = createDynamicObject<L, float>(1, 7.0);
-    //}
-
     float3 rayOrigin = sd.posW;
     float3 rayShadowOrigin = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
@@ -499,8 +492,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
+    
     ITextureSampler primaryLod = createTextureSampler(ipos);
-    //ITextureSampler primaryLod = ExplicitLodTextureSampler(7.f);
+    //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
     TriangleHit primaryTriangleHit;
@@ -561,7 +555,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     [loop]
     for(uint rayLevel = 0; rayLevel <= maxRayLevel; rayLevel++) {
         if(rayLevel > 0) {
-            _lod = ExplicitLodTextureSampler(5.0);
+            //_lod = ExplicitLodTextureSampler(5.0);
+            _lod = TailTextureSampler();
             if(!calcShadingData(rayData.dir, rayData.hit, _lod, _shadingData, _triangleHit)) break;
         }
 #else

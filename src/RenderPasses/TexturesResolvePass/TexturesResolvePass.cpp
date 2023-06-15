@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <unordered_set>
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
@@ -165,12 +166,10 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal, TextureSlot::Emissive})) {
 			auto const& pTexture = pMaterial->getTexture(slot);
-			if(pTexture && pTexture->isSparse()) {
+			if(pTexture && (pTexture->isSparse() || pTexture->isUDIMTexture())) {
 				materialSparseTextures.push_back({slot, pTexture});
 
-				if (!std::count(materialTextures.begin(), materialTextures.end(), pTexture)) {
-					materialTextures.push_back(pTexture);
-				}
+				if (!std::count(materialTextures.begin(), materialTextures.end(), pTexture)) materialTextures.push_back(pTexture);
 			}
 		}
 
@@ -233,11 +232,24 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	// Load texture pages
 	auto started = std::chrono::high_resolution_clock::now();
 
-	uint32_t pagesStartOffset = 0;
-	for (auto const pTexture : materialTextures) {
-		pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTexture.get());// virtualPagesStartMap[pTexture];
-		uint32_t texturePagesCount = pTexture->sparseDataPagesCount();
-		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTexture->getSourceFilename();
+	std::unordered_set<Texture::SharedPtr> textures;
+	
+	for (auto const& pTexture : materialTextures) {
+		if(pTexture->isUDIMTexture()) {
+			for( const auto& tileInfo: pTexture->getUDIMTileInfos()) {
+				if( tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) textures.insert(tileInfo.pTileTexture);
+			}
+		} else if(pTexture->isSparse()) {
+			textures.insert(pTexture);
+		}
+
+	}
+
+	for ( auto const& pTex: textures) {
+		uint32_t pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTex.get());
+		uint32_t texturePagesCount = pTex->sparseDataPagesCount();
+		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTex->getSourceFilename();
+		LLOG_DBG << "Virtual texture " << pTex->getSourceFilename() << " pages start offset is " << std::to_string(pagesStartOffset);
 
 		std::vector<uint32_t> pageIDs;
 
@@ -248,13 +260,13 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 			}
 		}
 
-		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTexture->getSourceFilename();
+		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		
-		if(mLoadPagesAsync) {
+		if(mLoadPagesAsync && 1 == 1) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
-			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
+			pTextureManager->loadPagesAsync(pTex, pageIDs); 
 		} else {
-			pTextureManager->loadPages(pTexture, pageIDs); 
+			pTextureManager->loadPages(pTex, pageIDs); 
 		}
 	}
 	pPagesBuffer->unmap();

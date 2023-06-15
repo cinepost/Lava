@@ -536,10 +536,9 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	header.tailDataOffset = currentPageOffset;
 
 	size_t tailDataSize = 0;
-	
-	auto *pTailData = page_data.data(); 
 
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+
 		header.mipBases[mipTailLevel] = currentPageId;
 		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
@@ -559,9 +558,10 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 		oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
 
 		if(kOnePageTailData) {
-			scaledBuff.get_pixels(roi, spec.format, pTailData + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			scaledBuff.get_pixels(roi, spec.format, page_data.data() + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 		} else {
-			scaledBuff.get_pixels(roi, spec.format, pTailData, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);	
+			page_data.resize(dstBytesPerPixel * mipLevelHeight * mipLevelWidth);
+			scaledBuff.get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);	
 			LLOG_TRC << "Writing tail level " << std::to_string(mipTailLevel) << " page " << std::to_string(currentPageId) << " while " << std::to_string(header.pagesCount) << " calculated";
 			currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 			currentPageId++;

@@ -345,6 +345,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
 
+	uint32_t sparseDataBindsCount() const { return mSparseBindsCount; }
+
 	uint32_t getMipTailStart() const;
 
 	const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
@@ -393,7 +395,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		uint32_t mVirtualID = 0;
 
 		uint3 mSparsePageRes = int3(0);
-		uint32_t mSparsePagesCount = 0;
+		uint32_t mSparseBindsCount = 0;
 		std::atomic<size_t> mSparseResidentMemSize = 0;
 		std::array<uint32_t, 16> mMipBases = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 

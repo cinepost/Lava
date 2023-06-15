@@ -48,7 +48,7 @@ struct PsOut {
 };
 
 // set corresponding byte to 1
-void writeTileID(int tileID) {
+void writeTileID(uint tileID) {
     uint byte4_addr = int(floor(float(tileID) / 4.0) * 4);
     uint byte_num = tileID - byte4_addr;
     gScene.materials.virtualPagesResidencyData.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
@@ -156,7 +156,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
                 uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
                 uint udimID = gScene.materials.extendedTexturesData[textureID].udimID;
                 uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
-                virtualTextureID = textureIdToVtexDataIdBuffer[tileID];
+                virtualTextureID = gScene.materials.extendedTexturesData[tileID].virtualID;
                 vtexData = gScene.materials.virtualTexturesData[virtualTextureID];
                 break;
             case TextureHandle::Mode::Virtual:
@@ -178,7 +178,8 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_hi = hiMipLevel / 255.0f;
 
             for( int m = loMipLevel; m <= hiMipLevel; m++) {
-                if(m < vtexData.mipTailStart) writeTileID(calculatePageID2D(uv, m, vtexData));
+                uint pageID;
+                if(calculatePageID2D(uv, m, vtexData, pageID)) writeTileID(pageID);
             }
         }
     }

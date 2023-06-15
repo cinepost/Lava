@@ -644,12 +644,14 @@ void LTX_Bitmap::readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *
 			data.clear();
 		}
 	} else {
+		data.clear();
 		data.reserve(kLtxPageSize);
 		// Tail data stores as one mip level per page
-		LLOG_TRC << "Reading tail data for " << mFilePath.string() << " starting from page " << mHeader.mipBases[mHeader.mipTailStart] << " total pages count is " <<  mHeader.pagesCount;
-		for(uint32_t pageNum = mHeader.mipBases[mHeader.mipTailStart]; pageNum < mHeader.pagesCount; ++pageNum) {
+		uint32_t tailStartPageNum = mHeader.mipBases[mHeader.mipTailStart];
+		LLOG_TRC << "Reading tail data for " << mFilePath.string() << " starting from page " << tailStartPageNum << " total pages count is " <<  mHeader.pagesCount;
+		for(uint32_t pageNum = tailStartPageNum; pageNum < mHeader.pagesCount; ++pageNum) {
 			if(!readPageData(pageNum, pageDataBuffer.data(), pFile, pScratchBuffer)) {
-				data.clear();
+				LLOG_ERR << "Error reading tail data page " << std::to_string(pageNum) << " for texture " << mFilePath.string();
 				return;
 			}
 		}

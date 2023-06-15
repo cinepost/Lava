@@ -1389,7 +1389,7 @@ Result DeviceImpl::createTextureResource(
 		pTexture->mMemRequirements = memRequirements;
 
 		uint32_t pageIndex = 0;
-		pTexture->mSparsePagesCount = 0;
+		pTexture->mSparseBindsCount = 0;
 		// Sparse bindings for each mip level of all layers outside of the mip tail
 		for (uint32_t layer = 0; layer < pTexture->getArraySize(); layer++) {
 
@@ -1437,14 +1437,15 @@ Result DeviceImpl::createTextureResource(
 				}
 				pTexture->mMipBases[mipLevel] = currentMipBase;
 				
-				pTexture->mSparsePagesCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
-				currentMipBase = pTexture->mSparsePagesCount;
+				pTexture->mSparseBindsCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
+				currentMipBase = pTexture->mSparseBindsCount;
 			}
 
 			// @todo: proper comment
 			// @todo: store in mip tail and properly release
 			// @todo: Only one block for single mip tail
 
+			pTexture->mMipTailStart = sparseMemoryReq.imageMipTailFirstLod;
 			
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {	
 				LLOG_DBG << "Layer " << layer << " single mip tail";
@@ -1469,10 +1470,10 @@ Result DeviceImpl::createTextureResource(
 
 				pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
-				for(uint32_t tailMipLevel = sparseMemoryReq.imageMipTailFirstLod; tailMipLevel < 16; ++ tailMipLevel) {
-					pTexture->mMipBases[tailMipLevel] = pTexture->mSparsePagesCount;           
+				for(uint32_t tailMipLevel = sparseMemoryReq.imageMipTailFirstLod; tailMipLevel < 16; ++tailMipLevel) {
+					pTexture->mMipBases[tailMipLevel] = pTexture->mSparseBindsCount;           
 				}         
-				//pTexture->mSparsePagesCount += 1;
+				//pTexture->mSparseBindsCount += 1;
 			}
 		} // end layers and mips
 

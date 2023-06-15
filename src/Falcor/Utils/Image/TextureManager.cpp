@@ -279,7 +279,9 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     const auto& pPage = texturePages[pageIndex];
     if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
 
-    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile, pScratchBufferData)) {	
+    uint32_t page_index = pageIndex; //pPage->index();
+
+    if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {	
     	// Load non-tail texture data page
     	pPage->allocate();
     	mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
@@ -295,7 +297,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 		std::vector<uint8_t> tailData;
 		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
 	}
 
   fclose(pFile);
@@ -320,10 +322,9 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   ThreadPool& pool = ThreadPool::instance();
 
 	// Push pages loading job into ThreadPool
-	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, &pTexture, pageIds = std::move(pageIds)]
+	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = std::move(pageIds)]
   {
-  	if(!pTexture) return (Texture*)nullptr;
-  	if(pageIds.size() == 0) return (Texture*)nullptr;
+  	if(!pTexture || pageIds.size() == 0) return (Texture*)nullptr;
 
   	std::vector<uint32_t> _pageIds = pageIds;
   	std::sort(_pageIds.begin(), _pageIds.end());
@@ -352,7 +353,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   		const auto& pPage = texturePages[pageIndex];
   		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
 
-  		uint32_t page_index = pPage->index();
+  		uint32_t page_index = pageIndex; //pPage->index();
 
   		if(!pPage->isResident()) {
     		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {
@@ -360,7 +361,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   				std::unique_lock<std::mutex> lock(mPageMutex);
   				pPage->allocate();
   				pContext->updateTexturePage(pPage.get(), pTmpPageData);
-  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel());
+  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel()) << " texture " << pTexture->getSourceFilename();
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
 					pPage->release();
@@ -377,7 +378,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 		}
 
 		fclose(pFile);
-    return pTexture.get();
+    return pTexture;
   }));
 }
 
@@ -771,8 +772,6 @@ void TextureManager::buildSparseResidencyData() {
 	std::lock_guard<std::mutex> lock(mMutex);
 
 	uint32_t virtualTexturesCount = 0;
-	size_t totalPagesToUpdateCount = 0;
-
 	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
 		const auto& pTexture = mTextureDescs[i].pTexture; 
 		if(pTexture && pTexture->isSparse()) {
@@ -788,35 +787,34 @@ void TextureManager::buildSparseResidencyData() {
 
 		const auto& pTexture = entry.first;
 		if(!pTexture || !pTexture->isSparse()) continue;
+			auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
+
+			vtexData.empty = false;
+			vtexData.textureID = pTexture->id();
+
+			vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
+			vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
+			vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
+			vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
+			vtexData.pagesStartOffset = mVirtualPagesData.size();
+			mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
+
+			auto const& pageRes = pTexture->sparseDataPageRes();
+			vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
+			vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
+			vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
+
+			auto const& mipBases = pTexture->getMipBases();
+			memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
 		
-		auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
-
-		vtexData.empty = false;
-		vtexData.textureID = pTexture->id();
-
-		vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
-		vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
-		vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
-		vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
-		vtexData.pagesStartOffset = mVirtualPagesData.size();
-		mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
-
-		auto const& pageRes = pTexture->sparseDataPageRes();
-		vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
-		vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
-		vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
-
-		auto const& mipBases = pTexture->getMipBases();
-		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
-	
-		mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataPagesCount());
+			mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataBindsCount());
 
 		// TODO: prefill pages residency info
 	}
 
-	// ensure pages buffer is aligned to 4 bytes
-	auto dv = std::div(totalPagesToUpdateCount, 4);
-	if(dv.rem != 0) mVirtualPagesData.resize((dv.quot + 1) * 4);
+	// ensure pages buffer is aligned to 64 bytes
+	auto dv = std::div(mVirtualPagesData.size(), 64);
+	if(dv.rem != 0) mVirtualPagesData.resize((dv.quot + 1) * 64);
 	memset(mVirtualPagesData.data(), 0, mVirtualPagesData.size() * sizeof(uint8_t));
 
 	LLOG_WRN << "Virtual textures data size " << mVirtualTexturesData.size();

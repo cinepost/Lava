@@ -256,8 +256,11 @@ struct MaterialSystem
                 //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Virtual:
-                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
-                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                uint32_t virtualTextureID = extendedTexturesData[handle.getTextureID()].virtualID;
+                const VirtualTextureData vtexData = virtualTexturesData[virtualTextureID];
+
+                //return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
+                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y), vtexData);
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:

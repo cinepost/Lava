@@ -27,6 +27,7 @@
  **************************************************************************/
 
 import Scene.Material.TextureUtils;
+import Scene.Material.VirtualTextureData;
 
 /** Interface for texture sampling techniques.
     Types implementing this interface support sampling using different LOD computation techniques
@@ -36,7 +37,7 @@ interface ITextureSampler {
     */
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv);
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv);
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData);
 };
 
 /** Texture sampling using implicit gradients from finite differences within quads.
@@ -55,7 +56,7 @@ struct ImplicitLodTextureSampler : ITextureSampler {
         return t.Sample(s, uv);
     }
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv) {
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
         return float4(1.f, 0.f, 0.f, 1.f);
     }
 };
@@ -73,7 +74,7 @@ struct ExplicitLodTextureSampler : ITextureSampler {
         return t.SampleLevel(s, uv, lod);
     }
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv) {
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
         return float4(1.f, 0.f, 0.f, 1.f);
     }
 };
@@ -95,7 +96,7 @@ struct ExplicitRayConesLodTextureSampler : ITextureSampler {
         return t.SampleLevel(s, uv, lambda);
     }
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv) {
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
         return float4(1.f, 0.f, 0.f, 1.f);
     }
 };
@@ -142,7 +143,7 @@ struct ExplicitRayDiffsIsotropicTextureSampler : ITextureSampler {
         return float4(0.f);
     }
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv) {
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
         return float4(1.f, 0.f, 0.f, 1.f);
     }
 };
@@ -162,8 +163,23 @@ struct ExplicitGradientTextureSampler : ITextureSampler {
         return t.SampleGrad(s, uv, gradX, gradY);
     }
 
-    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv) {
-        return sampleAnisotropicTexture2D(t, s, uv, gradX, gradY);
-        return float4(1.f, 0.f, 0.f, 1.f);
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
+        return t.SampleGrad(s, uv, gradX, gradY);
+        //return sampleAnisotropicTexture2D(t, s, uv, gradX, gradY);
+        //return float4(1.f, 0.f, 0.f, 1.f);
+    }
+};
+
+/** Virtual texture sampling using most detailed tail mip level.
+*/
+struct TailTextureSampler : ITextureSampler {
+    __init() { }
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
+        return t.Sample(s, uv);
+    }
+
+    float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
+        return t.SampleLevel(s, uv, vtexData.mipTailStart);
     }
 };
