@@ -90,6 +90,10 @@ struct TextureHandle {
     */
     bool isVirtualTexture() CONST_FUNCTION { return getMode() == Mode::Virtual; }
 
+    /**
+    */
+    bool isUniformTexture() CONST_FUNCTION { return getMode() == Mode::Uniform; }
+
 #ifdef HOST_CODE
     bool operator==(const TextureHandle& rhs) const { return (packedData == rhs.packedData); }
     bool operator!=(const TextureHandle& rhs) const { return (packedData != rhs.packedData); }
@@ -100,10 +104,46 @@ struct ExtendedTextureData {
     uint32_t virtualID = UINT32_MAX;
     
     uint16_t udimID = UINT16_MAX;
-    uint16_t _pad0;
+    uint16_t flags = 0;
 
     uint32_t _pad1;
     uint32_t _pad2;
+
+    enum class Mode {
+        Uniform,
+        Texture,
+        Virtual,
+        UDIM_Texture,
+        Count // Must be last
+    };
+
+    static const uint kModeBits = 2;
+    static const uint kModeOffset = 0;
+
+    /** Set mode.
+    */
+    SETTER_DECL void setMode(Mode mode) { flags = PACK_BITS(kModeBits, kModeOffset, flags, (uint)mode); }
+
+    /** Get mode.
+    */
+    Mode getMode() CONST_FUNCTION { return Mode(EXTRACT_BITS(kModeBits, kModeOffset, flags)); }
+
+    /**
+    */
+    bool isUDIMTexture() CONST_FUNCTION { return getMode() == Mode::UDIM_Texture; }
+
+    /**
+    */
+    bool isVirtualTexture() CONST_FUNCTION { return getMode() == Mode::Virtual; }
+
+    /**
+    */
+    bool isUniformTexture() CONST_FUNCTION { return getMode() == Mode::Uniform; }
+
+#ifdef HOST_CODE
+    bool operator==(const ExtendedTextureData& rhs) const { return (flags == rhs.flags && virtualID == rhs.virtualID && udimID == rhs.udimID); }
+    bool operator!=(const ExtendedTextureData& rhs) const { return (flags != rhs.flags || virtualID != rhs.virtualID || udimID != rhs.udimID); }
+#endif
 };
 
 /** Struct storing information about a material texture.

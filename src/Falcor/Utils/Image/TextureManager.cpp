@@ -738,7 +738,7 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 }
 
 void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount) {
-	LLOG_DBG << "Setting extened textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
+	LLOG_DBG << "Setting extended textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
 
 	if (mTextureDescs.size() < descCount) {
 		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
@@ -757,8 +757,18 @@ void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const s
 			if(!pTex) continue;
 
 			auto& handleExt = extendedTexturesData.back(); 
-			handleExt.udimID = pTex->isUDIMTexture() ? pTex->getUDIM_ID() : 0;
-			handleExt.virtualID = pTex->isSparse() ? pTex->getVirtualID() : 0;
+
+			if(pTex->isUDIMTexture()) {
+				handleExt.setMode(ExtendedTextureData::Mode::UDIM_Texture);
+				handleExt.udimID = pTex->getUDIM_ID();
+			} else if (pTex->isSparse()) {
+				handleExt.setMode(ExtendedTextureData::Mode::Virtual);
+				handleExt.virtualID = pTex->getVirtualID();
+			} else {
+				handleExt.setMode(ExtendedTextureData::Mode::Texture);
+				handleExt.udimID = 0;
+				handleExt.virtualID = 0;
+			}
 		}
 
 		mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);

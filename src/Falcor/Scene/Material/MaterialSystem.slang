@@ -249,25 +249,36 @@ struct MaterialSystem
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \return Sampled color.
     */
-    float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) {
+    float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) { 
 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
-                //return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Virtual:
-                uint32_t virtualTextureID = extendedTexturesData[handle.getTextureID()].virtualID;
-                const VirtualTextureData vtexData = virtualTexturesData[virtualTextureID];
-
-                //return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
-                return lod.sampleVirtualTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y), vtexData);
+                const uint textureID = handle.getTextureID();
+                uint32_t virtualTextureID = extendedTexturesData[textureID].virtualID;
+                return lod.sampleVirtualTexture(materialTextures[textureID], s, float2(uv.x , 1.0f - uv.y), virtualTexturesData[virtualTextureID]);
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
-                uint udimID = extendedTexturesData[handle.getTextureID()].udimID;
-                float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
-                uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
+                {
+                    int udimID = extendedTexturesData[handle.getTextureID()].udimID;
+                    float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
+                    uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                    const ExtendedTextureData extTileData = extendedTexturesData[tileID];
+
+                    switch (extTileData.getMode()) {
+                        case ExtendedTextureData::Mode::Texture:
+                            return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
+                        case ExtendedTextureData::Mode::Virtual:
+                            uint32_t virtualTextureID = extendedTexturesData[tileID].virtualID;
+                            return lod.sampleVirtualTexture(materialTextures[tileID], s, float2(uv.x , 1.0f - uv.y), virtualTexturesData[virtualTextureID]);
+                        case ExtendedTextureData::Mode::Uniform:
+                            return uniformValue;
+                        default:
+                            return float4(1.0f, 0.f, 0.f, 1.f);
+                    }                    
+                }
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);
         }

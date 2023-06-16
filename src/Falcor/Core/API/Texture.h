@@ -392,7 +392,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		bool mIsSparse = false;
 		bool mIsSolid = false;
 		uint16_t mUDIM_ID = 0;
-		uint32_t mVirtualID = 0;
+		uint32_t mVirtualID = 0; // Should always start with 1. 0 means non virtual texture.
 
 		uint3 mSparsePageRes = int3(0);
 		uint32_t mSparseBindsCount = 0;
