@@ -452,8 +452,10 @@ bool Session::cmdRaytrace() {
 
     // Frame rendering
     TimeReport renderingTimeReport;
-	LLOG_INF << "Rendering image started...";
-	setUpCamera(mpRenderer->currentCamera());
+		
+		LLOG_INF << "Rendering image started...";
+		setUpCamera(mpRenderer->currentCamera());
+    
     for(const auto& tile: tiles) {
     	LLOG_DBG << "Rendering " << to_string(tile);
 
@@ -522,19 +524,19 @@ bool Session::cmdRaytrace() {
 	}
 
 	LLOG_DBG << "Closing display...";
-    if(!mIPR) mpDisplay->closeImage(hImage);
+  if(!mIPR) mpDisplay->closeImage(hImage);
 
-    // Close secondary aov images
+  // Close secondary aov images
 	for(auto& entry: aovPlanes) {
-		uint hImage = entry.first;
-    	auto& pPlane = entry.second;
-    	if (pPlane) {
-    		auto pDisplay = pPlane->hasDisplay() ? pPlane->getDisplay() : mpDisplay;
-    		if(!mIPR) pDisplay->closeImage(hImage);
-    	}
-    }
+	uint hImage = entry.first;
+  	auto& pPlane = entry.second;
+  	if (pPlane) {
+  		auto pDisplay = pPlane->hasDisplay() ? pPlane->getDisplay() : mpDisplay;
+  		if(!mIPR) pDisplay->closeImage(hImage);
+  	}
+  }
 
-    LLOG_DBG << "Display closed!";
+  LLOG_DBG << "Display closed!";
 
 //#ifdef FALCOR_ENABLE_PROFILER
 //    auto profiler = Falcor::Profiler::instance(mpDevice);
@@ -546,27 +548,27 @@ bool Session::cmdRaytrace() {
 void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
 	assert(pGeo);
 
-    auto pSceneBuilder = mpRenderer->sceneBuilder();
-    if(!pSceneBuilder) {
-		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
-		return;
-    }
+  auto pSceneBuilder = mpRenderer->sceneBuilder();
+  if(!pSceneBuilder) {
+	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+	return;
+  }
 
-   	// immediate mesh add
-   	ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
-   	std::string fullpath = pGeo->detailFilePath().string();
-    pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+ 	// immediate mesh add
+ 	ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
+ 	std::string fullpath = pGeo->detailFilePath().string();
+  pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
-   	if(!pBgeo) {
-   		LLOG_ERR << "Can't load geometry (bgeo) !!!";
-   		return;
-   	}
+ 	if(!pBgeo) {
+ 		LLOG_ERR << "Can't load geometry (bgeo) !!!";
+ 		return;
+ 	}
 
 #ifdef _DEBUG
     pBgeo->printSummary(std::cout);
 #endif
 
-   	mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
+   mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
 }
 
 void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {

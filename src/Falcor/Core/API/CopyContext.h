@@ -139,7 +139,7 @@ class dlldecl CopyContext {
 
     /** Fill sparse texture mip tail data
     */
-    void fillMipTail(const std::shared_ptr<Texture>& pTexture, const void* pData, bool tailDataInOnePage);
+    void fillMipTail(Texture* pTexture, const void* pData, bool tailDataInOnePage);
 
     /** Uodate texture image data (used to fill mip tail data)
     */

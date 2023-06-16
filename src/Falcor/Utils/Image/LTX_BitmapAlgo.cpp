@@ -24,14 +24,26 @@ int blosc_compress_ctx(int clevel, int doshuffle, size_t typesize,
                        size_t blocksize, int numinternalthreads)
 */
 
-static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>* tmp_compressed_page_data) {
+static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>* pScratchBuffer) {
+	if (page_data.size() > kLtxPageSize) {
+		LLOG_ERR << "Page data size exceeds maximum " << std::to_string(kLtxPageSize) << " bytes !!!";
+		return 0;
+	}
+
 	size_t bytes_written = 0;
 	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-		assert(tmp_compressed_page_data && tmp_compressed_page_data->size() >= ((kLtxPageSize + BLOSC_MAX_OVERHEAD)));
+		if(!pScratchBuffer) {
+			LLOG_ERR << "No scratch buffer provided for compressed page write !!!";
+			return 0;
+		}
+
+		assert(pScratchBuffer);
+		if(pScratchBuffer->size() < (kLtxPageSize + BLOSC_MAX_OVERHEAD)) pScratchBuffer->resize(kLtxPageSize + BLOSC_MAX_OVERHEAD);
+		
 		// write compressed page date
 		int cbytes = blosc_compress_ctx(compressionInfo.compressionLevel, kDoBloscShuffle, compressionInfo.compressionTypeSize, 
-			kLtxPageSize, page_data.data(), tmp_compressed_page_data->data(), 
-			tmp_compressed_page_data->size(), getBloscCompressionName(compressionInfo.topLevelCompression),
+			kLtxPageSize, page_data.data(), pScratchBuffer->data(), 
+			pScratchBuffer->size(), getBloscCompressionName(compressionInfo.topLevelCompression),
 			gBloscForceBlocksize, 4);
 
 		if (cbytes == 0 ) {
@@ -42,13 +54,13 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 
 		LLOG_TRC << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
 
-		bytes_written = fwrite(tmp_compressed_page_data->data(), sizeof(uint8_t), cbytes, pFile);
+		bytes_written = fwrite(pScratchBuffer->data(), sizeof(uint8_t), cbytes, pFile);
 		compressionInfo.pPageOffsets[pageId] = pageOffset;
 		compressionInfo.pCompressedPageSizes[pageId] = cbytes;
 
 	} else {
 		// write uncompressed page data
-		bytes_written = fwrite(page_data.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+		bytes_written = fwrite(page_data.data(), sizeof(uint8_t), page_data.size(), pFile);
 	}
 	return (uint32_t)bytes_written;
 }
@@ -317,6 +329,8 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 
 	size_t tailDataSize = 0;
 	
+	auto *pTailData = page_data.data(); 
+
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
 		header.mipBases[mipTailLevel] = currentPageId;
 		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
@@ -330,20 +344,37 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 			continue;
 		}
 
-		tailDataSize += tailLevelByteSize;
-
 		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
-		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 		
+		/*
+		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 		LLOG_TRC << "Writing tail page " << std::to_string(currentPageId) << " while " << std::to_string(header.pagesCount) << " calculated";
 		
 		currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 		currentPageId++;
 		header.pagesCount += 1;
+		*/
+
+		if(kOnePageTailData) {
+			oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, pTailData + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+		} else {
+			oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, pTailData, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);	
+			LLOG_TRC << "Writing tail level " << std::to_string(mipTailLevel) << " page " << std::to_string(currentPageId) << " while " << std::to_string(header.pagesCount) << " calculated";
+			currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
+			currentPageId++;
+			header.pagesCount += 1;
+		}
+
+		tailDataSize += tailLevelByteSize;
 	}
 
-	header.tailDataSize = tailDataSize;
-
+	if(kOnePageTailData) {
+		LLOG_WRN << "Writing one tail data page at offset " << header.tailDataOffset;
+		header.tailDataSize = writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
+		LLOG_WRN << "Written one tail data size is " << header.tailDataSize;
+		header.flags |= LTX_Header::Flags::ONE_PAGE_MIP_TAIL;
+	}
+	
 	LLOG_TRC << "Tail data size " << std::to_string(tailDataSize);
 
 	return true;
@@ -507,10 +538,9 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	header.tailDataOffset = currentPageOffset;
 
 	size_t tailDataSize = 0;
-	
-	auto *pTailData = page_data.data(); 
 
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+
 		header.mipBases[mipTailLevel] = currentPageId;
 		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
@@ -530,9 +560,10 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 		oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
 
 		if(kOnePageTailData) {
-			scaledBuff.get_pixels(roi, spec.format, pTailData + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			scaledBuff.get_pixels(roi, spec.format, page_data.data() + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 		} else {
-			scaledBuff.get_pixels(roi, spec.format, pTailData, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);	
+			page_data.resize(dstBytesPerPixel * mipLevelHeight * mipLevelWidth);
+			scaledBuff.get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);	
 			LLOG_TRC << "Writing tail level " << std::to_string(mipTailLevel) << " page " << std::to_string(currentPageId) << " while " << std::to_string(header.pagesCount) << " calculated";
 			currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 			currentPageId++;

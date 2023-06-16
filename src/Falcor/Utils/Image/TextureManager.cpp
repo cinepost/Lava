@@ -38,6 +38,8 @@
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 
+#include "Scene/Material/TextureHandle.slang"
+
 #include "TextureManager.h"
 
 
@@ -230,6 +232,8 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   }
   //mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
   
+  pTexture->setVirtualID(mSparseTexturesCount++);
+
 	return pTexture;
 }
 
@@ -275,7 +279,9 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     const auto& pPage = texturePages[pageIndex];
     if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
 
-    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile, pScratchBufferData)) {	
+    uint32_t page_index = pageIndex; //pPage->index();
+
+    if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {	
     	// Load non-tail texture data page
     	pPage->allocate();
     	mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
@@ -291,7 +297,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 		std::vector<uint8_t> tailData;
 		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
 	}
 
   fclose(pFile);
@@ -316,10 +322,9 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   ThreadPool& pool = ThreadPool::instance();
 
 	// Push pages loading job into ThreadPool
-	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, &pTexture, pageIds = std::move(pageIds)]
+	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = std::move(pageIds)]
   {
-  	if(!pTexture) return (Texture*)nullptr;
-  	if(pageIds.size() == 0) return (Texture*)nullptr;
+  	if(!pTexture || pageIds.size() == 0) return (Texture*)nullptr;
 
   	std::vector<uint32_t> _pageIds = pageIds;
   	std::sort(_pageIds.begin(), _pageIds.end());
@@ -348,7 +353,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   		const auto& pPage = texturePages[pageIndex];
   		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
 
-  		uint32_t page_index = pPage->index();
+  		uint32_t page_index = pageIndex; //pPage->index();
 
   		if(!pPage->isResident()) {
     		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {
@@ -356,7 +361,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   				std::unique_lock<std::mutex> lock(mPageMutex);
   				pPage->allocate();
   				pContext->updateTexturePage(pPage.get(), pTmpPageData);
-  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel());
+  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel()) << " texture " << pTexture->getSourceFilename();
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
 					pPage->release();
@@ -373,7 +378,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 		}
 
 		fclose(pFile);
-    return pTexture.get();
+    return pTexture;
   }));
 }
 
@@ -716,7 +721,7 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	size_t ii = 0; // Current material system textures index
 
 	// Fill in textures
-	for (size_t i = 0; i < mTextureDescs.size(); i++) {
+	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && !pTex->isUDIMTexture()) {
 			var[ii] = pTex;
@@ -730,6 +735,138 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	for (size_t i = ii; i < descCount; i++) {	
 		var[i] = nullTexture;
 	}
+}
+
+void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount) {
+	LLOG_DBG << "Setting extended textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
+
+	if (mTextureDescs.size() < descCount) {
+		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
+		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
+	}
+
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	if(!mpExtendedTexturesDataBuffer || mDirty) {
+		std::vector<ExtendedTextureData> extendedTexturesData;
+
+		// Fill in extended data
+		for (size_t i = 0; i < mTextureDescs.size(); ++i) {
+			extendedTexturesData.push_back({});
+			const auto& pTex = mTextureDescs[i].pTexture;
+			if(!pTex) continue;
+
+			auto& handleExt = extendedTexturesData.back(); 
+
+			if(pTex->isUDIMTexture()) {
+				handleExt.setMode(ExtendedTextureData::Mode::UDIM_Texture);
+				handleExt.udimID = pTex->getUDIM_ID();
+			} else if (pTex->isSparse()) {
+				handleExt.setMode(ExtendedTextureData::Mode::Virtual);
+				handleExt.virtualID = pTex->getVirtualID();
+			} else {
+				handleExt.setMode(ExtendedTextureData::Mode::Texture);
+				handleExt.udimID = 0;
+				handleExt.virtualID = 0;
+			}
+		}
+
+		mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
+	}
+	var.setBuffer(mpExtendedTexturesDataBuffer);
+}
+
+void TextureManager::buildSparseResidencyData() {
+	if(!mDirtySparseResidency && !mDirty) return;
+
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	uint32_t virtualTexturesCount = 0;
+	for (size_t i = 0; i < mTextureDescs.size(); ++i) {
+		const auto& pTexture = mTextureDescs[i].pTexture; 
+		if(pTexture && pTexture->isSparse()) {
+			virtualTexturesCount += 1;
+		}
+	}
+
+	mVirtualTexturesData.resize(virtualTexturesCount);
+	mVirtualPagesData.clear();
+
+	// Fill in virtual texture data
+	for (const auto& entry : mTextureToHandle) {
+
+		const auto& pTexture = entry.first;
+		if(!pTexture || !pTexture->isSparse()) continue;
+			auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
+
+			vtexData.empty = false;
+			vtexData.textureID = pTexture->id();
+
+			vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
+			vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
+			vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
+			vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
+			vtexData.pagesStartOffset = mVirtualPagesData.size();
+			mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
+
+			auto const& pageRes = pTexture->sparseDataPageRes();
+			vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
+			vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
+			vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
+
+			auto const& mipBases = pTexture->getMipBases();
+			memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
+		
+			mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataBindsCount());
+
+		// TODO: prefill pages residency info
+	}
+
+	// ensure pages buffer is aligned to 64 bytes
+	auto dv = std::div(mVirtualPagesData.size(), 64);
+	if(dv.rem != 0) mVirtualPagesData.resize((dv.quot + 1) * 64);
+	memset(mVirtualPagesData.data(), 0, mVirtualPagesData.size() * sizeof(uint8_t));
+
+	LLOG_WRN << "Virtual textures data size " << mVirtualTexturesData.size();
+	LLOG_WRN << "Virtual pages data size " << mVirtualPagesData.size();
+
+	mpVirtualTexturesDataBuffer = 
+		Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), (uint32_t)mVirtualTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mVirtualTexturesData.data(), false);
+	mpVirtualPagesResidencyDataBuffer = 
+		Buffer::create(mpDevice, mVirtualPagesData.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mVirtualPagesData.data());
+
+	mDirtySparseResidency = false;
+}
+
+size_t TextureManager::getVirtualTexturePagesStartIndex(const Texture* pTexture) {
+	assert(pTexture);
+	if(!pTexture->isSparse()) {
+		LLOG_ERR << "Non virtual texture requested in getVirtualTexturePagesStartIndex() !!!";
+		return std::numeric_limits<size_t>::max();
+	}
+
+	buildSparseResidencyData();
+
+	if (auto search = mVirtualPagesStartMap.find(pTexture); search != mVirtualPagesStartMap.end()) return search->second;
+
+	LLOG_ERR << "Virtual texture start page offset not found !";
+	return std::numeric_limits<size_t>::max();
+}
+
+void TextureManager::setVirtualTexturesShaderData(const ShaderVar& var, const ShaderVar& pagesBufferVar, const size_t descCount) {
+	if(!mHasSparseTextures || !mSparseTexturesEnabled) return;
+
+	LLOG_DBG << "Setting virtual textures shader data for " << to_string(mTextureDescs.size()) << " texture descs";
+
+	if (mTextureDescs.size() < descCount) {
+		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
+		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
+	}
+
+	buildSparseResidencyData();
+
+	var.setBuffer(mpVirtualTexturesDataBuffer);
+	pagesBufferVar.setBuffer(mpVirtualPagesResidencyDataBuffer);
 }
 
 void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {

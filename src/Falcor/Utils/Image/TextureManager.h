@@ -34,6 +34,9 @@
 
 #include "TextureDataCacheLRU.h"
 #include "AsyncTextureLoader.h"
+
+#include "Scene/Material/VirtualTextureData.slang"
+
 #include <mutex>
 
 namespace Falcor {
@@ -190,6 +193,10 @@ public:
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
 	void setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const;
 
+	void setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount);
+
+	void setVirtualTexturesShaderData(const ShaderVar& var, const ShaderVar& pagesBufferVar, const size_t descCount);
+
 	void setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const;
 
 	void finalize();
@@ -201,8 +208,19 @@ public:
 
 	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
 
+	Buffer::SharedPtr getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
+	Buffer::SharedConstPtr getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
+
+	size_t getVirtualTexturePagesStartIndex(const Texture* pTexture);
+
+	const std::map<const Texture*, size_t>& getVirtualPagesStartMap() const { return mVirtualPagesStartMap;}
+
 private:
 	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
+
+	/** Builds data structures needed for sparse residency management.
+	*/
+	void buildSparseResidencyData();
 
 	/** Key to uniquely identify a managed texture.
 	*/
@@ -243,15 +261,27 @@ private:
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
 
+	Buffer::SharedPtr mpExtendedTexturesDataBuffer;
+
+	std::vector<VirtualTextureData> mVirtualTexturesData;
+	std::vector<uint8_t> mVirtualPagesData;
+	std::map<const Texture*, size_t> mVirtualPagesStartMap;
+
+	Buffer::SharedPtr mpVirtualTexturesDataBuffer;
+	Buffer::SharedPtr mpVirtualPagesResidencyDataBuffer;
+
 	bool mSparseTexturesEnabled = false;
 	bool mHasSparseTextures = false;
 	bool mHasUDIMTextures = false;
 	bool mDirty = true;
+	bool mDirtySparseResidency = true;
 
 	AsyncTextureLoader mAsyncTextureLoader;                     ///< Utility for asynchronous texture loading.
 	size_t mLoadRequestsInProgress = 0;                         ///< Number of load requests currently in progress.
 	size_t mUDIMTextureTilesCount = 0;                          ///< Number of managed UDIM tile textures
 	size_t mUDIMTexturesCount = 0;
+
+	std::atomic<uint32_t> mSparseTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 

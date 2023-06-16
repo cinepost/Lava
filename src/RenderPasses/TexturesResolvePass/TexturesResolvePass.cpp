@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <unordered_set>
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
@@ -76,7 +77,8 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 
 	DepthStencilState::Desc dsDesc;
 	//dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+	//dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Equal);
 	mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 	mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
@@ -122,41 +124,6 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 	}
 }
 
-static void calculateVirtualTextureData(const Texture::SharedPtr& pTexture, uint textureResolveID, uint32_t pagesStartOffset, const TextureHandle& textureHandle, VirtualTextureData& vtexData) {
-	assert(pTexture);
-
-	// Fill vitrual texture data
-	vtexData.empty = true;
-
-	if(!pTexture) {
-		LLOG_WRN << "Unable to calculate virtual texture data. pTexture is NULL.";
-		return;
-	}
-
-
-	vtexData.textureID = pTexture->id();
-	vtexData.textureHandle = textureHandle;
-	vtexData.textureResolveID = textureResolveID;
-
-	if(!pTexture->isUDIMTexture()) {
-		vtexData.width = pTexture->getWidth(0);
-		vtexData.height = pTexture->getHeight(0);
-		vtexData.mipLevelsCount = pTexture->getMipCount();
-		vtexData.mipTailStart = pTexture->getMipTailStart();
-		vtexData.pagesStartOffset = pagesStartOffset;
-
-		auto const& pageRes = pTexture->sparseDataPageRes();
-		vtexData.pageSizeW = pageRes.x;
-		vtexData.pageSizeH = pageRes.y;
-		vtexData.pageSizeD = pageRes.z;
-				
-		auto const& mipBases = pTexture->getMipBases();
-
-		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
-	}
-	vtexData.empty = false;
-}
-
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
 	if (!mpScene)
 		return;
@@ -184,22 +151,14 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	uint32_t currTextureResolveID = 0; // texture id used to identify texture inside this pass. always starts from 0. nothing to do with real unique texture id or handle
 
 	std::vector<MaterialResolveData> materialsResolveBuffer;
-	std::map<uint32_t, Texture::SharedPtr> texturesMap; // maps real texture ID to textures
-	std::map<uint32_t, uint32_t> virtualTexturesDataIdMap; //
-	std::map<uint32_t, Texture::SharedPtr> udimTextureTiles;
+	std::vector<Texture::SharedPtr> materialTextures;
 
 	std::vector<uint32_t> texturePagesStartMap;
 	texturePagesStartMap.reserve(1024);
 
 	uint32_t materialsCount = mpScene->getMaterialCount();
 
-	std::vector<VirtualTextureData> vtexDataBuffer;
-	vtexDataBuffer.reserve(1024);
-
-	std::vector<uint32_t> vtexDataIdMapBuffer;
-	vtexDataIdMapBuffer.reserve(1024);
-
-	for( uint32_t m_i = 0; m_i < materialsCount; m_i++ ) {
+	for( uint32_t m_i = 0; m_i < materialsCount; ++m_i ) {
 		const auto pMaterial = mpScene->getMaterial(m_i)->toBasicMaterial();
 		if(!pMaterial) continue;
 
@@ -208,144 +167,28 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal, TextureSlot::Emissive})) {
 			auto const& pTexture = pMaterial->getTexture(slot);
 			if(pTexture && (pTexture->isSparse() || pTexture->isUDIMTexture())) {
-				if(pTexture->isUDIMTexture()) {
-					
-					for(const auto& tileInfo: pTexture->getUDIMTileInfos()) {
-						if(tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) {
-							auto textureID = tileInfo.pTileTexture->id();
-							if (udimTextureTiles.find(textureID) == udimTextureTiles.end() ) {
-								udimTextureTiles[textureID] = tileInfo.pTileTexture;
-							}
-						}
-					}
-				}
 				materialSparseTextures.push_back({slot, pTexture});
+
+				if (!std::count(materialTextures.begin(), materialTextures.end(), pTexture)) materialTextures.push_back(pTexture);
 			}
 		}
 
-		MaterialResolveData materialResolveData = {};
+		materialsResolveBuffer.push_back({});
+		auto& materialResolveData = materialsResolveBuffer.back();
 
 		size_t virtualTexturesCount = std::min((size_t)MAX_VTEX_PER_MATERIAL_COUNT, materialSparseTextures.size());
 		materialResolveData.virtualTexturesCount = virtualTexturesCount;
-		
-		// pre-fill some data
-		for( size_t t_i = 0; t_i < static_cast<size_t>(MAX_VTEX_PER_MATERIAL_COUNT); t_i++)
-			materialResolveData.virtualTextureDataIDs[t_i] = 0; // It's safe as we should never have material texture with id 0!
 
 		// fill data for active(used) textures
-		for( size_t materialTextureID = 0; materialTextureID < virtualTexturesCount; materialTextureID++) {
-			const auto &pTexture = materialSparseTextures[materialTextureID].second;
-			assert(pTexture->id() != 0 && "There should be no material textures with id 0 !");
-
-			auto slot = materialSparseTextures[materialTextureID].first;
-			uint32_t textureID = pTexture->id(); // Core internal resource id. Has nothing to do with texture id inside MaterialSystem
-
-			uint32_t vtexDataID;
-			// Check if this sparse texture data not stored for resolving
-			if (virtualTexturesDataIdMap.find(textureID) == virtualTexturesDataIdMap.end() ) {
-				vtexDataID = vtexDataBuffer.size();
-				materialResolveData.virtualTextureDataIDs[materialTextureID] = vtexDataID;
-				vtexDataBuffer.push_back({});
-				auto &vtexData = vtexDataBuffer.back();
-
-
-				auto textureHandle = pMaterial->getTextureHandle(slot);
-				auto currentPagesStartOffset = totalPagesToUpdateCount;
-				calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexData);
-
-				if(!pTexture->isUDIMTexture()) {
-					if(texturePagesStartMap.size() <= textureID) {
-						texturePagesStartMap.resize(textureID + 1);
-					}
-					texturePagesStartMap[textureID] = currentPagesStartOffset;
-
-					currTextureResolveID++;
-					totalPagesToUpdateCount += pTexture->sparseDataPagesCount();
-					texturesMap[textureID] = pTexture;
-				}
-
-				virtualTexturesDataIdMap[textureID] = vtexDataBuffer.size() - 1; 
-			
-			} else {
-				// Virtual texture data cached in map, reuse it
-				vtexDataID = virtualTexturesDataIdMap[textureID];
-				materialResolveData.virtualTextureDataIDs[materialTextureID] = vtexDataID;
-			}
-
-			auto materialSystemTextureID = vtexDataBuffer[vtexDataID].textureHandle.getTextureID();
-			if(vtexDataIdMapBuffer.size() <= materialSystemTextureID) {
-				vtexDataIdMapBuffer.resize(materialSystemTextureID + 1);
-			}
-			vtexDataIdMapBuffer[materialSystemTextureID] = vtexDataID;
-
+		for( size_t i = 0; i < virtualTexturesCount; ++i) {
+			const auto& pTexture = materialSparseTextures[i].second;
+			const auto& textureHandle = pMaterial->getTextureHandle(materialSparseTextures[i].first);
+			materialResolveData.virtualTextureHandles[i] = textureHandle;
 		}
-
-		materialsResolveBuffer.push_back(materialResolveData);
 	}
-
-	// Now add texture tiles information
-	for (const auto& pair: udimTextureTiles) {
-		const auto &pTexture = pair.second;
-		assert(pTexture);
-
-		uint32_t textureID = pTexture->id();
-
-		if(texturesMap.find(textureID) != texturesMap.end()) {
-			continue;
-		}
-
-		TextureManager::TextureHandle textureManagerHandle = {};
-
-		if(!pTextureManager->getTextureHandle(pTexture.get(), textureManagerHandle)) {
-			LLOG_ERR << "Error getting texture handle from texture manager for texture " << pTexture->getSourceFilename();
-			continue;
-		}	
-
-		uint32_t materialSystemTextureID = textureManagerHandle.getID();
-
-		// Material texture handle.
-		TextureHandle textureHandle;
-		if(!pTexture->isSolid()) {
-		    textureHandle.setMode(TextureHandle::Mode::Texture);
-		} else {
-			textureHandle.setMode(TextureHandle::Mode::Uniform);
-		}
-		textureHandle.setTextureID(materialSystemTextureID);
-        
-
-		uint32_t vtexDataID = vtexDataBuffer.size();
-		vtexDataBuffer.push_back({});
-		
-		auto &vtexData = vtexDataBuffer.back();
-		auto currentPagesStartOffset = totalPagesToUpdateCount;
-
-		LLOG_DBG << "calculating virtual texture data for UDIM tile materialSystem textureHandleID " << std::to_string(materialSystemTextureID);
-		calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexData);
-
-		if(texturePagesStartMap.size() <= textureID) {
-			texturePagesStartMap.resize(textureID + 1);
-		}
-		texturePagesStartMap[textureID] = currentPagesStartOffset;
-
-		currTextureResolveID++;
-		totalPagesToUpdateCount += pTexture->sparseDataPagesCount();
-
-		if(vtexDataIdMapBuffer.size() <= materialSystemTextureID) {
-			vtexDataIdMapBuffer.resize(materialSystemTextureID + 1);
-		}
-		vtexDataIdMapBuffer[materialSystemTextureID] = vtexDataID;
-
-		texturesMap[textureID] = pTexture;
-	}
-
-	auto pVtexDataBuffer = Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), vtexDataBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, vtexDataBuffer.data());
-	mpVars->setBuffer("virtualTextureDataBuffer", pVtexDataBuffer);
 
 	auto pDataToResolveBuffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
 	mpVars->setBuffer("materialsResolveDataBuffer", pDataToResolveBuffer);
-
-	auto pTextureIdToVtexDataIdBuffer = Buffer::createTyped<uint32_t>(mpDevice, vtexDataIdMapBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, vtexDataIdMapBuffer.data());
-	mpVars->setBuffer("textureIdToVtexDataIdBuffer", pTextureIdToVtexDataIdBuffer);
 
 	uint32_t resolvedTexturesCount = currTextureResolveID + 1;
 
@@ -356,12 +199,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		totalPagesToUpdateCountAligned = (dv.quot + 1) * 4;
 	}
 
-	if(mPagesInitDataVetcor.size() != totalPagesToUpdateCount) mPagesInitDataVetcor.resize(totalPagesToUpdateCount);
-	memset(mPagesInitDataVetcor.data(), totalPagesToUpdateCount, 0);
-
-	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCountAligned, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mPagesInitDataVetcor.data());
-	mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
-
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
 	mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
 	mpVars["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
@@ -370,7 +207,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
 	mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
 
-	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); i++)
+	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); ++i)
 		mpVars["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
 
 	setDefaultSampler();
@@ -382,16 +219,37 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	pContext->flush(true);
 
 	// Test resolved data
+	auto pPagesBuffer = pTextureManager->getPagesResidencyBuffer();
+	if(!pPagesBuffer) {
+		LLOG_ERR << "Sparse pages residency buffer is absent!!!";
+		return;
+	}
+
 	const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
+
+	//const auto& virtualPagesStartMap = pTextureManager->getVirtualPagesStartMap();
 
 	// Load texture pages
 	auto started = std::chrono::high_resolution_clock::now();
 
-	uint32_t pagesStartOffset = 0;
-	for (auto const& [textureID, pTexture] :texturesMap) {
-		pagesStartOffset = texturePagesStartMap[textureID];
-		uint32_t texturePagesCount = pTexture->sparseDataPagesCount();
-		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTexture->getSourceFilename();
+	std::unordered_set<Texture::SharedPtr> textures;
+	
+	for (auto const& pTexture : materialTextures) {
+		if(pTexture->isUDIMTexture()) {
+			for( const auto& tileInfo: pTexture->getUDIMTileInfos()) {
+				if( tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) textures.insert(tileInfo.pTileTexture);
+			}
+		} else if(pTexture->isSparse()) {
+			textures.insert(pTexture);
+		}
+
+	}
+
+	for ( auto const& pTex: textures) {
+		uint32_t pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTex.get());
+		uint32_t texturePagesCount = pTex->sparseDataPagesCount();
+		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTex->getSourceFilename();
+		LLOG_DBG << "Virtual texture " << pTex->getSourceFilename() << " pages start offset is " << std::to_string(pagesStartOffset);
 
 		std::vector<uint32_t> pageIDs;
 
@@ -402,15 +260,13 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 			}
 		}
 
-		//pageIDs.push_back(1364);
-
-		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << std::to_string(textureID);
+		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		
-		if(mLoadPagesAsync) {
+		if(mLoadPagesAsync && 1 == 1) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
-			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
+			pTextureManager->loadPagesAsync(pTex, pageIDs); 
 		} else {
-			pTextureManager->loadPages(pTexture, pageIDs); 
+			pTextureManager->loadPages(pTex, pageIDs); 
 		}
 	}
 	pPagesBuffer->unmap();
@@ -465,7 +321,7 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 		mMipCalibrationTextures[i] = nullptr;
 		auto pMipCalibrationTexture = Texture::create2D(pRenderContext->device(), mpMipCalibrationTexture->getWidth(),  mpMipCalibrationTexture->getHeight(), ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
 		if (!pMipCalibrationTexture) {
-			LLOG_ERR << "Error creating calibraiotn texture for mip level " << std::to_string(i) << " !!!";
+			LLOG_ERR << "Error creating calibration texture for mip level " << std::to_string(i) << " !!!";
 			continue;
 		}
 

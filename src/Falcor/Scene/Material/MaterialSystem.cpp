@@ -48,6 +48,9 @@ namespace {
 	const std::string kMaterialDataName = "materialData";
 	const std::string kMaterialSamplersName = "materialSamplers";
 	const std::string kMaterialTexturesName = "materialTextures";
+	const std::string kExtendedTexturesDataName = "extendedTexturesData";
+	const std::string kVirtualTexturesDataName = "virtualTexturesData";
+	const std::string kVirtualPagesResidencyDataName = "virtualPagesResidencyData";
 	const std::string kMaterialUDIMTilesTableName = "udimTextureTilesTable";
 	const std::string kMaterialBuffersName = "materialBuffers";
 
@@ -382,7 +385,8 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 
 		//textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], textures);
 		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
-
+		textureManager()->setExtendedTexturesShaderData(mpMaterialsBlock[kExtendedTexturesDataName], mTextureDescCount);
+		textureManager()->setVirtualTexturesShaderData(mpMaterialsBlock[kVirtualTexturesDataName],mpMaterialsBlock[kVirtualPagesResidencyDataName], mTextureDescCount);
 		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 

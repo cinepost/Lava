@@ -1090,6 +1090,8 @@ set(ISPC_PREFIX ispc)
 set(ISPC_ROOT ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX})
 find_package(ISPC ${EXTERNAL_ISPC_VERSION} EXACT)
 
+message(ISPC exec is ${ISPC_EXECUTABLE})
+
 if(ISPC_EXECUTABLE)
 
   message("Intel SPMD Compiler version ${ISPC_VERSION} found ...")

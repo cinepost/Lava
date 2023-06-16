@@ -36,7 +36,7 @@ namespace Falcor {
 
 namespace {
 
-    static_assert(sizeof(TextureHandle) == 8);
+    static_assert(sizeof(TextureHandle) == 4);
     static_assert(sizeof(MaterialHeader) == 8);
     static_assert(sizeof(MaterialPayload) == 120);
     static_assert(sizeof(MaterialDataBlob) == 128);
@@ -215,12 +215,11 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
     if (pTexture) {
         auto h = pOwner->textureManager()->addTexture(pTexture);
         assert(h);
+        handle.setTextureID(h.getID());
         if (pTexture->isUDIMTexture()) {
-            handle.setTextureID(0);
-            handle.udimID = pTexture->getUDIM_ID();
             handle.setMode(TextureHandle::Mode::UDIM_Texture);
-        } else {
-            handle.setTextureID(h.getID());
+        } else if (pTexture->isSparse()) {
+            handle.setMode(TextureHandle::Mode::Virtual);
         }
     } else {
         handle.setMode(TextureHandle::Mode::Uniform);

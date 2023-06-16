@@ -550,11 +550,11 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(prop_name)
 
     x3::rule<class obj_name_, std::string> const obj_name = "obj_name";
-    auto const obj_name_def = lexeme[(alnum | char_("/_")) >> *(alnum | char_("/_"))];
+    auto const obj_name_def = lexeme[(alnum | char_(".:/_")) >> *(alnum | char_("./_"))];
     BOOST_SPIRIT_DEFINE(obj_name)
 
     x3::rule<class unquoted_edge_path_, std::string> const unquoted_edge_path = "unquoted_edge_path";
-    auto const unquoted_edge_path_def = lexeme[(alnum | char_("/_")) >> *(alnum | char_("/_"))];
+    auto const unquoted_edge_path_def = lexeme[(alnum | char_(".:/_")) >> *(alnum | char_(".:/_"))];
     BOOST_SPIRIT_DEFINE(unquoted_edge_path)
 
     x3::rule<class quoted_edge_path_, std::string> const quoted_edge_path = "quoted_edge_path";

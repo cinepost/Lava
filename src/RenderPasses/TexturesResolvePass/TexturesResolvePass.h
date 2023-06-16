@@ -89,7 +89,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		RasterizerState::SharedPtr  mpRsState;
 		Scene::SharedPtr            mpScene;
 
-		std::vector<int8_t> 				mPagesInitDataVetcor;
+		std::vector<int8_t> 			 mPagesInitDataVetcor;
 
 		Sampler::SharedPtr          mpSampler = nullptr;
 		Sampler::SharedPtr          mpMinSampler = nullptr;
