@@ -46,6 +46,7 @@ const size_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
 
 namespace {
     const std::string kProgramComputeRasterizerFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.rasterizer.cs.slang";
+    const std::string kProgramComputeReconstructFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.reconstruct.cs.slang";
     const std::string kProgramComputeMeshletsBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.builder.cs.slang";
 
     // Scripting options.
@@ -150,7 +151,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     recreateBuffers();
     recreateMeshletDrawList();
 
-    pRenderContext->clearUAV(mpLocalDepth->getUAV().get(), uint4(UINT32_MAX, 0, 0, 0));
+    pRenderContext->clearUAV(mpLocalDepthPrimBuffer->getUAV().get(), uint4(UINT32_MAX));
+    pRenderContext->clearUAV(mpLocalDepthParmBuffer->getUAV().get(), uint4(UINT32_MAX));
     pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     if(!mpMeshletDrawListBuffer) return;
@@ -180,38 +182,79 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpSampleGenerator->setShaderData(var);
     }
 
+    if(!mpComputeReconstructPass) {
+        Program::Desc desc;
+        desc.addShaderLibrary(kProgramComputeReconstructFile).csEntry("reconstruct").setShaderModel("6_5");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
+
+        mpComputeReconstructPass = ComputePass::create(mpDevice, desc, defines, true);
+    }
+
     const uint meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
     const uint groupsX = meshletDrawsCount * kMaxGroupThreads;
 
-    ShaderVar var = mpComputeRasterizerPass->getRootVar();
-    var["gVBufferSW"]["frameDim"] = mFrameDim;
-    var["gVBufferSW"]["frameDimF"] = float2(mFrameDim);
-    var["gVBufferSW"]["dispatchX"] = groupsX;
-    var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
+    {
+        ShaderVar var = mpComputeRasterizerPass->getRootVar();
+        var["gVBufferSW"]["frameDim"] = mFrameDim;
+        var["gVBufferSW"]["frameDimF"] = float2(mFrameDim);
+        var["gVBufferSW"]["dispatchX"] = groupsX;
+        var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
+        
+        var["gLocalDepthPrimBuffer"] = mpLocalDepthPrimBuffer;
+        var["gLocalDepthParmBuffer"] = mpLocalDepthParmBuffer;
+        var["gLocalDepthInstBuffer"] = mpLocalDepthInstBuffer;
 
-    // Bind resources.
-    var["gVBuffer"] = getOutput(renderData, kVBufferName);
-    var["gLocalDepth"] = mpLocalDepth;
-    var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
+        var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
 
-    // Bind output channels as UAV buffers.
-    auto bind = [&](const ChannelDesc& channel) {
-        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-        var[channel.texname] = pTex;
-    };
+        // Bind output channels as UAV buffers.
+        auto bind = [&](const ChannelDesc& channel) {
+            Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+            var[channel.texname] = pTex;
+        };
 
-    for (const auto& channel : kVBufferExtraChannels) bind(channel);
+        for (const auto& channel : kVBufferExtraChannels) bind(channel);
+    }
+
+    {
+        ShaderVar var = mpComputeReconstructPass->getRootVar();
+        var["gVBufferSW"]["frameDim"] = mFrameDim;
+        
+        // Bind resources.
+        var["gVBuffer"] = getOutput(renderData, kVBufferName);
+        
+        var["gLocalDepthPrimBuffer"] = mpLocalDepthPrimBuffer;
+        var["gLocalDepthParmBuffer"] = mpLocalDepthParmBuffer;
+        var["gLocalDepthInstBuffer"] = mpLocalDepthInstBuffer;
+        
+        // Bind output channels as UAV buffers.
+        auto bind = [&](const ChannelDesc& channel) {
+            Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+            var[channel.texname] = pTex;
+        };
+
+        for (const auto& channel : kVBufferExtraChannels) bind(channel);
+    }
 
     // Frustum culling pass
 
     // Meshlets rsterization pass
+    LLOG_DBG << "Software rasterizer executing compute pass with " << std::to_string(groupsX) << " threads.";
     mpComputeRasterizerPass->execute(pRenderContext, uint3(groupsX, 1, 1));
+
+    // Image reconstruction pass
+    mpComputeReconstructPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 
 void VBufferSW::recreateBuffers() {
     if(!mDirty) return;
-    mpLocalDepth = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, Falcor::ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
-    //mpLocalDepthPrimBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    //mpLocalDepth = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, Falcor::ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+    mpLocalDepthPrimBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    mpLocalDepthParmBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    mpLocalDepthInstBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
 }
 
 void VBufferSW::recreateMeshletDrawList() {

@@ -33,7 +33,9 @@ import Utils.Sampling.SampleGenerator;
 #include "VBufferSW.Meshlet.slangh"
 
 RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<uint> gLocalDepth;
+RWByteAddressBuffer gLocalDepthPrimBuffer;
+RWByteAddressBuffer gLocalDepthParmBuffer;
+RWByteAddressBuffer gLocalDepthInstBuffer;
 
 // Meshlets related buffers
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
@@ -46,8 +48,16 @@ RWTexture2D<uint> gTime;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST)
-#error "Not all defines are set!"
+//#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST)
+//#error "Not all defines are set!"
+//#endif
+
+#if !defined(COMPUTE_DEPTH_OF_FIELD) 
+#define COMPUTE_DEPTH_OF_FIELD false
+#endif
+
+#if !defined(USE_ALPHA_TEST)
+#define USE_ALPHA_TEST false
 #endif
 
 struct VBufferSW {
@@ -75,19 +85,18 @@ struct VBufferSW {
 
         }
 
-        if (hit.getType() == HitType::Triangle) {
+        if (is_valid(gDepth)) {
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
-            depth = curPosH.z / curPosH.w;
+            gDepth[pixel] = curPosH.z / curPosH.w;
+        }
 
+        if (is_valid(gMotionVector)) {
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
-            motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+            gMotionVector[pixel] = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         }
-
-        if (is_valid(gDepth))           gDepth[pixel]           = depth;
-        if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
     }
 
     void writeMiss(uint2 pixel) {

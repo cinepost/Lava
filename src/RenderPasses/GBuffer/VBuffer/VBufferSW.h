@@ -78,9 +78,12 @@ class VBufferSW : public GBufferBase {
 		ComputePass::SharedPtr mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr mpComputeRasterizerPass;
+		ComputePass::SharedPtr mpComputeReconstructPass;
 
 		// Local buffers
-		Texture::SharedPtr     mpLocalDepth;  ///< Local depth-triangle "render target" buffer
+		Buffer::SharedPtr      mpLocalDepthPrimBuffer;  ///< Local depth-primitiveID buffer
+		Buffer::SharedPtr      mpLocalDepthParmBuffer;  ///< Local depth-barycentric parametrization buffer
+		Buffer::SharedPtr      mpLocalDepthInstBuffer;  ///< Local depth-instanceIndex buffer
 
 		// Meshlets part
 		Buffer::SharedPtr      mpMeshletDrawListBuffer;

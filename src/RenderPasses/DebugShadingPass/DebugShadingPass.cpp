@@ -40,13 +40,15 @@ namespace {
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,              "gDepth",                   "Depth buffer",      true /* optional */, ResourceFormat::Unknown },
-        { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */, ResourceFormat::Unknown },
-        { kInputMVectors,           "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
+        { kInputDepth,        "gDepth",             "Depth buffer",                  true /* optional */, ResourceFormat::Unknown  },
+        { kInputTexGrads,     "gTextureGrads",      "Texture gradients",             true /* optional */, ResourceFormat::Unknown  },
+        { kInputMVectors,     "gMotionVector",      "Motion vector buffer (float format)", true /* optional */                     },
     };
 
     const ChannelList kExtraOutputChannels = {
-
+        // Service outputs
+        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
+        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
     };
 }
 
