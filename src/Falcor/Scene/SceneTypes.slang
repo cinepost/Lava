@@ -218,6 +218,14 @@ struct GeometryInstanceData
     bool isDoubleSided() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::DoubleSided) != 0;
     }
+
+    bool isPrimaryVisible() CONST_FUNCTION {
+        return (flags & (uint)GeometryInstanceFlags::VisibleToPrimaryRays) != 0;
+    }
+
+    bool isMatteShaded() CONST_FUNCTION {
+        return (flags & (uint)GeometryInstanceFlags::MatteShading) != 0;
+    }
 };
 
 struct StaticVertexData
@@ -380,19 +388,25 @@ enum class MeshletType : uint32_t
     Count
 };
 
-/** Struct representing meshlet data.
+/** Struct representing meshlet data. 40 (64) bytes.
 */
 struct Meshlet {   
     /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
     uint vertexOffset;
     uint indexOffset;
+    uint primIndexOffset;
 
     /* Number of vertices and triangles used in the meshlet; data is stored in a consecutive range defined by offset and count */
     uint vertexCount;
     uint indexCount;
+    uint packedData  = 0;
 
-    float4 bounding_sphere; ///< xyz -> object space origin, w -> radius
-    float4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
+
+    uint4 _pad0;
+    uint2 _pad1;
+
+    float16_t4 bounding_sphere; ///< xyz -> object space origin, w -> radius
+    float16_t4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
 };
 
 struct MeshletGroup {

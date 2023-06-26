@@ -153,6 +153,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     pRenderContext->clearUAV(mpLocalDepthPrimBuffer->getUAV().get(), uint4(UINT32_MAX));
     pRenderContext->clearUAV(mpLocalDepthParmBuffer->getUAV().get(), uint4(UINT32_MAX));
+    pRenderContext->clearUAV(mpLocalDepthInstBuffer->getUAV().get(), uint4(UINT32_MAX));
     pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     if(!mpMeshletDrawListBuffer) return;

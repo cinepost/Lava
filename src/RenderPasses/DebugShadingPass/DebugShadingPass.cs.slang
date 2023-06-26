@@ -54,6 +54,4 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     gOpID[pixelPos] = triangleHit.instanceID.index;
 #endif  // gOpID
 
-
-    }
 }

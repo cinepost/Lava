@@ -58,6 +58,7 @@ namespace Falcor {
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
 static_assert(sizeof(GeometryInstanceData) % 16 == 0, "GeometryInstanceData size should be a multiple of 16");
 static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
+static_assert(sizeof(Meshlet) % 16 == 0, "Meshlet size should be a multiple of 16");
 
 namespace {
     // Large scenes are split into multiple BLAS groups in order to reduce build memory usage.
@@ -71,6 +72,7 @@ namespace {
     const std::string kMeshletGroupsBufferName = "meshletGroups";
     const std::string kMeshletIndicesBufferName = "meshletIndexData";
     const std::string kMeshletVerticesBufferName = "meshletVertices";
+    const std::string kMeshletPrimIndicesBufferName = "meshletPrimIndices";
     const std::string kMeshletsBufferName = "meshlets";
     const std::string kIndexBufferName = "indexData";
     const std::string kVertexBufferName = "vertices";
@@ -177,6 +179,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mMeshlets = std::move(sceneData.meshlets);
     mMeshletVertices = std::move(sceneData.meshletVertices);
     mMeshletIndices = std::move(sceneData.meshletIndices);
+    mMeshletPrimIndices = std::move(sceneData.meshletPrimIndices);
 
     mCurveDesc = std::move(sceneData.curveDesc);
     mCurveBBs = std::move(sceneData.curveBBs);
@@ -721,6 +724,11 @@ void Scene::initResources() {
         mpMeshletVerticesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletVerticesBufferName], (uint32_t)mMeshletVertices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMeshletVerticesBuffer->setName("Scene::mpMeshletVeticesBuffer");
     }
+
+    if (!mMeshletPrimIndices.empty()) {
+        mpMeshletPrimIndicesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletPrimIndicesBufferName], (uint32_t)mMeshletPrimIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshletPrimIndicesBuffer->setName("Scene::mpMeshletPrimIndicesBuffer");
+    }
 }
 
 void Scene::uploadResources() {
@@ -736,6 +744,7 @@ void Scene::uploadResources() {
     if (!mMeshlets.empty()) mpMeshletsBuffer->setBlob(mMeshlets.data(), 0, sizeof(Meshlet) * mMeshlets.size());
     if (!mMeshletVertices.empty()) mpMeshletVerticesBuffer->setBlob(mMeshletVertices.data(), 0, sizeof(uint32_t) * mMeshletVertices.size());
     if (!mMeshletIndices.empty()) mpMeshletIndicesBuffer->setBlob(mMeshletIndices.data(), 0, sizeof(uint8_t) * mMeshletIndices.size());
+    if (!mMeshletPrimIndices.empty()) mpMeshletPrimIndicesBuffer->setBlob(mMeshletPrimIndices.data(), 0, sizeof(uint32_t) * mMeshletPrimIndices.size());
 
     // Curves
     if (!mCurveDesc.empty()) mpCurvesBuffer->setBlob(mCurveDesc.data(), 0, sizeof(CurveDesc) * mCurveDesc.size());
@@ -747,6 +756,7 @@ void Scene::uploadResources() {
     mpSceneBlock->setBuffer(kMeshletsBufferName, mpMeshletsBuffer);
     mpSceneBlock->setBuffer(kMeshletIndicesBufferName, mpMeshletIndicesBuffer);
     mpSceneBlock->setBuffer(kMeshletVerticesBufferName, mpMeshletVerticesBuffer);
+    mpSceneBlock->setBuffer(kMeshletPrimIndicesBufferName, mpMeshletPrimIndicesBuffer);
 
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
 
