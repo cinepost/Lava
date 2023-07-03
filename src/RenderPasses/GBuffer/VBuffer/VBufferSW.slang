@@ -44,6 +44,7 @@ StructuredBuffer<MeshletDraw> gMeshletDrawList;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+RWTexture2D<float4> gMeshlet;
 RWTexture2D<uint> gTime;
 
 #define is_valid(name) (is_valid_##name != 0)

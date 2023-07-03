@@ -9,15 +9,23 @@ import Utils.Math.MathHelpers;
 //import Experimental.Scene.Materials.Microfacet;
 //import Experimental.Scene.Materials.StandardMaterial;
 
+#ifndef FALSE_COLOR_BUFFER_SIZE
+#define FALSE_COLOR_BUFFER_SIZE 0
+#endif
+
 #define is_valid(name) (is_valid_##name != 0)
 
 // VBuffer
 Texture2D<PackedHitInfo> gVBuffer;
 
 // Extra input channels
+Texture2D<uint> gMeshletID;
 Texture2D<float> gDepth;
 Texture2D<float4> gTextureGrads;
 Texture2D<float2> gMotionVector;
+
+// Extra input buffers
+TypedBuffer<float4> gFalseColorBuffer;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;
@@ -25,6 +33,7 @@ RWTexture2D<float4> gInOutColor;
 // Extra output channels
 RasterizerOrderedTexture2D<float>  gPrimID;
 RasterizerOrderedTexture2D<float>  gOpID;
+RasterizerOrderedTexture2D<float4> gMeshletColor;
 
 cbuffer PerFrameCB {
   uint2             gFrameDim;

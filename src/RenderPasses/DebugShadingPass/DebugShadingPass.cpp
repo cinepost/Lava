@@ -1,4 +1,5 @@
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Color/ColorGenerationUtils.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/RenderGraph/RenderPass.h"
@@ -11,11 +12,11 @@
 
 #include "DebugShadingPass.h"
 
+static const uint32_t meshletColorCycleSize = 1024;
 
 const RenderPass::Info DebugShadingPass::kInfo
 {
     "DebugShadingPass",
-
     "Debug pass."
 };
 
@@ -31,24 +32,30 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 namespace {
     const char kShaderFile[] = "RenderPasses/DebugShadingPass/DebugShadingPass.cs.slang";
 
-    const std::string kInputColor    = "color";
-    const std::string kInputVBuffer  = "vbuffer";
-    const std::string kInputDepth    = "depth";
-    const std::string kInputTexGrads = "texGrads";
-    const std::string kInputMVectors = "mvec";
+    const std::string kInputColor           = "color";
+    const std::string kInputVBuffer         = "vbuffer";
+    const std::string kInputDepth           = "depth";
+    const std::string kInputTexGrads        = "texGrads";
+    const std::string kInputMVectors        = "mvec";
+    const std::string kInputOuputMeshlet    = "meshletId";
 
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,        "gDepth",             "Depth buffer",                  true /* optional */, ResourceFormat::Unknown  },
-        { kInputTexGrads,     "gTextureGrads",      "Texture gradients",             true /* optional */, ResourceFormat::Unknown  },
-        { kInputMVectors,     "gMotionVector",      "Motion vector buffer (float format)", true /* optional */                     },
+        { kInputDepth,        "gDepth",             "Depth buffer",                  true /* optional */, ResourceFormat::Unknown           },
+        { kInputTexGrads,     "gTextureGrads",      "Texture gradients",             true /* optional */, ResourceFormat::Unknown           },
+        { kInputMVectors,     "gMotionVector",      "Motion vector buffer (float format)", true /* optional */                              },
+    };
+
+    const ChannelList kExtraInputOutputChannels = {
+        { kInputOuputMeshlet, "gMeshletID",         "Motion vector buffer (float format)", true /* optional */ , ResourceFormat::R32Uint    },
     };
 
     const ChannelList kExtraOutputChannels = {
         // Service outputs
-        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
-        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
+        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float          },
+        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float          },
+        { "meshlet_color",    "gMeshletColor",      "Meshlet false color buffer",    true /* optional */, ResourceFormat::RGBA16Float       },
     };
 }
 
@@ -81,6 +88,7 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
     
     addRenderPassInputs(reflector, kExtraInputChannels);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
 
     return reflector;
@@ -100,6 +108,8 @@ void DebugShadingPass::setScene(RenderContext* pRenderContext, const Scene::Shar
 void DebugShadingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
 
+    generateMeshletColorBuffer(renderData);
+
     // Prepare program and vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     if (!mpShadingPass || mDirty) {
@@ -109,18 +119,28 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraInputChannels, renderData));
+        defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
-        
+        defines.add("FALSE_COLOR_BUFFER_SIZE", mpMeshletColorBuffer ? std::to_string(meshletColorCycleSize) : "0");
+
         mpShadingPass = ComputePass::create(mpDevice, desc, defines, true);
 
         mpShadingPass["gScene"] = mpScene->getParameterBlock();
+        mpShadingPass["gFalseColorBuffer"] = mpMeshletColorBuffer;
+
 
         // Bind mandatory input channels
         mpShadingPass["gInOutColor"] = renderData[kInputColor]->asTexture();
         mpShadingPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
-    
+
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
+            Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+            mpShadingPass[channel.texname] = pTex;
+        }
+
+        // Bind extra input-output channels
+        for (const auto& channel : kExtraInputOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
             mpShadingPass[channel.texname] = pTex;
         }
@@ -138,6 +158,13 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 
     mDirty = false;
+}
+
+void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) {
+    if(mpMeshletColorBuffer || !renderData[kInputOuputMeshlet]->asTexture()) return;
+
+    static bool solidAplha = true;
+    mpMeshletColorBuffer = generateRandomColorsBuffer(mpDevice, meshletColorCycleSize, mFalseColorFormat, solidAplha);
 }
 
 DebugShadingPass& DebugShadingPass::setColorFormat(ResourceFormat format) {

@@ -32,9 +32,15 @@ class DebugShadingPass : public RenderPass {
 
 	private:
 		DebugShadingPass(Device::SharedPtr pDevice);
+
+		void generateMeshletColorBuffer(const RenderData& renderData);
 		
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpShadingPass;
+
+		ResourceFormat                  mFalseColorFormat = ResourceFormat::RGBA16Float;
+
+		Buffer::SharedPtr               mpMeshletColorBuffer;
 
 		uint2 mFrameDim = { 0, 0 };
 		
