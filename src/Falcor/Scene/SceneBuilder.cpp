@@ -535,7 +535,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
         uint32_t mesh_start_index = 0;
         while(mesh_start_index < indices.size()) {
             std::vector<uint32_t> meshletVertices;
-            std::vector<uint32_t> meshletPrimIdList;
+            std::vector<uint32_t> meshletPrimIndices;
             std::vector<uint8_t>  meshletIndices;
 
             std::set<uint32_t> pointIndices; // this set is used to avoid having duplicate vertices within meshlet
@@ -566,7 +566,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
                 meshletIndices.push_back(std::distance(pointIndices.begin(), it0 == pointIndices.end() ? pointIndices.insert(indices[i]).first : it0));
                 meshletIndices.push_back(std::distance(pointIndices.begin(), it1 == pointIndices.end() ? pointIndices.insert(indices[i+1]).first : it1));
                 meshletIndices.push_back(std::distance(pointIndices.begin(), it2 == pointIndices.end() ? pointIndices.insert(indices[i+2]).first : it2));
-                meshletPrimIdList.push_back(i / 3u);
+                meshletPrimIndices.push_back(i / 3u);
                 mesh_start_index += 3;
             }
             for(auto pi : pointIndices) {
@@ -575,7 +575,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
             meshletSpec.vertices = std::move(meshletVertices);
             meshletSpec.indices = std::move(meshletIndices);
-            meshletSpec.primitiveIDs = std::move(meshletPrimIdList);
+            meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
             LLOG_TRC << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
                 " vertices. " << meshletSpec.indices.size() << " indices.";
 
@@ -694,11 +694,13 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
                 Meshlet meshlet;
                 meshlet.vertexOffset = mMeshletVertices.size();
                 meshlet.indexOffset =  mMeshletIndices.size();
+                meshlet.primIndexOffset = mMeshletPrimIndices.size();
                 meshlet.vertexCount = spec.vertices.size();
                 meshlet.indexCount =  spec.indices.size();
 
                 mMeshletVertices.insert(mMeshletVertices.end(), spec.vertices.begin(), spec.vertices.end());
                 mMeshletIndices.insert(mMeshletIndices.end(), spec.indices.begin(), spec.indices.end());
+                mMeshletPrimIndices.insert(mMeshletPrimIndices.end(), spec.primitiveIndices.begin(), spec.primitiveIndices.end());
 
                 meshlets.push_back(std::move(meshlet));
             }
@@ -2460,6 +2462,7 @@ void SceneBuilder::createMeshletsData() {
     mSceneData.meshletGroups.clear();
     mSceneData.meshletIndices.clear();
     mSceneData.meshletVertices.clear();
+    mSceneData.meshletPrimIndices.clear();
 
     for(uint32_t meshID = 0; meshID < mMeshletLists.size(); ++meshID) {
         const auto& meshletList = mMeshletLists[meshID];
@@ -2479,6 +2482,7 @@ void SceneBuilder::createMeshletsData() {
         mSceneData.meshletGroups.push_back(std::move(meshletGroup));
         mSceneData.meshletIndices.insert(mSceneData.meshletIndices.end(), mMeshletIndices.begin(), mMeshletIndices.end());
         mSceneData.meshletVertices.insert(mSceneData.meshletVertices.end(), mMeshletVertices.begin(), mMeshletVertices.end());
+        mSceneData.meshletPrimIndices.insert(mSceneData.meshletPrimIndices.end(), mMeshletPrimIndices.begin(), mMeshletPrimIndices.end());
     }
 }
 

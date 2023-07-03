@@ -44,6 +44,7 @@ StructuredBuffer<MeshletDraw> gMeshletDrawList;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+RWTexture2D<float4> gMeshlet;
 RWTexture2D<uint> gTime;
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -63,7 +64,7 @@ RWTexture2D<uint> gTime;
 struct VBufferSW {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
-
+    
     uint2 frameDim;
     float2 frameDimF;
     uint dispatchX;
@@ -100,7 +101,7 @@ struct VBufferSW {
     }
 
     void writeMiss(uint2 pixel) {
-        gVBuffer[pixel] = {};
+        gVBuffer[pixel] = uint4(0);
 
         if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};

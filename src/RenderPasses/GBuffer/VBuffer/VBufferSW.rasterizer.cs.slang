@@ -115,16 +115,16 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
                 
                 const uint64_t z64 = uint64_t(asuint(z)) << 32;
                 
-                const uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x);
+                const uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) << 3;
                 const uint64_t prim_value = z64 | primitiveIndex;
                 const uint tx = asuint(f32tof16(texcoord.x));
                 const uint ty = asuint(f32tof16(texcoord.y));
                 const uint64_t parm_value = (z64 | (tx << 16)) | ty;
                 const uint64_t inst_value = z64 | instanceID.index;
                 
-                gLocalDepthPrimBuffer.InterlockedMinU64(idx << 3, prim_value);
-                gLocalDepthParmBuffer.InterlockedMinU64(idx << 3, parm_value);
-                gLocalDepthInstBuffer.InterlockedMinU64(idx << 3, inst_value);
+                gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+                gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+                gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
             }
             texcoord += texcoord_dx;
         }
@@ -176,9 +176,8 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     // Fetch indices
     [[branch]] if(thread_id < triangleCount) {
         const uint meshletTriangleRootIndex = thread_id * 3u;
-        const uint primitiveIndex = meshlet.indexOffset + meshletTriangleRootIndex;
-        prim_ids[thread_id] = meshlet.indexOffset + thread_id;
-        const uint3 _indices = gScene.meshletIndexData.Load<uint8_t3>(primitiveIndex);
+        prim_ids[thread_id] = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
+        const uint3 _indices = gScene.meshletIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
 
         indices[meshletTriangleRootIndex] = _indices[0];
         indices[meshletTriangleRootIndex + 1] = _indices[1];

@@ -1019,6 +1019,7 @@ public:
         std::vector<MeshletGroup> meshletGroups;                ///< Meshlet groups. Elements index is a mesh is essentialy.
         std::vector<Meshlet>  meshlets;                         ///< Meshlet list.
         std::vector<uint32_t> meshletVertices;
+        std::vector<uint32_t> meshletPrimIndices;
         std::vector<uint8_t>  meshletIndices;
 
         std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
@@ -1221,6 +1222,7 @@ public:
     std::vector<MeshletGroup> mMeshletGroups;                   ///< MeshletGroups represent meshlet collections that represent mesh. One group per mesh.
     std::vector<Meshlet> mMeshlets;                             ///< Meshlets data.
     std::vector<uint32_t> mMeshletVertices;
+    std::vector<uint32_t> mMeshletPrimIndices;
     std::vector<uint8_t> mMeshletIndices;
 
     // Meshes
@@ -1304,6 +1306,7 @@ public:
     Buffer::SharedPtr mpMeshletsBuffer;
     Buffer::SharedPtr mpMeshletVerticesBuffer;
     Buffer::SharedPtr mpMeshletIndicesBuffer;
+    Buffer::SharedPtr mpMeshletPrimIndicesBuffer;
     Buffer::SharedPtr mpCurvesBuffer;
     Buffer::SharedPtr mpCustomPrimitivesBuffer;
     Buffer::SharedPtr mpLightsBuffer;
