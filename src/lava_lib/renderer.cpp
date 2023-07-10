@@ -839,8 +839,6 @@ void Renderer::renderSample() {
 }
 
 const uint8_t* Renderer::getAOVPlaneImageData(const AOVName& name) {
-	assert(pData);
-
 	auto pAOVPlane = getAOVPlane(name);
 	if (!pAOVPlane) return nullptr;
 

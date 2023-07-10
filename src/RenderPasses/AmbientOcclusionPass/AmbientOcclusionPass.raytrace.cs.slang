@@ -67,7 +67,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
     #if is_valid(gVBuffer)
         const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
         if(hit.isValid() && hit.getType() == HitType::Triangle) {
-            SampleGenerator sg = SampleGenerator.create(pixelPos, gSampleNumber);
+            SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber);
             const float3 rayDir = normalize(gScene.camera.computeRayPinhole(pixelPos, gResolution).dir);
             
             ITextureSampler lod = ExplicitLodTextureSampler(0.f);

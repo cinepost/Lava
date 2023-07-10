@@ -390,10 +390,10 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 
 	// Find mip tail starting mip level. This and all smaller layers (higher indices) combined memory footprint should be equal or less than kLtxPageSize 
 	uint8_t mipTailStart = info.mipLevelsCount - 1;
-	for( uint8_t currentMipLevel = 0; currentMipLevel < info.mipLevelsCount; currentMipLevel++) {
+	for( uint8_t currentMipLevel = 0; currentMipLevel < info.mipLevelsCount; ++currentMipLevel) {
 		// Find cumulative mip levels footprint
 		uint32_t currentMemCumulativeFootprint = 0;
-		for(uint8_t i = currentMipLevel; i < info.mipLevelsCount; i++) {
+		for(uint8_t i = currentMipLevel; i < info.mipLevelsCount; ++i) {
 			auto const& mipDims = info.mipLevelsDims[i];
 			currentMemCumulativeFootprint += mipDims.x * mipDims.y * bytesPerPixel;
 		}
@@ -449,7 +449,8 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 
 	// calc mip related info
 	auto mipInfo = calcMipInfo(dstDims, dstFormat);
-	
+	LLOG_DBG << "Texture " << srcFilename << " mip tail starts at level " << std::to_string(mipInfo.mipTailStart);
+
 	// make header
 	LTX_Header header;
 	makeMagic(&header.magic[0]);

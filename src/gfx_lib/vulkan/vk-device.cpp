@@ -1314,7 +1314,7 @@ Result DeviceImpl::createTextureResource(
 
 	if (pTexture && sparse) {
 #ifdef _DEBUG
-		LOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
+		LLOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
 #endif		
 
 		// Check requested image size against hardware sparse limit            
@@ -1796,6 +1796,69 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 
 	//todo: use sparse bind semaphore
 	m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
+}
+
+void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
+	std::vector<VkBindSparseInfo> bindInfos;
+
+	for(Falcor::Texture* pTexture: textures) {
+		if(!pTexture) continue;
+
+		TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getApiHandle().get());
+		assert(texture->m_image != VK_NULL_HANDLE);
+
+		if(texture->m_image == VK_NULL_HANDLE) continue;
+
+		// Update list of memory-backed sparse image memory binds
+		pTexture->mSparseImageMemoryBinds.clear();
+		for (const auto& pPage : pTexture->mSparseDataPages) {
+			if ( pPage->isResident()) pTexture->mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
+		}
+
+		// Update sparse bind info
+		pTexture->mBindSparseInfo = {};
+		pTexture->mBindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+
+		// Image memory binds
+		pTexture->mImageMemoryBindInfo = {};
+		pTexture->mImageMemoryBindInfo.image = texture->m_image;
+		pTexture->mImageMemoryBindInfo.bindCount = static_cast<uint32_t>(pTexture->mSparseImageMemoryBinds.size());
+		pTexture->mImageMemoryBindInfo.pBinds = pTexture->mSparseImageMemoryBinds.data();
+
+		pTexture->mBindSparseInfo.imageBindCount = (pTexture->mImageMemoryBindInfo.bindCount > 0) ? 1 : 0;
+		pTexture->mBindSparseInfo.pImageBinds = &pTexture->mImageMemoryBindInfo;
+
+		// Opaque image memory binds for the mip tail
+		pTexture->mOpaqueMemoryBindInfo.image = texture->m_image;
+		pTexture->mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(pTexture->mOpaqueMemoryBinds.size());
+		pTexture->mOpaqueMemoryBindInfo.pBinds = pTexture->mOpaqueMemoryBinds.data();
+		
+		pTexture->mBindSparseInfo.imageOpaqueBindCount = (pTexture->mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
+		pTexture->mBindSparseInfo.pImageOpaqueBinds = &pTexture->mOpaqueMemoryBindInfo;
+
+		bindInfos.push_back(pTexture->mBindSparseInfo);
+
+	}
+
+	if(bindInfos.size() == 0) return;
+
+	m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), bindInfos.size(), bindInfos.data(), VK_NULL_HANDLE);
+	auto res = m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
+
+	switch(res) {
+		case VK_ERROR_OUT_OF_HOST_MEMORY: 
+			LLOG_FN_ERR << "VK_ERROR_OUT_OF_HOST_MEMORY !!!";
+			break;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY: 
+			LLOG_FN_ERR << "VK_ERROR_OUT_OF_DEVICE_MEMORY !!!";
+			break;
+		case VK_ERROR_DEVICE_LOST: 
+			LLOG_FN_ERR << "VK_ERROR_DEVICE_LOST !!!";
+			break;
+		default:
+			break;
+	}
+
 }
 
 Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource) {

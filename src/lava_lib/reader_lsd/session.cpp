@@ -620,13 +620,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	Falcor::Light::SharedPtr pLight = nullptr;
 
 	if(light_type == "distant") {
-		// Directional lights
+		// Directional light
+
 		auto pDirectionalLight = Falcor::DirectionalLight::create("noname_distant");
 		pDirectionalLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
 	} else if (light_type == "sun") {
-		// Distant lights
+		// Distant/Sun light
+
 		auto pDistantLight = Falcor::DistantLight::create("noname_sun");
 		pDistantLight->setWorldDirection(light_dir);
 
