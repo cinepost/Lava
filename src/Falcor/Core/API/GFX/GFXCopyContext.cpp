@@ -412,10 +412,6 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 		subresourceRange.layerCount = 1;
 		subresourceRange.mipLevelCount = 1;
 
-		std::vector<uint8_t> tmpData(width * height * 4);
-		randomPattern(tmpData.data(), width, height);
-		
-
 		gfx::ITextureResource::SubresourceData data = {};
 		data.data = dataPtr;
 		data.strideY = (int64_t)(width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;

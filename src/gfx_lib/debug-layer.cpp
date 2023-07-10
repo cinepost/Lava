@@ -376,6 +376,10 @@ void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	baseObject->updateSparseBindInfo(pTexture);
 }
 
+void DebugDevice::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
+	baseObject->updateSparseBindInfo(textures);
+}
+
 Result DebugDevice::createTextureFromNativeHandle(
 	InteropHandle handle,
 	const ITextureResource::Desc& srcDesc,

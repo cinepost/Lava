@@ -350,6 +350,7 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 }
 
 void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* pTextureData, ResourceFormat dstResourceFormat) {
+	assert(pTextureData);
 	assert(mType == Type::Texture2D);
 	if(mIsUDIMTexture) {
 		LLOG_WRN << "Unable to read UDIM texture data !";
@@ -368,13 +369,15 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 		std::vector<float> testData(getWidth(0) * getHeight(0) *3);
 		for (size_t i = 0; i < testData.size(); i+=3) testData[i]=1.0f;
 
-		Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::Read);
+		Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
 	
 		uint4 srcRect = {0, 0, getWidth(0), getHeight(0)};
 		uint4 dstRect = {0, 0, getWidth(0), getHeight(0)};
 		uint32_t bufferWidthPixels = getWidth(0);
+		
 		const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
-    const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+    	const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+		
 		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
 		pContext->flush(true);
 		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
@@ -511,8 +514,8 @@ uint8_t Texture::getMaxMipCount(const uint3& size) {
 }
 
 uint64_t Texture::getTexelCount() const {
-	assert(!mIsUDIMTexture);
-
+	if (mIsUDIMTexture) return 0;
+	
 	uint64_t count = 0;
 	for (uint32_t i = 0; i < getMipCount(); i++) {
 		uint64_t texelsInMip = (uint64_t)getWidth(i) * getHeight(i) * getDepth(i);

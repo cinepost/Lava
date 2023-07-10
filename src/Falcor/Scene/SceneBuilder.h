@@ -277,9 +277,9 @@ class dlldecl SceneBuilder {
 
     struct MeshletSpec {
         MeshletType type = MeshletType::Triangles;
-        std::vector<uint32_t> vertices;         ///< Meshlet vertices that point to global scene vertex data.
-        std::vector<uint8_t>  indices;          ///< Indices of a primitive verices. Vector size should be equal to indexCount.
-        std::vector<uint32_t> primitiveIDs;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+        std::vector<uint32_t> vertices;             ///< Meshlet vertices that point to global scene vertex data.
+        std::vector<uint8_t>  indices;              ///< Indices of a primitive verices. Vector size should be equal to indexCount.
+        std::vector<uint32_t> primitiveIndices;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
     };
 
     /** Pre-processed mesh data.
@@ -720,7 +720,7 @@ protected:
     std::vector<MeshletList> mMeshletLists;
     std::vector<uint32_t> mMeshletVertices;    ///< Meshlet vertices that point to global scene vertex data.
     std::vector<uint8_t>  mMeshletIndices;     ///< Indices of a primitive verices. Vector size should be equal to indexCount.
-    std::vector<uint32_t> mMeshletPrimIDs;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+    std::vector<uint32_t> mMeshletPrimIndices; ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
 
     // Meshes
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.

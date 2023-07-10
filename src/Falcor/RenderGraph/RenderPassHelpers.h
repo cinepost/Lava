@@ -101,6 +101,20 @@ inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelL
 	}
 }
 
+/** Adds a list of input-output channels to the render pass reflection.
+	\param[in] reflector Render pass reflection object.
+	\param[in] channels List of channels.
+	\param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
+*/
+inline void addRenderPassInputOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {}) {
+	for (const auto& it : channels) {
+		auto& tex = reflector.addInputOutput(it.name, it.desc).texture2D(dim.x, dim.y);
+		tex.bindFlags(bindFlags);
+		if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+		if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
+	}
+}
+
 /** Clears all available channels.
 	\param[in] pRenderContext Render context.
 	\param[in] channels List of channel descriptors.

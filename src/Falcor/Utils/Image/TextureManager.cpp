@@ -241,7 +241,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
 
   assert(pTexture.get());
-  if(!pTexture || (pageIds.size() < 1)) return;
+  if(!pTexture) return;
 
   uint32_t textureID = pTexture->id();
 
@@ -292,9 +292,9 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   	}
   }
 
-	if(loadTailData) {
+	if(loadTailData || (pageIds.size() == 0)) {
 		LLOG_DBG << "Loading tail data for " << ltxFilename;
-		std::vector<uint8_t> tailData;
+		std::vector<uint8_t> tailData(kLtxPageSize);
 		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
 		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
@@ -324,11 +324,11 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 	// Push pages loading job into ThreadPool
 	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = std::move(pageIds)]
   {
-  	if(!pTexture || pageIds.size() == 0) return (Texture*)nullptr;
+  	if(!pTexture) return (Texture*)nullptr;
 
   	std::vector<uint32_t> _pageIds = pageIds;
   	std::sort(_pageIds.begin(), _pageIds.end());
-
+  	
     std::thread::id thread_id = std::this_thread::get_id();
     auto pContext = pTexture->device()->getRenderContext();
 
@@ -338,7 +338,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
     std::array<uint8_t, kLtxPageSize> scratchBuffer;
     auto pScratchBufferData = scratchBuffer.data();
 
-    bool loadTailData = true; // alway load texture tail data
+    bool loadTailData = true; // always load texture tail data
     const auto& texturePages = pTexture->sparseDataPages();
 
 		std::string ltxFilename = pLtxBitmap->getFileName();
@@ -369,9 +369,9 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 			}
 		}
 
-		if(loadTailData) {
+		if(loadTailData || (pageIds.size() == 0)) {
 			LLOG_DBG << "Loading tail data for " << ltxFilename;
-			std::vector<uint8_t> tailData;
+			std::vector<uint8_t> tailData(kLtxPageSize);
 			pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 			LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
 			if(!tailData.empty()) pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
@@ -383,15 +383,17 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 }
 
 void TextureManager::updateSparseBindInfo() {
-	if(mTextureLoadingTasks.size() == 0) return;
+	if(mTextureLoadingTasks.empty()) return;
 
 	std::vector<Texture*> textures;
 	for(size_t i = 0; i < mTextureLoadingTasks.size(); i++) {
-		Texture* pTexture = mTextureLoadingTasks[i].get();
-		if(pTexture) pTexture->updateSparseBindInfo();
+		textures.push_back(mTextureLoadingTasks[i].get());
 	}
 
-	mTextureLoadingTasks.clear();
+	if(textures.empty()) return;
+
+	mpDevice->getApiHandle()->updateSparseBindInfo(textures);
+	mpDevice->flushAndSync();
 }
 
 bool TextureManager::getTextureHandle(const Texture* pTexture, TextureHandle& handle) const {
@@ -827,13 +829,13 @@ void TextureManager::buildSparseResidencyData() {
 	if(dv.rem != 0) mVirtualPagesData.resize((dv.quot + 1) * 64);
 	memset(mVirtualPagesData.data(), 0, mVirtualPagesData.size() * sizeof(uint8_t));
 
-	LLOG_WRN << "Virtual textures data size " << mVirtualTexturesData.size();
-	LLOG_WRN << "Virtual pages data size " << mVirtualPagesData.size();
+	LLOG_DBG << "Virtual textures data size " << mVirtualTexturesData.size();
+	LLOG_DBG << "Virtual pages data size " << mVirtualPagesData.size();
 
 	mpVirtualTexturesDataBuffer = 
 		Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), (uint32_t)mVirtualTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mVirtualTexturesData.data(), false);
-	mpVirtualPagesResidencyDataBuffer = 
-		Buffer::create(mpDevice, mVirtualPagesData.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mVirtualPagesData.data());
+	mpVirtualPagesResidencyDataBuffer = mVirtualPagesData.size() > 0 ?
+		Buffer::create(mpDevice, mVirtualPagesData.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mVirtualPagesData.data()) : nullptr;
 
 	mDirtySparseResidency = false;
 }

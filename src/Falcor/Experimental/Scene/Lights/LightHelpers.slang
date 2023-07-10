@@ -157,30 +157,6 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 
     [branch]
     if( all(cosT == 1) ) {
-/*
-        // Test
-        float3 lVector[4] = {p[0] - localShadingPos, p[1] - localShadingPos, p[2] - localShadingPos ,p[3] - localShadingPos};
-
-        // vector irradiance at point
-        float3 lightVec = float3(0.0);
-
-        [unroll]
-        for( int i = 0; i < 4; i++) {
-            float3 v0 = lVector[i];
-            float3 v1 = lVector[ int(_mod( float( i + 1 ), float( 4 ) ))];
-
-            lightVec += acos( dot( v0, v1 ) ) * normalize( cross( v0, v1 ) );
-        }
-
-        // irradiance factor at point
-        float factor = max( abs(dot( lightVec, localNormal )), 0.0 ) / ( 2.0 * M_PI );
-
-        // All corners above shading surface. Return sample.
-        bool result = sampleRectAreaLight(shadingPosW, light, rnd, ls);
-        
-        ls.pdf = 1.0;
-        ls.i = factor;
-*/
         return sampleRectAreaLight(shadingPosW, light, rnd, ls);
     } else if( all(cosT == 0) ) {
         // All corners below shading surface.
@@ -496,7 +472,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, const f
     ls.i = 1.0f;
     ls.Li = light.directDiffuseIntensity;
     
-    ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
+    ls.pdf = 0.f;
     return true;
 }
 

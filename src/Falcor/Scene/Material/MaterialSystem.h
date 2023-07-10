@@ -62,6 +62,7 @@ class dlldecl MaterialSystem {
 			uint64_t textureCount = 0;                  ///< Number of unique textures. A texture can be referenced by multiple materials.
 			uint64_t textureCompressedCount = 0;        ///< Number of unique compressed textures.
 			uint64_t textureTexelCount = 0;             ///< Total number of texels in all textures.
+			uint64_t virtualTextureTexelCount = 0;      ///< Total number of texels in all virtual textures.
 			uint64_t textureMemoryInBytes = 0;          ///< Total memory in bytes used by the textures.
 		};
 

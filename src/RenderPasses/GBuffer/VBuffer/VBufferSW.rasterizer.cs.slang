@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
+
 import VBufferSW;
 
 #ifndef MICROPOLY_MAX_BB_SIZE
@@ -48,6 +49,7 @@ groupshared MeshletDraw draw;
 groupshared Meshlet meshlet;
 
 groupshared uint   indices[MESHLET_MAX_POLYGONS_COUNT * 4];
+groupshared uint   prim_ids[MESHLET_MAX_POLYGONS_COUNT];
 groupshared float3 positions[MESHLET_MAX_VERTICES_COUNT];
 
 
@@ -63,17 +65,16 @@ float3 transformPoint(const float3 p) {
 void rasterizeMicroTriangle(float3 p0, float3 p1, float3 p2, float2 min_p, float2 max_p) {
     for(float y = min_p.y; y <= max_p.y; y += 1.0f) {
         for(float x = min_p.x; x <= max_p.x; x += 1.0f) {
-            
-                    TriangleHit triangleHit = {};
-                    //GeometryInstanceID instanceID;
-                    triangleHit.primitiveIndex = 1;
-                    triangleHit.barycentrics = float2(0.5f);
-                    gVBufferSW.writeHit(uint2(x, y), HitInfo(triangleHit.pack()));
+            TriangleHit triangleHit = {};
+            //GeometryInstanceID instanceID;
+            triangleHit.primitiveIndex = 1;
+            triangleHit.barycentrics = float2(0.5f);
+            gVBufferSW.writeHit(uint2(x, y), HitInfo(triangleHit.pack()));
         }
     }
 }
 
-void rasterizeTriangle(float3 p0, float3 p1, float3 p2, GeometryInstanceID instanceID, bool cullCCW) {
+void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, bool cullCCW) {
     [[branch]] if(p0.z < 0.0f || p1.z < 0.0f || p2.z < 0.0f) return;
 
     const float2 frame_size = gVBufferSW.frameDimF;
@@ -110,23 +111,20 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, GeometryInstanceID insta
             if(texcoord.x >= 0.0f && texcoord.y >= 0.0f && texcoord.x + texcoord.y <= 1.0f) {
                 float z = p10.z * texcoord.x + p20.z * texcoord.y + p0.z;
                 uint2 pixelPos = uint2(x, y);
-                const uint uint_z = uint((uint)UINT32_MAX * z); //asuint(z);
+                const uint uint_z = asuint(z);
                 
-                uint max_z = UINT32_MAX; //gLocalDepth[pixelPos];
-                InterlockedMin(gLocalDepth[pixelPos], uint_z, max_z);
-
+                const uint64_t z64 = uint64_t(asuint(z)) << 32;
                 
-                //uint64_t value = uint64_t((uint)UINT32_MAX * z) << 32;
-                //uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) * 16;
-                //gLocalDepthPrimBuffer.InterlockedMaxU64(idx, value);
-            
-                if(uint_z < max_z) {
-                    TriangleHit triangleHit = {};
-                    triangleHit.instanceID = instanceID;
-                    triangleHit.primitiveIndex = 1;
-                    triangleHit.barycentrics = texcoord;   
-                    gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
-                }
+                const uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) << 3;
+                const uint64_t prim_value = z64 | primitiveIndex;
+                const uint tx = asuint(f32tof16(texcoord.x));
+                const uint ty = asuint(f32tof16(texcoord.y));
+                const uint64_t parm_value = (z64 | (tx << 16)) | ty;
+                const uint64_t inst_value = z64 | instanceID.index;
+                
+                gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+                gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+                gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
             }
             texcoord += texcoord_dx;
         }
@@ -151,7 +149,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     const uint group_id = groupID.y * gVBufferSW.dispatchX + groupID.x;       // Sequential group index.
     const uint thread_id = groupIdx;                                          // Local thread index in group (range 0..THREADS_COUNT-1).
     const uint global_id = group_id * THREADS_COUNT + thread_id;              // Global element index
-    
+
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;
 
@@ -178,7 +176,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     // Fetch indices
     [[branch]] if(thread_id < triangleCount) {
         const uint meshletTriangleRootIndex = thread_id * 3u;
-
+        prim_ids[thread_id] = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
         const uint3 _indices = gScene.meshletIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
 
         indices[meshletTriangleRootIndex] = _indices[0];
@@ -207,11 +205,12 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     GroupMemoryBarrierWithGroupSync();
 
+
     /// Rasterizing stage
     [[branch]]if(thread_id >= triangleCount) return;
 
     const bool cullCCW = false;
 
-    const uint meshletTriangleRootIndex = thread_id * 3;
-    rasterizeTriangle(positions[indices[meshletTriangleRootIndex]], positions[indices[meshletTriangleRootIndex + 1]], positions[indices[meshletTriangleRootIndex + 2]], instanceID, cullCCW);
+    const uint meshletTriangleRootIndex = thread_id * 3u;
+    rasterizeTriangle(positions[indices[meshletTriangleRootIndex]], positions[indices[meshletTriangleRootIndex + 1]], positions[indices[meshletTriangleRootIndex + 2]], prim_ids[thread_id], cullCCW);
 }

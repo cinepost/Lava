@@ -1155,6 +1155,8 @@ else()
     set(OIDN_BUILD_STATIC_LIBS OFF)
   endif()
 
+  set(ISPC_EXECUTABLE "${ISPC_EXECUTABLE_DIR}/ispc")
+
   ExternalProject_Add ( OpenImageDenoise
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OIDN_PREFIX}
     GIT_REPOSITORY https://github.com/OpenImageDenoise/oidn.git

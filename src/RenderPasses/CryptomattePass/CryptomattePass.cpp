@@ -168,8 +168,6 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         mpPass["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
 
         // Bind crypto data output layers as UAV buffers.
-        assert(dataLayersCount() == kDataOutputNames.size() == mDataLayerTextures.size());
-
         for (size_t i = 0; i < dataLayersCount(); i++) {
             mpPass["gDataLayers"][i] = dataTextures[i];
         }
@@ -246,9 +244,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 materialHashBuffer[materialID] = hash;
                 materialHashFloatBuffer[materialID] = fhash;
 
-                //LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
-                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
-                //    << " float " << boost::lexical_cast<std::string>(fhash);
+                LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
+                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
+                    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {
@@ -286,9 +284,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 instanceHashBuffer[instance.internalID] = hash;
                 instanceHashFloatBuffer[instance.internalID] = fhash;
 
-                //LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
-                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
-                //    << " float " << boost::lexical_cast<std::string>(fhash);
+                LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
+                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
+                    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {

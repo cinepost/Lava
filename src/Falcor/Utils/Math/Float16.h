@@ -40,14 +40,29 @@ namespace Falcor
     public:
         float16_t() = default;
 
+        // hdata conversion
+        float16_t(glm::detail::hdata b) : bits(b) {}
+
         // Float conversion
-        explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
+        float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
+        float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
+
+        //explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
+        //explicit float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
+        
         explicit operator float() const { return glm::detail::toFloat32(bits); }
+        explicit operator double() const { return static_cast<double>(glm::detail::toFloat32(bits)); }
+
+        float16_t operator-(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) - glm::detail::toFloat32(other.bits)); }
+        float16_t operator+(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) + glm::detail::toFloat32(other.bits)); }
 
         bool operator>(const float16_t& other) const { return glm::detail::toFloat32(bits) > glm::detail::toFloat32(other.bits); }
         bool operator<(const float16_t& other) const { return glm::detail::toFloat32(bits) < glm::detail::toFloat32(other.bits); }
         bool operator==(const float16_t& other) const { return bits == other.bits; }
         bool operator!=(const float16_t& other) const { return bits != other.bits; }
+
+        float16_t& operator= (const float& v) { bits = glm::detail::toFloat16(v); return *this; }
+        float16_t& operator= (const double& v) { bits = glm::detail::toFloat16(static_cast<float>(v)); return *this; }
 
     private:
         glm::detail::hdata bits;
@@ -134,7 +149,8 @@ namespace Falcor
         // Float conversion
         explicit tfloat16_vec(float v) : x(v), y(v), z(v), w(v) {}
         explicit tfloat16_vec(const float4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
-        explicit tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
+        tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
+        //explicit tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
         explicit operator float4() const { return float4(float(x), float(y), float(z), float(w)); }
 
         // Access
@@ -154,4 +170,5 @@ namespace Falcor
     inline std::string to_string(const float16_t2& v) { return "float16_t2(" + to_string(v.x) + "," + to_string(v.y) + ")"; }
     inline std::string to_string(const float16_t3& v) { return "float16_t3(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + ")"; }
     inline std::string to_string(const float16_t4& v) { return "float16_t4(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + "," + to_string(v.w) + ")"; }
-}
+
+}  // namespace Falcor
