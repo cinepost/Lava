@@ -85,10 +85,12 @@ static inline Buffer::SharedPtr generateRandomColorsBufferUInt16(Device::SharedP
 
 }
 
+#ifndef _WIN32
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt8(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
     std::uniform_int_distribution<uint8_t>  rndDist(0, std::numeric_limits<uint8_t>::max());
 
 }
+#endif
 
 Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t elementsCount, ResourceFormat colorFormat, bool solidAlpha) {
     Buffer::SharedPtr pBuffer;
