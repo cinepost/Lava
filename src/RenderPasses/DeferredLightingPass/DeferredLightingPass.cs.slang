@@ -493,8 +493,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     
-    ITextureSampler primaryLod = createTextureSampler(ipos);
-    //ITextureSampler primaryLod = TailTextureSampler();
+    //ITextureSampler primaryLod = createTextureSampler(ipos);
+    ITextureSampler primaryLod = TailTextureSampler();
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data

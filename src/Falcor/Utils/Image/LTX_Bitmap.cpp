@@ -408,6 +408,22 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 	return info;
 }
 
+static void fixBlackAlpha(oiio::ImageBuf& buff, oiio::ROI roi = {}) {
+    roi.chend = std::min(roi.chend, buff.nchannels());
+    if (buff.spec().format == oiio::TypeDesc::UINT8)
+        for (oiio::ImageBuf::Iterator<uint8_t> it (buff, roi);  ! it.done();  ++it) {
+        	if (! it.exists()) continue;
+        	for (int c = roi.chbegin;  c < roi.chend;  ++c) it[c] = 255;
+    	}
+    else if (buff.spec().format == oiio::TypeDesc::FLOAT || buff.spec().format == oiio::TypeDesc::HALF){
+    	for (oiio::ImageBuf::Iterator<float> it (buff, roi);  ! it.done();  ++it) {
+        	if (! it.exists()) continue;
+        	for (int c = roi.chbegin;  c < roi.chend;  ++c) it[c] = 1.0f;
+    	}
+    }
+}
+
+
 bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
 	oiio::ImageSpec config;
 
@@ -446,8 +462,9 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		oiio::ImageBuf tmpBuffRGB(srcFilename);
 		srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
 	} else {
-		//srcBuff = oiio::ImageBuf(srcFilename);
+		srcBuff = oiio::ImageBuf(srcFilename);
 
+/*
 		const int subimage = 0;
 		const int miplevel = 0;
 		oiio::ImageCache* imagecache = nullptr;
@@ -462,6 +479,9 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		oiio::ROI roi = {};
 		int nthreads = 0;
 		srcBuff = oiio::ImageBufAlgo::unpremult(oiio::ImageBuf(srcFilename), roi, nthreads);
+
+		fixBlackAlpha(srcBuff);
+*/
 	}
 
 	// TODO: make image analysis (pre scale down source with blurry data) and reflect that in dstDims

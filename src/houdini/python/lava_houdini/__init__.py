@@ -3,3 +3,5 @@ from .utils_geo import on_geo_created, on_instance_created
 
 from .utils_light import add_light_lava_parameters
 from .utils_light import on_light_created
+
+from .utils_common import findConvertedLtxTexturePaths

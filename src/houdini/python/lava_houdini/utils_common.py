@@ -1,5 +1,65 @@
+import os
 import hou
 from lava_version import LAVA_VERSION_STRING
+
+
+def generateUDIMStingIndices():
+	id_strings = []
+	for x in range(1, 11):
+		for y in range(0, 10):
+			id_strings += [str(1000 + x + y*10)]
+
+	return id_strings
+
+
+def isFileParm(parm):
+	t = parm.parmTemplate()
+	if t.type() == hou.parmTemplateType.String:
+		if t.stringType() == hou.stringParmType.FileReference:
+			return True
+
+		return False
+
+
+def isStringParm(parm):
+	if parm.parmTemplate().type() == hou.parmTemplateType.String:
+		return True
+
+	return False
+
+
+def findConvertedLtxTexturePaths(node):
+	paths = []
+	
+	gUDIMStringIndices = generateUDIMStingIndices()
+
+	for parm in node.parms():
+		if isFileParm(parm) or isStringParm(parm):
+			parm_value = parm.eval()
+			if isinstance(parm_value, str) and parm_value != '':
+				filepath = parm_value
+				if filepath.lower().endswith((".exr", ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".tif", ".tiff", ".hdr")):
+					udim_wildcard_pos = filepath.find('<UDIM>')
+					if udim_wildcard_pos != -1:
+						# UDIM texture
+						for udim_idx_str in gUDIMStringIndices:
+							ltx_path = filepath.replace('<UDIM>', udim_idx_str) + ".ltx"
+							if os.path.isfile(ltx_path):
+								paths += [ltx_path]
+					else:
+						# Simple texture
+						ltx_path = filepath + ".ltx"
+						if os.path.isfile(ltx_path):
+							paths += [ltx_path]        
+
+	for child in node.children():
+		paths += findConvertedLtxTexturePaths(child)
+
+	if paths:
+		# deduplicate
+		paths = list(set(paths))
+
+	return paths
 
 
 def findSubFolderByTag(parent_folder, tag_name, tag_value):
