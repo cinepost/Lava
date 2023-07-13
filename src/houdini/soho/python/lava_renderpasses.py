@@ -25,6 +25,11 @@ edgeDetectPassParms = {
     'normalKernelSize'          : SohoParm('lv_edgedetect_pass_normal_kernel_size',      'int',       [0], skipdefault=False),
     'materialKernelSize'        : SohoParm('lv_edgedetect_pass_material_kernel_size',    'int',       [0], skipdefault=False),
     'instanceKernelSize'        : SohoParm('lv_edgedetect_pass_instance_kernel_size',    'int',       [0], skipdefault=False),
+
+    'depthOuputChannel'         : SohoParm('lv_edgedetect_pass_depth_output_channel', 'int',          [0], skipdefault=False),
+    'normalOuputChannel'        : SohoParm('lv_edgedetect_pass_normal_output_channel', 'int',         [0], skipdefault=False),
+    'materialOuputChannel'      : SohoParm('lv_edgedetect_pass_material_output_channel', 'int',       [0], skipdefault=False),
+    'instanceOuputChannel'      : SohoParm('lv_edgedetect_pass_instance_output_channel', 'int',       [0], skipdefault=False),
 }
 
 ambienOcclusionPassParms = {

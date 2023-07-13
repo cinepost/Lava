@@ -1,3 +1,14 @@
+12.07.2023
+
+Added:    Separate channels output in EdgeDetectPass
+					Lava shelf for Houdini
+					LTX textures delete button shelf tool 
+
+Fixed:    Asyncronous virtual texture pages loading
+					Material edge detect thickness in EdgeDetectPass
+					CryptomattePass preview_color issue
+					Emission AOV in DeferredShadingPass
+
 28.02.2023
 ----------------------------------------------------------------------
 

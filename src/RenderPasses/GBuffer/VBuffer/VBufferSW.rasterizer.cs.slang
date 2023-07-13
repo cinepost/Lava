@@ -122,9 +122,11 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
                 const uint64_t parm_value = (z64 | (tx << 16)) | ty;
                 const uint64_t inst_value = z64 | instanceID.index;
                 
-                gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
-                gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
-                gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
+                uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+                if ( v == prim_value) {
+                  gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+                  gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
+                }
             }
             texcoord += texcoord_dx;
         }

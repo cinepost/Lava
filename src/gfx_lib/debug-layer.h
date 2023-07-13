@@ -68,6 +68,8 @@ public:
 
     virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
 
+    virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) override;
+
     virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
 
     virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;

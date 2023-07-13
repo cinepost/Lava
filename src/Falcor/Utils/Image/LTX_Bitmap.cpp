@@ -409,11 +409,17 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 }
 
 bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
-	auto in = oiio::ImageInput::open(srcFilename);
+	oiio::ImageSpec config;
+
+	config.attribute("oiio:UnassociatedAlpha", 1);
+	//config["oiio:UnassociatedAlpha"] = 1;
+	
+	auto in = oiio::ImageInput::open(srcFilename, &config);
 	if (!in) {
 		LLOG_ERR << "Error reading image file: " << srcFilename;
 		return false;
 	}
+
 	const oiio::ImageSpec &spec = in->spec();
 
 	LLOG_INF << "Converting texture \"" << srcFilename << "\" to LTX format using " << to_string(getTLCFromString(compParms.compressorName)) << " compressor.";
@@ -440,7 +446,22 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		oiio::ImageBuf tmpBuffRGB(srcFilename);
 		srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
 	} else {
-		srcBuff = oiio::ImageBuf(srcFilename);
+		//srcBuff = oiio::ImageBuf(srcFilename);
+
+		const int subimage = 0;
+		const int miplevel = 0;
+		oiio::ImageCache* imagecache = nullptr;
+		oiio::ImageSpec config;
+		oiio::Filesystem::IOProxy* ioproxy = nullptr;
+
+		config["oiio:UnassociatedAlpha"] = 1;
+		config.attribute("oiio:UnassociatedAlpha", 1);
+
+		srcBuff = oiio::ImageBuf(srcFilename, subimage, miplevel, imagecache, &config, ioproxy);
+
+		oiio::ROI roi = {};
+		int nthreads = 0;
+		srcBuff = oiio::ImageBufAlgo::unpremult(oiio::ImageBuf(srcFilename), roi, nthreads);
 	}
 
 	// TODO: make image analysis (pre scale down source with blurry data) and reflect that in dstDims

@@ -110,7 +110,9 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	uint32_t page_depth  = header.pageDims.depth;
 
 	// source image buffer spec and pixel format
-	auto const& spec = srcBuff.spec();
+	auto spec = srcBuff.spec();
+	spec.attribute("oiio:UnassociatedAlpha", 1);
+	
 	auto format = header.format;
 
 	uint32_t pagesCount = 0;
@@ -400,7 +402,9 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	uint32_t page_depth  = header.pageDims.depth;
 
 	// source image buffer spec and pixel format
-	auto const& spec = srcBuff.spec();
+	auto spec = srcBuff.spec();
+	spec.attribute("oiio:UnassociatedAlpha", 1);
+
 	auto format = header.format;
 
 	uint32_t pagesCount = 0;

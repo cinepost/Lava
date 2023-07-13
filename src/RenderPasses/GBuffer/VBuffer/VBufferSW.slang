@@ -41,10 +41,10 @@ RWByteAddressBuffer gLocalDepthInstBuffer;
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
 
 // Optional buffers
+RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
-RWTexture2D<float4> gMeshlet;
 RWTexture2D<uint> gTime;
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -61,10 +61,15 @@ RWTexture2D<uint> gTime;
 #define USE_ALPHA_TEST false
 #endif
 
+#if !defined(USE_SUBDIVISIONS) && !is_valid(gNormals)
+#define USE_SUBDIVISIONS false
+#endif
+
 struct VBufferSW {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
-    
+    static const bool kUseSubdivisions = USE_SUBDIVISIONS;
+
     uint2 frameDim;
     float2 frameDimF;
     uint dispatchX;

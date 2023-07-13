@@ -367,6 +367,10 @@ Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 	baseObject->allocateTailMemory(pTexture, force);
 }
 
+bool DebugDevice::tailMemoryAllocated(const Falcor::Texture* pTexture) {
+	baseObject->tailMemoryAllocated(pTexture);
+}
+
 void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
 	baseObject->releaseTailMemory(pTexture);
 }

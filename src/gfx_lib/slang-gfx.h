@@ -2222,6 +2222,8 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) = 0;
 
+		virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) = 0;
+
 		virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) = 0;
 
 		virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const = 0;

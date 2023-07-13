@@ -69,7 +69,9 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 
 		TexturesResolvePass& 	setRayReflectLimit(int limit);
 		TexturesResolvePass& 	setRayRefractLimit(int limit);
-		TexturesResolvePass&  setRayDiffuseLimit(int limit);
+		TexturesResolvePass&  	setRayDiffuseLimit(int limit);
+		
+		TexturesResolvePass&  	setAsyncLoading(bool mode);
 		
 	private:
 		TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
@@ -104,8 +106,8 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		Buffer::SharedPtr           mpTexResolveDataBuffer;
 		bool                        mUsePreGenDepth = false;
 
-		bool                        mLoadPagesAsync = true;
-		bool 												mDirty = true;
+		bool                        mLoadPagesAsync = false; //true;
+		bool 								 mDirty = true;
 
 		uint32_t                    mRayReflectLimit = 0;
 		uint32_t                    mRayRefractLimit = 0;

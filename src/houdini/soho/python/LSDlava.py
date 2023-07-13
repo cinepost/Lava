@@ -118,6 +118,7 @@ def initializeFeatures(settings):
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
 
     Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
+    Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
     Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
     
     # -- Image --
@@ -133,6 +134,8 @@ def initializeFeatures(settings):
     Image("image", "tilesize", "int", "lv_image_tile_size", skipdefault=False)
     Image("image", "sampleupdate", "int", "lv_sample_update_interval", skipdefault=False)
     Image("image", "iprtilesize", "int", "lv_iprbucketsize")
+
+    Image("image", "asyncltxloading", "bool", "lv_async_ltx_loading", skipdefault=False)
 
     Image("image", "checkpointcachesize", "int", "lv_checkpointcachesize")
     Image("image", "checkpointname", "string", "lv_checkpointname")
