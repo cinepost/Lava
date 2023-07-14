@@ -522,7 +522,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     const uint32_t vertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
     // Build meshlets. If needed...
-    bool generateMeshlets = true; // TODO: fetch scene meshlets generation settings
+    bool generateMeshlets = false; //true; // TODO: fetch scene meshlets generation settings
 
     processedMesh.meshletSpecs.clear();
     if(generateMeshlets && isIndexed) {

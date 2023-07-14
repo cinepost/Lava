@@ -32,9 +32,11 @@ namespace {
 	const std::string kTexResolveData = "gTexResolveData";
 	const std::string kParameterBlockName = "gResolveData";
 
-  const std::string kRayReflectLimit = "rayReflectLimit";
-  const std::string kRayRefractLimit = "rayRefractLimit";
-  const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+	const std::string kRayReflectLimit = "rayReflectLimit";
+	const std::string kRayRefractLimit = "rayRefractLimit";
+	const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+
+	const std::string kAsyncLtxLoading = "asyncLtxLoading";
 
 }  // namespace
 
@@ -43,6 +45,7 @@ void TexturesResolvePass::parseDictionary(const Dictionary& dict) {
         if (key == kRayReflectLimit) setRayReflectLimit(value);
         else if (key == kRayRefractLimit) setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) setRayDiffuseLimit(value);
+        else if (key == kAsyncLtxLoading) setAsyncLoading(static_cast<bool>(value));
     }
 }
 
@@ -366,6 +369,13 @@ void TexturesResolvePass::setDefaultSampler() {
 	mpMinSampler = Sampler::create(mpDevice, desc);
 	desc.setReductionMode(Sampler::ReductionMode::Max);
 	mpMaxSampler = Sampler::create(mpDevice, desc);
+}
+
+TexturesResolvePass& TexturesResolvePass::setAsyncLoading(bool mode) {
+	if(mLoadPagesAsync == mode) return *this;
+	mLoadPagesAsync = mode;
+	mDirty = true;
+	return *this;
 }
 
 TexturesResolvePass& TexturesResolvePass::setRayReflectLimit(int limit) {

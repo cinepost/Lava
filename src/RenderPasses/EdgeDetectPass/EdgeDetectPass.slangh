@@ -19,6 +19,16 @@ enum class EdgeDetectKernelType : uint32_t
     Prewitt         = 1,
 };
 
+enum class EdgeDetectOutputChannel : uint32_t
+{
+    RGB = 0,
+    R   = 1,
+    G   = 2,
+    B   = 3,      
+    A   = 4,
+    Count = 5,
+};
+
 #ifdef HOST_CODE
 enum_class_operators(EdgeDetectTraceFlags);
 #endif // HOST_CODE

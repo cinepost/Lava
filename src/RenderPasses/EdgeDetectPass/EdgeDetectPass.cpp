@@ -59,6 +59,12 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     ScriptBindings::registerBinding(regEdgeDetectPass);
 }
 
+static inline bool validChannel(uint value) {
+    if(value < static_cast<uint>(EdgeDetectOutputChannel::Count)) return true;
+    return false;
+}
+
+
 namespace {
 
     const char kShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.cs.slang";
@@ -95,6 +101,11 @@ namespace {
     const std::string kNormalKernelSize = "normalKernelSize";
     const std::string kMaterialKernelSize = "materialKernelSize";
     const std::string kInstanceKernelSize = "instanceKernelSize";
+
+    const std::string kDepthOuputChannel = "depthOuputChannel";
+    const std::string kNormalOuputChannel = "normalOuputChannel";
+    const std::string kMaterialOuputChannel = "materialOuputChannel";
+    const std::string kInstanceOuputChannel = "instanceOuputChannel";
     
     const std::string kLowPassFilterSize = "lowPassFilterSize";
 }
@@ -116,6 +127,11 @@ EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, 
         else if (key == kMaterialKernelSize) pThis->setMaterialKernelSize(value);
         else if (key == kInstanceKernelSize) pThis->setInstanceKernelSize(value);
         
+        else if (key == kDepthOuputChannel) pThis->setDepthOutputChannel(value);
+        else if (key == kNormalOuputChannel) pThis->setNormalOutputChannel(value);
+        else if (key == kMaterialOuputChannel) pThis->setMaterialOutputChannel(value);
+        else if (key == kInstanceOuputChannel) pThis->setInstanceOutputChannel(value);
+
         else if (key == kLowPassFilterSize) pThis->setLowPassFilterSize(uint(value));
     }
 
@@ -309,12 +325,40 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
     cb_vars_v["gMaterialKernelCenter"] = materialKernelHalfSize;
     cb_vars_v["gInstanceKernelCenter"] = instanceKernelHalfSize;
 
+    cb_vars_v["gDepthChannelMultiplyer"] = channelMultiplyer(mDepthOutputChannel);
+    cb_vars_v["gNormalChannelMultiplyer"] = channelMultiplyer(mNormalOutputChannel);
+    cb_vars_v["gMaterialChannelMultiplyer"] = channelMultiplyer(mMaterialOutputChannel);
+    cb_vars_v["gInstanceChannelMultiplyer"] = channelMultiplyer(mInstanceOutputChannel);
+
+    cb_vars_v["gFullAlpha"] = fullAlphaColor();
+
     cb_vars_v["gDepthDistanceRange"] = mDepthDistanceRange;
     cb_vars_v["gNormalThresholdRange"] = mNormalThresholdRange;
     
     mpPassV->execute(pRenderContext, resolution.x, resolution.y);
 
     mDirty = false;
+}
+
+float4 EdgeDetectPass::channelMultiplyer(EdgeDetectOutputChannel ch) {
+    switch(ch) {
+        case EdgeDetectOutputChannel::R:
+            return {1.0, 0.0, 0.0, 0.0};
+        case EdgeDetectOutputChannel::G:
+            return {0.0, 1.0, 0.0, 0.0};
+        case EdgeDetectOutputChannel::B:
+            return {0.0, 0.0, 1.0, 0.0};
+        case EdgeDetectOutputChannel::A:
+            return {0.0, 0.0, 0.0, 1.0};
+        default:
+            return {1.0, 1.0, 1.0, 0.0};
+    }
+}
+
+float4 EdgeDetectPass::fullAlphaColor() {
+    if ((mDepthOutputChannel != EdgeDetectOutputChannel::A) && (mNormalOutputChannel != EdgeDetectOutputChannel::A) && 
+        (mMaterialOutputChannel != EdgeDetectOutputChannel::A) && (mInstanceOutputChannel != EdgeDetectOutputChannel::A)) return {0.0, 0.0, 0.0, 1.0};
+    return {0.0, 0.0, 0.0, 0.0};
 }
 
 void EdgeDetectPass::prepareBuffers(RenderContext* pRenderContext, uint2 resolution) {
@@ -412,6 +456,34 @@ void EdgeDetectPass::setOutputFormat(ResourceFormat format) {
     mOutputFormat = format;
     mPassChangedCB();
     mDirty = true;
+}
+
+void EdgeDetectPass::setDepthOutputChannel(uint value) {
+    if(!validChannel(value)) return;
+    EdgeDetectOutputChannel channel = static_cast<EdgeDetectOutputChannel>(value);
+    if(mDepthOutputChannel == channel) return;
+    mDepthOutputChannel = channel;
+}
+
+void EdgeDetectPass::setNormalOutputChannel(uint value) {
+    if(!validChannel(value)) return;
+    EdgeDetectOutputChannel channel = static_cast<EdgeDetectOutputChannel>(value);
+    if(mNormalOutputChannel == channel) return;
+    mNormalOutputChannel = channel;
+}
+
+void EdgeDetectPass::setMaterialOutputChannel(uint value) {
+    if(!validChannel(value)) return;
+    EdgeDetectOutputChannel channel = static_cast<EdgeDetectOutputChannel>(value);
+    if(mMaterialOutputChannel == channel) return;
+    mMaterialOutputChannel = channel;
+}
+
+void EdgeDetectPass::setInstanceOutputChannel(uint value) {
+    if(!validChannel(value)) return;
+    EdgeDetectOutputChannel channel = static_cast<EdgeDetectOutputChannel>(value);
+    if(mInstanceOutputChannel == channel) return;
+    mInstanceOutputChannel = channel;
 }
 
 void EdgeDetectPass::setDepthKernelSize(uint size) {

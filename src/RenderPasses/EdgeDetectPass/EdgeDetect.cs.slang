@@ -40,6 +40,13 @@ cbuffer PerFrameCB
     uint gMaterialKernelCenter = 1;
     uint gInstanceKernelCenter = 1;
 
+    float4 gDepthChannelMultiplyer = float4(1.0, 1.0, 1.0, 0.0);
+    float4 gNormalChannelMultiplyer = float4(1.0, 1.0, 1.0, 0.0);
+    float4 gMaterialChannelMultiplyer = float4(1.0, 1.0, 1.0, 0.0);
+    float4 gInstanceChannelMultiplyer = float4(1.0, 1.0, 1.0, 0.0);
+
+    float4 gFullAlpha = float4(0.0, 0.0, 0.0, 1.0);
+
     float2 gDepthDistanceRange;   // min/max depth distance values
     float2 gNormalThresholdRange; // normal threshold min/max range
 }
@@ -418,11 +425,11 @@ void passV(uint3 dispatchThreadId : SV_DispatchThreadID)
         const float2 mu = gTmpMaterialID[pixelPos + uint2(0, i)];
         const float2 md = gTmpMaterialID[pixelPos - uint2(0, i)];
 
-        m_id.x += mu.x * gMaterialKernelV[gMaterialKernelCenter + i];
-        m_id.x += md.x * gMaterialKernelV[gMaterialKernelCenter - i];
+        //m_id.x += mu.x * gMaterialKernelV[gMaterialKernelCenter + i];
+        //m_id.x += md.x * gMaterialKernelV[gMaterialKernelCenter - i];
     
-        m_id.y += mu.y * gMaterialKernelU[gMaterialKernelCenter + i];
-        m_id.y += md.y * gMaterialKernelU[gMaterialKernelCenter - i];
+        //m_id.y += mu.y * gMaterialKernelU[gMaterialKernelCenter + i];
+        //m_id.y += md.y * gMaterialKernelU[gMaterialKernelCenter - i];
     }
     #endif
 
@@ -438,7 +445,7 @@ void passV(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     // Compute Depth edge
     #if is_valid(gTmpDepth)
-    d /= 8.0f;
+    d /= 18.0f;
     const float depth_gradient_mag = sqrt(d.x*d.x + d.y*d.y);
     #else
     const float depth_gradient_mag = 0.f;
@@ -459,7 +466,7 @@ void passV(uint3 dispatchThreadId : SV_DispatchThreadID)
     
     // Compute MaterialID edge
     #if is_valid(gTmpMaterialID)
-    m_id /= 4.f;
+    m_id /= 8.f;
     const float m_id_gradient_mag = sqrt(m_id.x*m_id.x + m_id.y*m_id.y);
     #else
     const float m_id_gradient_mag = 0.f;
@@ -477,9 +484,9 @@ void passV(uint3 dispatchThreadId : SV_DispatchThreadID)
     
 
     // Combined edge
-    const float edge_combined = max(max(max(depth_edge, normal_edge), m_id_edge), i_id_edge);
+    const float4 edge_combined = max(max(max(depth_edge * gDepthChannelMultiplyer, normal_edge * gNormalChannelMultiplyer), m_id_edge * gMaterialChannelMultiplyer), i_id_edge * gInstanceChannelMultiplyer);
 
     // Write detected edge data
-    gOutput[pixelPos] = float4(edge_combined, edge_combined, edge_combined, 1.f);
+    gOutput[pixelPos] = edge_combined + gFullAlpha;
 
 }

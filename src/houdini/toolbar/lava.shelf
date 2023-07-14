@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+
+  <toolshelf name="lava_shelf" label="Lava">
+    <memberTool name="ltx_delete"/>
+  </toolshelf>
+
+  <tool name="ltx_delete" label="Converted LTX delete" icon="LAVA_Delete">
+    <helpText><![CDATA[Deletes *.ltx converted textures from filesystem.]]></helpText>
+    <script scriptType="python">
+      <![CDATA[
+from lava_houdini.shelf_tools import deleteConvertedLTXTexturesTool
+deleteConvertedLTXTexturesTool()
+      ]]>
+    </script>
+  </tool>
+</shelfDocument>

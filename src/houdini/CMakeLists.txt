@@ -90,6 +90,7 @@ install(
 # Install shit
 install(DIRECTORY scripts DESTINATION houdini)
 install(DIRECTORY config DESTINATION houdini)
+install(DIRECTORY toolbar DESTINATION houdini)
 install(DIRECTORY soho DESTINATION houdini PATTERN "python" EXCLUDE)
 install(DIRECTORY soho/python/ DESTINATION houdini/soho/python${HYTHON_VERSION})
 

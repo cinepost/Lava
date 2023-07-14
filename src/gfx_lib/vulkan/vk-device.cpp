@@ -1731,12 +1731,18 @@ void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 	}
 }
 
+bool DeviceImpl::tailMemoryAllocated(const Falcor::Texture* pTexture) {
+	assert(pTexture);
+	return pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE;
+}
+
 Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 	assert(pTexture);
 
-	if (pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE && force) {
-		m_api.vkFreeMemory(m_device, pTexture->mMipTailimageMemoryBind.memory, nullptr);
-	} else {
+	if(!pTexture->isSparse()) return SLANG_FAIL;
+
+	if (pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE) {
+		if(force) { m_api.vkFreeMemory(m_device, pTexture->mMipTailimageMemoryBind.memory, nullptr); }
 		return SLANG_OK;
 	}
 

@@ -552,13 +552,18 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 
 		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
 
-		if(mipTailLevel == mipInfo.mipTailStart) {
-			scaledBuff.copy(srcBuff, spec.format);
+		if(mipTailLevel == 0) {
+			scaledBuff = srcBuff;
 		} else {
-			prevBuff.copy(scaledBuff, spec.format);
+			if(mipTailLevel == 1) {
+				prevBuff.copy(srcBuff, spec.format);
+			} else {
+				prevBuff.copy(scaledBuff, spec.format);
+			}
 			scaledBuff = oiio::ImageBuf(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, spec.nchannels, spec.format), oiio::InitializePixels::No);
 			oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
 		}
+		
 
 		if(kOnePageTailData) {
 			scaledBuff.get_pixels(roi, spec.format, page_data.data() + tailDataSize, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);

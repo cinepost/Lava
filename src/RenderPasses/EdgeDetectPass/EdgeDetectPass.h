@@ -44,6 +44,11 @@ class PASS_API EdgeDetectPass : public RenderPass {
 		void setMaterialKernelSize(uint size);
 		void setInstanceKernelSize(uint size);
 
+		void setDepthOutputChannel(uint value);
+		void setNormalOutputChannel(uint value);
+		void setMaterialOutputChannel(uint value);
+		void setInstanceOutputChannel(uint value);
+
 		void setDepthDistanceRange(float2 range);
 		void setDepthDistanceRange(float distMin, float distMax) { setDepthDistanceRange(float2({distMin, distMax})); }
 
@@ -67,6 +72,9 @@ class PASS_API EdgeDetectPass : public RenderPass {
 
 		void prepareBuffers(RenderContext* pRenderContext, uint2 resolution);
 		void prepareKernelTextures();
+
+		float4 channelMultiplyer(EdgeDetectOutputChannel ch);
+		float4 fullAlphaColor();
 
 		Device::SharedPtr           mpDevice;
 
@@ -92,10 +100,15 @@ class PASS_API EdgeDetectPass : public RenderPass {
 		Texture::SharedPtr          mpInstanceKernelU;
 		Texture::SharedPtr          mpInstanceKernelV;
 
-		EdgeKernelType							mDepthKernelType = EdgeKernelType::Sobel;
+		EdgeKernelType				mDepthKernelType = EdgeKernelType::Sobel;
 		EdgeKernelType              mNormalKernelType = EdgeKernelType::Sobel;
 		EdgeKernelType              mMaterialKernelType = EdgeKernelType::Sobel;
 		EdgeKernelType              mInstanceKernelType = EdgeKernelType::Sobel;
+
+		EdgeDetectOutputChannel     mDepthOutputChannel = EdgeDetectOutputChannel::RGB;
+		EdgeDetectOutputChannel		mNormalOutputChannel = EdgeDetectOutputChannel::RGB;
+		EdgeDetectOutputChannel		mMaterialOutputChannel = EdgeDetectOutputChannel::RGB;
+		EdgeDetectOutputChannel		mInstanceOutputChannel = EdgeDetectOutputChannel::RGB;
 
 		ResourceFormat              mVBufferFormat = HitInfo::kDefaultFormat;
 		ResourceFormat              mOutputFormat = ResourceFormat::RGBA16Float;
@@ -104,8 +117,8 @@ class PASS_API EdgeDetectPass : public RenderPass {
 		Texture::SharedPtr          mpTmpVBuffer;  // vbuffer after lowpass filter
 		Texture::SharedPtr          mpTmpDepth;
 		Texture::SharedPtr          mpTmpNormal;
-		Texture::SharedPtr					mpTmpMaterialID;
-		Texture::SharedPtr 					mpTmpInstanceID;
+		Texture::SharedPtr			mpTmpMaterialID;
+		Texture::SharedPtr 			mpTmpInstanceID;
 
 		bool                        mDirty = true;
 

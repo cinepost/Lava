@@ -369,15 +369,23 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 			}
 		}
 
-		if(loadTailData || (pageIds.size() == 0)) {
+		if(loadTailData || !pageIds.empty()) {
 			LLOG_DBG << "Loading tail data for " << ltxFilename;
 			std::vector<uint8_t> tailData(kLtxPageSize);
 			pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 			LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-			if(!tailData.empty()) pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+			if(!tailData.empty()) {
+				std::unique_lock<std::mutex> lock(mPageMutex);
+				pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+			}
 		}
 
 		fclose(pFile);
+		{
+			std::unique_lock<std::mutex> lock(mPageMutex);
+			pTexture->updateSparseBindInfo();
+		}
+
     return pTexture;
   }));
 }
@@ -392,8 +400,10 @@ void TextureManager::updateSparseBindInfo() {
 
 	if(textures.empty()) return;
 
-	mpDevice->getApiHandle()->updateSparseBindInfo(textures);
-	mpDevice->flushAndSync();
+	//mpDevice->getRenderContext()->flush();
+	
+	//mpDevice->getApiHandle()->updateSparseBindInfo(textures);
+	//mpDevice->flushAndSync();
 }
 
 bool TextureManager::getTextureHandle(const Texture* pTexture, TextureHandle& handle) const {

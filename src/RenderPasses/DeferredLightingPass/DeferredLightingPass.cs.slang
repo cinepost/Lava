@@ -493,8 +493,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     
-    ITextureSampler primaryLod = createTextureSampler(ipos);
-    //ITextureSampler primaryLod = TailTextureSampler();
+    //ITextureSampler primaryLod = createTextureSampler(ipos);
+    ITextureSampler primaryLod = TailTextureSampler();
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
@@ -610,8 +610,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if is_valid(gOutEmission)
     {
-        let bsdf = gScene.materials.getBSDF(primaryShadingData, primaryLod);
-        aov_data.emission = bsdf.getProperties(primaryShadingData).emission;
+        const IMaterialInstance mi = gScene.materials.getMaterialInstance(primaryShadingData, primaryLod);
+        aov_data.emission = mi.getProperties(primaryShadingData).emission;
     }
 #endif  // gOutEmission
 
