@@ -1599,9 +1599,20 @@
                 label   "Disable Virtual Texturing"
                 type    toggle
                 default { "0" }
-                help    "Disable virtual textures. This forces renderer to uss textures \"as is\" without any conversion. Faster render times but uses more gpu memory. This also disables UDIM support"
+                help    "Disable virtual textures. This forces renderer to use textures \"as is\" without any conversion. Faster render times but uses more gpu memory. This also disables UDIM support"
                 parmtag { "script_callback_language" "python" }
             }
+
+            parm {
+                name    "lv_async_ltx_loading"
+                label   "Async Virtual Textures Loading"
+                type    toggle
+                default { "1" }
+                disablewhen "{ lv_vtoff == 1 }"
+                help    "Enable asyncronous virtual textures loading."
+                parmtag { "script_callback_language" "python" }
+            }
+
             parm {
                 name    "lv_vtex_conv_quality"
                 label   "Texture Conversion Quality"
@@ -1741,6 +1752,23 @@
             }
 
             parm {
+                name    "lv_edgedetect_pass_depth_output_channel"
+                label   "Output channel"
+                type    integer
+                size    1
+                default { "0" }
+                menu usetokenvalue {
+                    "0"   "RGB"
+                    "1"   "R"
+                    "2"   "G"
+                    "3"   "B"
+                    "4"   "A"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "edge_detect_sepparm_1"
                 label   "Separator"
                 type    separator
@@ -1783,6 +1811,23 @@
             }
 
             parm {
+                name    "lv_edgedetect_pass_normal_output_channel"
+                label   "Output channel"
+                type    integer
+                size    1
+                default { "0" }
+                menu usetokenvalue {
+                    "0"   "RGB"
+                    "1"   "R"
+                    "2"   "G"
+                    "3"   "B"
+                    "4"   "A"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "edge_detect_sepparm_2"
                 label   "Separator"
                 type    separator
@@ -1815,6 +1860,23 @@
             }
 
             parm {
+                name    "lv_edgedetect_pass_material_output_channel"
+                label   "Output channel"
+                type    integer
+                size    1
+                default { "0" }
+                menu usetokenvalue {
+                    "0"   "RGB"
+                    "1"   "R"
+                    "2"   "G"
+                    "3"   "B"
+                    "4"   "A"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_material == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "edge_detect_sepparm_3"
                 label   "Separator"
                 type    separator
@@ -1843,6 +1905,23 @@
                     "5"   "5x5"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_instance_output_channel"
+                label   "Output channel"
+                type    integer
+                size    1
+                default { "0" }
+                menu usetokenvalue {
+                    "0"   "RGB"
+                    "1"   "R"
+                    "2"   "G"
+                    "3"   "B"
+                    "4"   "A"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_instance == 0}"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2027,7 +2106,7 @@
                     label   "Different File"
                     type    string
                     default { "$HIP/CryptoObject.exr" }
-                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass lv_crypto_instance_filenameenable != 1}"
+                    disablewhen "{ lv_plane_cryptoinstance == 0  lv_main_output_source != CryptomatteInstancePass} {lv_crypto_instance_filenameenable != 1}"
                     parmtag { "script_callback_language" "python" }
                 }
             }

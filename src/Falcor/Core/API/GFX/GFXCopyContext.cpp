@@ -389,7 +389,10 @@ static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
 
 void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDataInOnePage) {
 	assert(pTexture);
+	assert(pData);
 	if(!pData) return;
+
+	if(mpDevice->getApiHandle()->tailMemoryAllocated(pTexture)) return;
 
 	mpDevice->getApiHandle()->allocateTailMemory(pTexture);
 

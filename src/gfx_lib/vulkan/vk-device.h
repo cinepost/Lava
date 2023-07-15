@@ -44,7 +44,11 @@ public:
 
 	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
 
+	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) override;
+
 	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
+
+	virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) override;
 
 	virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
 

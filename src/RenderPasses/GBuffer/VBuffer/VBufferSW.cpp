@@ -52,6 +52,7 @@ namespace {
     // Scripting options.
     const char kUseCompute[] = "useCompute";
     const char kUseDOF[] = "useDOF";
+    const char kUseSubdivisions[] = "useSubdivisions";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
@@ -62,10 +63,11 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
-        { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
-        { "mvec",           "gMotionVector",    "Motion vector",                    true /* optional */, ResourceFormat::RG32Float   },
-        { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
+        { "normals",        "gNormals",         "Normals buffer",                  true /* optional */, ResourceFormat::RG32Float   },
+        { "depth",          "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
+        { "mvec",           "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "viewW",          "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
     };
 };
 
@@ -87,6 +89,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
     for (const auto& [key, value] : dict) {
         if (key == kUseCompute) mUseCompute = value;
         else if (key == kUseDOF) mUseDOF = value;
+        else if (key == kUseSubdivisions) mUseSubdivisions = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }

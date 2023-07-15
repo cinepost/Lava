@@ -146,7 +146,7 @@ namespace fs = boost::filesystem;
     }
 #define FALCOR_ASSERT_OP(a, b, OP)\
     if (!(a OP b)) {\
-        std::string s = boost::str(boost::format("assertion failed( %1% %2% %3% (%4% %5% %6%) )\n%7%(%8%)") % #a % #OP % #b % a % #OP % b % __FILE__ % __LINE__); \
+        std::string s = boost::str(boost::format("assertion failed( %1% %2% %3% )\n%4%(%5%)") % #a % #OP % #b % __FILE__ % __LINE__); \
         Falcor::reportFatalError(s); \
     }
 #define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )

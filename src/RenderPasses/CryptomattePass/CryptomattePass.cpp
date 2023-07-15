@@ -112,7 +112,7 @@ void CryptomattePass::setScene(RenderContext* pRenderContext, const Scene::Share
 void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderData) {
     // TODO: lazy data buffers write.
     if (!mpScene) return;
-    
+
     calculateHashTables(renderData);
     createSortingBuffers();
 
@@ -145,7 +145,7 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         defines.add("is_valid_gFloatHashBuffer", mpFloatHashBuffer ? "1" : "0");
         defines.add("is_valid_gHashBuffer", mpHashBuffer ? "1" : "0");
         defines.add("is_valid_gPreviewHashColorBuffer", mpPreviewHashColorBuffer ? "1" : "0");
-        defines.add("is_valid_gPreviewLayer", pOutputPreviewTex ? "1" : "0");
+        defines.add("is_valid_gPreviewColor", pOutputPreviewTex ? "1" : "0");
 
         std::array<Texture::SharedPtr, kMaxDataLayersCount> dataTextures;
 
@@ -168,8 +168,6 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
         mpPass["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
 
         // Bind crypto data output layers as UAV buffers.
-        assert(dataLayersCount() == kDataOutputNames.size() == mDataLayerTextures.size());
-
         for (size_t i = 0; i < dataLayersCount(); i++) {
             mpPass["gDataLayers"][i] = dataTextures[i];
         }
@@ -246,9 +244,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 materialHashBuffer[materialID] = hash;
                 materialHashFloatBuffer[materialID] = fhash;
 
-                //LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
-                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
-                //    << " float " << boost::lexical_cast<std::string>(fhash);
+                LLOG_DBG << "Hash for material name " << pMaterial->getName() << " clean name " << std::string(clean_name_buffer) 
+                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash) 
+                    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {
@@ -261,7 +259,16 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
 
             mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, materialHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashBuffer.data());
             mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
-            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = manifest.toJsonString();
+            
+            std::string mainfest_string = manifest.toJsonString();
+
+            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = mainfest_string;
+        
+            if(mManifestFilename != "") {
+                std::ofstream out(mManifestFilename);
+                out << mainfest_string;
+                out.close();
+            }
         }
     } else if (mMode == CryptomatteMode::Instance) {
         // Calculate instance name hashes
@@ -286,9 +293,9 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 instanceHashBuffer[instance.internalID] = hash;
                 instanceHashFloatBuffer[instance.internalID] = fhash;
 
-                //LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
-                //    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
-                //    << " float " << boost::lexical_cast<std::string>(fhash);
+                LLOG_DBG << "Hash for instance name " << mpScene->getInstanceName(i) << " clean name " << std::string(clean_name_buffer) 
+                    << " uint " << std::to_string(hash) << " hex " << hash_float_to_hexidecimal(fhash)
+                    << " float " << boost::lexical_cast<std::string>(fhash);
             }
 
             if (outputPreview) {
@@ -301,7 +308,16 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
 
             mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, instanceHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashBuffer.data());
             mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
-            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = manifest.toJsonString();
+            
+            std::string mainfest_string = manifest.toJsonString();
+
+            mMetaData[(boost::format("cryptomatte/%s/manifest") % typeNameHashString).str()] = mainfest_string;
+        
+            if(mManifestFilename != "") {
+                std::ofstream out(mManifestFilename);
+                out << mainfest_string;
+                out.close();
+            }
         }
     } else {
         mpHashBuffer = nullptr;

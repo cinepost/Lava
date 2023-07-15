@@ -428,7 +428,11 @@ MaterialSystem::MaterialStats MaterialSystem::getStats() const {
 	s.textureMemoryInBytes = 0;
 
 	for (const auto& t : textures) {
-		s.textureTexelCount += t->getTexelCount();
+		if(t->isSparse()) {
+			s.virtualTextureTexelCount += t->getTexelCount();
+		} else {
+			s.textureTexelCount += t->getTexelCount();
+		}
 		s.textureMemoryInBytes += t->getTextureSizeInBytes();
 		if (isCompressedFormat(t->getFormat())) s.textureCompressedCount++;
 	}

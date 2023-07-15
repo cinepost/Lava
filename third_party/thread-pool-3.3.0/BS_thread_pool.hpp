@@ -104,6 +104,10 @@ public:
         return futures.size();
     }
 
+    [[nodiscard]] bool empty() const {
+        return futures.size() == 0;
+    }
+
     /**
      * @brief Wait for all the futures stored in this multi_future object.
      */

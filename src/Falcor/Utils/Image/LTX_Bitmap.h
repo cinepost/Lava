@@ -16,7 +16,7 @@ class ResourceManager;
 const size_t kLtxPageSize = 65536;
 const uint8_t kLtxVersionMajor = 1;
 const uint8_t kLtxVersionMinor = 2;
-const uint8_t kLtxVersionBuild = 1;
+const uint8_t kLtxVersionBuild = 2;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', '0', '0', '0', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 4,5,6 used to store major,minor,build versions
 
@@ -170,8 +170,8 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     
  protected:
-    bool readPageData (size_t pageNum, void *pData) const;
-    bool readPageData (size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
+    bool readPageData(size_t pageNum, void *pData) const;
+    bool readPageData(size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
     void readTailData(std::vector<uint8_t>& data) const;
     void readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const;
 

@@ -4,6 +4,8 @@
 #include <float.h>
 #include <assert.h>
 
+#include <vector>
+
 #include <slang/slang.h>
 #include <slang/slang-com-ptr.h>
 
@@ -2216,7 +2218,11 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) = 0;
 
+		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) = 0;
+
 		virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) = 0;
+
+		virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) = 0;
 
 		virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) = 0;
 

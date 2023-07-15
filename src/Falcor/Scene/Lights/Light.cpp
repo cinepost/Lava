@@ -273,7 +273,7 @@ void DirectionalLight::updateFromAnimation(const glm::mat4& transform) {
     setWorldDirection(fwd);
 }
 
-// DistantLight
+// Distant/Sun Light
 
 DistantLight::SharedPtr DistantLight::create(const std::string& name) {
     return SharedPtr(new DistantLight(name));
@@ -341,19 +341,18 @@ void DistantLight::update() {
     }
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
 
+    LLOG_WRN << "cosSubtendedAngle " << std::to_string(mData.cosSubtendedAngle);
+
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
-        mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity * M_2PI);
-        mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity * M_2PI);
-        mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity * M_2PI);
-        mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity * M_2PI);
     } else {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
-        mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
-        mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
-        mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
-        mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
     }
+
+    mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity * M_2PI);
+    mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity * M_2PI);
+    mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity * M_2PI);
+    mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity * M_2PI);
     Light::update();
 }
 

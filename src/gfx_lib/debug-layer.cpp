@@ -367,12 +367,20 @@ Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 	baseObject->allocateTailMemory(pTexture, force);
 }
 
+bool DebugDevice::tailMemoryAllocated(const Falcor::Texture* pTexture) {
+	baseObject->tailMemoryAllocated(pTexture);
+}
+
 void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
 	baseObject->releaseTailMemory(pTexture);
 }
 
 void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	baseObject->updateSparseBindInfo(pTexture);
+}
+
+void DebugDevice::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
+	baseObject->updateSparseBindInfo(textures);
 }
 
 Result DebugDevice::createTextureFromNativeHandle(

@@ -336,7 +336,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
 
 		// Vitrual textures resolve pass
-		mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext);
+		Falcor::Dictionary texturesResolvePassDictionary(mRenderPassesDict);
+		mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext, texturesResolvePassDictionary);
 		mpTexturesResolvePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
 		mpTexturesResolvePass->setScene(pRenderContext, pScene);
 
@@ -839,8 +840,6 @@ void Renderer::renderSample() {
 }
 
 const uint8_t* Renderer::getAOVPlaneImageData(const AOVName& name) {
-	assert(pData);
-
 	auto pAOVPlane = getAOVPlane(name);
 	if (!pAOVPlane) return nullptr;
 

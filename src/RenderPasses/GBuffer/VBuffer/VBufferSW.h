@@ -74,6 +74,7 @@ class VBufferSW : public GBufferBase {
 
 		bool mUseCompute = true;
 		bool mUseDOF = true;                						///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
+		bool mUseSubdivisions = true;
 
 		ComputePass::SharedPtr mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr mpComputeFrustumCullingPass;

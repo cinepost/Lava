@@ -32,9 +32,11 @@ namespace {
 	const std::string kTexResolveData = "gTexResolveData";
 	const std::string kParameterBlockName = "gResolveData";
 
-  const std::string kRayReflectLimit = "rayReflectLimit";
-  const std::string kRayRefractLimit = "rayRefractLimit";
-  const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+	const std::string kRayReflectLimit = "rayReflectLimit";
+	const std::string kRayRefractLimit = "rayRefractLimit";
+	const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+
+	const std::string kAsyncLtxLoading = "asyncLtxLoading";
 
 }  // namespace
 
@@ -43,6 +45,7 @@ void TexturesResolvePass::parseDictionary(const Dictionary& dict) {
         if (key == kRayReflectLimit) setRayReflectLimit(value);
         else if (key == kRayRefractLimit) setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) setRayDiffuseLimit(value);
+        else if (key == kAsyncLtxLoading) setAsyncLoading(static_cast<bool>(value));
     }
 }
 
@@ -220,14 +223,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	// Test resolved data
 	auto pPagesBuffer = pTextureManager->getPagesResidencyBuffer();
-	if(!pPagesBuffer) {
-		LLOG_ERR << "Sparse pages residency buffer is absent!!!";
-		return;
-	}
-
-	const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
-
-	//const auto& virtualPagesStartMap = pTextureManager->getVirtualPagesStartMap();
+	
+	const int8_t* pOutPagesData = pPagesBuffer ? reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read)) : nullptr;
 
 	// Load texture pages
 	auto started = std::chrono::high_resolution_clock::now();
@@ -245,6 +242,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	}
 
+	if(mLoadPagesAsync) mpDevice->flushAndSync();
+
 	for ( auto const& pTex: textures) {
 		uint32_t pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTex.get());
 		uint32_t texturePagesCount = pTex->sparseDataPagesCount();
@@ -254,22 +253,24 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		std::vector<uint32_t> pageIDs;
 
 		// index 'i' is a page index relative to the texture. starts with 0
-		for(uint32_t i = 0; i < texturePagesCount; ++i) {
-			if (pOutPagesData[i + pagesStartOffset] != 0) {
-				pageIDs.push_back(i);
+		if(pOutPagesData) {
+			for(uint32_t i = 0; i < texturePagesCount; ++i) {
+				if (pOutPagesData[i + pagesStartOffset] != 0) {
+					pageIDs.push_back(i);
+				}
 			}
+			LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		}
-
-		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		
-		if(mLoadPagesAsync && 1 == 1) {
+		if(mLoadPagesAsync) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
 			pTextureManager->loadPagesAsync(pTex, pageIDs); 
 		} else {
 			pTextureManager->loadPages(pTex, pageIDs); 
 		}
 	}
-	pPagesBuffer->unmap();
+	
+	if(pPagesBuffer) pPagesBuffer->unmap();
 
 	// In async mode we have to call updateSparseBindInfo on TextureManager as it triggers wait() function on pages loading multi-future
 	if(mLoadPagesAsync) pTextureManager->updateSparseBindInfo();
@@ -368,6 +369,13 @@ void TexturesResolvePass::setDefaultSampler() {
 	mpMinSampler = Sampler::create(mpDevice, desc);
 	desc.setReductionMode(Sampler::ReductionMode::Max);
 	mpMaxSampler = Sampler::create(mpDevice, desc);
+}
+
+TexturesResolvePass& TexturesResolvePass::setAsyncLoading(bool mode) {
+	if(mLoadPagesAsync == mode) return *this;
+	mLoadPagesAsync = mode;
+	mDirty = true;
+	return *this;
 }
 
 TexturesResolvePass& TexturesResolvePass::setRayReflectLimit(int limit) {
