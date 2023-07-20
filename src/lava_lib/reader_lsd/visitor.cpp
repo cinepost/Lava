@@ -108,6 +108,8 @@ void Visitor::setParserStream(std::istream& in) {
     }
 }
 
+bool Visitor::failed() const { return mpSession ? mpSession->failed() : false; };
+
 void Visitor::operator()(ast::ifthen const& c) {
     if (!c.expr) {
         // false expression evaluation, ignore commands until 'endif'
@@ -140,8 +142,9 @@ void Visitor::operator()(ast::cmd_start const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_end const& c) const { 
-    if(!mpSession->cmdEnd())
-        throw std::runtime_error("Error ending current scope !!!");
+    if(!mpSession->cmdEnd()) {
+        LLOG_ERR << "Error ending current scope !!!";
+    }
 }
 
 void Visitor::operator()(ast::cmd_edge const& c) const { 
@@ -178,18 +181,6 @@ void Visitor::operator()(ast::cmd_detail const& c) {
         }
         pBgeo->preCachePrimitives();
     }
-    /*
-     else {
-        auto fullpath = mpSession->getExpandedString(c.filename);
-        pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
-
-        if(c.temporary) {
-            fs::remove(fullpath);
-        }
-
-        pBgeo->preCachePrimitives();
-    }
-    */
 }
 
 void Visitor::operator()(ast::cmd_version const& c) const {

@@ -265,7 +265,7 @@ else()
       --with-libraries=thread
       --with-libraries=json
       --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
@@ -714,6 +714,7 @@ else()
     CMAKE_ARGS -D USE_OCIO:BOOL=OFF
     CMAKE_ARGS -D USE_OPENVDB:BOOL=OFF
     CMAKE_ARGS -D USE_OPENCOLORIO:BOOL=OFF
+    CMAKE_ARGS -D USE_OPENCV:BOOL=OFF
 
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}

@@ -102,6 +102,10 @@ bool ReaderLSD::parseStream(std::istream& in) {
                 boost::apply_visitor(*mpVisitor, cmd);
             }
 
+            if(mpVisitor->failed()) {
+                return false;
+            }
+
             if(mpVisitor->readyToQuit()) {
                 eof = true;
                 break;

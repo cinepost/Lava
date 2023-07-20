@@ -55,19 +55,26 @@ uint32_t getLowerPowerOf2(uint32_t a) {
 }
 
 inline std::vector<fs::path> getInitialShaderDirectories() {
-    std::vector<fs::path> developmentDirectories = {
-        // First we search in source folders.
-        //std::string(PROJECT_DIR),
-        //std::string(PROJECT_DIR) + "../",
-        //std::string(PROJECT_DIR) + "../Tools/FalcorTest/",
-        
-        // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-        std::string(LAVA_INSTALL_DIR) + "/shaders",
-    };
 
-    std::vector<fs::path> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "/shaders",
-    };
+    static std::vector<fs::path> developmentDirectories;
+    static std::vector<fs::path> deploymentDirectories;
+
+    if( developmentDirectories.empty() || deploymentDirectories.empty()) {
+        developmentDirectories = {
+            std::string(LAVA_INSTALL_DIR) + "/shaders",
+            getExecutableDirectory() + "../shaders",
+        };
+
+        deploymentDirectories = {
+            std::string(LAVA_INSTALL_DIR) + "/shaders",
+            getExecutableDirectory() + "../shaders",
+        };
+
+        if(const char* env_p = std::getenv("LAVA_HOME")) {
+            developmentDirectories.push_back(std::string(env_p) + "/shaders");
+            deploymentDirectories.push_back(std::string(env_p) + "/shaders");
+        }
+    }
 
     std::cout << "mode: " << (isDevelopmentMode() ? "development" : "production") << "\n";
 
@@ -75,16 +82,26 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
 }
 
 inline std::vector<std::string> getInitialRenderPassDirectories() {
-    std::vector<std::string> developmentDirectories = {
-        // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-        std::string(LAVA_INSTALL_DIR) + "/render_passes",
-        getExecutableDirectory() + "../render_passes",
-    };
+    static std::vector<std::string> developmentDirectories;
+    static std::vector<std::string> deploymentDirectories;
 
-    std::vector<std::string> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "/render_passes",
-        getExecutableDirectory() + "../render_passes"
-    };
+    if( developmentDirectories.empty() || deploymentDirectories.empty()) {
+        developmentDirectories = {
+            // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
+            std::string(LAVA_INSTALL_DIR) + "/render_passes",
+            getExecutableDirectory() + "../render_passes",
+        };
+
+        deploymentDirectories = {
+            std::string(LAVA_INSTALL_DIR) + "/render_passes",
+            getExecutableDirectory() + "../render_passes"
+        };
+
+        if(const char* env_p = std::getenv("LAVA_HOME")) {
+            developmentDirectories.push_back(std::string(env_p) + "/render_passes");
+            deploymentDirectories.push_back(std::string(env_p) + "/render_passes");
+        }
+    }
 
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
@@ -93,16 +110,25 @@ static std::vector<fs::path> gShaderDirectories = getInitialShaderDirectories();
 static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDirectories();
 
 inline std::vector<std::string> getInitialDataDirectories() {
-    std::vector<std::string> developmentDirectories = {
-        //std::string(PROJECT_DIR) + "/Data",
-        std::string(LAVA_INSTALL_DIR) + "/data",
-        getExecutableDirectory() + "../data",
-    };
+    static std::vector<std::string> developmentDirectories;
+    static std::vector<std::string> deploymentDirectories;
 
-    std::vector<std::string> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "/data",
-        getExecutableDirectory() + "../data"
-    };
+    if( developmentDirectories.empty() || deploymentDirectories.empty()) {
+        developmentDirectories = {
+            std::string(LAVA_INSTALL_DIR) + "/data",
+            getExecutableDirectory() + "../data",
+        };
+
+        deploymentDirectories = {
+            std::string(LAVA_INSTALL_DIR) + "/data",
+            getExecutableDirectory() + "../data"
+        };
+
+        if(const char* env_p = std::getenv("LAVA_HOME")) {
+            developmentDirectories.push_back(std::string(env_p) + "/data");
+            deploymentDirectories.push_back(std::string(env_p) + "/data");
+        }
+    }
 
     std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 

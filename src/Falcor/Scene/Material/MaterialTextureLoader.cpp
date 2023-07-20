@@ -41,11 +41,11 @@ MaterialTextureLoader::~MaterialTextureLoader() {
 	assignTextures();
 }
 
-void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
+bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
 	assert(pMaterial);
 	if (!pMaterial->hasTextureSlot(slot)) {
 		LLOG_WRN << "MaterialTextureLoader::loadTexture() - Material '" << pMaterial->getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call.";
-		return;
+		return false;
 	}
 
 	bool generateMipLevels = true;
@@ -55,12 +55,16 @@ void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 	bool async = true;
 
 	// Request texture to be loaded.
-	TextureManager::TextureHandle handle = mpTextureManager->loadTexture(path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse);
+	TextureManager::TextureHandle handle;
+	if(!mpTextureManager->loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse)) {
+		return false;
+	}
 
 	// Store assignment to material for later.
 	mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
 
 	LLOG_DBG << (loadAsSparse ? "Sparse" : "Simple") << " texture " << path.string() << " with handle mode " << to_string(handle.mode()) << " in assignment";
+	return true;
 }
 
 void MaterialTextureLoader::assignTextures() {

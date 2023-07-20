@@ -49,8 +49,9 @@ struct Visitor: public boost::static_visitor<> {
 
     void setParserStream(std::istream& in);
 
-    inline bool ignoreCommands() const { return mIgnoreCommands; };
-    inline bool readyToQuit() const { return mQuit; };
+    bool ignoreCommands() const { return mIgnoreCommands; };
+    bool readyToQuit() const { return mQuit; };
+    bool failed() const;
 
   protected:
     std::unique_ptr<Session> mpSession;
