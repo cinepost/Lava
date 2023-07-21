@@ -134,7 +134,7 @@ public:
 		\param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
 		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
 	*/
-	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+	bool loadTexture(TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
 	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
 

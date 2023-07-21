@@ -88,6 +88,8 @@ class Session {
     void pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo);
     void pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo);
 
+    bool failed() const { return mFailed; }
+
   private:
  	  Session(std::shared_ptr<Renderer> pRenderer);
  	
@@ -104,6 +106,7 @@ class Session {
     void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 
   private:
+    bool mFailed = false;
     bool  mIPR = false;
     ast::IPRMode mIPRmode = ast::IPRMode::GENERATE;
 

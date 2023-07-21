@@ -816,12 +816,12 @@ uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     return materialID;
 }
 
-void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
+bool SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
     assert(pMaterial);
     if (!mpMaterialTextureLoader) {
         mpMaterialTextureLoader.reset(new MaterialTextureLoader(mpDevice, !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
     }
-    mpMaterialTextureLoader->loadTexture(pMaterial, slot, path, loadAsSparse);
+    return mpMaterialTextureLoader->loadTexture(pMaterial, slot, path, loadAsSparse);
 }
 
 void SceneBuilder::waitForMaterialTextureLoading() {

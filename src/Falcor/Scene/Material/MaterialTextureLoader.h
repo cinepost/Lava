@@ -52,7 +52,7 @@ class MaterialTextureLoader {
 			\param[in] slot Slot to load texture into.
 			\param[in] path Texture file path.
 		*/
-		void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
+		bool loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
 
 	private:
 		void assignTextures();

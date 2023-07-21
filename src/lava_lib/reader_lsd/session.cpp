@@ -231,8 +231,8 @@ bool Session::cmdRaytrace() {
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
 
-  passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
-  passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
+  	passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
+  	passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
@@ -990,7 +990,10 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
-				if(!pushGeometryInstance(pScopeObj)) return false;
+				if(!pushGeometryInstance(pScopeObj)) {
+					mFailed = true;
+					return false;
+				}
 			}
 			break;
 		case ast::Style::PLANE:
@@ -1307,23 +1310,33 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
 	    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
-	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse);
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse)) {
+	    		return false;
+	    	}
 	    }
 
 	    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
-	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse)) {
+	    		return false;
+	    	}
 	    }
 
 	    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
-	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse);
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
+	    		return false;
+	    	}
 	    }
 
 	    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
-	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse);
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse)) {
+	    		return false;
+	    	}
 	    }
 
 	    if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
-	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse)) {
+	    		return false;
+	    	}
 	    }
 	}
 

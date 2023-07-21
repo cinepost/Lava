@@ -471,9 +471,7 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 	return result;
 }
 
-TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const std::string& udimMask, bool loadAsSparse) {
-	TextureHandle handle;
-
+bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const std::string& udimMask, bool loadAsSparse) {
 	// Find the full path to the texture if it's not a UDIM.
 	fs::path fullPath;
 
@@ -484,7 +482,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 	} else {
 		if (!findFileInDataDirectories(path, fullPath)) {
 			LLOG_WRN << "Can't find texture file " << path;
-			return handle;
+			return false;
 		}
 	}
 
@@ -549,6 +547,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 				if(!pTexture) {
 					LLOG_ERR << "Error loading sparse texture !!!";
+					return false;
 				}
 			}
 
@@ -642,7 +641,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 		waitForTextureLoading(handle);
 	}
 
-	return handle;
+	return true;
 }
 
 void TextureManager::waitForTextureLoading(const TextureHandle& handle) {

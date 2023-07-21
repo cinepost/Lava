@@ -453,6 +453,13 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 	LLOG_DBG << "Source ResourceFormat from OIIO: " << to_string(srcFormat);
 	auto dstFormat = getDestFormat(srcFormat);
 
+	// open ltx texture file
+	FILE *pFile = fopen(dstFilename.c_str(), "wb");
+	if(!pFile) {
+		LLOG_ERR << "Error opening file " << dstFilename << " for writing !!!";
+		return false;
+	}
+
 	oiio::ImageBuf srcBuff;
 
 	if(spec.nchannels == 3 ) {
@@ -530,9 +537,11 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		header.dataOffset += (sizeof(uint32_t) + sizeof(uint16_t)) * header.pagesCount; 
 	}
 
-	// open file and write header
-	FILE *pFile = fopen(dstFilename.c_str(), "wb");
-	fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+	// write header
+	if(fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile) != sizeof(LTX_Header)) {
+		LLOG_ERR << "Error writing header for texture " << dstFilename << " !";
+		return false;
+	}
 
 	// if some compression being used we have to write additional tables before actual pages data begins.
 	// first table is individual page offset values
