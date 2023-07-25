@@ -782,6 +782,8 @@ void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const s
 			}
 		}
 
+		if( extendedTexturesData.empty()) return;
+
 		mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
 	}
 	var.setBuffer(mpExtendedTexturesDataBuffer);
@@ -832,6 +834,8 @@ void TextureManager::buildSparseResidencyData() {
 
 		// TODO: prefill pages residency info
 	}
+
+	if(mVirtualTexturesData.empty()) return;
 
 	// ensure pages buffer is aligned to 64 bytes
 	auto dv = std::div(mVirtualPagesData.size(), 64);
