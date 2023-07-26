@@ -208,9 +208,21 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 			if (value.type() == typeid(int)) {
 				spec.attribute(key, int(value));
 			} else if (value.type() == typeid(std::string)) {
-				spec.attribute(key, std::string{value});
+				#ifdef _WIN32
+				// spec.attribute(key, std::string{value});
+				spec.attribute(key, value.operator std::string());
+				// spec.attribute(key, static_cast<const std::string&>(value));
+				#else
+				spec.attribute(key, std::string(value));
+				#endif
 			} else if (value.type() == typeid(const char *)) {
-				spec.attribute(key, std::string{value});
+				#ifdef _WIN32
+				// spec.attribute(key, std::string{value});
+				spec.attribute(key, value.operator std::string());
+				// spec.attribute(key, static_cast<const std::string&>(value));
+				#else
+				spec.attribute(key, std::string(value));
+				#endif
 			} else {
 				LLOG_ERR << "Unable to write metadata \"" << key << "\"" << " of unsupported type " << value.type().name();
 			}

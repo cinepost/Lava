@@ -43,9 +43,21 @@ InternalDictionary::Value::operator std::string() const {
 
 std::string InternalDictionary::Value::toJsonString() const {
     if(mValue.type() == typeid(std::string)) {
-        return "\"" + std::string{*this} + "\"";
+        #ifdef _WIN32
+        // return "\"" + std::string{*this} + "\"";
+        return "\"" + this->operator std::string() + "\"";
+        // return "\"" + static_cast<const std::string&>(*this) + "\"";
+        #else
+        return "\"" + std::string(*this) + "\"";
+        #endif
     }
-    return std::string{*this};
+    #ifdef _WIN32
+    // return std::string{*this};
+    return this->operator std::string();
+    // return static_cast<const std::string&>(*this);
+    #else
+    return std::string(*this);
+    #endif
 }
 
 std::string InternalDictionary::toJsonString() const {

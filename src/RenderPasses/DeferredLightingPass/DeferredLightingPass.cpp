@@ -94,7 +94,9 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
         #ifdef _WIN32
-        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(static_cast<const std::string&>(value));
+        // else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string{value});
+        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(value.operator std::string());
+        // else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(static_cast<const std::string&>(value));
         #else
         else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
         #endif
