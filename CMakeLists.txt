@@ -13,6 +13,10 @@ set( PROJECT_VERSION_MAJOR 0 )
 set( PROJECT_VERSION_MINOR 0 )
 set( PROJECT_VERSION_PATCH 001 )
 
+if(WIN32)
+  file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindTBB.cmake)
+endif()
+
 #### Handle build mode
 # Set a default build type if none was specified
 set(default_build_type "Release")

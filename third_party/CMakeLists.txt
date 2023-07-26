@@ -311,7 +311,7 @@ else()
     #   --with-libraries=json
     #   --prefix=<INSTALL_DIR>
     CONFIGURE_COMMAND ./bootstrap.bat
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
       --with-filesystem
       --with-system
       --with-date_time

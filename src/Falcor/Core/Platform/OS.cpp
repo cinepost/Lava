@@ -62,12 +62,12 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
             std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "../shaders",
+            getExecutableDirectory() + "/../shaders",
         };
 
         deploymentDirectories = {
             std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "../shaders",
+            getExecutableDirectory() + "/../shaders",
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
@@ -89,12 +89,12 @@ inline std::vector<std::string> getInitialRenderPassDirectories() {
         developmentDirectories = {
             // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
             std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "../render_passes",
+            getExecutableDirectory() + "/../render_passes",
         };
 
         deploymentDirectories = {
             std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "../render_passes"
+            getExecutableDirectory() + "/../render_passes"
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
@@ -116,12 +116,12 @@ inline std::vector<std::string> getInitialDataDirectories() {
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
             std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "../data",
+            getExecutableDirectory() + "/../data",
         };
 
         deploymentDirectories = {
             std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "../data"
+            getExecutableDirectory() + "/../data"
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
