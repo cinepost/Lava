@@ -287,6 +287,7 @@ else()
                 ${OIDN_LIBRARIES}
                 "Comctl32.lib"
                 "comsuppw.lib"
+                "Shcore.lib"
         )
     else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
