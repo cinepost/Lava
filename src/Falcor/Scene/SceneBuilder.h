@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_SCENEBUILDER_H_
 
 #include <map>
+#include <bitset>
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
@@ -89,7 +90,7 @@ class dlldecl SceneBuilder {
 
     /** Flags that control how the scene will be built. They can be combined together.
     */
-    enum class Flags {
+    enum class Flags: uint32_t {
         None                            = 0x0,      ///< None
         DontMergeMaterials              = 0x1,      ///< Don't merge materials that have the same properties. Use this option to preserve the original material names.
         UseOriginalTangentSpace         = 0x2,      ///< Use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space. We will always generate tangent space if it is missing.
@@ -110,6 +111,7 @@ class dlldecl SceneBuilder {
         TessellateCurvesIntoPolyTubes   = 0x10000,  ///< Tessellate curves into poly-tubes (the default is linear swept spheres).
         UseRaytracing                   = 0x20000,  ///< Use raytracing
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
+        GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
 
         UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                = 0x20000000, ///< Rebuild scene cache.
@@ -796,6 +798,10 @@ protected:
 
     friend class SceneCache;
 };
+
+inline std::string to_string(SceneBuilder::Flags f) {
+    return std::bitset<32>(static_cast<uint32_t>(f)).to_string();
+}
 
 enum_class_operators(SceneBuilder::Flags);
 

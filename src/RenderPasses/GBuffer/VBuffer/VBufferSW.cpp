@@ -81,6 +81,8 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+
+    mDirty = true;
 }
 
 void VBufferSW::parseDictionary(const Dictionary& dict) {
@@ -162,7 +164,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if(!mpMeshletDrawListBuffer) return;
 
     // Create rasterization pass.
-    if (!mpComputeRasterizerPass) {
+    if (!mpComputeRasterizerPass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeRasterizerFile).csEntry("rasterize").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -186,7 +188,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpSampleGenerator->setShaderData(var);
     }
 
-    if(!mpComputeReconstructPass) {
+    if(!mpComputeReconstructPass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeReconstructFile).csEntry("reconstruct").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -198,8 +200,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpComputeReconstructPass = ComputePass::create(mpDevice, desc, defines, true);
     }
 
-    const uint meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    const uint groupsX = meshletDrawsCount * kMaxGroupThreads;
+    const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
+    const uint32_t groupsX = meshletDrawsCount * kMaxGroupThreads;
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
@@ -208,6 +210,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["dispatchX"] = groupsX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
         
+        var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthPrimBuffer"] = mpLocalDepthPrimBuffer;
         var["gLocalDepthParmBuffer"] = mpLocalDepthParmBuffer;
         var["gLocalDepthInstBuffer"] = mpLocalDepthInstBuffer;
@@ -230,6 +233,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // Bind resources.
         var["gVBuffer"] = getOutput(renderData, kVBufferName);
         
+        var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthPrimBuffer"] = mpLocalDepthPrimBuffer;
         var["gLocalDepthParmBuffer"] = mpLocalDepthParmBuffer;
         var["gLocalDepthInstBuffer"] = mpLocalDepthInstBuffer;
@@ -256,6 +260,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 void VBufferSW::recreateBuffers() {
     if(!mDirty) return;
     //mpLocalDepth = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, Falcor::ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+    mpHiZBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    
     mpLocalDepthPrimBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     mpLocalDepthParmBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     mpLocalDepthInstBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
@@ -288,7 +294,7 @@ void VBufferSW::recreateMeshletDrawList() {
     LLOG_DBG << "Meshlets draw list size is " << meshletsDrawList.size();
 
     // Create buffers
-    if((meshletsDrawList.size() > 0)) {
+    if(!meshletsDrawList.empty()) {
         mpMeshletDrawListBuffer = Buffer::createStructured(
             mpDevice, sizeof(MeshletDraw), meshletsDrawList.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, 
             meshletsDrawList.data()

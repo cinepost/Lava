@@ -118,7 +118,6 @@ def initializeFeatures(settings):
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
 
     Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
-    Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
     Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
     
     # -- Image --

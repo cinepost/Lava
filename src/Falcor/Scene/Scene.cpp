@@ -246,7 +246,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 }
 
 Scene::~Scene() {
-
+    printMeshletsStats();
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -1177,6 +1177,12 @@ void Scene::finalize() {
     mFinalized = true;
 }
 
+void Scene::printMeshletsStats() const {
+    if(mMeshlets.empty()) return;
+    LLOG_INF << "Meshlets count: " << mSceneStats.meshletsCount;
+    LLOG_INF << "Meshlets data memory size: " << formatByteSize(mSceneStats.meshletsMemoryInBytes);
+}
+
 void Scene::initializeCameras() {
     for (auto& camera : mCameras) {
         updateAnimatable(*camera, *mpAnimationController, true);
@@ -1966,64 +1972,32 @@ void Scene::createDrawList() {
 
     // Helper to create the draw-indirect buffer.
     auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, bool isDoubleSided, ResourceFormat ibFormat = ResourceFormat::Unknown) {
-        if (drawMeshes.size() > 0) {
-/*
-            std::vector<uint32_t> drawCounts(drawMeshes.size(), 1);
+        if (drawMeshes.empty()) return;
+        for (const auto drawMesh: drawMeshes) {
             DrawArgs draw;
-            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
-            draw.pCountBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounts.data());
-            //draw.pBuffer->setName("Scene draw buffer");
-            draw.count = (uint32_t)drawMeshes.size();
+            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
+            draw.pBuffer->setName("Scene draw buffer");
+            draw.count = 1;//(uint32_t)drawMeshes.size();
             draw.ccw = ccw;
+            draw.cullBackface = !isDoubleSided;
             draw.ibFormat = ibFormat;
             mDrawArgs.push_back(draw);
-            //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
-*/
-
-            for (const auto drawMesh: drawMeshes) {
-                DrawArgs draw;
-                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
-                draw.pBuffer->setName("Scene draw buffer");
-                //assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
-                draw.count = 1;//(uint32_t)drawMeshes.size();
-                draw.ccw = ccw;
-                draw.cullBackface = !isDoubleSided;
-                draw.ibFormat = ibFormat;
-                mDrawArgs.push_back(draw);
-                //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
-            }
         }
     };
 
     auto processInstances = [this](const auto& instancesByMaterial, bool isDoubleSided) {
         // Helper to create the draw-indirect buffer.
         auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, bool isDoubleSided, ResourceFormat ibFormat = ResourceFormat::Unknown) {
-            if (drawMeshes.size() > 0) {
-    /*
-                std::vector<uint32_t> drawCounts(drawMeshes.size(), 1);
+            if (drawMeshes.empty()) return;
+            for (const auto drawMesh: drawMeshes) {
                 DrawArgs draw;
-                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
-                draw.pCountBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounts.data());
-                //draw.pBuffer->setName("Scene draw buffer");
-                draw.count = (uint32_t)drawMeshes.size();
+                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
+                draw.pBuffer->setName("Scene draw buffer");
+                draw.count = 1;//(uint32_t)drawMeshes.size();
                 draw.ccw = ccw;
+                draw.cullBackface = !isDoubleSided;
                 draw.ibFormat = ibFormat;
                 mDrawArgs.push_back(draw);
-                //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
-    */
-
-                for (const auto drawMesh: drawMeshes) {
-                    DrawArgs draw;
-                    draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
-                    draw.pBuffer->setName("Scene draw buffer");
-                    //assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
-                    draw.count = 1;//(uint32_t)drawMeshes.size();
-                    draw.ccw = ccw;
-                    draw.cullBackface = !isDoubleSided;
-                    draw.ibFormat = ibFormat;
-                    mDrawArgs.push_back(draw);
-                    //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
-                }
             }
         };
         

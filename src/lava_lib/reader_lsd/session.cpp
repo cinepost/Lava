@@ -68,42 +68,17 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 }
 
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
-/*
-	auto& config = ConfigStore::instance();
-	switch(type) {
-		case lsd::ast::Type::BOOL:
-			config.set<bool>(name, value);
-			break;
-		default:
-			break;
-	}
-*/
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
 
-	if (name == "vtoff") {
-		mRendererConfig.useVirtualTexturing = get_bool(value); return;
-	}
-	if (name == "fconv") {
-		mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return;
-	}
-	if (name == "async_geo") {
-		mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return;
-	}
-	if (name == "cull_mode") {
-		mRendererConfig.cullMode = boost::get<std::string>(value); return;
-	}
-	if (name == "vtex_conv_quality") {
-		mRendererConfig.virtualTexturesCompressionQuality = boost::get<std::string>(value); return;
-	}
-	if (name == "vtex_tlc") {
-		mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return;
-	}
-	if (name == "vtex_tlc_level") {
-		mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return;
-	}
-	if (name == "geo_tangent_generation") {
-		mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return;
-	}
+	if (name == "vtoff") { mRendererConfig.useVirtualTexturing = get_bool(value); return; }
+	if (name == "fconv") { mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return; }
+	if (name == "async_geo") { mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return; }
+	if (name == "generate_meshlets") { mRendererConfig.generateMeshlets = get_bool(value); return; }
+	if (name == "cull_mode") { mRendererConfig.cullMode = boost::get<std::string>(value); return; }
+	if (name == "vtex_conv_quality") { mRendererConfig.virtualTexturesCompressionQuality = boost::get<std::string>(value); return; }
+	if (name == "vtex_tlc") { mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return; }
+	if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
+	if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
 
 	LLOG_WRN << "Unsupported renderer configuration property: " << name << " of type:" << to_string(type);
 	return;

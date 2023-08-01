@@ -75,6 +75,7 @@ configParms = {
     "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
     "lv_vtex_tlc"               : SohoParm("lv_vtex_tlc", "string", key="lv_vtex_tlc", skipdefault=False),
     "lv_vtex_tlc_level"         : SohoParm("lv_vtex_tlc_level", "int", key="lv_vtex_tlc_level", skipdefault=False),
+    "lv_generate_meshlets"      : SohoParm("lv_generate_meshlets", "bool", key="lv_generate_meshlets", skipdefault=False),
 
     "lv_geo_tangent_generation" : SohoParm("lv_geo_tangent_generation", "string", key="lv_geo_tangent_generation", skipdefault=False),
 }
@@ -200,32 +201,20 @@ def header(now, propdefs):
     # Renderer configuation
     cfg_plist = rop.evaluate(configParms, now)
     cmd_comment("Renderer configuration")
-    vtoff = cfg_plist.get('lv_vtoff', None)
-    cmd_declare_parm('global', 'vtoff', vtoff)
 
-    fconv = cfg_plist.get('lv_fconv', None)
-    cmd_config('fconv', fconv)
+    cmd_config('fconv', cfg_plist.get('lv_fconv', None))
+    cmd_config('async_vtex', cfg_plist.get('lv_async_vtex', None))
+    cmd_config('cull_mode', cfg_plist.get('lv_cull_mode', None))
+    cmd_config('vtex_conv_quality', cfg_plist.get('lv_vtex_conv_quality', None))
+    cmd_config('vtex_tlc', cfg_plist.get('lv_vtex_tlc', None))
+    cmd_config('vtex_tlc_level', cfg_plist.get('lv_vtex_tlc_level', None))
+    cmd_config('geo_tangent_generation', cfg_plist.get('lv_geo_tangent_generation', None))
+    cmd_config('generate_meshlets', cfg_plist.get('lv_generate_meshlets', None))
 
-    async_geo = cfg_plist.get('lv_async_geo', None)
-    cmd_declare_parm('global', 'async_geo', async_geo)
-
-    async_vtex = cfg_plist.get('lv_async_vtex', None)
-    cmd_config('async_vtex', async_vtex)
-
-    cull_mode = cfg_plist.get('lv_cull_mode', None)
-    cmd_config('cull_mode', cull_mode)
-
-    vtex_conv_quality = cfg_plist.get('lv_vtex_conv_quality', None)
-    cmd_config('vtex_conv_quality', vtex_conv_quality)
-
-    vtex_tlc = cfg_plist.get('lv_vtex_tlc', None)
-    cmd_config('vtex_tlc', vtex_tlc)
-
-    vtex_tlc_level = cfg_plist.get('lv_vtex_tlc_level', None)
-    cmd_config('vtex_tlc_level', vtex_tlc_level)
-
-    geo_tangent_generation = cfg_plist.get('lv_geo_tangent_generation', None)
-    cmd_config('geo_tangent_generation', geo_tangent_generation)
+    cmd_declare_parm('global', 'async_geo', cfg_plist.get('lv_async_geo', None))
+    cmd_declare_parm('global', 'vtoff', cfg_plist.get('lv_vtoff', None))
+    
+    
 
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])

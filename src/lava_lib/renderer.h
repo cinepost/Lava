@@ -40,6 +40,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       bool useRaytracing = true;
       bool useVirtualTexturing = false;
       bool useAsyncGeometryProcessing = true;
+      bool generateMeshlets = false;
 
       bool        forceVirtualTexturesReconversion = false;
       std::string virtualTexturesCompressionQuality = "high";

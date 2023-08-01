@@ -25,7 +25,7 @@ Texture2D<float4> gTextureGrads;
 Texture2D<float2> gMotionVector;
 
 // Extra input buffers
-TypedBuffer<float4> gFalseColorBuffer;
+Buffer<float4> gFalseColorBuffer;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;

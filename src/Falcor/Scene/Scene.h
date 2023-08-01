@@ -369,26 +369,28 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
                 curveIndexMemoryInBytes + curveVertexMemoryInBytes + sdfGridMemoryInBytes + materials.materialMemoryInBytes + materials.textureMemoryInBytes +
                 blasMemoryInBytes + blasScratchMemoryInBytes + tlasMemoryInBytes + tlasScratchMemoryInBytes +
                 lightsMemoryInBytes + envMapMemoryInBytes + emissiveMemoryInBytes +
-                gridVolumeMemoryInBytes + gridMemoryInBytes;
+                gridVolumeMemoryInBytes + gridMemoryInBytes + meshletsMemoryInBytes;
         }
         /** Convert to python dict.
         */
         //pybind11::dict toPython() const;
     };
 
-    inline const SceneStats& getSceneStats() const { return mSceneStats; }
+    const SceneStats& getSceneStats() const { return mSceneStats; }
+
+    void printMeshletsStats() const;
 
     /** Get the render settings.
     */
-    inline const RenderSettings& getRenderSettings() const { return mRenderSettings; }
+    const RenderSettings& getRenderSettings() const { return mRenderSettings; }
 
     /** Get the render settings.
     */
-    inline RenderSettings& getRenderSettings() { return mRenderSettings; }
+    RenderSettings& getRenderSettings() { return mRenderSettings; }
 
     /** Set the render settings.
     */
-    inline void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
+    void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
 
     /** Returns true if ray tracing is enabled for this scene.
     */

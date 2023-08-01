@@ -70,13 +70,15 @@ bool Renderer::init(const Config& config) {
 	Falcor::Threading::start();
 
 	auto sceneBuilderFlags = Falcor::SceneBuilder::Flags::DontMergeMeshes;
-	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) {
-		sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
-	}
 
-	if (mCurrentConfig.useRaytracing) {
-		sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
-	}
+	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
+	if (mCurrentConfig.useRaytracing) sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
+
+	LLOG_WRN << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
+
+	if (mCurrentConfig.generateMeshlets) sceneBuilderFlags |= SceneBuilder::Flags::GenerateMeshlets;
+
+	LLOG_WRN << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;

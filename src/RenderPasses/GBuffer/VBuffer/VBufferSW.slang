@@ -33,6 +33,8 @@ import Utils.Sampling.SampleGenerator;
 #include "VBufferSW.Meshlet.slangh"
 
 RWTexture2D<PackedHitInfo> gVBuffer;
+
+RWByteAddressBuffer gHiZBuffer;
 RWByteAddressBuffer gLocalDepthPrimBuffer;
 RWByteAddressBuffer gLocalDepthParmBuffer;
 RWByteAddressBuffer gLocalDepthInstBuffer;

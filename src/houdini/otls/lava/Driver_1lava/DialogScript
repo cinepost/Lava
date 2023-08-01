@@ -1662,6 +1662,20 @@
                 parmtag { "script_callback_language" "python" }
             }
         }
+
+        group {
+            name    "images_4_1_5"
+            label   "Advanced"
+
+            parm {
+                name    "lv_generate_meshlets"
+                label   "Genetate Meshlets"
+                type    toggle
+                default { "strmatch(chs(\"lv_primary_raygen_type\"),\"swraster\")" }
+                help    "Genertate meshlets data for software primary ray generation."
+                parmtag { "script_callback_language" "python" }
+            }
+        }
     }
 
     group {

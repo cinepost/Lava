@@ -86,6 +86,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      mpLocalDepthParmBuffer;  ///< Local depth-barycentric parametrization buffer
 		Buffer::SharedPtr      mpLocalDepthInstBuffer;  ///< Local depth-instanceIndex buffer
 
+		Buffer::SharedPtr      mpHiZBuffer;
+
 		// Meshlets part
 		Buffer::SharedPtr      mpMeshletDrawListBuffer;
 };
