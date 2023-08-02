@@ -47,7 +47,11 @@ RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+
+// Optional debug buffers
 RWTexture2D<uint> gTime;
+RWTexture2D<uint> gMeshletID;
+RWTexture2D<uint> gMicroPolyID;
 
 #define is_valid(name) (is_valid_##name != 0)
 

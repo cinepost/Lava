@@ -48,14 +48,14 @@ namespace {
     };
 
     const ChannelList kExtraInputOutputChannels = {
-        { kInputOuputMeshlet, "gMeshletID",         "Motion vector buffer (float format)", true /* optional */ , ResourceFormat::R32Uint    },
+        { kInputOuputMeshlet, "gMeshletID",         "Meshlet ID",                    true /* optional */, ResourceFormat::R32Uint           },
     };
 
     const ChannelList kExtraOutputChannels = {
         // Service outputs
         { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float          },
         { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float          },
-        { "meshlet_color",    "gMeshletColor",      "Meshlet false color buffer",    true /* optional */, ResourceFormat::RGBA16Float       },
+        { "meshlet_color",    "gMeshletColor",      "Meshlet false-color buffer",    true /* optional */, ResourceFormat::RGBA8Uint         },
     };
 }
 

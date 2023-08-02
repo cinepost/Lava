@@ -55,6 +55,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     gInOutColor[pixelPos] = float4(barycentrics, 1.f);
 
+    gMeshletColor[pixelPos] = float4(0, 1, 0, 1);
+#if is_valid(gMeshletColor)
+    gMeshletColor[pixelPos] = float4(0, 1, 0, 1); //gFalseColorBuffer[pixelPos.x % FALSE_COLOR_BUFFER_SIZE];
+#endif  // gMeshletColor
+
 #if is_valid(gPrimID)
     gPrimID[pixelPos] = triangleHit.primitiveIndex;
 #endif  // gOutFresnel

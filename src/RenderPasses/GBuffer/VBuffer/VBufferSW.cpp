@@ -67,7 +67,12 @@ namespace {
         { "depth",          "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",           "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",          "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+        
+        // Debug channels
         { "time",           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
+        { "meshlet_id",     "gMeshletID",       "Meshlet id",                      true /* optional */, ResourceFormat::R32Uint     },
+        { "micropoly_id",   "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
+
     };
 };
 

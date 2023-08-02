@@ -567,6 +567,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::MESHLET_COLOR:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.meshlet_color", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}
