@@ -53,6 +53,9 @@ groupshared uint   prim_ids[MESHLET_MAX_POLYGONS_COUNT];
 groupshared float3 positions[MESHLET_MAX_VERTICES_COUNT];
 
 
+#define is_valid(name) (is_valid_##name != 0)
+
+
 float3 transformPoint(const float3 p) {
     const float4 pV = mul(float4(p, 1.f), gScene.camera.getViewProj());
     float3 pS = pV.xyz / pV.w;
@@ -122,12 +125,23 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
                 const uint64_t parm_value = (z64 | (tx << 16)) | ty;
                 const uint64_t inst_value = z64 | instanceID.index;
                 
-                //uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
-                //if ( v <= prim_value) {
-                    gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);  
+                uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+                if ( prim_value < v) {
+
+                    gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
+
+#if is_valid(gMeshletID)
+                    gMeshletID[pixelPos] = draw.meshletID;
+#endif // gMeshletID
+
+#if is_valid(gMicroPolyID)
+                    gMicroPolyID[pixelPos] = primitiveIndex;
+#endif // gMicroPolyID
+
+
                     gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
                     gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
-                //}
+                }
             }
             texcoord += texcoord_dx;
         }

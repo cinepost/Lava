@@ -6,6 +6,7 @@
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Utils/Color/FalseColorGenerator.h"
 
 using namespace Falcor;
 
@@ -40,6 +41,7 @@ class PASS_API DebugShadingPass : public RenderPass {
 
 		ResourceFormat                  mFalseColorFormat = ResourceFormat::RGBA16Float;
 
+		FalseColorGenerator::SharedPtr  mpFalseColorGenerator;
 		Buffer::SharedPtr               mpMeshletColorBuffer;
 
 		uint2 mFrameDim = { 0, 0 };

@@ -35,6 +35,8 @@ __quickplanes = {
     "op_id":            QuickPlane("Op_Id",                    "float",         "float32",    False,      {}),
     "prim_id":          QuickPlane("Prim_Id",                  "float",         "float32",    False,      {}),
     "variance":         QuickPlane("VARIANCE",                 "float",         "float16",    False,      {}),
+    "meshlet_color":    QuickPlane("MESHLET_COLOR",            "vector3",       "float16",    False,      {}),
+    "micropoly_color":  QuickPlane("MICROPOLY_COLOR",          "vector3",       "float16",    False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -54,6 +56,8 @@ __toggleplanedict = {
     # ipr/diagnistics
     'lv_quickplane_op_id':                  ['op_id'],
     'lv_quickplane_prim_id':                ['prim_id'],
+    'lv_quickplane_meshlet_color':          ['meshlet_color'],
+    'lv_quickplane_micropoly_color':        ['micropoly_color'],
 }
 
 def getPlaneDict():

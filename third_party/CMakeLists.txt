@@ -880,9 +880,9 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
   if(WIN32)
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
   else()
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
   endif()
 
 endif()

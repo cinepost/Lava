@@ -57,6 +57,12 @@ __exported import Scene.SDFs.SDFGridHitData;
     If a bit size define is zero, no bits are needed (the field has only one possible value = 0).
 */
 
+#ifndef HIT_INFO_USE_COMPRESSION
+#define HIT_INFO_USE_COMPRESSION false
+#endif
+
+
+
 #if HIT_INFO_USE_COMPRESSION
 typedef uint2 PackedHitInfo;
 #else

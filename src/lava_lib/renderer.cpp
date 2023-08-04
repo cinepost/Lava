@@ -567,6 +567,24 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::MESHLET_COLOR:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("VBufferPass.meshlet_id", "ShadingPass.meshlet_id");
+						mpRenderGraph->addEdge("ShadingPass.meshlet_color", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::MICROPOLY_COLOR:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("VBufferPass.micropoly_id", "ShadingPass.micropoly_id");
+						mpRenderGraph->addEdge("ShadingPass.micropoly_color", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}

@@ -47,7 +47,13 @@ RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+
+RWTexture2D<uint> gMeshletID;
+RWTexture2D<uint> gMicroPolyID;
+
+// Optional debug buffers
 RWTexture2D<uint> gTime;
+
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -76,6 +82,12 @@ struct VBufferSW {
     float2 frameDimF;
     uint dispatchX;
     uint meshletDrawsCount;
+
+    void writeMeshletID(uint2 pixel, uint meshletID) {
+//#if is_valid(gMeshletID)
+        gMeshletID[pixel] = pixel.x;
+//#endif // gMeshletID    
+    }
 
     void writeHit(uint2 pixel, const HitInfo hit) {
         gVBuffer[pixel] = hit.getData();
