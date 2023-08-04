@@ -37,25 +37,33 @@ namespace {
     const std::string kInputDepth           = "depth";
     const std::string kInputTexGrads        = "texGrads";
     const std::string kInputMVectors        = "mvec";
-    const std::string kInputOuputMeshlet    = "meshletId";
+
+    const std::string kInputOuputMeshlet    = "meshlet_id";
+    const std::string kInputOuputMicroPoly  = "micropoly_id";
+
+    const std::string kOutputMeshletColor   = "meshlet_color";
+    const std::string kOutputMicroPolyColor = "micropoly_color";
 
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,        "gDepth",             "Depth buffer",                  true /* optional */, ResourceFormat::Unknown           },
-        { kInputTexGrads,     "gTextureGrads",      "Texture gradients",             true /* optional */, ResourceFormat::Unknown           },
-        { kInputMVectors,     "gMotionVector",      "Motion vector buffer (float format)", true /* optional */                              },
+        { kInputDepth,              "gDepth",             "Depth buffer",                   true /* optional */, ResourceFormat::Unknown           },
+        { kInputTexGrads,           "gTextureGrads",      "Texture gradients",              true /* optional */, ResourceFormat::Unknown           },
+        { kInputMVectors,           "gMotionVector",      "Motion vector buffer (float format)", true /* optional */                               },
+        { kInputOuputMeshlet,       "gMeshletID",         "Meshlet ID",                     true /* optional */, ResourceFormat::R32Uint           },
+        { kInputOuputMicroPoly,     "gMicroPolyID",       "Micro-polygon ID",               true /* optional */, ResourceFormat::R32Uint           },
     };
 
     const ChannelList kExtraInputOutputChannels = {
-        { kInputOuputMeshlet, "gMeshletID",         "Meshlet ID",                    true /* optional */, ResourceFormat::R32Uint           },
+        
     };
 
     const ChannelList kExtraOutputChannels = {
         // Service outputs
-        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float          },
-        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float          },
-        { "meshlet_color",    "gMeshletColor",      "Meshlet false-color buffer",    true /* optional */, ResourceFormat::RGBA8Uint         },
+        { "prim_id",                "gPrimID",            "Primitive id buffer",            true /* optional */, ResourceFormat::R32Float          },
+        { "op_id",                  "gOpID",              "Operator id buffer",             true /* optional */, ResourceFormat::R32Float          },
+        { kOutputMeshletColor,      "gMeshletColor",      "Meshlet false-color buffer",     true /* optional */, ResourceFormat::RGBA16Float       },
+        { kOutputMicroPolyColor,    "gMicroPolyColor",    "MicroPolygon false-color buffer",true /* optional */, ResourceFormat::RGBA16Float       },
     };
 }
 
@@ -76,7 +84,7 @@ Dictionary DebugShadingPass::getScriptingDictionary() {
 }
 
 DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
-    
+    mpFalseColorGenerator = nullptr;
 }
 
 RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
@@ -128,7 +136,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         mpShadingPass["gScene"] = mpScene->getParameterBlock();
         mpShadingPass["gFalseColorBuffer"] = mpMeshletColorBuffer;
 
-
         // Bind mandatory input channels
         mpShadingPass["gInOutColor"] = renderData[kInputColor]->asTexture();
         mpShadingPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
@@ -150,7 +157,23 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
             mpShadingPass[channel.texname] = pTex;
         }
+
+        auto pMeshletIDTexture = renderData[kInputOuputMeshlet]->asTexture();
+        if(pMeshletIDTexture) {
+            LLOG_WRN << "Meshlet id texture size " << pMeshletIDTexture->getWidth() << " " << pMeshletIDTexture->getHeight();
+        }
+
+        if (!mpFalseColorGenerator && 
+            (   
+                (renderData[kInputOuputMeshlet]->asTexture()   && renderData[kOutputMeshletColor]->asTexture()) || 
+                (renderData[kInputOuputMicroPoly]->asTexture() && renderData[kOutputMicroPolyColor]->asTexture())
+            )
+        ) {
+            mpFalseColorGenerator = FalseColorGenerator::create(mpDevice,meshletColorCycleSize);
+        }
     }
+
+    if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(mpShadingPass["gFalseColorGenerator"]);
 
     auto cb_var = mpShadingPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;

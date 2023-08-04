@@ -47,6 +47,7 @@ file( GLOB SOURCES
     #./Utils/SampleGenerators/PoissonSamplePattern.cpp
 
     ./Utils/Color/*.cpp
+    ./Utils/Color/FalseColorGenerator.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Sampling/*.cpp
     ./Utils/Sampling/Pseudorandom/*.cpp

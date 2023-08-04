@@ -4,6 +4,7 @@ import Scene.Raster;
 import Scene.Shading;
 
 import Utils.Math.MathHelpers;
+import Utils.Color.FalseColorGenerator;
 
 //import Experimental.Scene.Materials.Fresnel;
 //import Experimental.Scene.Materials.Microfacet;
@@ -20,6 +21,7 @@ Texture2D<PackedHitInfo> gVBuffer;
 
 // Extra input channels
 Texture2D<uint> gMeshletID;
+Texture2D<uint> gMicroPolyID;
 Texture2D<float> gDepth;
 Texture2D<float4> gTextureGrads;
 Texture2D<float2> gMotionVector;
@@ -31,13 +33,16 @@ Buffer<float4> gFalseColorBuffer;
 RWTexture2D<float4> gInOutColor;
 
 // Extra output channels
-RasterizerOrderedTexture2D<float>  gPrimID;
-RasterizerOrderedTexture2D<float>  gOpID;
-RasterizerOrderedTexture2D<float4> gMeshletColor;
+RWTexture2D<float>  gPrimID;
+RWTexture2D<float>  gOpID;
+RWTexture2D<float4> gMeshletColor;
+RWTexture2D<float4> gMicroPolyColor;
 
 cbuffer PerFrameCB {
-  uint2             gFrameDim;
+    uint2               gFrameDim;
 };
+
+uniform FalseColorGenerator gFalseColorGenerator;
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
@@ -55,10 +60,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     gInOutColor[pixelPos] = float4(barycentrics, 1.f);
 
-    gMeshletColor[pixelPos] = float4(0, 1, 0, 1);
-#if is_valid(gMeshletColor)
-    gMeshletColor[pixelPos] = float4(0, 1, 0, 1); //gFalseColorBuffer[pixelPos.x % FALSE_COLOR_BUFFER_SIZE];
+#if is_valid(gMeshletColor) && is_valid(gMeshletID)
+    gMeshletColor[pixelPos] = float4(gFalseColorGenerator.getColor(gMeshletID[pixelPos]).rgb, 1.0f);
 #endif  // gMeshletColor
+
+
+#if is_valid(gMicroPolyColor) && is_valid(gMicroPolyID)
+    gMicroPolyColor[pixelPos] = float4(gFalseColorGenerator.getColor(gMicroPolyID[pixelPos]).rgb, 1.0f);
+#endif  // gMicroPolyColor
 
 #if is_valid(gPrimID)
     gPrimID[pixelPos] = triangleHit.primitiveIndex;

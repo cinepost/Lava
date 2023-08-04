@@ -70,9 +70,32 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr 
 
 static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
     std::uniform_real_distribution<float>   rndDist(0.0f, 1.0f);
-    std::vector<float> colorVector(elementsCount * 4);
+    
+    using float32_t4 = std::array<float, 4>;
+    float32_t4 prevColorVal;
 
-    return Buffer::create(pDevice, sizeof(float) * colorVector.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, colorVector.data());
+    std::vector<float32_t4> colorVector(elementsCount);
+
+    static const float minComponentDist(0.2f);
+    static const float minColorLuminance(0.1f);
+
+    for(auto& colorVal: colorVector) {
+        while ((((colorVal[0] + colorVal[1] + colorVal[2])*.333f) < minColorLuminance) ||
+            (abs(colorVal[0] - prevColorVal[0]) < minComponentDist) ||
+            (abs(colorVal[1] - prevColorVal[1]) < minComponentDist) ||
+            (abs(colorVal[2] - prevColorVal[2]) < minComponentDist)
+        ){
+            prevColorVal = colorVal;
+            colorVal[0] = rndDist(rndEngine);
+            colorVal[1] = rndDist(rndEngine);
+            colorVal[2] = rndDist(rndEngine);
+        }
+
+        colorVal[3] = solidAlpha ? 1.0f : rndDist(rndEngine);
+        prevColorVal = colorVal;
+    }
+
+    return Buffer::create(pDevice, sizeof(float32_t4) * colorVector.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, colorVector.data());
 }
 
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
