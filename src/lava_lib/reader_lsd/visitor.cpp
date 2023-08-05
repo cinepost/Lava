@@ -220,8 +220,7 @@ void Visitor::operator()(ast::cmd_deviceoption const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_property const& c) const {
-    if (c.values.size() == 0)
-        return;
+    if (c.values.empty()) return;
 
     if (c.values.size() != 1) {
         std::vector<std::pair<std::string, Property::Value>> v;
@@ -234,6 +233,13 @@ void Visitor::operator()(ast::cmd_property const& c) const {
    
    auto const& value = c.values[0];
    mpSession->cmdProperty(c.style, value.first, value.second.get());
+}
+
+void Visitor::operator()(ast::cmd_procedural const& c) const {
+    std::map<std::string, Property::Value> args;
+    for(auto const& arg: c.arguments) args[arg.first] = arg.second.get();
+
+    mpSession->cmdProcedural(c.procedural, c.bbox_min, c.bbox_max, args);
 }
 
 void Visitor::operator()(ast::cmd_declare const& c) const {

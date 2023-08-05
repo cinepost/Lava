@@ -790,6 +790,13 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 	}
 }
 
+void Session::cmdProcedural(const std::string& procedural, const Vector3& bbox_min, const Vector3& bbox_max, const std::map<std::string, Property::Value>& arguments) {
+	if(procedural == "ptinstance") {
+
+	}
+}
+
+
 void Session::cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket) {
 	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 	if(pNode) {

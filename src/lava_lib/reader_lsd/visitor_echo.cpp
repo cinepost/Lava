@@ -218,6 +218,13 @@ void EchoVisitor::operator()(ast::cmd_property const& c) const {
     _os << "\x1b[0m\n";
 }
 
+void EchoVisitor::operator()(ast::cmd_procedural const& c) const {
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_procedural: procedural: " << c.procedural;
+    
+    _os << "\x1b[0m\n";
+}
+
 void EchoVisitor::operator()(ast::cmd_deviceoption const& c) const {
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_deviceoption: type: " << c.type << " name: " << c.name << " values: ";

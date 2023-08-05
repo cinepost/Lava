@@ -26,6 +26,9 @@ namespace lsd {
 class Session {
   public:
  	  using UniquePtr = std::unique_ptr<Session>;
+
+    using Vector3 = lsd::Vector3;
+
     static UniquePtr create(Renderer::SharedPtr pRenderer);    
     ~Session();
 
@@ -75,6 +78,7 @@ class Session {
     void cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value);
     void cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value);
     void cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values);
+    void cmdProcedural(const std::string& procedural, const Vector3& bbox_min, const Vector3& bbox_max, const std::map<std::string, Property::Value>& arguments);
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);
     void cmdImage(lsd::ast::DisplayType display_type, const std::string& filename);
     void cmdTransform(const Matrix4& transform);

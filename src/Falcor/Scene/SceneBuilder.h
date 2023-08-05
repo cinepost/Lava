@@ -46,6 +46,7 @@
 namespace Falcor {
 
 class Device;
+class MeshletBuilder;
 
 class dlldecl SceneBuilder {
  public:
@@ -606,6 +607,8 @@ class dlldecl SceneBuilder {
     */
     void setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
+    ~SceneBuilder();
+
 protected:
     SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
 
@@ -708,6 +711,7 @@ protected:
     using CurveList = std::vector<CurveSpec>;
 
     std::shared_ptr<Device> mpDevice;
+    std::unique_ptr<MeshletBuilder> mpMeshletBuilder;
 
     Scene::SceneData mSceneData;
     Scene::SharedPtr mpScene;

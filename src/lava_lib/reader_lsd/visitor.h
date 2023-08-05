@@ -40,6 +40,7 @@ struct Visitor: public boost::static_visitor<> {
     virtual void operator()(ast::cmd_mtransform const& c) const;
     virtual void operator()(ast::cmd_geometry const& c) const;
     virtual void operator()(ast::cmd_property const& c) const;
+    virtual void operator()(ast::cmd_procedural const& c) const;
     virtual void operator()(ast::cmd_deviceoption const& c) const;
     virtual void operator()(ast::cmd_declare const& c) const;
     virtual void operator()(ast::cmd_raytrace const& c) const;
@@ -87,6 +88,7 @@ struct EchoVisitor: public Visitor {
     void operator()(ast::cmd_mtransform const& c) const override;
     void operator()(ast::cmd_geometry const& c) const override;
     void operator()(ast::cmd_property const& c) const override;
+    void operator()(ast::cmd_procedural const& c) const override;
     void operator()(ast::cmd_deviceoption const& c) const override;
     void operator()(ast::cmd_declare const& c) const override;
     void operator()(ast::cmd_raytrace const& c) const override;

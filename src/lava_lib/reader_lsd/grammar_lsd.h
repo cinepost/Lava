@@ -146,6 +146,7 @@ namespace ast {
     struct cmd_edge;
     struct cmd_detail;
     struct cmd_geometry;
+    struct cmd_procedural;
     struct cmd_property;
     struct cmd_raytrace;
     struct cmd_socket;
@@ -178,6 +179,7 @@ namespace ast {
         cmd_quit,
         cmd_detail,
         cmd_geometry,
+        cmd_procedural,
         cmd_property,
         cmd_raytrace,
         cmd_socket,
@@ -247,6 +249,13 @@ namespace ast {
 
     struct cmd_geometry {
         std::string geometry_name;
+    };
+
+    struct cmd_procedural {
+        Vector3 bbox_min;
+        Vector3 bbox_max;
+        std::string procedural;
+        std::vector<std::pair<std::string, PropValue>> arguments;
     };
 
     struct cmd_detail {
@@ -464,6 +473,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, prop_type, prop_name, prop
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, temporary, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_procedural, bbox_min, bbox_max, procedural, arguments)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_socket, direction, data_type, name)
@@ -640,7 +650,7 @@ namespace parser {
         = x3::rule<class keyword>{"keyword"}
         = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
         | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode") | lit("ray_embeddedfile")
-        | lit("cmd_edge");
+        | lit("cmd_edge") | lit("cmd_procedural");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -814,6 +824,12 @@ namespace parser {
         | blank
     ] | blank;
 
+    auto const null_vector = x3::attr("0.0 0.0 0.0");
+    
+    x3::rule<class null_vector3_, Vector3> const null_vector3 = "null_vector3";
+    auto const null_vector3_def = attr(Vector3{0.0, 0.0, 0.0});
+    BOOST_SPIRIT_DEFINE(null_vector3)
+
     auto const setenv
         = x3::rule<class setenv, ast::setenv>{"setenv"}
         = "setenv" >> identifier >> "=" >> any_string >> eps;
@@ -827,7 +843,12 @@ namespace parser {
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
         = "cmd_property" >> property_style >> prop_values_array;
-    
+
+    auto const cmd_procedural
+        = x3::rule<class cmd_procedural, ast::cmd_procedural>{"cmd_procedural"}
+        = "cmd_procedural" >> lit("-m") >> vector3 >> lit("-M") >> vector3 >> any_string >> prop_values_array |
+          "cmd_procedural" >> null_vector3 >> null_vector3 >> any_string >> prop_values_array;
+
     auto const cmd_deviceoption
         = x3::rule<class cmd_deviceoption, ast::cmd_deviceoption>{"cmd_deviceoption"}
         = "cmd_deviceoption" >> prop_type >> prop_name >> prop_values;
@@ -881,13 +902,6 @@ namespace parser {
     auto const cmd_defaults
         = x3::rule<class cmd_defaults, ast::cmd_defaults>{"cmd_defaults"}
         = "cmd_defaults" >> any_filename >> eps;
-
-
-    auto const null_vector = x3::attr("0.0 0.0 0.0");
-
-    x3::rule<class null_vector3_, Vector3> const null_vector3 = "null_vector3";
-    auto const null_vector3_def = attr(Vector3{0.0, 0.0, 0.0});
-    BOOST_SPIRIT_DEFINE(null_vector3)
 
     auto const cmd_detail
         = x3::rule<class cmd_detail, ast::cmd_detail>{"cmd_detail"}
