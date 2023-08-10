@@ -58,6 +58,14 @@ SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags):
 }
 
 SceneBuilder::~SceneBuilder() {
+    // Remove temporary geometries from filysystem
+    const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
+    if(!mTemporaryGeometriesPaths.empty()) {
+        for(auto const& fullpath: mTemporaryGeometriesPaths) {
+            fs::remove(fullpath);
+        }
+    }
+    
     LLOG_INF << "\nSceneBuilder stats:";
     LLOG_INF << "\t Unique triangles count: " << std::to_string(mUniqueTrianglesCount);
     LLOG_INF << std::endl;
@@ -360,8 +368,7 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::Sha
         result = this->addGeometry(pBgeo, name);
         
         if(pGeo->isTemporary()) {
-            // TODO: delete temporary geometry as a deffered job (when no references left or when rendering is done).
-            //fs::remove(fullpath);
+            mTemporaryGeometriesPaths.insert(fullpath);
         }
         
         return result;

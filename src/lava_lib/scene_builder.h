@@ -46,6 +46,8 @@ class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 		StandardMaterial::SharedPtr mpDefaultMaterial = nullptr;
 
 		std::atomic<uint32_t> mUniqueTrianglesCount = 0;
+
+		std::set<std::string> mTemporaryGeometriesPaths;
 };
 
 }  // namespace lava
