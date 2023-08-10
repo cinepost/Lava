@@ -608,7 +608,6 @@ public:
 
 struct MemoryRange
 {
-	// TODO: Change to Offset/Size?
 	uint64_t offset;
 	uint64_t size;
 };

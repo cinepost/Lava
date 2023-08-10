@@ -945,10 +945,13 @@ SlangResult DeviceImpl::readTextureResource(
 
 	// Write out the data from the buffer
 	void* mappedData = nullptr;
-	SLANG_RETURN_ON_FAIL(m_api.vkMapMemory(m_device, staging.m_memory, 0, bufferSize, 0, &mappedData));
+	//SLANG_RETURN_ON_FAIL(m_api.vkMapMemory(m_device, staging.m_memory, 0, bufferSize, 0, &mappedData));
+	SLANG_RETURN_ON_FAIL(vmaMapMemory(m_api.mVmaAllocator, textureImpl->mAllocation, &mappedData));
 
 	::memcpy(blob->m_data.getBuffer(), mappedData, bufferSize);
-	m_api.vkUnmapMemory(m_device, staging.m_memory);
+
+	//m_api.vkUnmapMemory(m_device, staging.m_memory);
+	vmaUnmapMemory(m_api.mVmaAllocator, textureImpl->mAllocation);
 
 	*outPixelSize = pixelSize;
 	*outRowPitch = rowPitch;
@@ -1552,10 +1555,19 @@ Result DeviceImpl::createTextureResource(
 #endif
 	
 	if(!sparse) {
-		SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &texture->m_imageMemory));
-
+		//SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &texture->m_imageMemory));
 		// Bind the memory to the image
-		m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
+		//m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
+
+
+		VmaAllocationCreateInfo createInfo;
+		createInfo.flags = 
+		createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+		createInfo.memoryTypeBits = 
+		createInfo.preferredFlags = actualMemoryProperites;
+
+		VmaAllocationInfo allocationInfo; 
+		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemoryForImage(m_api.mVmaAllocator, texture->m_image, &createInfo, &texture->mAllocation, &allocationInfo));	
 	}
 
 	if (initData && !sparse) {
@@ -1596,8 +1608,11 @@ Result DeviceImpl::createTextureResource(
 			int subResourceCounter = 0;
 
 			uint8_t* dstData;
-			m_api.vkMapMemory(m_device, uploadBuffer.m_memory, 0, bufferSize, 0, (void**)&dstData);
+
+			vmaMapMemory(m_api.mVmaAllocator, uploadBuffer.mAllocation, (void**)&dstData);
+
 			uint8_t* dstDataStart;
+			
 			dstDataStart = dstData;
 
 			Offset dstSubresourceOffset = 0;
@@ -1637,7 +1652,8 @@ Result DeviceImpl::createTextureResource(
 				}
 			}
 
-			m_api.vkUnmapMemory(m_device, uploadBuffer.m_memory);
+			//m_api.vkUnmapMemory(m_device, uploadBuffer.m_memory);
+			vmaUnmapMemory(m_api.mVmaAllocator, uploadBuffer .mAllocation);
 		}
 
 		_transitionImageLayout(

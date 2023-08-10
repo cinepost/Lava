@@ -15,10 +15,6 @@ namespace vk {
 
 VKBufferHandleRAII::~VKBufferHandleRAII() {
     if (m_api) {
-        /*
-        m_api->vkDestroyBuffer(m_api->m_device, m_buffer, nullptr);
-        m_api->vkFreeMemory(m_api->m_device, m_memory, nullptr);
-        */
         vmaDestroyBuffer(m_api->mVmaAllocator, m_buffer, mAllocation);
     }
 }
@@ -160,9 +156,6 @@ Result BufferResourceImpl::getSharedHandle(InteropHandle* outHandle) {
 Result BufferResourceImpl::map(MemoryRange* rangeToRead, void** outPointer) {
     SLANG_UNUSED(rangeToRead);
     auto api = m_buffer.m_api;
-    /*
-    SLANG_VK_RETURN_ON_FAIL( api->vkMapMemory(api->m_device, m_buffer.m_memory, 0, VK_WHOLE_SIZE, 0, outPointer));
-    */
     SLANG_VK_RETURN_ON_FAIL( vmaMapMemory(api->mVmaAllocator, m_buffer.mAllocation, outPointer));
     return SLANG_OK;
 }

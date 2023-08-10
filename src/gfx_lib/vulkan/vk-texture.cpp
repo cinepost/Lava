@@ -12,8 +12,11 @@ TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): 
 TextureResourceImpl::~TextureResourceImpl() {
     auto& vkAPI = m_device->m_api;
     if (!m_isWeakImageReference) {
-        vkAPI.vkFreeMemory(vkAPI.m_device, m_imageMemory, nullptr);
-        vkAPI.vkDestroyImage(vkAPI.m_device, m_image, nullptr);
+        //vkAPI.vkFreeMemory(vkAPI.m_device, m_imageMemory, nullptr);
+        //vkAPI.vkDestroyImage(vkAPI.m_device, m_image, nullptr);
+
+        //vmaFreeMemory(vkAPI.mVmaAllocator, mAllocation);       
+        vmaDestroyImage(vkAPI.mVmaAllocator, m_image, mAllocation);
     }
     if (sharedHandle.handleValue != 0) {
 #if SLANG_WINDOWS_FAMILY

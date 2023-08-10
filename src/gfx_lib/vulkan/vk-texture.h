@@ -21,7 +21,8 @@ public:
 
     VkImage m_image = VK_NULL_HANDLE;
     VkFormat m_vkformat = VK_FORMAT_R8G8B8A8_UNORM;
-    VkDeviceMemory m_imageMemory = VK_NULL_HANDLE;
+    //VkDeviceMemory m_imageMemory = VK_NULL_HANDLE;
+    VmaAllocation   mAllocation = {};
     bool m_isWeakImageReference = false;
     RefPtr<DeviceImpl> m_device;
 
