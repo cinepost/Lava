@@ -1453,23 +1453,39 @@ Result DeviceImpl::createTextureResource(
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {	
 				LLOG_DBG << "Layer " << layer << " single mip tail";
 				// Allocate memory for the layer mip tail
-				VkMemoryAllocateInfo memAllocInfo = {};
-				memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-				memAllocInfo.pNext = NULL;
-				memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
-				memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+				//VkMemoryAllocateInfo memAllocInfo = {};
+				//memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				//memAllocInfo.pNext = NULL;
+				//memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+				//memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
 
-				VkDeviceMemory deviceMemory;
-				if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
-					LLOG_ERR << "Could not allocate memory !!!";
+				//VkDeviceMemory deviceMemory;
+				//if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+				//	LLOG_ERR << "Could not allocate memory !!!";
+				//	return SLANG_FAIL;
+				//}
+
+				texture->mTailAllocations.push_back({});
+				VmaAllocation* pAllocation = &texture->mTailAllocations.back();
+				VkMemoryRequirements tailMemReqs = {};
+				tailMemReqs.size = sparseMemoryReq.imageMipTailSize;
+				tailMemReqs.alignment = memRequirements.alignment;
+				tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
+
+				VmaAllocationCreateInfo createInfo = {};
+				createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+				VmaAllocationInfo allocationInfo = {}; 
+
+				if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &createInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
+					LLOG_ERR << "Could not allocate layer " << layer << " mip tail memory !!!";
 					return SLANG_FAIL;
 				}
 
 				// (Opaque) sparse memory binding
 				VkSparseMemoryBind sparseMemoryBind{};
 				sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset + layer * sparseMemoryReq.imageMipTailStride;
-				sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
-				sparseMemoryBind.memory = deviceMemory;
+				sparseMemoryBind.size = allocationInfo.size; //sparseMemoryReq.imageMipTailSize;
+				sparseMemoryBind.memory = allocationInfo.deviceMemory; //deviceMemory;
 
 				pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
@@ -1484,23 +1500,39 @@ Result DeviceImpl::createTextureResource(
 		if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
 			LLOG_DBG << "One mip tail for all mip layers ";
 			// Allocate memory for the mip tail
-			VkMemoryAllocateInfo memAllocInfo = {};
-			memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			memAllocInfo.pNext = NULL;
-			memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
-			memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+			//VkMemoryAllocateInfo memAllocInfo = {};
+			//memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			//memAllocInfo.pNext = NULL;
+			//memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+			//memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
 
-			VkDeviceMemory deviceMemory;
-			if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
-				LLOG_ERR << "Could not allocate memory !!!";
+			//VkDeviceMemory deviceMemory;
+			//if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+			//	LLOG_ERR << "Could not allocate memory !!!";
+			//	return SLANG_FAIL;
+			//}
+
+			texture->mTailAllocations.push_back({});
+			VmaAllocation* pAllocation = &texture->mTailAllocations.back();
+			VkMemoryRequirements tailMemReqs = {};
+			tailMemReqs.size = sparseMemoryReq.imageMipTailSize;
+			tailMemReqs.alignment = memRequirements.alignment;
+			tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
+
+			VmaAllocationCreateInfo createInfo = {};
+			createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+			VmaAllocationInfo allocationInfo = {}; 
+
+			if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &createInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
+				LLOG_ERR << "Could not allocate single mip tail memory !!!";
 				return SLANG_FAIL;
 			}
 
 			// (Opaque) sparse memory binding
 			VkSparseMemoryBind sparseMemoryBind{};
 			sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset;
-			sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
-			sparseMemoryBind.memory = deviceMemory;
+			sparseMemoryBind.size = allocationInfo.size; //sparseMemoryReq.imageMipTailSize;
+			sparseMemoryBind.memory = allocationInfo.deviceMemory; //deviceMemory;
 
 			pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 		}
@@ -1560,14 +1592,11 @@ Result DeviceImpl::createTextureResource(
 		//m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
 
 
-		VmaAllocationCreateInfo createInfo;
-		createInfo.flags = 
+		VmaAllocationCreateInfo createInfo = {};
 		createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-		createInfo.memoryTypeBits = 
-		createInfo.preferredFlags = actualMemoryProperites;
-
-		VmaAllocationInfo allocationInfo; 
-		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemoryForImage(m_api.mVmaAllocator, texture->m_image, &createInfo, &texture->mAllocation, &allocationInfo));	
+		VmaAllocationInfo allocationInfo = {}; 
+		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemory(m_api.mVmaAllocator, &memRequirements, &createInfo, &texture->mAllocation, &allocationInfo));
+		vmaBindImageMemory(m_api.mVmaAllocator, texture->mAllocation, texture->m_image);	
 	}
 
 	if (initData && !sparse) {

@@ -7,7 +7,9 @@ using namespace Slang;
 
 namespace vk {
 
-TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): Parent(desc), m_device(device){}
+TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): Parent(desc), m_device(device){
+    mAllocation = {};
+}
 
 TextureResourceImpl::~TextureResourceImpl() {
     auto& vkAPI = m_device->m_api;
@@ -15,7 +17,12 @@ TextureResourceImpl::~TextureResourceImpl() {
         //vkAPI.vkFreeMemory(vkAPI.m_device, m_imageMemory, nullptr);
         //vkAPI.vkDestroyImage(vkAPI.m_device, m_image, nullptr);
 
-        //vmaFreeMemory(vkAPI.mVmaAllocator, mAllocation);       
+        //vmaFreeMemory(vkAPI.mVmaAllocator, mAllocation);     
+
+        for(auto& allocation: mTailAllocations) {
+            vmaFreeMemory(vkAPI.mVmaAllocator, allocation);
+        }
+
         vmaDestroyImage(vkAPI.mVmaAllocator, m_image, mAllocation);
     }
     if (sharedHandle.handleValue != 0) {

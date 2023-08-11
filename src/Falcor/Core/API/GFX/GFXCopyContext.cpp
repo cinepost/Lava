@@ -392,9 +392,9 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 	assert(pData);
 	if(!pData) return;
 
-	if(mpDevice->getApiHandle()->tailMemoryAllocated(pTexture)) return;
-
-	mpDevice->getApiHandle()->allocateTailMemory(pTexture);
+	if(!mpDevice->getApiHandle()->tailMemoryAllocated(pTexture)) {
+		mpDevice->getApiHandle()->allocateTailMemory(pTexture);
+	}
 
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
 
