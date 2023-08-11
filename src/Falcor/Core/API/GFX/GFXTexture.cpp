@@ -164,7 +164,7 @@ Texture::~Texture() {
 				pPage->release();
 			}
 #if FALCOR_GFX_VK
-			mpDevice->getApiHandle()->releaseTailMemory(this);
+//			mpDevice->getApiHandle()->releaseTailMemory(this);
 #endif
 		}
 

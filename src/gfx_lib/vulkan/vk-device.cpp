@@ -1453,17 +1453,27 @@ Result DeviceImpl::createTextureResource(
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {	
 				LLOG_DBG << "Layer " << layer << " single mip tail";
 				// Allocate memory for the layer mip tail
-				//VkMemoryAllocateInfo memAllocInfo = {};
-				//memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-				//memAllocInfo.pNext = NULL;
-				//memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
-				//memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
 
-				//VkDeviceMemory deviceMemory;
-				//if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
-				//	LLOG_ERR << "Could not allocate memory !!!";
-				//	return SLANG_FAIL;
-				//}
+/*
+				VkMemoryAllocateInfo memAllocInfo = {};
+				memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				memAllocInfo.pNext = NULL;
+				memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+				memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+
+				VkDeviceMemory deviceMemory;
+				if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+					LLOG_ERR << "Could not allocate memory !!!";
+					return SLANG_FAIL;
+				}
+
+				// (Opaque) sparse memory binding
+				VkSparseMemoryBind sparseMemoryBind{};
+				sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset + layer * sparseMemoryReq.imageMipTailStride;
+				sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
+				sparseMemoryBind.memory = deviceMemory;
+*/
+
 
 				texture->mTailAllocations.push_back({});
 				VmaAllocation* pAllocation = &texture->mTailAllocations.back();
@@ -1472,18 +1482,23 @@ Result DeviceImpl::createTextureResource(
 				tailMemReqs.alignment = memRequirements.alignment;
 				tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
 
-				VmaAllocationCreateInfo createInfo = {};
-				createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+				VmaAllocationCreateInfo allocCreateInfo = {};
+				allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+				allocCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
 				VmaAllocationInfo allocationInfo = {}; 
 
-				if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &createInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
+				if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &allocCreateInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
 					LLOG_ERR << "Could not allocate layer " << layer << " mip tail memory !!!";
 					return SLANG_FAIL;
 				}
 
+				LLOG_ERR << "Tail memory for layer " << layer << " allocated";
+
 				// (Opaque) sparse memory binding
 				VkSparseMemoryBind sparseMemoryBind{};
 				sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset + layer * sparseMemoryReq.imageMipTailStride;
+				sparseMemoryBind.memoryOffset = allocationInfo.offset;
 				sparseMemoryBind.size = allocationInfo.size; //sparseMemoryReq.imageMipTailSize;
 				sparseMemoryBind.memory = allocationInfo.deviceMemory; //deviceMemory;
 
@@ -1500,17 +1515,27 @@ Result DeviceImpl::createTextureResource(
 		if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
 			LLOG_DBG << "One mip tail for all mip layers ";
 			// Allocate memory for the mip tail
-			//VkMemoryAllocateInfo memAllocInfo = {};
-			//memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			//memAllocInfo.pNext = NULL;
-			//memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
-			//memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
 
-			//VkDeviceMemory deviceMemory;
-			//if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
-			//	LLOG_ERR << "Could not allocate memory !!!";
-			//	return SLANG_FAIL;
-			//}
+/*
+			VkMemoryAllocateInfo memAllocInfo = {};
+			memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			memAllocInfo.pNext = NULL;
+			memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+			memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+
+			VkDeviceMemory deviceMemory;
+			if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+				LLOG_ERR << "Could not allocate memory !!!";
+				return SLANG_FAIL;
+			}
+
+			// (Opaque) sparse memory binding
+			VkSparseMemoryBind sparseMemoryBind{};
+			sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset;
+			sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
+			sparseMemoryBind.memory = deviceMemory;
+*/
+
 
 			texture->mTailAllocations.push_back({});
 			VmaAllocation* pAllocation = &texture->mTailAllocations.back();
@@ -1519,18 +1544,21 @@ Result DeviceImpl::createTextureResource(
 			tailMemReqs.alignment = memRequirements.alignment;
 			tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
 
-			VmaAllocationCreateInfo createInfo = {};
-			createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+			VmaAllocationCreateInfo allocCreateInfo = {};
+			allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 			VmaAllocationInfo allocationInfo = {}; 
 
-			if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &createInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
+			if ( vmaAllocateMemory(m_api.mVmaAllocator, &tailMemReqs, &allocCreateInfo, pAllocation, &allocationInfo) != VK_SUCCESS ) {
 				LLOG_ERR << "Could not allocate single mip tail memory !!!";
 				return SLANG_FAIL;
 			}
 
+			LLOG_ERR << "Tail memory allocated";
+
 			// (Opaque) sparse memory binding
 			VkSparseMemoryBind sparseMemoryBind{};
 			sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset;
+			sparseMemoryBind.memoryOffset = allocationInfo.offset;
 			sparseMemoryBind.size = allocationInfo.size; //sparseMemoryReq.imageMipTailSize;
 			sparseMemoryBind.memory = allocationInfo.deviceMemory; //deviceMemory;
 
@@ -1555,42 +1583,41 @@ Result DeviceImpl::createTextureResource(
 			return SLANG_FAIL;
 		}
 	}
-///////////////////////////////
 
-	// Allocate the memory
-	VkMemoryPropertyFlags reqMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	int memoryTypeIndex = m_api.findMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemoryProperties);
-	assert(memoryTypeIndex >= 0);
-
-	VkMemoryPropertyFlags actualMemoryProperites = m_api.m_deviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
-	VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = memoryTypeIndex;
-
-#if SLANG_WINDOWS_FAMILY
-	VkExportMemoryWin32HandleInfoKHR exportMemoryWin32HandleInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-	VkExportMemoryAllocateInfoKHR exportMemoryAllocateInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
-	
-	if (descIn.isShared) {
-		exportMemoryWin32HandleInfo.pNext = nullptr;
-		exportMemoryWin32HandleInfo.pAttributes = nullptr;
-		exportMemoryWin32HandleInfo.dwAccess = DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
-		exportMemoryWin32HandleInfo.name = NULL;
-
-		exportMemoryAllocateInfo.pNext =
-			extMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR
-			? &exportMemoryWin32HandleInfo
-			: nullptr;
-		exportMemoryAllocateInfo.handleTypes = extMemoryHandleType;
-		allocInfo.pNext = &exportMemoryAllocateInfo;
-	}
-#endif
 	
 	if(!sparse) {
+		// Allocate the memory
+		VkMemoryPropertyFlags reqMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		int memoryTypeIndex = m_api.findMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemoryProperties);
+		assert(memoryTypeIndex >= 0);
+
+		VkMemoryPropertyFlags actualMemoryProperites = m_api.m_deviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
+		VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = memoryTypeIndex;
+
+#if SLANG_WINDOWS_FAMILY
+		VkExportMemoryWin32HandleInfoKHR exportMemoryWin32HandleInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+		VkExportMemoryAllocateInfoKHR exportMemoryAllocateInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
+		
+		if (descIn.isShared) {
+			exportMemoryWin32HandleInfo.pNext = nullptr;
+			exportMemoryWin32HandleInfo.pAttributes = nullptr;
+			exportMemoryWin32HandleInfo.dwAccess = DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
+			exportMemoryWin32HandleInfo.name = NULL;
+
+			exportMemoryAllocateInfo.pNext =
+				extMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR
+				? &exportMemoryWin32HandleInfo
+				: nullptr;
+			exportMemoryAllocateInfo.handleTypes = extMemoryHandleType;
+			allocInfo.pNext = &exportMemoryAllocateInfo;
+	}
+#endif
+
 		//SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &texture->m_imageMemory));
 		// Bind the memory to the image
 		//m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
-
 
 		VmaAllocationCreateInfo createInfo = {};
 		createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -1778,6 +1805,7 @@ void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 
 bool DeviceImpl::tailMemoryAllocated(const Falcor::Texture* pTexture) {
 	assert(pTexture);
+	return true;
 	return pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE;
 }
 
@@ -1843,7 +1871,7 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	pTexture->mBindSparseInfo.pImageOpaqueBinds = &pTexture->mOpaqueMemoryBindInfo;
 
 	// todo: in draw?
-  m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, VK_NULL_HANDLE);
+  	m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, VK_NULL_HANDLE);
 
 	//todo: use sparse bind semaphore
 	m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
