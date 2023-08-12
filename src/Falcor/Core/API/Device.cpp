@@ -161,12 +161,12 @@ void Device::release() {
 
 
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    ResourceHandle apiHandle;
-    getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
+    //ResourceHandle apiHandle;
+    //getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
 
     // Create a texture object
     auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-    pColorTex->mApiHandle = apiHandle;
+    //pColorTex->mApiHandle = apiHandle;
 
     // Create the FBO if it's required
     if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
@@ -182,13 +182,14 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
-    getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
+    //ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
+    //getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
         auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-        pColorTex->mApiHandle = apiHandles[i];
+        //pColorTex->mApiHandle = apiHandles[i];
+        
         // Create the FBO if it's required
         if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(shared_from_this());
         mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);

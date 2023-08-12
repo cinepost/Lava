@@ -20,9 +20,11 @@ class TextureResourceImpl : public TextureResource {
 
         VkImage m_image = VK_NULL_HANDLE;
         VkFormat m_vkformat = VK_FORMAT_R8G8B8A8_UNORM;
-        VmaAllocation   mAllocation = {};
         
+        VmaAllocation   mAllocation = {};
         std::vector<VmaAllocation> mTailAllocations;
+
+        bool mTailMemoryAllocated = false;
 
         bool m_isWeakImageReference = false;
         RefPtr<DeviceImpl> m_device;

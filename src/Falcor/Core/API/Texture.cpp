@@ -188,7 +188,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 
 Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
 	: Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format), mIsSparse(false), 
-	  mIsSolid(false) {
+	  mMemRequirements({}), mIsSolid(false) {
 	
 	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);

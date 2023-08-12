@@ -364,9 +364,9 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	}
 
 	if(kOnePageTailData) {
-		LLOG_WRN << "Writing one tail data page at offset " << header.tailDataOffset;
+		LLOG_TRC << "Writing one tail data page at offset " << header.tailDataOffset;
 		header.tailDataSize = writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
-		LLOG_WRN << "Written one tail data size is " << header.tailDataSize;
+		LLOG_TRC << "Written one tail data size is " << header.tailDataSize;
 		header.flags |= LTX_Header::Flags::ONE_PAGE_MIP_TAIL;
 	}
 	

@@ -163,9 +163,9 @@ Texture::~Texture() {
 			for(auto pPage: mSparseDataPages) {
 				pPage->release();
 			}
-#if FALCOR_GFX_VK
+//#if FALCOR_GFX_VK
 //			mpDevice->getApiHandle()->releaseTailMemory(this);
-#endif
+//#endif
 		}
 
 		ApiObjectHandle objectHandle;

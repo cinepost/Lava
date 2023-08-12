@@ -74,11 +74,11 @@ bool Renderer::init(const Config& config) {
 	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
 	if (mCurrentConfig.useRaytracing) sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
 
-	LLOG_WRN << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
+	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	if (mCurrentConfig.generateMeshlets) sceneBuilderFlags |= SceneBuilder::Flags::GenerateMeshlets;
 
-	LLOG_WRN << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
+	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
