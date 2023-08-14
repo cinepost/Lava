@@ -30,8 +30,12 @@ Result VKBufferHandleRAII::init(
     assert(!isInitialized());
 
     m_api = &api;
-    m_memory = VK_NULL_HANDLE;
+    //m_memory = VK_NULL_HANDLE;
     m_buffer = VK_NULL_HANDLE;
+
+    mAllocationInfo = {};
+    mAllocation = {};
+
 
     VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     bufferCreateInfo.size = bufferSize;
@@ -51,7 +55,7 @@ Result VKBufferHandleRAII::init(
     allocInfo.requiredFlags = reqMemoryProperties;
     allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
 
-    SLANG_VK_CHECK(vmaCreateBuffer(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &m_buffer, &mAllocation, nullptr));
+    SLANG_VK_CHECK(vmaCreateBuffer(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &m_buffer, &mAllocation, &mAllocationInfo));
     return SLANG_OK;
 
     VkMemoryRequirements memoryReqs = {};
@@ -138,7 +142,7 @@ Result BufferResourceImpl::getSharedHandle(InteropHandle* outHandle) {
     VkMemoryGetWin32HandleInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
     info.pNext = nullptr;
-    info.memory = m_buffer.m_memory;
+    info.memory = m_buffer.mAllocationInfo.deviceMemory; //m_buffer.m_memory;
     info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 
     auto api = m_buffer.m_api;

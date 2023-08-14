@@ -34,7 +34,9 @@ public:
     ~VKBufferHandleRAII();
     
     VkBuffer        m_buffer;
-    VkDeviceMemory  m_memory;
+    //VkDeviceMemory  m_memory;
+
+    VmaAllocationInfo mAllocationInfo = {};
     VmaAllocation   mAllocation = {};
     const VulkanApi* m_api;
 };

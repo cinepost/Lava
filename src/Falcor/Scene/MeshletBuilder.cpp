@@ -8,7 +8,7 @@ MeshletBuilder::MeshletBuilder() {
 };
 
 MeshletBuilder::UniquePtr MeshletBuilder::create() {
-
+  return std::move(UniquePtr(new MeshletBuilder()));
 }
 
 void MeshletBuilder::generateMeshlets(SceneBuilder::ProcessedMesh& mesh) {

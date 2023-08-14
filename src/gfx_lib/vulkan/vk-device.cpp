@@ -1479,8 +1479,7 @@ Result DeviceImpl::createTextureResource(
 
 		VmaAllocationCreateInfo createInfo = {};
 		createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-		VmaAllocationInfo allocationInfo = {}; 
-		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemory(m_api.mVmaAllocator, &pTexture->mMemRequirements, &createInfo, &texture->mAllocation, &allocationInfo));
+		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemory(m_api.mVmaAllocator, &pTexture->mMemRequirements, &createInfo, &texture->mAllocation, &texture->mAllocationInfo));
 		vmaBindImageMemory(m_api.mVmaAllocator, texture->mAllocation, texture->m_image);	
 	}
 

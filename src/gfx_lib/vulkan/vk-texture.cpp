@@ -8,7 +8,7 @@ using namespace Slang;
 namespace vk {
 
 TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): Parent(desc), 
-    m_device(device), mTailMemoryAllocated(false), mAllocation({}) {
+    m_device(device), mTailMemoryAllocated(false), mAllocation({}), mAllocationInfo({}) {
 }
 
 TextureResourceImpl::~TextureResourceImpl() {
@@ -50,7 +50,7 @@ Result TextureResourceImpl::getSharedHandle(InteropHandle* outHandle) {
     VkMemoryGetWin32HandleInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
     info.pNext = nullptr;
-    info.memory = m_imageMemory;
+    info.memory = mAllocationInfo.deviceMemory; //m_imageMemory;
     info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 
     auto& api = m_device->m_api;

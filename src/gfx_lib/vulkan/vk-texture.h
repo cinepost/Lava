@@ -22,6 +22,8 @@ class TextureResourceImpl : public TextureResource {
         VkFormat m_vkformat = VK_FORMAT_R8G8B8A8_UNORM;
         
         VmaAllocation   mAllocation = {};
+        VmaAllocationInfo mAllocationInfo = {};
+
         std::vector<VmaAllocation> mTailAllocations;
 
         bool mTailMemoryAllocated = false;
