@@ -41,7 +41,7 @@ namespace oiio = OIIO;
 
 namespace Falcor {
 
-static void genError(const std::string& errMsg, const std::string& filename) {
+static inline void genError(const std::string& errMsg, const std::string& filename) {
     std::string err = "Error when loading image file " + filename + '\n' + errMsg + '.';
     LLOG_ERR << err;
 }
@@ -172,6 +172,20 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
     if (pDib == nullptr) {
         genError("Can't read image file", filename);
         return nullptr;
+    }
+
+    FREE_IMAGE_COLOR_TYPE colorType = FreeImage_GetColorType(pDib);
+
+    switch(colorType) {
+        case FIC_PALETTE:
+            {
+                FIBITMAP* pNew = FreeImage_ConvertTo32Bits(pDib);
+                FreeImage_Unload(pDib);
+                pDib = pNew;
+            }
+            break;
+        default:
+            break;
     }
 
     // Create the bitmap
