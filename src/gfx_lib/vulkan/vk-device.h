@@ -207,6 +207,8 @@ public:
 	VulkanModule m_module;
 	VulkanApi m_api;
 
+	VkFence mImmediateFence;
+
 	VulkanDeviceQueue m_deviceQueue;
 	uint32_t m_queueFamilyIndex;
 

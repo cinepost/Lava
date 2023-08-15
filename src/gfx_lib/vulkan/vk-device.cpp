@@ -87,6 +87,11 @@ DeviceImpl::~DeviceImpl() {
 		m_api.vkDestroySampler(m_device, m_defaultSampler, nullptr);
 	}
 
+	if(mImmediateFence) {
+    vkDestroyFence(m_device, mImmediateFence, NULL);
+    mImmediateFence = VK_NULL_HANDLE;
+  }
+
 	m_deviceQueue.destroy();
 
 	descriptorSetAllocator.close();
@@ -701,6 +706,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 	//vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
 	
 	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_api.mVmaAllocator));
+
+	VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	SLANG_VK_RETURN_ON_FAIL(vkCreateFence(m_device, &fenceInfo, NULL, &mImmediateFence) );
 
 	return SLANG_OK;
 }
@@ -1790,11 +1799,11 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	pTexture->mBindSparseInfo.imageOpaqueBindCount = (pTexture->mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
 	pTexture->mBindSparseInfo.pImageOpaqueBinds = &pTexture->mOpaqueMemoryBindInfo;
 
-	// todo: in draw?
-  	m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, VK_NULL_HANDLE);
+	SLANG_VK_CHECK( m_api.vkResetFences(m_device, 1, &mImmediateFence));
+	SLANG_VK_CHECK( m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, mImmediateFence));
 
-	//todo: use sparse bind semaphore
-	m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
+	//m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
+	SLANG_VK_CHECK( m_api.vkWaitForFences(m_device, 1, &mImmediateFence, VK_TRUE, UINT64_MAX));
 }
 
 void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
