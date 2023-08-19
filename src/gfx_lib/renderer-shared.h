@@ -1328,7 +1328,7 @@ public:
         IShaderObject** outObject) = 0;
 
 protected:
-    virtual SLANG_NO_THROW SlangResult SLANG_MCALL initialize(const Desc& desc);
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL initialize(const Desc& desc, bool useValidationLayer = false);
 protected:
     Slang::List<Slang::String> m_features;
 

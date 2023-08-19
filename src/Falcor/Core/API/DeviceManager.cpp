@@ -39,7 +39,7 @@ namespace py = pybind11;
 
 namespace Falcor {
 
-DeviceManager::DeviceManager() {
+DeviceManager::DeviceManager(): mInitialized(false), mEnableValidationLayer(false) {
 
 }
 
@@ -53,15 +53,18 @@ DeviceManager::~DeviceManager() {
 }
 
 //static
-DeviceManager::SharedPtr DeviceManager::create() {
+DeviceManager::SharedPtr DeviceManager::create(bool enableValidationLayer) {
     auto pDeviceManager = new DeviceManager();
+    pDeviceManager->mEnableValidationLayer = enableValidationLayer;
 
     if (!pDeviceManager->init()) {
         delete pDeviceManager;
         return nullptr;
     }
 
+#ifdef _DEBUG
     pDeviceManager->printEnumeratedDevices();
+#endif
 
     return SharedPtr(pDeviceManager);
 }

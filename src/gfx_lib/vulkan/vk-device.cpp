@@ -32,7 +32,6 @@
 #define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
-
 namespace gfx {
 
 using namespace Slang;
@@ -43,6 +42,8 @@ namespace vk {
 #define VK_FLAGS_NONE 0
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
+
+static std::string gValidationOutputFilename;
 
 static glm::uvec3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
 	glm::uvec3 res;
@@ -72,6 +73,7 @@ static uint32_t _getVkMemoryTypeNative(const VkPhysicalDeviceMemoryProperties& d
 		throw std::runtime_error("Could not find a matching Vulkan memory type !!!");
 	}
 }
+
 
 DeviceImpl::~DeviceImpl() {
 	// Check the device queue is valid else, we can't wait on it..
@@ -143,7 +145,13 @@ VkBool32 DeviceImpl::handleDebugMessage(
 
 	sprintf_s(buffer, bufferSize, "%s: %s %d: %s\n", pLayerPrefix, severity, msgCode, pMsg);
 
-	getDebugCallback()->handleMessage(msgType, DebugMessageSource::Driver, buffer);
+	//	getDebugCallback()->handleMessage(msgType, DebugMessageSource::Driver, buffer);
+	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+		LLOG_WRN << "Vulkan validation: " << std::string(buffer);
+	} else {
+		LLOG_ERR << "Vulkan validation: " << std::string(buffer);
+	}
+
 	return VK_FALSE;
 }
 
@@ -157,8 +165,37 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DeviceImpl::debugMessageCallback(
 	const char* pMsg,
 	void* pUserData)
 {
-	return ((DeviceImpl*)pUserData)
-		->handleDebugMessage(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg);
+	return ((DeviceImpl*)pUserData)->handleDebugMessage(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg);
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL DeviceImpl::debugMessageFileCallback(
+	VkDebugReportFlagsEXT flags,
+	VkDebugReportObjectTypeEXT objType,
+	uint64_t srcObject,
+	Size location,
+	int32_t msgCode,
+	const char* pLayerPrefix,
+	const char* pMsg,
+	void* pUserData)
+{
+	if(gValidationOutputFilename.empty()) return debugMessageCallback(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg, pUserData);
+
+	ofstream myfile(gValidationOutputFilename);
+ 	if (myfile.is_open()) {
+
+ 		myfile << "VK " << std::string(pLayerPrefix) << " ";
+ 		if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+			myfile << "warning";
+		} else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+			myfile << "error";
+		}
+ 		
+ 		myfile << " Msg: ";
+    myfile << std::string(pMsg) << "\n";
+    myfile.close();
+ 	}
+
+	return VK_FALSE;
 }
 
 Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles) {
@@ -171,7 +208,7 @@ Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles) {
 	return SLANG_OK;
 }
 
-Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, bool useValidationLayer) {
+Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename) {
 	m_features.clear();
 
 	m_queueAllocCount = 0;
@@ -202,9 +239,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 #elif defined(SLANG_ENABLE_XLIB)
 			instanceExtensions.add(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 #endif
-#if ENABLE_VALIDATION_LAYER
-			instanceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-#endif
+
+//#if ENABLE_VALIDATION_LAYER
+			if(useValidationLayer) instanceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+//#endif
 		}
 
 		VkInstanceCreateInfo instanceCreateInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
@@ -228,6 +266,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 
 			const char* layerNames[] = { nullptr };
 			for (auto& layer : availableLayers) {
+				LLOG_ERR << layer.layerName;
 				if (strncmp(
 					layer.layerName,
 					"VK_LAYER_KHRONOS_validation",
@@ -267,13 +306,24 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 	} else {
 		instance = (VkInstance)handles[0].handleValue;
 	}
-	if (!instance)
-		return SLANG_FAIL;
+	
+	if (!instance) return SLANG_FAIL;
+
 	SLANG_RETURN_ON_FAIL(m_api.initInstanceProcs(instance));
-	if (useValidationLayer && m_api.vkCreateDebugReportCallbackEXT) {
+	
+	if (!validationLayerOuputFilename.empty() && m_api.vkCreateDebugReportCallbackEXT) {
+		LLOG_WRN << "Vulkan validation layer enabled !";
+
 		VkDebugReportFlagsEXT debugFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
 		VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT };
-		debugCreateInfo.pfnCallback = &debugMessageCallback;
+		
+		if (validationLayerOuputFilename == "console") {}
+			debugCreateInfo.pfnCallback = &debugMessageCallback;
+		} else {
+			gValidationOutputFilename = validationLayerOuputFilename;
+			debugCreateInfo.pfnCallback = &debugMessageFileCallback;
+		}
+
 		debugCreateInfo.pUserData = this;
 		debugCreateInfo.flags = debugFlags;
 
@@ -714,7 +764,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 	return SLANG_OK;
 }
 
-SlangResult DeviceImpl::initialize(const Desc& desc) {
+SlangResult DeviceImpl::initialize(const Desc& desc, const std::string& validationLayerOuputFilename) {
 	// Initialize device info.
 	{
 		m_info.apiName = "Vulkan";
@@ -738,8 +788,11 @@ SlangResult DeviceImpl::initialize(const Desc& desc) {
 		if (initDeviceResult != SLANG_OK)
 			continue;
 		descriptorSetAllocator.m_api = &m_api;
-		initDeviceResult = initVulkanInstanceAndDevice(
-			desc.existingDeviceHandles.handles, ENABLE_VALIDATION_LAYER != 0);
+
+		const std::string _validationLayerOuputFilename = (!validationLayerOuputFilename.empty() || (ENABLE_VALIDATION_LAYER != 0)) ? validationLayerOuputFilename : "";
+
+		initDeviceResult = initVulkanInstanceAndDevice(desc.existingDeviceHandles.handles, _validationLayerOuputFilename);
+		
 		if (initDeviceResult == SLANG_OK)
 			break;
 	}
@@ -1849,11 +1902,9 @@ void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textu
 	}
 
 	if(bindInfos.size() == 0) return;
-
+/*
 	m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), bindInfos.size(), bindInfos.data(), VK_NULL_HANDLE);
-	auto res = m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
-
-	switch(res) {
+	switch(m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());) {
 		case VK_ERROR_OUT_OF_HOST_MEMORY: 
 			LLOG_FN_ERR << "VK_ERROR_OUT_OF_HOST_MEMORY !!!";
 			break;
@@ -1866,6 +1917,11 @@ void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textu
 		default:
 			break;
 	}
+*/
+
+	SLANG_VK_CHECK( m_api.vkResetFences(m_device, 1, &mImmediateFence));
+	SLANG_VK_CHECK( m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), bindInfos.size(), bindInfos.data(), mImmediateFence));
+	SLANG_VK_CHECK( m_api.vkWaitForFences(m_device, 1, &mImmediateFence, VK_TRUE, UINT64_MAX));
 
 }
 

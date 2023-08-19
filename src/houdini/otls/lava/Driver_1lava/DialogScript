@@ -2181,9 +2181,10 @@
             default { "lava --log-level info" }
             disablewhen "{ soho_outputmode != 0 }"
             menureplace {
-                "lava"      "No command line options"
-                "lava --log-level info"      "Logging level info"
-                "lava -e"   "Echo scene descriprtion"
+                "lava"                  "No command line options"
+                "lava --log-level info" "Logging level info"
+                "lava -e"               "Echo scene descriprtion"
+                "lava --vk-validate"    "Vulkan validate"
             }
             parmtag { "script_callback_language" "python" }
         }

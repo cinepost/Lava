@@ -20,8 +20,8 @@ namespace vk {
 class DeviceImpl : public RendererBase {
 public:
 	// Renderer    implementation
-	Result initVulkanInstanceAndDevice(const InteropHandle* handles, bool useValidationLayer);
-	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc) override;
+	Result initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename);
+	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc, const std::string& validationLayerOuputFilename) override;
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		getFormatSupportedResourceStates(Format format, ResourceStateSet* outStates) override;
 	virtual SLANG_NO_THROW Result SLANG_MCALL createTransientResourceHeap(

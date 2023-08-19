@@ -106,7 +106,6 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
 int main(int argc, char** argv){
 
     int gpuID = -1; // automatic gpu selection
-    bool stdin_mode = false;
 
 #ifdef _DEBUG
     bool echo_input = true;
@@ -167,9 +166,11 @@ int main(int argc, char** argv){
       ;
 
     const std::string profilerCaptureDefaultFilename = "lava_profiling_stats.json";
+    std::string vkValidationFilename;
     std::string profilerCaptureFilename;
     po::options_description profiling("Profiling");
     profiling.add_options()
+      ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationFilename), "Output Vulkan validation info");
       ("perf-file", po::value<std::string>(&profilerCaptureFilename)->default_value(profilerCaptureDefaultFilename), "Output profiling file")
       ;
 
@@ -243,6 +244,8 @@ int main(int argc, char** argv){
 
     // ---------------------
     
+    const bool enableValidationLayer = vkValidationFilename.empty() ? false : true;
+
 
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(
@@ -250,7 +253,7 @@ int main(int argc, char** argv){
       ReaderLSD::myConstructor
     );
 
-    auto pDeviceManager = DeviceManager::create();
+    auto pDeviceManager = DeviceManager::create(enableValidationLayer);
     if (!pDeviceManager) exit(EXIT_FAILURE);
 
     pDeviceManager->setDefaultRenderingDevice(gpuID);
@@ -258,6 +261,7 @@ int main(int argc, char** argv){
     Falcor::Device::Desc device_desc;
     device_desc.width = 1280;
     device_desc.height = 720;
+    device_desc.validationLayerOuputFilename = vkValidationFilename;
 
     LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
     auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);

@@ -11,9 +11,8 @@
 namespace gfx {
 using namespace Slang;
 
-//Result SLANG_MCALL createD3D11Device(const IDevice::Desc* desc, IDevice** outDevice);
-//Result SLANG_MCALL createD3D12Device(const IDevice::Desc* desc, IDevice** outDevice);
-Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outDevice);
+
+Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outDevice, const std::string& validationLayerOuputFilename);
 
 static bool debugLayerEnabled = false;
 
@@ -234,77 +233,12 @@ extern "C"
         *outInfo = s_formatInfoMap.get(format);
         return SLANG_OK;
     }
-
-    SlangResult _createDevice(const IDevice::Desc* desc, IDevice** outDevice)
-    {
-        switch (desc->deviceType)
-        {
-#if SLANG_WINDOWS_FAMILY
-        //case DeviceType::DirectX11:
-        //    {
-        //        return createD3D11Device(desc, outDevice);
-        //    }
-        //case DeviceType::DirectX12:
-        //    {
-        //        return createD3D12Device(desc, outDevice);
-        //    }
-        //case DeviceType::OpenGl:
-        //    {
-        //        return createGLDevice(desc, outDevice);
-        //    }
-        case DeviceType::Vulkan:
-            {
-                return createVKDevice(desc, outDevice);
-            }
-        //case DeviceType::CUDA:
-        //    {
-        //        return createCUDADevice(desc, outDevice);
-        //    }
-        case DeviceType::Default:
-            {
-                IDevice::Desc newDesc = *desc;
-                //newDesc.deviceType = DeviceType::DirectX12;
-                //if (_createDevice(&newDesc, outDevice) == SLANG_OK)
-                //    return SLANG_OK;
-                newDesc.deviceType = DeviceType::Vulkan;
-                if (_createDevice(&newDesc, outDevice) == SLANG_OK)
-                    return SLANG_OK;
-                //newDesc.deviceType = DeviceType::DirectX11;
-                //if (_createDevice(&newDesc, outDevice) == SLANG_OK)
-                //    return SLANG_OK;
-                //newDesc.deviceType = DeviceType::OpenGl;
-                //if (_createDevice(&newDesc, outDevice) == SLANG_OK)
-                //    return SLANG_OK;
-                return SLANG_FAIL;
-            }
-            break;
-#elif SLANG_LINUX_FAMILY && !defined(__CYGWIN__)
-        case DeviceType::Default:
-        case DeviceType::Vulkan:
-        {
-            return createVKDevice(desc, outDevice);
-        }
-        //case DeviceType::CUDA:
-        //{
-        //    return createCUDADevice(desc, outDevice);
-        //}
-#endif
-        //case DeviceType::CPU:
-        //    {
-        //        return createCPUDevice(desc, outDevice);
-        //    }
-        //    break;
-
-        default:
-            return SLANG_FAIL;
-        }
-    }
-
+    
     SLANG_GFX_API SlangResult SLANG_MCALL
-        gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice)
+        gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice, const std::string& validationLayerOuputFilename)
     {
         ComPtr<IDevice> innerDevice;
-        auto resultCode = _createDevice(desc, innerDevice.writeRef());
+        auto resultCode = createVKDevice(desc, innerDevice.writeRef(), validationLayerOuputFilename);
         if (SLANG_FAILED(resultCode))
             return resultCode;
         if (!debugLayerEnabled)

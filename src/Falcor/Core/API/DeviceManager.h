@@ -82,7 +82,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     VkInstance vulkanInstance() const;
 #endif
 
-    static SharedPtr create();
+    static SharedPtr create(bool enableValidationLayer = false);
 
  private:
     DeviceManager();
@@ -96,6 +96,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     void enumerateDevices();
 
     bool mInitialized = false;
+    bool mEnableValidationLayer = false;
 
     std::unordered_map<uint8_t, std::string> mDeviceNames;
     std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 

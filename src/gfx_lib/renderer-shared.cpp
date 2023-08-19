@@ -328,7 +328,7 @@ IDevice* gfx::RendererBase::getInterface(const Guid& guid)
                : nullptr;
 }
 
-SLANG_NO_THROW Result SLANG_MCALL RendererBase::initialize(const Desc& desc)
+SLANG_NO_THROW Result SLANG_MCALL RendererBase::initialize(const Desc& desc, bool useValidationLayer)
 {
     if (desc.apiCommandDispatcher)
     {

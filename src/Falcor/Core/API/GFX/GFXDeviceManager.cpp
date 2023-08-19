@@ -96,7 +96,7 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
         //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
-        //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
     // Initialize the extensions
@@ -144,12 +144,12 @@ bool DeviceManager::init() {
     if (mInitialized) return true;
 
 #ifdef _DEBUG
-    bool enableDebugLayer = true;
+    const bool enableValidationLayer = true;
 #else
-    bool enableDebugLayer = false;
+    const bool enableValidationLayer = mEnableValidationLayer;
 #endif
     
-    gVulkanInstance = createVulkanInstance(enableDebugLayer);
+    gVulkanInstance = createVulkanInstance(enableValidationLayer);
     
     if (gVulkanInstance == VK_NULL_HANDLE) return false;
 

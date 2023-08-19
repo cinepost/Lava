@@ -95,6 +95,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         uint32_t apiMinorVersion = 2;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
         bool enableVsync = false;                                       ///< Controls vertical-sync
         bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;      ///< Enable the debug layer. The default for release build is false, for debug build it's true.
+        std::string validationLayerOuputFilename;
 
         static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
         std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 2 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
@@ -368,7 +369,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void destroyApiObjects();
     void apiPresent();
 
-    bool apiInit();
+    bool apiInit(const std::string validationLayerOuputFilename);
 
     bool createSwapChain(ResourceFormat colorFormat);
 
