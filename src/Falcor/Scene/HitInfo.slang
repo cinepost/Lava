@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scene/SceneDefines.slangh"
+#include "Scene/SDFs/SDFGridNoDefines.slangh"
+
 import Utils.Math.FormatConversion;
 __exported import Scene.HitInfoType;
 __exported import Scene.SceneTypes;
@@ -58,7 +60,7 @@ __exported import Scene.SDFs.SDFGridHitData;
 */
 
 #ifndef HIT_INFO_USE_COMPRESSION
-#define HIT_INFO_USE_COMPRESSION false
+#define HIT_INFO_USE_COMPRESSION 0
 #endif
 
 
