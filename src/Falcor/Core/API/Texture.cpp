@@ -173,14 +173,11 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 			if (loadAsSrgb) {
 				texFormat = linearToSrgbFormat(texFormat);
 			}
-
 			pTex = Texture::create2D(pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
 		}
 	}
 
-	if (pTex != nullptr) {
-		pTex->setSourcePath(fullPath);
-	}
+	if (pTex) pTex->mSourceFilename = fullPath.string();
 
 	return pTex;
 }

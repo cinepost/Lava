@@ -1363,7 +1363,8 @@ Result DeviceImpl::createTextureResource(
 	
 	SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateImage(m_device, &imageInfo, nullptr, &texture->m_image));
 
-  ///////// texture barrier /////////////
+  	///////// texture barrier /////////////
+
 
 	if (pTexture && sparse) {
     	// transition layout
@@ -1373,16 +1374,20 @@ Result DeviceImpl::createTextureResource(
 			*texture->getDesc(),
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			//VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 		m_deviceQueue.flushAndWait();
-		pTexture->mState.global = Falcor::Resource::State::ShaderResource;
-  }
 
-  ///////////////////////////////////////
+		pTexture->mState.global = Falcor::Resource::State::ShaderResource;
+		//pTexture->mState.global = Falcor::Resource::State::CopyDest;
+  	}
+
+
+  	///////////////////////////////////////
 
   	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &pTexture->mMemRequirements);
 	
-  ////////////// sparse texture section /////////////////
+  	////////////// sparse texture section /////////////////
 
 	if (pTexture && sparse) {
 #ifdef _DEBUG

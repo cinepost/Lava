@@ -206,6 +206,9 @@ bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newSta
 	if (pTexture->getGlobalState() != newState) {
 		gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
 		resourceEncoder->textureBarrier(1, &textureResource, getGFXResourceState(pTexture->getGlobalState()), getGFXResourceState(newState));
+		
+		//LLOG_TRC << "Texture " << pTexture->getSourceFilename() << " " << to_string(pTexture->getGlobalState()) << " to " << to_string(newState);
+
 		mCommandsPending = true;
 		recorded = true;
 	}
