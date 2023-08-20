@@ -369,7 +369,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void destroyApiObjects();
     void apiPresent();
 
-    bool apiInit(const std::string validationLayerOuputFilename);
+    bool apiInit(const std::string& validationLayerOuputFilename);
 
     bool createSwapChain(ResourceFormat colorFormat);
 

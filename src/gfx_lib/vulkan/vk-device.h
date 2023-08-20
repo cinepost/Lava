@@ -1,6 +1,8 @@
 // vk-device.h
 #pragma once
 
+#include <stdio.h>
+
 #include "vk-base.h"
 #include "vk-framebuffer.h"
 
@@ -19,9 +21,10 @@ namespace vk {
 
 class DeviceImpl : public RendererBase {
 public:
+
 	// Renderer    implementation
 	Result initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename);
-	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc, const std::string& validationLayerOuputFilename) override;
+	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc) override;
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		getFormatSupportedResourceStates(Format format, ResourceStateSet* outStates) override;
 	virtual SLANG_NO_THROW Result SLANG_MCALL createTransientResourceHeap(
@@ -237,6 +240,8 @@ public:
 	VkSampler m_defaultSampler;
 
 	RefPtr<FramebufferImpl> m_emptyFramebuffer;
+
+	FILE* pVkValidationFile = nullptr;
 };
 
 } // namespace vk

@@ -441,10 +441,10 @@ VkImageAspectFlags getAspectMaskFromFormat(VkFormat format)
 
 } // namespace vk
 
-Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer, const std::string& validationLayerOuputFilename)
+Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer)
 {
     RefPtr<vk::DeviceImpl> result = new vk::DeviceImpl();
-    SLANG_RETURN_ON_FAIL(result->initialize(*desc, validationLayerOuputFilename));
+    SLANG_RETURN_ON_FAIL(result->initialize(*desc));
     returnComPtr(outRenderer, result);
     return SLANG_OK;
 }

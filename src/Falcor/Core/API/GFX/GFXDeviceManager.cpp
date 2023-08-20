@@ -106,10 +106,11 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
     std::vector<const char*> requiredExtensions = {
         "VK_KHR_surface",
 #ifdef _WIN32
-        "VK_KHR_win32_surface"
+        "VK_KHR_win32_surface",
 #else
-        "VK_KHR_xlib_surface"
+        "VK_KHR_xlib_surface",
 #endif
+        "VK_KHR_get_physical_device_properties2",
     };
 
     if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }

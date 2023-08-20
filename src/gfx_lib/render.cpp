@@ -12,7 +12,7 @@ namespace gfx {
 using namespace Slang;
 
 
-Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outDevice, const std::string& validationLayerOuputFilename);
+Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outDevice);
 
 static bool debugLayerEnabled = false;
 
@@ -235,10 +235,10 @@ extern "C"
     }
     
     SLANG_GFX_API SlangResult SLANG_MCALL
-        gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice, const std::string& validationLayerOuputFilename)
+        gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice)
     {
         ComPtr<IDevice> innerDevice;
-        auto resultCode = createVKDevice(desc, innerDevice.writeRef(), validationLayerOuputFilename);
+        auto resultCode = createVKDevice(desc, innerDevice.writeRef());
         if (SLANG_FAILED(resultCode))
             return resultCode;
         if (!debugLayerEnabled)

@@ -25,8 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-[[vk::binding(0, 1)]]
-SamplerState gColorSampler : register(s1);
+SamplerState gColorSampler;
 
 Texture2D gColorTex;
 RWTexture2D<float> gLuminanceOutColor;

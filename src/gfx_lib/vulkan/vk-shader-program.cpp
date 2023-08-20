@@ -77,11 +77,13 @@ Result ShaderProgramImpl::createShaderModule(
     const char* spirvBinaryEntryPointName = "main";
     if (m_device->m_desc.slang.targetFlags & SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY)
         spirvBinaryEntryPointName = realEntryPointName;
+
     m_stageCreateInfos.add(compileEntryPoint(
         spirvBinaryEntryPointName,
         kernelCode,
         (VkShaderStageFlagBits)VulkanUtil::getShaderStage(entryPointInfo->getStage()),
         shaderModule));
+    
     m_entryPointNames.add(realEntryPointName);
     m_modules.add(shaderModule);
     return SLANG_OK;

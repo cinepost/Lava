@@ -43,8 +43,6 @@ namespace vk {
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
-static std::string gValidationOutputFilename;
-
 static glm::uvec3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
 	glm::uvec3 res;
 	res.x = extent.width / granularity.width + ((extent.width % granularity.width) ? 1u : 0u);
@@ -112,6 +110,10 @@ DeviceImpl::~DeviceImpl() {
 			m_desc.existingDeviceHandles.handles[0].handleValue == 0)
 			m_api.vkDestroyInstance(m_api.m_instance, nullptr);
 	}
+
+	if(pVkValidationFile) {
+		fclose(pVkValidationFile);
+	}
 }
 
 // TODO: Is "location" still needed for this function?
@@ -143,13 +145,17 @@ VkBool32 DeviceImpl::handleDebugMessage(
 	bufferArray.setCount(bufferSize);
 	char* buffer = bufferArray.getBuffer();
 
-	sprintf_s(buffer, bufferSize, "%s: %s %d: %s\n", pLayerPrefix, severity, msgCode, pMsg);
+	sprintf_s(buffer, bufferSize, "Vulkan validation: %s: %s %d: %s\n", pLayerPrefix, severity, msgCode, pMsg);
 
 	//	getDebugCallback()->handleMessage(msgType, DebugMessageSource::Driver, buffer);
-	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-		LLOG_WRN << "Vulkan validation: " << std::string(buffer);
+	if(pVkValidationFile) {
+		fprintf(pVkValidationFile, buffer);
 	} else {
-		LLOG_ERR << "Vulkan validation: " << std::string(buffer);
+		if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+			LLOG_WRN << std::string(buffer);
+		} else {
+			LLOG_ERR << std::string(buffer);
+		}
 	}
 
 	return VK_FALSE;
@@ -168,35 +174,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DeviceImpl::debugMessageCallback(
 	return ((DeviceImpl*)pUserData)->handleDebugMessage(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg);
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DeviceImpl::debugMessageFileCallback(
-	VkDebugReportFlagsEXT flags,
-	VkDebugReportObjectTypeEXT objType,
-	uint64_t srcObject,
-	Size location,
-	int32_t msgCode,
-	const char* pLayerPrefix,
-	const char* pMsg,
-	void* pUserData)
-{
-	if(gValidationOutputFilename.empty()) return debugMessageCallback(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg, pUserData);
-
-	ofstream myfile(gValidationOutputFilename);
- 	if (myfile.is_open()) {
-
- 		myfile << "VK " << std::string(pLayerPrefix) << " ";
- 		if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-			myfile << "warning";
-		} else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-			myfile << "error";
-		}
- 		
- 		myfile << " Msg: ";
-    myfile << std::string(pMsg) << "\n";
-    myfile.close();
- 	}
-
-	return VK_FALSE;
-}
 
 Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles) {
 	outHandles->handles[0].handleValue = (uint64_t)m_api.m_instance;
@@ -212,6 +189,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	m_features.clear();
 
 	m_queueAllocCount = 0;
+
+	bool useValidationLayer = !validationLayerOuputFilename.empty();
 
 	VkInstance instance = VK_NULL_HANDLE;
 	if (handles[0].handleValue == 0) {
@@ -317,13 +296,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		VkDebugReportFlagsEXT debugFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
 		VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT };
 		
-		if (validationLayerOuputFilename == "console") {}
-			debugCreateInfo.pfnCallback = &debugMessageCallback;
-		} else {
-			gValidationOutputFilename = validationLayerOuputFilename;
-			debugCreateInfo.pfnCallback = &debugMessageFileCallback;
+		if (!validationLayerOuputFilename.empty() && validationLayerOuputFilename != "console") {
+			pVkValidationFile = fopen(validationLayerOuputFilename.c_str() , "w+");
+			if(pVkValidationFile) { 
+				LLOG_WRN << "Writing vulkan validation report to file: " << validationLayerOuputFilename;
+			} else {
+				LLOG_ERR << "Error opening vulkan validation file " << validationLayerOuputFilename << " !!!";
+			}
 		}
 
+		debugCreateInfo.pfnCallback = &debugMessageCallback;
 		debugCreateInfo.pUserData = this;
 		debugCreateInfo.flags = debugFlags;
 
@@ -421,17 +403,17 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
-
+		
 		// Inline uniform block
 		extendedFeatures.inlineUniformBlockFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.inlineUniformBlockFeatures;
 
 		// Buffer device address features
-		extendedFeatures.bufferDeviceAddressFeatures.pNext = deviceFeatures2.pNext;
-		deviceFeatures2.pNext = &extendedFeatures.bufferDeviceAddressFeatures;
+		//extendedFeatures.bufferDeviceAddressFeatures.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.bufferDeviceAddressFeatures;
 
 		// Ray query features
 		extendedFeatures.rayQueryFeatures.pNext = deviceFeatures2.pNext;
@@ -446,32 +428,43 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
 		// Subgroup features
-		extendedFeatures.shaderSubgroupExtendedTypeFeatures.pNext = deviceFeatures2.pNext;
-		deviceFeatures2.pNext = &extendedFeatures.shaderSubgroupExtendedTypeFeatures;
+		//extendedFeatures.shaderSubgroupExtendedTypeFeatures.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.shaderSubgroupExtendedTypeFeatures;
 
 		// Extended dynamic states
 		extendedFeatures.extendedDynamicStateFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.extendedDynamicStateFeatures;
 
 		// Timeline Semaphore
-		extendedFeatures.timelineFeatures.pNext = deviceFeatures2.pNext;
-		deviceFeatures2.pNext = &extendedFeatures.timelineFeatures;
+		//extendedFeatures.timelineFeatures.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.timelineFeatures;
 
 		// Float16
-		extendedFeatures.float16Features.pNext = deviceFeatures2.pNext;
-		deviceFeatures2.pNext = &extendedFeatures.float16Features;
+		//extendedFeatures.float16Features.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.float16Features;
 
 		// 16-bit storage
 		extendedFeatures.storage16BitFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.storage16BitFeatures;
 
 		// Atomic64
-		extendedFeatures.atomicInt64Features.pNext = deviceFeatures2.pNext;
-		deviceFeatures2.pNext = &extendedFeatures.atomicInt64Features;
+		//extendedFeatures.atomicInt64Features.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.atomicInt64Features;
 
-		// robustness2 features
+		// Robustness2 features
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
+
+		// Fragment shader barycentrics features
+		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.fragmentShaderBarycentricFeaturesNV;
+		
+		extendedFeatures.fragmentShaderBarycentricFeaturesKHR.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.fragmentShaderBarycentricFeaturesKHR;
+
+		// Fragment shader interlock features
+		extendedFeatures.fragmentShaderInterlockFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.fragmentShaderInterlockFeatures;
 
 		// Atomic Float
 		// To detect atomic float we need
@@ -480,7 +473,20 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.atomicFloatFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.atomicFloatFeatures;
 
+		// Vulkan 1.2 features
+		extendedFeatures.vulkan12Features.samplerFilterMinmax = VK_TRUE;
+		extendedFeatures.vulkan12Features.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.vulkan12Features;
+
 		m_api.vkGetPhysicalDeviceFeatures2(m_api.m_physicalDevice, &deviceFeatures2);
+
+
+		// Link into the creation features
+		deviceCreateInfo.pNext = &extendedFeatures.vulkan12Features;
+
+		if (extendedFeatures.vulkan12Features.samplerFilterMinmax) {
+			deviceExtensions.add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
+		}
 
 		if (deviceFeatures2.features.shaderResourceMinLod) {
 			m_features.add("shader-resource-min-lod");
@@ -501,22 +507,43 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		//deviceCreateInfo.pNext = &deviceFeatures2;
 
 		// If we have float16 features then enable
-		if (extendedFeatures.float16Features.shaderFloat16) {
-			// Link into the creation features
-			extendedFeatures.float16Features.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.float16Features;
-
+		if (extendedFeatures.vulkan12Features.shaderFloat16 || extendedFeatures.vulkan12Features.shaderInt8) {
 			// Add the Float16 extension
 			deviceExtensions.add(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
 
 			// We have half support
-			m_features.add("half");
+			if (extendedFeatures.vulkan12Features.shaderFloat16) m_features.add("half");
+			if (extendedFeatures.vulkan12Features.shaderInt8) m_features.add("int8");
 		}
+
+		if (extendedFeatures.vulkan12Features.shaderBufferInt64Atomics) {
+			deviceExtensions.add(VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME);
+			m_features.add("atomic-int64");
+		}
+
+		if (extendedFeatures.vulkan12Features.timelineSemaphore) {
+			// Link into the creation features
+			deviceExtensions.add(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+			m_features.add("timeline-semaphore");
+		}
+
+		if (extendedFeatures.vulkan12Features.shaderSubgroupExtendedTypes) {
+			deviceExtensions.add(VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME);
+			m_features.add("shader-subgroup-extended-types");
+		}
+
+		if (extendedFeatures.vulkan12Features.bufferDeviceAddress) {
+			deviceExtensions.add(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+			m_features.add("buffer-device-address");
+		}
+
+		auto& vulkan12Features = extendedFeatures.vulkan12Features;
+		vulkan12Features.pNext = NULL;
 
 		if (extendedFeatures.storage16BitFeatures.storageBuffer16BitAccess) {
 			// Link into the creation features
-			extendedFeatures.storage16BitFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.storage16BitFeatures;
+			extendedFeatures.storage16BitFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.storage16BitFeatures;
 
 			// Add the 16-bit storage extension
 			deviceExtensions.add(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
@@ -525,100 +552,73 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("16-bit-storage");
 		}
 
-		if (extendedFeatures.atomicInt64Features.shaderBufferInt64Atomics)
-		{
-			// Link into the creation features
-			extendedFeatures.atomicInt64Features.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.atomicInt64Features;
-
-			deviceExtensions.add(VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME);
-			m_features.add("atomic-int64");
-		}
-
 		if (extendedFeatures.atomicFloatFeatures.shaderBufferFloat32AtomicAdd) {
 			// Link into the creation features
-			extendedFeatures.atomicFloatFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.atomicFloatFeatures;
+			extendedFeatures.atomicFloatFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.atomicFloatFeatures;
 
 			deviceExtensions.add(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
 			m_features.add("atomic-float");
 		}
 
-		if (extendedFeatures.timelineFeatures.timelineSemaphore) {
-			// Link into the creation features
-			extendedFeatures.timelineFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.timelineFeatures;
-			deviceExtensions.add(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
-			m_features.add("timeline-semaphore");
-		}
-
 		if (extendedFeatures.extendedDynamicStateFeatures.extendedDynamicState) {
 			// Link into the creation features
-			extendedFeatures.extendedDynamicStateFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.extendedDynamicStateFeatures;
+			extendedFeatures.extendedDynamicStateFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.extendedDynamicStateFeatures;
 			deviceExtensions.add(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 			m_features.add("extended-dynamic-states");
 		}
 
-		if (extendedFeatures.shaderSubgroupExtendedTypeFeatures.shaderSubgroupExtendedTypes) {
-			extendedFeatures.shaderSubgroupExtendedTypeFeatures.pNext =
-				(void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.shaderSubgroupExtendedTypeFeatures;
-			deviceExtensions.add(VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME);
-			m_features.add("shader-subgroup-extended-types");
-		}
-
 		if (extendedFeatures.accelerationStructureFeatures.accelerationStructure) {
-			extendedFeatures.accelerationStructureFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.accelerationStructureFeatures;
+			extendedFeatures.accelerationStructureFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.accelerationStructureFeatures;
 			deviceExtensions.add(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 			deviceExtensions.add(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 			m_features.add("acceleration-structure");
 		}
 
 		if (extendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline) {
-			extendedFeatures.rayTracingPipelineFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.rayTracingPipelineFeatures;
+			extendedFeatures.rayTracingPipelineFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.rayTracingPipelineFeatures;
 			deviceExtensions.add(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
 			m_features.add("ray-tracing-pipeline");
 		}
 
 		if (extendedFeatures.rayQueryFeatures.rayQuery) {
-			extendedFeatures.rayQueryFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.rayQueryFeatures;
+			extendedFeatures.rayQueryFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.rayQueryFeatures;
 			deviceExtensions.add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 			m_features.add("ray-query");
 			m_features.add("ray-tracing");
 			m_features.add("sm_6_6");
 		}
 
-		if (extendedFeatures.bufferDeviceAddressFeatures.bufferDeviceAddress)
-		{
-			extendedFeatures.bufferDeviceAddressFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.bufferDeviceAddressFeatures;
-			deviceExtensions.add(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-
-			m_features.add("buffer-device-address");
-		}
-
-		if (extendedFeatures.inlineUniformBlockFeatures.inlineUniformBlock)
-		{
-			extendedFeatures.inlineUniformBlockFeatures.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.inlineUniformBlockFeatures;
+		if (extendedFeatures.inlineUniformBlockFeatures.inlineUniformBlock) {
+			extendedFeatures.inlineUniformBlockFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.inlineUniformBlockFeatures;
 			deviceExtensions.add(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 			m_features.add("inline-uniform-block");
 		}
 
-		if (extendedFeatures.robustness2Features.nullDescriptor)
-		{
-			extendedFeatures.robustness2Features.pNext = (void*)deviceCreateInfo.pNext;
-			deviceCreateInfo.pNext = &extendedFeatures.robustness2Features;
+		if (extendedFeatures.robustness2Features.nullDescriptor) {
+			extendedFeatures.robustness2Features.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.robustness2Features;
 			deviceExtensions.add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
 			m_features.add("robustness2");
 		}
 
+		if (extendedFeatures.fragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric) {
+			extendedFeatures.fragmentShaderBarycentricFeaturesKHR.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.fragmentShaderBarycentricFeaturesKHR;
+		}
+
+		if (extendedFeatures.fragmentShaderInterlockFeatures.fragmentShaderPixelInterlock) {
+			extendedFeatures.fragmentShaderInterlockFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.fragmentShaderInterlockFeatures;
+		}
+
 		if (m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT) {
-			VkMultisamplePropertiesEXT multisampleProperties;
+			VkMultisamplePropertiesEXT multisampleProperties = {VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT};
 			m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT(m_api.m_physicalDevice, VK_SAMPLE_COUNT_1_BIT, &multisampleProperties);
 			auto maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
 		}
@@ -693,7 +693,17 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("image_footprint");
 		}
 
-		// ---------
+		if(extensionNames.Contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) || extensionNames.Contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) {
+			if(extensionNames.Contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
+			if(extensionNames.Contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);	
+			m_features.add("fragment-shader-barycentrics");	
+			LLOG_WRN << "fragment shader barycentrics supported !";
+		}
+
+		if(extensionNames.Contains(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+			m_features.add("fragment-shader-interlock");	
+		}
 
 		if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
@@ -701,12 +711,15 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("conservative-rasterization-2");
 			m_features.add("conservative-rasterization-1");
 		}
+		
 		if (extensionNames.Contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-			if (extensionNames.Contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
-				deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-			}
 		}
+
+		if (extensionNames.Contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+		}
+
 		if (extensionNames.Contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
 		}
@@ -764,7 +777,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	return SLANG_OK;
 }
 
-SlangResult DeviceImpl::initialize(const Desc& desc, const std::string& validationLayerOuputFilename) {
+SlangResult DeviceImpl::initialize(const Desc& desc) {
 	// Initialize device info.
 	{
 		m_info.apiName = "Vulkan";
@@ -789,9 +802,7 @@ SlangResult DeviceImpl::initialize(const Desc& desc, const std::string& validati
 			continue;
 		descriptorSetAllocator.m_api = &m_api;
 
-		const std::string _validationLayerOuputFilename = (!validationLayerOuputFilename.empty() || (ENABLE_VALIDATION_LAYER != 0)) ? validationLayerOuputFilename : "";
-
-		initDeviceResult = initVulkanInstanceAndDevice(desc.existingDeviceHandles.handles, _validationLayerOuputFilename);
+		initDeviceResult = initVulkanInstanceAndDevice(desc.existingDeviceHandles.handles, desc.validationLayerOuputFilename);
 		
 		if (initDeviceResult == SLANG_OK)
 			break;
@@ -1293,7 +1304,6 @@ Result DeviceImpl::createTextureResource(
 		{
 			imageInfo.imageType = VK_IMAGE_TYPE_2D;
 			imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
-			imageInfo.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 			break;
 		}
 		case IResource::Type::TextureCube:
@@ -1934,7 +1944,7 @@ Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, con
 
 	VkBufferUsageFlags usage = _calcBufferUsageFlags(desc.allowedStates);
 	
-	if (m_api.m_extendedFeatures.bufferDeviceAddressFeatures.bufferDeviceAddress) {
+	if (m_api.m_extendedFeatures.vulkan12Features.bufferDeviceAddress) {
 		usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 	}
 	
@@ -2055,11 +2065,12 @@ Result DeviceImpl::createSamplerState(ISamplerState::Desc const& desc, ISamplerS
 	samplerInfo.compareEnable = desc.reductionOp == TextureReductionOp::Comparison;
 	samplerInfo.compareOp = VulkanUtil::translateComparisonFunc(desc.comparisonFunc);
 	samplerInfo.mipmapMode = VulkanUtil::translateMipFilterMode(desc.mipFilter);
-	samplerInfo.minLod = Math::Max(0.0f, desc.minLOD);
-	samplerInfo.maxLod = Math::Clamp(desc.maxLOD, samplerInfo.minLod, VK_LOD_CLAMP_NONE);
+	samplerInfo.minLod = desc.unnormalizedCoordinates ? 0.0f : Math::Max(0.0f, desc.minLOD);
+	samplerInfo.maxLod = desc.unnormalizedCoordinates ? 0.0f : Math::Clamp(desc.maxLOD, samplerInfo.minLod, VK_LOD_CLAMP_NONE);
 
 	VkSamplerReductionModeCreateInfo reductionInfo = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
-	reductionInfo.reductionMode = VulkanUtil::translateReductionOp(desc.reductionOp);
+	reductionInfo.reductionMode = VulkanUtil::translateReductionOp(desc.reductionOp, m_api.m_extendedFeatures.vulkan12Features.samplerFilterMinmax);
+	
 	samplerInfo.pNext = &reductionInfo;
 
 	VkSampler sampler;
@@ -2130,27 +2141,25 @@ Result DeviceImpl::createTextureView(
 			createInfo.subresourceRange.layerCount = 6;
 		}
 	}
-	createInfo.subresourceRange.levelCount = desc.subresourceRange.mipLevelCount == 0
-		? VK_REMAINING_MIP_LEVELS
-		: desc.subresourceRange.mipLevelCount;
-	switch (desc.type)
-	{
-	case IResourceView::Type::DepthStencil:
-		view->m_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		createInfo.subresourceRange.levelCount = 1;
-		break;
-	case IResourceView::Type::RenderTarget:
-		view->m_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		createInfo.subresourceRange.levelCount = 1;
-		break;
-	case IResourceView::Type::ShaderResource:
-		view->m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		break;
-	case IResourceView::Type::UnorderedAccess:
-		view->m_layout = VK_IMAGE_LAYOUT_GENERAL;
-		break;
-	default:
-		SLANG_UNIMPLEMENTED_X("Unknown TextureViewDesc type.");
+	createInfo.subresourceRange.levelCount = desc.subresourceRange.mipLevelCount == 0 ? VK_REMAINING_MIP_LEVELS : desc.subresourceRange.mipLevelCount;
+	
+	switch (desc.type) {
+		case IResourceView::Type::DepthStencil:
+			view->m_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			createInfo.subresourceRange.levelCount = 1;
+			break;
+		case IResourceView::Type::RenderTarget:
+			view->m_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			createInfo.subresourceRange.levelCount = 1;
+			break;
+		case IResourceView::Type::ShaderResource:
+			view->m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			break;
+		case IResourceView::Type::UnorderedAccess:
+			view->m_layout = VK_IMAGE_LAYOUT_GENERAL;
+			break;
+		default:
+			SLANG_UNIMPLEMENTED_X("Unknown TextureViewDesc type.");
 		break;
 	}
 	m_api.vkCreateImageView(m_device, &createInfo, nullptr, &view->m_view);

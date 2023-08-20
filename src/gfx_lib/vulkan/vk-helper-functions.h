@@ -177,6 +177,6 @@ VkImageAspectFlags getAspectMaskFromFormat(VkFormat format);
 
 } // namespace vk
 
-Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer, const std::string& validationLayerOuputFilename);
+Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer);
 
 } // namespace gfx

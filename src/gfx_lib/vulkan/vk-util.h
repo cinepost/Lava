@@ -103,7 +103,7 @@ struct VulkanUtil
 
     static VkStencilOpState translateStencilState(DepthStencilOpDesc desc);
 
-    static VkSamplerReductionMode translateReductionOp(TextureReductionOp op);
+    static VkSamplerReductionMode translateReductionOp(TextureReductionOp op, bool samplerFilterMinMaxEnabled = false);
 
 };
 

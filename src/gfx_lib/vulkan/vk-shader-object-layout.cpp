@@ -1,5 +1,9 @@
 // vk-shader-object-layout.cpp
+#include <set>
+
 #include "vk-shader-object-layout.h"
+
+#include "lava_utils_lib/logging.h"
 
 namespace gfx
 {
@@ -636,15 +640,27 @@ Result ShaderObjectLayoutImpl::_init(Builder const* builder)
     m_containerType = builder->m_containerType;
 
     // Create VkDescriptorSetLayout for all descriptor sets.
-    for (auto& descriptorSetInfo : m_descriptorSetInfos)
-    {
+    for (auto& descriptorSetInfo : m_descriptorSetInfos) {
         VkDescriptorSetLayoutCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         createInfo.pBindings = descriptorSetInfo.vkBindings.getBuffer();
         createInfo.bindingCount = (uint32_t)descriptorSetInfo.vkBindings.getCount();
         VkDescriptorSetLayout vkDescSetLayout;
-        SLANG_RETURN_ON_FAIL(renderer->m_api.vkCreateDescriptorSetLayout(
-            renderer->m_api.m_device, &createInfo, nullptr, &vkDescSetLayout));
+
+        {
+            // Check for duplicate bindings. TODO: disable in production !
+            uint32_t i = 0;
+            std::set<uint32_t> binding_numbers;
+            for(auto& binding: descriptorSetInfo.vkBindings) {
+                if (binding_numbers.find(binding.binding) != binding_numbers.end()) {
+                    LLOG_ERR << "Duplicate binding number " << binding.binding << " at pBindings[" << i << "] !!!";
+                }
+                i++;
+            }
+        }
+
+        SLANG_RETURN_ON_FAIL(renderer->m_api.vkCreateDescriptorSetLayout(renderer->m_api.m_device, &createInfo, nullptr, &vkDescSetLayout));
+
         descriptorSetInfo.descriptorSetLayout = vkDescSetLayout;
     }
     return SLANG_OK;

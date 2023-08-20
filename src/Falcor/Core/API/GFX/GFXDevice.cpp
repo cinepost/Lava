@@ -373,7 +373,7 @@ namespace Falcor {
 		return Device::ShaderModel::Unknown;
 	}
 
-	bool Device::apiInit(const std::string validationLayerOuputFilename) {
+	bool Device::apiInit(const std::string& validationLayerOuputFilename) {
 		const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 
 		DeviceApiData* pData = new DeviceApiData;
@@ -404,7 +404,9 @@ namespace Falcor {
 		}
 #endif
 
-		if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef(), validationLayerOuputFilename))) return false;
+		desc.validationLayerOuputFilename = validationLayerOuputFilename;
+
+		if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
 
 		mApiHandle = pData->pDevice;
 

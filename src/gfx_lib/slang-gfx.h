@@ -2156,6 +2156,8 @@ class IDevice: public ISlangUnknown {
 			// Configurations for Slang compiler.
 			SlangDesc slang = {};
 
+			std::string validationLayerOuputFilename;
+
 			GfxCount extendedDescCount = 0;
 			void** extendedDescs = nullptr;
 		};
@@ -2505,7 +2507,7 @@ extern "C"
 
 	/// Given a type returns a function that can construct it, or nullptr if there isn't one
 	SLANG_GFX_API SlangResult SLANG_MCALL
-		gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice, const std::string& validationLayerOuputFilename);
+		gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice);
 
 	/// Sets a callback for receiving debug messages.
 	/// The layer does not hold a strong reference to the callback object.

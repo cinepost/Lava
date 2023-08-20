@@ -95,8 +95,7 @@ bool Device::init() {
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
 
-    const bool useValidationLayer = mDesc.validationLayerOuputFilename.empty() ? false : true;
-    if (!apiInit(useValidationLayer)) return false;
+    if (!apiInit(mDesc.validationLayerOuputFilename)) return false;
 
     mpFrameFence = GpuFence::create(shared_from_this());
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);

@@ -509,16 +509,15 @@ VkStencilOpState VulkanUtil::translateStencilState(DepthStencilOpDesc desc)
     return rs;
 }
 
-VkSamplerReductionMode VulkanUtil::translateReductionOp(TextureReductionOp op)
-{
-    switch (op)
-    {
-    case gfx::TextureReductionOp::Minimum:
-        return VK_SAMPLER_REDUCTION_MODE_MIN;
-    case gfx::TextureReductionOp::Maximum:
-        return VK_SAMPLER_REDUCTION_MODE_MAX;
-    default:
-        return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+VkSamplerReductionMode VulkanUtil::translateReductionOp(TextureReductionOp op, bool samplerFilterMinMaxEnabled) {
+    if(!samplerFilterMinMaxEnabled) return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+    switch (op) {
+        case gfx::TextureReductionOp::Minimum:
+            return VK_SAMPLER_REDUCTION_MODE_MIN;
+        case gfx::TextureReductionOp::Maximum:
+            return VK_SAMPLER_REDUCTION_MODE_MAX;
+        default:
+            return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
     }
 }
 
