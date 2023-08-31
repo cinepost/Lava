@@ -3,51 +3,46 @@
 
 #include "vk-util.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
-Result QueryPoolImpl::init(const IQueryPool::Desc& desc, DeviceImpl* device)
-{
+namespace vk {
+
+Result QueryPoolImpl::init(const IQueryPool::Desc& desc, DeviceImpl* device) {
     m_device = device;
     m_pool = VK_NULL_HANDLE;
     VkQueryPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     createInfo.queryCount = (uint32_t)desc.count;
-    switch (desc.type)
-    {
-    case QueryType::Timestamp:
-        createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-        break;
-    case QueryType::AccelerationStructureCompactedSize:
-        createInfo.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
-        break;
-    case QueryType::AccelerationStructureSerializedSize:
-        createInfo.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR;
-        break;
-    case QueryType::AccelerationStructureCurrentSize:
-        // Vulkan does not support CurrentSize query, will not create actual pools here.
-        return SLANG_OK;
-    default:
-        return SLANG_E_INVALID_ARG;
+
+    switch (desc.type) {
+        case QueryType::Timestamp:
+            createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+            break;
+        case QueryType::AccelerationStructureCompactedSize:
+            createInfo.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+            break;
+        case QueryType::AccelerationStructureSerializedSize:
+            createInfo.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR;
+            break;
+        case QueryType::AccelerationStructureCurrentSize:
+            // Vulkan does not support CurrentSize query, will not create actual pools here.
+            return SLANG_OK;
+        default:
+            return SLANG_E_INVALID_ARG;
     }
-    SLANG_VK_RETURN_ON_FAIL(
-        m_device->m_api.vkCreateQueryPool(m_device->m_api.m_device, &createInfo, nullptr, &m_pool));
+
+    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateQueryPool(m_device->m_api.m_device, &createInfo, nullptr, &m_pool));
     return SLANG_OK;
 }
 
-QueryPoolImpl::~QueryPoolImpl()
-{
+QueryPoolImpl::~QueryPoolImpl() {
     m_device->m_api.vkDestroyQueryPool(m_device->m_api.m_device, m_pool, nullptr);
 }
 
-Result QueryPoolImpl::getResult(GfxIndex index, GfxCount count, uint64_t* data)
-{
-    if (!m_pool)
-    {
+Result QueryPoolImpl::getResult(GfxIndex index, GfxCount count, uint64_t* data) {
+    if (!m_pool) {
         // Vulkan does not support CurrentSize query, return 0 here.
         for (SlangInt i = 0; i < count; i++)
             data[i] = 0;

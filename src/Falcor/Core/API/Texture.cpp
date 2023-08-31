@@ -457,7 +457,7 @@ void Texture::uploadInitData(const void* pData, bool autoGenMips) {
 
 	if (autoGenMips) {
 		generateMips(mpDevice->getRenderContext());
-		invalidateViews();
+		//invalidateViews();
 	}
 }
 

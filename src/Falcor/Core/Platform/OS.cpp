@@ -75,9 +75,6 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
             deploymentDirectories.push_back(std::string(env_p) + "/shaders");
         }
     }
-
-    std::cout << "mode: " << (isDevelopmentMode() ? "development" : "production") << "\n";
-
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 

@@ -63,8 +63,9 @@ static_assert(sizeof(Meshlet) % 16 == 0, "Meshlet size should be a multiple of 1
 namespace {
     // Large scenes are split into multiple BLAS groups in order to reduce build memory usage.
     // The target is max 0.5GB intermediate memory per BLAS group. Note that this is not a strict limit.
-    const size_t kMaxBLASBuildMemory = 1ull << 29; // 512mb
-    //const size_t kMaxBLASBuildMemory = 1ull << 27; // 128mb
+    //const size_t kMaxBLASBuildMemory = 1ull << 29; // 512mb
+    //const size_t kMaxBLASBuildMemory = 1ull << 28; // 256mb
+    const size_t kMaxBLASBuildMemory = 1ull << 27; // 128mb
 
     const std::string kParameterBlockName = "gScene";
     const std::string kGeometryInstanceBufferName = "geometryInstances";
@@ -2615,7 +2616,14 @@ void Scene::buildBlas(RenderContext* pContext) {
                         postbuildInfoDesc.pool = currentSizeInfoPool.get();
                     }
 
+                    LLOG_DBG << "Acceleration structure build started...";
                     pContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
+                    LLOG_DBG << "Acceleration structure build done.";
+                    
+                    //LLOG_TRC << "Flushing pContext ... ";
+                    //pContext->flush(true);
+                    //LLOG_TRC << "Flushing pContext done.";
+
                 }
 
                 // Read back the calculated final size requirements for each BLAS.
@@ -2625,6 +2633,7 @@ void Scene::buildBlas(RenderContext* pContext) {
                     const uint32_t blasId = group.blasIndices[i];
                     auto& blas = mBlasData[blasId];
 
+                    LLOG_TRC << "Calculating " << ( blas.useCompaction ? "compacted":"") << " blas size...";
                     // Check the size. Upon failure a zero size may be reported.
                     uint64_t byteSize = 0;
                     if (blas.useCompaction) {
@@ -2638,6 +2647,8 @@ void Scene::buildBlas(RenderContext* pContext) {
                     }
                     assert(byteSize <= blas.prebuildInfo.resultDataMaxSize);
                     
+                    LLOG_TRC << "Calculated blas size is " << byteSize;
+
                     if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index " + std::to_string(blasId));
 
                     blas.blasByteSize = align_to(kAccelerationStructureByteAlignment, byteSize);

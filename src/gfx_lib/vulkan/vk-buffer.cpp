@@ -36,7 +36,6 @@ Result VKBufferHandleRAII::init(
     mAllocationInfo = {};
     mAllocation = {};
 
-
     VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     bufferCreateInfo.size = bufferSize;
     bufferCreateInfo.usage = usage;
@@ -53,7 +52,7 @@ Result VKBufferHandleRAII::init(
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.requiredFlags = reqMemoryProperties;
-    allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO; //VMA_MEMORY_USAGE_UNKNOWN;
 
     SLANG_VK_CHECK(vmaCreateBuffer(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &m_buffer, &mAllocation, &mAllocationInfo));
     return SLANG_OK;

@@ -206,36 +206,133 @@ VkShaderStageFlags VulkanUtil::getShaderStage(SlangStage stage)
     }
 }
 
-VkImageLayout VulkanUtil::getImageLayoutFromState(ResourceState state)
-{
-    switch (state)
-    {
-    case ResourceState::ShaderResource:
-        return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    case ResourceState::UnorderedAccess:
-    case ResourceState::General:
-        return VK_IMAGE_LAYOUT_GENERAL;
-    case ResourceState::Present:
-        return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    case ResourceState::CopySource:
-        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    case ResourceState::CopyDestination:
-        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    case ResourceState::RenderTarget:
-        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    case ResourceState::DepthWrite:
-        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    case ResourceState::DepthRead:
-        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    case ResourceState::ResolveSource:
-        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    case ResourceState::ResolveDestination:
-        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    default:
-        return VK_IMAGE_LAYOUT_UNDEFINED;
+VkImageLayout VulkanUtil::getImageLayoutFromState(ResourceState state) {
+    switch (state) {
+        case ResourceState::ShaderResource:
+            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        case ResourceState::UnorderedAccess:
+        case ResourceState::General:
+            return VK_IMAGE_LAYOUT_GENERAL;
+        case ResourceState::Present:
+            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        case ResourceState::CopySource:
+            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ResourceState::CopyDestination:
+            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ResourceState::RenderTarget:
+            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        case ResourceState::DepthWrite:
+            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        case ResourceState::DepthRead:
+            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        case ResourceState::ResolveSource:
+            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        case ResourceState::ResolveDestination:
+            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        default:
+            assert(!"unsupported state.");
+            return VK_IMAGE_LAYOUT_UNDEFINED;
     }
-    return VkImageLayout();
 }
+
+Falcor::Resource::State VulkanUtil::toFalcorState(ResourceState state) {
+    switch (state) {
+        case ResourceState::Undefined:
+            return Falcor::Resource::State::Undefined;
+        
+        case ResourceState::PreInitialized:
+            return Falcor::Resource::State::PreInitialized;
+        
+        case ResourceState::General:
+            return Falcor::Resource::State::Common;
+        
+        case ResourceState::VertexBuffer:
+            return Falcor::Resource::State::VertexBuffer;
+        
+        case ResourceState::ConstantBuffer:
+            return Falcor::Resource::State::ConstantBuffer;
+        
+        case ResourceState::IndexBuffer:
+            return Falcor::Resource::State::IndexBuffer;
+        
+        case ResourceState::RenderTarget:
+            return Falcor::Resource::State::RenderTarget;
+        
+        case ResourceState::UnorderedAccess:
+            return Falcor::Resource::State::UnorderedAccess;
+        
+        case ResourceState::DepthWrite:
+            return Falcor::Resource::State::DepthStencil;
+        
+        case ResourceState::ShaderResource:
+            return Falcor::Resource::State::ShaderResource;
+        
+        case ResourceState::StreamOutput:
+            return Falcor::Resource::State::StreamOut;
+        
+        case ResourceState::IndirectArgument:
+            return Falcor::Resource::State::IndirectArg;
+        
+        case ResourceState::CopyDestination:
+            return Falcor::Resource::State::CopyDest;
+        
+        case ResourceState::CopySource:
+            return Falcor::Resource::State::CopySource;
+        
+        case ResourceState::ResolveDestination:
+            return Falcor::Resource::State::ResolveDest;
+        
+        case ResourceState::ResolveSource:
+            return Falcor::Resource::State::ResolveSource;
+        
+        case ResourceState::Present:
+            return Falcor::Resource::State::Present;
+        
+        //case ResourceState::General:
+        //    return Falcor::Resource::State::GenericRead;
+        
+        //case ResourceState::ShaderResource:
+        //    return Falcor::Resource::State::PixelShader;
+        
+        //case Resource::State::NonPixelShader:
+        //    return gfx::ResourceState::ShaderResource;
+        
+        case ResourceState::AccelerationStructure:
+            return Falcor::Resource::State::AccelerationStructure;
+        
+        default:
+            assert(false);
+            return Falcor::Resource::State::Undefined;
+    }
+}
+
+enum class State : uint32_t {
+        Undefined,
+        PreInitialized,
+        Common,
+        VertexBuffer,
+        ConstantBuffer,
+        IndexBuffer,
+        RenderTarget,
+        UnorderedAccess,
+        DepthStencil,
+        ShaderResource,
+        StreamOut,
+        IndirectArg,
+        CopyDest,
+        CopySource,
+        ResolveDest,
+        ResolveSource,
+        Present,
+        GenericRead,
+        Predication,
+        PixelShader,
+        NonPixelShader,
+        AccelerationStructure,
+        AccelerationStructureBuildInput
+    };
+
+
 
 VkSampleCountFlagBits VulkanUtil::translateSampleCount(uint32_t sampleCount)
 {

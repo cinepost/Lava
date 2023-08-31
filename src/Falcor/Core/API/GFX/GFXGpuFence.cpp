@@ -65,7 +65,11 @@ uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue) {
 	return mCpuValue - 1;
 }
 
-void GpuFence::syncGpu(CommandQueueHandle /*pQueue*/) { }
+void GpuFence::syncGpu(CommandQueueHandle pQueue) {
+	gfx::IFence* fences[1]{mpApiData->gfxFence.get()};
+    auto waitValue = mCpuValue - 1;
+    FALCOR_GFX_CALL(pQueue->waitForFenceValuesOnDevice(std::size(fences), fences, &waitValue));
+}
 
 void GpuFence::syncCpu(std::optional<uint64_t> val) {
 	auto waitValue = val ? val.value() : mCpuValue - 1;

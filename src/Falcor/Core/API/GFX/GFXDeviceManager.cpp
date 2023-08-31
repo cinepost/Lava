@@ -50,7 +50,7 @@ static void enableLayerIfPresent(const char* layerName, const std::vector<VkLaye
     if (isLayerSupported(layerName, supportedLayers)) {
         requiredLayers.push_back(layerName);
     } else {
-        LLOG_ERR << "Can't enable requested Vulkan layer " << std::string(layerName) << ". Something bad might happen. Or not, depends on the layer.";
+        LLOG_WRN << "Can't enable requested Vulkan layer " << std::string(layerName) << ". Something bad might happen. Or not, depends on the layer.";
     }
 }
 
@@ -96,7 +96,7 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
         //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
     // Initialize the extensions

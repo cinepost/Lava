@@ -299,7 +299,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		if (!validationLayerOuputFilename.empty() && validationLayerOuputFilename != "console") {
 			pVkValidationFile = fopen(validationLayerOuputFilename.c_str() , "w+");
 			if(pVkValidationFile) { 
-				LLOG_WRN << "Writing vulkan validation report to file: " << validationLayerOuputFilename;
+				LLOG_DBG << "Writing vulkan validation report to file: " << validationLayerOuputFilename;
 			} else {
 				LLOG_ERR << "Error opening vulkan validation file " << validationLayerOuputFilename << " !!!";
 			}
@@ -427,29 +427,13 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
-		// Subgroup features
-		//extendedFeatures.shaderSubgroupExtendedTypeFeatures.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.shaderSubgroupExtendedTypeFeatures;
-
 		// Extended dynamic states
 		extendedFeatures.extendedDynamicStateFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.extendedDynamicStateFeatures;
 
-		// Timeline Semaphore
-		//extendedFeatures.timelineFeatures.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.timelineFeatures;
-
-		// Float16
-		//extendedFeatures.float16Features.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.float16Features;
-
 		// 16-bit storage
 		extendedFeatures.storage16BitFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.storage16BitFeatures;
-
-		// Atomic64
-		//extendedFeatures.atomicInt64Features.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.atomicInt64Features;
 
 		// Robustness2 features
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
@@ -759,12 +743,13 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
 
 	VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
-	vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+	vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 	vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	vmaAllocatorCreateInfo.physicalDevice = physicalDevice;
 	vmaAllocatorCreateInfo.device = m_device;
 	vmaAllocatorCreateInfo.instance = instance;
 	vmaAllocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+	vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 1ull << 30; // 1gb
 	//vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
 	
 	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_api.mVmaAllocator));
@@ -1344,7 +1329,7 @@ Result DeviceImpl::createTextureResource(
 
 	if (pTexture && sparse) {
 		imageInfo.pQueueFamilyIndices = nullptr;
-    imageInfo.queueFamilyIndexCount = 0;
+    	imageInfo.queueFamilyIndexCount = 0;
 		imageInfo.flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		pTexture->mState.global = Falcor::Resource::State::Undefined;
@@ -1363,6 +1348,8 @@ Result DeviceImpl::createTextureResource(
 	
 	SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateImage(m_device, &imageInfo, nullptr, &texture->m_image));
 
+	//printf("Texture %s handle %p", pTexture->getSourceFilename().c_str(), texture->m_image);
+
   	///////// texture barrier /////////////
 
 
@@ -1376,7 +1363,7 @@ Result DeviceImpl::createTextureResource(
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			//VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		m_deviceQueue.flushAndWait();
+		//m_deviceQueue.flushAndWait();
 
 		pTexture->mState.global = Falcor::Resource::State::ShaderResource;
 		//pTexture->mState.global = Falcor::Resource::State::CopyDest;
@@ -1652,6 +1639,8 @@ Result DeviceImpl::createTextureResource(
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+		pTexture->mState.global = Falcor::Resource::State::CopyDest;
+
 		{
 			Offset srcOffset = 0;
 			for (int i = 0; i < arraySize; ++i) {
@@ -1702,6 +1691,9 @@ Result DeviceImpl::createTextureResource(
 			*texture->getDesc(),
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			defaultLayout);
+
+		pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
+
 	} else {
 		// No init data non-sparse texture
 		if(!sparse) {
@@ -1713,6 +1705,7 @@ Result DeviceImpl::createTextureResource(
 					*texture->getDesc(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					defaultLayout);
+				pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 			}
 		}
 	}
@@ -1954,6 +1947,10 @@ Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, con
 	
 	if (desc.allowedStates.contains(ResourceState::ShaderResource) && m_api.m_extendedFeatures.accelerationStructureFeatures.accelerationStructure) {
 		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+	}
+
+	if (desc.allowedStates.contains(ResourceState::AccelerationStructure)) {
+		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 	}
 
 	if (initData) {

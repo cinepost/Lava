@@ -172,6 +172,8 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
 
 float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData rayData, TriangleHit triangleHit, ShadingData sd, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, const uint maxRayLevel){
 
+    const float _tmin = .001f;
+
     float3 surfaceColor = float3(0.0);
 
     const float lumaWeight = LUMA_CCIR601(rayData.weight) / gRayContribThresh;
@@ -254,26 +256,13 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
             [[branch]]if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;
-                const Ray ray = Ray(rayShadowOrigin, ls.shadowDir, 0.001f, ls.distance);
+                const Ray ray = Ray(rayShadowOrigin, ls.shadowDir, _tmin, ls.distance);
 
                 [[branch]] if(gScene.isObjectSelfShadowsReceiving(triangleHit.instanceID)) {
                     shadowFactor = rayQuery.traceVisibilityRay(ray, rayFlags, 0x02) ? float3(1.0) : light.shadowColor;
                 } else {
                     shadowFactor = rayQuery.traceVisibilityRay(ray, rayFlags, 0x02, triangleHit.instanceID.index) ? float3(1.0) : light.shadowColor;
                 }
-                
-                /*
-                // Test visibility by tracing a shadow ray.
-                RayDesc ray;
-                ray.Origin = rayShadowOrigin;
-                ray.Direction = ls.shadowDir;
-                ray.TMin = .001f;
-                ray.TMax = ls.distance;
-
-                rayShadowOriginQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-                rayShadowOriginQuery.Proceed();
-                shadowFactor = (rayShadowOriginQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0);
-                */
             }
 
             float misDiffWeight = 1.0f;
@@ -346,7 +335,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                     RayDesc ray;
                     ray.Origin = rayShadowOrigin;
                     ray.Direction = bsdfSample.wo;
-                    ray.TMin = .001f;
+                    ray.TMin = _tmin;
                     ray.TMax = ls.distance;
 
                     rayShadowOriginQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);

@@ -32,7 +32,9 @@
 
 namespace Falcor {
 
-RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, const RtAccelerationStructure::Desc& desc): mpDevice(pDevice), mDesc(desc) {}
+RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, const RtAccelerationStructure::Desc& desc): mpDevice(pDevice), mDesc(desc) {
+
+}
 
 RtAccelerationStructure::~RtAccelerationStructure() {
     mpDevice->releaseResource(mApiHandle);
@@ -143,11 +145,9 @@ gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStruc
         case RtAccelerationStructurePostBuildInfoQueryType::SerializationSize:
             return gfx::QueryType::AccelerationStructureSerializedSize;
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
-            return gfx::QueryType::AccelerationStructureCurrentSize;
         default:
-            assert(false);
-            return gfx::QueryType::AccelerationStructureCompactedSize;
-    }
+            return gfx::QueryType::AccelerationStructureCurrentSize;
+        }
 }
 
 }  // namespace Falcor

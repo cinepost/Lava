@@ -376,7 +376,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 			LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
 			if(!tailData.empty()) {
 				std::unique_lock<std::mutex> lock(mPageMutex);
-				pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+				//pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
 			}
 		}
 

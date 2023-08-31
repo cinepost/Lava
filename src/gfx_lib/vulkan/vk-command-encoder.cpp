@@ -472,6 +472,14 @@ void ResourceCommandEncoder::uploadTexturePageData(
 		auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
 		auto numRows = calcNumRows(desc.format, mipSize.height);
 
+		m_commandBuffer->m_renderer->_transitionImageLayout(
+			commandBuffer,
+			dstImpl->m_image,
+			dstImpl->m_vkformat,
+			*dstImpl->getDesc(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		
 		// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkBufferImageCopy.html
 		// bufferRowLength and bufferImageHeight specify the data in buffer
 		// memory as a subregion of a larger two- or three-dimensional image,
@@ -493,6 +501,7 @@ void ResourceCommandEncoder::uploadTexturePageData(
 		region.imageExtent = {static_cast<uint32_t>(extent.width), static_cast<uint32_t>(extent.height), static_cast<uint32_t>(extent.depth)};
 
 		// Do the copy (do all depths in a single go)
+		
 		vkApi.vkCmdCopyBufferToImage(
 			commandBuffer,
 			static_cast<BufferResourceImpl*>(uploadBuffer)->m_buffer.m_buffer,
@@ -501,6 +510,15 @@ void ResourceCommandEncoder::uploadTexturePageData(
 			1,
 			&region);
 		
+		m_commandBuffer->m_renderer->_transitionImageLayout(
+			commandBuffer,
+			dstImpl->m_image,
+			dstImpl->m_vkformat,
+			*dstImpl->getDesc(),
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		//m_commandBuffer->m_renderer->waitForGpu();
 	}
 }
 
@@ -541,8 +559,7 @@ void ResourceCommandEncoder::uploadTextureData(
 
 	IBufferResource* uploadBuffer = nullptr;
 	Offset uploadBufferOffset = 0;
-	m_commandBuffer->m_transientHeap->allocateStagingBuffer(
-		bufferSize, uploadBuffer, uploadBufferOffset, MemoryType::Upload);
+	m_commandBuffer->m_transientHeap->allocateStagingBuffer(bufferSize, uploadBuffer, uploadBufferOffset, MemoryType::Upload);
 
 	// Copy into upload buffer
 	{
@@ -555,10 +572,8 @@ void ResourceCommandEncoder::uploadTextureData(
 		dstDataStart = dstData;
 
 		Offset dstSubresourceOffset = 0;
-		for (GfxIndex i = 0; i < subResourceRange.layerCount; ++i)
-		{
-			for (GfxIndex j = 0; j < (GfxCount)mipSizes.getCount(); ++j)
-			{
+		for (GfxIndex i = 0; i < subResourceRange.layerCount; ++i) {
+			for (GfxIndex j = 0; j < (GfxCount)mipSizes.getCount(); ++j) {
 				const auto& mipSize = mipSizes[j];
 
 				int subResourceIndex = subResourceCounter++;
@@ -574,13 +589,11 @@ void ResourceCommandEncoder::uploadTextureData(
 				const uint8_t* srcLayer = (const uint8_t*)initSubresource.data;
 				uint8_t* dstLayer = dstData + dstSubresourceOffset;
 
-				for (int k = 0; k < mipSize.depth; k++)
-				{
+				for (int k = 0; k < mipSize.depth; k++) {
 					const uint8_t* srcRow = srcLayer;
 					uint8_t* dstRow = dstLayer;
 
-					for (GfxCount l = 0; l < numRows; l++)
-					{
+					for (GfxCount l = 0; l < numRows; l++) {
 						::memcpy(dstRow, srcRow, dstRowSizeInBytes);
 
 						dstRow += dstRowSizeInBytes;
@@ -597,11 +610,12 @@ void ResourceCommandEncoder::uploadTextureData(
 		uploadBuffer->unmap(nullptr);
 	}
 	{
+
+		std::vector<VkBufferImageCopy> regions;
+
 		Offset srcOffset = uploadBufferOffset;
-		for (GfxIndex i = 0; i < subResourceRange.layerCount; ++i)
-		{
-			for (GfxIndex j = 0; j < (GfxCount)mipSizes.getCount(); ++j)
-			{
+		for (GfxIndex i = 0; i < subResourceRange.layerCount; ++i) {
+			for (GfxIndex j = 0; j < (GfxCount)mipSizes.getCount(); ++j) {
 				const auto& mipSize = mipSizes[j];
 
 				auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
@@ -625,22 +639,41 @@ void ResourceCommandEncoder::uploadTextureData(
 				region.imageSubresource.baseArrayLayer = subResourceRange.baseArrayLayer + i;
 				region.imageSubresource.layerCount = 1;
 				region.imageOffset = {0, 0, 0};
-				region.imageExtent = {
-					uint32_t(mipSize.width), uint32_t(mipSize.height), uint32_t(mipSize.depth)};
-
-				// Do the copy (do all depths in a single go)
-				vkApi.vkCmdCopyBufferToImage(
-					commandBuffer,
-					static_cast<BufferResourceImpl*>(uploadBuffer)->m_buffer.m_buffer,
-					dstImpl->m_image,
-					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					1,
-					&region);
+				region.imageExtent = {uint32_t(mipSize.width), uint32_t(mipSize.height), uint32_t(mipSize.depth)};
+				
+				regions.push_back(region);
 
 				// Next
 				srcOffset += rowSizeInBytes * numRows * mipSize.depth;
 			}
 		}
+
+/*
+		m_commandBuffer->m_renderer->_transitionImageLayout(
+			commandBuffer,
+			dstImpl->m_image,
+			dstImpl->m_vkformat,
+			*dstImpl->getDesc(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+*/
+		// Do the copy (do all depths in a single go)
+		vkApi.vkCmdCopyBufferToImage(
+			commandBuffer,
+			static_cast<BufferResourceImpl*>(uploadBuffer)->m_buffer.m_buffer,
+			dstImpl->m_image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			static_cast<uint32_t>(regions.size()),
+			regions.data());
+/*
+		m_commandBuffer->m_renderer->_transitionImageLayout(
+			commandBuffer,
+			dstImpl->m_image,
+			dstImpl->m_vkformat,
+			*dstImpl->getDesc(),
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+*/
 	}
 }
 
@@ -1435,13 +1468,12 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	if (geomInfoBuilder.build(desc.inputs, getDebugCallback()) != SLANG_OK)
 		return;
 
-	if (desc.dest)
-	{
+	if (desc.dest) {
 		geomInfoBuilder.buildInfo.dstAccelerationStructure =
 			static_cast<AccelerationStructureImpl*>(desc.dest)->m_vkHandle;
 	}
-	if (desc.source)
-	{
+
+	if (desc.source) {
 		geomInfoBuilder.buildInfo.srcAccelerationStructure =
 			static_cast<AccelerationStructureImpl*>(desc.source)->m_vkHandle;
 	}
@@ -1449,8 +1481,7 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 
 	List<VkAccelerationStructureBuildRangeInfoKHR> rangeInfos;
 	rangeInfos.setCount(geomInfoBuilder.primitiveCounts.getCount());
-	for (Index i = 0; i < geomInfoBuilder.primitiveCounts.getCount(); i++)
-	{
+	for (Index i = 0; i < geomInfoBuilder.primitiveCounts.getCount(); i++) {
 		auto& rangeInfo = rangeInfos[i];
 		rangeInfo.primitiveCount = geomInfoBuilder.primitiveCounts[i];
 		rangeInfo.firstVertex = 0;
@@ -1462,8 +1493,7 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	m_commandBuffer->m_renderer->m_api.vkCmdBuildAccelerationStructuresKHR(
 		m_commandBuffer->m_commandBuffer, 1, &geomInfoBuilder.buildInfo, &rangeInfoPtr);
 
-	if (propertyQueryCount)
-	{
+	if (propertyQueryCount > 0) {
 		_memoryBarrier(1, &desc.dest, AccessFlag::Write, AccessFlag::Read);
 		_queryAccelerationStructureProperties(1, &desc.dest, propertyQueryCount, queryDescs);
 	}

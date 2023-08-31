@@ -1,21 +1,24 @@
 // vk-resource-views.cpp
 #include "vk-resource-views.h"
 
-namespace gfx
-{
+#include "lava_utils_lib/logging.h"
+#include <signal.h>
+
+
+#define BREAK_HERE raise(SIGINT)
+
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-TextureResourceViewImpl::~TextureResourceViewImpl()
-{
+TextureResourceViewImpl::~TextureResourceViewImpl() {
+    //BREAK_HERE;
     m_device->m_api.vkDestroyImageView(m_device->m_api.m_device, m_view, nullptr);
 }
 
-Result TextureResourceViewImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result TextureResourceViewImpl::getNativeHandle(InteropHandle* outHandle) {
     outHandle->api = InteropHandleAPI::Vulkan;
     outHandle->handleValue = (uint64_t)(m_view);
     return SLANG_OK;
@@ -25,13 +28,11 @@ TexelBufferResourceViewImpl::TexelBufferResourceViewImpl(DeviceImpl* device)
     : ResourceViewImpl(ViewType::TexelBuffer, device)
 {}
 
-TexelBufferResourceViewImpl::~TexelBufferResourceViewImpl()
-{
+TexelBufferResourceViewImpl::~TexelBufferResourceViewImpl() {
     m_device->m_api.vkDestroyBufferView(m_device->m_api.m_device, m_view, nullptr);
 }
 
-Result TexelBufferResourceViewImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result TexelBufferResourceViewImpl::getNativeHandle(InteropHandle* outHandle) {
     outHandle->api = InteropHandleAPI::Vulkan;
     outHandle->handleValue = (uint64_t)(m_view);
     return SLANG_OK;
@@ -41,27 +42,22 @@ PlainBufferResourceViewImpl::PlainBufferResourceViewImpl(DeviceImpl* device)
     : ResourceViewImpl(ViewType::PlainBuffer, device)
 {}
 
-Result PlainBufferResourceViewImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result PlainBufferResourceViewImpl::getNativeHandle(InteropHandle* outHandle) {
     return m_buffer->getNativeResourceHandle(outHandle);
 }
 
-DeviceAddress AccelerationStructureImpl::getDeviceAddress()
-{
+DeviceAddress AccelerationStructureImpl::getDeviceAddress() {
     return m_buffer->getDeviceAddress() + m_offset;
 }
 
-Result AccelerationStructureImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result AccelerationStructureImpl::getNativeHandle(InteropHandle* outHandle) {
     outHandle->api = InteropHandleAPI::Vulkan;
     outHandle->handleValue = (uint64_t)(m_vkHandle);
     return SLANG_OK;
 }
 
-AccelerationStructureImpl::~AccelerationStructureImpl()
-{
-    if (m_device)
-    {
+AccelerationStructureImpl::~AccelerationStructureImpl() {
+    if (m_device) {
         m_device->m_api.vkDestroyAccelerationStructureKHR(
             m_device->m_api.m_device, m_vkHandle, nullptr);
     }

@@ -6,6 +6,8 @@
 
 #include "../slang-gfx.h"
 
+#include "Falcor/Core/API/Resource.h"
+
 // Macros to make testing vulkan return codes simpler
 
 /// SLANG_VK_RETURN_ON_FAIL can be used in a similar way to SLANG_RETURN_ON_FAIL macro, except it will turn a vulkan failure into Slang::Result in the process
@@ -47,31 +49,29 @@ struct VulkanUtil
 
     static VkImageLayout getImageLayoutFromState(ResourceState state);
 
+    static Falcor::Resource::State toFalcorState(ResourceState state);
+
     /// Calculate size taking into account alignment. Alignment must be a power of 2
     static UInt calcAligned(UInt size, UInt alignment) { return (size + alignment - 1) & ~(alignment - 1); }
 
-    static inline bool isDepthFormat(VkFormat format)
-    {
-        switch (format)
-        {
-        case VK_FORMAT_D16_UNORM:
-        case VK_FORMAT_D24_UNORM_S8_UINT:
-        case VK_FORMAT_X8_D24_UNORM_PACK32:
-        case VK_FORMAT_D32_SFLOAT:
-        case VK_FORMAT_D32_SFLOAT_S8_UINT:
-            return true;
+    static inline bool isDepthFormat(VkFormat format) {
+        switch (format) {
+            case VK_FORMAT_D16_UNORM:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_X8_D24_UNORM_PACK32:
+            case VK_FORMAT_D32_SFLOAT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return true;
         }
         return false;
     }
 
-    static inline bool isStencilFormat(VkFormat format)
-    {
-        switch (format)
-        {
-        case VK_FORMAT_S8_UINT:
-        case VK_FORMAT_D24_UNORM_S8_UINT:
-        case VK_FORMAT_D32_SFLOAT_S8_UINT:
-            return true;
+    static inline bool isStencilFormat(VkFormat format) {
+        switch (format) {
+            case VK_FORMAT_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return true;
         }
         return false;
     }
@@ -88,8 +88,7 @@ struct VulkanUtil
 
     static VkBlendOp translateBlendOp(BlendOp op);
 
-    static VkPrimitiveTopology translatePrimitiveTypeToListTopology(
-        PrimitiveType primitiveType);
+    static VkPrimitiveTopology translatePrimitiveTypeToListTopology(PrimitiveType primitiveType);
 
     static VkStencilOp translateStencilOp(StencilOp op);
     
@@ -107,21 +106,20 @@ struct VulkanUtil
 
 };
 
-struct AccelerationStructureBuildGeometryInfoBuilder
-{
-public:
-    VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
-        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
-    Slang::List<uint32_t> primitiveCounts;
+struct AccelerationStructureBuildGeometryInfoBuilder {
+    public:
+        VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
+            VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+        Slang::List<uint32_t> primitiveCounts;
 
-    Slang::Result build(
-        const IAccelerationStructure::BuildInputs& buildInputs,
-        IDebugCallback* debugCallback);
+        Slang::Result build(
+            const IAccelerationStructure::BuildInputs& buildInputs,
+            IDebugCallback* debugCallback);
 
-private:
-    Slang::List<VkAccelerationStructureGeometryKHR> m_geometryInfos;
-    VkAccelerationStructureGeometryKHR m_vkInstanceInfo = {
-        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+    private:
+        Slang::List<VkAccelerationStructureGeometryKHR> m_geometryInfos;
+        VkAccelerationStructureGeometryKHR m_vkInstanceInfo = {
+            VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
 };
 
 

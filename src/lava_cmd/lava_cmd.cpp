@@ -31,6 +31,7 @@ namespace po = boost::program_options;
 
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Core/API/DeviceManager.h"
+#include "Falcor/Core/Platform/OS.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 
@@ -104,6 +105,8 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
 
 
 int main(int argc, char** argv){
+
+    auto lava_cmd_t1 = std::chrono::high_resolution_clock::now();
 
     int gpuID = -1; // automatic gpu selection
 
@@ -243,6 +246,9 @@ int main(int argc, char** argv){
     // Early termination ...
 
     // ---------------------
+
+    std::cout << "Lava version " << lava::versionString() << "\n";
+    LLOG_INF << "Lava mode: " << (isDevelopmentMode() ? "development" : "production");
     
     const bool enableValidationLayer = vkValidationFilename.empty() ? false : true;
 
@@ -323,6 +329,9 @@ int main(int argc, char** argv){
     pDeviceManager = nullptr;
 
     lava::ut::log::shutdown_log();
+
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - lava_cmd_t1 ).count();
+    std::cout << "Scene rendered in: " << duration << " sec.\n";
     std::cout << "Exiting lava. Bye :)\n";
     exit(EXIT_SUCCESS);
 }
