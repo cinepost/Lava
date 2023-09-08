@@ -121,7 +121,7 @@ public:
     static SharedPtr create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
 
 #ifdef FALCOR_GFX
-    inline gfx::IShaderObject* getShaderObject() const { return mpShaderObject.get(); }
+    gfx::IShaderObject* getShaderObject() const { return mpShaderObject.get(); }
 #endif
 
     /** Set a variable into the block.
@@ -147,7 +147,7 @@ public:
         return setBlob(bindLocation, &blob, sizeof(blob));
     }
 
-    inline bool setBlob(UniformShaderVarOffset offset, const void* pSrc, size_t size) {
+    bool setBlob(UniformShaderVarOffset offset, const void* pSrc, size_t size) {
         return setBlob(pSrc, offset, size);
     }
 

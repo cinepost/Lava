@@ -68,22 +68,9 @@ void PipelineCommandEncoder::_uploadBufferData(
 	BufferResourceImpl* stagingBufferImpl = static_cast<BufferResourceImpl*>(stagingBuffer);
 
 	void* mappedData = nullptr;
-/*
-	SLANG_VK_CHECK(api.vkMapMemory(
-		api.m_device,
-		stagingBufferImpl->m_buffer.m_memory,
-		0,
-		stagingBufferOffset + size,
-		0,
-		&mappedData));
-*/
-	SLANG_VK_CHECK(
-		vmaMapMemory(api.mVmaAllocator, stagingBufferImpl->m_buffer.mAllocation, &mappedData));
 
+	SLANG_VK_CHECK(vmaMapMemory(api.mVmaAllocator, stagingBufferImpl->m_buffer.mAllocation, &mappedData));
 	memcpy((char*)mappedData + stagingBufferOffset, data, size);
-/*
-	api.vkUnmapMemory(api.m_device, stagingBufferImpl->m_buffer.m_memory);
-*/
 	vmaUnmapMemory(api.mVmaAllocator, stagingBufferImpl->m_buffer.mAllocation);
 
 	// Copy from staging buffer to real buffer
@@ -158,8 +145,7 @@ Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bind
 	// Once we've filled in all the descriptor sets, we bind them
 	// to the pipeline at once.
 	//
-	if (descriptorSetCount > 0)
-	{
+	if (descriptorSetCount > 0) {
 		m_device->m_api.vkCmdBindDescriptorSets(
 			m_commandBuffer->m_commandBuffer,
 			bindPoint,
@@ -174,9 +160,7 @@ Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bind
 	return SLANG_OK;
 }
 
-Result PipelineCommandEncoder::setPipelineStateImpl(
-	IPipelineState* state, IShaderObject** outRootObject)
-{
+Result PipelineCommandEncoder::setPipelineStateImpl(IPipelineState* state, IShaderObject** outRootObject) {
 	m_currentPipeline = static_cast<PipelineStateImpl*>(state);
 	SLANG_RETURN_ON_FAIL(m_commandBuffer->m_rootObject.init(
 		m_commandBuffer->m_renderer,
@@ -185,9 +169,7 @@ Result PipelineCommandEncoder::setPipelineStateImpl(
 	return SLANG_OK;
 }
 
-Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(
-	IPipelineState* state, IShaderObject* inObject)
-{
+Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(IPipelineState* state, IShaderObject* inObject) {
 	IShaderObject* rootObject = nullptr;
 	SLANG_RETURN_ON_FAIL(setPipelineStateImpl(state, &rootObject));
 	static_cast<ShaderObjectBase*>(rootObject)
@@ -195,8 +177,7 @@ Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(
 	return SLANG_OK;
 }
 
-void PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoint)
-{
+void PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoint) {
 	auto& api = *m_api;
 
 	// Get specialized pipeline state and bind it.
@@ -212,16 +193,13 @@ void PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoi
 	bindRootShaderObjectImpl(pipelineBindPoint);
 
 	auto pipelineBindPointId = getBindPointIndex(pipelineBindPoint);
-	if (m_boundPipelines[pipelineBindPointId] != newPipelineImpl->m_pipeline)
-	{
+	if (m_boundPipelines[pipelineBindPointId] != newPipelineImpl->m_pipeline) {
 		api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, newPipelineImpl->m_pipeline);
 		m_boundPipelines[pipelineBindPointId] = newPipelineImpl->m_pipeline;
 	}
 }
 
-void ResourceCommandEncoder::copyBuffer(
-	IBufferResource* dst, Offset dstOffset, IBufferResource* src, Offset srcOffset, Size size)
-{
+void ResourceCommandEncoder::copyBuffer(IBufferResource* dst, Offset dstOffset, IBufferResource* src, Offset srcOffset, Size size){
 	auto& vkAPI = m_commandBuffer->m_renderer->m_api;
 
 	auto dstBuffer = static_cast<BufferResourceImpl*>(dst);
@@ -244,9 +222,7 @@ void ResourceCommandEncoder::copyBuffer(
 		&copyRegion);
 }
 
-void ResourceCommandEncoder::uploadBufferData(
-	IBufferResource* buffer, Offset offset, Size size, void* data)
-{
+void ResourceCommandEncoder::uploadBufferData(IBufferResource* buffer, Offset offset, Size size, void* data) {
 	PipelineCommandEncoder::_uploadBufferData(
 		m_commandBuffer->m_commandBuffer,
 		m_commandBuffer->m_transientHeap.get(),
@@ -256,13 +232,10 @@ void ResourceCommandEncoder::uploadBufferData(
 		data);
 }
 
-void ResourceCommandEncoder::textureBarrier(
-	GfxCount count, ITextureResource* const* textures, ResourceState src, ResourceState dst)
-{
+void ResourceCommandEncoder::textureBarrier(GfxCount count, ITextureResource* const* textures, ResourceState src, ResourceState dst) {
 	ShortList<VkImageMemoryBarrier, 16> barriers;
 
-	for (GfxIndex i = 0; i < count; i++)
-	{
+	for (GfxIndex i = 0; i < count; i++) {
 		auto image = static_cast<TextureResourceImpl*>(textures[i]);
 		auto desc = image->getDesc();
 
@@ -299,14 +272,11 @@ void ResourceCommandEncoder::textureBarrier(
 }
 
 // TODO: Change size_t to Count?
-void ResourceCommandEncoder::bufferBarrier(
-	GfxCount count, IBufferResource* const* buffers, ResourceState src, ResourceState dst)
-{
+void ResourceCommandEncoder::bufferBarrier(GfxCount count, IBufferResource* const* buffers, ResourceState src, ResourceState dst) {
 	List<VkBufferMemoryBarrier> barriers;
 	barriers.reserve(count);
 
-	for (GfxIndex i = 0; i < count; i++)
-	{
+	for (GfxIndex i = 0; i < count; i++) {
 		auto bufferImpl = static_cast<BufferResourceImpl*>(buffers[i]);
 
 		VkBufferMemoryBarrier barrier = {};
@@ -337,8 +307,7 @@ void ResourceCommandEncoder::bufferBarrier(
 		nullptr);
 }
 
-void ResourceCommandEncoder::endEncoding()
-{
+void ResourceCommandEncoder::endEncoding() {
 	// Insert memory barrier to ensure transfers are visible to the GPU.
 	auto& vkAPI = m_commandBuffer->m_renderer->m_api;
 
@@ -358,10 +327,8 @@ void ResourceCommandEncoder::endEncoding()
 		nullptr);
 }
 
-void ResourceCommandEncoder::writeTimestamp(IQueryPool* queryPool, GfxIndex index)
-{
-	_writeTimestamp(
-		&m_commandBuffer->m_renderer->m_api, m_commandBuffer->m_commandBuffer, queryPool, index);
+void ResourceCommandEncoder::writeTimestamp(IQueryPool* queryPool, GfxIndex index) {
+	_writeTimestamp(&m_commandBuffer->m_renderer->m_api, m_commandBuffer->m_commandBuffer, queryPool, index);
 }
 
 void ResourceCommandEncoder::copyTexture(
@@ -381,16 +348,16 @@ void ResourceCommandEncoder::copyTexture(
 	auto dstImage = static_cast<TextureResourceImpl*>(dst);
 	auto dstDesc = dstImage->getDesc();
 	auto dstImageLayout = VulkanUtil::getImageLayoutFromState(dstState);
-	if (dstSubresource.layerCount == 0 && dstSubresource.mipLevelCount == 0)
-	{
+	
+	if (dstSubresource.layerCount == 0 && dstSubresource.mipLevelCount == 0) {
 		extent = dstDesc->size;
 		dstSubresource.layerCount = dstDesc->arraySize;
 		if (dstSubresource.layerCount == 0)
 			dstSubresource.layerCount = 1;
 		dstSubresource.mipLevelCount = dstDesc->numMipLevels;
 	}
-	if (srcSubresource.layerCount == 0 && srcSubresource.mipLevelCount == 0)
-	{
+
+	if (srcSubresource.layerCount == 0 && srcSubresource.mipLevelCount == 0) {
 		extent = srcDesc->size;
 		srcSubresource.layerCount = srcDesc->arraySize;
 		if (srcSubresource.layerCount == 0)
@@ -471,15 +438,7 @@ void ResourceCommandEncoder::uploadTexturePageData(
 	{		
 		auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
 		auto numRows = calcNumRows(desc.format, mipSize.height);
-
-		m_commandBuffer->m_renderer->_transitionImageLayout(
-			commandBuffer,
-			dstImpl->m_image,
-			dstImpl->m_vkformat,
-			*dstImpl->getDesc(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		
+	
 		// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkBufferImageCopy.html
 		// bufferRowLength and bufferImageHeight specify the data in buffer
 		// memory as a subregion of a larger two- or three-dimensional image,
@@ -501,7 +460,7 @@ void ResourceCommandEncoder::uploadTexturePageData(
 		region.imageExtent = {static_cast<uint32_t>(extent.width), static_cast<uint32_t>(extent.height), static_cast<uint32_t>(extent.depth)};
 
 		// Do the copy (do all depths in a single go)
-		
+
 		vkApi.vkCmdCopyBufferToImage(
 			commandBuffer,
 			static_cast<BufferResourceImpl*>(uploadBuffer)->m_buffer.m_buffer,
@@ -509,16 +468,6 @@ void ResourceCommandEncoder::uploadTexturePageData(
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
 			&region);
-		
-		m_commandBuffer->m_renderer->_transitionImageLayout(
-			commandBuffer,
-			dstImpl->m_image,
-			dstImpl->m_vkformat,
-			*dstImpl->getDesc(),
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		//m_commandBuffer->m_renderer->waitForGpu();
 	}
 }
 
@@ -648,15 +597,6 @@ void ResourceCommandEncoder::uploadTextureData(
 			}
 		}
 
-/*
-		m_commandBuffer->m_renderer->_transitionImageLayout(
-			commandBuffer,
-			dstImpl->m_image,
-			dstImpl->m_vkformat,
-			*dstImpl->getDesc(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-*/
 		// Do the copy (do all depths in a single go)
 		vkApi.vkCmdCopyBufferToImage(
 			commandBuffer,
@@ -665,15 +605,6 @@ void ResourceCommandEncoder::uploadTextureData(
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			static_cast<uint32_t>(regions.size()),
 			regions.data());
-/*
-		m_commandBuffer->m_renderer->_transitionImageLayout(
-			commandBuffer,
-			dstImpl->m_image,
-			dstImpl->m_vkformat,
-			*dstImpl->getDesc(),
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-*/
 	}
 }
 
@@ -729,8 +660,7 @@ void ResourceCommandEncoder::_clearDepthImage(
 {
 	auto& api = m_commandBuffer->m_renderer->m_api;
 	auto layout = viewImpl->m_layout;
-	if (layout != VK_IMAGE_LAYOUT_GENERAL && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
+	if (layout != VK_IMAGE_LAYOUT_GENERAL && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		m_commandBuffer->m_renderer->_transitionImageLayout(
 			m_commandBuffer->m_commandBuffer,
@@ -742,17 +672,13 @@ void ResourceCommandEncoder::_clearDepthImage(
 	}
 
 	VkImageSubresourceRange subresourceRange = {};
-	if (flags & ClearResourceViewFlags::ClearDepth)
-	{
-		if (VulkanUtil::isDepthFormat(viewImpl->m_texture->m_vkformat))
-		{
+	if (flags & ClearResourceViewFlags::ClearDepth) {
+		if (VulkanUtil::isDepthFormat(viewImpl->m_texture->m_vkformat)) {
 			subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
 		}
 	}
-	if (flags & ClearResourceViewFlags::ClearStencil)
-	{
-		if (VulkanUtil::isStencilFormat(viewImpl->m_texture->m_vkformat))
-		{
+	if (flags & ClearResourceViewFlags::ClearStencil) {
+		if (VulkanUtil::isStencilFormat(viewImpl->m_texture->m_vkformat)) {
 			subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 	}
@@ -773,8 +699,7 @@ void ResourceCommandEncoder::_clearDepthImage(
 		1,
 		&subresourceRange);
 
-	if (layout != viewImpl->m_layout)
-	{
+	if (layout != viewImpl->m_layout) {
 		m_commandBuffer->m_renderer->_transitionImageLayout(
 			m_commandBuffer->m_commandBuffer,
 			viewImpl->m_texture->m_image,

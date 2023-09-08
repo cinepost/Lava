@@ -208,7 +208,6 @@ void BgeoInOp::cookPolyMesh(FnKat::GeolibCookInterface& interface,
                             const bgeo::Bgeo& bgeo,
                             const bgeo::PolySplitter& splitter)
 {
-    std::cout << "current split = " << splitter.getCurrentSplit() << std::endl;
 
     FnAttribute::IntAttribute createSubdAttr = interface.getOpArg("createSubd");
 

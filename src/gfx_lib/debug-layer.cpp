@@ -552,6 +552,10 @@ SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DebugDevice::getVmaAllocator() co
 	return baseObject->getVmaAllocator();
 }
 
+void SLANG_MCALL DebugDevice::cleanup() {
+	baseObject->cleanup();
+}
+
 
 Result DebugDevice::createFramebuffer(IFramebuffer::Desc const& desc, IFramebuffer** outFrameBuffer)
 {

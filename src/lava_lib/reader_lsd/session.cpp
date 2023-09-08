@@ -1136,6 +1136,22 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 	return true;
 }
 
+static std::string random_string( size_t length )
+{
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n( str.begin(), length, randchar );
+    return str;
+}
+
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	assert(pObj);
 
@@ -1320,6 +1336,40 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    		return false;
 	    	}
 	    }
+	
+/*	    
+	    {
+	    	std::string gibberishName = random_string( 32 );
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, gibberishName, loadTexturesAsSparse)) {
+	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
+	    		return false;
+	    	}
+	    }
+
+	    {
+	    	std::string gibberishName = random_string( 32 );
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, gibberishName, loadTexturesAsSparse)) {
+	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
+	    		return false;
+	    	}
+	    }
+
+	    {
+	    	std::string gibberishName = random_string( 32 );
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, gibberishName, loadTexturesAsSparse)) {
+	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
+	    		return false;
+	    	}
+	    }
+
+	    {
+	    	std::string gibberishName = random_string( 32 );
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, gibberishName, loadTexturesAsSparse)) {
+	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
+	    		return false;
+	    	}
+	    }
+*/
 	}
 
 	// Instance exported data

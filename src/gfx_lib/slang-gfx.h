@@ -2229,6 +2229,8 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const = 0;
 
+		virtual SLANG_NO_THROW void SLANG_MCALL cleanup() = 0;
+
 		virtual SLANG_NO_THROW Result SLANG_MCALL createTextureFromNativeHandle(
 			InteropHandle handle,
 			const ITextureResource::Desc& srcDesc,

@@ -5,49 +5,43 @@
 #include "vk-fence.h"
 #include "vk-transient-heap.h"
 
-namespace gfx
-{
+#include "lava_utils_lib/logging.h"
+
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-ICommandQueue* CommandQueueImpl::getInterface(const Guid& guid)
-{
+ICommandQueue* CommandQueueImpl::getInterface(const Guid& guid) {
     if (guid == GfxGUID::IID_ISlangUnknown || guid == GfxGUID::IID_ICommandQueue)
         return static_cast<ICommandQueue*>(this);
     return nullptr;
 }
 
-CommandQueueImpl::~CommandQueueImpl()
-{
+CommandQueueImpl::~CommandQueueImpl() {
     m_renderer->m_api.vkQueueWaitIdle(m_queue);
 
     m_renderer->m_queueAllocCount--;
     m_renderer->m_api.vkDestroySemaphore(m_renderer->m_api.m_device, m_semaphore, nullptr);
 }
 
-void CommandQueueImpl::init(DeviceImpl* renderer, VkQueue queue, uint32_t queueFamilyIndex)
-{
+void CommandQueueImpl::init(DeviceImpl* renderer, VkQueue queue, uint32_t queueFamilyIndex) {
     m_renderer = renderer;
     m_queue = queue;
     m_queueFamilyIndex = queueFamilyIndex;
     VkSemaphoreCreateInfo semaphoreCreateInfo = {};
     semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     semaphoreCreateInfo.flags = 0;
-    m_renderer->m_api.vkCreateSemaphore(
-        m_renderer->m_api.m_device, &semaphoreCreateInfo, nullptr, &m_semaphore);
+    m_renderer->m_api.vkCreateSemaphore(m_renderer->m_api.m_device, &semaphoreCreateInfo, nullptr, &m_semaphore);
 }
 
-void CommandQueueImpl::waitOnHost()
-{
+void CommandQueueImpl::waitOnHost() {
     auto& vkAPI = m_renderer->m_api;
     vkAPI.vkQueueWaitIdle(m_queue);
 }
 
-Result CommandQueueImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result CommandQueueImpl::getNativeHandle(InteropHandle* outHandle) {
     outHandle->api = InteropHandleAPI::D3D12;
     outHandle->handleValue = (uint64_t)m_queue;
     return SLANG_OK;
@@ -68,19 +62,18 @@ Result CommandQueueImpl::waitForFenceValuesOnDevice(
     return SLANG_OK;
 }
 
-void CommandQueueImpl::queueSubmitImpl(
-    uint32_t count, ICommandBuffer* const* commandBuffers, IFence* fence, uint64_t valueToSignal)
-{
+void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* commandBuffers, IFence* fence, uint64_t valueToSignal) {
     auto& vkAPI = m_renderer->m_api;
     m_submitCommandBuffers.clear();
-    for (uint32_t i = 0; i < count; i++)
-    {
+
+    for (uint32_t i = 0; i < count; i++) {
         auto cmdBufImpl = static_cast<CommandBufferImpl*>(commandBuffers[i]);
         if (!cmdBufImpl->m_isPreCommandBufferEmpty)
             m_submitCommandBuffers.add(cmdBufImpl->m_preCommandBuffer);
         auto vkCmdBuf = cmdBufImpl->m_commandBuffer;
         m_submitCommandBuffers.add(vkCmdBuf);
     }
+    
     Array<VkSemaphore, 2> signalSemaphores;
     Array<uint64_t, 2> signalValues;
     signalSemaphores.add(m_semaphore);
@@ -95,24 +88,23 @@ void CommandQueueImpl::queueSubmitImpl(
     submitInfo.pCommandBuffers = m_submitCommandBuffers.getBuffer();
     Array<VkSemaphore, 3> waitSemaphores;
     Array<uint64_t, 3> waitValues;
-    for (auto s : m_pendingWaitSemaphores)
-    {
-        if (s != VK_NULL_HANDLE)
-        {
+    
+    for (auto s : m_pendingWaitSemaphores) {
+        if (s != VK_NULL_HANDLE) {
             waitSemaphores.add(s);
             waitValues.add(0);
         }
     }
-    for (auto& fenceWait : m_pendingWaitFences)
-    {
+    
+    for (auto& fenceWait : m_pendingWaitFences) {
         waitSemaphores.add(fenceWait.fence->m_semaphore);
         waitValues.add(fenceWait.waitValue);
     }
+
     m_pendingWaitFences.clear();
-    VkTimelineSemaphoreSubmitInfo timelineSubmitInfo = {
-        VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
-    if (fence)
-    {
+    VkTimelineSemaphoreSubmitInfo timelineSubmitInfo = {VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    
+    if (fence) {
         auto fenceImpl = static_cast<FenceImpl*>(fence);
         signalSemaphores.add(fenceImpl->m_semaphore);
         signalValues.add(valueToSignal);
@@ -122,32 +114,34 @@ void CommandQueueImpl::queueSubmitImpl(
         timelineSubmitInfo.waitSemaphoreValueCount = (uint32_t)waitValues.getCount();
         timelineSubmitInfo.pWaitSemaphoreValues = waitValues.getBuffer();
     }
+    
     submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.getCount();
-    if (submitInfo.waitSemaphoreCount)
-    {
+    
+    if (submitInfo.waitSemaphoreCount) {
         submitInfo.pWaitSemaphores = waitSemaphores.getBuffer();
     }
+    
     submitInfo.signalSemaphoreCount = (uint32_t)signalSemaphores.getCount();
     submitInfo.pSignalSemaphores = signalSemaphores.getBuffer();
 
     VkFence vkFence = VK_NULL_HANDLE;
-    if (count)
-    {
+    
+    if (count) {
         auto commandBufferImpl = static_cast<CommandBufferImpl*>(commandBuffers[0]);
         vkFence = commandBufferImpl->m_transientHeap->getCurrentFence();
         vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence);
         commandBufferImpl->m_transientHeap->advanceFence();
     }
+
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
     m_pendingWaitSemaphores[0] = m_semaphore;
     m_pendingWaitSemaphores[1] = VK_NULL_HANDLE;
 }
 
-void CommandQueueImpl::executeCommandBuffers(
-    GfxCount count, ICommandBuffer* const* commandBuffers, IFence* fence, uint64_t valueToSignal)
-{
-    if (count == 0 && fence == nullptr)
+void CommandQueueImpl::executeCommandBuffers(GfxCount count, ICommandBuffer* const* commandBuffers, IFence* fence, uint64_t valueToSignal) {
+    if (count == 0 && fence == nullptr) {
         return;
+    }
     queueSubmitImpl(count, commandBuffers, fence, valueToSignal);
 }
 

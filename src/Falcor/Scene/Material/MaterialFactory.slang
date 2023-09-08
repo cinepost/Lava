@@ -114,12 +114,10 @@ extension MaterialSystem
         // Query material to evaluate opacity.
         sd.opacity = material.evalOpacity(this, v, lod);
 
-        if (modifyNormal)
-        {
+        if (modifyNormal) {
             // Apply normal mapping only if we have a valid tangent space.
-            if (validTangentSpace)
-            {
-                material.modifyTangentSpace(this, lod, sd);
+            if (validTangentSpace) {
+                //material.modifyTangentSpace(this, lod, sd);
             }
 
             // Finalize the normal.
@@ -127,8 +125,7 @@ extension MaterialSystem
             // This convention will eventually go away when the material setup code handles it instead.
             
             // TODO: normal flipping bug here
-            if (!sd.frontFacing && sd.mtl.isDoubleSided())
-            {
+            if (!sd.frontFacing && sd.mtl.isDoubleSided()) {
                 sd.N = -sd.N;
             }
         }

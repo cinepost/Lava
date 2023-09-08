@@ -25,6 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Utils/Math/MathConstants.slangh"
+
 import Scene.Material.ShadingUtils;
 import Scene.Material.TextureHandle;
 import Scene.Material.TextureSampler;
@@ -65,11 +67,13 @@ struct MaterialSystem
     StructuredBuffer<VirtualTextureData>  virtualTexturesData;
     RWByteAddressBuffer virtualPagesResidencyData;
 
-#if MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT > 0
-    uint udimTextureTilesTable[MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT * 100];
-#else
-    uint udimTextureTilesTable[1];
-#endif
+//#if MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT > 0
+//    uint udimTextureTilesTable[MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT * 100];
+//#else
+//    uint udimTextureTilesTable[1];
+//#endif
+    StructuredBuffer<uint16_t> udimTextureTilesTableBuffer;
+
 
 #if MATERIAL_SYSTEM_BUFFER_DESC_COUNT > 0
     ByteAddressBuffer materialBuffers[MATERIAL_SYSTEM_BUFFER_DESC_COUNT];       ///< Buffer resources for all materials. TODO: Make this an unbounded array (see #1321).
@@ -249,8 +253,7 @@ struct MaterialSystem
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \return Sampled color.
     */
-    float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) { 
-
+    float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, const SamplerState s, const float2 uv, const float4 uniformValue, L lod) { 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
@@ -263,8 +266,15 @@ struct MaterialSystem
             case TextureHandle::Mode::UDIM_Texture:
                 {
                     int udimID = extendedTexturesData[handle.getTextureID()].udimID;
+                    
                     float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
-                    uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                    
+                    //uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                    //uint byte_addr = (udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10) * 2;
+                    //uint tileID = (uint)udimTextureTilesTableBuffer.Load<float16_t>(byte_addr);
+                    uint tileID = (uint)udimTextureTilesTableBuffer[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                    if(tileID == UINT16_MAX) return uniformValue;
+
                     const ExtendedTextureData extTileData = extendedTexturesData[tileID];
 
                     switch (extTileData.getMode()) {

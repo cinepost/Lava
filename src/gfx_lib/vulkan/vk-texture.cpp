@@ -1,4 +1,6 @@
 // vk-texture.cpp
+#include "lava_utils_lib/logging.h"
+
 #include "vk-texture.h"
 
 namespace gfx {
@@ -8,24 +10,33 @@ using namespace Slang;
 namespace vk {
 
 TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): Parent(desc), 
-    m_device(device), mTailMemoryAllocated(false), mAllocation({}), mAllocationInfo({}) {
+    m_device(device), mTailMemoryAllocated(false), mAllocation({}), mAllocationInfo({}), mBindSparseSemaphore(VK_NULL_HANDLE) {
 }
 
 TextureResourceImpl::~TextureResourceImpl() {
     auto& vkAPI = m_device->m_api;
     if (!m_isWeakImageReference) {
-        //vkAPI.vkFreeMemory(vkAPI.m_device, m_imageMemory, nullptr);
-        //vkAPI.vkDestroyImage(vkAPI.m_device, m_image, nullptr);
-
-        //vmaFreeMemory(vkAPI.mVmaAllocator, mAllocation);     
-
         for(auto& allocation: mTailAllocations) {
-            vmaFreeMemory(vkAPI.mVmaAllocator, allocation);
+            if(allocation != VK_NULL_HANDLE) {
+                vmaFreeMemory(vkAPI.mVmaAllocator, allocation);
+                allocation = VK_NULL_HANDLE;
+            }
         }
 
-        vmaDestroyImage(vkAPI.mVmaAllocator, m_image, mAllocation);
+        if(mAllocation != VK_NULL_HANDLE){
+            vmaFreeMemory(vkAPI.mVmaAllocator, mAllocation);
+            mAllocation = VK_NULL_HANDLE;
+        }
+
+        if(mBindSparseSemaphore != VK_NULL_HANDLE) {
+            LLOG_TRC << "TextureResourceImpl::~TextureResourceImpl() vkDestroySemaphore call";
+            vkAPI.vkDestroySemaphore(vkAPI.m_device, mBindSparseSemaphore, nullptr);
+        }
+
+        //vmaDestroyImage(vkAPI.mVmaAllocator, m_image, mAllocation);
     }
     if (sharedHandle.handleValue != 0) {
+
 #if SLANG_WINDOWS_FAMILY
         CloseHandle((HANDLE)sharedHandle.handleValue);
 #endif

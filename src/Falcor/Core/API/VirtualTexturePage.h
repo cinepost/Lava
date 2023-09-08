@@ -39,7 +39,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		~VirtualTexturePage();
 
 		inline bool isResident() const { return mIsResident; }
-		void allocate();
+		bool allocate();
 		void release();
 
 		inline uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }

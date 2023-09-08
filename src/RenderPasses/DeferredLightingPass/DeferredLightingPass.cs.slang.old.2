@@ -521,9 +521,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
 #ifdef _SHADING_RATE
-    //[loop]
-    [unroll]
-    for(int shadingIter = 0; shadingIter < _SHADING_RATE; shadingIter++) {
+    $for(shadingIter in Range(0, _SHADING_RATE)) {
 #else
     const int shadingIter = 0;
 #endif

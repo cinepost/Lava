@@ -244,31 +244,41 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	if(mLoadPagesAsync) mpDevice->flushAndSync();
 
+	std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>> texturesToPageIDsList;
+	texturesToPageIDsList.reserve(textures.size()); 
+
 	for ( auto const& pTex: textures) {
 		uint32_t pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTex.get());
 		uint32_t texturePagesCount = pTex->sparseDataPagesCount();
 		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTex->getSourceFilename();
 		LLOG_DBG << "Virtual texture " << pTex->getSourceFilename() << " pages start offset is " << std::to_string(pagesStartOffset);
 
-		std::vector<uint32_t> pageIDs;
+		texturesToPageIDsList.emplace_back(std::make_pair(pTex,  std::vector<uint32_t>()));
+		auto& texturePageIDs = texturesToPageIDsList.back().second;
 
 		// index 'i' is a page index relative to the texture. starts with 0
 		if(pOutPagesData) {
 			for(uint32_t i = 0; i < texturePagesCount; ++i) {
 				if (pOutPagesData[i + pagesStartOffset] != 0) {
-					pageIDs.push_back(i);
+					texturePageIDs.push_back(i);
 				}
 			}
-			LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
-		}
-		
-		if(mLoadPagesAsync) {
-			// Critical!!! Call loadPagesAsync once per texture !!!
-			pTextureManager->loadPagesAsync(pTex, pageIDs); 
-		} else {
-			pTextureManager->loadPages(pTex, pageIDs); 
+			LLOG_DBG << std::to_string(texturePageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		}
 	}
+
+	if(mLoadPagesAsync) {
+		LLOG_WRN << "Asyncronous virtual textures loading temporarily disabled !";
+		for(auto& textureToPagesPair: texturesToPageIDsList) {
+			pTextureManager->loadPages(textureToPagesPair.first, textureToPagesPair.second); 
+		}
+		//pTextureManager->loadPagesAsync(texturesToPageIDsList); 
+	} else {
+		for(auto& textureToPagesPair: texturesToPageIDsList) {
+			pTextureManager->loadPages(textureToPagesPair.first, textureToPagesPair.second); 
+		} 
+	}
+
 	
 	if(pPagesBuffer) pPagesBuffer->unmap();
 
@@ -312,6 +322,8 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 		pRenderContext->updateSubresourceData(mpMipCalibrationTexture.get(), subresource, initData.data());
 	}
 
+// For now we don't need them
+
 	// Now. Let's make multiple calibration textures. This time only one particlar mip level contains non-zero data
 	size_t buff_size = mpMipCalibrationTexture->getWidth() * mpMipCalibrationTexture->getHeight();
 	static const std::vector<float> zero_buff(buff_size, 0.0f);
@@ -338,9 +350,12 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 
 		mMipCalibrationTextures[i] = pMipCalibrationTexture;
 	}
+
 }
 
 void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderContext) {
+//	if(!mpLtxCalibrationTexture) { mpLtxCalibrationTexture = nullptr; } return; // We don't need it right now
+
 	if (mpLtxCalibrationTexture) return;
 
 	// Worst case scenario is 1024 pages per dimension
@@ -353,6 +368,7 @@ void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderCont
 		uint32_t height = mpLtxCalibrationTexture->getHeight(mipLevel); 
 	}
 }
+
 
 void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;

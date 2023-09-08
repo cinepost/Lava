@@ -18,6 +18,10 @@ import Experimental.Scene.Materials.StandardMaterial;
 import DeferredLightingHelpers;
 import DeferredLightingAOV;
 
+#ifndef _SHADING_RATE
+#define _SHADING_RATE 1
+#endif
+
 #ifndef _MAX_RAY_LEVEL
 #define _MAX_RAY_LEVEL 0
 #endif
@@ -467,13 +471,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // early out
     if (any(ipos >= gFrameDim)) return;
 
-
-    #if is_valid(gTextureGrads)
-        const float4 texGrads = gTextureGrads[ipos];
-        //gInOutColor[ipos] = texGrads;
-        //return;
-    #endif
-
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     AOVData aov_data = AOVData.create();
     
@@ -485,159 +482,29 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     
     ITextureSampler primaryLod = createTextureSampler(ipos);
-    //ITextureSampler primaryLod = TailTextureSampler();
-    //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
-    
+    //ITextureSampler primaryLod = ExplicitLodTextureSampler(0.f);
+
     // Primary ray surface data
     TriangleHit primaryTriangleHit;
     ShadingData primaryShadingData;
-    [[branch]] if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) return;
+    if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) return;
 
-    // Sample generator
-    SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
+    float4 result = float4(0.f, 0.f, 0.f, 1.f);
 
-    float2 screenUV = float2(ipos) / float2(gFrameDim); 
-
-    // Beauty pass color
-    float3 surfaceColor = float3(0.0f);
-
-    const uint maxRayLevel = _MAX_RAY_LEVEL;
-    float16_t variance = 1.f;
-
-#if is_valid(gLastFrameSum) && _USE_VARIANCE
-    const float16_t4 _lastFrameSum = gLastFrameSum[ipos];
-    const float16_t3 lastFrameSum = _lastFrameSum.rgb;
-    const float16_t lastVariance = _lastFrameSum.a;
-#else
-    const float16_t3 lastFrameSum = float16_t3(0.0);
-    const float16_t lastVariance = 1.0;
-#endif
-
-#if _USE_VARIANCE
-    if(gSampleNumber > 16 && lastVariance < 0.0005f) {
-        gInOutColor[ipos] = float4(lastFrameSum, 1.f);
-        return;
-    }
-#endif
-
-#ifdef _SHADING_RATE
-    //[loop]
-    [unroll]
-    for(int shadingIter = 0; shadingIter < _SHADING_RATE; shadingIter++) {
-#else
-    const int shadingIter = 0;
-#endif
-
-    // Spatio temporal blue noise
-#ifdef _USE_STBN_SAMPLING
-    const float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((ipos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
-#else
-    const float4 rnd = float4(sampleNext2D(sg), sampleNext2D(sg));
-#endif
+    const IMaterialInstance mi = gScene.materials.getMaterialInstance(primaryShadingData, primaryLod);
     
-    RayData rayData = RayData.create();
-    rayData.dir = rayDir;
-    rayData.hit = hit;
-    
-    TriangleHit _triangleHit = primaryTriangleHit;
-    ShadingData _shadingData = primaryShadingData;
-    ITextureSampler _lod = primaryLod;
-    
-#if _MAX_RAY_LEVEL != 0
-    [loop]
-    for(uint rayLevel = 0; rayLevel <= maxRayLevel; rayLevel++) {
-        if(rayLevel > 0) {
-            //_lod = ExplicitLodTextureSampler(5.0);
-            _lod = TailTextureSampler();
-            if(!calcShadingData(rayData.dir, rayData.hit, _lod, _shadingData, _triangleHit)) break;
-        }
-#else
-        const uint rayLevel = 0;
-#endif
-        rayData.level = rayLevel;
-        surfaceColor += calcIlluminance(rayData, _triangleHit, _shadingData, sg, aov_data, rnd, _lod, maxRayLevel);
+    //$for(i in Range(0,_SHADING_RATE)) {
 
-#if _MAX_RAY_LEVEL != 0
-        if(!rayData.hit.isValid()) break;
-    }
-#endif
+    uint tst = max(_SHADING_RATE, _SHADING_RATE);
 
-#ifdef _SHADING_RATE
-    }
-    surfaceColor /= (float)(_SHADING_RATE);
-#endif
+    for(uint i = 0; i < tst; i++) {
 
-// Compute variance if needed
-#if _USE_VARIANCE
-    if(gSampleNumber > 16) {
-        float lumaPrev = LUMA_CCIR601(lastFrameSum / float(gSampleNumber));
-        float lumaCurr = LUMA_CCIR601((lastFrameSum + surfaceColor) / float(gSampleNumber + 1));
-        variance = 1.f - (lumaPrev > lumaCurr ? (lumaCurr/lumaPrev) : (lumaPrev/lumaCurr));
-    }
-#endif
+        BSDFProperties bsdfProperties = mi.getProperties(primaryShadingData);
+        result.rgb = bsdfProperties.diffuseReflectionAlbedo.rgb;
+
+        //result.g += 1.f;
+    } 
 
     // Write main channel output color
-    gInOutColor[ipos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
-
-    // Calc aov variables
-#if is_valid(gOutPz)
-    {
-    #if is_valid(gDepth)
-        float2 _screenUV = screenUV * 2.0 - float2(1.f);
-        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[ipos], 1.0);
-    #else
-        float4 screenP = mul(float4(primaryShadingData.posW, 1.f), gScene.camera.getViewProj());
-    #endif  // gDepth
-        float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
-        aov_data.depth = -(viewP.z / viewP.w);
-    }
-#endif  // gOutPz
-
-#if is_valid(gOutFresnel)
-    {
-        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.N));
-    }
-#endif
-
-#if is_valid(gOutEmission)
-    {
-        const IMaterialInstance mi = gScene.materials.getMaterialInstance(primaryShadingData, primaryLod);
-        aov_data.emission = mi.getProperties(primaryShadingData).emission;
-    }
-#endif  // gOutEmission
-
-#if is_valid(gOutShadows)
-    #ifdef _SHADING_RATE
-        aov_data.shadow /= (float)_SHADING_RATE;
-    #endif
-#endif  // gOutShadows
-
-#if is_valid(gPrimID)
-    {
-        aov_data.primID = primaryTriangleHit.primitiveIndex;
-    }
-#endif
-
-#if is_valid(gOpID)
-    {
-        //aov_data.opID = gScene.getGeometryInstance(primaryTriangleHit.instanceID).globalMatrixID + 1;
-        aov_data.opID = primaryTriangleHit.instanceID.index;
-    }
-#endif
-
-    // Write available AOVs
-    writeAOV(ipos, aov_data);
-
-#if is_valid(gLastFrameSum) && _USE_VARIANCE
-    {
-        gLastFrameSum[ipos] = float16_t4(lastFrameSum + surfaceColor, variance);
-    }
-#endif
-
-#if is_valid(gVariance) && _USE_VARIANCE
-    {
-        gVariance[ipos] = variance;
-    }
-#endif
-
+    gInOutColor[ipos] = result;
 }

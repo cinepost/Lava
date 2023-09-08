@@ -167,7 +167,7 @@ void VBufferRaster::initDepth(RenderContext* pContext, const RenderData& renderD
         //mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource);
 
         DepthStencilState::Desc dsDesc;
-        dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true).setDepthEnabled(true);
+        dsDesc.setDepthFunc(DepthStencilState::Func::Less).setDepthWriteMask(true).setDepthEnabled(true);
         mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
     }    
 }

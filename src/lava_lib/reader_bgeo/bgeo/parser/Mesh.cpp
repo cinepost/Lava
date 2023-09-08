@@ -80,7 +80,6 @@ Mesh* Mesh::clone() const {
 }
 
 /*virtual*/ void Mesh::loadData(UT_JSONParser &parser) {
-    std::cout << "Mesh::loadData\n";
     parseBeginArray(parser);
     {
         /*
@@ -95,14 +94,11 @@ Mesh* Mesh::clone() const {
         */
     }
     parseEndArray(parser);
-    std::cout << "Mesh::loadData done\n";
 }
 
 /*virtual*/ void Mesh::loadVaryingData(UT_JSONParser& parser, const StringList& fields) {
-    std::cout << "Mesh::loadVaryingData\n";
     // NOTE: for now just support only the vertex field
     if (fields.size() != 1 || fields[0] != "vertex") {
-        std::cout << "ReadError!!! Mesh primitive supports only varying vertex\n";
         throw ReadError("Mesh primitive supports only varying vertex");
     }
 
@@ -110,14 +106,11 @@ Mesh* Mesh::clone() const {
     for (auto it = parser.beginArray(); !it.atEnd(); ++it) {
         BGEO_CHECK(parser.parseObject(builder));
     }
-    std::cout << "Mesh::loadVaryingData done\n";
 }
 
 /*virtual*/ void Mesh::loadUniformData(UT_JSONParser& parser) {
-    std::cout << "Mesh::loadUniformData\n";
     UniformDataHandle uniformHandle(*this);
     BGEO_CHECK(parser.parseObject(uniformHandle));
-    std::cout << "Mesh::loadUniformData done\n";
 }
 
 /*virtual*/ std::ostream& Mesh::encode(std::ostream& co) const {

@@ -61,8 +61,7 @@ void CopyContext::flush(bool wait) {
     }
 }
 
-CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
-{
+CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex) {
     return CopyContext::ReadTextureTask::create(this, pTexture, subresourceIndex);
 }
 
@@ -124,8 +123,6 @@ bool CopyContext::subresourceBarriers(const Texture* pTexture, Resource::State n
                 apiSubresourceBarrier(pTexture, newState, oldState, a, m);
                 if (setGlobal == false) pTexture->setSubresourceState(a, m, newState);
                 mCommandsPending = true;
-
-                //LLOG_WRN << "Texture " << pTexture->getSourceFilename() << " " << to_string(oldState) << " to " << to_string(newState);
             }
             else entireViewTransitioned = false;
         }

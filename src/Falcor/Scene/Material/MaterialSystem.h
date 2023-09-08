@@ -194,7 +194,7 @@ class dlldecl MaterialSystem {
 
 		/** Get texture manager. This holds all textures.
 		*/
-		inline const TextureManager::SharedPtr& textureManager() const { return mpDevice->textureManager(); }
+		TextureManager* textureManager() const { return mpDevice->textureManager(); }
 
 		bool hasUDIMTextures() const;
 		bool hasSparseTextures() const;

@@ -1,0 +1,1 @@
+lava-bin: /mnt/misc_hdd/dev/Lava/deps/Debug/include/VulkanMemoryAllocator/vk_mem_alloc.h:11968: VmaAllocation_T::~VmaAllocation_T(): Assertion `m_MapCount == 0 && "Allocation was not unmapped before destruction."' failed.

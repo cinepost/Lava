@@ -100,22 +100,16 @@ bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camer
 }
 
 bool calcShadingData(const float3 rayDir, const HitInfo hit, const ITextureSampler lod, out ShadingData sd, out TriangleHit triangleHit) {
-    sd = {};
+    if (hit.isValid() && hit.getType() != HitType::Triangle) return false;
 
-    bool valid = false;
+    triangleHit = hit.getTriangleHit();
 
-    if (hit.isValid() && hit.getType() == HitType::Triangle) {
-        triangleHit = hit.getTriangleHit();
+    if(gScene.isObjectMatteShaded(triangleHit.instanceID)) return false;
 
-        if(gScene.isObjectMatteShaded(triangleHit.instanceID)) return false;
-
-        // Evaluate Falcor's material parameters at the hit point.
-        // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-        const VertexData v = gScene.getVertexData(triangleHit);
-        const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
-        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
-        valid = true;
-    }
-
-    return valid;
+    // Evaluate Falcor's material parameters at the hit point.
+    // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
+    const VertexData v = gScene.getVertexData(triangleHit);
+    const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
+    sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    return true;
 }

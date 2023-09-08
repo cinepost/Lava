@@ -431,6 +431,23 @@ struct Scene
         return convex ? shadingPosition : geomPosition;
     }
 
+    // Compute shading position using barycentrics
+
+    float3 computeShadingPosition(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics) {
+        uint3 vtxIndices = getIndices(instanceID, triangleIndex);
+
+        const StaticVertexData vtx0 = vertices[vtxIndices[0]].unpack();
+        const StaticVertexData vtx1 = vertices[vtxIndices[1]].unpack();
+        const StaticVertexData vtx2 = vertices[vtxIndices[2]].unpack();
+
+        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+        const float3 pos0 = mul(float4(vtx0.position, 1.f), worldMat).xyz;
+        const float3 pos1 = mul(float4(vtx1.position, 1.f), worldMat).xyz;
+        const float3 pos2 = mul(float4(vtx2.position, 1.f), worldMat).xyz;
+
+        return pos0 * barycentrics.x + pos1 * barycentrics.y + pos2 * barycentrics.z;
+    }
+
     /** Returns a triangle's face normal in world space.
         \param[in] instanceID Geometry instance ID of the mesh.
         \param[in] triangleIndex Index of the triangle in the given mesh.

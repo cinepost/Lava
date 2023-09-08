@@ -147,9 +147,9 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 
 	mApiHandle = textureResource;
 
-#if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)
-	mMipTailimageMemoryBind.memory = VK_NULL_HANDLE;
-#endif
+//#if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)
+//	mMipTailimageMemoryBind.memory = VK_NULL_HANDLE;
+//#endif
 
 	// upload init data through texture class
 	if (pData) {
@@ -157,82 +157,10 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 	}
 }
 
-Texture::~Texture() {
-	if (mApiHandle) {
-		if(mIsSparse) {
-			for(auto pPage: mSparseDataPages) {
-				pPage->release();
-			}
-//#if FALCOR_GFX_VK
-//			mpDevice->getApiHandle()->releaseTailMemory(this);
-//#endif
-		}
-
-		ApiObjectHandle objectHandle;
-		mApiHandle->queryInterface(SLANG_UUID_ISlangUnknown, (void**)objectHandle.writeRef());
-		mpDevice->releaseResource(objectHandle);
-	}
-}
-
 void Texture::updateSparseBindInfo() {
 
 	mpDevice->getApiHandle()->updateSparseBindInfo(this);
 	return;
-
-	gfx::InteropHandle handle = {};
-	mApiHandle->getNativeResourceHandle(&handle);
-
-#if FALCOR_GFX_VK
-	assert(handle.api == gfx::InteropHandleAPI::Vulkan);
-
-	VkImage image = (VkImage)handle.handleValue;
-
-	assert(image != VK_NULL_HANDLE);
-
-	if (!mIsSparse) {
-		LLOG_ERR << "Unable to sparse bind non sparse texture !!!";
-		return;
-	}
-	
-	// Update list of memory-backed sparse image memory binds
-	mSparseImageMemoryBinds.clear();
-	for (const auto& pPage : mSparseDataPages) {
-		//if ( pPage->isResident())
-		mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
-	}
-
-	// Update sparse bind info
-	mBindSparseInfo = {};
-	mBindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
-
-	// todo: Semaphore for queue submission
-	// bindSparseInfo.signalSemaphoreCount = 1;
-	// bindSparseInfo.pSignalSemaphores = &bindSparseSemaphore;
-
-	// Image memory binds
-	mImageMemoryBindInfo = {};
-	mImageMemoryBindInfo.image = image;
-	mImageMemoryBindInfo.bindCount = static_cast<uint32_t>(mSparseImageMemoryBinds.size());
-	mImageMemoryBindInfo.pBinds = mSparseImageMemoryBinds.data();
-
-	mBindSparseInfo.imageBindCount = (mImageMemoryBindInfo.bindCount > 0) ? 1 : 0;
-	mBindSparseInfo.pImageBinds = &mImageMemoryBindInfo;
-
-	// Opaque image memory binds for the mip tail
-	mOpaqueMemoryBindInfo.image = image;
-	mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(mOpaqueMemoryBinds.size());
-	mOpaqueMemoryBindInfo.pBinds = mOpaqueMemoryBinds.data();
-	mBindSparseInfo.imageOpaqueBindCount = (mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
-	mBindSparseInfo.pImageOpaqueBinds = &mOpaqueMemoryBindInfo;
-
-
-	// --------------------
-	// Bind to queue
-	VkQueue nativeQueue = mpDevice->getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType::Direct, 0);
-
-	//todo: use sparse bind semaphore
-	vkQueueWaitIdle(nativeQueue);
-#endif  // FALCOR_GFX_VK
 }
 
 }  // namespace Falcor

@@ -40,6 +40,7 @@ namespace gfx {
     x(vkDestroyDescriptorPool) \
     x(vkResetDescriptorPool) \
     x(vkGetDeviceQueue) \
+    x(vkDeviceWaitIdle) \
     x(vkQueueSubmit) \
     x(vkQueueWaitIdle) \
     x(vkQueueBindSparse) \

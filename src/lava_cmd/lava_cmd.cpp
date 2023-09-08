@@ -46,6 +46,8 @@ namespace po = boost::program_options;
 
 using namespace lava;
 
+static std::chrono::high_resolution_clock::time_point gExecTimeStart;
+
 #ifdef _WIN32
   // traceback not implemented
 #else
@@ -54,6 +56,7 @@ void signalHandler( int signum ){
 }
 
 void signalTraceHandler( int signum ){
+  lava::ut::log::shutdown_log();
 #ifdef PRE_RELEASE_TRACEBACK_HANDLER
   fprintf(stderr, "****************************************\n");
   fprintf(stderr, "************ Lava Traceback ************\n");
@@ -73,6 +76,10 @@ void signalTraceHandler( int signum ){
 
 void atexitHandler()  {
   lava::ut::log::shutdown_log();
+
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - gExecTimeStart ).count();
+  std::cout << "Scene rendered in: " << duration << " sec.\n";
+  std::cout << "Exiting lava. Bye :)\n";
 }
 #endif
 
@@ -106,7 +113,7 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
 
 int main(int argc, char** argv){
 
-    auto lava_cmd_t1 = std::chrono::high_resolution_clock::now();
+    gExecTimeStart = std::chrono::high_resolution_clock::now();
 
     int gpuID = -1; // automatic gpu selection
 
@@ -120,7 +127,7 @@ int main(int argc, char** argv){
       // traceback not implemented
     #else
     std::atexit(atexitHandler);
-    signal(SIGTERM, signalHandler);
+    signal(SIGTERM, signalTraceHandler);
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);
     #endif
@@ -259,79 +266,75 @@ int main(int argc, char** argv){
       ReaderLSD::myConstructor
     );
 
-    auto pDeviceManager = DeviceManager::create(enableValidationLayer);
-    if (!pDeviceManager) exit(EXIT_FAILURE);
+    {
+      auto pDeviceManager = DeviceManager::create(enableValidationLayer);
+      if (!pDeviceManager) exit(EXIT_FAILURE);
 
-    pDeviceManager->setDefaultRenderingDevice(gpuID);
+      pDeviceManager->setDefaultRenderingDevice(gpuID);
 
-    Falcor::Device::Desc device_desc;
-    device_desc.width = 1280;
-    device_desc.height = 720;
-    device_desc.validationLayerOuputFilename = vkValidationFilename;
+      Falcor::Device::Desc device_desc;
+      device_desc.width = 1280;
+      device_desc.height = 720;
+      device_desc.validationLayerOuputFilename = vkValidationFilename;
 
-    LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
-    auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
-    LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
+      LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
+      auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
+      LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
 
-    // Start scripting system
-    Falcor::Scripting::start();
+      // Start scripting system
+      Falcor::Scripting::start();
 
-    // Start profiler if needed
+      // Start profiler if needed
 #ifdef FALCOR_ENABLE_PROFILER
-    gProfiler = Falcor::Profiler::instancePtr(pDevice).get();
-    gProfiler->setEnabled(true);
-    gProfiler->startCapture();
-#endif
+      gProfiler = Falcor::Profiler::instancePtr(pDevice).get();
+      gProfiler->setEnabled(true);
+      gProfiler->startCapture();
+ #endif
 
-    Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
+      Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-    if (vm.count("input-files")) {
-      // Reading scenes from files...
-      for (const std::string& inputFilename: inputFilenames) {
-        std::ifstream in_file(inputFilename, std::ifstream::binary);
-        if(!in_file) {
-          LLOG_ERR << "Unable to open scene file \'" << inputFilename << "\'' !\n";
-          exit(EXIT_FAILURE);
+      if (vm.count("input-files")) {
+        // Reading scenes from files...
+        for (const std::string& inputFilename: inputFilenames) {
+          std::ifstream in_file(inputFilename, std::ifstream::binary);
+          if(!in_file) {
+            LLOG_ERR << "Unable to open scene file \'" << inputFilename << "\'' !\n";
+            exit(EXIT_FAILURE);
+          }
+          
+          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
+          reader->init(pRenderer, echo_input);
+
+          LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";
+          if (!reader->readStream(in_file)) {
+            LLOG_ERR << "Error reading scene from file: " << inputFilename;
+            exit(EXIT_FAILURE);
+          }
+
+          std::string _captureFilename = profilerCaptureFilename;;
+          if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
+            fs::path p(inputFilename);
+            _captureFilename = p.string() + ".profilig_stats.json";
+          }
+          writeProfilerStatsToFile(_captureFilename);
         }
-        
-        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
+      } else {
+        LLOG_DBG << "Reading scene from stdin ...\n";
+        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
         reader->init(pRenderer, echo_input);
 
-        LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";
-        if (!reader->readStream(in_file)) {
-          LLOG_ERR << "Error reading scene from file: " << inputFilename;
+        if (!reader->readStream(std::cin)) {
+          LLOG_ERR << "Error loading scene from stdin !";
           exit(EXIT_FAILURE);
         }
-
-        std::string _captureFilename = profilerCaptureFilename;;
-        if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
-          fs::path p(inputFilename);
-          _captureFilename = p.string() + ".profilig_stats.json";
-        }
-        writeProfilerStatsToFile(_captureFilename);
+        writeProfilerStatsToFile(profilerCaptureFilename);
       }
-    } else {
-      LLOG_DBG << "Reading scene from stdin ...\n";
-      auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
-      reader->init(pRenderer, echo_input);
 
-      if (!reader->readStream(std::cin)) {
-        LLOG_ERR << "Error loading scene from stdin !";
-        exit(EXIT_FAILURE);
-      }
-      writeProfilerStatsToFile(profilerCaptureFilename);
+      // Shutdown scripting system before destroying renderer !
+      Falcor::Scripting::shutdown();
     }
 
-    // Shutdown scripting system before destroying renderer !
-    Falcor::Scripting::shutdown();
+    //lava::ut::log::shutdown_log();
 
-    pRenderer = nullptr;
-    pDeviceManager = nullptr;
-
-    lava::ut::log::shutdown_log();
-
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - lava_cmd_t1 ).count();
-    std::cout << "Scene rendered in: " << duration << " sec.\n";
-    std::cout << "Exiting lava. Bye :)\n";
-    exit(EXIT_SUCCESS);
+    return 0;
 }

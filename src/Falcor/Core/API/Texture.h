@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <memory>
 #include <atomic>
+#include <mutex>
 
 #include "Falcor/Core/Framework.h"
 #include "Resource.h"
@@ -53,6 +54,7 @@ namespace Falcor {
 class Engine;
 class Sampler;
 class Device;
+class CopyContext;
 class RenderContext;
 class TextureManager;
 class ResourceManager;
@@ -365,6 +367,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isSolid() const { return mIsSolid; }
 
+	std::mutex& getMutex() { return mMutex; }
+
+	bool isMipTailFilled() const { return (mIsSparse && mMipTailFilled); }
+
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
   	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);
@@ -375,6 +381,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
   protected:
 		void apiInit(const void* pData, bool autoGenMips);
 		void uploadInitData(const void* pData, bool autoGenMips);
+		void setMipTailFilled(bool state) { mMipTailFilled = state; }
 
 		bool mReleaseRtvsAfterGenMips = true;
 		std::string mSourceFilename;
@@ -387,10 +394,13 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		uint32_t mArraySize = 0;
 		ResourceFormat mFormat = ResourceFormat::Unknown;
 
+		mutable std::mutex mMutex;
+
 		std::array<UDIMTileInfo, 100> mUDIMTileInfos;
 		bool mIsUDIMTexture = false;
 		bool mIsSparse = false;
 		bool mIsSolid = false;
+		bool mMipTailFilled = false;
 		uint16_t mUDIM_ID = 0;
 		uint32_t mVirtualID = 0; // Should always start with 1. 0 means non virtual texture.
 
@@ -418,7 +428,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 		VkSparseImageMemoryBind 				mMipTailimageMemoryBind{};
 
-		VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
+		//VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
 #endif  // FALCOR_GFX_VK
 	
 		bool mSparseBindDirty = true;
@@ -427,6 +437,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		friend class Engine;
 		friend class ResourceManager;
 		friend class TextureManager;
+		friend class CopyContext;
 		friend class VirtualTexturePage;
 #if defined(FALCOR_GFX_VK)
 		friend class gfx::vk::DeviceImpl;

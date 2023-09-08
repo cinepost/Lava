@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <vector>
+#include <atomic>
 
 #include "Falcor/stdafx.h"
 #include "Texture.h"
@@ -42,6 +43,9 @@ namespace Falcor {
 namespace {
 
 static const bool kTopDown = true; // Memory layout when loading from file
+
+static std::atomic<uint32_t> gTotalTexturesCount = 0;
+static std::atomic<uint32_t> gDeletedTexturesCount = 0;
 
 Texture::BindFlags updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
 	if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
@@ -199,6 +203,8 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 		mMipLevels = bitScanReverse(dims) + 1;
 	}
 	mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
+
+	gTotalTexturesCount++;
 }
 
 template<typename ViewClass>
@@ -576,6 +582,39 @@ bool Texture::compareDesc(const Texture* pOther) const {
 		mSparsePageRes == pOther->mSparsePageRes &&
 		mIsUDIMTexture == pOther->mIsUDIMTexture;
 }
+
+Texture::~Texture() {
+	std::string tex_type = "generic";
+	if(!mSourceFilename.empty()) tex_type = mSourceFilename;
+	if(mIsUDIMTexture) tex_type += " UDIM";
+	if(mIsSparse) tex_type += " virtual";
+
+	if (mIsUDIMTexture) {
+		for(auto& info: mUDIMTileInfos) {
+			info.pTileTexture.reset();
+			info.pTileTexture = nullptr;
+		}
+	} else {
+		if(mIsSparse) {
+			for(auto pPage: mSparseDataPages) {
+				pPage->release();
+				pPage.reset();
+			}
+			mSparseDataPages.clear();
+			mpDevice->getApiHandle()->releaseTailMemory(this);
+		}
+
+		//ApiObjectHandle objectHandle;
+		//mApiHandle->queryInterface(SLANG_UUID_ISlangUnknown, (void**)objectHandle.writeRef());
+		//mpDevice->releaseResource(objectHandle);
+		
+		mpDevice->releaseResource(mApiHandle);
+
+		//mApiHandle.setNull();
+	}
+	LLOG_TRC << ++gDeletedTexturesCount << " textures deleted out of " << gTotalTexturesCount;
+}
+
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Texture) {

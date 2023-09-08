@@ -20,9 +20,7 @@ namespace ika {
 namespace bgeo {
 namespace parser {
 
-Run::Run(const Detail& detail): Primitive(detail), runPrimitive(0) { 
-    std::cout << "parser::Run::Run\n";
-}
+Run::Run(const Detail& detail): Primitive(detail), runPrimitive(0) { }
 
 Run::~Run() {
     // FIXME: use unique_ptr for these...
@@ -62,7 +60,6 @@ private:
 void Run::loadType(UT_JSONParser& parser) {
     UT_String runTypeString;
     parseArrayValueForKey(parser, "runtype", runTypeString);
-    std::cout << "parser::Run::loadType create prim\n";
     runPrimitive = create(runTypeString, detail);
     assert(runPrimitive);
 

@@ -30,6 +30,7 @@
 #include <thread>
 
 #include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "Device.h"
@@ -250,7 +251,12 @@ void Device::toggleVSync(bool enable) {
 void Device::cleanup() {
     toggleFullScreen(false);
     mpRenderContext->flush(true);
+
+    //mpTextureManager.reset();
+
     mGfxCommandQueue.setNull();
+
+    mDeferredReleases = decltype(mDeferredReleases)();
 
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
@@ -269,16 +275,30 @@ void Device::cleanup() {
     mDeferredReleases = decltype(mDeferredReleases)();
 
     releaseNullViews();
+
+    mpTextureManager.reset();
+    mDeferredReleases = decltype(mDeferredReleases)();
+
     mpRenderContext.reset();
+
     mpUploadHeap.reset();
+
     mpFrameFence.reset();
 
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
-    destroyApiObjects();
     if(mpWindow) {
         mpWindow.reset();
     }
+
+    mpDefaultSampler.reset();
+
+    mDeferredReleases = decltype(mDeferredReleases)();
+
+    destroyApiObjects();
+
+    //mApiHandle->cleanup();
+    //mApiHandle.setNull();
 }
 
 void Device::flushAndSync() {
@@ -363,7 +383,12 @@ void Device::createNullViews() {
 }
 
 void Device::releaseNullViews() {
-    mNullViews = {};
+    //mNullViews = {};
+    for(auto& srv: mNullViews.srv) srv.reset();
+    for(auto& uav: mNullViews.uav) uav.reset();
+    for(auto& dsv: mNullViews.dsv) dsv.reset();
+    for(auto& rtv: mNullViews.rtv) rtv.reset();
+    mNullViews.cbv.reset();
 }
 
 #ifdef SCRIPTING

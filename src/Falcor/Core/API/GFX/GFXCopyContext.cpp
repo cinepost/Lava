@@ -70,7 +70,8 @@ uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t
 void CopyContext::bindDescriptorHeaps() { }
 
 void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size) {
-	resourceBarrier(pTexture, Resource::State::CopyDest);
+	const bool state_changed = resourceBarrier(pTexture, Resource::State::CopyDest);
+	auto oldState = pTexture->getGlobalState();
 
 	bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
 	FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
@@ -99,7 +100,12 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
 		data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
 		data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
 		dataPtr += data.strideZ * gfxSize.depth;
+
 		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
+	}
+
+	if (state_changed) {
+		resourceBarrier(pTexture, oldState);
 	}
 }
 
@@ -207,8 +213,6 @@ bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newSta
 		gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
 		resourceEncoder->textureBarrier(1, &textureResource, getGFXResourceState(pTexture->getGlobalState()), getGFXResourceState(newState));
 		
-		//LLOG_TRC << "Texture " << pTexture->getSourceFilename() << " " << to_string(pTexture->getGlobalState()) << " to " << to_string(newState);
-
 		mCommandsPending = true;
 		recorded = true;
 	}
@@ -426,6 +430,9 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 
 		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, {0, 0, 0}, {static_cast<gfx::GfxCount>(width), static_cast<gfx::GfxCount>(height), 1}, &data, 1);
 	}
+
+	pTexture->setMipTailFilled(true);
+
 	mCommandsPending = true;
 }
 

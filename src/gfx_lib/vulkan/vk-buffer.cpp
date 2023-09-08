@@ -1,10 +1,15 @@
 // vk-buffer.cpp
+
+#include <string>
+
 #include "vk-buffer.h"
 
 #include "vk-util.h"
 #if SLANG_WINDOWS_FAMILY
 #    include <dxgi1_2.h>
 #endif
+
+#include "lava_utils_lib/logging.h"
 
 
 namespace gfx {
@@ -30,7 +35,6 @@ Result VKBufferHandleRAII::init(
     assert(!isInitialized());
 
     m_api = &api;
-    //m_memory = VK_NULL_HANDLE;
     m_buffer = VK_NULL_HANDLE;
 
     mAllocationInfo = {};
@@ -46,58 +50,23 @@ Result VKBufferHandleRAII::init(
         externalMemoryBufferCreateInfo.handleTypes = extMemHandleType;
         bufferCreateInfo.pNext = &externalMemoryBufferCreateInfo;
     }
-/*
-    SLANG_VK_CHECK(api.vkCreateBuffer(api.m_device, &bufferCreateInfo, nullptr, &m_buffer));
-*/
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.requiredFlags = reqMemoryProperties;
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO; //VMA_MEMORY_USAGE_UNKNOWN;
+
+    if (usage & VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) {
+        allocInfo.usage = VMA_MEMORY_USAGE_AUTO; //VMA_MEMORY_USAGE_UNKNOWN;
+    } else {
+        allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    }
+
+    uint32_t memoryTypeIndex = 0;
+
+    SLANG_VK_CHECK(vmaFindMemoryTypeIndexForBufferInfo(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &memoryTypeIndex));   
+
+    //allocInfo.memoryTypeBits = 1u << memoryTypeIndex;
 
     SLANG_VK_CHECK(vmaCreateBuffer(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &m_buffer, &mAllocation, &mAllocationInfo));
-    return SLANG_OK;
-
-    VkMemoryRequirements memoryReqs = {};
-    api.vkGetBufferMemoryRequirements(api.m_device, m_buffer, &memoryReqs);
-
-    int memoryTypeIndex = api.findMemoryTypeIndex(memoryReqs.memoryTypeBits, reqMemoryProperties);
-    assert(memoryTypeIndex >= 0);
-
-    VkMemoryPropertyFlags actualMemoryProperites = api.m_deviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
-    VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-    allocateInfo.allocationSize = memoryReqs.size;
-    allocateInfo.memoryTypeIndex = memoryTypeIndex;
-
-#if SLANG_WINDOWS_FAMILY
-    VkExportMemoryWin32HandleInfoKHR exportMemoryWin32HandleInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-    VkExportMemoryAllocateInfoKHR exportMemoryAllocateInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
-    if (isShared) {
-        exportMemoryWin32HandleInfo.pNext = nullptr;
-        exportMemoryWin32HandleInfo.pAttributes = nullptr;
-        exportMemoryWin32HandleInfo.dwAccess = DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
-        exportMemoryWin32HandleInfo.name = NULL;
-
-        exportMemoryAllocateInfo.pNext =
-            extMemHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR
-            ? &exportMemoryWin32HandleInfo
-            : nullptr;
-        exportMemoryAllocateInfo.handleTypes = extMemHandleType;
-        allocateInfo.pNext = &exportMemoryAllocateInfo;
-    }
-#endif
-
-    VkMemoryAllocateFlagsInfo flagInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO };
-    if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
-        flagInfo.deviceMask = 1;
-        flagInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
-
-        flagInfo.pNext = allocateInfo.pNext;
-        allocateInfo.pNext = &flagInfo;
-    }
-
-    //SLANG_VK_CHECK(api.vkAllocateMemory(api.m_device, &allocateInfo, nullptr, &m_memory));
-    //SLANG_VK_CHECK(api.vkBindBufferMemory(api.m_device, m_buffer, m_memory, 0));
-
     return SLANG_OK;
 }
 
@@ -166,9 +135,6 @@ Result BufferResourceImpl::map(MemoryRange* rangeToRead, void** outPointer) {
 Result BufferResourceImpl::unmap(MemoryRange* writtenRange) {
     SLANG_UNUSED(writtenRange);
     auto api = m_buffer.m_api;
-    /*
-    api->vkUnmapMemory(api->m_device, m_buffer.m_memory);
-    */
     vmaUnmapMemory(api->mVmaAllocator, m_buffer.mAllocation);
     return SLANG_OK;
 }
@@ -177,6 +143,7 @@ Result BufferResourceImpl::setDebugName(const char* name) {
     Parent::setDebugName(name);
     auto api = m_buffer.m_api;
     if (api->vkDebugMarkerSetObjectNameEXT) {
+        LLOG_TRC << "Buffet debug name: " << std::string(name);
         VkDebugMarkerObjectNameInfoEXT nameDesc = {};
         nameDesc.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
         nameDesc.object = (uint64_t)m_buffer.m_buffer;

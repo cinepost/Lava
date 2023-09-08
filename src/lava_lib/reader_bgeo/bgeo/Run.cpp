@@ -20,9 +20,7 @@ namespace bgeo {
 
 RTTI_DEFINE(Run, Primitive, PrimType::RunPrimType)
 
-Run::Run(const Bgeo& bgeo, const parser::Run& run): m_bgeo(bgeo), m_run(run) { 
-	std::cout << "Run::Run\n";
-}
+Run::Run(const Bgeo& bgeo, const parser::Run& run): m_bgeo(bgeo), m_run(run) { }
 
 Bgeo::PrimitivePtr Run::getTemplatePrimitive() const {
     assert(m_run.runPrimitive);

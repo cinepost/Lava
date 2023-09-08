@@ -27,18 +27,15 @@ public:
     /// Returns true if has been initialized
     bool isInitialized() const { return m_api != nullptr; }
 
-    VKBufferHandleRAII()
-        : m_api(nullptr)
-    {}
+    VKBufferHandleRAII(): m_api(nullptr){}
 
     ~VKBufferHandleRAII();
     
     VkBuffer        m_buffer;
-    //VkDeviceMemory  m_memory;
 
     VmaAllocationInfo mAllocationInfo = {};
-    VmaAllocation   mAllocation = {};
-    const VulkanApi* m_api;
+    VmaAllocation     mAllocation = {};
+    const VulkanApi*  m_api;
 };
 
 class BufferResourceImpl : public BufferResource

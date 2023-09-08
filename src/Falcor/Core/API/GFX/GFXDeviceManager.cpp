@@ -61,7 +61,7 @@ static std::vector<VkLayerProperties> enumarateInstanceLayersProperties() {
     vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
 
     for (const VkLayerProperties& layer : layerProperties) {
-        LLOG_DBG << "Available Vulkan Layer: " << std::string(layer.layerName) << 
+        LLOG_TRC << "Available Vulkan Layer: " << std::string(layer.layerName) << 
                     " - VK Spec Version: " << std::to_string(layer.specVersion) <<
                     " - Implementation Version: " << std::to_string(layer.implementationVersion);
     }
@@ -79,7 +79,7 @@ static std::vector<VkExtensionProperties> enumarateInstanceExtensions() {
     }
 
     for (const VkExtensionProperties& extension : availableInstanceExtensions) {
-        LLOG_DBG << "Available Instance Extension: " << std::string(extension.extensionName) << " - VK Spec Version: " << std::to_string(extension.specVersion);
+        LLOG_TRC << "Available Instance Extension: " << std::string(extension.extensionName) << " - VK Spec Version: " << std::to_string(extension.specVersion);
     }
 
     return availableInstanceExtensions;

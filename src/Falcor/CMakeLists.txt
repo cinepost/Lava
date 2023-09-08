@@ -2,6 +2,7 @@ set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
 
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
 include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
@@ -96,6 +97,9 @@ if(WIN32)
     # target_link_options(falcor_lib PRIVATE "/FORCE:UNRESOLVED")
 else()
     target_compile_options(falcor_lib PUBLIC -march=native -msse4.1)
+    target_compile_options(falcor_lib PUBLIC "$<$<CONFIG:RELEASE>:-O>")
+    target_compile_options(falcor_lib PUBLIC "$<$<CONFIG:DEBUG>:-O0>")
+    target_compile_options(falcor_lib PUBLIC "$<$<CONFIG:DEBUG>:-ggdb3>")
 endif()
 
 # Blosc

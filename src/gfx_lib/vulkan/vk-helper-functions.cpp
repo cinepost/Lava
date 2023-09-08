@@ -70,6 +70,7 @@ VkImageLayout translateImageLayout(ResourceState state)
 {
     switch (state)
     {
+    case ResourceState::General:
     case ResourceState::Undefined:
         return VK_IMAGE_LAYOUT_UNDEFINED;
     case ResourceState::PreInitialized:

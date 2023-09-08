@@ -197,12 +197,12 @@ public:
 
 	void setVirtualTexturesShaderData(const ShaderVar& var, const ShaderVar& pagesBufferVar, const size_t descCount);
 
-	void setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const;
+	void setUDIMTableShaderData(const ShaderVar& var, size_t descCount);
 
 	void finalize();
 
 	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
-	void loadPagesAsync(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
+	void loadPagesAsync(const std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>>& texturesToPageIDsList);
 
 	void updateSparseBindInfo();
 
@@ -269,6 +269,8 @@ private:
 
 	Buffer::SharedPtr mpVirtualTexturesDataBuffer;
 	Buffer::SharedPtr mpVirtualPagesResidencyDataBuffer;
+
+	Buffer::SharedPtr mpUDIMTextureTilesTableBuffer;
 
 	bool mSparseTexturesEnabled = false;
 	bool mHasSparseTextures = false;

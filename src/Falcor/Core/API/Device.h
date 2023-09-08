@@ -62,6 +62,7 @@ struct DeviceApiData;
 
 class Fbo;
 class Sampler;
+class CopyContext;
 class RenderContext;
 class TextureManager;
 
@@ -143,20 +144,20 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Device unique id.
     */
-    inline uint8_t uid() const { return _uid; }
+    uint8_t uid() const { return _uid; }
 
     /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
         Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
     */
     void cleanup();
 
-    inline std::shared_ptr<TextureManager>& textureManager() { return mpTextureManager; }
+    TextureManager* textureManager() { return mpTextureManager.get(); }
 
     /** Enable/disable vertical sync
     */
     void toggleVSync(bool enable);
 
-    inline bool isHeadless() const { return mHeadless; };
+    bool isHeadless() const { return mHeadless; };
 
     /** Get physical device name
     */
@@ -187,7 +188,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Get the default render-context.
         The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
     */
-    inline RenderContext* getRenderContext() const { return mpRenderContext.get(); }
+    RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
     /** Get the command queue handle
     */
@@ -204,10 +205,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get the native API handle
     */
-    inline const DeviceHandle& getApiHandle() { return mApiHandle; }
+    const DeviceHandle& getApiHandle() { return mApiHandle; }
 
 #if FALCOR_GFX_VK
-    inline VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
+    VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
 #endif
 
     /** Present the back-buffer to the window

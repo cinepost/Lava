@@ -52,6 +52,7 @@ namespace {
 	const std::string kVirtualTexturesDataName = "virtualTexturesData";
 	const std::string kVirtualPagesResidencyDataName = "virtualPagesResidencyData";
 	const std::string kMaterialUDIMTilesTableName = "udimTextureTilesTable";
+	const std::string kMaterialUDIMTilesTableBufferName = "udimTextureTilesTableBuffer";
 	const std::string kMaterialBuffersName = "materialBuffers";
 
 	const size_t kMaxSamplerCount = 1ull << MaterialHeader::kSamplerIDBits;
@@ -387,7 +388,8 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
 		textureManager()->setExtendedTexturesShaderData(mpMaterialsBlock[kExtendedTexturesDataName], mTextureDescCount);
 		textureManager()->setVirtualTexturesShaderData(mpMaterialsBlock[kVirtualTexturesDataName],mpMaterialsBlock[kVirtualPagesResidencyDataName], mTextureDescCount);
-		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
+		//textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
+		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableBufferName], mUDIMTextureCount * 100);
 	}
 
 	// Update buffers.

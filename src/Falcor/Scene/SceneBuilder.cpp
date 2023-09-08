@@ -286,6 +286,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
     // Create instance data.
     uint32_t tlasInstanceIndex = 0;
+
     createMeshInstanceData(tlasInstanceIndex);
     createCurveInstanceData(tlasInstanceIndex);
     // Adjust instance indices of SDF grid instances.

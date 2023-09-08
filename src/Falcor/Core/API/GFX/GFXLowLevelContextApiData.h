@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_GFX_GFXLOWLEVELCONTEXTAPIDATA_H_
 #define SRC_FALCOR_CORE_API_GFX_GFXLOWLEVELCONTEXTAPIDATA_H_
 
+#include <vector>
 #include "gfx_lib/slang-gfx.h"
 
 namespace Falcor {
@@ -40,6 +41,7 @@ struct LowLevelContextApiData {
         gfx::IComputeCommandEncoder* getComputeCommandEncoder();
         gfx::IRenderCommandEncoder* getRenderCommandEncoder(gfx::IRenderPassLayout* renderPassLayout, gfx::IFramebuffer* framebuffer, bool& newEncoder);
         gfx::IRayTracingCommandEncoder* getRayTracingCommandEncoder();
+
         void closeEncoders();
 
     private:

@@ -67,7 +67,6 @@ class MaterialTextureLoader {
 		
 		bool mUseSrgb;
 		std::vector<TextureAssignment> mTextureAssignments;
-		TextureManager::SharedPtr mpTextureManager;
 };
 
 }  // namespace Falcor

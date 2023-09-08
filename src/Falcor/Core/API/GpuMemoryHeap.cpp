@@ -29,6 +29,8 @@
 #include "GpuMemoryHeap.h"
 #include "GpuFence.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
 
     GpuMemoryHeap::~GpuMemoryHeap() {

@@ -34,7 +34,6 @@ MaterialTextureLoader::MaterialTextureLoader(const Device::SharedPtr& pDevice, b
 	: mpDevice(pDevice)
 	, mUseSrgb(useSrgb)
 {
-	mpTextureManager = mpDevice->textureManager();
 }
 
 MaterialTextureLoader::~MaterialTextureLoader() {
@@ -56,7 +55,7 @@ bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 
 	// Request texture to be loaded.
 	TextureManager::TextureHandle handle;
-	if(!mpTextureManager->loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse)) {
+	if(!mpDevice->textureManager()->loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse)) {
 		return false;
 	}
 
@@ -68,12 +67,12 @@ bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 }
 
 void MaterialTextureLoader::assignTextures() {
-	mpTextureManager->waitForAllTexturesLoading();
+	mpDevice->textureManager()->waitForAllTexturesLoading();
 
 	// Assign textures to materials.
 	for (const auto& assignment : mTextureAssignments) {
 	  // Assign generic handle
-		auto pTexture = mpTextureManager->getTexture(assignment.handle);
+		auto pTexture = mpDevice->textureManager()->getTexture(assignment.handle);
 		assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
 	}
 }

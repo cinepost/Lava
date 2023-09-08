@@ -491,6 +491,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     if (ibSize > 0) {
         ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
         pIB = Buffer::create(mpDevice, ibSize, ibBindFlags, Buffer::CpuAccess::None, indexData.data());
+        LLOG_TRC << "pIB buffer size " << pIB->getSize();
     }
 
     // Create the vertex data structured buffer.
@@ -502,6 +503,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
 
     ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+    LLOG_TRC << "pStaticBuffer buffer size " << pStaticBuffer->getSize();
+
 
     Vao::BufferVec pVBs(kVertexBufferCount);
     pVBs[kStaticDataBufferIndex] = pStaticBuffer;
@@ -525,6 +528,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         pDrawIDBuffer = Buffer::create(mpDevice, drawCount * sizeof(uint32_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
     }
     else should_not_get_here();
+
+    LLOG_TRC << "pDrawIDBuffer buffer size " << pDrawIDBuffer->getSize();
 
     assert(pDrawIDBuffer);
     pVBs[kDrawIdBufferIndex] = pDrawIDBuffer;

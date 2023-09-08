@@ -41,10 +41,10 @@ size_t VirtualTexturePage::usedMemSize() const {
 }
 
 // Allocate Vulkan memory for the virtual page
-void VirtualTexturePage::allocate() {
+bool VirtualTexturePage::allocate() {
 	if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
 		// VirtualTexturePage already allocated
-		return;
+		return false;
 	}
 
 	VkMemoryAllocateInfo memAllocInfo = {};
@@ -67,7 +67,7 @@ void VirtualTexturePage::allocate() {
 
 	if( result != VK_SUCCESS ){
 		LLOG_ERR << "Error allocating virtual page memory !!! VkResult: " << to_string(result);
-		return;
+		return false;
 	}   
 
 	mImageMemoryBind.memory = vmaAllocInfo.deviceMemory;
@@ -75,6 +75,7 @@ void VirtualTexturePage::allocate() {
 
 	mpTexture->mSparseResidentMemSize += mDevMemSize;
 	mIsResident = true;
+	return true;
 }
 
 // Release Vulkan memory allocated for this page

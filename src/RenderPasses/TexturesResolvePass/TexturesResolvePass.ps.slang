@@ -1,3 +1,5 @@
+#include "Utils/Math/MathConstants.slangh"
+
 //#include "Scene/Material/VirtualTextureData.slangh"
 
 import Scene.Raster;
@@ -155,7 +157,13 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
                 uint2 udim_idx = uint2((uint)floor(uv.x), (uint)floor(uv.y));
                 uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
                 uint udimID = gScene.materials.extendedTexturesData[textureID].udimID;
-                uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
+                
+                //uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
+                //uint byte_addr = (udimID * 100 + udim_idx.x + udim_idx.y * 10) * 2;
+                //uint tileID = (uint)gScene.materials.udimTextureTilesTableBuffer.Load<float16_t>(byte_addr);
+                uint tileID = (uint)gScene.materials.udimTextureTilesTableBuffer[udimID * 100 + udim_idx.x + udim_idx.y * 10];
+                if(tileID == UINT16_MAX) continue;
+
                 virtualTextureID = gScene.materials.extendedTexturesData[tileID].virtualID;
                 vtexData = gScene.materials.virtualTexturesData[virtualTextureID];
                 break;

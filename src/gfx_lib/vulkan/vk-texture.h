@@ -21,10 +21,12 @@ class TextureResourceImpl : public TextureResource {
         VkImage m_image = VK_NULL_HANDLE;
         VkFormat m_vkformat = VK_FORMAT_R8G8B8A8_UNORM;
         
-        VmaAllocation   mAllocation = {};
+        VmaAllocation   mAllocation = VK_NULL_HANDLE;
         VmaAllocationInfo mAllocationInfo = {};
 
         std::vector<VmaAllocation> mTailAllocations;
+
+        VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
 
         bool mTailMemoryAllocated = false;
 

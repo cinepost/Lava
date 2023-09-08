@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <mutex>
 #include <boost/range/adaptors.hpp>
 
 #include "stdafx.h"
@@ -42,6 +43,9 @@
 
 #include "TextureManager.h"
 
+#include "gfx_lib/renderer-shared.h"
+#include "gfx_lib/vulkan/vk-device.h"
+
 
 namespace ba = boost::adaptors;
 
@@ -50,7 +54,12 @@ namespace ba = boost::adaptors;
 #define DISABLE_ASYNC_TEXTURE_LOADER
 
 
+#define LOAD_GIBBERISH_TEXTURE 0
+#define LOAD_GIBBERISH_UDIM_TILE_TEXTURE 0
+
 namespace Falcor {
+
+static std::mutex   g_vk_cmd_mutex;
 
 static const size_t kMinPagesPerLoadingThred = 10;
 
@@ -80,6 +89,39 @@ TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount
 }
 
 TextureManager::~TextureManager() {
+	// Join texture pages loading tasks if any
+	for(size_t i = 0; i < mTextureLoadingTasks.size(); i++) {
+		mTextureLoadingTasks[i].get();
+	}
+
+	mTextureLTXBitmapsMap.clear();
+	mSparseDataPages.clear();
+
+	// Delete UDIM textures first
+	for(auto& desc: mTextureDescs) {
+		if(desc.pTexture && desc.pTexture->isUDIMTexture()) {
+			for(auto& info: desc.pTexture->mUDIMTileInfos) {
+				info.pTileTexture.reset();
+				info.pTileTexture = nullptr;
+			}
+			desc.pTexture.reset();
+			desc.pTexture = nullptr;
+		}
+	}	
+
+	// Release and delete textures sparse data pages
+	for(auto& desc: mTextureDescs) {
+		if(desc.pTexture && desc.pTexture->isSparse()) {
+			for(auto pPage: desc.pTexture->mSparseDataPages) {
+				pPage->release();
+				pPage.reset();
+			}
+			desc.pTexture->mSparseDataPages.clear();
+		}
+	}
+
+	mTextureDescs.clear();
+
 	blosc_destroy();
 }
 
@@ -122,6 +164,14 @@ TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPt
 }
 
 Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags) {
+
+#if 1 == 2	
+	std::vector<uint8_t> testData(64*64*4);
+	std::fill(testData.begin(), testData.end(), 255);
+
+	return Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
+#endif
+
 	std::string ext = path.extension().string();
 
 	if (ext == ".dds") {
@@ -201,6 +251,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   pTexture->mIsSparse = true;
   
 	try {
+		generateMipLevels = false;
     pTexture->apiInit(nullptr, generateMipLevels);
   } catch (const std::runtime_error& e) {
     LLOG_ERR << "Error initializing sparse texture " << ltxPath << "'\nError details:";
@@ -214,7 +265,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	for(auto& pPage: pTexture->sparseDataPages()) {
    	pPage->mID = static_cast<uint32_t>(mSparseDataPages.size());
    	mSparseDataPages.push_back(pPage);
-   }
+  }
 
   uint32_t deviceMemRequiredSize = pTexture->getTextureSizeInBytes();
   LLOG_DBG << "Texture requires " << std::to_string(deviceMemRequiredSize) << " bytes of device memory";
@@ -230,7 +281,6 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   if (it == mTextureLTXBitmapsMap.end()) {
     mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
   }
-  //mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
   
   pTexture->setVirtualID(mSparseTexturesCount++);
 
@@ -238,6 +288,10 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 }
 
 void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds) {
+#if 1 == 2
+	return;
+#endif
+
 	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
 
   assert(pTexture.get());
@@ -252,6 +306,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   }
 
   auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+  auto pContext = pTexture->device()->getRenderContext();
 
   std::vector<uint32_t> _pageIds = pageIds;
   std::sort(_pageIds.begin(), _pageIds.end());
@@ -267,6 +322,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   auto pScratchBufferData = scratchBuffer.data();
 
   bool loadTailData = true; // always load texture tail data
+  bool allocationChanged = false;
 
   const auto& texturePages = pTexture->sparseDataPages();
 
@@ -278,132 +334,215 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 
     const auto& pPage = texturePages[pageIndex];
     if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
-
-    uint32_t page_index = pageIndex; //pPage->index();
-
-    if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {	
-    	// Load non-tail texture data page
-    	pPage->allocate();
-    	mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
-    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
-  	} else {
-  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
-  		pPage->release();
-  	}
+    if(pPage->allocate()) allocationChanged = true;
   }
 
-	if(loadTailData || (pageIds.size() == 0)) {
-		LLOG_DBG << "Loading tail data for " << ltxFilename;
-		std::vector<uint8_t> tailData(kLtxPageSize);
-		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
-		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-		if(!tailData.empty()) mpDevice->getRenderContext()->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
-	}
 
-  fclose(pFile);
-  pTexture->updateSparseBindInfo();
-}
+  if(allocationChanged) {
+	  {
+	  	auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
+			auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+			auto& vk_api = pDevice->vkAPI();
+			VkDevice device = pDevice->vkDevice();
+			VkQueue  queue = pDevice->vkQueue();
+	  	vk_api.vkDeviceWaitIdle(device);
 
-void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds) {
-	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
+		  pTexture->updateSparseBindInfo();
+		  
+		  VkFenceCreateInfo fenceCreateInfo {};
+			fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
 
-  assert(pTexture.get());
+			VkFence fence;
+			vk_api.vkCreateFence(device, &fenceCreateInfo, nullptr, &fence);
+			vk_api.vkQueueBindSparse(queue, 1, &pTexture->mBindSparseInfo, fence);
+			vk_api.vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+			vk_api.vkDestroyFence(device, fence, nullptr);
+		}
 
-  uint32_t textureID = pTexture->id();
-
-  auto it = mTextureLTXBitmapsMap.find(textureID);
-  if (it == mTextureLTXBitmapsMap.end()) {
-    LLOG_ERR << "No LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
-    return;
-  }
-
-  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
-
-  ThreadPool& pool = ThreadPool::instance();
-
-	// Push pages loading job into ThreadPool
-	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = std::move(pageIds)]
-  {
-  	if(!pTexture) return (Texture*)nullptr;
-
-  	std::vector<uint32_t> _pageIds = pageIds;
-  	std::sort(_pageIds.begin(), _pageIds.end());
-  	
-    std::thread::id thread_id = std::this_thread::get_id();
-    auto pContext = pTexture->device()->getRenderContext();
-
-    std::array<uint8_t, kLtxPageSize> tmpPageData;
-    auto pTmpPageData = tmpPageData.data();
-
-    std::array<uint8_t, kLtxPageSize> scratchBuffer;
-    auto pScratchBufferData = scratchBuffer.data();
-
-    bool loadTailData = true; // always load texture tail data
-    const auto& texturePages = pTexture->sparseDataPages();
-
-		std::string ltxFilename = pLtxBitmap->getFileName();
-		auto pFile = fopen(ltxFilename.c_str(), "rb");
+		auto oldState = pTexture->getGlobalState();
+		const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
 
 		for( uint32_t pageIndex: _pageIds ) {
-			if(pageIndex >= texturePages.size()) {
+	  	if(pageIndex >= texturePages.size()) {
 				LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
 				continue;
 			}
 
-  		const auto& pPage = texturePages[pageIndex];
-  		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
+	    const auto& pPage = texturePages[pageIndex];
+	    if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
 
-  		uint32_t page_index = pageIndex; //pPage->index();
+	    if(pLtxBitmap->readPageData(pageIndex, pTmpPageData, pFile, pScratchBufferData)) {	
+	    	// Load non-tail texture data page
+	    	pContext->updateTexturePage(pPage.get(), pTmpPageData);
+	    	
+	    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
+	  	} else {
+	  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
+	  	}
+	  }
 
-  		if(!pPage->isResident()) {
-    		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {
-  				// Load non-tail texture data page
-  				std::unique_lock<std::mutex> lock(mPageMutex);
-  				pPage->allocate();
-  				pContext->updateTexturePage(pPage.get(), pTmpPageData);
-  				LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel()) << " texture " << pTexture->getSourceFilename();
-				} else {
-					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
-					pPage->release();
+	  pContext->resourceBarrier(pTexture.get(), oldState);
+	}
+
+  if(loadTailData || pageIds.empty()) {
+		LLOG_TRC << "Loading tail data for texture " << ltxFilename;
+		std::vector<uint8_t> tailData(kLtxPageSize);
+		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
+		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
+		if(!tailData.empty()) {
+			auto oldState = pTexture->getGlobalState();
+			const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
+			pContext->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+			pContext->resourceBarrier(pTexture.get(), oldState);
+		}
+	}
+
+	pContext->flush(true);
+
+  fclose(pFile);
+}
+
+
+void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>>& texturesToPageIDsList) {
+	if(!mHasSparseTextures) return;
+
+	ThreadPool& pool = ThreadPool::instance();
+	BS::multi_future<Texture*> texturePagesLoadingTasks;
+
+	for(auto& textureToPagesPair: std::move(texturesToPageIDsList)) {
+
+		auto pTexture = textureToPagesPair.first;
+	  uint32_t textureID = pTexture->id();
+
+	  auto it = mTextureLTXBitmapsMap.find(textureID);
+	  if (it == mTextureLTXBitmapsMap.end()) {
+	    LLOG_ERR << "No LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
+	    return;
+	  }
+
+	  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+
+		// Push pages loading job into ThreadPool
+		texturePagesLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = textureToPagesPair.second] {
+	  	if(!pTexture) return (Texture*)nullptr;
+
+	  	std::unique_lock<std::mutex> texture_lock(pTexture->getMutex());
+
+	  	std::vector<uint32_t> _pageIds = pageIds;
+	  	std::sort(_pageIds.begin(), _pageIds.end());
+	  	
+	    std::thread::id thread_id = std::this_thread::get_id();
+	    auto pContext = pTexture->device()->getRenderContext();
+	    //auto pContext = pTexture->device()->createCopyContext();
+
+	    std::array<uint8_t, kLtxPageSize> tmpPageData;
+	    auto pTmpPageData = tmpPageData.data();
+
+	    std::array<uint8_t, kLtxPageSize> scratchBuffer;
+	    auto pScratchBufferData = scratchBuffer.data();
+
+	    bool loadTailData = true; // always load texture tail data
+	    bool allocationChanged = false;
+	    const auto& texturePages = pTexture->sparseDataPages();
+
+			std::string ltxFilename = pLtxBitmap->getFileName();
+			auto pFile = fopen(ltxFilename.c_str(), "rb");
+
+			for( uint32_t pageIndex: _pageIds ) {
+				if(pageIndex >= texturePages.size()) {
+					LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
+					continue;
+				}
+
+		    const auto& pPage = texturePages[pageIndex];
+		    if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
+	    	if(pPage->allocate()) allocationChanged = true;
+	    }
+
+	    if(allocationChanged) {
+	    	{
+				  pTexture->updateSparseBindInfo();
+				  VkFenceCreateInfo fenceCreateInfo {};
+					fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+					fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
+
+					VkFence fence;
+
+					auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
+					auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+					auto& vk_api = pDevice->vkAPI();
+					VkDevice device = pDevice->vkDevice();
+					VkQueue  queue = pDevice->vkQueue();
+
+					{
+						std::unique_lock<std::mutex> texture_lock(g_vk_cmd_mutex);
+						vk_api.vkCreateFence(device, &fenceCreateInfo, nullptr, &fence);
+						vk_api.vkQueueBindSparse(queue, 1, &pTexture->mBindSparseInfo, fence);
+						vk_api.vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+						vk_api.vkDestroyFence(device, fence, nullptr);
+					}
+				}
+
+				auto oldState = pTexture->getGlobalState();
+				const bool state_changed = pContext->resourceBarrier(pTexture, Resource::State::CopyDest);
+
+				for( uint32_t pageIndex: _pageIds ) {
+					if(pageIndex >= texturePages.size()) {
+						LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
+						continue;
+					}
+
+		  		const auto& pPage = texturePages[pageIndex];
+		  		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
+
+		  		if(pPage->isResident() && pLtxBitmap->readPageData(pageIndex, pTmpPageData, pFile, pScratchBufferData)) {	
+			    	// Load non-tail texture data page
+			    	std::unique_lock<std::mutex> texture_lock(g_vk_cmd_mutex);
+			    	pContext->updateTexturePage(pPage.get(), pTmpPageData);
+			    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
+			  	} else {
+			  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
+			  		pPage->release();
+			  	}
+				}
+
+				if(state_changed) pContext->resourceBarrier(pTexture, oldState);
+	    }
+
+			if((loadTailData || !pageIds.empty()) && !pTexture->isMipTailFilled()) {
+				LLOG_DBG << "Loading tail data for " << ltxFilename;
+				std::vector<uint8_t> tailData(kLtxPageSize);
+				pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
+				LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
+				if(!tailData.empty()) {
+					std::unique_lock<std::mutex> lock(mPageMutex);
+					pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
 				}
 			}
-		}
 
-		if(loadTailData || !pageIds.empty()) {
-			LLOG_DBG << "Loading tail data for " << ltxFilename;
-			std::vector<uint8_t> tailData(kLtxPageSize);
-			pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
-			LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-			if(!tailData.empty()) {
-				std::unique_lock<std::mutex> lock(mPageMutex);
-				//pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
-			}
-		}
+			pContext->flush(true);
 
-		fclose(pFile);
-		{
-			std::unique_lock<std::mutex> lock(mPageMutex);
-			pTexture->updateSparseBindInfo();
-		}
+			fclose(pFile);
+	    return pTexture;
+	  }));
+	}
 
-    return pTexture;
-  }));
+	// Join texture pages loading tasks
+	for(size_t i = 0; i < texturePagesLoadingTasks.size(); i++) {
+		texturePagesLoadingTasks[i].get();
+	}
+
+	// Load texture data to GPU
+
 }
 
 void TextureManager::updateSparseBindInfo() {
 	if(mTextureLoadingTasks.empty()) return;
 
-	std::vector<Texture*> textures;
 	for(size_t i = 0; i < mTextureLoadingTasks.size(); i++) {
-		textures.push_back(mTextureLoadingTasks[i].get());
+		mTextureLoadingTasks[i].get();
 	}
-
-	if(textures.empty()) return;
-
-	//mpDevice->getRenderContext()->flush();
-	
-	//mpDevice->getApiHandle()->updateSparseBindInfo(textures);
-	//mpDevice->flushAndSync();
 }
 
 bool TextureManager::getTextureHandle(const Texture* pTexture, TextureHandle& handle) const {
@@ -480,10 +619,14 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 		// So we use UDIM texture path as fullpath key for map storage and access.
 		fullPath = path.filename().string();
 	} else {
+#if LOAD_GIBBERISH_TEXTURE == 1
 		if (!findFileInDataDirectories(path, fullPath)) {
 			LLOG_WRN << "Can't find texture file " << path;
 			return false;
 		}
+# else 
+		fullPath = path;
+#endif
 	}
 
 	std::unique_lock<std::mutex> lock(mMutex);
@@ -541,29 +684,32 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 			// Load single texture
 			Texture::SharedPtr pTexture = nullptr;
 
+#if LOAD_GIBBERISH_TEXTURE == 1 
+			//std::vector<uint8_t> testData(64*64*4);
+			//std::fill(testData.begin(), testData.end(), 0);
+			//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
+
+			LLOG_WRN << "Generating gibberish texture " << path;
+			pTexture = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
+#else
 			if(!loadAsSparse) {
 				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
-				if(!pTexture) {
-					LLOG_ERR << "Error loading sparse texture !!!";
-					return false;
-				}
 			}
+#endif
 
-			// Add new texture desc.
-			TextureDesc desc = { TextureState::Loaded, pTexture };
-			handle = addDesc(desc, pTexture->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
+			if(!pTexture) {
+				LLOG_ERR << "Error loading " << (pTexture->isSparse() ? "virtual" : "") << " texture " << fullPath;
+			} else {
+				// Add new texture desc.
+				TextureDesc desc = { TextureState::Loaded, pTexture };
+				handle = addDesc(desc, pTexture->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
 
-			// Add to key-to-handle map.
-			mKeyToHandle[textureKey] = handle;
-
-			// Add to texture-to-handle map.
-			if (pTexture) {
+				// Add to key-to-handle map.
+				mKeyToHandle[textureKey] = handle;
 				mTextureToHandle[pTexture.get()] = handle;
-				if (pTexture->isSparse()) {
-					mHasSparseTextures = true;
-				}
+				if (pTexture->isSparse()) mHasSparseTextures = true;
 			}
 
 		} else {
@@ -599,32 +745,43 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 				} else {
 
 					Texture::SharedPtr pUdimTileTex = nullptr;
+#if LOAD_GIBBERISH_TEXTURE == 1 
+					//std::vector<uint8_t> testData(64*64*4);
+					//std::fill(testData.begin(), testData.end(), 0);
+					//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
 
+					LLOG_WRN << "Loading gibberish udim tile texture " << path;
+					pUdimTileTex = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
+#else
 					if(!loadAsSparse) {
 						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
 						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
-						if(pUdimTileTex) {
-							mHasSparseTextures = true;
-						}
 					}
+#endif
 
-					LLOG_DBG << "Loaded " << (loadAsSparse ? "sparse": "" ) << " UDIM tile texture: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
-					
-					TextureDesc udim_tile_desc = { TextureState::Loaded, pUdimTileTex };
-					udim_tile_handle = addDesc(udim_tile_desc, pUdimTileTex->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
-		
-					// Add tile handle to key-to-handle map.
-					mKeyToHandle[udimTileTextureKey] = udim_tile_handle;
+					if(!pUdimTileTex) {
+						LLOG_ERR << "Error loading " << (loadAsSparse ? "virtual" : "") << " texture " << udim_tile_fullpath;
+					} else {
+						LLOG_DBG << "Loaded " << (pUdimTileTex->isSparse() ? "virtual": "" ) << " UDIM tile texture: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
+				
+						if(pUdimTileTex->isSparse()) mHasSparseTextures = true;
 
-					// Add tile to texture-to-handle map.
-					if (pUdimTileTex) {
-						mHasUDIMTextures = true;
-						mTextureToHandle[pUdimTileTex.get()] = udim_tile_handle;
-						
-						if (pUDIMTexture) {
-							pUDIMTexture->addUDIMTileTexture({pUdimTileTex, udim_tile_pos[0], udim_tile_pos[1]});
-							mUDIMTextureTilesCount ++;
+						TextureDesc udim_tile_desc = { TextureState::Loaded, pUdimTileTex };
+						udim_tile_handle = addDesc(udim_tile_desc, pUdimTileTex->isSparse() ? TextureHandle::Mode::Virtual : TextureHandle::Mode::Texture);
+			
+						// Add tile handle to key-to-handle map.
+						mKeyToHandle[udimTileTextureKey] = udim_tile_handle;
+
+						// Add tile to texture-to-handle map.
+						if (pUdimTileTex) {
+							mHasUDIMTextures = true;
+							mTextureToHandle[pUdimTileTex.get()] = udim_tile_handle;
+							
+							if (pUDIMTexture) {
+								pUDIMTexture->addUDIMTileTexture({pUdimTileTex, udim_tile_pos[0], udim_tile_pos[1]});
+								mUDIMTextureTilesCount ++;
+							}
 						}
 					}
 				}
@@ -903,7 +1060,7 @@ void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Textu
 	}
 }
 
-void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const {
+void TextureManager::setUDIMTableShaderData(const ShaderVar& var, size_t descCount) {
 	LLOG_DBG << "Setting UDIM table shader data " << to_string(descCount) << " descriptors";
 
 	if (descCount == 0) {
@@ -913,21 +1070,34 @@ void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t d
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	for (size_t i = 0; i < mTextureDescs.size(); i++) {
-		const auto& pTex = mTextureDescs[i].pTexture;
-		if(pTex && pTex->isUDIMTexture()) {
-			for( const auto& tileInfo: pTex->getUDIMTileInfos()) {
-				size_t udim_tile_idx = static_cast<uint32_t>(pTex->getUDIM_ID()) * 100u + tileInfo.u + tileInfo.v * 10u;
-				if( tileInfo.pTileTexture ) {
-					auto const& it = mTextureToHandle.find(tileInfo.pTileTexture.get());
-					if(it != mTextureToHandle.end()) {
-						LLOG_DBG << "Tile idx: " << std::to_string(udim_tile_idx) << " handle: " << std::to_string(it->second.id);
-						var[udim_tile_idx] = it->second.id;
+	if(mDirty || !mpUDIMTextureTilesTableBuffer) {
+
+		std::vector<uint16_t> udimTextureTilesTable;
+		udimTextureTilesTable.reserve(descCount);
+
+		static constexpr uint16_t kMaxHandleId = std::numeric_limits<std::uint16_t>::max();
+
+		for (size_t i = 0; i < mTextureDescs.size(); i++) {
+			const auto& pTex = mTextureDescs[i].pTexture;
+			if(pTex && pTex->isUDIMTexture()) {
+				udimTextureTilesTable.resize(udimTextureTilesTable.size() + 100);
+				for( const auto& tileInfo: pTex->getUDIMTileInfos()) {
+					size_t udim_tile_idx = static_cast<uint32_t>(pTex->getUDIM_ID()) * 100u + tileInfo.u + tileInfo.v * 10u;
+					if( tileInfo.pTileTexture ) {
+						auto const& it = mTextureToHandle.find(tileInfo.pTileTexture.get());
+						if(it != mTextureToHandle.end()) {
+							LLOG_TRC << "Tile idx: " << std::to_string(udim_tile_idx) << " handle: " << std::to_string(it->second.id);
+							udimTextureTilesTable[udim_tile_idx] = static_cast<uint16_t>(it->second.id);
+						} else {
+							udimTextureTilesTable[udim_tile_idx] = kMaxHandleId;
+						}
 					}
 				}
 			}
 		}
+		mpUDIMTextureTilesTableBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t), (uint32_t)udimTextureTilesTable.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, udimTextureTilesTable.data(), false);
 	}
+	var.setBuffer(mpUDIMTextureTilesTableBuffer);
 }
 
 TextureManager::TextureHandle TextureManager::addDesc(const TextureDesc& desc, TextureHandle::Mode mode) {

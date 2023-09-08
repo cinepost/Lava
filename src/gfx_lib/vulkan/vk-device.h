@@ -51,6 +51,8 @@ public:
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
 
+	SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, TextureResourceImpl* textureResource, bool force = false);
+
 	virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) override;
 
 	virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
@@ -148,6 +150,8 @@ public:
 
 	void waitForGpu();
 
+	SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture, VkImage image);
+
 	virtual SLANG_NO_THROW const DeviceInfo& SLANG_MCALL getDeviceInfo() const override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL getNativeDeviceHandles(InteropHandles* outHandles) override;
@@ -155,9 +159,13 @@ public:
 	const VkPhysicalDeviceProperties& basicProperties() const { return m_basicProps; }
 	const VkPhysicalDeviceMemoryProperties& memoryProperties() const { return m_memoryProperties; }
 
-	VulkanApi& vkAPI() {return m_api; };
+	VulkanApi& vkAPI() { return m_api; };
+	VkDevice   vkDevice() { return m_device; }
+	VkQueue    vkQueue() { return m_deviceQueue.getQueue(); }
 
 	virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
+
+	virtual SLANG_NO_THROW void SLANG_MCALL cleanup() override;
 
 	~DeviceImpl();
 
@@ -210,7 +218,9 @@ public:
 	VulkanModule m_module;
 	VulkanApi m_api;
 
-	VkFence mImmediateFence;
+	VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
+
+	VkFence mImmediateFence = VK_NULL_HANDLE;
 
 	VulkanDeviceQueue m_deviceQueue;
 	uint32_t m_queueFamilyIndex;

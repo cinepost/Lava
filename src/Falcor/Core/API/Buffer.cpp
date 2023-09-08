@@ -25,6 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <atomic>
+
 #include "stdafx.h"
 
 #include "Falcor/Core/Framework.h"
@@ -42,6 +44,9 @@
 namespace Falcor {
 
 namespace {
+
+static std::atomic<uint32_t> gTotalBuffersCount = 0;
+static std::atomic<uint32_t> gDeletedBuffersCount = 0;
 
 Buffer::SharedPtr createStructuredFromType(
 	std::shared_ptr<Device> pDevice,
@@ -68,7 +73,7 @@ size_t getBufferDataAlignment(const Buffer* pBuffer);
 void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
 
 Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess): Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess) {
-
+	gTotalBuffersCount++;
 }
 
 Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
@@ -190,6 +195,7 @@ Buffer::~Buffer() {
 	} else {
 		mpDevice->releaseResource(mApiHandle);
 	}
+	LLOG_TRC << ++gDeletedBuffersCount << " buffers deleted out of " << gTotalBuffersCount;
 }
 
 template<typename ViewClass>

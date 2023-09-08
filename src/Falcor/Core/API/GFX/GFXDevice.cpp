@@ -526,7 +526,10 @@ namespace Falcor {
 		return mCurrentBackBufferIndex == -1;
 	}
 
-	Device::~Device() { 
+	Device::~Device() {
+		//cleanup();
+		mApiHandle->cleanup();
+    mApiHandle.setNull();
 	}
 
 } // namespace Falcor
