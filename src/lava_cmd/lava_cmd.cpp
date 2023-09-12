@@ -73,6 +73,7 @@ void signalTraceHandler( int signum ){
 #endif
   exit(signum);
 }
+#endif
 
 void atexitHandler()  {
   lava::ut::log::shutdown_log();
@@ -81,7 +82,6 @@ void atexitHandler()  {
   std::cout << "Scene rendered in: " << duration << " sec.\n";
   std::cout << "Exiting lava. Bye :)\n";
 }
-#endif
 
 void listGPUs() {
   auto pDeviceManager = DeviceManager::create();
@@ -123,10 +123,10 @@ int main(int argc, char** argv){
     bool echo_input = false;
 #endif
 
+    std::atexit(atexitHandler);
     #ifdef _WIN32
       // traceback not implemented
     #else
-    std::atexit(atexitHandler);
     signal(SIGTERM, signalTraceHandler);
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);

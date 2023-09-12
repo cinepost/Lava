@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include <vector>
+#include <string>
 
 #include <slang/slang.h>
 #include <slang/slang-com-ptr.h>
