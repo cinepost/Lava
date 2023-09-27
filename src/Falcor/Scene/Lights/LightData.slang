@@ -47,6 +47,7 @@ enum class LightType
     Disc,           ///< Disc shaped area light source
     Sphere,         ///< Spherical area light source
     Env,            ///< Environment light source
+    PhysSunSky,     ///< Physical Sun and Sky environment light source
 };
 
 
@@ -81,7 +82,8 @@ enum class LightDataFlags : uint32_t {
     DeltaDirection = 0x400,
     Area = 0x800,
 
-    Infinite = 0x1000
+    Infinite = 0x1000,
+    HasTexture = 0x2000,
 };
 
 
@@ -112,7 +114,7 @@ struct LightData {
     float    radius                 = .0f;                  ///< Analytic light radius. Used mostly for soft shadowing
 
     float3   bitangent              = float3(0, 1 ,0);      ///< Bitangent vector of the light shape
-    uint32_t pad_0;
+    uint32_t extraDataByteOffest;
 
     float16_t3  indirectSpecularIntensity = float16_t3(1.0, 1.0, 1.0); ///< Indirect specular light intensity
     float16_t3  pad_1;
@@ -171,6 +173,10 @@ struct LightData {
 
     bool contributesIndirectSpecularIllumination() CONST_FUNCTION {
         return flags & (uint)LightDataFlags::ContributeIndirectSpecular; 
+    }
+
+    bool hasTexture() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::HasTexture; 
     }
 
 };

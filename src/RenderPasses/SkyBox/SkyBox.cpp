@@ -35,6 +35,8 @@
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+#include "Falcor/Scene/Lights/LightData.slang"
+
 const RenderPass::Info SkyBox::kInfo { "SkyBox", "Render an environment map. The map can be provided by the user or taken from a scene." };
 
 
@@ -67,6 +69,9 @@ namespace {
     const std::string kFilter = "filter";
     const std::string kIntensity = "intensity";
     const std::string kOpacity = "opacity";
+
+    //
+    const std::string kLightsBufferName = "gLights";
 
 }
 
@@ -104,6 +109,7 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     mpState->setProgram(mpProgram);
 
     setFilter((uint32_t)mFilter);
+    setupCamera();
 }
 
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -122,9 +128,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
 
     std::shared_ptr<Texture> pTexture;
     if (pSkyBox->mTexName.size() != 0) {
-        //auto pResourceManager = pDevice->resourceManager();
         pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
-        //pTexture = pResourceManager->createTextureFromFile(pSkyBox->mTexName, true, pSkyBox->mLoadSrgb);
         if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
         pSkyBox->setTexture(pTexture);
     }
@@ -154,32 +158,87 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
 
     pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), float4(0));
 
-    if (!mpScene || !mpScene->getEnvMap() || mpScene->getEnvMap()->isPhantom()) return;
+    if (!mpScene) return;
+    if (!mpCamera) return;
 
-    //auto skyRotation = glm::eulerAngleYXZ(0.0, -90.0, 0.0);
-    glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());
-    world *= mTransformMatrix;
-    mpVars["PerFrameCB"]["gWorld"] = world;
     mpVars["PerFrameCB"]["gScale"] = mScale;
+
+    mpVars["PerFrameCB"]["gWorld"] = glm::translate(mpCamera->getPosition()) * mTransformMatrix;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
+    mpCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
+
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpVars["PerFrameCB"]["gOpacity"] = mOpacity;
+    mpVars["PerFrameCB"]["lightsCount"] = static_cast<uint32_t>(mSceneLights.size());
+    mpVars[kLightsBufferName] = lightsBuffer();
     mpState->setFbo(mpFbo);
     mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
+
+    mDirty = false;
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+
     mpScene = pScene;
+    mSceneLights.clear();
 
     if (mpScene) {
         //mpCubeScene->setCamera(mpScene->getCamera());
+        
+        const std::vector<Light::SharedPtr>& lights = mpScene->getActiveLights();
+        for(const auto& light: lights) {
+            if(!light) continue;
+            switch(light->getType()) {
+                case LightType::Env:
+                case LightType::PhysSunSky:
+                    mSceneLights.push_back(light);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         auto pEnvMap = mpScene->getEnvMap();
         if (pEnvMap) {
             setTexture(pEnvMap->getEnvMap());
             setIntensity(pEnvMap->getTint());
         }
     }
+    setupCamera();
+    
+    mDirty = true;
+}
+
+void SkyBox::setupCamera() {
+    if(!mDirty && mpCamera) return;
+    
+    Camera::SharedPtr pCamera;
+    if(mpScene) {
+        pCamera = mpScene->getCamera();
+    } else {
+        pCamera = Camera::create();
+    }
+
+    if(mpCamera != pCamera) mDirty = true;
+    mpCamera = pCamera;
+}
+
+Buffer::SharedPtr SkyBox::lightsBuffer() {
+    if(!mDirty && mpLightsBuffer) return mpLightsBuffer;
+
+    if(mSceneLights.empty()) {
+        mpLightsBuffer = nullptr;
+    } else {
+        std::vector<LightData> lightsData(mSceneLights.size());
+        for(size_t i = 0; i < mSceneLights.size(); ++i) {
+            lightsData[i] = mSceneLights[i]->getData();
+        }
+        mpLightsBuffer = Buffer::createStructured(mpDevice, sizeof(LightData), (uint32_t)lightsData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, lightsData.data(), false);
+        mpLightsBuffer->setName("SkyBox::mpLightsBuffer");
+    }
+    return mpLightsBuffer;
 }
 
 void SkyBox::loadImage() {

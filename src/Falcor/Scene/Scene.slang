@@ -115,6 +115,12 @@ struct Scene
     // Materials
     ParameterBlock<MaterialSystem> materials;
 
+//#if SCENE_ENVMAP_SAMPLERS_COUNT > 0
+//    EnvMapSampler envMapSamplers[SCENE_ENVMAP_SAMPLERS_COUNT];
+//#else
+//    EnvMapSampler envMapSamplers[1];
+//#endif
+
     // Lights and camera
     uint lightCount;
     StructuredBuffer<LightData> lights;

@@ -1,0 +1,101 @@
+#include "Utils/Math/MathConstants.slangh"
+
+import Utils.Math.MathHelpers;
+import Utils.Color.ColorHelpers;
+
+
+// These are per megameter.
+static const float3 rayleighScatteringBase = float3(5.802, 13.558, 33.1);
+static const float rayleighAbsorptionBase = 0.0;
+
+static const float mieScatteringBase = 3.996;
+static const float mieAbsorptionBase = 4.4;
+
+static const float3 ozoneAbsorptionBase = float3(0.650, 1.881, .085);
+
+float getSunAltitude(float time) {
+    const float periodSec = 120.0;
+    const float halfPeriod = periodSec / 2.0;
+    const float sunriseShift = 0.1;
+    float cyclePoint = (1.0 - abs((mod(time,periodSec)-halfPeriod)/halfPeriod));
+    cyclePoint = (cyclePoint*(1.0+sunriseShift))-sunriseShift;
+    return (0.5*M_PI)*cyclePoint;
+}
+
+float3 getSunDir(float time) {
+    float altitude = getSunAltitude(time);
+    return normalize(float3(0.0, sin(altitude), -cos(altitude)));
+}
+
+float getMiePhase(float cosTheta) {
+    const float g = 0.8;
+    const float scale = 3.0/(8.0*M_PI);
+    
+    float num = (1.0-g*g)*(1.0+cosTheta*cosTheta);
+    float denom = (2.0+g*g)*pow((1.0 + g*g - 2.0*g*cosTheta), 1.5);
+    
+    return scale*num/denom;
+}
+
+float getRayleighPhase(float cosTheta) {
+    const float k = 3.0/(16.0*M_PI);
+    return k*(1.0+cosTheta*cosTheta);
+}
+
+void getScatteringValues(float3 pos, out float3 rayleighScattering, out float mieScattering, out float3 extinction) {
+    float altitudeKM = (length(pos)-groundRadiusMM)*1000.0;
+    // Note: Paper gets these switched up.
+    float rayleighDensity = exp(-altitudeKM/8.0);
+    float mieDensity = exp(-altitudeKM/1.2);
+    
+    rayleighScattering = rayleighScatteringBase*rayleighDensity;
+    float rayleighAbsorption = rayleighAbsorptionBase*rayleighDensity;
+    
+    mieScattering = mieScatteringBase*mieDensity;
+    float mieAbsorption = mieAbsorptionBase*mieDensity;
+    
+    float3 ozoneAbsorption = ozoneAbsorptionBase*max(0.0, 1.0 - abs(altitudeKM-25.0)/15.0);
+    
+    extinction = rayleighScattering + rayleighAbsorption + mieScattering + mieAbsorption + ozoneAbsorption;
+}
+
+// From https://gamedev.stackexchange.com/questions/96459/fast-ray-sphere-collision-code.
+float rayIntersectSphere(float3 ro, float3 rd, float rad) {
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - rad*rad;
+    if (c > 0.0f && b > 0.0) return -1.0;
+    float discr = b*b - c;
+    if (discr < 0.0) return -1.0;
+    // Special case: inside sphere, use far discriminant
+    if (discr > b*b) return (-b + sqrt(discr));
+    return -b - sqrt(discr);
+}
+
+/*
+ * Same parameterization here.
+ */
+float3 getValFromSTLUT(const SamplerState s, const Texture2D<float4> lutTex, float2 lutRes, float2 bufferRes, float3 pos, float3 sunDir) {
+    float height = length(pos);
+    float3 up = pos / height;
+    float sunCosZenithAngle = dot(sunDir, up);
+
+    float2 uv = float2(
+        clamp(0.5 + 0.5*sunCosZenithAngle, 0.0, 1.0), 
+        max(0.0, min(1.0, (height - groundRadiusMM)/(atmosphereRadiusMM - groundRadiusMM))));
+    uv *= float2((lutRes.x - 1.0) / lutRes.x, (lutRes.y - 1.0) / lutRes.y);
+    uv += float2(.5/lutRes.x, .5/lutRes.y);
+
+    return lutTex.SampleLevel(s, uv, 0).rgb;
+}
+
+float3 getValFromMSLUT(const SamplerState s, const Texture2D<float4> lutTex, float2 lutRes, float2 bufferRes, float3 pos, float3 sunDir) {
+    float height = length(pos);
+    float3 up = pos / height;
+    float sunCosZenithAngle = dot(sunDir, up);
+    
+    float2 uv = float2(clamp(0.5 + 0.5*sunCosZenithAngle, 0.0, 1.0), max(0.0, min(1.0, (height - groundRadiusMM)/(atmosphereRadiusMM - groundRadiusMM))));
+    uv *= float2((lutRes.x - 1.0) / lutRes.x, (lutRes.y - 1.0) / lutRes.y);
+    uv += float2(.5/lutRes.x, .5/lutRes.y);
+    
+    return lutTex.SampleLevel(s, uv, 0).rgb;
+}

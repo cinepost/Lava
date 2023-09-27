@@ -27,6 +27,10 @@
  **************************************************************************/
 import Scene.Scene;
 import Utils.Math.MathHelpers;
+import Experimental.Scene.Lights.LightHelpers;
+
+__exported import Scene.Lights.LightData;
+__exported import Scene.Camera.Camera;
 
 #ifdef _SPHERICAL_MAP
 Texture2D gTexture;
@@ -35,15 +39,19 @@ TextureCube gTexture;
 #endif
 SamplerState gSampler;
 
-[[vk::binding(0, 0)]]
-cbuffer PerFrameCB : register(b0) {
+StructuredBuffer<LightData> gLights;
+
+cbuffer PerFrameCB {
     float4x4 gWorld;
     float4x4 gViewMat;
     float4x4 gProjMat;
     float3 gIntensity;
     float gScale;
     float gOpacity;
+    uint lightsCount;
+    Camera gCamera;
 };
+
 
 [shader("vertex")]
 void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION) {
@@ -60,18 +68,45 @@ void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : S
     posH.z = posH.w;
 }
 
+
 [shader("fragment")]
 float4 psMain(float3 dir : NORMAL) : SV_TARGET {
     float3 intensity = gIntensity * gOpacity;
 
+    float4 backColor = gCamera.getBackgroundColor();
+
 #ifdef _SKYBOX_SOLID_MODE
-    return float4(intensity, gOpacity);
+    //backColor = float4(intensity, gOpacity);
 #else
     #ifdef _SPHERICAL_MAP
         float2 uv = world_to_latlong_map(dir);
-        return gTexture.Sample(gSampler, uv, 1.0f) * float4(intensity, gOpacity);
+        backColor = gTexture.Sample(gSampler, uv, 1.0f) * float4(intensity, gOpacity);
     #else
-        return gTexture.SampleLevel(gSampler, normalize(dir), 1.0f) * float4(intensity, gOpacity);
+        backColor = gTexture.SampleLevel(gSampler, normalize(dir), 1.0f) * float4(intensity, gOpacity);
     #endif
 #endif
+
+    float3 cameraPosW = gCamera.getPosition();
+
+    for(uint lightIndex = 0; lightIndex < lightsCount; ++lightIndex) {
+        const LightData light = gLights[lightIndex];
+        AnalyticLightSample ls = {};
+
+        switch (light.type) {
+            case LightType::Env:
+                if(intersectEnvironmentLight(cameraPosW, dir, light, ls)) {
+                    backColor.rgb += ls.Li;
+                }
+                break;
+            case LightType::PhysSunSky:
+                if(intersectPhysicalSkyLight(cameraPosW, dir, light, ls)) {
+                    backColor.rgb += ls.Li;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    return backColor;
 }

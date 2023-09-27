@@ -55,6 +55,7 @@ file( GLOB SOURCES
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
+    ./Experimental/Scene/Lights/PhysicalSkySampler.cpp
     ./Experimental/Scene/Materials/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c

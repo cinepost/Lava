@@ -37,6 +37,8 @@
 
 #include "Scene/Material/VirtualTextureData.slang"
 
+#include "lava_utils_lib/lru_cache.hpp"
+
 #include <mutex>
 
 namespace Falcor {
@@ -135,6 +137,8 @@ public:
 		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
 	*/
 	bool loadTexture(TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+
+	Texture::SharedPtr loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
 	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
 
@@ -248,6 +252,8 @@ private:
 	Device::SharedPtr mpDevice = nullptr;
 
 	TextureDataCacheLRU::SharedPtr mpTextureDataCache = nullptr;
+
+	lava::ut::data::LRUCache<uint32_t, VirtualTexturePage::PageData>::UniquePtr mpPageDataCache = nullptr;
 
 	mutable std::mutex mMutex;                                  ///< Mutex for synchronizing access to shared resources.
 	mutable std::mutex mPageMutex;                              ///< Mutex for synchronizing texture page updates.

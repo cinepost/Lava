@@ -128,7 +128,7 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
                 uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
                 if ( prim_value < v) {
 
-                    gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
+                    //gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
 
 #if is_valid(gMeshletID)
                     gMeshletID[pixelPos] = draw.meshletID;

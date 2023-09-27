@@ -51,7 +51,6 @@ ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, cons
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {
-    //LOG_DBG("ComputePass::execute");
     assert(pContext);
     uint3 threadGroupSize = mpState->getProgram()->getReflector()->getThreadGroupSize();
     uint3 groups = div_round_up(uint3(nThreadX, nThreadY, nThreadZ), threadGroupSize);

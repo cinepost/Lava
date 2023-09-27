@@ -117,6 +117,10 @@ struct StandardMaterial : MaterialBase, IMaterial
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
         float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+        
+        encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
+        encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
+
         applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
     }
 

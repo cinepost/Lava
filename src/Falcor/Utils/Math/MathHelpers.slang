@@ -465,6 +465,16 @@ float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim
 
 ******************************************************************************/
 
+float mod(float x, float y) {
+    return x - y * floor(x/y);
+}
+
+/** Safe acos function.
+*/
+float safeacos(const float x) {
+    return acos(clamp(x, -1.0, 1.0));
+}
+
 /** Squared distance
 */
 float dist_squared(const float3 p1, const float3 p2)

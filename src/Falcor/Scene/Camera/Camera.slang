@@ -37,6 +37,8 @@ struct Camera
     float4x4 getViewProj() { return data.viewProjMat; }
     float4x4 getViewProjMatNoJitter() { return data.viewProjMatNoJitter; }
 
+    float4 getBackgroundColor() { return data.backgroundColor; }
+
     /** Computes a camera ray for a given pixel assuming a pinhole camera model.
         The camera jitter is taken into account to compute the sample position on the image plane.
         \param[in] pixel Pixel coordinates with origin in top-left.

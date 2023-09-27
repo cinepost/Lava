@@ -39,6 +39,8 @@
 #include "Falcor/Utils/HostDeviceShared.slangh"
 #include "LightData.slang"
 #include "Falcor/Scene/Animation/Animatable.h"
+#include "Falcor/Experimental/Scene/Lights/EnvMapSampler.h"
+#include "Falcor/Experimental/Scene/Lights/PhysicalSkySampler.h"
 
 namespace Falcor {
 
@@ -68,7 +70,7 @@ class dlldecl Light : public Animatable {
 
     /** Get the light data
     */
-    inline const LightData& getData() const { return mData; }
+    const LightData& getData() const { return mData; }
 
     /** Name the light
     */
@@ -86,9 +88,13 @@ class dlldecl Light : public Animatable {
     */
     bool isActive() const { return mActive; }
 
+    /** Set device
+    */
+    virtual void setDevice(Device::SharedPtr pDevice);
+
     /** Set light projection texture
     */
-    void setTexture(Texture::SharedPtr pTexture);
+    virtual void setTexture(Texture::SharedPtr pTexture);
 
     /** Get light projection texture
     */
@@ -182,6 +188,8 @@ class dlldecl Light : public Animatable {
 
     LightData mData, mPrevData;
     Changes mChanges = Changes::None;
+
+    Device::SharedPtr mpDevice = nullptr;
 
     friend class SceneCache;
 };
@@ -384,12 +392,64 @@ class dlldecl EnvironmentLight: public Light {
     */
     virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
+    /** Set light projection texture
+    */
+    virtual void setTexture(Texture::SharedPtr pTexture) override;
+
   private:
     virtual void update();
 
     EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
 
+    EnvMapSampler::SharedPtr mpEnvMapSampler;
+
     friend class SceneCache;  
+};
+
+/** Physical Sun and Sky light source.
+*/
+
+class dlldecl PhysicalSunSkyLight: public Light {
+  public:
+    using SharedPtr = std::shared_ptr<PhysicalSunSkyLight>;
+    using SharedConstPtr = std::shared_ptr<const PhysicalSunSkyLight>;
+
+    static SharedPtr create(const std::string& name = "");
+    ~PhysicalSunSkyLight() = default;
+
+    /** Get total light power
+    */
+    float getPower() const override;
+
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
+
+    virtual void setDevice(Device::SharedPtr pDevice) override;
+
+  public:
+    bool buildTest();
+
+  private:
+    virtual void update();
+
+    PhysicalSunSkyLight(const std::string& name);
+
+    PhysicalSkySampler::SharedPtr mpPhysicalSkySampler;
+
+    friend class SceneCache; 
 };
 
 /** Analytic area light source.
@@ -415,7 +475,7 @@ class dlldecl AnalyticAreaLight : public Light {
 
     /** Set light source scale
       */
-    inline float3 getScaling() const { return mScaling; }
+    float3 getScaling() const { return mScaling; }
 
     /** Get total light power (needed for light picking)
     */
@@ -428,15 +488,15 @@ class dlldecl AnalyticAreaLight : public Light {
 
     void setSingleSided(bool value);
 
-    inline bool isSingleSided() const { return mData.isSingleSided(); }
+    bool isSingleSided() const { return mData.isSingleSided(); }
 
     void setNormalizeArea(bool value) { mNormalizeArea = value; update(); }
 
-    inline bool isAreaNormalized() const { return mNormalizeArea; }
+    bool isAreaNormalized() const { return mNormalizeArea; }
 
     /** Get transform matrix
     */
-    inline glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
     void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
 

@@ -223,6 +223,7 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline const std::string&               accumulationPassColorInputName() const { return mAccumulatePassColorInputName; }
     inline const std::string&               accumulationPassDepthInputName() const { return mAccumulatePassDepthInputName; }
+
     inline const std::string&               accumulationPassColorOutputName() const { return mAccumulatePassColorOutputName; }
 
     void createInternalRenderGraph(Falcor::RenderContext* pContext, bool force = false);

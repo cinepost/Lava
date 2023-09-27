@@ -39,7 +39,7 @@
 using namespace Falcor;
 
 class PASS_API SkyBox : public RenderPass {
- public:
+  public:
     using SharedPtr = std::shared_ptr<SkyBox>;
     static const Info kInfo;
 
@@ -63,12 +63,17 @@ class PASS_API SkyBox : public RenderPass {
     void setTexture(const std::string& texName, bool loadAsSrgb = true);
     void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; /*update();*/  }
 
- private:
+  private:
     SkyBox(Device::SharedPtr pDevice);
     void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
+    void setupCamera();
+
+    Buffer::SharedPtr lightsBuffer();
 
     glm::mat4 mTransformMatrix;
+
+    float4 mBackgroundColor = float4(0.0f);
     
     float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
     float  mOpacity = 0.0f;
@@ -87,7 +92,13 @@ class PASS_API SkyBox : public RenderPass {
     RasterizerState::SharedPtr mpRsState;
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
+    Camera::SharedPtr mpCamera;
     Sampler::SharedPtr mpSampler;
+
+    std::vector<Light::SharedPtr> mSceneLights;
+    Buffer::SharedPtr mpLightsBuffer;
+
+    bool mDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_

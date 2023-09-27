@@ -682,26 +682,39 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
+		bool is_physical_sky = pLightScope->getPropertyValue(ast::Style::LIGHT, "physical_sky", bool(false));
 		bool phantom = !pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
 		auto pDevice = pSceneBuilder->device();
-		//LightProbe::SharedPtr pLightProbe;
 		
 		Texture::SharedPtr pEnvMapTexture;
-		if (texture_file_name.size() > 0) {
-			bool loadAsSrgb = false;	
-    		pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
+		if (!is_physical_sky && texture_file_name.size() > 0) {
+			bool loadAsSRGB = false;
+			bool loadAsSparse = false;
+			bool generateMipLevels = true;
+			Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
+			std::string udimMask = "<UDIM>";	
+    		pEnvMapTexture = pDevice->textureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
     	}
     	
-    	EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    	pEnvMap->setTint(to_float3(light_color));
-    	pEnvMap->setPhantom(phantom);
+    	//EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    	//pEnvMap->setTint(to_float3(light_color));
+    	//pEnvMap->setPhantom(phantom);
 
-    	pSceneBuilder->setEnvMap(pEnvMap);
+    	//pSceneBuilder->setEnvMap(pEnvMap);
 
     	// New EnvironmentLight test
-    	auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
-    	pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+    	if(is_physical_sky) {
+    		auto pEnvLight = PhysicalSunSkyLight::create(light_name);
+
+    		pEnvLight->setDevice(pDevice);
+    		LLOG_WRN << "Physical Sky Ligth build " << (pEnvLight->buildTest() ? "done!" : "failed!" );
+    		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+    	} else {
+    		auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
+    		if(pEnvMapTexture) pEnvLight->setTexture(pEnvMapTexture);
+    		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+    	}
 
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
@@ -1244,6 +1257,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  trans_color = {1.0, 1.0, 1.0};
     float           transmission = 0.0f;
 
+    bool            basenormal_flip_x = false;
+    bool            basenormal_flip_y = false;
+
     float           ao_distance = 1.0f;
 
     if(pShaderProp) {
@@ -1272,6 +1288,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
     	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
 
+    	basenormal_flip_x = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipX", false);
+    	basenormal_flip_y = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipY", false);
+
     	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
     	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
@@ -1298,6 +1317,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setEmissiveFactor(emissive_factor);
 	    pMaterial->setAODistance(ao_distance);
 	    pMaterial->setDoubleSided(!front_face);
+
+	    pMaterial->setNormalMapFlipX(basenormal_flip_x);
+	    pMaterial->setNormalMapFlipY(basenormal_flip_y);
 
 	    pMaterial->setTransmissionColor(trans_color);
 	    pMaterial->setSpecularTransmission(transmission);

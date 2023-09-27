@@ -768,6 +768,20 @@
                 }
 
                 parm {
+                    name    "lv_denoise_quality"
+                    label   "Quality"
+                    type    integer
+                    default { "1" }
+                    help    "Denoising quality."
+                    menu {
+                        "0" "High"
+                        "1" "Interactive"
+                    }
+                    disablewhen "{ lv_postfx_denoise == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_denoise_use_albedo"
                     label   "Use Albedo"
                     type    toggle

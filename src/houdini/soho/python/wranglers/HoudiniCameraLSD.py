@@ -31,6 +31,20 @@ def lv_main_output_source(obj, now, value):
     value[0] = obj.getDefaultedString('lv_main_output_source', now, [''])[0]
     return True
 
+def lv_background_enabled(obj, now, value):
+    value[0] = obj.getDefaultedInt('vm_bgenable', now, [''])[0]
+    return True
+
+def lv_background_image(obj, now, value):
+    value[0] = obj.getDefaultedString('vm_background', now, [''])[0]
+    return True
+
+def lv_background_color(obj, now, value):
+    if not obj.evalFloat('lv_bgcolor', now, value):
+        value = [0.0, 0.0, 0.0, 0.0]
+
+    return True
+
 def lv_image_mplay_label(obj, now, value):
     value[0] = obj.getDefaultedString('lv_image_mplay_label', now, [''])[0]
     
@@ -51,6 +65,9 @@ parmMap = {
     'lv_image_mplay_socketport' :   lv_image_mplay_socketport,
     'lv_image_mplay_label'      :   lv_image_mplay_label,
     'lv_main_output_source'     :   lv_main_output_source,
+    'lv_background_enabled'     :   lv_background_enabled,
+    'lv_background_image'       :   lv_background_image,
+    'lv_background_color'       :   lv_background_color,
 }
 
 class hcameraLSD:

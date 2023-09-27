@@ -50,6 +50,8 @@ class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler>
         \param[in] pEnvMap The environment map.
     */
     static SharedPtr create(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
+    static SharedPtr create(RenderContext* pRenderContext, Texture::SharedPtr pTexture);
+    static SharedPtr create(Texture::SharedPtr pTexture);
 
     /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
@@ -59,9 +61,11 @@ class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler>
     const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
     const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
+    const Texture::SharedPtr& getTexture() const { assert(mpEnvMap); return mpEnvMap->getTexture(); }
 
  protected:
     EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
+    EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr pTexture);
 
     bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
 

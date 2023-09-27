@@ -62,6 +62,7 @@ namespace Falcor {
 static std::mutex   g_vk_cmd_mutex;
 
 static const size_t kMinPagesPerLoadingThred = 10;
+static const std::string kLtxExtension = ".ltx";
 
 namespace {
 	const size_t kMaxTextureHandleCount = std::numeric_limits<uint32_t>::max();
@@ -186,7 +187,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 		return nullptr;
 	}
 
-	fs::path ltxPath = appendExtension(path, ".ltx");
+	fs::path ltxPath = (path.extension() == kLtxExtension) ? path : appendExtension(path, ".ltx");
 
 	bool ltxMagicMatch = false;
 	bool ltxFileExists = fs::exists(ltxPath);
@@ -610,6 +611,15 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 	return result;
 }
 
+Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, const std::string& udimMask, bool loadAsSparse) {
+	bool async = false;
+	TextureHandle handle;
+	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, loadAsSparse)) {
+		return getTexture(handle);
+	}
+	return nullptr;
+}
+
 bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const std::string& udimMask, bool loadAsSparse) {
 	// Find the full path to the texture if it's not a UDIM.
 	fs::path fullPath;
@@ -692,7 +702,7 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 			LLOG_WRN << "Generating gibberish texture " << path;
 			pTexture = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
 #else
-			if(!loadAsSparse) {
+			if(!loadAsSparse && (fullPath.extension() != kLtxExtension)) {
 				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);

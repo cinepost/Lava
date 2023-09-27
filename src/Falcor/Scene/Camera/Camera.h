@@ -182,7 +182,15 @@ public:
 
     /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
     */
-    void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1));
+    void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1.f));
+
+    /** Set camera film background color.
+    */
+    void setBackgroundColor(const float4& color = float4(0.f));
+
+    /** Get camera film background color.
+    */
+    const float4& getBackgroundColor() const { return mData.backgroundColor; }
 
     /** Get the bound pattern generator
     */

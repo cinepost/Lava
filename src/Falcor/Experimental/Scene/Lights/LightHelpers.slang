@@ -576,6 +576,8 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, const flo
     return true;
 }
 
+/// Environment light
+
 bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormalW, const LightData light, const float4 rnd, out AnalyticLightSample ls) {
     // An environmentl light doesn't have a position. Just clear to zero.
     ls.posW = float3(0, 0, 0);
@@ -604,6 +606,23 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
 
     ls.i = 1.0f;
     ls.Li = light.directDiffuseIntensity;
+
+    ls.pdf = 0.0f;
+
+    return true;
+}
+
+/// Physical Sky light
+
+bool intersectPhysicalSkyLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
+    // An physical env light doesn't have a position. Just clear to zero.
+    ls.posW = float3(0, 0, 0);
+
+    ls.distance = kMaxLightDistance;
+    ls.dir = ls.shadowDir = normalize(dir);
+
+    ls.i = 1.0f;
+    ls.Li = float3(1.0, 0.0, 0.0);
 
     ls.pdf = 0.0f;
 

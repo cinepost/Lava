@@ -29,19 +29,16 @@
 #include "ComputeState.h"
 #include "Core/Program/ProgramVars.h"
 
-namespace Falcor
-{
-    ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice)
-    {
+namespace Falcor {
+
+    ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
         mpCsoGraph = _StateGraph::create();
     }
 
-    ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
-    {
+    ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
         auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
         bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
-        if (newProgram)
-        {
+        if (newProgram) {
             mCachedData.pProgramKernels = pProgramKernels.get();
             mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
         }

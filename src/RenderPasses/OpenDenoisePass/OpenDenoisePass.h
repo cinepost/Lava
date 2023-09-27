@@ -39,6 +39,11 @@ using namespace Falcor;
 
 class PASS_API OpenDenoisePass : public RenderPass {
 	public:
+        enum class Quality : uint32_t {
+            High        = 0,                 
+            Interactive = 1,
+        };
+
 		using SharedPtr = std::shared_ptr<OpenDenoisePass>;
 		using SharedConstPtr = std::shared_ptr<const OpenDenoisePass>;
 		static const Info kInfo;
@@ -51,25 +56,42 @@ class PASS_API OpenDenoisePass : public RenderPass {
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 		void setOutputFormat(ResourceFormat format);
-    void disableHDRInput(bool value);
+        void disableHDRInput(bool value);
+
+        void setQuality(Quality quality);
+
+        void useAlbedo(bool state);
+        void useNormal(bool state);
+
+        bool enabledAlbedo() const { return mUseAlbedo; }
+        bool enabledNormal() const { return mUseNormal; }
+        bool enabledHDRInput() const { return !mDisableHDRInput; }
 
   private:
 		OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outputFormat);
 
-    // Bypasses denoising by just copying input image to output
-    void bypass(RenderContext* pRenderContext, const RenderData& renderData);
+        void parseDictionary(const Dictionary& dict);
+        
+        // Bypasses denoising by just copying input image to output
+        void bypass(RenderContext* pRenderContext, const RenderData& renderData);
 
 		ResourceFormat mOutputFormat;       // Output format (uses default when set to ResourceFormat::Unknown).
 		uint2 mFrameDim = { 0, 0 };
 
-    bool  mDisableHDRInput = false;
+        bool  mDisableHDRInput = false;
 
-		oidn::DeviceRef mIntelDevice;
+		oidn::DeviceRef mOidnDevice;
+        oidn::FilterRef mFilter;
 
 		std::vector<uint8_t> mMainImageData;
 		std::vector<uint8_t> mAlbedoImageData;
 		std::vector<uint8_t> mNormalImageData;
 		std::vector<uint8_t> mOutputImageData;
+
+        bool mUseAlbedo = false;
+        bool mUseNormal = false;
+
+        Quality mQuality = Quality::High;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_OPENDENOISEPASS_OPENDENOISEPASS_H_

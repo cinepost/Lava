@@ -312,6 +312,10 @@ void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator
 	}
 }
 
+void Camera::setBackgroundColor(const float4& color) {
+	mData.backgroundColor = color;
+}
+
 void Camera::setJitter(float2 jitter) {
 	setJitter(jitter.x, jitter.y);
 }

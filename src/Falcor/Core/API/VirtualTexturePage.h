@@ -1,6 +1,7 @@
 #ifndef SRC_FALCOR_CORE_API_VIRTUALTEXTUREPAGE_H_
 #define SRC_FALCOR_CORE_API_VIRTUALTEXTUREPAGE_H_
 
+#include <array>
 #include <vector>
 #include <string>
 #include <memory>
@@ -30,6 +31,8 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
   public:
 		using SharedPtr = std::shared_ptr<VirtualTexturePage>;
 		using SharedConstPtr = std::shared_ptr<const VirtualTexturePage>;
+
+		using PageData = std::array<uint8_t, 65536>;
 
 		/** Create a new vertex buffer layout object.
 			\return New object, or throws an exception on error.

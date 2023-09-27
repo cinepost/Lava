@@ -37,8 +37,15 @@ def add_light_lava_parameters(node, rebuild=True):
 	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_indirect_specular','Contribute Indirect Specular', True))
 
 
-	# Lava light shadows
+	# Lava environment light folder
+	if is_env_light:
+		phys_sunsky_folder = hou.FolderParmTemplate('folder_lava_envlight', "Physical Sky", tags={'lava_name':'phys_sky'})
+		addParmTemplate(node, phys_sunsky_folder, hou.ToggleParmTemplate('lv_enable_physical_sky','Enable physical sky', False))
+		lava_folder.addParmTemplate(phys_sunsky_folder)
+		#{ light_enable == 0 } { skymap_enable != 0 }
 
+
+	# Lava light shadows
 	shadows_folder = hou.FolderParmTemplate('folder_lava_shadows', "Shadows", tags={'lava_name':'shadows'})
 
 	if not is_env_light:

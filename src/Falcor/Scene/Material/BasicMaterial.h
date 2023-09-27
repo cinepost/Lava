@@ -158,6 +158,16 @@ class dlldecl BasicMaterial : public Material {
 		*/
 		Texture::SharedPtr getNormalMap() const { return getTexture(TextureSlot::Normal); }
 
+		/** Set normal map flipping.
+		*/
+		void setNormalMapFlipX(bool flip) { mData.setNormalMapXFlip(flip); };
+		void setNormalMapFlipY(bool flip) { mData.setNormalMapYFlip(flip); };
+
+		/** Get normal map flipping.
+		*/
+		bool getNormalMapFlipX(bool flip) { return mData.isNormalMapXFlipped(); };
+		bool getNormalMapFlipY(bool flip) { return mData.isNormalMapYFlipped(); };
+
 		/** Set the displacement map.
 		*/
 		void setDisplacementMap(const Texture::SharedPtr& pDisplacementMap) { setTexture(TextureSlot::Displacement, pDisplacementMap); }

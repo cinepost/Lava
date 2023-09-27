@@ -117,7 +117,7 @@ extension MaterialSystem
         if (modifyNormal) {
             // Apply normal mapping only if we have a valid tangent space.
             if (validTangentSpace) {
-                //material.modifyTangentSpace(this, lod, sd);
+                material.modifyTangentSpace(this, lod, sd);
             }
 
             // Finalize the normal.

@@ -46,6 +46,14 @@ EnvMapSampler::SharedPtr EnvMapSampler::create(RenderContext* pRenderContext, En
     return SharedPtr(new EnvMapSampler(pRenderContext, pEnvMap));
 }
 
+EnvMapSampler::SharedPtr EnvMapSampler::create(RenderContext* pRenderContext, Texture::SharedPtr pTexture) {
+    return SharedPtr(new EnvMapSampler(pRenderContext, pTexture));
+}
+
+EnvMapSampler::SharedPtr EnvMapSampler::create(Texture::SharedPtr pTexture) {
+    return EnvMapSampler::create(pTexture->device()->getRenderContext(), pTexture);
+}
+
 void EnvMapSampler::setShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
@@ -63,6 +71,27 @@ EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pE
     assert(pEnvMap);
 
     mpDevice = pRenderContext->device();
+
+    // Create compute program for the setup phase.
+    mpSetupPass = ComputePass::create(mpDevice, kShaderFilenameSetup, "main");
+
+    // Create sampler.
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+    samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    mpImportanceSampler = Sampler::create(mpDevice, samplerDesc);
+
+    // Create hierarchical importance map for sampling.
+    if (!createImportanceMap(pRenderContext, kDefaultDimension, kDefaultSpp)) {
+        throw std::runtime_error("Failed to create importance map");
+    }
+}
+
+EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr pTexture) {
+    assert(pTexture);
+
+    mpDevice = pRenderContext->device();
+    mpEnvMap = EnvMap::create(mpDevice, pTexture);
 
     // Create compute program for the setup phase.
     mpSetupPass = ComputePass::create(mpDevice, kShaderFilenameSetup, "main");

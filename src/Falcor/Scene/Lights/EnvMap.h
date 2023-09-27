@@ -99,6 +99,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     const std::string& getFilename() const { return mpEnvMap->getSourceFilename(); }
 
     const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    const Texture::SharedPtr& getTexture() const { return mpEnvMap; }
     const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
 
     /** Bind the environment map to a given shader variable.

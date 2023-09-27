@@ -109,7 +109,8 @@ if( NOT EXTERNAL_TBB_VERSION )
   if(WIN32)
   set(EXTERNAL_TBB_VERSION 2021.8.0)  
   else()
-  set(EXTERNAL_TBB_VERSION 2020.2)
+  #set(EXTERNAL_TBB_VERSION 2020.2)
+  set(EXTERNAL_TBB_VERSION 2021.9.0)
   endif()
 endif()
 
@@ -166,17 +167,26 @@ else()
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
     
-    CONFIGURE_COMMAND ""
+#    CONFIGURE_COMMAND ""    
+#    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+#    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
     
-    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+#    INSTALL_COMMAND ${CMAKE_COMMAND}
+#      -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
+#      -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
+#      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+#      -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
 
-    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-    
-    INSTALL_COMMAND ${CMAKE_COMMAND}
-      -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
-      -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
-      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
+    CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
+    CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
+    CMAKE_ARGS -D TBB_TEST:BOOL=OFF
+    CMAKE_ARGS -D TBB_EXAMPLES:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+#    INSTALL_COMMAND cmake --install . --config ${DEPS_BUILD_TYPE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
@@ -212,14 +222,6 @@ else()
   # Always build Blosc as a static lib
   set(BLOSC_BUILD_STATIC ON)
   set(BLOSC_BUILD_SHARED OFF)
-
-#  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
-#    set(BLOSC_BUILD_STATIC ON)
-#    set(BLOSC_BUILD_SHARED OFF)
-#  else()
-#    set(BLOSC_BUILD_STATIC OFF)
-#    set(BLOSC_BUILD_SHARED ON)
-#  endif()
 
   ExternalProject_Add( Blosc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BLOSC_PREFIX}
@@ -299,17 +301,7 @@ else()
     GIT_REPOSITORY https://github.com/boostorg/boost.git
     GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
     UPDATE_DISCONNECTED true
-    # CONFIGURE_COMMAND ./bootstrap.sh
-    #   --with-libraries=filesystem
-    #   --with-libraries=system
-    #   --with-libraries=date_time
-    #   --with-libraries=iostreams
-    #   --with-libraries=program_options
-    #   --with-libraries=regex
-    #   --with-libraries=log 
-    #   --with-libraries=thread
-    #   --with-libraries=json
-    #   --prefix=<INSTALL_DIR>
+
     CONFIGURE_COMMAND ./bootstrap.bat
     BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
       --with-filesystem
@@ -635,11 +627,12 @@ else()
   endif()
 
   set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
+  
   if(WIN32)
-  set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
+    set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
   else()
-  find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
-  message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
+    find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+    message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
   endif()
   
   ExternalProject_Add ( png
@@ -700,21 +693,16 @@ else()
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
-    # CMAKE_ARGS -D JPEG_TESTS:BOOL=OFF
-    # CMAKE_ARGS -D JPEG_STATIC:BOOL=${JPEG_BUILD_STATIC_LIB}
     CMAKE_ARGS -D ENABLE_SHARED:BOOL=${JPEG_BUILD_SHARED_LIB}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    # BUILD_COMMAND ${MAKE_EXECUTABLE}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${JPEG_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${JPEG_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${JPEG_PREFIX}
   )
-  # ExternalProject_Add_StepDependencies(jpeg configure)
 endif()
 endif()
 
@@ -1104,7 +1092,6 @@ else()
   if(WIN32)
   ExternalProject_Add ( ispc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
-    # URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
     URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-windows.zip
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -1127,7 +1114,7 @@ endif()
 #######################
 
 if( NOT EXTERNAL_OIDN_VERSION )
-  set(EXTERNAL_OIDN_VERSION 1.4.3)
+  set(EXTERNAL_OIDN_VERSION 2.0.0)
 endif()
 
 set(OIDN_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -1169,7 +1156,7 @@ else()
     CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=${OIDN_BUILD_STATIC_LIBS}
-    CMAKE_ARGS -D OIDN_API_NAMESPACE:STRING=oidn
+    #CMAKE_ARGS -D OIDN_API_NAMESPACE:STRING=myoidn
     CMAKE_ARGS -D OIDN_FILTER_RT:BOOL=ON
     CMAKE_ARGS -D OIDN_FILTER_RTLIGHTMAP:BOOL=OFF
     CMAKE_ARGS -D OIDN_APPS:BOOL=OFF

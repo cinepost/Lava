@@ -268,6 +268,7 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_GEOMETRY_TYPES", "0");
     defines.add("SCENE_GRID_COUNT", "0");
     defines.add("SCENE_SDF_GRID_COUNT", "0");
+    defines.add("SCENE_ENVMAP_SAMPLERS_COUNT", "0");
     defines.add("SCENE_HAS_INDEXED_VERTICES", "0");
     defines.add("SCENE_HAS_16BIT_INDICES", "0");
     defines.add("SCENE_HAS_32BIT_INDICES", "0");

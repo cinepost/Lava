@@ -61,6 +61,10 @@ void Light::setActive(bool active) {
         mActiveChanged = true;
     }
 }
+void Light::setDevice(Device::SharedPtr pDevice) { 
+    if(mpDevice == pDevice) return;
+    mpDevice = pDevice;
+};
 
 void Light::setDiffuseIntensity(const float3& intensity) {
     mData.directDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
@@ -166,6 +170,7 @@ Light::Light(const std::string& name, LightType type) : mName(name) {
 
 void Light::setTexture(Texture::SharedPtr pTexture) {
     mpTexture = pTexture;
+    if(mpTexture) mData.flags |= (uint32_t)LightDataFlags::HasTexture;
 }
 
 // PointLight
@@ -402,6 +407,66 @@ void EnvironmentLight::setIndirectDiffuseIntensity(const float3& intensity) {
 }
 
 void EnvironmentLight::setIndirectSpecularIntensity(const float3& intensity) {
+    mData.indirectSpecularIntensity = (float16_t3)(intensity);
+}
+
+void EnvironmentLight::setTexture(Texture::SharedPtr pTexture) {
+    Light::setTexture(pTexture);
+
+    if(mpEnvMapSampler && mpEnvMapSampler->getTexture() == pTexture) return;
+
+    if(pTexture) mpEnvMapSampler = EnvMapSampler::create(pTexture);
+    Light::update();
+}
+
+// PhysicalSunSkyLight
+PhysicalSunSkyLight::PhysicalSunSkyLight(const std::string& name): Light(name, LightType::PhysSunSky) {
+    mData.flags &= !(uint32_t)LightDataFlags::DeltaPosition;
+    mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
+
+    setTexture(nullptr);
+    update();
+    mPrevData = mData;
+}
+
+PhysicalSunSkyLight::SharedPtr PhysicalSunSkyLight::create(const std::string& name) {
+    return SharedPtr(new PhysicalSunSkyLight(name));
+}
+
+void PhysicalSunSkyLight::setDevice(Device::SharedPtr pDevice) {
+    Light::setDevice(pDevice);
+    if (mpDevice) {
+        if(!mpPhysicalSkySampler) mpPhysicalSkySampler = PhysicalSkySampler::create(mpDevice->getRenderContext());
+    }
+}
+
+void PhysicalSunSkyLight::update() {
+    Light::update();
+}
+
+bool PhysicalSunSkyLight::buildTest() {
+    if(!mpPhysicalSkySampler) return false;
+    return mpPhysicalSkySampler->getImportanceMap() != nullptr;
+}
+
+float PhysicalSunSkyLight::getPower() const { 
+    // TODO: calculate total power in prepass or ... somehow
+    return 0.f; 
+}
+
+void PhysicalSunSkyLight::setDiffuseIntensity(const float3& intensity) {
+    mData.directDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void PhysicalSunSkyLight::setSpecularIntensity(const float3& intensity) {
+    mData.directSpecularIntensity = (float16_t3)(intensity);
+}
+
+void PhysicalSunSkyLight::setIndirectDiffuseIntensity(const float3& intensity) {
+    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void PhysicalSunSkyLight::setIndirectSpecularIntensity(const float3& intensity) {
     mData.indirectSpecularIntensity = (float16_t3)(intensity);
 }
 

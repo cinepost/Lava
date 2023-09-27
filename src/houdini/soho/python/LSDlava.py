@@ -181,6 +181,7 @@ def initializeFeatures(settings):
     Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
     Image("image", "OpenDenoisePass.useAlbedo", "bool", "lv_denoise_use_albedo")
     Image("image", "OpenDenoisePass.useNormal", "bool", "lv_denoise_use_normal")
+    Image("image", "OpenDenoisePass.quality", "int", "lv_denoise_quality")
 
     Image("image", "ToneMappingPass.enable", "bool", "lv_postfx_tonemap")
     Image("image", "ToneMappingPass.operator", "int", "lv_tonemap_operator")
@@ -199,6 +200,9 @@ def initializeFeatures(settings):
     Camera("camera", "dofaspect", "float", "lv_dofaspect")
     Camera("camera", "field", "int", "lv_field")
     Camera("camera", "shuttershape", "string", "lv_shuttershape")
+    Camera("camera", "lv_background_enabled", "bool", "lv_background")
+    Camera("camera", "backgroundimage", "string", "lv_background_image")
+    Camera("camera", "backgroundcolor", "float", "lv_background_color")
 
     # -- Object --
     Object("name", "string", "object:name")
@@ -313,6 +317,8 @@ def initializeFeatures(settings):
     Light("specular_color",          "float", "lv_specular_color", skipdefault=True)
     Light("indirect_diffuse_color",  "float", "lv_indirect_diffuse_color", skipdefault=True)
     Light("indirect_specular_color", "float", "lv_indirect_specular_color", skipdefault=True)
+
+    Light("physical_sky", "bool", "lv_enable_physical_sky", skipdefault=True)
 
     # -- Fog --
     Fog("name", "string", "object:name")
