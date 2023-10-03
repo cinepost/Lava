@@ -170,10 +170,11 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     
  protected:
-    bool readPageData(size_t pageNum, void *pData) const;
-    bool readPageData(size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
-    void readTailData(std::vector<uint8_t>& data) const;
-    void readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const;
+    bool readPageData(size_t pageNum, uint8_t *pData) const;
+    bool readPageData(size_t pageNum, uint8_t *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
+    bool readTailData(std::vector<uint8_t>& data) const;
+    bool readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const;
+    bool readTailData(FILE *pFile, uint8_t *pData, uint8_t *pScratchBuffer) const;
 
     friend class ResourceManager;
     friend class TextureManager;

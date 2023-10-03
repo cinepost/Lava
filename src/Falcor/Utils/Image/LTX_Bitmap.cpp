@@ -162,12 +162,12 @@ static void makeMagic(unsigned char *magic) {
 	magic[6] = 48 + static_cast<unsigned char>(kLtxVersionBuild);
 }
 
-static inline int _readUncompressedPageData(FILE * pFile, size_t dataOffset, size_t readDataSize, void *pData) {
+static inline int _readUncompressedPageData(FILE * pFile, size_t dataOffset, size_t readDataSize, uint8_t *pData) {
 	fseek(pFile, dataOffset, SEEK_SET);
 	return fread(pData, 1, readDataSize, pFile);
 } 
 
-static inline int _readCompressedPageData(FILE * pFile, size_t dataOffset, size_t readDataSize, void *pData, uint8_t *pScratchBuffer) {
+static inline int _readCompressedPageData(FILE * pFile, size_t dataOffset, size_t readDataSize, uint8_t *pData, uint8_t *pScratchBuffer) {
 	assert(pScratchBuffer);
 	fseek(pFile, dataOffset, SEEK_SET);
 	fread(pScratchBuffer, 1, readDataSize, pFile);
@@ -619,7 +619,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 	return result;
 }
 
-bool LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
+bool LTX_Bitmap::readPageData(size_t pageNum, uint8_t *pData) const {
 	bool result = false;
 	auto pFile = fopen(mFilePath.string().c_str(), "rb");
 	std::array<uint8_t, kLtxPageSize> scratchBuffer;
@@ -629,7 +629,7 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
 }
 
 // This version uses previously opened file. On large scenes this saves us approx. 50% of texture pages data loading time
-bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const {
+bool LTX_Bitmap::readPageData(size_t pageNum, uint8_t *pData, FILE *pFile, uint8_t *pScratchBuffer) const {
 	assert(pFile);
 	assert(pData);
 
@@ -665,51 +665,54 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile, uint8_t 
 	return true;
 }
 
-void LTX_Bitmap::readTailData(std::vector<uint8_t>& data) const {
+bool LTX_Bitmap::readTailData(std::vector<uint8_t>& data) const {
 	auto pFile = fopen(mFilePath.string().c_str(), "rb");
 	std::array<uint8_t, kLtxPageSize> scratchBuffer;
-	readTailData(pFile, data, scratchBuffer.data());
+	bool result = readTailData(pFile, data, scratchBuffer.data());
 	fclose(pFile);
+	return result;
 }
 
-void LTX_Bitmap::readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const {
+bool LTX_Bitmap::readTailData(FILE *pFile, std::vector<uint8_t>& data, uint8_t *pScratchBuffer) const {
+	if(data.size() < kLtxPageSize)data.resize(kLtxPageSize);
+	return readTailData(pFile, data.data(), pScratchBuffer);
+}
+
+bool LTX_Bitmap::readTailData(FILE *pFile, uint8_t *pData, uint8_t *pScratchBuffer) const {
+	assert(pData);
+
 	if(mHeader.mipTailStart >= 16) {
 		LLOG_ERR << "Mip tail start is " << mHeader.mipTailStart << " for LTX bitmap " << mFilePath.string(); 
-		return;
+		return false;
 	}
-
-	std::array<uint8_t, kLtxPageSize> pageDataBuffer; 
 
 	if(is_set(mHeader.flags, LTX_Header::Flags::ONE_PAGE_MIP_TAIL)) {
 		// All tail data stored in one page
 		LLOG_TRC << "Reading tail data for LTX_Bitmap " << mFilePath.string();
 		
-		if(data.size() < kLtxPageSize)data.resize(kLtxPageSize);
 		int nbytes = 0;
 		if(mTopLevelCompression == LTX_Header::TopLevelCompression::NONE) {
-			nbytes = _readUncompressedPageData(pFile, mHeader.dataOffset + mHeader.tailDataOffset, kLtxPageSize, data.data());
+			nbytes = _readUncompressedPageData(pFile, mHeader.dataOffset + mHeader.tailDataOffset, kLtxPageSize, pData);
 		} else {
-			nbytes = _readCompressedPageData(pFile, mHeader.dataOffset + mHeader.tailDataOffset, mHeader.tailDataSize, data.data(), pScratchBuffer);
+			nbytes = _readCompressedPageData(pFile, mHeader.dataOffset + mHeader.tailDataOffset, mHeader.tailDataSize, pData, pScratchBuffer);
 		}
 
 		if( nbytes != kLtxPageSize) {
 			LLOG_ERR << "Error decompressing tail data !";
-			data.clear();
+			return false;
 		}
 	} else {
-		data.clear();
-		data.reserve(kLtxPageSize);
 		// Tail data stores as one mip level per page
 		uint32_t tailStartPageNum = mHeader.mipBases[mHeader.mipTailStart];
 		LLOG_TRC << "Reading tail data for " << mFilePath.string() << " starting from page " << tailStartPageNum << " total pages count is " <<  mHeader.pagesCount;
 		for(uint32_t pageNum = tailStartPageNum; pageNum < mHeader.pagesCount; ++pageNum) {
-			if(!readPageData(pageNum, pageDataBuffer.data(), pFile, pScratchBuffer)) {
+			if(!readPageData(pageNum, pData, pFile, pScratchBuffer)) {
 				LLOG_ERR << "Error reading tail data page " << std::to_string(pageNum) << " for texture " << mFilePath.string();
-				return;
+				return false;
 			}
 		}
-		data.insert(data.end(), pageDataBuffer.begin(), pageDataBuffer.end());
 	}
+	return true;
 }
 
 const std::string to_string(LTX_Header::TopLevelCompression type) {

@@ -255,6 +255,9 @@ private:
 
 	lava::ut::data::LRUCache<uint32_t, VirtualTexturePage::PageData>::UniquePtr mpPageDataCache = nullptr;
 
+	std::vector<std::pair<VirtualTexturePage*, VirtualTexturePage::PageData>> mSimplePagesDataCache;
+	std::vector<std::pair<Texture*, VirtualTexturePage::PageData>> mSimpleTextureTailDataCache;
+
 	mutable std::mutex mMutex;                                  ///< Mutex for synchronizing access to shared resources.
 	mutable std::mutex mPageMutex;                              ///< Mutex for synchronizing texture page updates.
 	std::condition_variable mCondition;                         ///< Condition variable to wait on for loading to finish.

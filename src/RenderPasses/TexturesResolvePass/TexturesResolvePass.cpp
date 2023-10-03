@@ -268,11 +268,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	}
 
 	if(mLoadPagesAsync) {
-		LLOG_WRN << "Asyncronous virtual textures loading temporarily disabled !";
-		for(auto& textureToPagesPair: texturesToPageIDsList) {
-			pTextureManager->loadPages(textureToPagesPair.first, textureToPagesPair.second); 
-		}
-		//pTextureManager->loadPagesAsync(texturesToPageIDsList); 
+		pTextureManager->loadPagesAsync(texturesToPageIDsList); 
 	} else {
 		for(auto& textureToPagesPair: texturesToPageIDsList) {
 			pTextureManager->loadPages(textureToPagesPair.first, textureToPagesPair.second); 

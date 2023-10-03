@@ -41,32 +41,34 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		~VirtualTexturePage();
 
-		inline bool isResident() const { return mIsResident; }
+		bool isResident() const { return mIsResident; }
 		bool allocate();
 		void release();
 
-		inline uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		inline const VkOffset3D& offsetVK() const { return mOffset; }
-		inline uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
-		inline const VkExtent3D& extentVK() const { return mExtent; }
+		const std::shared_ptr<Device>& device() const { return mpDevice; }
+
+		uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+		const VkOffset3D& offsetVK() const { return mOffset; }
+		uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+		const VkExtent3D& extentVK() const { return mExtent; }
 
 #if defined(FALCOR_GFX)
-		inline gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		inline gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
+		gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+		gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
 #endif
 
 		size_t usedMemSize() const;
 
-		inline const uint32_t width() const { return mExtent.width; }
-		inline const uint32_t height() const { return mExtent.height; }
-		inline const uint32_t depth() const { return mExtent.depth; }
+		const uint32_t width() const { return mExtent.width; }
+		const uint32_t height() const { return mExtent.height; }
+		const uint32_t depth() const { return mExtent.depth; }
 
-		inline const uint32_t mipLevel() const { return mMipLevel; }
-		inline const uint32_t index() const { return mIndex; }
+		const uint32_t mipLevel() const { return mMipLevel; }
+		const uint32_t index() const { return mIndex; }
 
-		inline const uint32_t id() const { return mID; }
+		const uint32_t id() const { return mID; }
 
-		inline const std::shared_ptr<Texture> texture() const { return mpTexture; }
+		const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
   public:
   	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);

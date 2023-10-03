@@ -1664,7 +1664,7 @@
                 name    "lv_async_ltx_loading"
                 label   "Async Virtual Textures Loading"
                 type    toggle
-                default { "1" }
+                default { "0" }
                 disablewhen "{ lv_vtoff == 1 }"
                 help    "Enable asyncronous virtual textures loading."
                 parmtag { "script_callback_language" "python" }

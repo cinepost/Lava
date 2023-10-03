@@ -62,6 +62,8 @@ namespace ba = boost::adaptors;
 namespace Falcor {
 
 static std::mutex   g_vk_cmd_mutex;
+static std::mutex   g_simple_cache_mutex;
+static std::mutex   g_simple_tail_cache_mutex;
 
 static const size_t kMinPagesPerLoadingThred = 10;
 static const std::string kLtxExtension = ".ltx";
@@ -410,12 +412,19 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>>& texturesToPageIDsList) {
 	if(!mHasSparseTextures) return;
 
+	bool loadTailData = true; // always load texture tail data
+
 	ThreadPool& pool = ThreadPool::instance();
 	BS::multi_future<Texture*> texturePagesLoadingTasks;
+
 
 	for(auto& textureToPagesPair: std::move(texturesToPageIDsList)) {
 
 		auto pTexture = textureToPagesPair.first;
+		if(!pTexture) continue;
+
+		auto pContext = pTexture->device()->getRenderContext();
+
 	  uint32_t textureID = pTexture->id();
 
 	  auto it = mTextureLTXBitmapsMap.find(textureID);
@@ -427,8 +436,8 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 	  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
 
 		// Push pages loading job into ThreadPool
-		texturePagesLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = textureToPagesPair.second] {
-	  	if(!pTexture) return (Texture*)nullptr;
+		texturePagesLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture = pTexture.get(), pageIds = textureToPagesPair.second, pContext, loadTailData] {
+	  	if(!pTexture || pageIds.empty()) return (Texture*)nullptr;
 
 	  	std::unique_lock<std::mutex> texture_lock(pTexture->getMutex());
 
@@ -436,108 +445,120 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 	  	std::sort(_pageIds.begin(), _pageIds.end());
 	  	
 	    std::thread::id thread_id = std::this_thread::get_id();
-	    auto pContext = pTexture->device()->getRenderContext();
-	    //auto pContext = pTexture->device()->createCopyContext();
-
-	    std::array<uint8_t, kLtxPageSize> tmpPageData;
-	    auto pTmpPageData = tmpPageData.data();
 
 	    std::array<uint8_t, kLtxPageSize> scratchBuffer;
 	    auto pScratchBufferData = scratchBuffer.data();
 
-	    bool loadTailData = true; // always load texture tail data
-	    bool allocationChanged = false;
 	    const auto& texturePages = pTexture->sparseDataPages();
 
 			std::string ltxFilename = pLtxBitmap->getFileName();
 			auto pFile = fopen(ltxFilename.c_str(), "rb");
 
+			// Load pages
 			for( uint32_t pageIndex: _pageIds ) {
 				if(pageIndex >= texturePages.size()) {
 					LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
 					continue;
 				}
 
-		    const auto& pPage = texturePages[pageIndex];
-		    if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
-	    	if(pPage->allocate()) allocationChanged = true;
-	    }
+	  		const auto& pPage = texturePages[pageIndex];
+	  		if((pPage->mipLevel() >= pTexture->getMipTailStart()) || pPage->isResident()) continue;
 
-	    if(allocationChanged) {
-	    	{
-				  pTexture->updateSparseBindInfo();
-				  VkFenceCreateInfo fenceCreateInfo {};
-					fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-					fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
-
-					VkFence fence;
-
-					auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
-					auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
-					auto& vk_api = pDevice->vkAPI();
-					VkDevice device = pDevice->vkDevice();
-					VkQueue  queue = pDevice->vkQueue();
-
-					{
-						std::unique_lock<std::mutex> texture_lock(g_vk_cmd_mutex);
-						vk_api.vkCreateFence(device, &fenceCreateInfo, nullptr, &fence);
-						vk_api.vkQueueBindSparse(queue, 1, &pTexture->mBindSparseInfo, fence);
-						vk_api.vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-						vk_api.vkDestroyFence(device, fence, nullptr);
-					}
-				}
-
-				auto oldState = pTexture->getGlobalState();
-				const bool state_changed = pContext->resourceBarrier(pTexture, Resource::State::CopyDest);
-
-				for( uint32_t pageIndex: _pageIds ) {
-					if(pageIndex >= texturePages.size()) {
-						LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
-						continue;
-					}
-
-		  		const auto& pPage = texturePages[pageIndex];
-		  		if(pPage->mipLevel() >= pTexture->getMipTailStart()) continue;
-
-		  		if(pPage->isResident() && pLtxBitmap->readPageData(pageIndex, pTmpPageData, pFile, pScratchBufferData)) {	
-			    	// Load non-tail texture data page
-			    	std::unique_lock<std::mutex> texture_lock(g_vk_cmd_mutex);
-			    	pContext->updateTexturePage(pPage.get(), pTmpPageData);
-			    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
-			  	} else {
-			  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
-			  		pPage->release();
-			  	}
-				}
-
-				if(state_changed) pContext->resourceBarrier(pTexture, oldState);
-	    }
-
-			if((loadTailData || !pageIds.empty()) && !pTexture->isMipTailFilled()) {
-				LLOG_DBG << "Loading tail data for " << ltxFilename;
-				std::vector<uint8_t> tailData(kLtxPageSize);
-				pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
-				LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
-				if(!tailData.empty()) {
-					std::unique_lock<std::mutex> lock(mPageMutex);
-					pContext->fillMipTail(pTexture, tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
-				}
+	  		std::pair<VirtualTexturePage*, VirtualTexturePage::PageData> simpleCachePageItem;
+	  		simpleCachePageItem.first = pPage.get();
+	  		if(pLtxBitmap->readPageData(pageIndex, simpleCachePageItem.second.data(), pFile, pScratchBufferData)) {	
+		    	{
+		    		std::lock_guard<std::mutex> _lock(g_simple_cache_mutex);
+		    		mSimplePagesDataCache.push_back(std::move(simpleCachePageItem));
+		    	}
+		    	LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
+		  	} else {
+		  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
+		  	}
 			}
 
-			pContext->flush(true);
+			// Load tail
+	    if(loadTailData || pageIds.empty()) {
+	    	std::pair<Texture*, VirtualTexturePage::PageData> simpleTailCacheItem;
+	    	simpleTailCacheItem.first = pTexture;
+	    	if(pLtxBitmap->readTailData(pFile, simpleTailCacheItem.second.data(), pScratchBufferData)) {
+	    		std::lock_guard<std::mutex> _lock(g_simple_tail_cache_mutex);
+	    		mSimpleTextureTailDataCache.push_back(std::move(simpleTailCacheItem));
+	    	}
+	  	}
 
 			fclose(pFile);
 	    return pTexture;
 	  }));
 	}
 
-	// Join texture pages loading tasks
+	std::set<Texture*> pTextures;
+
+	// Join texture pages data loading tasks
 	for(size_t i = 0; i < texturePagesLoadingTasks.size(); i++) {
-		texturePagesLoadingTasks[i].get();
+		Texture* pTexture = texturePagesLoadingTasks[i].get();
+		if(pTexture) pTextures.insert(pTexture);
 	}
 
-	// Load texture data to GPU
+	for(auto& simpleCachePageItem: mSimplePagesDataCache) {
+  	auto& pPage = simpleCachePageItem.first;
+  	if(!pPage) continue;
+  	if(pPage->isResident()) {
+  		pPage = nullptr; // Page already resident so remove it from data update queue
+  	} else {
+  		pPage->allocate();
+  	}
+  }
 
+	for(Texture* pTexture: pTextures) {
+	  pTexture->updateSparseBindInfo();
+	  VkFenceCreateInfo fenceCreateInfo {};
+		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
+  	VkFence fence;
+
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
+		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+		auto& vk_api = pDevice->vkAPI();
+		VkDevice device = pDevice->vkDevice();
+		VkQueue  queue = pDevice->vkQueue();
+
+		vk_api.vkCreateFence(device, &fenceCreateInfo, nullptr, &fence);
+		vk_api.vkQueueBindSparse(queue, 1, &pTexture->mBindSparseInfo, fence);
+		vk_api.vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vk_api.vkDestroyFence(device, fence, nullptr);
+	}
+
+	// Load texture pages data to GPU
+  for(auto& simpleCachePageItem: mSimplePagesDataCache) {
+  	auto& pPage = simpleCachePageItem.first;
+  	if(!pPage) continue;
+
+  	auto pTexture = pPage->texture().get();
+  	auto pContext = pTexture->device()->getRenderContext();
+
+  	auto oldState = pTexture->getGlobalState();
+		const bool state_changed = pContext->resourceBarrier(pTexture, Resource::State::CopyDest);
+
+  	pContext->updateTexturePage(pPage, simpleCachePageItem.second.data());
+  	
+  	if(state_changed) pContext->resourceBarrier(pTexture, oldState);
+  }
+
+  // Load texture tail data to GPU
+  for(auto& simpleTailCacheItem: mSimpleTextureTailDataCache) {
+  	auto pTexture = simpleTailCacheItem.first;
+  	if(!pTexture) continue;
+
+  	auto pContext = pTexture->device()->getRenderContext();
+  	auto pLtxBitmap = mTextureLTXBitmapsMap[pTexture->id()];
+    pContext->fillMipTail(pTexture, simpleTailCacheItem.second.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
+  }
+
+  for(Texture* pTexture: pTextures) {
+  	auto pContext = pTexture->device()->getRenderContext();
+		pContext->flush(true);
+  }
 }
 
 void TextureManager::updateSparseBindInfo() {
