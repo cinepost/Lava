@@ -165,8 +165,13 @@ class dlldecl BasicMaterial : public Material {
 
 		/** Get normal map flipping.
 		*/
-		bool getNormalMapFlipX(bool flip) { return mData.isNormalMapXFlipped(); };
-		bool getNormalMapFlipY(bool flip) { return mData.isNormalMapYFlipped(); };
+		bool getNormalMapFlipX(bool flip) const { return mData.isNormalMapXFlipped(); };
+		bool getNormalMapFlipY(bool flip) const { return mData.isNormalMapYFlipped(); };
+
+		/** Set/Get normal map mode.
+		*/
+		void setNormalMapMode(NormalMapMode mode) { mData.setNormalMapMode(mode); };
+		NormalMapMode getNormalMapMode() const { return mData.getNormalMapMode(); };
 
 		/** Set the displacement map.
 		*/

@@ -81,6 +81,7 @@ struct BasicMaterialData
     static const uint kShadingModelBits = 1;
     static const uint kNormalMapTypeBits = 2;
     static const uint kFlipNormalBits = 1;
+    static const uint kNormalMapModeBits = 1;
 
     static const uint kShadingModelOffset = 0;
     static const uint kNormalMapTypeOffset = kShadingModelOffset + kShadingModelBits;
@@ -90,7 +91,9 @@ struct BasicMaterialData
     static const uint kFlipNormalXOffset = kMaxSamplerIDOffset + MaterialHeader::kSamplerIDBits;
     static const uint kFlipNormalYOffset = kFlipNormalXOffset + kFlipNormalBits;
 
-    static const uint kTotalFlagsBits = kFlipNormalYOffset + kFlipNormalBits;
+    static const uint kNormalMapModeOffset = kFlipNormalYOffset + kFlipNormalBits;
+
+    static const uint kTotalFlagsBits = kNormalMapModeOffset + kNormalMapModeBits;
 
     /** Set shading model. This is only used for the standard material.
     */
@@ -117,6 +120,11 @@ struct BasicMaterialData
     */
     SETTER_DECL void setNormalMapYFlip(bool flip) { flags = PACK_BITS(kFlipNormalBits, kFlipNormalYOffset, flags, flip ? (uint)1 : (uint)0 ); }
     bool isNormalMapYFlipped() CONST_FUNCTION { return EXTRACT_BITS(kFlipNormalBits, kFlipNormalYOffset, flags); }
+
+    /** Set/get normal map mode Normal or Bump.
+    */
+    SETTER_DECL void setNormalMapMode(NormalMapMode mode) { flags = PACK_BITS(kNormalMapModeBits, kNormalMapModeOffset, flags, (uint)mode); }
+    NormalMapMode getNormalMapMode() CONST_FUNCTION { return NormalMapMode(EXTRACT_BITS(kNormalMapModeBits, kNormalMapModeOffset, flags)); }
 
     /** Set displacement map min/max sampler ID.
     */

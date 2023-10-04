@@ -45,8 +45,7 @@ enum class MaterialType // : uint32_t
 
 /** Alpha mode. This specifies how alpha testing should be done.
 */
-enum class AlphaMode
-{
+enum class AlphaMode {
     Opaque,     ///< No alpha test.
     Mask,       ///< Alpha mask.
     Count       // Must be last
@@ -54,8 +53,7 @@ enum class AlphaMode
 
 /** Shading models supported by the standard material.
 */
-enum class ShadingModel
-{
+enum class ShadingModel {
     MetalRough,
     SpecGloss,
     Count // Must be last
@@ -63,12 +61,20 @@ enum class ShadingModel
 
 /** Normal map type. This specifies the encoding of a normal map.
 */
-enum class NormalMapType
-{
+enum class NormalMapType {
     None,       ///< Normal map is not used.
     RGB,        ///< Normal encoded in RGB channels in [0,1].
     RG,         ///< Tangent space encoding in RG channels in [0,1].
     Count       // Must be last
+};
+
+
+/** Normal/Bump map mode.
+*/
+enum class NormalMapMode {
+    Normal,
+    Bump,
+    Count  
 };
 
 END_NAMESPACE_FALCOR

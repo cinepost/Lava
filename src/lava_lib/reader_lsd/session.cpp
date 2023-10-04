@@ -8,9 +8,13 @@
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
+
 #include "Falcor/Scene/Material/StandardMaterial.h"
+#include "Falcor/Scene/Material/MaterialTypes.slang"
+
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
+
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Math/FalcorMath.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
@@ -1234,6 +1238,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3 	surface_base_color = {0.2, 0.2, 0.2};
     std::string 	surface_base_color_texture_path  = "";
     std::string 	surface_base_normal_texture_path = "";
+    std::string   surface_base_bump_texture_path   = "";
     std::string 	surface_metallic_texture_path    = "";
     std::string 	surface_roughness_texture_path   = "";
     std::string		surface_emission_texture_path    = "";
@@ -1244,12 +1249,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     bool 			surface_use_basenormal_texture = false;
     bool 			surface_use_emission_texture   = false;
 
-    bool            front_face = false;
+    bool      front_face = false;
 
-    float 		 	surface_ior = 1.5;
-    float 			surface_metallic = 0.0;
-    float 			surface_roughness = 0.3;
-    float 			surface_reflectivity = 1.0;
+    float 		surface_ior = 1.5;
+    float 		surface_metallic = 0.0;
+    float 		surface_roughness = 0.3;
+    float 		surface_reflectivity = 1.0;
 
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
@@ -1260,6 +1265,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     bool            basenormal_flip_x = false;
     bool            basenormal_flip_y = false;
 
+    std::string     basenormal_mode = "normal";
+
     float           ao_distance = 1.0f;
 
     if(pShaderProp) {
@@ -1267,6 +1274,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
     	surface_base_color_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
     	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
+    	surface_base_bump_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpTexture", std::string());
     	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
     	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
     	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
@@ -1290,6 +1298,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	basenormal_flip_x = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipX", false);
     	basenormal_flip_y = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipY", false);
+
+    	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
 
     	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
@@ -1324,6 +1334,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setTransmissionColor(trans_color);
 	    pMaterial->setSpecularTransmission(transmission);
 
+	    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+
 	  	//bool loadAsSrgb = true;
 	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 
@@ -1353,8 +1365,11 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    	}
 	    }
 
-	    if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse)) {
+	    if((surface_base_normal_texture_path != ""  || surface_base_bump_texture_path != "") && surface_use_basenormal_texture) { 
+	    	
+	    	std::string _base_normal_bump_texture_path = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? surface_base_bump_texture_path : surface_base_normal_texture_path;
+
+	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, _base_normal_bump_texture_path, loadTexturesAsSparse)) {
 	    		return false;
 	    	}
 	    }

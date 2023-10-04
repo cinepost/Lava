@@ -492,7 +492,9 @@ void BasicMaterial::updateAlphaMode() {
 void BasicMaterial::updateNormalMapType() {
     NormalMapType type = NormalMapType::None;
 
-    if (auto pNormalMap = getNormalMap()) {
+    if (mData.getNormalMapMode() == NormalMapMode::Bump) {
+        type = NormalMapType::RGB;
+    } else if (auto pNormalMap = getNormalMap()) {
         switch (getFormatChannelCount(pNormalMap->getFormat())) {
             case 2:
                 type = NormalMapType::RG;

@@ -40,15 +40,13 @@ import Scene.Scene;
     Double-sided materials are supported by mirroring the BSDF around the
     shading normal. This is possible because the material is not layered.
 */
-struct StandardMaterial : MaterialBase, IMaterial
-{
+struct StandardMaterial : MaterialBase, IMaterial {
     BasicMaterialData data;
 
     // Specify that the associated `BSDF` type is `StandardMaterialInstance`.
     typedef StandardMaterialInstance MaterialInstance;
 
-    StandardMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
-    {
+    StandardMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints) {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
         StandardBSDFData d = {};
@@ -56,8 +54,7 @@ struct StandardMaterial : MaterialBase, IMaterial
         d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
         d.diffuseTransmission = data.diffuseTransmission;
         d.specularTransmission = data.specularTransmission;
-        if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
-        {
+        if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f) {
             d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(1.f), lod).rgb * data.transmission;
         }
 
@@ -93,8 +90,7 @@ struct StandardMaterial : MaterialBase, IMaterial
             d.metallic = metallic;
         }
 #endif
-        if (Scene::kDiffuseAlbedoMultiplier != 1.f)
-        {
+        if (Scene::kDiffuseAlbedoMultiplier != 1.f) {
             d.diffuse = saturate(d.diffuse * Scene::kDiffuseAlbedoMultiplier);
         }
 
@@ -105,27 +101,37 @@ struct StandardMaterial : MaterialBase, IMaterial
         // The standard material supports uniform emission over the hemisphere.
         // Note that the material is only emissive on the front-facing side.
         float3 emission = {};
-        if (sd.frontFacing)
-        {
+        if (sd.frontFacing) {
             emission = ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod).rgb * data.emissiveFactor;
         }
 
         return StandardMaterialInstance(sf, d, emission);
     }
 
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd)
-    {
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-        
-        encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
-        encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
 
-        applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        [[ branch ]]
+        if(data.getNormalMapMode() == NormalMapMode::Bump) {
+            float bumpScale = 1.f;
+            float4 ddxy = ms.ddxy(sd.uv, lod);
+
+            float hll = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).r;
+
+            float3 bumpNormal;
+            bumpNormal.x = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r - hll;
+            bumpNormal.y = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r - hll;
+            bumpNormal.z = sqrt(clamp(1.0f - (bumpNormal.x * bumpNormal.x + bumpNormal.y * bumpNormal.y), 0.0f, 1.0f));
+            applyBumpMap(sd, bumpNormal);
+        } else {
+            float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+            encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
+            encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
+            applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        }
     }
 
-    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
-    {
+    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) {
         // TODO: handle dedicated opacity texture;
         return 1.0f;
         //SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());

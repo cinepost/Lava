@@ -294,6 +294,10 @@ struct MaterialSystem
         }
     }
 
+    float4 ddxy<L:ITextureSampler>(const float2 uv, L lod) {
+        return lod.ddxy(uv);
+    }
+
     /** Load displacement mapping data for the given material.
     */
     void loadDisplacementData(const uint materialID, out DisplacementData displacementData)

@@ -204,6 +204,14 @@ void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3
     sd.N = sf.N;
 }
 
+void applyBumpMap(inout ShadingData sd, const float3 bumpNormal)
+{
+    ShadingFrame sf = computeShadingFrameFromBumpMap(sd, bumpNormal);
+    sd.T = sf.T;
+    sd.B = sf.B;
+    sd.N = sf.N;
+}
+
 /** Compute shading frame at shading point by applying normal mapping.
     This function perturbs the shading normal using a local normal sampled from a normal map.
     \param[in] sd Shading data.
@@ -233,6 +241,13 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
 
     // Apply the transformation.
     return ShadingFrame(sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z, sd.tangentW);
+}
+
+ShadingFrame computeShadingFrameFromBumpMap(const ShadingData sd, const float3 encodedNormal)
+{
+
+    // Apply the transformation.
+    return ShadingFrame(sd.T * encodedNormal.x + sd.B * encodedNormal.y + sd.N * encodedNormal.z, sd.tangentW);
 }
 
 /** Computes an orthonormal tangent space based on the normal and given tangent.

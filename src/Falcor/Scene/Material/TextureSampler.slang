@@ -33,6 +33,9 @@ import Scene.Material.VirtualTextureData;
     Types implementing this interface support sampling using different LOD computation techniques
 */
 interface ITextureSampler {
+
+    float4 ddxy(float2 uv);
+
     /** Sample from a 2D texture using the level of detail computed by this method
     */
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv);
@@ -52,6 +55,10 @@ interface ITextureSampler {
 struct ImplicitLodTextureSampler : ITextureSampler {
     __init() { }
 
+    float4 ddxy(float2 uv) {
+        return float4(ddx_fine(uv), ddy_fine(uv));
+    }
+
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
         return t.Sample(s, uv);
     }
@@ -68,6 +75,10 @@ struct ExplicitLodTextureSampler : ITextureSampler {
 
     __init(float lod) {
         this.lod = lod;
+    }
+
+    float4 ddxy(float2 uv) {
+        return float4(0.0f);
     }
 
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
@@ -87,6 +98,10 @@ struct ExplicitRayConesLodTextureSampler : ITextureSampler {
 
     __init(float rayconesLODWithoutTexDims) {
         this.rayconesLODWithoutTexDims = rayconesLODWithoutTexDims;
+    }
+
+    float4 ddxy(float2 uv) {
+        return float4(rayconesLODWithoutTexDims);
     }
 
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
@@ -116,6 +131,10 @@ struct ExplicitRayDiffsIsotropicTextureSampler : ITextureSampler {
     __init(float2 dUVdx, float2 dUVdy) {
         this.dUVdx = dUVdx;
         this.dUVdy = dUVdy;
+    }
+
+    float4 ddxy(float2 uv) {
+        return float4(dUVdx, dUVdy);
     }
 
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
@@ -159,6 +178,10 @@ struct ExplicitGradientTextureSampler : ITextureSampler {
         this.gradY = gradY;
     }
 
+    float4 ddxy(float2 uv) {
+        return float4(gradX, gradY);
+    }
+
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
         return t.SampleGrad(s, uv, gradX, gradY);
     }
@@ -174,7 +197,19 @@ struct ExplicitGradientTextureSampler : ITextureSampler {
 /** Virtual texture sampling using most detailed tail mip level.
 */
 struct TailTextureSampler : ITextureSampler {
-    __init() { }
+    float2 gradX; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY; ///< Gradient of texture coordiante in the screen-space Y direction
+
+    __init() { this.gradX = this.gradY = float2(0.0f);}
+
+    __init(float2 gradX, float2 gradY) {
+        this.gradX = gradX;
+        this.gradY = gradY;
+    }
+
+    float4 ddxy(float2 uv) {
+        return float4(gradX, gradY);
+    }
 
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv) {
         return t.Sample(s, uv);
