@@ -62,6 +62,8 @@ void EnvMapSampler::setShaderData(const ShaderVar& var) const {
     var["importanceBaseMip"] = mpImportanceMap->getMipCount() - 1; // The base mip is 1x1 texels
     var["importanceInvDim"] = invDim;
 
+    var["envMap"] = mpEnvMap->getTexture();
+
     // Bind resources.
     var["importanceMap"] = mpImportanceMap;
     var["importanceSampler"] = mpImportanceSampler;
@@ -122,7 +124,7 @@ bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t 
     mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
     assert(mpImportanceMap);
 
-    mpSetupPass["gEnvMap"] = mpEnvMap->getEnvMap();
+    mpSetupPass["gEnvMap"] =  mpEnvMap->getEnvMap();
     mpSetupPass["gImportanceMap"] = mpImportanceMap;
 
     uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));

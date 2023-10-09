@@ -138,13 +138,10 @@ struct ShadingFrame
         bool nonZero = dot(tangentW.xyz, tangentW.xyz) > 0.f;
         bool valid = abs(tangentW.w) == 1.0f && nonZero && nonParallel;
 
-        if (valid)
-        {
+        if (valid) {
             T = normalize(tangentW.xyz - N * NdotT);
             B = cross(N, T) * tangentW.w;
-        }
-        else
-        {
+        } else {
             T = perp_stark(N);
             B = cross(N, T);
         }
@@ -155,15 +152,13 @@ struct ShadingFrame
 
 /** Convert RGB to normal (unnormalized).
 */
-float3 rgbToNormal(float3 rgb)
-{
+float3 rgbToNormal(float3 rgb) {
     return rgb * 2.f - 1.f;
 }
 
 /** Convert RG to normal (unnormalized).
 */
-float3 rgToNormal(float2 rg)
-{
+float3 rgToNormal(float2 rg) {
     float3 n;
     n.xy = rg * 2.f - 1.f;
 
@@ -174,8 +169,7 @@ float3 rgToNormal(float2 rg)
 }
 
 // TODO: this function is broken an may return negative values.
-float getMetallic(float3 diffuse, float3 spec)
-{
+float getMetallic(float3 diffuse, float3 spec) {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
     // We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
     // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels will end up with the same metallic value
@@ -196,16 +190,14 @@ float getMetallic(float3 diffuse, float3 spec)
     \param[in] type Normal map type.
     \param[in] encodedNormal Encoded normal loaded from normal map.
 */
-void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3 encodedNormal)
-{
-    ShadingFrame sf = computeShadingFrameFromNormalMap(sd, type, encodedNormal);
+void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3 encodedNormal, const float factor = 1.0f) {
+    ShadingFrame sf = computeShadingFrameFromNormalMap(sd, type, encodedNormal, factor);
     sd.T = sf.T;
     sd.B = sf.B;
     sd.N = sf.N;
 }
 
-void applyBumpMap(inout ShadingData sd, const float3 bumpNormal)
-{
+void applyBumpMap(inout ShadingData sd, const float3 bumpNormal) {
     ShadingFrame sf = computeShadingFrameFromBumpMap(sd, bumpNormal);
     sd.T = sf.T;
     sd.B = sf.B;
@@ -219,20 +211,18 @@ void applyBumpMap(inout ShadingData sd, const float3 bumpNormal)
     \param[in] encodedNormal Encoded normal.
     \return Shading frame in world space.
 */
-ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const NormalMapType type, const float3 encodedNormal)
-{
+ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const NormalMapType type, const float3 encodedNormal, const float factor = 1.0f) {
     // Compute perturbed normal in the local frame with the +z axis up.
     float3 mapN = { 0.f, 0.f, 1.f };
-    switch (type)
-    {
-    case NormalMapType::RGB:
-        mapN = rgbToNormal(encodedNormal);
-        break;
-    case NormalMapType::RG:
-        mapN = rgToNormal(encodedNormal.rg);
-        break;
-    case NormalMapType::None:
-        return ShadingFrame(sd);
+    switch (type) {
+        case NormalMapType::RGB:
+            mapN = lerp(mapN, rgbToNormal(encodedNormal), factor);
+            break;
+        case NormalMapType::RG:
+            mapN = lerp(mapN, rgToNormal(encodedNormal.rg), factor);
+            break;
+        case NormalMapType::None:
+            return ShadingFrame(sd);
     }
 
     // Note if the normal ends up being parallel to the tangent, the tangent frame cannot be orthonormalized.
@@ -243,9 +233,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     return ShadingFrame(sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z, sd.tangentW);
 }
 
-ShadingFrame computeShadingFrameFromBumpMap(const ShadingData sd, const float3 encodedNormal)
-{
-
+ShadingFrame computeShadingFrameFromBumpMap(const ShadingData sd, const float3 encodedNormal) {
     // Apply the transformation.
     return ShadingFrame(sd.T * encodedNormal.x + sd.B * encodedNormal.y + sd.N * encodedNormal.z, sd.tangentW);
 }

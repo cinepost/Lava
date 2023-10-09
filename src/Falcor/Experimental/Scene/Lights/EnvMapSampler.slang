@@ -150,6 +150,7 @@ struct EnvMapSampler
 
     SamplerState        importanceSampler;      ///< Point sampling with clamp to edge.
     Texture2D<float>    importanceMap;          ///< Hierarchical importance map (entire mip chain).
+    Texture2D<float4>   envMap;                 ///
     float2              importanceInvDim;       ///< 1.0 / dimension.
     uint                importanceBaseMip;      ///< Mip level for 1x1 resolution.
     uint                _pad;

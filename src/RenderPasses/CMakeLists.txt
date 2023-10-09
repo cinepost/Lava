@@ -121,7 +121,7 @@ makeRenderPassLib(NAME "OpenDenoisePass")
 makeRenderPassLib(NAME "CryptomattePass")
 makeRenderPassLib(NAME "EdgeDetectPass")
 makeRenderPassLib(NAME "ImageLoaderPass")
-makeRenderPassLib(NAME "SkyBox")
+makeRenderPassLib(NAME "EnvironmentPass")
 makeRenderPassLib(NAME "RTXDIPass")
 makeRenderPassLib(NAME "PathTracer")
 
@@ -132,6 +132,7 @@ makeRenderPassLib(NAME "PathTracer")
 #makeRenderPassLib(NAME "MegakernelPathTracer")
 
 #makeRenderPassLib(NAME "ImageLoader")
+#makeRenderPassLib(NAME "SkyBox")
 
 #makeRenderPassLib(NAME "PixelInspectorPass")
 #makeRenderPassLib(NAME "Antialiasing")

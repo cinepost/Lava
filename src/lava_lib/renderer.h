@@ -22,7 +22,7 @@
 
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
 #include "RenderPasses/DepthPass/DepthPass.h"
-#include "RenderPasses/SkyBox/SkyBox.h"
+#include "RenderPasses/EnvironmentPass/EnvPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 #include "RenderPasses/RTXDIPass/RTXDIPass.h"
 
@@ -204,7 +204,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
     DepthPass::SharedPtr            mpDepthPrePass = nullptr;
     DepthPass::SharedPtr            mpDepthPass = nullptr;
-    SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
+    EnvPass::SharedPtr              mpEnvPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
 

@@ -358,29 +358,29 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	//pRTXDIPass->setScene(pRenderContext, pScene);
 	//mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
 
-	// SkyBox
-	mpSkyBoxPass = SkyBox::create(pRenderContext);
+	// EnvPass
+	mpEnvPass = EnvPass::create(pRenderContext);
 
 	// TODO: handle transparency    
-	mpSkyBoxPass->setOpacity(1.0f);
+	mpEnvPass->setOpacity(1.0f);
 
-	mpSkyBoxPass->setScene(pRenderContext, pScene);
-	mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
+	mpEnvPass->setScene(pRenderContext, pScene);
+	mpRenderGraph->addPass(mpEnvPass, "EnvPass");
 	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
-	mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
+	mpRenderGraph->addEdge("VBufferPass.depth", "EnvPass.depth");
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
-	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
+	mpRenderGraph->addEdge("EnvPassPass.target", "ShadingPass.color");
 	
 #else
 	// Deferred lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth",    "ShadingPass.depth");
 	mpRenderGraph->addEdge("VBufferPass.vbuffer",  "ShadingPass.vbuffer");
 	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
-	mpRenderGraph->addEdge("SkyBoxPass.target",    "ShadingPass.color");
+	mpRenderGraph->addEdge("EnvPass.target",       "ShadingPass.color");
 
 #endif
 

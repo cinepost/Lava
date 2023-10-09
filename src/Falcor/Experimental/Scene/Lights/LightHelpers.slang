@@ -639,7 +639,7 @@ bool intersectPhysicalSkyLight(const float3 shadingPosW, const float3 dir, const
 */
 bool sampleLight(const float3 shadingPosW, const float3 shadingNormalW, const LightData light, const float4 rnd, out AnalyticLightSample ls) {
     // Sample the light based on its type: point, directional, or area.
-    switch (light.type) {
+    switch (light.getLightType()) {
         case LightType::Point:
             return samplePointLight(shadingPosW, light, rnd, ls);
         case LightType::Directional:
@@ -677,7 +677,7 @@ bool sampleLight(const float3 shadingPosW, const float3 shadingNormalW, const Li
     \return True if a sample was generated, false otherwise.
 */
 bool evalLightApproximate(const float3 shadingPosW, const LightData light, out AnalyticLightSample ls) {
-    switch (light.type) {
+    switch (light.getLightType()) {
         case LightType::Point:
             return samplePointLight(shadingPosW, light, float4(.0f), ls);
         case LightType::Directional:
@@ -692,7 +692,7 @@ bool evalLightApproximate(const float3 shadingPosW, const LightData light, out A
 }
 
 bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
-    switch (light.type) {
+    switch (light.getLightType()) {
         case LightType::Sphere:
             return intersectSphereAreaLight(shadingPosW, dir, light, ls);
         case LightType::Rect:
@@ -703,6 +703,8 @@ bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData 
             return intersectDistantLight(shadingPosW, dir, light, ls);
         case LightType::Env:
             return intersectEnvironmentLight(shadingPosW, dir, light, ls);
+        case LightType::PhysSunSky:
+            return intersectPhysicalSkyLight(shadingPosW, dir, light, ls);
         default:
             ls = {};
             return false;

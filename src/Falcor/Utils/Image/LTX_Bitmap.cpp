@@ -220,7 +220,6 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 	switch (nchannels) {
 		case 1:
 			switch (BASETYPE(baseType)) {
-				//case BASETYPE::UCHAR:
 				case BASETYPE::UINT8:
 					return ResourceFormat::R8Unorm;
 				case BASETYPE::INT8:
@@ -440,18 +439,19 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 
 	const oiio::ImageSpec &spec = in->spec();
 
+	const std::string srcColorSpace = spec["oiio:ColorSpace"];
+
 	LLOG_INF << "Converting texture \"" << srcFilename << "\" to LTX format using " << to_string(getTLCFromString(compParms.compressorName)) << " compressor.";
 
 	LLOG_DBG << "OIIO channel formats size: " << std::to_string(spec.channelformats.size());
+	LLOG_DBG << "OIIO color space: " << srcColorSpace;
 	LLOG_DBG << "OIIO is signed: " << (spec.format.is_signed() ? "YES" : "NO");
 	LLOG_DBG << "OIIO is float: " << (spec.format.is_floating_point() ? "YES" : "NO");
 	LLOG_DBG << "OIIO basetype: " << std::to_string(oiio::TypeDesc::BASETYPE(spec.format.basetype));
 	LLOG_DBG << "OIIO bytes per pixel: " << std::to_string(spec.pixel_bytes());
 	LLOG_DBG << "OIIO nchannels: " << std::to_string(spec.nchannels);
-	
-	auto srcFormat = getFormatOIIO(spec.format.basetype, spec.nchannels);
-	LLOG_DBG << "Source ResourceFormat from OIIO: " << to_string(srcFormat);
-	auto dstFormat = getDestFormat(srcFormat);
+
+	LLOG_DBG << "Source ResourceFormat from OIIO: " << to_string(getFormatOIIO(spec.format.basetype, spec.nchannels));
 
 	// open ltx texture file
 	FILE *pFile = fopen(dstFilename.c_str(), "wb");
@@ -462,6 +462,9 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 
 	oiio::ImageBuf srcBuff;
 
+	auto nChannelsSrc = spec.nchannels;
+
+	// Channels shuffling if necessary
 	if(spec.nchannels == 3 ) {
 		// This is an RGB image. Convert it to RGBA image with full-on alpha channel 
 		
@@ -470,28 +473,25 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		std::string channelnames[] = { "", "", "", "A" };
 		oiio::ImageBuf tmpBuffRGB(srcFilename);
 		srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
+		nChannelsSrc = 4;
+
+	} else if(spec.nchannels == 1 ) {
+		// Gray scale image
+		int channelorder[] = { 0, 0, 0, -1 /*use a float value*/ };
+		float channelvalues[] = { 0 /*ignore*/, 0 /*ignore*/, 0 /*ignore*/, 1.0 };
+		std::string channelnames[] = { "", "", "", "A" };
+		oiio::ImageBuf tmpBuffRGB(srcFilename);
+		srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
+
+		nChannelsSrc = 4;
+
 	} else {
 		srcBuff = oiio::ImageBuf(srcFilename);
-
-/*
-		const int subimage = 0;
-		const int miplevel = 0;
-		oiio::ImageCache* imagecache = nullptr;
-		oiio::ImageSpec config;
-		oiio::Filesystem::IOProxy* ioproxy = nullptr;
-
-		config["oiio:UnassociatedAlpha"] = 1;
-		config.attribute("oiio:UnassociatedAlpha", 1);
-
-		srcBuff = oiio::ImageBuf(srcFilename, subimage, miplevel, imagecache, &config, ioproxy);
-
-		oiio::ROI roi = {};
-		int nthreads = 0;
-		srcBuff = oiio::ImageBufAlgo::unpremult(oiio::ImageBuf(srcFilename), roi, nthreads);
-
-		fixBlackAlpha(srcBuff);
-*/
 	}
+
+	auto srcFormat = getFormatOIIO(spec.format.basetype, nChannelsSrc);
+	LLOG_DBG << "Source shuffled ResourceFormat from OIIO: " << to_string(srcFormat);
+	auto dstFormat = getDestFormat(srcFormat);
 
 	// TODO: make image analysis (pre scale down source with blurry data) and reflect that in dstDims
 	uint3 srcDims = {spec.width, spec.height, spec.depth};

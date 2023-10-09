@@ -1316,7 +1316,7 @@
                 name    "lv_image_mplay_label"
                 label   "MPlay Session Label"
                 type    string
-                default { "" }
+                default { "$HIPNAME" }
                 menureplace {
                     "`pythonexprs(\"__import__('os').getpid()\")`"  "One per Houdini Process"
                     "$HIPNAME"                                      "One per Houdini File Name (.hip)"

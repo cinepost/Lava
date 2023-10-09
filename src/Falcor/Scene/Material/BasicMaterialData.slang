@@ -48,7 +48,8 @@ struct BasicMaterialData
 {
     // MaterialHeader (8B) is stored just before this struct in memory.
     uint        flags                   = 0;                ///< Material flags and packed sampler IDs. See accessors below.
-    float       emissiveFactor          = 1.f;              ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
+    float16_t   emissiveFactor          = float16_t(1.f);   ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
+    float16_t   bumpNormalFactor        = float16_t(1.f);
 
     float16_t3  baseColor               = float16_t3(1.f);  ///< Material base color (RGB) and opacity (A).
     float16_t   reflectivity            = float16_t(1.f);   ///< Material reflectivity.

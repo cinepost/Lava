@@ -173,6 +173,11 @@ class dlldecl BasicMaterial : public Material {
 		void setNormalMapMode(NormalMapMode mode) { mData.setNormalMapMode(mode); };
 		NormalMapMode getNormalMapMode() const { return mData.getNormalMapMode(); };
 
+		/** Set/Get normal map/bump factor.
+		*/
+		void setNormalBumpMapFactor(float factor) { mData.bumpNormalFactor = static_cast<float16_t>(factor); };
+		float getNormalBumpMapFactor() const { return static_cast<float>(mData.bumpNormalFactor); };
+
 		/** Set the displacement map.
 		*/
 		void setDisplacementMap(const Texture::SharedPtr& pDisplacementMap) { setTexture(TextureSlot::Displacement, pDisplacementMap); }

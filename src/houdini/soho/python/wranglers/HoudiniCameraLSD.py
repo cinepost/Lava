@@ -36,12 +36,19 @@ def lv_background_enabled(obj, now, value):
     return True
 
 def lv_background_image(obj, now, value):
-    value[0] = obj.getDefaultedString('vm_background', now, [''])[0]
+    enabled = [0]
+    lv_background_enabled(obj, now, enabled)
+    if enabled[0] == 1:
+        value[0] = obj.getDefaultedString('vm_background', now, [''])[0]
+    else:
+        value[0] = ""
+        return False
+        
     return True
 
 def lv_background_color(obj, now, value):
     if not obj.evalFloat('lv_bgcolor', now, value):
-        value = [0.0, 0.0, 0.0, 0.0]
+        value[0] = [0.0, 0.0, 0.0, 0.0]
 
     return True
 

@@ -153,7 +153,9 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 
-	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
+	const std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
+	const std::string camera_background_image_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "backgroundimage", std::string());
+	Vector4 camera_background_color = mpGlobal->getPropertyValue(ast::Style::CAMERA, "backgroundcolor", Vector4{0.0, 0.0, 0.0, 0.0});
 
 	auto dims = mCurrentFrameInfo.renderRegionDims();
 
@@ -164,6 +166,8 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
 	pCamera->setCropRegion(cropRegion);
+	pCamera->setBackgroundImageFilename(camera_background_image_name);
+	pCamera->setBackgroundColor(to_float4(camera_background_color));
 
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
@@ -210,8 +214,8 @@ bool Session::cmdRaytrace() {
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
 
-  	passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
-  	passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
+  passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
+  passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
@@ -313,7 +317,7 @@ bool Session::cmdRaytrace() {
 	// Open display image
 	uint hImage;
 
-    if(!mIPR) mpDisplay->closeAll(); // close previous frame display images (if still opened) 
+  if(!mIPR) mpDisplay->closeAll(); // close previous frame display images (if still opened) 
 
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::RENDERER, "renderlabel", std::string(""));
@@ -598,6 +602,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	lsd::Vector3 light_indirect_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color", light_diffuse_color);
 	lsd::Vector3 light_indirect_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color", light_specular_color);
 
+	const bool visible_primary = pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
+
 	Falcor::Light::SharedPtr pLight = nullptr;
 
 	if(light_type == "distant") {
@@ -687,7 +693,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
 		bool is_physical_sky = pLightScope->getPropertyValue(ast::Style::LIGHT, "physical_sky", bool(false));
-		bool phantom = !pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
 		auto pDevice = pSceneBuilder->device();
 		
@@ -701,12 +706,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     		pEnvMapTexture = pDevice->textureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
     	}
     	
-    	//EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    	//pEnvMap->setTint(to_float3(light_color));
-    	//pEnvMap->setPhantom(phantom);
-
-    	//pSceneBuilder->setEnvMap(pEnvMap);
-
     	// New EnvironmentLight test
     	if(is_physical_sky) {
     		auto pEnvLight = PhysicalSunSkyLight::create(light_name);
@@ -726,13 +725,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	}
 
 	if(pLight) {
-		LLOG_DBG << "Light " << light_name << "  type " << Falcor::to_string(pLight->getData().type);
+		LLOG_DBG << "Light " << light_name << "  type " << Falcor::to_string(pLight->getData().getLightType());
 
 		if (light_name != "") {
 			pLight->setName(light_name);
 		}
 
 		pLight->setHasAnimation(false);
+		pLight->setCameraVisibility(visible_primary);
 
 		Property* pShadowProp = pLightScope->getProperty(ast::Style::LIGHT, "shadow");
 		
@@ -1265,6 +1265,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     bool            basenormal_flip_x = false;
     bool            basenormal_flip_y = false;
 
+    float           basenormal_scale = 1.0f;
+    float           basebump_scale = 0.05f;
+
     std::string     basenormal_mode = "normal";
 
     float           ao_distance = 1.0f;
@@ -1298,6 +1301,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	basenormal_flip_x = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipX", false);
     	basenormal_flip_y = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipY", false);
+
+    	basenormal_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_scale", 1.0f);
+    	basebump_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpScale", 0.05f);
 
     	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
 
@@ -1335,6 +1341,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setSpecularTransmission(transmission);
 
 	    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+
+	    float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
+	    pMaterial->setNormalBumpMapFactor(_normal_bump_scale);
 
 	  	//bool loadAsSrgb = true;
 	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));

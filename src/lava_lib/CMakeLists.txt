@@ -60,7 +60,7 @@ target_link_libraries(
     ToneMapperPass
     OpenDenoisePass
     ImageLoaderPass
-    SkyBox
+    EnvironmentPass
     RTXDIPass
     GBuffer
 )

@@ -450,6 +450,7 @@ bool BasicMaterial::operator==(const BasicMaterial& other) const {
     compare_field(reflectivity);
     compare_field(emissive);
     compare_field(emissiveFactor);
+    compare_field(bumpNormalFactor);
     compare_field(IoR);
     compare_field(diffuseTransmission);
     compare_field(specularTransmission);

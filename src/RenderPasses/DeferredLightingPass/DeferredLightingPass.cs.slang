@@ -190,7 +190,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     // Face forwad interpolated normal
     //sd.N = faceforward(sd.N, rayData.dir, geometryFaceNormalW);
 
-    [[branch ]] if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
+    [[branch ]] 
+    if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
         rayShadowOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.N, triangleHit.getBarycentricWeights());
     } else {
         rayShadowOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, triangleHit.getBarycentricWeights());
@@ -254,8 +255,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         // Sample light and reject sample if lower hemisphere.
         sd.mtl.setActiveLobes(shadingLobes);
 
-        if (sampleLight(sd.posW, sd.N, light, rnd, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
-            [[branch]]if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
+        if (sampleLight(sd.posW, sd.N, light, rnd, ls) && (dot(ls.dir, sd.N) > kMinCosTheta)) {
+            [[branch]]if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;
                 const Ray ray = Ray(rayShadowOrigin, ls.shadowDir, _tmin, ls.distance);
@@ -324,9 +325,9 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                 _shadingLobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission;
             }
             sd.mtl.setActiveLobes(_shadingLobes);
-            validBsdfSample = mi.sample(sd, sg, bsdfSample, true);
+            //validBsdfSample = mi.sample(sd, sg, bsdfSample, true);
             
-            if(validBsdfSample) {
+            if(mi.sample(sd, sg, bsdfSample, true)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
@@ -438,7 +439,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                 rayData.length += rayQuery.CommittedRayT();
 
             } else {
-                if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission)) {
+                if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission) ||
+                   bsdfSample.isLobe(LobeType::DeltaTransmission) || bsdfSample.isLobe(LobeType::DeltaReflection)) {
 
                     [loop]
                     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {

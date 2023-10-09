@@ -27,66 +27,56 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
-import Scene.Scene;
+//import Scene.Scene;
 import Utils.Math.MathHelpers;
 import Experimental.Scene.Lights.LightHelpers;
 
 __exported import Scene.Lights.LightData;
 __exported import Scene.Camera.Camera;
 
-#ifdef _SPHERICAL_MAP
-Texture2D gTexture;
-#else
-TextureCube gTexture;
-#endif
-SamplerState gSampler;
-
-StructuredBuffer<LightData> gLights;
+#define is_valid(name) (is_valid_##name != 0)
 
 cbuffer PerFrameCB {
-    float4x4 gWorld;
-    float4x4 gViewMat;
-    float4x4 gProjMat;
+    uint2 gFrameDim;
     float3 gIntensity;
     float gScale;
     float gOpacity;
     uint lightsCount;
+    uint2 gBackTextureDim;
     Camera gCamera;
 };
 
+StructuredBuffer<LightData> gLights;
 
-[shader("vertex")]
-void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION) {
+Texture2D<float4> gBackdropTexture;
+SamplerState gSampler;
 
-#ifdef _SKYBOX_SOLID_MODE
-    dir = float3(1.0, 0.0, 0.0);
-#else
-    dir = posL.xyz;
-#endif
+// Main output channel
+RWTexture2D<float4> gOutColor;
 
-    float4 viewPos = mul(mul(posL, gWorld), gViewMat);
-    posH = mul(viewPos, gProjMat);
-    posH.xy *= gScale;
-    posH.z = posH.w;
-}
+[numthreads(16, 16, 1)]
+void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
+    // pixel position
+    const uint2 ipos = dispatchThreadId.xy;
 
-
-[shader("fragment")]
-float4 psMain(float3 dir : NORMAL) : SV_TARGET {
-    float3 intensity = gIntensity * gOpacity;
+    // early out
+    if (any(ipos >= gFrameDim)) return;
 
     float4 backColor = gCamera.getBackgroundColor();
 
-#ifdef _SKYBOX_SOLID_MODE
-    //backColor = float4(intensity, gOpacity);
+#if is_valid(gBackdropTexture)
+
+    float2 texelOffset = float2(.5f) / (float2)gBackTextureDim;
+    float2 uv = float2(ipos) / ((float2)gFrameDim + float2(1.0, 1.0));
+    uv += texelOffset;
+
+    float2 gradX = float2(1.0f / (float)gFrameDim.x, 0.0f);
+    float2 gradY = float2(0.0f, 1.0f / (float)gFrameDim.y);
+
+    backColor += gBackdropTexture.SampleGrad(gSampler, uv, gradX, gradY);
 #else
-    #ifdef _SPHERICAL_MAP
-        float2 uv = world_to_latlong_map(dir);
-        backColor = gTexture.Sample(gSampler, uv, 1.0f) * float4(intensity, gOpacity);
-    #else
-        backColor = gTexture.SampleLevel(gSampler, normalize(dir), 1.0f) * float4(intensity, gOpacity);
-    #endif
-#endif
+
+    const float3 rayDir = normalize(gCamera.computeRayPinhole(ipos, gFrameDim).dir);
 
     float  localMaxDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosition();
@@ -96,13 +86,15 @@ float4 psMain(float3 dir : NORMAL) : SV_TARGET {
         if(!light.visibleToCamera()) continue;
 
         AnalyticLightSample ls = {};
-        if(intersectLight(cameraPosW, dir, light, ls)) {
+        if(intersectLight(cameraPosW, rayDir, light, ls)) {
             backColor.rgb += ls.Li;
             backColor.rgb += float3(0, 0, 1);
             // && (ls.distance < localMaxDistance)
             localMaxDistance = ls.distance;
         }
     }
+#endif
 
-    return backColor;
+    gOutColor[ipos] = backColor * float4(gIntensity, 1.0f) * clamp(gOpacity, 0.0f, 1.0f);
+
 }

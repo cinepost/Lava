@@ -48,6 +48,7 @@ enum class LightType
     Sphere,         ///< Spherical area light source
     Env,            ///< Environment light source
     PhysSunSky,     ///< Physical Sun and Sky environment light source
+    Count
 };
 
 
@@ -62,6 +63,7 @@ enum class LightShadowType
     None,
     RayTraced,
     ShadowMap,
+    Count
 };
 
 enum class LightDataFlags : uint32_t {
@@ -84,19 +86,22 @@ enum class LightDataFlags : uint32_t {
 
     Infinite = 0x1000,
     HasTexture = 0x2000,
+
+    VisibleToCamera = 0x4000,
 };
 
 
 /** This is a host/device structure that describes analytic light sources.
 */
 struct LightData {
-    uint32_t    type                = uint(LightType::Point); ///< Type of the light source (see above)
+    uint32_t    flags               = uint(LightDataFlags::None);
+    //uint32_t    type                = uint(LightType::Point); ///< TODO: move either to flags or flags_ex... Type of the light source (see above)
     float       openingAngle        = float(M_PI);          ///< For point (spot) light: Opening half-angle of a spot light cut-off, pi by default (full sphere).
     float       cosOpeningAngle     = -1.f;                 ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
     float       cosSubtendedAngle   = 0.9999893f;           ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
 
     float3      posW                = float3(0, 0, 0);      ///< World-space position of the center of a light source
-    uint32_t    flags               = uint(LightDataFlags::None);
+    uint32_t    flags_ex            = 0x0;                  ///< Extra flags for different types, ids, etc.
 
     float3      dirW                = float3(0, -1, 0);     ///< World-space orientation of the light source (normalized).
     float       penumbraAngle       = 0.f;                  ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
@@ -107,7 +112,7 @@ struct LightData {
     
     float16_t3  shadowColor         = float16_t3(0, 0, 0);
     float16_t3  indirectDiffuseIntensity   = float16_t3(1.0, 1.0, 1.0); ///< Indirect diffuse light intensity
-    uint32_t    shadowType          = uint(LightShadowType::None); ///< Type of the light shadow (see above)
+    uint32_t    _pad_0;
 
     // Extra parameters for analytic area lights
     float3   tangent                = float3(1, 0, 0);      ///< Tangent vector of the light shape
@@ -123,6 +128,42 @@ struct LightData {
     float4x4 transMat               = {};                   ///< Transformation matrix of the light shape, from local to world space.
     float4x4 transMatIT             = {};                   ///< Inverse-transpose of transformation matrix of the light shape
     float4x4 transMatInv            = {};                   ///< Inverse of transformation matrix of the light shape
+
+
+    //
+    static const uint kLightTypeBits = uint(LightType::Count);
+    static const uint kLightTypeOffset = 0;
+
+    static const uint kLightShadowTypeBits = uint(LightShadowType::Count);
+    static const uint kLightShadowTypeOffset = kLightTypeBits;
+
+    static const uint kLightSamplerIdBits = 4;              ///< 16 distinct samplers per light type. More than enough...
+    static const uint kLightSamplerIdOffset = kLightShadowTypeBits + kLightShadowTypeOffset;
+
+    /** Set light type.
+    */
+    SETTER_DECL void setLightType(LightType type) { flags_ex = PACK_BITS(kLightTypeBits, kLightTypeOffset, flags_ex, (uint)type); }
+
+    /** Get light type.
+    */
+    LightType getLightType() CONST_FUNCTION { return LightType(EXTRACT_BITS(kLightTypeBits, kLightTypeOffset, flags_ex)); }
+
+    /** Set shadow type.
+    */
+    SETTER_DECL void setShadowType(LightShadowType type) { flags_ex = PACK_BITS(kLightShadowTypeBits, kLightShadowTypeOffset, flags_ex, (uint)type); }
+
+    /** Get shadow type.
+    */
+    LightShadowType getShadowType() CONST_FUNCTION { return LightShadowType(EXTRACT_BITS(kLightShadowTypeBits, kLightShadowTypeOffset, flags_ex)); }
+
+    /** Set shadow type.
+    */
+    SETTER_DECL void setLightSamplerID(uint id) { flags_ex = PACK_BITS(kLightSamplerIdBits, kLightSamplerIdOffset, flags_ex, id); }
+
+    /** Get shadow type.
+    */
+    uint getLightSamplerID() CONST_FUNCTION { return uint(EXTRACT_BITS(kLightSamplerIdBits, kLightSamplerIdOffset, flags_ex)); }
+
 
     bool isSingleSided() CONST_FUNCTION  {
         return (flags & (uint)LightDataFlags::SingleSided) != 0;
@@ -177,6 +218,10 @@ struct LightData {
 
     bool hasTexture() CONST_FUNCTION {
         return flags & (uint)LightDataFlags::HasTexture; 
+    }
+
+    bool visibleToCamera() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::VisibleToCamera; 
     }
 
 };

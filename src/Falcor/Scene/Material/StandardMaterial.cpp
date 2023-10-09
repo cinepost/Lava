@@ -93,8 +93,8 @@ namespace Falcor {
     }
 
     void StandardMaterial::setEmissiveFactor(float factor) {
-        if (mData.emissiveFactor != factor) {
-            mData.emissiveFactor = factor;
+        if (mData.emissiveFactor != static_cast<float16_t>(factor)) {
+            mData.emissiveFactor = static_cast<float16_t>(factor);
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveFlag();
         }

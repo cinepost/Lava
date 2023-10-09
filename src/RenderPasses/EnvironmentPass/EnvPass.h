@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
-#define SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
+#ifndef SRC_FALCOR_RENDERPASSES_ENVPASS_ENVPASS_H_
+#define SRC_FALCOR_RENDERPASSES_ENVPASS_ENVPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
@@ -38,9 +38,9 @@
 
 using namespace Falcor;
 
-class PASS_API SkyBox : public RenderPass {
+class PASS_API EnvPass : public RenderPass {
   public:
-    using SharedPtr = std::shared_ptr<SkyBox>;
+    using SharedPtr = std::shared_ptr<EnvPass>;
     static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -60,13 +60,12 @@ class PASS_API SkyBox : public RenderPass {
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
-    void setTexture(const std::string& texName, bool loadAsSrgb = true);
+    void setBackdropImage(const std::string& imageName, bool loadAsSrgb = true);
+    void setBackdropTexture(const Texture::SharedPtr& pTexture);
     void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; /*update();*/  }
 
   private:
-    SkyBox(Device::SharedPtr pDevice);
-    void loadImage();
-    void setTexture(const Texture::SharedPtr& pTexture);
+    EnvPass(Device::SharedPtr pDevice);
     void setupCamera();
 
     Buffer::SharedPtr lightsBuffer();
@@ -75,23 +74,17 @@ class PASS_API SkyBox : public RenderPass {
 
     float4 mBackgroundColor = float4(0.0f);
     
-    float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
+    float3 mIntensity = float3(1.0f, 1.0f, 1.0f);
     float  mOpacity = 0.0f;
+    bool   mBackdropImageLoadSrgb = true;
     
     float mScale = 1;
-    bool mSolidMode = true;
-    bool mLoadSrgb = true;
     Sampler::Filter mFilter = Sampler::Filter::Linear;
-    Texture::SharedPtr mpTexture;
-    std::string mTexName;
+    Texture::SharedPtr mpBackdropTexture;
+    std::string mBackdropImagePath;
 
     ComputePass::SharedPtr mpComputePass;
 
-    Scene::SharedPtr mpCubeScene;
-    GraphicsProgram::SharedPtr mpProgram;
-    GraphicsVars::SharedPtr mpVars;
-    GraphicsState::SharedPtr mpState;
-    RasterizerState::SharedPtr mpRsState;
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
     Camera::SharedPtr mpCamera;
@@ -103,4 +96,4 @@ class PASS_API SkyBox : public RenderPass {
     bool mDirty = true;
 };
 
-#endif  // SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
+#endif  // SRC_FALCOR_RENDERPASSES_ENVPASS_ENVPASS_H_

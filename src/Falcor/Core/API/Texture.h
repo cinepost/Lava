@@ -305,19 +305,19 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	/** In case the texture was loaded from a file, use this to set the file path
 	*/
-	inline void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
+	void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
 
 	/** In case the texture was loaded from a file, get the source file path
 	*/
-	inline const std::string& getSourceFilename() const { return mSourceFilename; }
+	const std::string& getSourceFilename() const { return mSourceFilename; }
 
 	/** In case the texture was loaded from a file, use this to set the file path
 	*/
-	inline void setSourcePath(const fs::path& path) { mSourceFilename = path.string(); }
+	void setSourcePath(const fs::path& path) { mSourceFilename = path.string(); }
 
 	/** In case the texture was loaded from a file, get the source file path
 	*/
-	inline fs::path getSourcePath() const { return fs::path(mSourceFilename); }
+	fs::path getSourcePath() const { return fs::path(mSourceFilename); }
 
 	/** Returns the total number of texels across all mip levels and array slices.
 	*/

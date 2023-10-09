@@ -349,6 +349,11 @@ void Camera::updateFromAnimation(const glm::mat4& transform) {
 	setTarget(pos + fwd);
 }
 
+void Camera::setBackgroundImageFilename(const std::string& filename) {
+if(mBackgroundImageFilename == filename) return;
+	mBackgroundImageFilename = filename;
+}
+
 std::string Camera::getScript(const std::string& cameraVar) {
 #ifdef SCRIPTING
 	std::string c;

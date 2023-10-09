@@ -66,7 +66,7 @@ class dlldecl Light : public Animatable {
 
     /** Get the light type
     */
-    LightType getType() const { return (LightType)mData.type; }
+    LightType getType() const { return mData.getLightType(); }
 
     /** Get the light data
     */
@@ -136,6 +136,11 @@ class dlldecl Light : public Animatable {
     */
     float3 getIndirectSpecularIntensity() const { return (float3)mData.indirectSpecularIntensity; }
 
+    /** Set/Get light primary visibility
+    */
+    void setCameraVisibility(bool visible);
+
+    bool getCameraVisibility() const { return mData.visibleToCamera(); }
 
     /** Set the light shadow color
     */
@@ -147,11 +152,15 @@ class dlldecl Light : public Animatable {
 
     void setShadowType(LightShadowType shadowType);
 
-    LightShadowType getShadowType() const { return (LightShadowType)mData.shadowType; }
+    LightShadowType getShadowType() const { return mData.getShadowType(); }
 
     void setLightRadius(float radius);
 
     const float getLightRadius() const { return mData.radius; }
+
+    void setLightSamplerID(uint id);
+
+    uint getLightSamplerID() const { return mData.getLightSamplerID(); }
 
     enum class Changes {
       None = 0x0,

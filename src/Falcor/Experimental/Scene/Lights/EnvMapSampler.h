@@ -69,13 +69,13 @@ class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler>
 
     bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
 
-    EnvMap::SharedPtr       mpEnvMap;           ///< Environment map.
+    EnvMap::SharedPtr       mpEnvMap;               ///< Environment map.
 
-    ComputePass::SharedPtr  mpSetupPass;        ///< Compute pass for creating the importance map.
+    ComputePass::SharedPtr  mpSetupPass;            ///< Compute pass for creating the importance map.
 
     std::shared_ptr<Device> mpDevice;
 
-    Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
+    Texture::SharedPtr      mpImportanceMap;        ///< Hierarchical importance map (luminance).
     Sampler::SharedPtr      mpImportanceSampler;
 };
 

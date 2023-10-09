@@ -115,7 +115,7 @@ class dlldecl StandardMaterial : public BasicMaterial {
 
 		/** Get the emissive factor.
 		*/
-		float getEmissiveFactor() const { return mData.emissiveFactor; }
+		float getEmissiveFactor() const { return static_cast<float>(mData.emissiveFactor); }
 
 	protected:
 		StandardMaterial(Device::SharedPtr pDevice, const std::string& name, ShadingModel shadingModel);

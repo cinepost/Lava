@@ -91,7 +91,13 @@ void Light::setShadowColor(const float3& shadowColor) {
 }
 
 void Light::setShadowType(LightShadowType shadowType) { 
-    mData.shadowType = (uint32_t)shadowType; 
+    mData.setShadowType(shadowType); 
+    update();
+}
+
+void Light::setLightSamplerID(uint id) { 
+    mData.setLightSamplerID(id); 
+    update();
 }
 
 void Light::setLightRadius(float radius) {
@@ -136,7 +142,7 @@ Light::Changes Light::beginFrame() {
 
     if (mPrevData.flags != mData.flags) mChanges |= Changes::Flags;
 
-    if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
+    if (mPrevData.getShadowType() != mData.getShadowType()) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
     if (mPrevData.radius != mData.radius) mChanges |= Changes::Shadow;
 
@@ -164,13 +170,24 @@ void Light::setShaderData(const ShaderVar& var) {
 }
 
 Light::Light(const std::string& name, LightType type) : mName(name) {
-    mData.type = (uint32_t)type;
+    mData.setLightType(type);
     mData.flags = 0x0;
 }
 
 void Light::setTexture(Texture::SharedPtr pTexture) {
     mpTexture = pTexture;
     if(mpTexture) mData.flags |= (uint32_t)LightDataFlags::HasTexture;
+}
+
+void Light::setCameraVisibility(bool visible) {
+    if(mData.visibleToCamera() == visible) return;
+
+    if(visible) {
+        mData.flags |= (uint32_t)LightDataFlags::VisibleToCamera;
+    } else {
+        mData.flags &= !(uint32_t)LightDataFlags::VisibleToCamera;
+    }
+    update();
 }
 
 // PointLight

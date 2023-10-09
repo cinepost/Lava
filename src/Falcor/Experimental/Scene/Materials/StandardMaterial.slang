@@ -111,23 +111,35 @@ struct StandardMaterial : MaterialBase, IMaterial {
     void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
+        float factor = (float)data.bumpNormalFactor;
+
         [[ branch ]]
         if(data.getNormalMapMode() == NormalMapMode::Bump) {
-            float bumpScale = 1.f;
+            float3 bumpNormal;
             float4 ddxy = ms.ddxy(sd.uv, lod);
 
-            float hll = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).r;
+            //float hll = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).r;
+            //bumpNormal.x = (ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r - hll) * factor;
+            //bumpNormal.y = (ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r - hll) * factor;
+            //bumpNormal.z = sqrt(clamp(1.0f - (bumpNormal.x * bumpNormal.x + bumpNormal.y * bumpNormal.y), 0.0f, 1.0f));
+            
+            ddxy *= 0.5;
+            float uH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r;
+            float bH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.xy, float4(0.f), lod).r;
+            float lH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r;
+            float rH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.zw, float4(0.f), lod).r;
 
-            float3 bumpNormal;
-            bumpNormal.x = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r - hll;
-            bumpNormal.y = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r - hll;
-            bumpNormal.z = sqrt(clamp(1.0f - (bumpNormal.x * bumpNormal.x + bumpNormal.y * bumpNormal.y), 0.0f, 1.0f));
+            float dy = (rH - lH) * factor;
+            float dx = (bH - uH) * factor;
+            float dz = sqrt (1.0 - dx*dx - dy*dy);
+            bumpNormal = float3(dx, dy, dz);
+
             applyBumpMap(sd, bumpNormal);
         } else {
             float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
             encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
             encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
-            applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
+            applyNormalMap(sd, data.getNormalMapType(), encodedNormal, (float)data.bumpNormalFactor);
         }
     }
 

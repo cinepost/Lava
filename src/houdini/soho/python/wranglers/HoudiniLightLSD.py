@@ -142,6 +142,13 @@ def lightradius(obj, now, value):
 
     return False
 
+def visible_primary(obj, now, value):
+    if obj.evalInt('light_contribprimary', now, value):
+        if value[0]:
+            value[0] = 1
+            return True
+    return False
+
 def orthowidth(obj, now, value):
     if not isdistantlight(obj, now):
         return False
@@ -637,25 +644,26 @@ def lv_light_type(obj, now, value):
 
 # When evaluating an integer or real property, we want to
 parmMap = {
-    'lv_light_type'     :       lv_light_type,
-    'lv_areasize'       :       areasize,
-    'lv_areafullsphere' :       areafullsphere,
-    'lv_areamap'        :       areamap,
-    'lv_singlesided'    :       issinglesided,
-    'lv_phantom'        :       phantom,
-    'lv_activeradius'   :       activeradius,
-    'lv_light_radius'   :       lightradius,
-    'lv_envangle'       :       envangle,
-    'res'               :       shadowmap_res,
-    'lv_samples'        :       shadowmap_samples,
-    'focal'             :       focal,
-    'aperture'          :       aperture,
-    'orthowidth'        :       orthowidth,
-    'lv_areashape'      :       areashape,
-    'projection'        :       projection,
-    'render_shadowmap'  :       render_shadowmap,
-    'render_pointcloud' :       render_pointcloud,
-    'lv_picture'        :       vm_picture,
+    'lv_light_type'         :   lv_light_type,
+    'lv_areasize'           :   areasize,
+    'lv_areafullsphere'     :   areafullsphere,
+    'lv_areamap'            :   areamap,
+    'lv_singlesided'        :   issinglesided,
+    'lv_phantom'            :   phantom,
+    'lv_activeradius'       :   activeradius,
+    'lv_light_radius'       :   lightradius,
+    'lv_envangle'           :   envangle,
+    'res'                   :   shadowmap_res,
+    'lv_samples'            :   shadowmap_samples,
+    'focal'                 :   focal,
+    'aperture'              :   aperture,
+    'orthowidth'            :   orthowidth,
+    'lv_areashape'          :   areashape,
+    'projection'            :   projection,
+    'render_shadowmap'      :   render_shadowmap,
+    'render_pointcloud'     :   render_pointcloud,
+    'lv_picture'            :   vm_picture,
+    'lv_visible_primary'    :   visible_primary,
 
     'lv_diffuse_color'              :    light_diffuse_color,
     'lv_specular_color'             :    light_specular_color,

@@ -184,6 +184,11 @@ public:
     */
     void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1.f));
 
+    /** Set/Get camera film background image file name.
+    */
+    void setBackgroundImageFilename(const std::string& filename);
+    const std::string& getBackgroundImageFilename() const { return mBackgroundImageFilename; }
+
     /** Set camera film background color.
     */
     void setBackgroundColor(const float4& color = float4(0.f));
@@ -311,6 +316,8 @@ private:
     mutable glm::mat4 mPersistentViewMat;
 
     std::string mName;
+    std::string mBackgroundImageFilename;
+    
     bool mPreserveHeight = true;    ///< If true, preserve frame height on change of aspect ratio. Otherwise, preserve width.
 
     void calculateCameraParameters() const;
