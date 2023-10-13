@@ -95,7 +95,37 @@ struct StandardMaterial : MaterialBase, IMaterial {
         }
 
         // Compute final shading frame.
-        ShadingFrame sf = ShadingFrame(sd);
+        ShadingFrame sf = sd.frame;
+        if (isNormalMappingEnabled(hints)) {
+            float3 encodedNormal = {0.f, 0.f, 1.f};
+            float  factor = 1.f;
+            
+            [[ branch ]]
+            if(data.getNormalMapMode() == NormalMapMode::Bump) {
+                float4 ddxy = .5f * ms.ddxy(sd.uv, lod);
+
+                float uH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r;
+                float bH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.xy, float4(0.f), lod).r;
+                float lH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r;
+                float rH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.zw, float4(0.f), lod).r;
+
+                float dy = (rH - lH) * factor;
+                float dx = (bH - uH) * factor;
+                float dz = sqrt (1.0 - dx*dx - dy*dy);
+                encodedNormal = float3(dx, dy, dz);
+            } else {
+                encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+                encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
+                encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
+            }
+            sf = computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        }
+        
+        flipShadingNormal(sd, sf);
+        
+        if (isAdjustShadingNormalEnabled(hints)) {
+            adjustShadingNormal(sd, sf);
+        }
 
         // Sample the emissive texture.
         // The standard material supports uniform emission over the hemisphere.
@@ -106,41 +136,6 @@ struct StandardMaterial : MaterialBase, IMaterial {
         }
 
         return StandardMaterialInstance(sf, d, emission);
-    }
-
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {
-        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-
-        float factor = (float)data.bumpNormalFactor;
-
-        [[ branch ]]
-        if(data.getNormalMapMode() == NormalMapMode::Bump) {
-            float3 bumpNormal;
-            float4 ddxy = ms.ddxy(sd.uv, lod);
-
-            //float hll = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).r;
-            //bumpNormal.x = (ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r - hll) * factor;
-            //bumpNormal.y = (ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r - hll) * factor;
-            //bumpNormal.z = sqrt(clamp(1.0f - (bumpNormal.x * bumpNormal.x + bumpNormal.y * bumpNormal.y), 0.0f, 1.0f));
-            
-            ddxy *= 0.5;
-            float uH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r;
-            float bH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.xy, float4(0.f), lod).r;
-            float lH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r;
-            float rH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.zw, float4(0.f), lod).r;
-
-            float dy = (rH - lH) * factor;
-            float dx = (bH - uH) * factor;
-            float dz = sqrt (1.0 - dx*dx - dy*dy);
-            bumpNormal = float3(dx, dy, dz);
-
-            applyBumpMap(sd, bumpNormal);
-        } else {
-            float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-            encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
-            encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
-            applyNormalMap(sd, data.getNormalMapType(), encodedNormal, (float)data.bumpNormalFactor);
-        }
     }
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) {

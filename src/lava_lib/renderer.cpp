@@ -510,6 +510,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::TANGENT_NORMAL:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.tangent_normals", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::SHADOW:
 				{
 					if(pAccPass) {

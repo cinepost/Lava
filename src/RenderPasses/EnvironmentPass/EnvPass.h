@@ -68,7 +68,7 @@ class PASS_API EnvPass : public RenderPass {
     EnvPass(Device::SharedPtr pDevice);
     void setupCamera();
 
-    Buffer::SharedPtr lightsBuffer();
+    Buffer::SharedPtr lightsIDsBuffer();
 
     glm::mat4 mTransformMatrix;
 
@@ -91,7 +91,7 @@ class PASS_API EnvPass : public RenderPass {
     Sampler::SharedPtr mpSampler;
 
     std::vector<Light::SharedPtr> mSceneLights;
-    Buffer::SharedPtr mpLightsBuffer;
+    Buffer::SharedPtr mpLightIDsBuffer;
 
     bool mDirty = true;
 };

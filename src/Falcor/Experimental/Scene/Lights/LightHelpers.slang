@@ -38,10 +38,12 @@
 #include "Utils/Math/MathConstants.slangh"
 #include "LightSolidAngleHelpers.slangh"
 
+import Scene.Scene;
 import Scene.Lights.LightData;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Utils.Sampling.SampleGeneratorInterface;
+import Experimental.Scene.Lights.EnvMapSampler;
 
 __exported import Utils.Sampling.SamplingSphericalCaps;
 __exported import PSCMaps;
@@ -93,7 +95,7 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, in
         ls.normalW *= -1.0f;
     }
 
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0, 1.0, 1.0);
     
     // Compute the PDF with respect to solid angle. Note this may be +inf.
     ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea);
@@ -376,7 +378,7 @@ bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNorm
     ls.pdf *= cosTheta;
 
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0);
 
     return true;
 }
@@ -470,7 +472,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, const f
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0);
     
     ls.pdf = 0.f;
     return true;
@@ -493,7 +495,7 @@ bool intersectDistantLight(const float3 shadingPosW, const float3 dir, const Lig
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0);
     
     ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
     return true;
@@ -518,7 +520,7 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
 
     // Setup incident radiance. For directional lights there is no falloff or cosine term.
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0);
 
     // For a directional light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
@@ -568,7 +570,7 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, const flo
     // Compute incident radiance at shading point.
     float _k = falloff / distSqr;
     ls.i = _k;
-    ls.Li = light.directDiffuseIntensity * _k;
+    ls.Li = float3(1.0) * _k;
     
     // For a point light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
@@ -582,15 +584,23 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     // An environmentl light doesn't have a position. Just clear to zero.
     ls.posW = float3(0, 0, 0);
 
-    ls.distance = kMaxLightDistance;
-    ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
+    EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
+    EnvMapSample els;
+    if(sampler.sample(rnd.xy, els)) {
+        float lod = 0.f;
+        ls.dir = ls.shadowDir = els.dir;
+        ls.Li = sampler.eval(ls.dir, lod); 
+        ls.pdf = els.pdf;
+    } else {
+        ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
+        ls.Li = float3(1.0, 1.0, 1.0);
+        ls.pdf = 1.0f;
+    }
 
+    ls.distance = kMaxLightDistance;
     ls.normalW = -normalize(ls.dir);
 
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
-
-    ls.pdf = 1.0f;
     
     return true;
 }
@@ -605,7 +615,10 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
     ls.normalW = -normalize(ls.dir);
 
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    
+    EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
+    float lod = 0.f;
+    ls.Li = sampler.eval(ls.dir, lod);
 
     ls.pdf = 0.0f;
 

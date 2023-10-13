@@ -170,13 +170,11 @@ struct DiffuseReflectionDisney : IBSDF
     This is Disney's diffuse BRDF with an ad-hoc normalization factor to ensure energy conservation.
     Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 */
-struct DiffuseReflectionFrostbite : IBSDF
-{
+struct DiffuseReflectionFrostbite : IBSDF {
     float3 albedo;          ///< Diffuse albedo.
     float roughness;        ///< Roughness before remapping.
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
-    {
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg) {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
         return evalWeight(wi, wo) * M_1_PI * wo.z;

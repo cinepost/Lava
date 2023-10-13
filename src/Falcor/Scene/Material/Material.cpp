@@ -37,8 +37,8 @@ namespace Falcor {
 namespace {
 
     static_assert(sizeof(TextureHandle) == 4);
-    static_assert(sizeof(MaterialHeader) == 8);
-    static_assert(sizeof(MaterialPayload) == 120);
+    static_assert(sizeof(MaterialHeader) == 16);
+    static_assert(sizeof(MaterialPayload) == 112);
     static_assert(sizeof(MaterialDataBlob) == 128);
     static_assert(static_cast<uint32_t>(MaterialType::BuiltinCount) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
     static_assert(static_cast<uint32_t>(AlphaMode::Count) <= (1u << MaterialHeader::kAlphaModeBits), "AlphaMode bit count exceeds the maximum");
@@ -46,8 +46,9 @@ namespace {
     static_assert(static_cast<uint32_t>(TextureHandle::Mode::Count) <= (1u << TextureHandle::kModeBits), "TextureHandle::Mode bit count exceeds the maximum");
     static_assert(MaterialHeader::kTotalHeaderBitsX <= 32, "MaterialHeader bit count x exceeds the maximum");
     static_assert(MaterialHeader::kTotalHeaderBitsY <= 32, "MaterialHeader bit count y exceeds the maximum");
+    static_assert(MaterialHeader::kTotalHeaderBitsZ <= 32, "MaterialHeader bit count z exceeds the maximum");
+    static_assert(MaterialHeader::kTotalHeaderBitsW <= 32, "MaterialHeader bit count w exceeds the maximum");
     static_assert(MaterialHeader::kAlphaThresholdBits == 16, "MaterialHeader alpha threshold bit count must be 16");
-
 }
 
 bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs) {
@@ -59,6 +60,7 @@ Material::Material(Device::SharedPtr pDevice, const std::string& name, MaterialT
     mHeader.setAlphaMode(AlphaMode::Opaque);
     mHeader.setAlphaThreshold(float16_t(0.5f));
     mHeader.setActiveLobes(static_cast<uint32_t>(LobeType::All));
+    mHeader.setIoR(1.5f);
 }
 
 std::shared_ptr<BasicMaterial> Material::toBasicMaterial() {
@@ -99,6 +101,13 @@ void Material::setNestedPriority(uint32_t priority) {
     }
     if (mHeader.getNestedPriority() != priority) {
         mHeader.setNestedPriority(priority);
+        markUpdates(UpdateFlags::DataChanged);
+    }
+}
+
+void Material::setIndexOfRefraction(float IoR) {
+    if (mHeader.getIoR() != (float16_t)IoR) {
+        mHeader.setIoR((float16_t)IoR);
         markUpdates(UpdateFlags::DataChanged);
     }
 }

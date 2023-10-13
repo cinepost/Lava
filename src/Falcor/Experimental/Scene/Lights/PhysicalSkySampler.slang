@@ -6,7 +6,6 @@
 */
 
 #include "Utils/Math/MathConstants.slangh"
-import Scene.Scene;
 import Utils.Math.MathHelpers;
 
 /** Struct returned from the sampling functions.
@@ -24,7 +23,8 @@ struct PhysicalSkySampler {
     /** Evaluates the radiance coming from world space direction 'dir'.
     */
     float3 eval(float3 dir, float lod = 0.f) {
-        return gScene.envMap.eval(dir, lod);
+        //return gScene.envMap.eval(dir, lod);
+        return float3(0, 0, 0);
     }
 
     /** Importance sampling of the environment map.
@@ -94,9 +94,9 @@ struct PhysicalSkySampler {
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap[pos] / avg_w;
 
-        result.dir = normalize(gScene.envMap.toWorld(dir));
+        result.dir = dir;
         result.pdf = pdf * M_1_4PI;
-        result.Le = gScene.envMap.eval(result.dir);
+        result.Le = float3(0, 0, 0); //gScene.envMap.eval(result.dir);
 
         return true;
     }
@@ -109,7 +109,7 @@ struct PhysicalSkySampler {
         \return Probability density function evaluated for direction 'dir'.
     */
     float evalPdf(float3 dir) {
-        float2 uv = ndir_to_oct_equal_area_unorm(gScene.envMap.toLocal(dir));
+        float2 uv = ndir_to_oct_equal_area_unorm(dir);
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap.SampleLevel(importanceSampler, uv, 0) / avg_w;
         return pdf * (1.f / M_4PI);

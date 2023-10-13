@@ -1334,7 +1334,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setAODistance(ao_distance);
 	    pMaterial->setDoubleSided(!front_face);
 
-	    pMaterial->setNormalMapFlipX(basenormal_flip_x);
+	    pMaterial->setNormalMapFlipX(!basenormal_flip_x);
 	    pMaterial->setNormalMapFlipY(basenormal_flip_y);
 
 	    pMaterial->setTransmissionColor(trans_color);

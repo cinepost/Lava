@@ -44,6 +44,8 @@ import Utils.Geometry.GeometryHelpers;
 import Scene.SDFs.SDFVoxelCommon;
 import Scene.Displacement.DisplacementMapping;
 import Experimental.Scene.Materials.TexLODHelpers;
+import Experimental.Scene.Lights.EnvMapSampler;
+import Experimental.Scene.Lights.PhysicalSkySampler;
 
 #ifndef SCENE_GEOMETRY_TYPES
 // This error occurs when a shader imports Scene.slang without setting the defines
@@ -114,12 +116,22 @@ struct Scene
 
     // Materials
     ParameterBlock<MaterialSystem> materials;
+    
+    // Light samplers
+    #if SCENE_ENVMAP_SAMPLERS_COUNT > 0
+        EnvMapSampler envmapSamplers[SCENE_ENVMAP_SAMPLERS_COUNT];
+    #else
+        EnvMapSampler envmapSamplers[1];
+    #endif
 
-//#if SCENE_ENVMAP_SAMPLERS_COUNT > 0
-//    EnvMapSampler envMapSamplers[SCENE_ENVMAP_SAMPLERS_COUNT];
-//#else
-//    EnvMapSampler envMapSamplers[1];
-//#endif
+    #if SCENE_PHYSKY_SAMPLERS_COUNT > 0
+        EnvMapSampler physkySamplers[SCENE_PHYSKY_SAMPLERS_COUNT];
+    #else
+        EnvMapSampler physkySamplers[1];
+    #endif
+
+    //StructuredBuffer<EnvMapSampler> envmapSamplers;
+
 
     // Lights and camera
     uint lightCount;

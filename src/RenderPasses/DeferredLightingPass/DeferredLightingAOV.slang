@@ -5,6 +5,7 @@ struct AOVData {
     float3 emission;
     float3 shadow;
     float3 normal;
+    float3 tangent_normal;
     float  fresnel;
     uint   primID;
     uint   opID;
@@ -20,6 +21,7 @@ struct AOVData {
         d.emission = float3(0.f);
         d.shadow = float3(0.f);
         d.normal = float3(0.f);
+        d.tangent_normal = float3(0.f);
         d.fresnel = 0.f;
         d.primID = d.opID = 0;
 

@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
-//import Scene.Scene;
+import Scene.Scene;
 import Utils.Math.MathHelpers;
 import Experimental.Scene.Lights.LightHelpers;
 
@@ -46,7 +46,7 @@ cbuffer PerFrameCB {
     Camera gCamera;
 };
 
-StructuredBuffer<LightData> gLights;
+Buffer<uint32_t> gLightIDs;
 
 Texture2D<float4> gBackdropTexture;
 SamplerState gSampler;
@@ -81,14 +81,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float  localMaxDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosition();
 
-    for(uint lightIndex = 0; lightIndex < lightsCount; ++lightIndex) {
-        const LightData light = gLights[lightIndex];
+    for(uint i = 0; i < lightsCount; ++i) {
+        const LightData light = gScene.getLight(gLightIDs[i]);
         if(!light.visibleToCamera()) continue;
 
         AnalyticLightSample ls = {};
         if(intersectLight(cameraPosW, rayDir, light, ls)) {
-            backColor.rgb += ls.Li;
-            backColor.rgb += float3(0, 0, 1);
+            backColor.rgb += ls.Li * light.directDiffuseIntensity;
+            backColor.a = 1.0f;
             // && (ls.distance < localMaxDistance)
             localMaxDistance = ls.distance;
         }

@@ -53,6 +53,7 @@ BasicMaterial::BasicMaterial(Device::SharedPtr pDevice, const std::string& name,
     mHeader.setIsBasicMaterial(true);
 
     // Setup common texture slots.
+    mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     mTextureSlotInfo[(uint32_t)TextureSlot::Displacement] = { "displacement", TextureChannelFlags::RGB, false };
 
     // Call update functions to ensure a valid initial state based on default material parameters.

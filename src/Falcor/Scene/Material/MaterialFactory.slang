@@ -81,17 +81,19 @@ extension MaterialSystem
         \param[in] modifyNormal Flag to specify if normal can be modified, for example by normal mapping.
         \return Shading data struct.
     */
-    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod, const bool modifyNormal = true)
+    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod)
     {
         ShadingData sd = {};
 
         sd.posW = v.posW;
         sd.uv = v.texC;
         sd.V = viewDir;
-        sd.N = v.normalW;
 
-        const bool validTangentSpace = computeTangentSpace(sd, v.tangentW);
-        sd.tangentW = validTangentSpace ? v.tangentW : float4(sd.T, 1.f);
+        // Compute shading frame based on the interpolated normal and given tangent (xyz) and sign (w).
+        // We keep around the original tangent for later orthogonalization operations if valid, otherwise the invented tangent.
+        bool valid;
+        sd.frame = ShadingFrame::createSafe(v.normalW, v.tangentW, valid);
+        sd.tangentW = valid ? v.tangentW : float4(sd.frame.T, 1.f);
 
         // Primitive data
         sd.faceN = v.faceNormalW;
@@ -114,21 +116,6 @@ extension MaterialSystem
         // Query material to evaluate opacity.
         sd.opacity = material.evalOpacity(this, v, lod);
 
-        if (modifyNormal) {
-            // Apply normal mapping only if we have a valid tangent space.
-            if (validTangentSpace) {
-                material.modifyTangentSpace(this, lod, sd);
-            }
-
-            // Finalize the normal.
-            // We currently flip the shading normal for back-facing hits on double-sided materials.
-            // This convention will eventually go away when the material setup code handles it instead.
-            
-            // TODO: normal flipping bug here
-            if (!sd.frontFacing && sd.mtl.isDoubleSided()) {
-                sd.N = -sd.N;
-            }
-        }
         return sd;
     }
 

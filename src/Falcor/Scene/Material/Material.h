@@ -184,6 +184,14 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		*/
 		virtual uint32_t getNestedPriority() const { return mHeader.getNestedPriority(); }
 
+		/** Set the index of refraction.
+    */
+    virtual void setIndexOfRefraction(float IoR);
+
+    /** Get the index of refraction.
+    */
+    virtual float getIndexOfRefraction() const { return (float)mHeader.getIoR(); }
+
 		/** Get information about a texture slot.
 			\param[in] slot The texture slot.
 			\return Info about the slot. If the slot doesn't exist isEnabled() returns false.

@@ -405,6 +405,8 @@ class dlldecl EnvironmentLight: public Light {
     */
     virtual void setTexture(Texture::SharedPtr pTexture) override;
 
+    const EnvMapSampler::SharedPtr& getLightSampler() const { return mpEnvMapSampler; }
+
   private:
     virtual void update();
 
@@ -447,6 +449,8 @@ class dlldecl PhysicalSunSkyLight: public Light {
     virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
     virtual void setDevice(Device::SharedPtr pDevice) override;
+
+    const PhysicalSkySampler::SharedPtr& getLightSampler() const { return mpPhysicalSkySampler; }
 
   public:
     bool buildTest();

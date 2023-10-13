@@ -34,13 +34,12 @@
 */
 
 #include "Utils/Math/MathConstants.slangh"
-import Scene.Scene;
 import Utils.Math.MathHelpers;
+import Scene.Lights.EnvMap;
 
 /** Struct returned from the sampling functions.
 */
-struct EnvMapSample
-{
+struct EnvMapSample {
     float3 dir;         ///< Sampled direction towards the light in world space.
     float pdf;          ///< Probability density function for the sampled direction with respect to solid angle.
     float3 Le;          ///< Emitted radiance.
@@ -48,25 +47,21 @@ struct EnvMapSample
 
 /** Struct for sampling and evaluating an environment map.
 */
-struct EnvMapSampler
-{
+struct EnvMapSampler {
     /** Evaluates the radiance coming from world space direction 'dir'.
     */
-    float3 eval(float3 dir, float lod = 0.f)
-    {
-        return gScene.envMap.eval(dir, lod);
+    float3 eval(float3 dir, float lod = 0.f) {
+        return envMap.eval(dir, lod);
     }
 
     /** Importance sampling of the environment map.
     */
-    bool sample(const float2 rnd, out EnvMapSample result)
-    {
+    bool sample(const float2 rnd, out EnvMapSample result) {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.
 
         // Iterate over mips of 2x2...NxN resolution.
-        for (int mip = importanceBaseMip - 1; mip >= 0; mip--)
-        {
+        for (int mip = importanceBaseMip - 1; mip >= 0; mip--) {
             // Scale position to current mip.
             pos *= 2;
 
@@ -126,9 +121,9 @@ struct EnvMapSampler
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap[pos] / avg_w;
 
-        result.dir = normalize(gScene.envMap.toWorld(dir));
+        result.dir = normalize(envMap.toWorld(dir));
         result.pdf = pdf * M_1_4PI;
-        result.Le = gScene.envMap.eval(result.dir);
+        result.Le = envMap.eval(result.dir);
 
         return true;
     }
@@ -142,7 +137,7 @@ struct EnvMapSampler
     */
     float evalPdf(float3 dir)
     {
-        float2 uv = ndir_to_oct_equal_area_unorm(gScene.envMap.toLocal(dir));
+        float2 uv = ndir_to_oct_equal_area_unorm(envMap.toLocal(dir));
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap.SampleLevel(importanceSampler, uv, 0) / avg_w;
         return pdf * (1.f / M_4PI);
@@ -150,7 +145,7 @@ struct EnvMapSampler
 
     SamplerState        importanceSampler;      ///< Point sampling with clamp to edge.
     Texture2D<float>    importanceMap;          ///< Hierarchical importance map (entire mip chain).
-    Texture2D<float4>   envMap;                 ///
+    EnvMap              envMap;                 ///
     float2              importanceInvDim;       ///< 1.0 / dimension.
     uint                importanceBaseMip;      ///< Mip level for 1x1 resolution.
     uint                _pad;

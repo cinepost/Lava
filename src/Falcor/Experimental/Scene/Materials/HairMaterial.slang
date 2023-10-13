@@ -44,23 +44,32 @@ struct HairMaterial : MaterialBase, IMaterial
 
         HairChiang16Data d = {};
 
-        d.IoR = data.IoR;
-        d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
+        float16_t IoR = header.getIoR();
+        d.IoR = IoR;
+        d.eta = sd.frontFacing ? (sd.IoR / IoR) : (IoR / sd.IoR);
 
         // Sample base color.
-        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.0f), lod).rgb * data.baseColor.rgb;
+
+        // Sample the specular texture. This encodes additional BSDF parameters.
+        const float4 spec = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.0f), lod);
 
         d.baseColor = baseColor;
-        d.betaM = 1.f; // TODO: occlusion map
-        d.betaN = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
-        d.alpha = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod).r * data.metallic;
+        d.betaM = spec.x;
+        d.betaN = spec.y;
+        d.alpha = spec.z;
 
-        return HairMaterialInstance(d);
+        // Compute final shading frame.
+        // Do not flip the shading normal for backfacing hits. The BSDF handles transmission from both sides.
+        ShadingFrame sf = sd.frame;
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            adjustShadingNormal(sd, sf);
+        }
+
+        return HairMaterialInstance(sf, d);
     }
-
-    // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
-
+    
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }
 };

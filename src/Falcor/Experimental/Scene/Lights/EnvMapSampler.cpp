@@ -62,7 +62,7 @@ void EnvMapSampler::setShaderData(const ShaderVar& var) const {
     var["importanceBaseMip"] = mpImportanceMap->getMipCount() - 1; // The base mip is 1x1 texels
     var["importanceInvDim"] = invDim;
 
-    var["envMap"] = mpEnvMap->getTexture();
+    mpEnvMap->setShaderData(var["envMap"]);
 
     // Bind resources.
     var["importanceMap"] = mpImportanceMap;
@@ -111,6 +111,9 @@ EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr p
 }
 
 bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples) {
+
+    LLOG_ERR << "!!!! EnvMapSampler::createImportanceMap !!!!";
+
     assert(isPowerOf2(dimension));
     assert(isPowerOf2(samples));
     assert(pRenderContext->device() == mpDevice);
@@ -142,7 +145,7 @@ bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t 
     // Populate mip hierarchy. We rely on the default mip generation for this.
     mpImportanceMap->generateMips(pRenderContext);
 
-    //mpImportanceMap->captureToFile(0, 0, "/home/max/Desktop/imp_test.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
+    mpImportanceMap->captureToFile(0, 0, "/home/max/Desktop/imp_test.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
 
 
     return true;

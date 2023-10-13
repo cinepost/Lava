@@ -296,7 +296,32 @@ Shader::DefineList Scene::getSceneDefines() const {
 
     defines.add(mHitInfo.getDefines());
     defines.add(mpMaterialSystem->getDefines());
+
+    defines.add(getSceneLightSamplersDefines());
     defines.add(getSceneSDFGridDefines());
+
+    return defines;
+}
+
+Shader::DefineList Scene::getSceneLightSamplersDefines() const {
+    Shader::DefineList defines;
+
+    size_t envmapLightsCount = 0;
+    size_t phySkyLightsCount = 0;
+    for(const auto& light: mLights) {
+        switch(light->getType()) {
+            case LightType::Env:
+                envmapLightsCount++;
+                break;
+            case LightType::PhysSunSky:
+                phySkyLightsCount++;
+                break;
+            default:
+                break;
+        }
+    }
+    defines.add("SCENE_ENVMAP_SAMPLERS_COUNT", std::to_string(envmapLightsCount));
+    defines.add("SCENE_PHYSKY_SAMPLERS_COUNT", std::to_string(phySkyLightsCount));
 
     return defines;
 }
@@ -1496,6 +1521,44 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
         mpSceneBlock["lightCount"] = (uint32_t)mActiveLights.size();
         updateLightStats();
     }
+
+
+    // Test stuff
+
+    static const std::string kEnvMapSamplersArrayName = "envmapSamplers"; 
+    static const std::string kPhySkySamplersArrayName = "physkySamplers"; 
+
+    auto envmapSamplersVar = mpSceneBlock[kEnvMapSamplersArrayName];
+    auto physkySamplersVar = mpSceneBlock[kPhySkySamplersArrayName];
+
+    size_t envmapLightSamplerID = 0;
+    size_t physkyLightSamplerID = 0;
+
+    for (const auto& light : mLights) {
+        switch(light->getType()) {
+            case LightType::Env:
+                {
+                    LLOG_ERR << "!!!! LightType::Env setShaderData !!!!";
+                    EnvironmentLight* pLight = dynamic_cast<EnvironmentLight*>(light.get());
+                    if(pLight) pLight->getLightSampler()->setShaderData(envmapSamplersVar[envmapLightSamplerID++]);
+                }
+                break;
+            case LightType::PhysSunSky:
+                {
+                    PhysicalSunSkyLight* pLight = dynamic_cast<PhysicalSunSkyLight*>(light.get());
+                    if(pLight) pLight->getLightSampler()->setShaderData(physkySamplersVar[physkyLightSamplerID++]);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    //pEnvLightSamplersBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kEnvMapSamplersBufferName], (uint32_t)mMeshletPrimIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    //pEnvLightSamplersBuffer->setName("Scene::pEnvLightSamplersBuffer");
+
+    //mpSceneBlock->setBuffer(kEnvMapSamplersBufferName, mpGeometryInstancesBuffer);
+
+
 
     // Compute update flags.
     UpdateFlags flags = UpdateFlags::None;

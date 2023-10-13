@@ -1074,6 +1074,8 @@ public:
 
     Shader::DefineList getSceneSDFGridDefines() const;
 
+    Shader::DefineList getSceneLightSamplersDefines() const;
+
     /** Set the SDF grid config if this scene contains any SDF grid geometry.
     */
     void setSDFGridConfig();

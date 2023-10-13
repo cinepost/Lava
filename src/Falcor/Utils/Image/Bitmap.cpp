@@ -97,7 +97,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
             pBmp->mFormat = ResourceFormat::R8Unorm;
             break;
         default:
-            genError("Unknown bits-per-pixel", filename);
+            genError("Unknown bits-per-pixel (" + std::to_string(bpp) + ")", filename);
             return nullptr;
     }
 
@@ -222,15 +222,23 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
             pBmp->mFormat = ResourceFormat::RG8Unorm;
             break;
         case 8:
+        case 1:
             pBmp->mFormat = ResourceFormat::R8Unorm;
             break;
         default:
-            genError("Unknown bits-per-pixel", filename);
+            genError("Unknown bits-per-pixel (" + std::to_string(bpp) + ")", filename);
             return nullptr;
     }
 
     // Convert the image to RGBX image
-    if (bpp == 24) {
+    if (bpp == 1) {
+        LLOG_WRN << "Converting 1-bit texture to 8-bit";
+        bpp = 8;
+        auto pNew = FreeImage_ConvertTo8Bits(pDib);
+        FreeImage_Unload(pDib);
+        pDib = pNew;
+    }
+    else if (bpp == 24) {
         LLOG_WRN << "Converting 24-bit texture to 32-bit";
         bpp = 32;
         auto pNew = FreeImage_ConvertTo32Bits(pDib);

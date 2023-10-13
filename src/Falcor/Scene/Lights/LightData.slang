@@ -95,7 +95,6 @@ enum class LightDataFlags : uint32_t {
 */
 struct LightData {
     uint32_t    flags               = uint(LightDataFlags::None);
-    //uint32_t    type                = uint(LightType::Point); ///< TODO: move either to flags or flags_ex... Type of the light source (see above)
     float       openingAngle        = float(M_PI);          ///< For point (spot) light: Opening half-angle of a spot light cut-off, pi by default (full sphere).
     float       cosOpeningAngle     = -1.f;                 ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
     float       cosSubtendedAngle   = 0.9999893f;           ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth

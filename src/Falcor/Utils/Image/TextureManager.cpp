@@ -637,7 +637,7 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, const std::string& udimMask, bool loadAsSparse) {
 	bool async = false;
 	TextureHandle handle;
-	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, loadAsSparse)) {
+	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, (path.extension() == kLtxExtension) ? true : loadAsSparse)) {
 		return getTexture(handle);
 	}
 	return nullptr;

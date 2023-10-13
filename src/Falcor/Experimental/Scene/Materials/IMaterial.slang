@@ -65,17 +65,6 @@ interface IMaterial
     */
     MaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
 
-    /** Modify the tangent space at the given shading point.
-        This function is called by the material system when preparing the `ShadingData` struct.
-        It allows materials to implement normal mapping and other techniques that modify the local surface geometry.
-        Materials that do not need to modify the default tangent frame should leave the shading data unchanged.
-        \param[in] ms Material system. This provides the resources for pattern generation.
-        \param[in] tangent Tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w != 0.
-        \param[in] lod Method to use for computing texture level of detail, must implement the `ITextureSampler` interface.
-        \param[in,out] sd Shading data.
-    */
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd);
-
     /** Evaluate opacity at the given shading point.
         \param[in] ms Material system. This provides the resources for opacity evaluation.
         \param[in] v Interpolated attributes at the shading point.

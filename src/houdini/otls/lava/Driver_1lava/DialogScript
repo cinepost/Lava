@@ -985,6 +985,7 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+
                 parm {
                     name    "lv_quickplane_n"
                     label   "Shading Normal (N)"
@@ -1005,6 +1006,28 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+
+                parm {
+                    name    "lv_quickplane_nt"
+                    label   "Tangent-Space Normal (Nt)"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_nt"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_nt == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
                 parm {
                     name    "lv_quickplane_albedo"
                     label   "Albedo"
