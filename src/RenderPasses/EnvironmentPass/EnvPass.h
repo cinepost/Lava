@@ -74,9 +74,13 @@ class PASS_API EnvPass : public RenderPass {
 
     float4 mBackgroundColor = float4(0.0f);
     
+    uint32_t mFrameNumber = 0;
+    bool   mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
+
     float3 mIntensity = float3(1.0f, 1.0f, 1.0f);
     float  mOpacity = 0.0f;
     bool   mBackdropImageLoadSrgb = true;
+    bool   mUseDOF = true;
     
     float mScale = 1;
     Sampler::Filter mFilter = Sampler::Filter::Linear;

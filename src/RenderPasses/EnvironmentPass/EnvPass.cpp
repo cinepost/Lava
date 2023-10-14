@@ -73,6 +73,7 @@ namespace {
     const std::string kFilter = "filter";
     const std::string kIntensity = "intensity";
     const std::string kOpacity = "opacity";
+    const std::string kUseDOF = "useDOF";
 
     //
     const std::string kLightsBufferName = "gLights";
@@ -114,6 +115,7 @@ Dictionary EnvPass::getScriptingDictionary() {
     dict[kFilter] = mFilter;
     dict[kIntensity] = mIntensity;
     dict[kOpacity] = mOpacity;
+    dict[kUseDOF] = mUseDOF;
     return dict;
 }
 
@@ -129,6 +131,13 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
     Texture::SharedPtr pDst = renderData[kOutputColor]->asTexture();
 
+
+    bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+    if(mComputeDOF != computeDOF) {
+        mComputeDOF = computeDOF;
+        mDirty = true;
+    }
+
     if (!mpComputePass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
@@ -137,6 +146,7 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
         //auto defines = Program::DefineList();
         auto defines = mpScene->getSceneDefines();
 
+        defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
         defines.add("is_valid_" + kBackdropTexture, mpBackdropTexture != nullptr ? "1" : "0");
 
         mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
@@ -155,9 +165,10 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     const uint2 frameDim = uint2(pDst->getWidth(), pDst->getHeight());
 
     auto cb_var = mpComputePass["PerFrameCB"];
-    cb_var["gFrameDim"] = frameDim;
-    cb_var["gBackTextureDim"] = mpBackdropTexture ? uint2({mpBackdropTexture->getWidth(), mpBackdropTexture->getHeight()}) : uint2({1, 1});
+    cb_var["frameDim"] = frameDim;
+    cb_var["backTextureDim"] = mpBackdropTexture ? uint2({mpBackdropTexture->getWidth(), mpBackdropTexture->getHeight()}) : uint2({1, 1});
     cb_var["gScale"] = mScale;
+    cb_var["frameNumber"] = mFrameNumber++;
 
     mpCamera->setShaderData(cb_var["gCamera"]);
 

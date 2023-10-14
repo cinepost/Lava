@@ -123,7 +123,7 @@ struct EnvMapSampler {
 
         result.dir = normalize(envMap.toWorld(dir));
         result.pdf = pdf * M_1_4PI;
-        result.Le = envMap.eval(result.dir);
+        result.Le = envMap.eval(result.dir, 0.0);
 
         return true;
     }

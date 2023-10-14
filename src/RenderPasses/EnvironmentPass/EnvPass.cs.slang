@@ -30,19 +30,26 @@
 import Scene.Scene;
 import Utils.Math.MathHelpers;
 import Experimental.Scene.Lights.LightHelpers;
+import Utils.Sampling.SampleGenerator;
 
 __exported import Scene.Lights.LightData;
 __exported import Scene.Camera.Camera;
+__exported import Utils.Math.Ray;
+
+#ifndef COMPUTE_DEPTH_OF_FIELD
+#deinfe COMPUTE_DEPTH_OF_FIELD 0
+#endif
 
 #define is_valid(name) (is_valid_##name != 0)
 
 cbuffer PerFrameCB {
-    uint2 gFrameDim;
+    uint2 frameDim;
     float3 gIntensity;
     float gScale;
     float gOpacity;
     uint lightsCount;
-    uint2 gBackTextureDim;
+    uint frameNumber;
+    uint2 backTextureDim;
     Camera gCamera;
 };
 
@@ -60,23 +67,31 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const uint2 ipos = dispatchThreadId.xy;
 
     // early out
-    if (any(ipos >= gFrameDim)) return;
+    if (any(ipos >= frameDim)) return;
 
     float4 backColor = gCamera.getBackgroundColor();
 
 #if is_valid(gBackdropTexture)
 
-    float2 texelOffset = float2(.5f) / (float2)gBackTextureDim;
-    float2 uv = float2(ipos) / ((float2)gFrameDim + float2(1.0, 1.0));
+    float2 texelOffset = float2(.5f) / (float2)backTextureDim;
+    float2 uv = float2(ipos) / ((float2)frameDim + float2(1.0, 1.0));
     uv += texelOffset;
 
-    float2 gradX = float2(1.0f / (float)gFrameDim.x, 0.0f);
-    float2 gradY = float2(0.0f, 1.0f / (float)gFrameDim.y);
+    float2 gradX = float2(1.0f / (float)frameDim.x, 0.0f);
+    float2 gradY = float2(0.0f, 1.0f / (float)frameDim.y);
 
     backColor += gBackdropTexture.SampleGrad(gSampler, uv, gradX, gradY);
 #else
 
-    const float3 rayDir = normalize(gCamera.computeRayPinhole(ipos, gFrameDim).dir);
+    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
+    float3 rayDir;
+
+    if (kComputeDepthOfField) {
+        SampleGenerator sg = SampleGenerator(ipos, frameNumber);
+        rayDir = gScene.camera.computeRayThinlens(ipos, frameDim, sampleNext2D(sg)).dir;
+    } else {
+        rayDir = gScene.camera.computeRayPinhole(ipos, frameDim).dir;
+    }
 
     float  localMaxDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosition();

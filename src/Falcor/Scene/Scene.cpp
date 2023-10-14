@@ -1538,7 +1538,6 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
         switch(light->getType()) {
             case LightType::Env:
                 {
-                    LLOG_ERR << "!!!! LightType::Env setShaderData !!!!";
                     EnvironmentLight* pLight = dynamic_cast<EnvironmentLight*>(light.get());
                     if(pLight) pLight->getLightSampler()->setShaderData(envmapSamplersVar[envmapLightSamplerID++]);
                 }

@@ -589,7 +589,7 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     if(sampler.sample(rnd.xy, els)) {
         float lod = 0.f;
         ls.dir = ls.shadowDir = els.dir;
-        ls.Li = sampler.eval(ls.dir, lod); 
+        ls.Li = els.Le; //sampler.eval(ls.dir, lod); 
         ls.pdf = els.pdf;
     } else {
         ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 

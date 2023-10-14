@@ -169,17 +169,9 @@ TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPt
 }
 
 Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags) {
+	const std::string srcExt = path.extension().string();
 
-#if 1 == 2	
-	std::vector<uint8_t> testData(64*64*4);
-	std::fill(testData.begin(), testData.end(), 255);
-
-	return Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
-#endif
-
-	std::string ext = path.extension().string();
-
-	if (ext == ".dds") {
+	if (srcExt == ".dds") {
 		LLOG_ERR << "Sparse texture handling for DDS format unimplemented !!!";
 		return nullptr;
 	}
@@ -191,12 +183,13 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 		return nullptr;
 	}
 
-	fs::path ltxPath = (path.extension() == kLtxExtension) ? path : appendExtension(path, ".ltx");
+	fs::path ltxPath = (srcExt == kLtxExtension) ? path : appendExtension(path, ".ltx");
 
 	bool ltxMagicMatch = false;
 	bool ltxFileExists = fs::exists(ltxPath);
 
 	if(ltxFileExists && LTX_Bitmap::checkFileMagic(ltxPath, true)) ltxMagicMatch = true;
+	const bool isLtxSrcFile = (srcExt == kLtxExtension) && ltxMagicMatch; // We've been asked to load .ltx texture directly
 
 	LTX_Bitmap::TLCParms tlcParms;
 	tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "zlib");
@@ -223,11 +216,11 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	
 	auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
   if (!pLtxBitmap) {
-    LLOG_ERR << "Error loading converted LTX texture from " << ltxPath;
+    LLOG_ERR << "Error loading LTX texture from " << ltxPath;
     return nullptr;
   }
 
-  if(pLtxBitmap->header().srcLastWriteTime != fs::last_write_time(path.string())) {
+  if((pLtxBitmap->header().srcLastWriteTime != fs::last_write_time(path.string())) && !isLtxSrcFile) {
   	LLOG_WRN << "LTX source texture modification time changed. Forcing on-line reconversion !";
   	if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
 			LLOG_ERR << "Error re-converting texture source texture: " << path;
@@ -293,10 +286,6 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 }
 
 void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds) {
-#if 1 == 2
-	return;
-#endif
-
 	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
 
   assert(pTexture.get());
@@ -637,7 +626,7 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, const std::string& udimMask, bool loadAsSparse) {
 	bool async = false;
 	TextureHandle handle;
-	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, (path.extension() == kLtxExtension) ? true : loadAsSparse)) {
+	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, loadAsSparse)) {
 		return getTexture(handle);
 	}
 	return nullptr;
