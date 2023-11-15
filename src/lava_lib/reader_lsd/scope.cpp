@@ -293,8 +293,15 @@ Segment::SharedPtr Segment::create(ScopeBase::SharedPtr pParent) {
 Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
 	auto pMat = std::make_shared<Material>(pParent);
 
-	if(!pMat->declareProperty(Style::OBJECT, Type::STRING, "material_name", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pMat->declareProperty(Style::OBJECT, Type::STRING, "materialname", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pMat->declareProperty(Style::OBJECT, Type::STRING, "surface", std::string(), Property::Owner::SYS)) return nullptr;	
 	
+	auto pProp = pMat->getProperty(Style::OBJECT, "surface");
+	if(!pProp) return nullptr;
+	
+	auto pSubContainer = pProp->createSubContainer();
+	if(!pSubContainer) return nullptr;
+
 	return pMat;
 }
 

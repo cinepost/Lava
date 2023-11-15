@@ -31,15 +31,13 @@ import Utils.Math.MathHelpers;
 RasterizerOrderedTexture2D<float2> gMotionVector;
 RasterizerOrderedTexture2D<float4> gTextureGrads;
 
-cbuffer PerFrameCB
-{
+cbuffer PerFrameCB {
     uint2 gFrameDim;
 };
 
 #define is_valid(name) (is_valid_##name != 0)
 
-struct VBufferPSOut
-{
+struct VBufferPSOut {
     PackedHitInfo packedHitInfo : SV_TARGET0;
 };
 
@@ -47,8 +45,11 @@ struct VBufferPSOut
 #define INTERPOLATION_MODE linear
 #endif
 
-struct VBufferVSOut
-{
+#ifndef SCENE_HAS_PERPRIM_MATERIALS
+#define SCENE_HAS_PERPRIM_MATERIALS 0
+#endif
+
+struct VBufferVSOut {
     float2 texC : TEXCRD;
 
     // Per-triangle data
@@ -76,12 +77,13 @@ VBufferVSOut vsMain(VSIn vsIn) {
     vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
 
     vsOut.instanceID = instanceID;
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+
     vsOut.materialID = gScene.getMaterialID(instanceID);
 
 #if is_valid(gMotionVector)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vsIn.pos;
-    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
     
     if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vsIn.vertexID;
@@ -109,6 +111,17 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     float2 gradX = ddx_fine(vsOut.texC); ///< Gradient of texture coordinate in the screen-space X direction
     float2 gradY = ddy_fine(vsOut.texC); ///< Gradient of texture coordiante in teh screen-space Y direction
 
+    uint materialID = vsOut.materialID;
+
+    TriangleHit triangleHit;
+    triangleHit.instanceID = vsOut.instanceID;
+    triangleHit.primitiveIndex = triangleIndex;
+    triangleHit.barycentrics = barycentrics.yz;
+
+#if SCENE_HAS_PERPRIM_MATERIALS
+    materialID = gScene.getMaterialID(triangleHit);
+#endif 
+
 #if USE_ALPHA_TEST
     // Alpha test.
     // With the default alpha test, only texC of VertexData is needed.
@@ -128,10 +141,6 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     // This is what we store in the hit info.
 
     // Store hit information.
-    TriangleHit triangleHit;
-    triangleHit.instanceID = vsOut.instanceID;
-    triangleHit.primitiveIndex = triangleIndex;
-    triangleHit.barycentrics = barycentrics.yz;
     psOut.packedHitInfo = triangleHit.pack();
 
 #if is_valid(gTextureGrads)

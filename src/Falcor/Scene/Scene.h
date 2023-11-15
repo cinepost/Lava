@@ -1029,6 +1029,7 @@ public:
         std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
         std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
         std::vector<SkinningVertexData> meshSkinningData;       ///< Additional vertex attributes for skinned meshes.
+        std::vector<int32_t> perPrimitiveMaterialIDsData;
 
         // Curve data
         std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
@@ -1221,6 +1222,8 @@ public:
     Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
     std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the meshes in the scene.
 
+    std::vector<int32_t> mPerPrimMaterialIDs;
+
     //std::map<Material::SharedPtr, size_t> mMaterialDrawArgs;
     std::vector<std::vector<size_t>> mMaterialDrawArgs;
 
@@ -1317,6 +1320,7 @@ public:
     Buffer::SharedPtr mpCustomPrimitivesBuffer;
     Buffer::SharedPtr mpLightsBuffer;
     Buffer::SharedPtr mpGridVolumesBuffer;
+    Buffer::SharedPtr mpPerPrimMaterialIDsBuffer;
     ParameterBlock::SharedPtr mpSceneBlock;
 
     // Camera

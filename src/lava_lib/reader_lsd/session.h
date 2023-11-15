@@ -104,6 +104,7 @@ class Session {
  	
     void setEnvVariable(const std::string& key, const std::string& value);
 
+    Falcor::StandardMaterial::SharedPtr createStandardMaterialFromLSD(const std::string& material_name, const Property* pShaderProp);
     Falcor::MaterialX::UniquePtr createMaterialXFromLSD(lsd::scope::Material::SharedConstPtr pMaterialLSD);
 
  	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj);

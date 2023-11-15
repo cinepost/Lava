@@ -270,7 +270,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
     timeReport.measure("Post processing geometry");
 
-    optimizeMaterials();
+    //optimizeMaterials();
     removeDuplicateMaterials();
     quantizeTexCoords();
 
@@ -566,12 +566,56 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
         }
     }
 
+    // Per primitive materials
+    if(mesh.hasMultipleMaterials()) {
+        auto pMatreialStringList = mesh.materialAttributeStrings(false);
+        if(pMatreialStringList) {
+            //memcpy(processedMesh.perPrimitiveMaterialIDsData.data(), mesh.materialIDs.pData, sizeof(uint32_t) * mesh.faceCount);
+            preparePerPrimMaterialIndices(processedMesh, pMatreialStringList, mesh.materialIDs.pData, mesh.faceCount);   
+        } else {
+            processedMesh.perPrimitiveMaterialIDsData.clear();
+        }
+    }
+
     // Build meshlets. If needed...
     if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
         mpMeshletBuilder->generateMeshlets(processedMesh);
     }
 
     return processedMesh;
+}
+
+void SceneBuilder::preparePerPrimMaterialIndices(ProcessedMesh& processedMesh, const Mesh::StringList* pStrings, const int32_t* pSourceIDs, size_t count) const {
+    assert(pStrings);
+    assert(pSourceIDs);
+
+    processedMesh.perPrimitiveMaterialIDsData.resize(count);
+    std::vector<uint32_t> materialIDs(pStrings->size());
+
+    // Build material ids LUT corresponding to pStrings list of material names that came with original geometry
+    uint32_t defaultMaterialID = 0;
+
+    // There is a great chance that this mesh material is absent...
+    if(!processedMesh.pMaterial || !mSceneData.pMaterialSystem->getMaterialIDByName(processedMesh.pMaterial->getName(), defaultMaterialID)) {
+        LLOG_DBG << "Unable to get material name " << processedMesh.pMaterial->getName() << " for mesh " << processedMesh.name << ". This is ok...";
+    }
+
+    size_t i = 0;
+    for (auto it = pStrings->begin(); it != pStrings->end(); ++it) {
+        uint32_t materialID = 0;
+        if(mSceneData.pMaterialSystem->getMaterialIDByName(*it, materialID)) {
+            materialIDs[i++] = materialID;
+        } else {
+            LLOG_ERR << "Unable to get per-prim material " << *it << " for mesh " << processedMesh.name;
+            materialIDs[i++] = defaultMaterialID;
+        }
+    }
+
+    // Now fill processed mesh per-prim material indices
+    for(size_t i = 0; i < count; ++i) {
+        int32_t srcID = *(pSourceIDs++);
+        processedMesh.perPrimitiveMaterialIDsData[i] = (srcID >= 0) ? materialIDs[static_cast<size_t>(srcID)] : srcID;
+    }
 }
 
 void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) const {
@@ -605,10 +649,15 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
     spec.vertexCount = (uint32_t)mesh.staticData.size();
     spec.staticVertexCount = (uint32_t)mesh.staticData.size();
     spec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
-
+    spec.perPrimMaterialIndicesCount = (uint32_t)mesh.perPrimitiveMaterialIDsData.size();
+        
     spec.indexData = std::move(mesh.indexData);
     spec.staticData = std::move(mesh.staticData);
     spec.skinningData = std::move(mesh.skinningData);
+
+    if(mesh.hasMultipleMaterials()) {
+        spec.perPrimitiveMaterialIDsData = std::move(mesh.perPrimitiveMaterialIDsData);
+    }
 
     if (isIndexed) {
         spec.indexCount = (uint32_t)mesh.indexCount;
@@ -761,7 +810,6 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
     const uint32_t materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
-    //if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
     return materialID;
 }
 
@@ -2100,6 +2148,7 @@ void SceneBuilder::createGlobalBuffers() {
     assert(mSceneData.meshIndexData.empty());
     assert(mSceneData.meshStaticData.empty());
     assert(mSceneData.meshSkinningData.empty());
+    assert(mSceneData.perPrimitiveMaterialIDsData.empty());
 
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
@@ -2107,11 +2156,13 @@ void SceneBuilder::createGlobalBuffers() {
     size_t totalIndexDataCount = 0;
     size_t totalStaticVertexCount = 0;
     size_t totalSkinningVertexCount = 0;
+    size_t totalPerPrimitiveMaterialIDsCount = 0;
 
     for (const auto& mesh : mMeshes) {
         totalIndexDataCount += mesh.indexData.size();
         totalStaticVertexCount += mesh.staticData.size();
         totalSkinningVertexCount += mesh.skinningData.size();
+        totalPerPrimitiveMaterialIDsCount += mesh.perPrimitiveMaterialIDsData.size();
         mSceneData.prevVertexCount += mesh.prevVertexCount;
     }
 
@@ -2126,12 +2177,19 @@ void SceneBuilder::createGlobalBuffers() {
     mSceneData.meshIndexData.reserve(totalIndexDataCount);
     mSceneData.meshStaticData.reserve(totalStaticVertexCount);
     mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
+    mSceneData.perPrimitiveMaterialIDsData.reserve(totalPerPrimitiveMaterialIDsCount);
 
     // Copy all vertex and index data into the global buffers.
     for (auto& mesh : mMeshes) {
         mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
         mesh.skinningVertexOffset = (uint32_t)mSceneData.meshSkinningData.size();
         mesh.prevVertexOffset = mesh.skinningVertexOffset;
+
+        if(mesh.perPrimMaterialIndicesCount > 0) {
+            mesh.perPrimMaterialIndicesOffset = (uint32_t)mSceneData.perPrimitiveMaterialIDsData.size();
+            mSceneData.perPrimitiveMaterialIDsData.insert(mSceneData.perPrimitiveMaterialIDsData.end(), 
+                mesh.perPrimitiveMaterialIDsData.begin(), mesh.perPrimitiveMaterialIDsData.end());
+        }
 
         // Insert the static vertex data in the global array.
         // The vertices are automatically converted to their packed format in this step.
@@ -2160,16 +2218,14 @@ void SceneBuilder::createGlobalBuffers() {
 
     // Initialize offsets for prev vertex data for vertex-animated meshes
     uint32_t prevOffset = (uint32_t)mSceneData.meshSkinningData.size();
-    for (auto& cache : mSceneData.cachedMeshes)
-    {
+    for (auto& cache : mSceneData.cachedMeshes) {
         auto& mesh = mMeshes[cache.meshID];
         mesh.prevVertexOffset = prevOffset;
         prevOffset += mesh.prevVertexCount;
     }
-    for (auto& cache : mSceneData.cachedCurves)
-    {
-        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
-        {
+
+    for (auto& cache : mSceneData.cachedCurves) {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere) {
             auto& mesh = mMeshes[cache.geometryID];
             mesh.prevVertexOffset = prevOffset;
             prevOffset += mesh.prevVertexCount;
@@ -2248,14 +2304,8 @@ void SceneBuilder::removeDuplicateMaterials() {
                 } else {
                     instance.materialId = mesh.materialId;
                 }
-                //instance.overrideMaterial = true;
-                //instance.materialId = idMap[instance.materialId];
             }
         }
-
-        //for (auto& sdfGridInstance : mSceneData.sdfGridInstancesData) {
-        //    sdfGridInstance.materialID = idMap[sdfGridInstance.materialID];
-        //}
     }
 }
 
@@ -2371,6 +2421,7 @@ void SceneBuilder::createMeshData() {
         meshData[meshID].materialID = mesh.materialId;
         meshData[meshID].vbOffset = mesh.staticVertexOffset;
         meshData[meshID].ibOffset = mesh.indexOffset;
+        meshData[meshID].mbOffset = mesh.perPrimMaterialIndicesOffset;
         meshData[meshID].vertexCount = mesh.vertexCount;
         meshData[meshID].indexCount = mesh.indexCount;
         meshData[meshID].skinningVbOffset = mesh.hasSkinningData ? mesh.skinningVertexOffset : 0;
@@ -2386,6 +2437,7 @@ void SceneBuilder::createMeshData() {
         meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
         meshFlags |= mesh.isAnimated ? (uint32_t)MeshFlags::IsAnimated : 0;
         meshFlags |= mesh.hasMeshlets ? (uint32_t)MeshFlags::HasMeshlets : 0;
+        meshFlags |= mesh.hasMultipleMaterials() ? (uint32_t)MeshFlags::HasMultipleMaterials : 0;
         meshData[meshID].flags = meshFlags;
 
         if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
@@ -2506,59 +2558,62 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
             assert(instanceCount > 0);
             for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
                 uint32_t blasGeometryIndex = 0;
-                //for (const uint32_t meshID : meshList) {
-                    //const auto& mesh = mMeshes[meshID];
 
-                    // Figure out node ID to use for the current mesh instance.
-                    // If mesh group is non-instanced, just use the current mesh's node.
-                    // If instanced, then all meshes have identical lists of instances.
-                    // But there is a subtle issue: the lists may be permuted differently depending on the order
-                    // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
-                    // a consistent ordering across all meshes. This is a requirement for the TLAS build.
-                    assert(instanceCount == mesh.instances.size());
-                    const auto& instance = mesh.instances[instanceIdx];
+                // Figure out node ID to use for the current mesh instance.
+                // If mesh group is non-instanced, just use the current mesh's node.
+                // If instanced, then all meshes have identical lists of instances.
+                // But there is a subtle issue: the lists may be permuted differently depending on the order
+                // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
+                // a consistent ordering across all meshes. This is a requirement for the TLAS build.
+                assert(instanceCount == mesh.instances.size());
+                const auto& instance = mesh.instances[instanceIdx];
 
-                    uint32_t nodeID = instanceCount == 1
-                        ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
-                        : mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
+                uint32_t nodeID = instanceCount == 1
+                    ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
+                    : mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
-                    GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
-                    geomInstance.globalMatrixID = nodeID;
-                    geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
-                    geomInstance.geometryID = meshID;
-                    geomInstance.externalID = instance.exported.id;
-                    geomInstance.vbOffset = mesh.staticVertexOffset;
-                    geomInstance.ibOffset = mesh.indexOffset;
-                    
-                    // Geometry instance mesh flags
-                    geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
-                    geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
+                GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
+                geomInstance.globalMatrixID = nodeID;
+                geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
+                geomInstance.geometryID = meshID;
+                geomInstance.externalID = instance.exported.id;
+                geomInstance.vbOffset = mesh.staticVertexOffset;
+                geomInstance.ibOffset = mesh.indexOffset;
 
-                    // Geometry instance shading flags
-                    geomInstance.flags |= instance.shading.isMatte ? (uint32_t)GeometryInstanceFlags::MatteShading : 0;
-                    geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
-                    geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
-                    geomInstance.flags |= instance.shading.doubleSided ? (uint32_t)GeometryInstanceFlags::DoubleSided : 0;
-                    
-                    // Geometry instance visibility flags
-                    geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
-                    geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
-                    geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
-                    geomInstance.flags |= instance.visibility.receiveShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
-                    geomInstance.flags |= instance.visibility.receiveSelfShadows ? (uint32_t)GeometryInstanceFlags::ReceiveSelfShadows : 0;
+                // As of now we only acknowledge mesh per-primitive material assignment. Per instance per-primitive material assignment planned... 
+                if(instance.hasMultipleMaterials() || mesh.hasMultipleMaterials()) {
+                    geomInstance.mbOffset = mesh.perPrimMaterialIndicesOffset;
+                    geomInstance.flags |= (uint32_t)GeometryInstanceFlags::HasMultipleMaterials;
+                }
 
-                    geomInstance.instanceIndex = tlasInstanceIndex;
-                    geomInstance.geometryIndex = blasGeometryIndex;
-                    instanceData.push_back(geomInstance);
-                    instanceNamesData.push_back(instance.exported.name);
+                // Geometry instance mesh flags
+                geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
+                geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
 
-                    blasGeometryIndex++;
-                //}
+                // Geometry instance shading flags
+                geomInstance.flags |= instance.shading.isMatte ? (uint32_t)GeometryInstanceFlags::MatteShading : 0;
+                geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
+                geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
+                geomInstance.flags |= instance.shading.doubleSided ? (uint32_t)GeometryInstanceFlags::DoubleSided : 0;
+                
+                // Geometry instance visibility flags
+                geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
+                geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
+                geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
+                geomInstance.flags |= instance.visibility.receiveShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
+                geomInstance.flags |= instance.visibility.receiveSelfShadows ? (uint32_t)GeometryInstanceFlags::ReceiveSelfShadows : 0;
+
+                geomInstance.instanceIndex = tlasInstanceIndex;
+                geomInstance.geometryIndex = blasGeometryIndex;
+                instanceData.push_back(geomInstance);
+                instanceNamesData.push_back(instance.exported.name);
+
+                blasGeometryIndex++;
+
                 tlasInstanceIndex++;
             }
             drawCount += instanceCount;
         }
-       // drawCount += instanceCount * meshList.size();
     }
 
     LLOG_DBG << "SceneBuilder::createMeshInstanceData drawCount " << std::to_string(drawCount);

@@ -8,6 +8,8 @@ import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
+import Experimental.Scene.Lights.EmissiveLightSampler;
+import Experimental.Scene.Lights.EmissiveLightSamplerHelpers;
 
 import Experimental.Scene.Materials.Fresnel;
 import Experimental.Scene.Materials.Microfacet;
@@ -30,6 +32,9 @@ import DeferredLightingAOV;
 #define LUMA_CCIR601(f3color) dot(f3color, float3(0.299f, 0.587f, 0.114f))
 
 #define GREY(f3color) (LUMA_REC709(f3color) + 0.5f)
+
+static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
+static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
 // Extra input channels
 Texture2D<float> gDepth;
@@ -73,6 +78,7 @@ cbuffer PerFrameCB {
   uint              gSamplesPerFrame;
 
   EnvMapSampler     gEnvMapSampler;
+  EmissiveLightSampler emissiveSampler;           ///< Emissive light sampler. Only valid when kUseEmissiveLights == true.
 };
 
 SamplerState gNoiseSampler;

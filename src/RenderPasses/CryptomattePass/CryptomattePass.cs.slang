@@ -58,7 +58,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (validHit && hit.getType() == HitType::Triangle) {
         TriangleHit triangleHit = hit.getTriangleHit();
         #if (_MODE == 0)
-        classID = gScene.getMaterialID(triangleHit.instanceID);
+        classID = gScene.getMaterialID(triangleHit);
         #endif
 
         #if (_MODE == 1)

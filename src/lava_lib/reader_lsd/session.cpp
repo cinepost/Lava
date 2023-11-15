@@ -43,6 +43,21 @@ namespace lsd {
 using DisplayType = Display::DisplayType;
 
 
+static std::string random_string( size_t length ) {
+  auto randchar = []() -> char
+  {
+      const char charset[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+      const size_t max_index = (sizeof(charset) - 1);
+      return charset[ rand() % max_index ];
+  };
+  std::string str(length,0);
+  std::generate_n( str.begin(), length, randchar );
+  return str;
+}
+
 Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
 	assert(pRenderer);
 
@@ -703,21 +718,23 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			bool generateMipLevels = true;
 			Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
 			std::string udimMask = "<UDIM>";	
-    		pEnvMapTexture = pDevice->textureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
-    	}
+    	pEnvMapTexture = pDevice->textureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
+    }
     	
-    	// New EnvironmentLight test
-    	if(is_physical_sky) {
-    		auto pEnvLight = PhysicalSunSkyLight::create(light_name);
+  	// New EnvironmentLight test
+  	if(is_physical_sky) {
+  		auto pEnvLight = PhysicalSunSkyLight::create(light_name);
 
-    		pEnvLight->setDevice(pDevice);
-    		LLOG_WRN << "Physical Sky Ligth build " << (pEnvLight->buildTest() ? "done!" : "failed!" );
-    		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
-    	} else {
-    		auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
-    		if(pEnvMapTexture) pEnvLight->setTexture(pEnvMapTexture);
-    		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
-    	}
+  		pEnvLight->setDevice(pDevice);
+  		LLOG_WRN << "Physical Sky Ligth build " << (pEnvLight->buildTest() ? "done!" : "failed!" );
+  		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+  	} else {
+  		auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
+  		pEnvLight->setTransformMatrix(transform);
+			
+  		if(pEnvMapTexture) pEnvLight->setTexture(pEnvMapTexture);
+  		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+  	}
 
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
@@ -1039,10 +1056,19 @@ bool Session::cmdEnd() {
 			{
 				scope::Material::SharedPtr pMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
 				if(pMaterialScope) {
-					auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
-					if (pMaterialX) {
+					//auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
+					//if (pMaterialX) {
 						//mpRenderer->addMaterialX(std::move(pMaterialX));
-					}
+					//}
+
+					// Standard (fixed) material
+					std::string material_name = pMaterialScope->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(random_string(8) + "_material"));
+					const Property* pShaderProp = pMaterialScope->getProperty(ast::Style::OBJECT, "surface");
+
+					auto pMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
+
+					if(pMaterial) mpRenderer->addStandardMaterial(pMaterial);
+					
 				} else {
 					result = false;
 				}
@@ -1140,6 +1166,164 @@ Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::Sh
 	return std::move(pMx);
 }
 
+Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const std::string& material_name, const Property* pShaderProp) {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+	if (!pSceneBuilder) {
+		LLOG_ERR << "Unable to create standard material \"" << material_name << "\". SceneBuilder not ready !!!";
+		return nullptr;
+	}
+
+	Falcor::float3 	surface_base_color = {0.2, 0.2, 0.2};
+  std::string 	surface_base_color_texture_path  = "";
+  std::string 	surface_base_normal_texture_path = "";
+  std::string   surface_base_bump_texture_path   = "";
+  std::string 	surface_metallic_texture_path    = "";
+  std::string 	surface_roughness_texture_path   = "";
+  std::string		surface_emission_texture_path    = "";
+
+  bool 			surface_use_basecolor_texture  = false;
+  bool 			surface_use_roughness_texture  = false;
+  bool 			surface_use_metallic_texture   = false;
+  bool 			surface_use_basenormal_texture = false;
+  bool 			surface_use_emission_texture   = false;
+
+  bool      front_face = false;
+
+  float 		surface_ior = 1.5;
+  float 		surface_metallic = 0.0;
+  float 		surface_roughness = 0.3;
+  float 		surface_reflectivity = 1.0;
+
+  Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
+  float           emissive_factor = 1.0f;
+
+  Falcor::float3  trans_color = {1.0, 1.0, 1.0};
+  float           transmission = 0.0f;
+
+  bool            basenormal_flip_x = false;
+  bool            basenormal_flip_y = false;
+
+  float           basenormal_scale = 1.0f;
+  float           basebump_scale = 0.05f;
+
+  std::string     basenormal_mode = "normal";
+
+  float           ao_distance = 1.0f;
+
+  if(pShaderProp) {
+  	auto pShaderProps = pShaderProp->subContainer();
+  	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
+  	surface_base_color_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
+  	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
+  	surface_base_bump_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpTexture", std::string());
+  	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
+  	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
+  	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
+
+  	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
+  	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
+  	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
+  	surface_use_emission_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_useTexture", false);
+  	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
+
+  	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
+  	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0f);
+  	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3f);
+  	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0f);
+
+  	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+  	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 0.0f);
+
+  	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+  	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
+
+  	basenormal_flip_x = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipX", false);
+  	basenormal_flip_y = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipY", false);
+
+  	basenormal_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_scale", 1.0f);
+  	basebump_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpScale", 0.05f);
+
+  	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
+
+  	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
+
+  	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
+  } else {
+  	LLOG_ERR << "No surface property set for materialname " << material_name;
+  }
+
+    
+	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
+	
+	if (!pMaterial) {
+		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
+		pMaterial = Falcor::StandardMaterial::create(mpDevice, material_name);
+	}
+
+	if (pMaterial) {
+    pMaterial->setBaseColor(surface_base_color);
+    pMaterial->setIndexOfRefraction(surface_ior);
+    pMaterial->setMetallic(surface_metallic);
+    pMaterial->setRoughness(surface_roughness);
+    pMaterial->setReflectivity(surface_reflectivity);
+    pMaterial->setEmissiveColor(emissive_color);
+    pMaterial->setEmissiveFactor(emissive_factor);
+    pMaterial->setAODistance(ao_distance);
+    pMaterial->setDoubleSided(!front_face);
+
+    pMaterial->setNormalMapFlipX(!basenormal_flip_x);
+    pMaterial->setNormalMapFlipY(basenormal_flip_y);
+
+    pMaterial->setTransmissionColor(trans_color);
+    pMaterial->setSpecularTransmission(transmission);
+
+    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+
+    float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
+    pMaterial->setNormalBumpMapFactor(_normal_bump_scale);
+
+  	//bool loadAsSrgb = true;
+    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
+
+    LLOG_TRC << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
+
+    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+
+    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+
+    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+
+    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+
+    if((surface_base_normal_texture_path != ""  || surface_base_bump_texture_path != "") && surface_use_basenormal_texture) { 
+    	
+    	std::string _base_normal_bump_texture_path = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? surface_base_bump_texture_path : surface_base_normal_texture_path;
+
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, _base_normal_bump_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+  }
+
+  return pMaterial;
+}
+
 bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name) {
 	assert(mpCurrentScope);
 
@@ -1151,22 +1335,6 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 	pNode->addDataSocketTemplate(name, dataType, direction);
 	return true;
-}
-
-static std::string random_string( size_t length )
-{
-    auto randchar = []() -> char
-    {
-        const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = (sizeof(charset) - 1);
-        return charset[ rand() % max_index ];
-    };
-    std::string str(length,0);
-    std::generate_n( str.begin(), length, randchar );
-    return str;
 }
 
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
@@ -1232,190 +1400,14 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
 	uint32_t node_id = pSceneBuilder->addNode(node);
 
-	// TODO: this is naive test. fetch basic material data
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
-    
-    Falcor::float3 	surface_base_color = {0.2, 0.2, 0.2};
-    std::string 	surface_base_color_texture_path  = "";
-    std::string 	surface_base_normal_texture_path = "";
-    std::string   surface_base_bump_texture_path   = "";
-    std::string 	surface_metallic_texture_path    = "";
-    std::string 	surface_roughness_texture_path   = "";
-    std::string		surface_emission_texture_path    = "";
-
-    bool 			surface_use_basecolor_texture  = false;
-    bool 			surface_use_roughness_texture  = false;
-    bool 			surface_use_metallic_texture   = false;
-    bool 			surface_use_basenormal_texture = false;
-    bool 			surface_use_emission_texture   = false;
-
-    bool      front_face = false;
-
-    float 		surface_ior = 1.5;
-    float 		surface_metallic = 0.0;
-    float 		surface_roughness = 0.3;
-    float 		surface_reflectivity = 1.0;
-
-    Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
-    float           emissive_factor = 1.0f;
-
-    Falcor::float3  trans_color = {1.0, 1.0, 1.0};
-    float           transmission = 0.0f;
-
-    bool            basenormal_flip_x = false;
-    bool            basenormal_flip_y = false;
-
-    float           basenormal_scale = 1.0f;
-    float           basebump_scale = 0.05f;
-
-    std::string     basenormal_mode = "normal";
-
-    float           ao_distance = 1.0f;
-
-    if(pShaderProp) {
-    	auto pShaderProps = pShaderProp->subContainer();
-    	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
-    	surface_base_color_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
-    	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
-    	surface_base_bump_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpTexture", std::string());
-    	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
-    	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
-    	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
-
-    	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
-    	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
-    	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
-    	surface_use_emission_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_useTexture", false);
-    	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
-
-    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
-    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0f);
-    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3f);
-    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0f);
-
-    	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 0.0f);
-
-    	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-    	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
-
-    	basenormal_flip_x = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipX", false);
-    	basenormal_flip_y = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_flipY", false);
-
-    	basenormal_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_scale", 1.0f);
-    	basebump_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBump_bumpScale", 0.05f);
-
-    	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
-
-    	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
-
-    	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
-    } else {
-    	LLOG_ERR << "No surface property set for object " << obj_name;
-    }
-
-    std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
+  std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
 	if (!pMaterial) {
 		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
-		pMaterial = Falcor::StandardMaterial::create(mpDevice, material_name);
-	}
-
-	if (pMaterial) {
-	    pMaterial->setBaseColor(surface_base_color);
-	    pMaterial->setIndexOfRefraction(surface_ior);
-	    pMaterial->setMetallic(surface_metallic);
-	    pMaterial->setRoughness(surface_roughness);
-	    pMaterial->setReflectivity(surface_reflectivity);
-	    pMaterial->setEmissiveColor(emissive_color);
-	    pMaterial->setEmissiveFactor(emissive_factor);
-	    pMaterial->setAODistance(ao_distance);
-	    pMaterial->setDoubleSided(!front_face);
-
-	    pMaterial->setNormalMapFlipX(!basenormal_flip_x);
-	    pMaterial->setNormalMapFlipY(basenormal_flip_y);
-
-	    pMaterial->setTransmissionColor(trans_color);
-	    pMaterial->setSpecularTransmission(transmission);
-
-	    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
-
-	    float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
-	    pMaterial->setNormalBumpMapFactor(_normal_bump_scale);
-
-	  	//bool loadAsSrgb = true;
-	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
-
-	    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
-
-	    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse)) {
-	    		return false;
-	    	}
-	    }
-
-	    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse)) {
-	    		return false;
-	    	}
-	    }
-
-	    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
-	    		return false;
-	    	}
-	    }
-
-	    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse)) {
-	    		return false;
-	    	}
-	    }
-
-	    if((surface_base_normal_texture_path != ""  || surface_base_bump_texture_path != "") && surface_use_basenormal_texture) { 
-	    	
-	    	std::string _base_normal_bump_texture_path = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? surface_base_bump_texture_path : surface_base_normal_texture_path;
-
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, _base_normal_bump_texture_path, loadTexturesAsSparse)) {
-	    		return false;
-	    	}
-	    }
-	
-/*	    
-	    {
-	    	std::string gibberishName = random_string( 32 );
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, gibberishName, loadTexturesAsSparse)) {
-	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
-	    		return false;
-	    	}
-	    }
-
-	    {
-	    	std::string gibberishName = random_string( 32 );
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, gibberishName, loadTexturesAsSparse)) {
-	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
-	    		return false;
-	    	}
-	    }
-
-	    {
-	    	std::string gibberishName = random_string( 32 );
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, gibberishName, loadTexturesAsSparse)) {
-	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
-	    		return false;
-	    	}
-	    }
-
-	    {
-	    	std::string gibberishName = random_string( 32 );
-	    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, gibberishName, loadTexturesAsSparse)) {
-	    		LLOG_WRN << "Loading gibberish texture " << gibberishName;
-	    		return false;
-	    	}
-	    }
-*/
+		pMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
 	}
 
 	// Instance exported data
@@ -1423,44 +1415,52 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	exportedSpec.id = exportedInstanceID;
 	exportedSpec.name = obj_name;
 
-    // Instance shading spec
-    SceneBuilder::InstanceShadingSpec shadingSpec;
-    shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
-    shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
-    shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
-    shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
+  // Instance shading spec
+  SceneBuilder::InstanceShadingSpec shadingSpec;
+  shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
+  shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
+  shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
+  shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
 
-    // Instance visibility spec
-    SceneBuilder::InstanceVisibilitySpec visibilitySpec;
-    visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
-    visibilitySpec.visibleToShadowRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_shadows", true);
-    visibilitySpec.visibleToDiffuseRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_diffuse", true);
-    visibilitySpec.visibleToReflectionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_reflect", true);
-    visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
-    visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
-    visibilitySpec.receiveSelfShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_self_shadows", true);
-    
-    SceneBuilder::MeshInstanceCreationSpec creationSpec;
-    creationSpec.pExportedDataSpec = &exportedSpec;
-    creationSpec.pVisibilitySpec = &visibilitySpec;
-    creationSpec.pShadingSpec = &shadingSpec;
-    creationSpec.pMaterialOverride = pMaterial;
+  // Instance visibility spec
+  SceneBuilder::InstanceVisibilitySpec visibilitySpec;
+  visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
+  visibilitySpec.visibleToShadowRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_shadows", true);
+  visibilitySpec.visibleToDiffuseRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_diffuse", true);
+  visibilitySpec.visibleToReflectionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_reflect", true);
+  visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
+  visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
+  visibilitySpec.receiveSelfShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_self_shadows", true);
+  
+  SceneBuilder::MeshInstanceCreationSpec creationSpec;
+  creationSpec.pExportedDataSpec = &exportedSpec;
+  creationSpec.pVisibilitySpec = &visibilitySpec;
+  creationSpec.pShadingSpec = &shadingSpec;
+  creationSpec.pMaterialOverride = pMaterial;
 
-    // Add a mesh instance to a node
-    return pSceneBuilder->addMeshInstance(node_id, mesh_id, &creationSpec);
+  // Add a mesh instance to a node
+  return pSceneBuilder->addMeshInstance(node_id, mesh_id, &creationSpec);
 }
 
 
 bool Session::cmdGeometry(const std::string& name) {
- 	if( mpCurrentScope->type() != ast::Style::OBJECT) {
- 		LLOG_ERR << "cmd_geometry outside object scope !!!";
- 		return false;
- 	}
-
- 	auto pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
- 	pObj->setGeometryName(name);
-
- 	return true;
+	switch(mpCurrentScope->type()) {
+		case ast::Style::OBJECT:
+			{
+				auto pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
+ 				pObj->setGeometryName(name);
+			}
+			return true;
+		case ast::Style::LIGHT:
+			{
+				auto pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
+ 				//pLight->setGeometryName(name);
+			}
+			return true;
+		default:
+			LLOG_ERR << "cmd_geometry call within unsupported scope " << to_string(mpCurrentScope->type()) << " !!!";
+			return false;
+	}
 }
 
 void Session::cmdTime(double time) {

@@ -41,6 +41,7 @@
 #include "reader_bgeo/bgeo/Poly.h"
 #include "reader_bgeo/bgeo/PrimType.h"
 #include "reader_bgeo/bgeo/parser/types.h"
+#include "reader_bgeo/bgeo/parser/Attribute.h"
 #include "reader_bgeo/bgeo/parser/Detail.h"
 #include "reader_bgeo/bgeo/parser/ReadError.h"
 
@@ -83,7 +84,7 @@ Falcor::Scene::SharedPtr SceneBuilder::getScene() {
 static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions, std::vector<uint32_t>& indices, uint32_t startIdx, uint32_t edgesCount) {
     assert(edgesCount > 2u);
 
-    uint32_t face_count = 0;
+    uint32_t mesh_face_count = 0;
 
     std::vector<uint32_t> _indices(edgesCount + 1);
     std::iota(std::begin(_indices), std::end(_indices), startIdx); // Fill with startIdx, startIdx+1, ...
@@ -108,7 +109,7 @@ static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions,
             indices.push_back(i1);
             indices.push_back(i0);
             inner_indices.push_back(i0);
-            face_count++;
+            mesh_face_count++;
         }
         if(!evenEdgeCount)inner_indices.push_back(_indices[indices_count - 2]);
         inner_indices.push_back(_indices[0]);
@@ -116,14 +117,31 @@ static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions,
 
     }
 
-    return face_count;
+    return mesh_face_count;
 }
 
 uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
     assert(pBgeo);
 
+    const auto pDetail = pBgeo->getDetail();
     const int64_t bgeo_point_count = pBgeo->getPointCount();
     const int64_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
+
+    auto pPrimitiveMatrialAttribute =  pBgeo->getPrimitiveAttributeByName("shop_materialpath");
+    const bool hasPerPrimitiveMaterial = pPrimitiveMatrialAttribute != nullptr;
+
+    std::vector<std::string> bgeoPerPrimitiveMaterialNames;
+    std::vector<int32_t> bgeoPerPrimitiveMaterialIDs;       // id's in bgeoPerPrimitiveMaterialNames list. where -1 means global mesh material 
+    std::vector<int32_t> meshPerPrimitiveMaterialIDs;
+
+    if (hasPerPrimitiveMaterial) {
+        LLOG_TRC << "Mesh " << name << " has per-primitive materials assigned !";
+        pPrimitiveMatrialAttribute->getStrings(bgeoPerPrimitiveMaterialNames);
+        pPrimitiveMatrialAttribute->getData(bgeoPerPrimitiveMaterialIDs);
+
+        LLOG_WRN << "Per primitive material indices count:" << bgeoPerPrimitiveMaterialIDs.size();
+        LLOG_WRN << "Primitive count:" << pBgeo->getPrimitiveCount();
+    }
 
     LLOG_TRC << "bgeo point count: " << bgeo_point_count;
     LLOG_TRC << "bgeo total vertex count: " << bgeo_vertex_count;
@@ -162,8 +180,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     std::vector<float2> uv_coords;
     
     // build separated verices data
-    if(unique_points) {
-        auto pDetail = pBgeo->getDetail();
+    if(pDetail && unique_points) {
         auto const& vt_map = pDetail->getVertexMap();
 
         assert(vt_map.vertexCount == bgeo_vertex_count && "Bgeo detail vertices count not equal to the number of bgeo vertices count !!!");
@@ -234,7 +251,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     // process primitives and build indices
 
-    uint32_t face_count = 0;
+    uint32_t mesh_face_count = 0;
+    uint32_t polygon_id = 0;
     std::vector<uint32_t> indices;
     std::vector<int32_t> prim_start_indices;
 
@@ -263,6 +281,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                         csi = prim_start_indices[i];
                         nsi = prim_start_indices[i+1];
                         uint edgesCount = nsi-csi;
+                        uint32_t face_count = 0;
                         switch(edgesCount) { // number of face sides literally
                             case 0:
                             case 1:
@@ -273,12 +292,19 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 indices.push_back(csi+2);
                                 indices.push_back(csi+1);
                                 indices.push_back(csi);
-                                face_count += 1;
+                                face_count = 1;
                                 break;
                             default:
-                                face_count += tesselatePolySimple(positions, indices, csi, edgesCount);
+                                face_count = tesselatePolySimple(positions, indices, csi, edgesCount);
                                 break;
                         }
+                        if(hasPerPrimitiveMaterial && (face_count > 0)) {
+                            for(uint32_t ti = 0; ti < face_count; ++ti) {
+                                meshPerPrimitiveMaterialIDs.push_back(bgeoPerPrimitiveMaterialIDs[polygon_id]);
+                            }
+                            polygon_id++;
+                        }
+                        mesh_face_count += face_count;
                     }
                     LLOG_TRC << "prim vertex count: " << pPoly->getVertexCount();
                     LLOG_TRC << "prim faces count: " << pPoly->getFaceCount();
@@ -296,7 +322,23 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     LLOG_TRC << "Bgeo primitives iteration done.";
 
     Mesh mesh;
-    mesh.faceCount = face_count;
+    mesh.faceCount = mesh_face_count;
+
+    if(hasPerPrimitiveMaterial) {
+        mesh.materialIDs.frequency = Mesh::AttributeFrequency::Uniform;
+        mesh.materialIDs.pData = (int32_t*)meshPerPrimitiveMaterialIDs.data();
+
+        static const bool createMissing = true;
+        auto pMaterialStrings = mesh.materialAttributeStrings(createMissing);
+        if (pMaterialStrings) {
+            pMaterialStrings->clear();
+            for( const auto& material_name: bgeoPerPrimitiveMaterialNames) {
+                pMaterialStrings->push_back(material_name);
+            }
+        } else {
+            LLOG_ERR << "Error creating material attribute strings for mesh " << name;
+        }
+    }
 
     if(unique_points) {
         mesh.positions.frequency = Mesh::AttributeFrequency::Vertex;
@@ -333,7 +375,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     mesh.name = name;
     mesh.pMaterial = mpDefaultMaterial;
 
-    mUniqueTrianglesCount += face_count;
+    mUniqueTrianglesCount += mesh_face_count;
 
     return Falcor::SceneBuilder::addMesh(mesh);
 }

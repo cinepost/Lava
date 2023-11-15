@@ -30,6 +30,8 @@
 
 #include <map>
 #include <bitset>
+#include <string>
+#include <unordered_map>
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
@@ -114,8 +116,8 @@ class dlldecl SceneBuilder {
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
         GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
 
-        UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
-        RebuildCache                = 0x20000000, ///< Rebuild scene cache.
+        UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
+        RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
 
         Default = None
     };
@@ -124,6 +126,11 @@ class dlldecl SceneBuilder {
     */
     struct Mesh {
         //Mesh(const Mesh&) = delete;//{ std::cout << "A copy was made.\n"; }
+
+        using AttribName = std::string;
+        using StringList = std::vector<std::string>;
+        using AttributesStrings = std::unordered_map<AttribName, StringList>;
+
         enum class AttributeFrequency {
             None,
             Constant,       ///< Constant value for mesh. The element count must be 1.
@@ -153,6 +160,10 @@ class dlldecl SceneBuilder {
         Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
         Attribute<uint4> boneIDs;                   ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
         Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
+        Attribute<int32_t> materialIDs;
+
+        AttributesStrings attributesStrings;
+
 
         bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
         bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
@@ -174,6 +185,27 @@ class dlldecl SceneBuilder {
                     should_not_get_here();
             }
             return Scene::kInvalidIndex;
+        }
+
+        const AttributesStrings& getAttributesStrings() const { return attributesStrings; }
+
+        StringList* attributeStringList(const std::string& name, bool createMissing = false) {
+            auto it = attributesStrings.find(name);
+            if(it != attributesStrings.end()) return &it->second;
+            
+            if(createMissing) {
+                attributesStrings.insert(std::make_pair(name, StringList()));
+                return &attributesStrings[name];
+            }
+            return nullptr;
+        }
+
+        StringList* materialAttributeStrings(bool createMissing) {
+            return attributeStringList("material", createMissing);
+        }
+
+        bool hasMultipleMaterials() const {
+            return materialIDs.pData != nullptr;
         }
 
         template<typename T>
@@ -301,8 +333,11 @@ class dlldecl SceneBuilder {
         std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
+        std::vector<int32_t> perPrimitiveMaterialIDsData;
 
         std::vector<MeshletSpec> meshletSpecs;
+
+        bool hasMultipleMaterials() const { return !perPrimitiveMaterialIDsData.empty(); }
     };
 
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
@@ -635,36 +670,48 @@ protected:
         InstanceExportedDataSpec    exported;
         InstanceShadingSpec         shading;
         InstanceVisibilitySpec      visibility;
+
+        uint32_t perPrimMaterialIndicesOffset = 0;  ///< Offest into per-primitive material indices array. 
+        uint32_t perPrimMaterialIndicesCount  = 0;  ///< Number of per-primitive materials. 
+
+        std::vector<int32_t> perPrimitiveMaterialIDsData;
+
+        bool hasMultipleMaterials() const {
+            return perPrimMaterialIndicesCount > 0;
+        }
     };
 
     struct MeshSpec {
         std::string name;
         Vao::Topology topology = Vao::Topology::Undefined;
-        uint32_t materialId = 0;                ///< Global material ID.
-        uint32_t staticVertexOffset = 0;        ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
-        uint32_t staticVertexCount = 0;         ///< Number of static vertices.
-        uint32_t skinningVertexOffset = 0;      ///< Offset into the shared 'skinningData' array. This is calculated in createGlobalBuffers().
-        uint32_t skinningVertexCount = 0;       ///< Number of skinned vertices.
-        uint32_t prevVertexOffset = 0;          ///< Offset into the shared `prevVertices` array. This is calculated in createGlobalBuffers().
-        uint32_t prevVertexCount = 0;           ///< Number of previous vertices stored. This can be the static or skinned vertex count depending on animation type.
-        uint32_t indexOffset = 0;               ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
-        uint32_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
-        uint32_t vertexCount = 0;               ///< Number of vertices.
-        uint32_t skeletonNodeID = kInvalidNode; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
-        bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
-        bool hasSkinningData = false;           ///< True if mesh has dynamic vertices.
-        bool isStatic = false;                  ///< True if mesh is non-instanced and static (not dynamic or animated).
-        bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
-        bool isDisplaced = false;               ///< True if mesh has displacement map.
-        bool isAnimated = false;                ///< True if mesh has vertex animations.
-        bool hasMeshlets = false;               ///< True if mesh has generated meshlets.
-        AABB boundingBox;                       ///< Mesh bounding-box in object space.
+        uint32_t materialId = 0;                    ///< Global material ID.
+        uint32_t staticVertexOffset = 0;            ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
+        uint32_t staticVertexCount = 0;             ///< Number of static vertices.
+        uint32_t perPrimMaterialIndicesOffset = 0;  ///< Offest into per-primitive material indices array. 
+        uint32_t perPrimMaterialIndicesCount  = 0;  ///< Number of per-primitive materials. 
+        uint32_t skinningVertexOffset = 0;          ///< Offset into the shared 'skinningData' array. This is calculated in createGlobalBuffers().
+        uint32_t skinningVertexCount = 0;           ///< Number of skinned vertices.
+        uint32_t prevVertexOffset = 0;              ///< Offset into the shared `prevVertices` array. This is calculated in createGlobalBuffers().
+        uint32_t prevVertexCount = 0;               ///< Number of previous vertices stored. This can be the static or skinned vertex count depending on animation type.
+        uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
+        uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
+        uint32_t vertexCount = 0;                   ///< Number of vertices.
+        uint32_t skeletonNodeID = kInvalidNode;     ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+        bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
+        bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
+        bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).
+        bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
+        bool isDisplaced = false;                   ///< True if mesh has displacement map.
+        bool isAnimated = false;                    ///< True if mesh has vertex animations.
+        bool hasMeshlets = false;                   ///< True if mesh has generated meshlets.
+        AABB boundingBox;                           ///< Mesh bounding-box in object space.
         std::vector<MeshInstanceSpec> instances;    ///< All instances of this mesh.
 
         // Pre-processed vertex data.
         std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
+        std::vector<int32_t> perPrimitiveMaterialIDsData;
 
         uint32_t getTriangleCount() const {
             assert(topology == Vao::Topology::TriangleList);
@@ -682,6 +729,10 @@ protected:
 
         bool isDynamic() const {
             return isSkinned() || isAnimated;
+        }
+
+        bool hasMultipleMaterials() const {
+            return perPrimMaterialIndicesCount > 0;
         }
     };
 
@@ -770,6 +821,7 @@ protected:
     MeshGroupList splitMeshGroupMidpointMeshes(MeshGroup& meshGroup);
 
     // Post processing
+    void preparePerPrimMaterialIndices(ProcessedMesh& processedMesh, const Mesh::StringList* pStrings, const int32_t* pSourceIDs, size_t count) const;
     void prepareDisplacementMaps();
     void prepareSceneGraph();
     void prepareMeshes();

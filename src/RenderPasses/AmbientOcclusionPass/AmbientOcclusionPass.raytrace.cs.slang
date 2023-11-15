@@ -80,7 +80,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
             float3 rayOrigin = sd.posW;
             if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
                 rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, rayOrigin, 
-                    sd.N, triangleHit.getBarycentricWeights());
+                    sd.frame.N, triangleHit.getBarycentricWeights());
             }
 
             RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
@@ -98,7 +98,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
             [[unroll]]
             for(uint i = 0; i < _SHADING_RATE; i ++) {
 
-                ray.Direction = normalize(sample_cosine_hemisphere_oriented(sampleNext2D(sg), sd.N, pdf));
+                ray.Direction = normalize(sample_cosine_hemisphere_oriented(sampleNext2D(sg), sd.frame.N, pdf));
 
                 rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
                 rayQuery.Proceed();

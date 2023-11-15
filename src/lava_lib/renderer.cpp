@@ -894,6 +894,10 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 	//mpSceneBuilder->addMaterialX(std::move(pMaterial));
 }
 
+uint32_t Renderer::addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial) {
+	return mpSceneBuilder->addMaterial(pMaterial);
+}
+
 // HYDRA section begin
 
 bool  Renderer::queryAOVPlaneGeometry(const AOVName& name, AOVPlaneGeometry& aov_plane_geometry) const {

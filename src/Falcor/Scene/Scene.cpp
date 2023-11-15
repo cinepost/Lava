@@ -86,6 +86,7 @@ namespace {
     const std::string kSDFGridsArrayName = "sdfGrids";
     const std::string kCustomPrimitiveBufferName = "customPrimitives";
     const std::string kMaterialsBlockName = "materials";
+    const std::string kPerPrimMaterialIDsBufferName = "perPrimMaterialIDs";
     const std::string kLightsBufferName = "lights";
     const std::string kGridVolumesBufferName = "gridVolumes";
 
@@ -171,6 +172,8 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mMeshBBs = std::move(sceneData.meshBBs);
     mMeshIdToInstanceIds = std::move(sceneData.meshIdToInstanceIds);
     mMeshGroups = std::move(sceneData.meshGroups);
+
+    mPerPrimMaterialIDs = std::move(sceneData.perPrimitiveMaterialIDsData);
 
     mUseCompressedHitInfo = sceneData.useCompressedHitInfo;
     mHas16BitIndices = sceneData.has16BitIndices;
@@ -273,6 +276,7 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_HAS_16BIT_INDICES", "0");
     defines.add("SCENE_HAS_32BIT_INDICES", "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", "0");
+    defines.add("SCENE_HAS_PERPRIM_MATERIALS", "0");
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
@@ -291,6 +295,7 @@ Shader::DefineList Scene::getSceneDefines() const {
     defines.add("SCENE_HAS_16BIT_INDICES", mHas16BitIndices ? "1" : "0");
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
+    defines.add("SCENE_HAS_PERPRIM_MATERIALS", !mPerPrimMaterialIDs.empty() ? "1" : "0");
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
 
@@ -762,6 +767,11 @@ void Scene::initResources() {
         mpMeshletPrimIndicesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletPrimIndicesBufferName], (uint32_t)mMeshletPrimIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMeshletPrimIndicesBuffer->setName("Scene::mpMeshletPrimIndicesBuffer");
     }
+
+    if (!mPerPrimMaterialIDs.empty()) {
+        mpPerPrimMaterialIDsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kPerPrimMaterialIDsBufferName], (int32_t)mPerPrimMaterialIDs.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPerPrimMaterialIDsBuffer->setName("Scene::mpPerPrimMaterialIDsBuffer");
+    }
 }
 
 void Scene::uploadResources() {
@@ -778,6 +788,9 @@ void Scene::uploadResources() {
     if (!mMeshletVertices.empty()) mpMeshletVerticesBuffer->setBlob(mMeshletVertices.data(), 0, sizeof(uint32_t) * mMeshletVertices.size());
     if (!mMeshletIndices.empty()) mpMeshletIndicesBuffer->setBlob(mMeshletIndices.data(), 0, sizeof(uint8_t) * mMeshletIndices.size());
     if (!mMeshletPrimIndices.empty()) mpMeshletPrimIndicesBuffer->setBlob(mMeshletPrimIndices.data(), 0, sizeof(uint32_t) * mMeshletPrimIndices.size());
+    
+    // Per prim material ids.
+    if (!mPerPrimMaterialIDs.empty()) mpPerPrimMaterialIDsBuffer->setBlob(mPerPrimMaterialIDs.data(), 0, sizeof(int32_t) * mPerPrimMaterialIDs.size());
 
     // Curves
     if (!mCurveDesc.empty()) mpCurvesBuffer->setBlob(mCurveDesc.data(), 0, sizeof(CurveDesc) * mCurveDesc.size());
@@ -790,6 +803,8 @@ void Scene::uploadResources() {
     mpSceneBlock->setBuffer(kMeshletIndicesBufferName, mpMeshletIndicesBuffer);
     mpSceneBlock->setBuffer(kMeshletVerticesBufferName, mpMeshletVerticesBuffer);
     mpSceneBlock->setBuffer(kMeshletPrimIndicesBufferName, mpMeshletPrimIndicesBuffer);
+
+    mpSceneBlock->setBuffer(kPerPrimMaterialIDsBufferName, mpPerPrimMaterialIDsBuffer);
 
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
 

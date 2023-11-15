@@ -142,9 +142,9 @@ float3 _getNormalSS(const uint2 ipos, const float3 defaultN, out bool valid) {
         
         [[branch ]] if(!calcShadingData(rayDir, hit, sd)) { valid = false; return defaultN; }
 
-        //return normalize(mul(float4(sd.N, 0.f), gScene.camera.getViewProj()).xyz);
+        //return normalize(mul(float4(sd.frame.N, 0.f), gScene.camera.getViewProj()).xyz);
         valid = true;
-        return normalize(sd.N);
+        return normalize(sd.frame.N);
 
     #elif is_valid(gNormal)
         valid = true;

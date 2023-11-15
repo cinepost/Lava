@@ -183,10 +183,14 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
             if(isFloatFormat(pAovNormalsTex->getFormat())) defines.add("_AOV_NORMALS_FLOAT", "");
         }
 
+        if (mpEmissiveSampler) defines.add(mpEmissiveSampler->getDefines());
+
         // Sampling / Shading
         if ((mShadingRate > 1) && shadingRateInShader) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
         defines.add("_USE_STBN_SAMPLING", mUseSTBN ? "1" : "0");
         defines.add("_USE_VARIANCE", mUseVariance ? "1" : "0");
+        defines.add("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
+        defines.add("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
         defines.add("is_valid_gLastFrameSum", mpLastFrameSum != nullptr ? "1" : "0");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         

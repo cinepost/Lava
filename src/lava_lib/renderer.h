@@ -17,6 +17,7 @@
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include "Falcor/Core/Renderer.h"
 #include "Falcor/Scene/Camera/Camera.h"
+#include "Falcor/Scene/Material/StandardMaterial.h"
 
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 
@@ -75,16 +76,16 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       uint32_t frameNumber = 0;
       Falcor::uint4 renderRegion = {0, 0, 0, 0}; // default full frame {left, top, width, height}
 
-      inline Falcor::uint2 renderRegionDims() const {
+      Falcor::uint2 renderRegionDims() const {
         if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
         return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
 
-      inline uint32_t getImageHeight() const { return imageHeight; }
-      inline uint32_t getImageWidth() const { return imageWidth; }
+      uint32_t getImageHeight() const { return imageHeight; }
+      uint32_t getImageWidth() const { return imageWidth; }
 
-      inline uint32_t regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : (renderRegion[2] - renderRegion[0] + 1)); }
-      inline uint32_t regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
+      uint32_t regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : (renderRegion[2] - renderRegion[0] + 1)); }
+      uint32_t regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
     };
 
   public:
@@ -94,30 +95,32 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
 
   public:
     static SharedPtr create(Device::SharedPtr pDevice);
-    inline Falcor::Device::SharedPtr device() const { return mpDevice; };
+    Falcor::Device::SharedPtr device() const { return mpDevice; };
 
  	  bool loadScript(const std::string& file_name);
- 	  bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+ 	  
+    uint32_t addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial);
+    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
 
   public:
-    inline lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
+    lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
     bool init(const Config& config);
-    inline bool isInited() const { return mInited; }
+    bool isInited() const { return mInited; }
 
-    inline const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
+    const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
 
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     bool deleteAOVPlane(const AOVName& name);
     void setAOVPlaneState(const AOVName& name, AOVPlane::State state);
-    inline AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
+    AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
     bool hasAOVPlane(const AOVName& name) const;
 
     bool prepareFrame(const FrameInfo& frame_info); // prepares/resets frame rendering
     void renderSample();
     const uint8_t*  getAOVPlaneImageData(const AOVName& name);
 
-    inline Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
+    Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
 
     /** Query AOV output (if exist) geometry
       \param[in] AOV name/path. Example: "AccumulatePass.output"

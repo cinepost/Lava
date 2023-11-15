@@ -403,6 +403,12 @@ void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
 }
 
 void EnvironmentLight::update() {
+    // Update matrix
+    mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), {1.0, 1.0, 1.0});
+    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+    mData.transMatInv = glm::inverse(mData.transMat);
+
+    mData.posW = {0.0, 0.0, 0.0};
     Light::update();
 }
 

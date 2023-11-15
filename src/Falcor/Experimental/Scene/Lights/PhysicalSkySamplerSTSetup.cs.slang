@@ -60,4 +60,5 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID) {
     float3 sunDir = normalize(float3(0.0, sunCosTheta, -sin(sunTheta)));
     
     gSunTransmittanceMap[pixel] = float4(getSunTransmittance(pos, sunDir), 1.0);
+    gSunTransmittanceMap[pixel] = float4(u, v, 0.0, 1.0);
 }

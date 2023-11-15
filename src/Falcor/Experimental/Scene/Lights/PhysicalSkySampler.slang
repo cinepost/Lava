@@ -10,7 +10,7 @@ import Utils.Math.MathHelpers;
 
 /** Struct returned from the sampling functions.
 */
-struct EnvMapSample
+struct PhysicalSkySample
 {
     float3 dir;         ///< Sampled direction towards the light in world space.
     float pdf;          ///< Probability density function for the sampled direction with respect to solid angle.
@@ -29,7 +29,7 @@ struct PhysicalSkySampler {
 
     /** Importance sampling of the environment map.
     */
-    bool sample(const float2 rnd, out EnvMapSample result) {
+    bool sample(const float2 rnd, out PhysicalSkySample result) {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.
 

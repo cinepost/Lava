@@ -116,6 +116,7 @@ struct Scene
 
     // Materials
     ParameterBlock<MaterialSystem> materials;
+    StructuredBuffer<int> perPrimMaterialIDs;
     
     // Light samplers
     #if SCENE_ENVMAP_SAMPLERS_COUNT > 0
@@ -125,13 +126,10 @@ struct Scene
     #endif
 
     #if SCENE_PHYSKY_SAMPLERS_COUNT > 0
-        EnvMapSampler physkySamplers[SCENE_PHYSKY_SAMPLERS_COUNT];
+        PhysicalSkySampler physkySamplers[SCENE_PHYSKY_SAMPLERS_COUNT];
     #else
-        EnvMapSampler physkySamplers[1];
+        PhysicalSkySampler physkySamplers[1];
     #endif
-
-    //StructuredBuffer<EnvMapSampler> envmapSamplers;
-
 
     // Lights and camera
     uint lightCount;
@@ -272,6 +270,21 @@ struct Scene
     uint getMaterialID(const GeometryInstanceID instanceID)
     {
         return geometryInstances[instanceID.index].materialID;
+    };
+
+    /** Return the material ID for a geometry instance tirangle.
+        \param[in] hit Triangle hit.
+        \return Material ID.
+    */
+    uint getMaterialID(const TriangleHit hit) {
+        const GeometryInstanceData instance = geometryInstances[hit.instanceID.index];
+#if SCENE_HAS_PERPRIM_MATERIALS
+        int perPrimMaterialID = -1;
+        if(instance.hasMultipleMaterials()) perPrimMaterialID = perPrimMaterialIDs[instance.mbOffset + hit.primitiveIndex];
+        return (perPrimMaterialID > -1) ? (uint)perPrimMaterialID : instance.materialID;
+#else
+        return instance.materialID;
+#endif
     };
 
     /** Return the internal ID for a geometry instance.

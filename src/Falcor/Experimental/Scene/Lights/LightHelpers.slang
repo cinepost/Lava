@@ -44,9 +44,14 @@ import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Utils.Sampling.SampleGeneratorInterface;
 import Experimental.Scene.Lights.EnvMapSampler;
+import Experimental.Scene.Lights.PhysicalSkySampler;
 
 __exported import Utils.Sampling.SamplingSphericalCaps;
 __exported import PSCMaps;
+
+//#ifndef AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
+//#define AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA 1
+//#endif
 
 static const float kMinLightDistSqr = 1e-9f;
 static const float kMaxLightDistance = FLT_MAX;
@@ -588,8 +593,8 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     EnvMapSample els;
     if(sampler.sample(rnd.xy, els)) {
         float lod = 0.f;
-        ls.dir = ls.shadowDir = els.dir;
-        ls.Li = els.Le; //sampler.eval(ls.dir, lod); 
+        ls.dir = ls.shadowDir = mul(els.dir, (float3x3)light.transMat);
+        ls.Li = els.Le;
         ls.pdf = els.pdf;
     } else {
         ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
@@ -618,7 +623,7 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
     
     EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
     float lod = 0.f;
-    ls.Li = sampler.eval(ls.dir, lod);
+    ls.Li = sampler.eval(mul(ls.dir, (float3x3)light.transMatInv), lod);
 
     ls.pdf = 0.0f;
 
@@ -626,6 +631,31 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
 }
 
 /// Physical Sky light
+
+bool samplePhysicalSkyLight(const float3 shadingPosW, const float3 shadingNormalW, const LightData light, const float4 rnd, out AnalyticLightSample ls) {
+    // An environmentl light doesn't have a position. Just clear to zero.
+    ls.posW = float3(0, 0, 0);
+
+    PhysicalSkySampler sampler = gScene.physkySamplers[light.getLightSamplerID()];
+    PhysicalSkySample els;
+    if(sampler.sample(rnd.xy, els)) {
+        float lod = 0.f;
+        ls.dir = ls.shadowDir = els.dir;
+        ls.Li = els.Le;
+        ls.pdf = els.pdf;
+    } else {
+        ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
+        ls.Li = float3(1.0, 1.0, 1.0);
+        ls.pdf = 1.0f;
+    }
+
+    ls.distance = kMaxLightDistance;
+    ls.normalW = -normalize(ls.dir);
+
+    ls.i = 1.0f;
+    
+    return true;
+}
 
 bool intersectPhysicalSkyLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     // An physical env light doesn't have a position. Just clear to zero.
@@ -635,7 +665,10 @@ bool intersectPhysicalSkyLight(const float3 shadingPosW, const float3 dir, const
     ls.dir = ls.shadowDir = normalize(dir);
 
     ls.i = 1.0f;
-    ls.Li = float3(1.0, 0.0, 0.0);
+
+    PhysicalSkySampler sampler = gScene.physkySamplers[light.getLightSamplerID()];
+    float lod = 0.f;
+    ls.Li = sampler.eval(ls.dir, lod);
 
     ls.pdf = 0.0f;
 
@@ -676,6 +709,8 @@ bool sampleLight(const float3 shadingPosW, const float3 shadingNormalW, const Li
             return sampleDistantLight(shadingPosW, light, rnd, ls);
         case LightType::Env:
             return sampleEnvironmentLight(shadingPosW, shadingNormalW, light, rnd, ls);
+        case LightType::PhysSunSky:
+            return samplePhysicalSkyLight(shadingPosW, shadingNormalW, light, rnd, ls);
         default:
             ls = {};
             return false; // Should not happen

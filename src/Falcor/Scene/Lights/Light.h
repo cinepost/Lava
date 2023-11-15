@@ -385,6 +385,15 @@ class dlldecl EnvironmentLight: public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
+    /** Set transform matrix
+      \param[in] mtx object to world space transform matrix
+    */
+    void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
+
+    /** Get transform matrix
+    */
+    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+
     /** Set the light diffuse intensity.
     */
     virtual void setDiffuseIntensity(const float3& intensity) override;
@@ -409,6 +418,8 @@ class dlldecl EnvironmentLight: public Light {
 
   private:
     virtual void update();
+
+    glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
 
     EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
 

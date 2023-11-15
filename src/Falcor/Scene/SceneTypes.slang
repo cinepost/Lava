@@ -90,66 +90,66 @@ enum_class_operators(GeometryTypeFlags);
 enum class MeshFlags : uint32_t
 {
     None = 0x0,
-    Use16BitIndices = 0x1,  ///< Indices are in 16-bit format. The default is 32-bit.
-    IsSkinned = 0x2,        ///< Mesh is skinned and has corresponding vertex data.
-    IsFrontFaceCW = 0x4,    ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
-    IsDisplaced = 0x8,      ///< Mesh has displacement map.
-    IsAnimated = 0x10,      ///< Mesh is affected by vertex-animations.
-    HasMeshlets = 0x20,     ///< This mesh uses meshlets.
+    Use16BitIndices = 0x1,          ///< Indices are in 16-bit format. The default is 32-bit.
+    IsSkinned = 0x2,                ///< Mesh is skinned and has corresponding vertex data.
+    IsFrontFaceCW = 0x4,            ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+    IsDisplaced = 0x8,              ///< Mesh has displacement map.
+    IsAnimated = 0x10,              ///< Mesh is affected by vertex-animations.
+    HasMeshlets = 0x20,             ///< This mesh uses meshlets.
+    HasMultipleMaterials = 0x40,    ///< This mesh has per primitive materials assigned.
 };
 
 
 /** Mesh data stored in 64B.
 */
-struct MeshDesc
-{
+struct MeshDesc {
     uint vbOffset;          ///< Offset into global vertex buffer.
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
-    uint vertexCount;       ///< Vertex count.
+    uint mbOffset;
+    uint vertexCount;       ///< Vertex count.    
+    
     uint indexCount;        ///< Index count, or zero if non-indexed.
     uint skinningVbOffset;  ///< Offset into skinning data buffer, or zero if no skinning data.
     uint prevVbOffset;      ///< Offset into previous vertex data buffer, or zero if neither skinned or animated.
     uint materialID;        ///< Material ID.
-    uint flags;             ///< See MeshFlags.
 
-    uint getTriangleCount() CONST_FUNCTION
-    {
+    uint flags;             ///< See MeshFlags.
+    uint3 _pad;
+
+    uint getTriangleCount() CONST_FUNCTION {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;
     }
 
-    bool use16BitIndices() CONST_FUNCTION
-    {
+    bool use16BitIndices() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
     }
 
-    bool isSkinned() CONST_FUNCTION
-    {
+    bool isSkinned() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::IsSkinned) != 0;
     }
 
-    bool isAnimated() CONST_FUNCTION
-    {
+    bool isAnimated() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::IsAnimated) != 0;
     }
 
-    bool isDynamic() CONST_FUNCTION
-    {
+    bool isDynamic() CONST_FUNCTION {
         return isSkinned() || isAnimated();
     }
 
-    bool isFrontFaceCW() CONST_FUNCTION
-    {
+    bool isFrontFaceCW() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::IsFrontFaceCW) != 0;
     }
 
-    bool isDisplaced() CONST_FUNCTION
-    {
+    bool isDisplaced() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::IsDisplaced) != 0;
     }
 
-    bool hasMeshlets() CONST_FUNCTION
-    {
+    bool hasMeshlets() CONST_FUNCTION {
         return (flags & (uint)MeshFlags::HasMeshlets) != 0;
+    }
+
+    bool hasMultipleMaterials() CONST_FUNCTION {
+        return (flags & (uint)MeshFlags::HasMultipleMaterials) != 0;
     }
 };
 
@@ -174,6 +174,7 @@ enum class GeometryInstanceFlags : uint32_t
     ReceiveShadows = 0x800,
     ReceiveSelfShadows = 0x1000,
     DoubleSided = 0x2000,
+    HasMultipleMaterials = 0x4000,
 };
 
 struct GeometryInstanceData
@@ -188,13 +189,13 @@ struct GeometryInstanceData
 
     uint vbOffset;          ///< Offset into vertex buffer.
     uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
+    uint mbOffset;          ///< Offset into global per-primitive material indices buffer.
     uint instanceIndex;     ///< InstanceIndex in TLAS.
-    uint geometryIndex;     ///< GeometryIndex in BLAS.
 
+    uint geometryIndex;     ///< GeometryIndex in BLAS.
     uint internalID;        ///< Internal scene id.
     uint externalID;        ///< External dcc id.
     uint _pad0;
-    uint _pad1;
 
 #ifdef HOST_CODE
     GeometryInstanceData() = default;
@@ -225,6 +226,10 @@ struct GeometryInstanceData
 
     bool isMatteShaded() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::MatteShading) != 0;
+    }
+
+    bool hasMultipleMaterials() CONST_FUNCTION {
+        return (flags & (uint)GeometryInstanceFlags::HasMultipleMaterials) != 0;
     }
 };
 

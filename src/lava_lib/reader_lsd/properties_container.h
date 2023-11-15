@@ -163,7 +163,6 @@ class PropertiesContainer: public std::enable_shared_from_this<PropertiesContain
  public:
     PropertiesContainer(): mpParent(nullptr) {};
     PropertiesContainer(PropertiesContainer::SharedPtr pParent): mpParent(pParent) {};
-    //virtual SharedPtr parent() { return mpParent; };
 
     bool declareProperty(ast::Style style, Property::Type type, const std::string& name, const Property::Value& value, Property::Owner owner = Property::Owner::SYS);
     bool setProperty(ast::Style style, const std::string& name, const Property::Value& value);
