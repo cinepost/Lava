@@ -117,6 +117,8 @@ int main(int argc, char** argv){
 
     int gpuID = -1; // automatic gpu selection
 
+    bool read_stdin = false;
+
 #ifdef _DEBUG
     bool echo_input = true;
 #else
@@ -171,6 +173,7 @@ int main(int argc, char** argv){
     std::vector<std::string> inputFilenames;
     po::options_description input("Input");
     input.add_options()
+      ("stdin,C", po::bool_switch(&read_stdin), "Read scene from stdin")
       ("echo-input,e", po::bool_switch(&echo_input), "Echo input scene")
       ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
       ;
@@ -293,7 +296,7 @@ int main(int argc, char** argv){
 
       Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-      if (vm.count("input-files")) {
+      if (vm.count("input-files") && !read_stdin) {
         // Reading scenes from files...
         for (const std::string& inputFilename: inputFilenames) {
           std::ifstream in_file(inputFilename, std::ifstream::binary);

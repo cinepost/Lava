@@ -1,5 +1,7 @@
 include(CheckIncludeFile)
 
+add_subdirectory( imgLava )
+
 if(WIN32)
     set(HYTHON_VERSION_MAJOR "3")
     set(HYTHON_VERSION_MINOR "7")
@@ -86,6 +88,19 @@ install(
     	houdini/python${HYTHON_VERSION}libs
 )
 
+# Make FBformats used by Houdini
+set(DSO_PATH ${CMAKE_INSTALL_PREFIX}/houdini/dso)
+configure_file(FBformats.in ${CMAKE_CURRENT_BINARY_DIR}/FBformats.install @ONLY)
+
+install(
+    PROGRAMS
+        ${CMAKE_CURRENT_BINARY_DIR}/FBformats.install
+    RENAME
+        FBformats
+    DESTINATION
+        houdini
+)
+
 
 # Install shit
 install(DIRECTORY scripts DESTINATION houdini)
@@ -97,6 +112,7 @@ install(DIRECTORY soho/python/ DESTINATION houdini/soho/python${HYTHON_VERSION})
 install(DIRECTORY python/ DESTINATION houdini/python${HYTHON_VERSION}libs)
 
 install(FILES OPmenu.xml DESTINATION houdini)
+install(FILES FBfiles DESTINATION houdini)
 install(FILES FBrenderLava DESTINATION houdini)
 install(FILES Renderers DESTINATION houdini)
 install(FILES LavaTypeFormats DESTINATION houdini)

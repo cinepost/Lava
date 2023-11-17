@@ -1,0 +1,11 @@
+#include "$HFS/houdini/FBformats"
+
+#if defined(WIN32)
+    #define DSO_FILE(filename)	filename.dll
+#elif defined(MBSD)
+    #define DSO_FILE(filename)	filename.dylib
+#else
+    #define DSO_FILE(filename)	@DSO_PATH@/filename.so
+#endif
+
+DSO_FILE(IMG_LavaLTX)	// Sample image format (.ltx extension).

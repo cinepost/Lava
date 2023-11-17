@@ -79,8 +79,6 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 	mpState = GraphicsState::create(pDevice);
 
 	DepthStencilState::Desc dsDesc;
-	//dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-	//dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
 	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Equal);
 	mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 	mpState->setDepthStencilState(DepthStencilState::create(dsDesc));

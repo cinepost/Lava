@@ -135,6 +135,14 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     PsOut psOut;
     
     uint materialID = vOut.materialID;
+
+#if SCENE_HAS_PERPRIM_MATERIALS
+    TriangleHit triangleHit;
+    triangleHit.instanceID = vOut.instanceID;
+    triangleHit.primitiveIndex = triangleIndex;
+    materialID = gScene.getMaterialID(triangleHit);
+#endif 
+
     MaterialResolveData matData = materialsResolveDataBuffer[materialID];
 
     int debugTileID = 0;
@@ -158,9 +166,6 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
                 uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
                 uint udimID = gScene.materials.extendedTexturesData[textureID].udimID;
                 
-                //uint tileID = gScene.materials.udimTextureTilesTable[udimID * 100 + udim_idx.x + udim_idx.y * 10];
-                //uint byte_addr = (udimID * 100 + udim_idx.x + udim_idx.y * 10) * 2;
-                //uint tileID = (uint)gScene.materials.udimTextureTilesTableBuffer.Load<float16_t>(byte_addr);
                 uint tileID = (uint)gScene.materials.udimTextureTilesTableBuffer[udimID * 100 + udim_idx.x + udim_idx.y * 10];
                 if(tileID == UINT16_MAX) continue;
 

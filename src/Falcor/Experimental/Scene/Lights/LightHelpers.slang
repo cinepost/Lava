@@ -100,7 +100,7 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, in
         ls.normalW *= -1.0f;
     }
 
-    ls.Li = float3(1.0, 1.0, 1.0);
+    ls.Li = float3(1.0);
     
     // Compute the PDF with respect to solid angle. Note this may be +inf.
     ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea);
@@ -146,7 +146,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
     // p[3](w)---p[2](z)
 
     ls.i = 1.0f;
-    ls.Li = light.directDiffuseIntensity;
+    ls.Li = float3(1.0);
 
     const float3 localShadingPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
     const float3 localNormal = normalize(mul(light.transMat, float4(shadingNormalW, 0.f)).xyz);
@@ -267,8 +267,6 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
     }
 
     ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea * local_visible_area);
-    ls.i = 1.0f;
-
     return true;
 }
 
