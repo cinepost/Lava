@@ -46,15 +46,33 @@ namespace po = boost::program_options;
 
 using namespace lava;
 
+namespace {
+  // In the GNUC Library, sig_atomic_t is a typedef for int,
+  // which is atomic on all systems that are supported by the
+  // GNUC Library
+  volatile sig_atomic_t do_shutdown = 0;
+
+  // std::atomic is safe, as long as it is lock-free
+  std::atomic<bool> shutdown_requested = false;
+  static_assert( std::atomic<bool>::is_always_lock_free );
+  // or, at runtime: assert( shutdown_requested.is_lock_free() );
+}
+
 static std::chrono::high_resolution_clock::time_point gExecTimeStart;
+
+void signalHandler( int signum ){
+  // ok, lock-free atomics
+  do_shutdown = 1;
+  shutdown_requested = true;
+
+  const char str[] = "received signal\n";
+  // ok, write is signal-safe
+  write(STDERR_FILENO, str, sizeof(str) - 1);
+}
 
 #ifdef _WIN32
   // traceback not implemented
 #else
-void signalHandler( int signum ){
-  exit(signum);
-}
-
 void signalTraceHandler( int signum ){
   lava::ut::log::shutdown_log();
 #ifdef PRE_RELEASE_TRACEBACK_HANDLER
@@ -129,7 +147,15 @@ int main(int argc, char** argv){
     #ifdef _WIN32
       // traceback not implemented
     #else
-    signal(SIGTERM, signalTraceHandler);
+    // setup signal handlers
+    {
+      struct sigaction action;
+      action.sa_handler = signalHandler;
+      sigemptyset(&action.sa_mask);
+      action.sa_flags = 0;
+      sigaction(SIGTERM, &action, NULL);
+    }
+
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);
     #endif
@@ -296,48 +322,57 @@ int main(int argc, char** argv){
 
       Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-      if (vm.count("input-files") && !read_stdin) {
-        // Reading scenes from files...
-        for (const std::string& inputFilename: inputFilenames) {
-          std::ifstream in_file(inputFilename, std::ifstream::binary);
-          if(!in_file) {
-            LLOG_ERR << "Unable to open scene file \'" << inputFilename << "\'' !\n";
-            exit(EXIT_FAILURE);
+      // main loop
+      while( !do_shutdown && !shutdown_requested.load() ) {
+
+        if (vm.count("input-files") && !read_stdin) {
+          // Reading scenes from files...
+          for (const std::string& inputFilename: inputFilenames) {
+            std::ifstream in_file(inputFilename, std::ifstream::binary);
+            if(!in_file) {
+              LLOG_ERR << "Unable to open scene file \'" << inputFilename << "\'' !\n";
+              exit(EXIT_FAILURE);
+            }
+            
+            auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
+            reader->init(pRenderer, echo_input);
+
+            LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";
+            if (!reader->readStream(in_file)) {
+              LLOG_ERR << "Error reading scene from file: " << inputFilename;
+              exit(EXIT_FAILURE);
+            }
+
+            std::string _captureFilename = profilerCaptureFilename;;
+            if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
+              fs::path p(inputFilename);
+              _captureFilename = p.string() + ".profilig_stats.json";
+            }
+            writeProfilerStatsToFile(_captureFilename);
           }
+        } else {
+          LLOG_DBG << "Reading scene from stdin ...\n";
+          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
           
-          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
+          echo_input = true; // TODO: remove
+
           reader->init(pRenderer, echo_input);
 
-          LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";
-          if (!reader->readStream(in_file)) {
-            LLOG_ERR << "Error reading scene from file: " << inputFilename;
+          if (!reader->readStream(std::cin)) {
+            LLOG_ERR << "Error loading scene from stdin !";
             exit(EXIT_FAILURE);
           }
-
-          std::string _captureFilename = profilerCaptureFilename;;
-          if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
-            fs::path p(inputFilename);
-            _captureFilename = p.string() + ".profilig_stats.json";
-          }
-          writeProfilerStatsToFile(_captureFilename);
+          writeProfilerStatsToFile(profilerCaptureFilename);
         }
-      } else {
-        LLOG_DBG << "Reading scene from stdin ...\n";
-        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
-        reader->init(pRenderer, echo_input);
 
-        if (!reader->readStream(std::cin)) {
-          LLOG_ERR << "Error loading scene from stdin !";
-          exit(EXIT_FAILURE);
-        }
-        writeProfilerStatsToFile(profilerCaptureFilename);
-      }
+      do_shutdown = 1;
+      shutdown_requested = true;
+
+      } // main while loop
 
       // Shutdown scripting system before destroying renderer !
       Falcor::Scripting::shutdown();
     }
-
-    //lava::ut::log::shutdown_log();
 
     return 0;
 }

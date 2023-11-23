@@ -365,6 +365,7 @@ bool DisplayPrman::sendImageRegion(uint imageHandle, uint x, uint y, uint width,
     }
 
     if(!mForceScanLines) {
+        if(!mWriteFunc) LLOG_ERR << "no mWriteFunc";
         // Send data to direct
         PtDspyError err = mWriteFunc(image_data.handle, x, x + width, y, y + height, image_data.entrySize, pData);
         if(err != PkDspyErrorNone ) {

@@ -162,18 +162,20 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
       Disabled,
     };
 
-    inline std::string             outputVariableName() const { return (mInfo.variableName != "") ? mInfo.variableName : "output"; }
-    inline const AOVName&          name() const { return mInfo.name; }
-    inline std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
-    inline Falcor::ResourceFormat  format() const { return mInfo.format; }
-    inline const AOVPlaneInfo&     info() const { return mInfo; }
+    std::string             outputVariableName() const { return (mInfo.variableName != "") ? mInfo.variableName : "output"; }
+    const AOVName&          name() const { return mInfo.name; }
+    std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
+    Falcor::ResourceFormat  format() const { return mInfo.format; }
+    const AOVPlaneInfo&     info() const { return mInfo; }
     const std::string&             filename() const { return mInfo.filenameOverride; }
 
-    inline bool isMain() const { return name() == AOVBuiltinName::MAIN; }
+    void update(const AOVPlaneInfo& info);
+
+    bool isMain() const { return name() == AOVBuiltinName::MAIN; }
 
     void setOutputFormat(Falcor::ResourceFormat format);
 
-    inline const std::string&      sourcePassName() const { return mInfo.sourcePassName; }
+    const std::string&      sourcePassName() const { return mInfo.sourcePassName; }
 
     void addMetaDataCallback(std::function<Falcor::Dictionary()> func) { mMetaDataCallbacks.push_back(func); }
     void addMetaDataProvider(Falcor::RenderPass::SharedPtr pPass) { if(pPass) mMetaDataRenderPasses.push_back(pPass); }
@@ -184,25 +186,25 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     const uint8_t* getImageData();
     Falcor::Dictionary getMetaData() const;
-    inline bool hasMetaData() const { return !mMetaData.isEmpty() || (mMetaDataCallbacks.size() > 0) || (mMetaDataRenderPasses.size() > 0); }
+    bool hasMetaData() const { return !mMetaData.isEmpty() || (mMetaDataCallbacks.size() > 0) || (mMetaDataRenderPasses.size() > 0); }
 
     void setDisplay(Display::SharedPtr pDisplay) { mpDisplay = pDisplay; }
-    inline Display::SharedPtr getDisplay() const { return mpDisplay; }
-    inline bool hasDisplay() const { return mpDisplay != nullptr; }
+    Display::SharedPtr getDisplay() const { return mpDisplay; }
+    bool hasDisplay() const { return mpDisplay != nullptr; }
 
     const uint8_t* getProcessedImageData();
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
-    inline void reset() { if (mpAccumulatePass) mpAccumulatePass->reset(); }; // reset associated accumulator
+    void reset() { if (mpAccumulatePass) mpAccumulatePass->reset(); }; // reset associated accumulator
 
-    inline bool isBound() const;
+    bool isBound() const;
 
-    inline Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
-    inline const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
+    Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
 
-    inline bool isEnabled() const { return (mState == State::Enabled); }
-    inline State getState() const { return mState; }
+    bool isEnabled() const { return (mState == State::Enabled); }
+    State getState() const { return mState; }
 
   private:
     AOVPlane(const AOVPlaneInfo& info);
@@ -214,19 +216,19 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     ToneMapperPass::SharedPtr               createTonemappingPass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
     OpenDenoisePass::SharedPtr              createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
 
-    inline AccumulatePass::SharedPtr        accumulationPass() { return mpAccumulatePass; }
-    inline AccumulatePass::SharedConstPtr   accumulationPass() const { return mpAccumulatePass; }
+    AccumulatePass::SharedPtr        accumulationPass() { return mpAccumulatePass; }
+    AccumulatePass::SharedConstPtr   accumulationPass() const { return mpAccumulatePass; }
 
-    inline ToneMapperPass::SharedPtr        tonemappingPass() { return mpToneMapperPass; }
-    inline ToneMapperPass::SharedConstPtr   tonemappingPass() const { return mpToneMapperPass; }
+    ToneMapperPass::SharedPtr        tonemappingPass() { return mpToneMapperPass; }
+    ToneMapperPass::SharedConstPtr   tonemappingPass() const { return mpToneMapperPass; }
 
-    inline OpenDenoisePass::SharedPtr       denoisingPass() { return mpDenoiserPass; }
-    inline OpenDenoisePass::SharedConstPtr  denoisingPass() const { return mpDenoiserPass; }
+    OpenDenoisePass::SharedPtr       denoisingPass() { return mpDenoiserPass; }
+    OpenDenoisePass::SharedConstPtr  denoisingPass() const { return mpDenoiserPass; }
 
-    inline const std::string&               accumulationPassColorInputName() const { return mAccumulatePassColorInputName; }
-    inline const std::string&               accumulationPassDepthInputName() const { return mAccumulatePassDepthInputName; }
+    const std::string&               accumulationPassColorInputName() const { return mAccumulatePassColorInputName; }
+    const std::string&               accumulationPassDepthInputName() const { return mAccumulatePassDepthInputName; }
 
-    inline const std::string&               accumulationPassColorOutputName() const { return mAccumulatePassColorOutputName; }
+    const std::string&               accumulationPassColorOutputName() const { return mAccumulatePassColorOutputName; }
 
     void createInternalRenderGraph(Falcor::RenderContext* pContext, bool force = false);
     bool compileInternalRenderGraph(Falcor::RenderContext* pContext);

@@ -314,7 +314,7 @@ void AnimationController::updateWorldMatrices(bool updateAll)
     for (size_t i = 0; i < mGlobalMatrices.size(); i++)
     {
         // Propagate matrix change flag to children.
-        if (sceneGraph[i].parent != SceneBuilder::kInvalidNode)
+        if (sceneGraph[i].parent != SceneBuilder::kInvalidNodeID)
         {
             mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent];
         }
@@ -323,7 +323,7 @@ void AnimationController::updateWorldMatrices(bool updateAll)
 
         mGlobalMatrices[i] = mLocalMatrices[i];
 
-        if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNode)
+        if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNodeID)
         {
             mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent] * mGlobalMatrices[i];
         }

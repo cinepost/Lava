@@ -57,6 +57,11 @@ AOVPlane::SharedPtr AOVPlane::create(const AOVPlaneInfo& info) {
 
 AOVPlane::AOVPlane(const AOVPlaneInfo& info): mInfo(info) {}
 
+void AOVPlane::update(const AOVPlaneInfo& info) {
+	mInfo = info;
+	reset();
+}
+
 bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
 	assert(pTexture);
 
@@ -134,8 +139,6 @@ bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
 		LLOG_ERR << "No texture associated to AOV plane " << mInfo.name << " !!!";
 		return false;
 	}
-
-	//auto resourceFormat = mpTexture->getFormat();
 
 	auto requestedResourceFormat = format();
 

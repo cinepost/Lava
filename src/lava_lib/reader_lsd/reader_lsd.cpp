@@ -81,7 +81,7 @@ bool ReaderLSD::parseStream(std::istream& in) {
             break;
         }
 
-        if(mEchoInput) std::cout << str;
+        if(mEchoInput) std::cout << str << std::endl;
 
         begin = str.begin(); end = str.end();
         

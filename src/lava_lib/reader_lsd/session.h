@@ -98,7 +98,6 @@ class Session {
  	  Session(std::shared_ptr<Renderer> pRenderer);
  	
     void setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 cropRegion = {0.0f, 0.0f, 1.0f, 1.0f});
-    //bool prepareGlobalData();
     bool prepareFrameData();
  	  bool prepareDisplayData();
  	
@@ -107,13 +106,15 @@ class Session {
     Falcor::StandardMaterial::SharedPtr createStandardMaterialFromLSD(const std::string& material_name, const Property* pShaderProp);
     Falcor::MaterialX::UniquePtr createMaterialXFromLSD(lsd::scope::Material::SharedConstPtr pMaterialLSD);
 
- 	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj);
+    Falcor::StandardMaterial::SharedPtr updateMaterialFromLSD(const std::string& material_name, const Property* pShaderProp);
+
+ 	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj, bool update);
     void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 
   private:
     bool mFailed = false;
     bool  mIPR = false;
-    ast::IPRMode mIPRmode = ast::IPRMode::GENERATE;
+    ast::IPRMode mIPRmode = ast::IPRMode::DEFAULT;
 
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
     Renderer::SharedPtr 	         mpRenderer = nullptr;

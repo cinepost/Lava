@@ -42,6 +42,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       bool useVirtualTexturing = false;
       bool useAsyncGeometryProcessing = true;
       bool generateMeshlets = false;
+      bool optimizeForIPR = false;
 
       bool        forceVirtualTexturesReconversion = false;
       std::string virtualTexturesCompressionQuality = "high";
@@ -109,7 +110,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
 
     const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
 
-    AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
+    AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info, bool updateExisting = false);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     bool deleteAOVPlane(const AOVName& name);
     void setAOVPlaneState(const AOVName& name, AOVPlane::State state);

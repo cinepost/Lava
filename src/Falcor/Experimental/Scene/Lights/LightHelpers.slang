@@ -49,9 +49,9 @@ import Experimental.Scene.Lights.PhysicalSkySampler;
 __exported import Utils.Sampling.SamplingSphericalCaps;
 __exported import PSCMaps;
 
-//#ifndef AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
-//#define AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA 1
-//#endif
+#ifndef AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
+#define AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA 1
+#endif
 
 static const float kMinLightDistSqr = 1e-9f;
 static const float kMaxLightDistance = FLT_MAX;

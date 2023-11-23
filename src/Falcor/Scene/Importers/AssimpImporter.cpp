@@ -149,7 +149,7 @@ namespace {
 			}
 			catch (const std::exception&)
 			{
-				return SceneBuilder::kInvalidNode;
+				return SceneBuilder::kInvalidNodeID;
 			}
 		}
 
@@ -261,12 +261,10 @@ namespace {
 		}
 	}
 
-	bool createCameras(ImporterData& data, ImportMode importMode)
-	{
+	bool createCameras(ImporterData& data, ImportMode importMode) {
 		if (data.pScene->mNumCameras == 0) return true;
 
-		for (uint i = 0; i < data.pScene->mNumCameras; i++)
-		{
+		for (uint i = 0; i < data.pScene->mNumCameras; i++) {
 			const aiCamera* pAiCamera = data.pScene->mCameras[i];
 			Camera::SharedPtr pCamera = Camera::create();
 			pCamera->setName(pAiCamera->mName.C_Str());
@@ -283,8 +281,7 @@ namespace {
 
 			uint32_t nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
 
-			if (nodeID != SceneBuilder::kInvalidNode)
-			{
+			if (nodeID != SceneBuilder::kInvalidNodeID) {
 				SceneBuilder::Node n;
 				n.name = "Camera.BaseMatrix";
 				n.parent = nodeID;
@@ -292,8 +289,7 @@ namespace {
 				// GLTF2 has the view direction reversed.
 				if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
 				nodeID = data.builder.addNode(n);
-				if (data.builder.isNodeAnimated(nodeID))
-				{
+				if (data.builder.isNodeAnimated(nodeID)) {
 					pCamera->setNodeID(nodeID);
 					pCamera->setHasAnimation(true);
 					data.builder.setNodeInterpolationMode(nodeID, kCameraInterpolationMode, kCameraEnableWarping);
@@ -306,16 +302,14 @@ namespace {
 		return true;
 	}
 
-	bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
-	{
+	bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight) {
 		pLight->setName(pAiLight->mName.C_Str());
 		pLight->setDiffuseIntensity(aiCast(pAiLight->mColorDiffuse));
 		pLight->setSpecularIntensity(aiCast(pAiLight->mColorSpecular));
 
 		// Find if the light is affected by a node
 		uint32_t nodeID = data.getFalcorNodeID(pAiLight->mName.C_Str(), 0);
-		if (nodeID != SceneBuilder::kInvalidNode)
-		{
+		if (nodeID != SceneBuilder::kInvalidNodeID) {
 			SceneBuilder::Node n;
 			n.name = pLight->getName() + ".BaseMatrix";
 			n.parent = nodeID;
@@ -329,8 +323,7 @@ namespace {
 		return true;
 	}
 
-	bool createDirLight(ImporterData& data, const aiLight* pAiLight)
-	{
+	bool createDirLight(ImporterData& data, const aiLight* pAiLight) {
 		DirectionalLight::SharedPtr pLight = DirectionalLight::create();
 		float3 direction = normalize(aiCast(pAiLight->mDirection));
 		pLight->setWorldDirection(direction);
@@ -339,8 +332,7 @@ namespace {
 		return addLightCommon(pLight, base, data, pAiLight);
 	}
 
-	bool createPointLight(ImporterData& data, const aiLight* pAiLight)
-	{
+	bool createPointLight(ImporterData& data, const aiLight* pAiLight) {
 		PointLight::SharedPtr pLight = PointLight::create();
 		float3 position = aiCast(pAiLight->mPosition);
 		float3 lookAt = normalize(aiCast(pAiLight->mDirection));
@@ -360,53 +352,44 @@ namespace {
 		return addLightCommon(pLight, base, data, pAiLight);
 	}
 
-	bool createLights(ImporterData& data)
-	{
-		for (uint32_t i = 0; i < data.pScene->mNumLights; i++)
-		{
+	bool createLights(ImporterData& data) {
+		for (uint32_t i = 0; i < data.pScene->mNumLights; i++) {
 			const aiLight* pAiLight = data.pScene->mLights[i];
-			switch (pAiLight->mType)
-			{
-			case aiLightSource_DIRECTIONAL:
-				if (!createDirLight(data, pAiLight)) return false;
-				break;
-			case aiLightSource_POINT:
-			case aiLightSource_SPOT:
-				if (!createPointLight(data, pAiLight)) return false;
-				break;
-			default:
-				LLOG_WRN << "Unsupported ASSIMP light type " << std::to_string(pAiLight->mType);
-				continue;
+			switch (pAiLight->mType) {
+				case aiLightSource_DIRECTIONAL:
+					if (!createDirLight(data, pAiLight)) return false;
+					break;
+				case aiLightSource_POINT:
+				case aiLightSource_SPOT:
+					if (!createPointLight(data, pAiLight)) return false;
+					break;
+				default:
+					LLOG_WRN << "Unsupported ASSIMP light type " << std::to_string(pAiLight->mType);
+					continue;
 			}
 		}
 
 		return true;
 	}
 
-	bool createAnimations(ImporterData& data)
-	{
-		for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
-		{
+	bool createAnimations(ImporterData& data) {
+		for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++) {
 			createAnimation(data, data.pScene->mAnimations[i]);
 		}
 		return true;
 	}
 
-	void createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count, std::vector<float2>& texCrds)
-	{
+	void createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count, std::vector<float2>& texCrds) {
 		texCrds.resize(count);
-		for (uint32_t i = 0; i < count; i++)
-		{
+		for (uint32_t i = 0; i < count; i++) {
 			assert(pAiTexCrd[i].z == 0);
 			texCrds[i] = float2(pAiTexCrd[i].x, pAiTexCrd[i].y);
 		}
 	}
 
-	void createTangentList(const aiVector3D* pAiTangent, const aiVector3D* pAiBitangent, const aiVector3D* pAiNormal, uint32_t count, std::vector<float4>& tangents)
-	{
+	void createTangentList(const aiVector3D* pAiTangent, const aiVector3D* pAiBitangent, const aiVector3D* pAiNormal, uint32_t count, std::vector<float4>& tangents) {
 		tangents.resize(count);
-		for (uint32_t i = 0; i < count; i++)
-		{
+		for (uint32_t i = 0; i < count; i++) {
 			// We compute the bitangent at runtime as defined by MikkTSpace: cross(N, tangent.xyz) * tangent.w.
 			// Compute the orientation of the loaded bitangent here to set the sign (w) correctly.
 			float3 T = float3(pAiTangent[i].x, pAiTangent[i].y, pAiTangent[i].z);
@@ -417,38 +400,32 @@ namespace {
 		}
 	}
 
-	void createIndexList(const aiMesh* pAiMesh, std::vector<uint32_t>& indices)
-	{
+	void createIndexList(const aiMesh* pAiMesh, std::vector<uint32_t>& indices) {
 		const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
 		const uint32_t indexCount = pAiMesh->mNumFaces * perFaceIndexCount;
 
 		indices.resize(indexCount);
-		for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++)
-		{
+		for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++) {
 			assert(pAiMesh->mFaces[i].mNumIndices == perFaceIndexCount); // Mesh contains mixed primitive types, can be solved using aiProcess_SortByPType
-			for (uint32_t j = 0; j < perFaceIndexCount; j++)
-			{
+			for (uint32_t j = 0; j < perFaceIndexCount; j++) {
 				indices[i * perFaceIndexCount + j] = (uint32_t)(pAiMesh->mFaces[i].mIndices[j]);
 			}
 		}
 	}
 
-	void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids)
-	{
+	void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids) {
 		const uint32_t vertexCount = pAiMesh->mNumVertices;
 		weights.resize(vertexCount);
 		ids.resize(vertexCount);
 
-		for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++)
-		{
+		for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++) {
 			const aiBone* pAiBone = pAiMesh->mBones[bone];
 			assert(data.getNodeInstanceCount(pAiBone->mName.C_Str()) == 1);
 			uint32_t aiBoneID = data.getFalcorNodeID(pAiBone->mName.C_Str(), 0);
 
 			// The way Assimp works, the weights holds the IDs of the vertices it affects.
 			// We loop over all the weights, initializing the vertices data along the way
-			for (uint32_t weightID = 0; weightID < pAiBone->mNumWeights; weightID++)
-			{
+			for (uint32_t weightID = 0; weightID < pAiBone->mNumWeights; weightID++) {
 				// Get the vertex the current weight affects
 				const aiVertexWeight& aiWeight = pAiBone->mWeights[weightID];
 
@@ -458,10 +435,8 @@ namespace {
 
 				// Find the next unused slot in the bone array of the vertex, and initialize it with the current value
 				bool emptySlotFound = false;
-				for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++)
-				{
-					if (vertexWeights[j] == 0)
-					{
+				for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++) {
+					if (vertexWeights[j] == 0) {
 						vertexIds[j] = aiBoneID;
 						vertexWeights[j] = aiWeight.mWeight;
 						emptySlotFound = true;
@@ -474,8 +449,7 @@ namespace {
 		}
 
 		// Now we need to normalize the weights for each vertex, since in some models the sum is larger than 1
-		for (uint32_t i = 0; i < vertexCount; i++)
-		{
+		for (uint32_t i = 0; i < vertexCount; i++) {
 			float4& w = weights[i];
 			float f = 0;
 			for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++) f += w[j];
@@ -483,8 +457,7 @@ namespace {
 		}
 	}
 
-	void createMeshes(ImporterData& data)
-	{
+	void createMeshes(ImporterData& data) {
 		const aiScene* pScene = data.pScene;
 		const bool loadTangents = is_set(data.builder.getFlags(), SceneBuilder::Flags::UseOriginalTangentSpace);
 
@@ -492,8 +465,7 @@ namespace {
 		uint64_t largestIndexCount = 0;
 		uint64_t largestVertexCount = 0;
 
-		for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
-		{
+		for (uint32_t i = 0; i < pScene->mNumMeshes; i++) {
 			const aiMesh* pAiMesh = pScene->mMeshes[i];
 			uint64_t indexCount = pAiMesh->mNumFaces * pAiMesh->mFaces[0].mNumIndices;
 
@@ -510,8 +482,7 @@ namespace {
 		if (loadTangents) tangents.reserve(largestVertexCount);
 
 		// Add all the meshes.
-		for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
-		{
+		for (uint32_t i = 0; i < pScene->mNumMeshes; i++) {
 			const aiMesh* pAiMesh = pScene->mMeshes[i];
 			const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
 
@@ -535,8 +506,7 @@ namespace {
 			mesh.normals.pData = reinterpret_cast<float3*>(pAiMesh->mNormals);
 			mesh.normals.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
 
-			if (pAiMesh->HasTextureCoords(0))
-			{
+			if (pAiMesh->HasTextureCoords(0)) {
 				createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices, texCrds);
 				assert(!texCrds.empty());
 				mesh.texCrds.pData = texCrds.data();

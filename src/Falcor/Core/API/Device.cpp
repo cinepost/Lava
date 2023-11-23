@@ -296,9 +296,6 @@ void Device::cleanup() {
     mDeferredReleases = decltype(mDeferredReleases)();
 
     destroyApiObjects();
-
-    //mApiHandle->cleanup();
-    //mApiHandle.setNull();
 }
 
 void Device::flushAndSync() {

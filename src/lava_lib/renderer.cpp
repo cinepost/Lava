@@ -81,8 +81,17 @@ bool Renderer::init(const Config& config) {
 	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
-	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-	//sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+
+	if(config.optimizeForIPR) {
+		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMeshes;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeStatic;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeDynamic;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+	}
 
 	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
@@ -123,9 +132,14 @@ Renderer::~Renderer() {
 	Falcor::OSServices::stop();
 }
 
-AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
+AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info, bool updateExisting) {
 	LLOG_DBG << "Adding aov " << info.name;
-	if (mAOVPlanes.find(info.name) != mAOVPlanes.end()) {
+	auto it = mAOVPlanes.find(info.name);
+	if (it != mAOVPlanes.end()) {
+		if(updateExisting) {
+			it->second->update(info);
+			return it->second;
+		}
 		LLOG_ERR << "AOV plane named \"" << info.name << "\" already exist !";
 		return nullptr;
 	}
@@ -747,8 +761,6 @@ void Renderer::finalizeScene(const FrameInfo& frame_info) {
 		mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_info.imageSamples);
 		mpCamera->setPatternGenerator(mpSampleGenerator, mInvRegionDim);
 	}
-
-	//mpCamera->setJitter({0.0f, 0.0f}); // TODO: remove!!!
 
 	mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), frame_info.frameNumber);
 }

@@ -726,7 +726,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
     		std::smatch m = *i;
     		g_mplayPortNumber = std::stoi(m[1].str().c_str());
     	}
-    	if (g_mplayPortNumber > 0) log(0, "Socket port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
+    	if ( g_mplayPortNumber > 0) log(0, "Socket port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
     } 
     
     // Check if mplay already opened using lock file
@@ -1178,6 +1178,7 @@ bool H_Image::openPipe(void) {
     ImagePtr img = g_masterImages[0];
     
     if (img->getIMDisplay()) {
+    	initScanLinesCache(2048, img->getChannelCount(), img->getEntrySize()); // update scanliens cache if size differs
         return true; // Everything is fine. Pipe already opened.
     }
     
@@ -1240,6 +1241,11 @@ bool H_Image::openPipe(void) {
     header[1] = img->getPort() < 0 ? img->getOrigXres() : img->getXres();
     header[2] = img->getPort() < 0 ? img->getOrigYres() : img->getYres();
     header[5] = totalChannels;
+
+    header[1] = img->getXres();
+    header[2] = img->getYres();
+
+    log(0, "H_Image::openPipe() header image size %dx%d\n", header[1], header[2]);
 	
     FILE* fp = imp->GetFile();
     

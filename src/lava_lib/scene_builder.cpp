@@ -31,6 +31,8 @@
 #include <limits>
 #include <numeric>
 
+#include "boost/system/error_code.hpp"
+
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
 
@@ -59,11 +61,21 @@ SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags):
 }
 
 SceneBuilder::~SceneBuilder() {
-    // Remove temporary geometries from filysystem
+    // Remove temporary geometries from filesystem
     const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
     if(!mTemporaryGeometriesPaths.empty()) {
         for(auto const& fullpath: mTemporaryGeometriesPaths) {
-            fs::remove(fullpath);
+            boost::system::error_code ec;
+            bool retval = fs::remove_all(fullpath, ec);
+            if(!ec) {  // success
+                if(retval) {
+                    LLOG_DBG << "Removed temporary geometry file " << fullpath;
+                } else {
+                    LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
+                }
+            } else {  // error removing temp file
+                LLOG_ERR << "Error removing temporary geometry file " << fullpath;
+            }
         }
     }
     

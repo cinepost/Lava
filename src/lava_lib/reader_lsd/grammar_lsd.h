@@ -126,7 +126,7 @@ namespace ast {
     enum class Style { GLOBAL, MATERIAL, NODE, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
     enum class EmbedDataType { TEXTURE, UNKNOWN };
     enum class EmbedDataEncoding { UUENCODED, UNKNOWN };
-    enum class IPRMode { GENERATE, UPDATE };
+    enum class IPRMode { DEFAULT, GENERATE, UPDATE };
 
     typedef lava::Display::DisplayType DisplayType;
     
@@ -738,8 +738,9 @@ namespace parser {
 
     struct IPRModesTable : x3::symbols<ast::IPRMode> {
         IPRModesTable() {
-            add ("generate"    , ast::IPRMode::GENERATE)
-                ("update"     ,  ast::IPRMode::UPDATE);
+            add ("default"    , ast::IPRMode::DEFAULT)
+                ("generate"   , ast::IPRMode::GENERATE)
+                ("update"     , ast::IPRMode::UPDATE);
         }
     } const ipr_mode;
 

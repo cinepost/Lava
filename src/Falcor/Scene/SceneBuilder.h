@@ -54,7 +54,7 @@ class dlldecl SceneBuilder {
  public:
     using SharedPtr = std::shared_ptr<SceneBuilder>;
 
-    static const uint32_t kInvalidNode = Animatable::kInvalidNode;
+    static const uint32_t kInvalidNodeID = Animatable::kInvalidNode;
     static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
     static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
 
@@ -168,7 +168,7 @@ class dlldecl SceneBuilder {
         bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
         bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
         bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
-        uint32_t skeletonNodeId = kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
+        uint32_t skeletonNodeId = kInvalidNodeID;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
 
         template<typename T>
         uint32_t getAttributeIndex(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const {
@@ -325,7 +325,7 @@ class dlldecl SceneBuilder {
         std::string name;
         Vao::Topology topology = Vao::Topology::Undefined;
         Material::SharedPtr pMaterial;
-        uint32_t skeletonNodeId = kInvalidNode; ///< Forwarded from Mesh struct.
+        uint32_t skeletonNodeId = kInvalidNodeID; ///< Forwarded from Mesh struct.
 
         uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
         bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
@@ -380,7 +380,7 @@ class dlldecl SceneBuilder {
         float4x4 transform;
         float4x4 meshBind;          // For skinned meshes. World transform at bind time.
         float4x4 localToBindPose;   // For bones. Inverse bind transform.
-        uint32_t parent = kInvalidNode;
+        uint32_t parent = kInvalidNodeID;
     };
 
     using InstanceMatrices = std::vector<float4x4>;
@@ -539,7 +539,7 @@ class dlldecl SceneBuilder {
         \param nodeID The node to attach the volume to (optional).
         \return The ID of the volume in the scene.
     */
-    uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNode);
+    uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNodeID);
 
     // Lights
 
@@ -629,6 +629,16 @@ class dlldecl SceneBuilder {
     */
     uint32_t addNode(const Node& node);
 
+    /** Gets a node from the graph.
+        \return The node ID.
+    */
+    uint32_t getInternalNode(const std::string& name);
+
+    /** Updates a node in the graph.
+        \return The updated node ID.
+    */
+    uint32_t updateNode(const Node& node);
+
     /** Add a curve instance to a node.
     */
     void addCurveInstance(uint32_t nodeID, uint32_t curveID);
@@ -657,7 +667,7 @@ protected:
         std::vector<Animatable*> animatable;    ///< Pointers to all animatable objects attached to this node.
         bool dontOptimize = false;              ///< Whether node should be ignored in optimization passes
 
-         /** Returns true if node has any attached scene objects.
+        /** Returns true if node has any attached scene objects.
         */
         bool hasObjects() const { return !meshes.empty() || !curves.empty() || !animatable.empty(); }
     };
@@ -696,7 +706,7 @@ protected:
         uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
         uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
         uint32_t vertexCount = 0;                   ///< Number of vertices.
-        uint32_t skeletonNodeID = kInvalidNode;     ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+        uint32_t skeletonNodeID = kInvalidNodeID;     ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
         bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
         bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
         bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).

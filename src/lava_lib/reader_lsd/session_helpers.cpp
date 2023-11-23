@@ -90,7 +90,6 @@ static inline bool isNormalizedTypeName(const std::string& type_name) {
 
 static inline uint32_t componentsCountFromLSDTypeName(const std::string& type_name) {
 	if(type_name == "float") return 1;
-	if(type_name == "int") return 1;
 	
 	if(type_name == "vector2") return 2;
 	if(type_name == "int2") return 2;
@@ -158,7 +157,7 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, co
 			default: return Falcor::ResourceFormat::RGBA32Uint;
 		}
 	}
-	if( format_name == "float16") {
+	if( format_name == "float16" || format_name == "half") {
 		switch (numChannels) {
 			case 1: return Falcor::ResourceFormat::R16Float;
 			case 2: return Falcor::ResourceFormat::RG16Float;
@@ -200,7 +199,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	}
 
 	const std::string filename = pPlane->getPropertyValue(ast::Style::PLANE, "filename", std::string(""));
-	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
+	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
 	const std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 	const std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
 	const std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));

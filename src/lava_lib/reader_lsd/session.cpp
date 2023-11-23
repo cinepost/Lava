@@ -35,6 +35,8 @@
 
 
 static constexpr float halfC = (float)M_PI / 180.0f;
+static constexpr uint32_t kMaxMeshID = std::numeric_limits<uint32_t>::max();
+static constexpr uint32_t kMaxNodeID = std::numeric_limits<uint32_t>::max();
 
 namespace lava {
 
@@ -208,7 +210,8 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 }
 
 void Session::cmdQuit() {
-	//mpRendererIface = nullptr;
+	mpRenderer = nullptr;
+  mpDevice = nullptr;
 }
 
 bool Session::cmdRaytrace() {
@@ -321,6 +324,7 @@ bool Session::cmdRaytrace() {
 	}
 
 	LLOG_INF << "Rendering image tiles:";
+	LLOG_INF << "Image resolution: " << resolution[0] << "x" << resolution[1];
 	for(const TileInfo& tileInfo: tiles) LLOG_INF << to_string(tileInfo);
 
 	// Get renderer aov planes
@@ -350,7 +354,7 @@ bool Session::cmdRaytrace() {
 	
 		// houdini display driver section
 		if((mpDisplay->type() == DisplayType::HOUDINI) || (mpDisplay->type() == DisplayType::MD) || (mpDisplay->type() == DisplayType::IP)) {
-			clearDisplayBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true));
+			clearDisplayBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true)) && !mIPR;
 			const int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
 			const int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
 			const std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
@@ -368,11 +372,11 @@ bool Session::cmdRaytrace() {
 			userParams.push_back(Display::makeStringsParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange}));
 	    	
 			if ((mplayPortNum > 0) && mIPR) {
-	    		userParams.push_back(Display::makeStringsParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)}));
-	    		imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
-	    	}
+	    	userParams.push_back(Display::makeStringsParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)}));
+	    	imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
+	    }
 
-	    	if (houdiniPortNum > 0) userParams.push_back(Display::makeIntsParameter("houdiniportnum", {houdiniPortNum}));
+	    if (houdiniPortNum > 0) userParams.push_back(Display::makeIntsParameter("houdiniportnum", {houdiniPortNum}));
 		}
 
     	// Open main image plane
@@ -383,9 +387,9 @@ bool Session::cmdRaytrace() {
     		if(pMainOutputPlane->hasMetaData()) {
     			auto metaData = pMainOutputPlane->getMetaData();	
     			result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C", &metaData);
-        	} else {
-        		result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C");
-        	}
+      	} else {
+      		result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C");
+      	}
     		if(!result) LLOG_FTL << "Unable to open main output plane image !!!";
     		return result;
     	};
@@ -439,36 +443,37 @@ bool Session::cmdRaytrace() {
 	}
 ///////
 
-	// It there was request to fill image with zero data before the rendering starts, we have to check out configuration meets certain criteria
-	// First fo all there should be no additional displays that refers to the same image as main output plane driver (mpDisplay) that are postponed
-	// to be opened later (after frame is rendered). Aslo we skip this step if the main output driver is not interactive, e.g it writes to a filesystem
-	// as there is no benifit in doing this.
-	// TODO: mark displays that we are going to open later and check they are writing to the same image as main mpDisplay!
-	if(clearDisplayBeforeRendering && mpDisplay->isInteractive()) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
+  initDisplayTimeReport.addTotal("Display init total time");
+  initDisplayTimeReport.printToLog();
 
+  // Frame rendering
+  TimeReport renderingTimeReport;
+	
+	LLOG_INF << "Rendering image started...";
+	setUpCamera(mpRenderer->currentCamera());
+  
+  for(const auto& tile: tiles) {
+  	LLOG_DBG << "Rendering " << to_string(tile);
 
-    initDisplayTimeReport.addTotal("Display init total time");
-    initDisplayTimeReport.printToLog();
+  	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+    frameInfo.renderRegion = tile.renderRegion;
 
-    // Frame rendering
-    TimeReport renderingTimeReport;
-		
-		LLOG_INF << "Rendering image started...";
-		setUpCamera(mpRenderer->currentCamera());
-    
-    for(const auto& tile: tiles) {
-    	LLOG_DBG << "Rendering " << to_string(tile);
-
-    	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
-      	frameInfo.renderRegion = tile.renderRegion;
-
-    	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
-    	mpRenderer->prepareFrame(frameInfo);
+  	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+  	mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
 		if(!pMainOutputPlane->getAOVPlaneGeometry(aov_geometry)) {
 			LLOG_FTL << "No AOV !!!";
 			break;
+		}
+
+		// It there was request to fill image with zero data before the rendering starts, we have to check out configuration meets certain criteria
+		// First fo all there should be no additional displays that refers to the same image as main output plane driver (mpDisplay) that are postponed
+		// to be opened later (after frame is rendered). Aslo we skip this step if the main output driver is not interactive, e.g it writes to a filesystem
+		// as there is no benifit in doing this.
+		// TODO: mark displays that we are going to open later and check they are writing to the same image as main mpDisplay!
+		if(clearDisplayBeforeRendering && mpDisplay->isInteractive()) {
+			sendImageRegionData(hImage, mpDisplay.get(), frameInfo, nullptr);
 		}
 
 		long int sampleUpdateIterations = 0;
@@ -500,13 +505,13 @@ bool Session::cmdRaytrace() {
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainOutputPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region
 		if (!sendImageRegionData(hImage, mpDisplay.get(), frameInfo, pMainOutputPlane.get())) break;
-		
+	
 		// Send secondary aov image planes data
-    	for(auto& entry: aovPlanes) {
-    		uint hImage = entry.first;
-	    	auto& pPlane = entry.second;
-	    	if (pPlane && pPlane->isEnabled()) {
-	    		AOVPlaneGeometry aov_geometry;
+  	for(auto& entry: aovPlanes) {
+  		uint hImage = entry.first;
+    	auto& pPlane = entry.second;
+    	if (pPlane && pPlane->isEnabled()) {
+    		AOVPlaneGeometry aov_geometry;
 				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
 					LLOG_ERR << "Error getting AOV " << std::string(pPlane->name()) << " geometry!";
 					continue;
@@ -519,8 +524,8 @@ bool Session::cmdRaytrace() {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
-	    	}
-	    }
+    	}
+    }
 	}
 
 	LLOG_DBG << "Closing display...";
@@ -550,8 +555,8 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
 
   auto pSceneBuilder = mpRenderer->sceneBuilder();
   if(!pSceneBuilder) {
-	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
-	return;
+		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+		return;
   }
 
  	// immediate mesh add
@@ -786,7 +791,6 @@ void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
 	}
-	auto pProp = mpCurrentScope->getProperty(style, token);
 	if(!mpCurrentScope->getProperty(style, token)) {
 		mpCurrentScope->declareProperty(style, valueType(value), token, value, Property::Owner::USER);
 	} else {
@@ -877,7 +881,9 @@ scope::ScopeBase::SharedPtr Session::getCurrentScope() {
 
 void Session::cmdIPRmode(lsd::ast::IPRMode mode, bool stash) {
 	LLOG_DBG << "cmdIPRmode " << to_string(mode) << " stash " << stash;
-	if (!mIPR) mIPR = true;
+	if (!mIPR && (mode == ast::IPRMode::GENERATE || mode == ast::IPRMode::UPDATE)) {
+		mRendererConfig.optimizeForIPR = mIPR = true;
+	}
 	mIPRmode = mode;
 }
 
@@ -990,6 +996,15 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
+				// Check if we are in IPR update mode. If so and geometry is being flagged as temporary we should ignore it.
+				// We also want to check that geometry was already pushed to scene builder during IPR generate mode.
+				if(pScopeGeo->isTemporary() && mIPRmode == ast::IPRMode::UPDATE) {
+					if (mMeshMap.find(pScopeGeo->detailName()) != mMeshMap.end()) {
+						// mesh already exist. all ok
+						break;
+					}
+				}
+
 				bool pushGeoAsync = mpGlobal->getPropertyValue(ast::Style::GLOBAL, "async_geo", bool(true));
 				if( pScopeGeo->isInline() || !pushGeoAsync) {
 					pushBgeo(pScopeGeo->detailName(), pScopeGeo);
@@ -1006,7 +1021,8 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
-				if(!pushGeometryInstance(pScopeObj)) {
+				const bool update = (mIPRmode == ast::IPRMode::UPDATE) ? true : false;
+				if(!pushGeometryInstance(pScopeObj, update)) {
 					mFailed = true;
 					return false;
 				}
@@ -1015,7 +1031,7 @@ bool Session::cmdEnd() {
 		case ast::Style::PLANE:
 			{
 				scope::Plane::SharedPtr pScopePlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
-				auto pPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pScopePlane));
+				auto pPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pScopePlane), mIPR);
 				
 				// Check if output plane wants own display for image output
 				const std::string& display_filename = pPlane->filename();
@@ -1324,6 +1340,10 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   return pMaterial;
 }
 
+Falcor::StandardMaterial::SharedPtr Session::updateMaterialFromLSD(const std::string& material_name, const Property* pShaderProp) {
+	
+}
+
 bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name) {
 	assert(mpCurrentScope);
 
@@ -1337,7 +1357,8 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 	return true;
 }
 
-bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
+
+bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool update) {
 	assert(pObj);
 
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
@@ -1354,60 +1375,65 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
-	uint32_t exportedInstanceID = SceneBuilder::kInvalidExportedID;
-	const Property* pIDProperty = pObj->getProperty(ast::Style::OBJECT, "id");
-	if(pIDProperty) {
-		exportedInstanceID = pIDProperty->get<uint32_t>();
-	}
+	uint32_t exportedInstanceID = pObj->getPropertyValue(ast::Style::OBJECT, "id", (uint32_t)SceneBuilder::kInvalidExportedID);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
-	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
+	uint32_t meshID = kMaxMeshID;
 
 	try {
-		mesh_id = std::get<uint32_t>(it->second);	
-		LLOG_DBG << "Getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
+		meshID = std::get<uint32_t>(it->second);	
+		LLOG_DBG << "Getting sync meshID for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
 	} catch (const std::bad_variant_access&) {
 		auto& f = std::get<std::shared_future<uint32_t>>(it->second);
 		try {
-			mesh_id = f.get();
-			LLOG_DBG << "Getting async mesh_id for obj_name " << obj_name;	
+			meshID = f.get();
+			LLOG_DBG << "Getting async meshID for obj_name " << obj_name;	
 		} catch(const std::exception& e) {
-        	LLOG_ERR << "Async geo instance creation error!!! Exception from the thread: " << e.what();
-        	return false;
-    	}
+     	LLOG_ERR << "Async geo instance creation error!!! Exception from the thread: " << e.what();
+     	return false;
+    }
 	} catch (...) {
 		LLOG_ERR << "Async geo instance creation error!!! Unable to get mesh id for object: " << obj_name;
 	}
 
-	if (mesh_id == std::numeric_limits<uint32_t>::max()) {
+	if (meshID == kMaxMeshID) {
 		return false;
 	}
-	it->second = mesh_id;
 
-	LLOG_TRC << "mesh_id " << mesh_id;
+	it->second = meshID;
+
+	LLOG_TRC << "meshID " << meshID;
 
 	Falcor::SceneBuilder::Node node = {};
 	node.name = it->first;
 	node.transform = pObj->getTransformList()[0];
 	node.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
-    node.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
-	/*
-		glm::mat4(1), // For skinned meshes. World transform at bind time.
-		glm::mat4(1), // For bones. Inverse bind transform.
-		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
-	};
-	*/
+ 	node.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
 
-	uint32_t node_id = pSceneBuilder->addNode(node);
+	uint32_t nodeID = kMaxNodeID;
+
+	if(update) {
+		nodeID = pSceneBuilder->updateNode(node);
+	} else {
+		nodeID = pSceneBuilder->addNode(node);
+	}
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
-	if (!pMaterial) {
-		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
-		pMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
+	StandardMaterial::SharedPtr pNewMaterial = nullptr;
+
+	if(update) {
+		// Update material if needed
+		if(!pSceneBuilder->updateMaterialFromLSD(material_name, pShaderProp)) {
+			LLOG_ERR << "Error updating material " << material_name;
+			return false;
+		}
+	} else {
+	 	// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
+		pNewMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
 	}
 
 	// Instance exported data
@@ -1436,10 +1462,15 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
   creationSpec.pExportedDataSpec = &exportedSpec;
   creationSpec.pVisibilitySpec = &visibilitySpec;
   creationSpec.pShadingSpec = &shadingSpec;
-  creationSpec.pMaterialOverride = pMaterial;
+  creationSpec.pMaterialOverride = pNewMaterial;
 
-  // Add a mesh instance to a node
-  return pSceneBuilder->addMeshInstance(node_id, mesh_id, &creationSpec);
+  if(update) {
+  	// Update mesh instance
+  	return pSceneBuilder->updateMeshInstance(nodeID, meshID, &creationSpec);
+  } else {
+  	// Add a mesh instance to a node
+  	return pSceneBuilder->addMeshInstance(nodeID, meshID, &creationSpec);
+	}
 }
 
 
