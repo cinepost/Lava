@@ -99,6 +99,20 @@ Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
     return flags;
 }
 
+void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
+    assert(pMaterial);
+
+    auto const& pBasicMaterial = std::dynamic_pointer_cast<BasicMaterial>(pMaterial);
+    setAlphaMode(pBasicMaterial->getAlphaMode());
+    setAlphaThreshold(pBasicMaterial->getAlphaThreshold());
+    setIndexOfRefraction(pBasicMaterial->getIndexOfRefraction());
+    setBaseColor(pBasicMaterial->getBaseColor());
+    setReflectivity(pBasicMaterial->getReflectivity());
+    setTransmissionColor(pBasicMaterial->getTransmissionColor());
+    setDiffuseTransmission(pBasicMaterial->getDiffuseTransmission());
+    setSpecularTransmission(pBasicMaterial->getSpecularTransmission());
+}
+
 const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
     switch(slot) {
         case TextureSlot::BaseColor:

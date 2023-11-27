@@ -414,8 +414,10 @@ class dlldecl SceneBuilder {
 
     /** Add a mesh instance to a node
     */
-    bool addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* creationSpec = nullptr);
+    bool addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec = nullptr);
     
+    bool updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node);
+
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
@@ -496,6 +498,8 @@ class dlldecl SceneBuilder {
     */
     Material::SharedPtr getMaterial(const std::string& name) const;
 
+    bool updateMaterial(const std::string& name, const Material::SharedPtr& pNewMaterial);
+
     bool getMaterialID(const std::string& name, uint32_t& materialId) const;
 
     /** Add a material.
@@ -554,11 +558,15 @@ class dlldecl SceneBuilder {
     */
     Light::SharedPtr getLight(const std::string& name) const;
 
+    Light::SharedPtr getLight(uint32_t lightID) const;
+
     /** Add a light source
         \param pLight The light object.
         \return The light ID
     */
     uint32_t addLight(const Light::SharedPtr& pLight);
+
+    bool updateLight(const std::string& name, const Light& newLight);
 
     // Environment map
 
@@ -861,6 +869,10 @@ protected:
     void createSceneGraph();
     void createMeshBoundingBoxes();
     void calculateCurveBoundingBoxes();
+
+    // Scene update flags
+    bool mUpdateSceneMaterials = false;
+    bool mUpdateSceneNodes = false;
 
     friend class SceneCache;
 };

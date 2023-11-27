@@ -2019,10 +2019,10 @@ GridVolume::SharedPtr Scene::getGridVolumeByName(const std::string& name) const 
 }
 
 Light::SharedPtr Scene::getLightByName(const std::string& name) const {
-    for (const auto& l : mLights) {
-        if (l->getName() == name) return l;
+    auto match = std::find_if(mLights.begin(), mLights.end(), [&] (const Light::SharedPtr& l) { return l->getName() == name; });
+    if(match != mLights.end()) {
+        return *match;
     }
-
     return nullptr;
 }
 

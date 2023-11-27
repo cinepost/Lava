@@ -106,8 +106,6 @@ class Session {
     Falcor::StandardMaterial::SharedPtr createStandardMaterialFromLSD(const std::string& material_name, const Property* pShaderProp);
     Falcor::MaterialX::UniquePtr createMaterialXFromLSD(lsd::scope::Material::SharedConstPtr pMaterialLSD);
 
-    Falcor::StandardMaterial::SharedPtr updateMaterialFromLSD(const std::string& material_name, const Property* pShaderProp);
-
  	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj, bool update);
     void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 

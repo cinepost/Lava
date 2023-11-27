@@ -174,6 +174,19 @@ Light::Light(const std::string& name, LightType type) : mName(name) {
     mData.flags = 0x0;
 }
 
+void Light::update(const Light& light) {
+    setCameraVisibility(light.getCameraVisibility());
+    setShadowColor(light.getShadowColor());
+    setShadowType(light.getShadowType());
+    setLightRadius(light.getLightRadius());
+    setActive(light.isActive());
+    setDiffuseIntensity(light.getDiffuseIntensity());
+    setSpecularIntensity(light.getSpecularIntensity());
+    setIndirectDiffuseIntensity(light.getIndirectDiffuseIntensity());
+    setIndirectSpecularIntensity(light.getIndirectSpecularIntensity());
+    setCameraVisibility(light.getCameraVisibility());
+}
+
 void Light::setTexture(Texture::SharedPtr pTexture) {
     mpTexture = pTexture;
     if(mpTexture) mData.flags |= (uint32_t)LightDataFlags::HasTexture;
@@ -199,6 +212,14 @@ PointLight::SharedPtr PointLight::create(const std::string& name) {
 PointLight::PointLight(const std::string& name) : Light(name, LightType::Point) {
     mPrevData = mData;
     mData.flags |= (uint32_t)LightDataFlags::DeltaPosition; 
+}
+
+void PointLight::update(const Light& light) {
+    Light::update(light);
+    const PointLight& pointLight = dynamic_cast<const PointLight&>(light);
+    setWorldPosition(pointLight.getWorldPosition());
+    setWorldDirection(pointLight.getWorldDirection());
+    setOpeningAngle(pointLight.getOpeningAngle());
 }
 
 void PointLight::setWorldDirection(const float3& dir) {
@@ -281,6 +302,14 @@ DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
     return SharedPtr(new DirectionalLight(name));
 }
 
+void DirectionalLight::update() {
+    Light::update();
+}
+
+void DirectionalLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void DirectionalLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) // NaNs propagate
     {
@@ -306,6 +335,10 @@ DistantLight::DistantLight(const std::string& name) : Light(name, LightType::Dis
     setAngle(0.5f * 0.53f * (float)M_PI / 180.f);   // Approximate sun half-angle
     update();
     mPrevData = mData;
+}
+
+void DistantLight::update(const Light& light) {
+    Light::update(light);
 }
 
 void DistantLight::setDiffuseIntensity(const float3& intensity) {
@@ -398,6 +431,10 @@ EnvironmentLight::SharedPtr EnvironmentLight::create(const std::string& name, Te
     return SharedPtr(new EnvironmentLight(name, pTexture));
 }
 
+void EnvironmentLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
 
 }
@@ -456,6 +493,10 @@ PhysicalSunSkyLight::SharedPtr PhysicalSunSkyLight::create(const std::string& na
     return SharedPtr(new PhysicalSunSkyLight(name));
 }
 
+void PhysicalSunSkyLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void PhysicalSunSkyLight::setDevice(Device::SharedPtr pDevice) {
     Light::setDevice(pDevice);
     if (mpDevice) {
@@ -506,6 +547,10 @@ AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : 
     mPrevData = mData;
 }
 
+void AnalyticAreaLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void AnalyticAreaLight::setScaling(float3 scale) { 
     mScaling = scale * 0.5f; // We do this multiplication to make our area light of a unit size  
     update(); 
@@ -554,6 +599,10 @@ RectLight::SharedPtr RectLight::create(const std::string& name) {
     return SharedPtr(new RectLight(name));
 }
 
+void RectLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
+}
+
 void RectLight::update() {
     AnalyticAreaLight::update();
 
@@ -570,6 +619,11 @@ DiscLight::SharedPtr DiscLight::create(const std::string& name) {
     return SharedPtr(new DiscLight(name));
 }
 
+void DiscLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
+}
+
+
 void DiscLight::update() {
     AnalyticAreaLight::update();
 
@@ -583,6 +637,10 @@ void DiscLight::update() {
 
 SphereLight::SharedPtr SphereLight::create(const std::string& name) {
     return SharedPtr(new SphereLight(name));
+}
+
+void SphereLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
 }
 
 void SphereLight::update() {

@@ -28,25 +28,23 @@
 #pragma once
 #include "Scene/Material/BasicMaterial.h"
 
-namespace Falcor
-{
-    /** Class representing a hair material.
+namespace Falcor {
+/** Class representing a hair material.
 
-        Texture channel layout:
+    Texture channel layout:
 
-            BaseColor
-                - RGB - Absorption coefficient, sigmaA
-                - A   - Opacity
-            Specular
-                - R   - Longitudinal roughness, betaM
-                - G   - Azimuthal roughness, betaN
-                - B   - The angle that the small scales on the surface of hair are offset from the base cylinder (in degrees).
-                - A   - Unused
+        BaseColor
+            - RGB - Absorption coefficient, sigmaA
+            - A   - Opacity
+        Specular
+            - R   - Longitudinal roughness, betaM
+            - G   - Azimuthal roughness, betaN
+            - B   - The angle that the small scales on the surface of hair are offset from the base cylinder (in degrees).
+            - A   - Unused
 
-        See additional texture channels defined in BasicMaterial.
-    */
-    class dlldecl HairMaterial : public BasicMaterial
-    {
+    See additional texture channels defined in BasicMaterial.
+*/
+class dlldecl HairMaterial : public BasicMaterial {
     public:
         using SharedPtr = std::shared_ptr<HairMaterial>;
 
@@ -55,7 +53,10 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "");
 
+        void update(const Material::SharedPtr& pMaterial) override;
+
     protected:
         HairMaterial(Device::SharedPtr pDevice, const std::string& name);
-    };
+};
+
 }

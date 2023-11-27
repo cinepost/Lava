@@ -55,6 +55,8 @@ class dlldecl BasicMaterial : public Material {
 		*/
 		Material::UpdateFlags update(MaterialSystem* pOwner) override;
 
+		void update(const Material::SharedPtr& pMaterial) override;
+
 		/** Returns true if the material has a displacement map.
 		*/
 		bool isDisplaced() const override;

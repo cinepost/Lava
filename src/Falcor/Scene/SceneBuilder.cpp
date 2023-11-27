@@ -225,7 +225,14 @@ bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& i
 }
 
 Scene::SharedPtr SceneBuilder::getScene() {
-	if (mpScene) return mpScene;
+	if (mpScene) {
+		if(mUpdateSceneMaterials) {
+			mpScene->updateMaterials(true);
+			mUpdateSceneMaterials = false;
+		}
+
+		return mpScene;
+	}
 
 	mAddGeoTasks.wait();
 
@@ -826,11 +833,20 @@ void SceneBuilder::waitForMaterialTextureLoading() {
 }
 
 Material::SharedPtr SceneBuilder::getMaterial(const std::string& name) const {
-	if(mSceneData.pMaterialSystem) {
-		return mSceneData.pMaterialSystem->getMaterialByName(name);
-	}
-	auto pScene = getScene();
-	
+	if(!mSceneData.pMaterialSystem) return nullptr;
+	return mSceneData.pMaterialSystem->getMaterialByName(name);
+}
+
+bool SceneBuilder::updateMaterial(const std::string& name, const Material::SharedPtr& pNewMaterial) {
+	MaterialSystem* pMaterialSystem = mpScene ? mpScene->mpMaterialSystem.get() : mSceneData.pMaterialSystem.get();
+	assert(pMaterialSystem);
+
+	auto pMaterial = pMaterialSystem->getMaterialByName(name);
+	pMaterial->update(pNewMaterial);
+	bool updated = !is_set(pMaterial->getUpdates(), Material::UpdateFlags::None);
+	if(updated && mpScene) mUpdateSceneMaterials = true;
+
+	return updated;
 }
 
 bool SceneBuilder::getMaterialID(const std::string& name, uint32_t& materialId) const {
@@ -866,11 +882,11 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 
 	uint32_t nodeID = pAnimatable->getNodeID();
 
-	if (nodeID != kInvalidNode && isNodeAnimated(nodeID)) {
+	if (nodeID != kInvalidNodeID && isNodeAnimated(nodeID)) {
 		LLOG_WRN << "Animatable object is already animated.";
 		return nullptr;
 	}
-	if (nodeID == kInvalidNode) nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
+	if (nodeID == kInvalidNodeID) nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
 
 	pAnimatable->setNodeID(nodeID);
 	pAnimatable->setHasAnimation(true);
@@ -884,18 +900,19 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 // Scene graph
 
 static inline glm::mat4 validateMatrix(const glm::mat4& m, const char* field) {
+	glm::mat4 _m = m;
 	for (int i = 0; i < 4; i++) {
 		if (glm::any(glm::isinf(m[i])) || glm::any(glm::isnan(m[i]))) {
-			throw std::runtime_error("SceneBuilder::addNode() - Node '" + node.name + "' " + field + " matrix has inf/nan values");
+			throw std::runtime_error("Error: " + std::string(field) + " matrix has inf/nan values");
 		}
 		// Check the assumption that transforms are affine. Note that glm is column-major.
-		if (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f || m[3][3] != 1.f) {
-			LLOG_WRN << "SceneBuilder::addNode() - Node '" << node.name << "' " << field << " matrix is not affine. Setting last row to (0,0,0,1).";
-			m[0][3] = m[1][3] = m[2][3] = 0.f;
-			m[3][3] = 1.f;
+		if (_m[0][3] != 0.f || _m[1][3] != 0.f || _m[2][3] != 0.f || _m[3][3] != 1.f) {
+			LLOG_WRN << std::string(field) << " matrix is not affine. Setting last row to (0,0,0,1).";
+			_m[0][3] = _m[1][3] = _m[2][3] = 0.f;
+			_m[3][3] = 1.f;
 		}
 	}
-	return m;
+	return _m;
 }
 
 uint32_t SceneBuilder::addNode(const Node& node) {
@@ -903,21 +920,21 @@ uint32_t SceneBuilder::addNode(const Node& node) {
 	internalNode.transform = validateMatrix(node.transform, "transform");
 	internalNode.localToBindPose = validateMatrix(node.localToBindPose, "localToBindPose");
 
-	static_assert(kInvalidNode >= std::numeric_limits<uint32_t>::max());
-	if (node.parent != kInvalidNode && node.parent >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addNode() - Node parent is out of range");
+	static_assert(kInvalidNodeID >= std::numeric_limits<uint32_t>::max());
+	if (node.parent != kInvalidNodeID && node.parent >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addNode() - Node parent is out of range");
 	if (mSceneGraph.size() >= std::numeric_limits<uint32_t>::max()) throw std::runtime_error("SceneBuilder::addNode() - Scene graph is too large");
 
 	// Add node to scene graph.
 	uint32_t newNodeID = (uint32_t)mSceneGraph.size();
 	mSceneGraph.push_back(internalNode);
-	if (node.parent != kInvalidNode) mSceneGraph[node.parent].children.push_back(newNodeID);
+	if (node.parent != kInvalidNodeID) mSceneGraph[node.parent].children.push_back(newNodeID);
 
 	return newNodeID;
 }
 
 uint32_t SceneBuilder::getInternalNode(const std::string& name){
 	uint32_t nodeID = kInvalidNodeID;
-	auto match = std::find_if(mSceneGraph.begin(), mSceneGraph.end(), [] (const Node& v) {return v.name == name});
+	auto match = std::find_if(mSceneGraph.begin(), mSceneGraph.end(), [&] (const Node& v) { return v.name == name; });
 	if(match != mSceneGraph.end()) {
 		nodeID = std::distance(mSceneGraph.begin(), match);
 	}
@@ -935,7 +952,7 @@ uint32_t SceneBuilder::updateNode(const Node& node) {
 	}
 }
 
-bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* creationSpec) {
+bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec) {
 	if (nodeID >= mSceneGraph.size()) {
 		LLOG_ERR << "SceneBuilder::addMeshInstance() - nodeID " << std::to_string(nodeID) << " is out of range. No mesh instance created !!!";
 		return false;
@@ -946,10 +963,10 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 		return false;
 	}
 
-	auto pMaterialOverride = creationSpec ? creationSpec->pMaterialOverride : nullptr;
-	auto pShadingSpec = creationSpec ? creationSpec->pShadingSpec : nullptr;
-	auto pVisibilitySpec = creationSpec ? creationSpec->pVisibilitySpec : nullptr;
-	auto pExportedDataSpec = creationSpec ? creationSpec->pExportedDataSpec : nullptr;
+	auto pMaterialOverride = pCreationSpec ? pCreationSpec->pMaterialOverride : nullptr;
+	auto pShadingSpec = pCreationSpec ? pCreationSpec->pShadingSpec : nullptr;
+	auto pVisibilitySpec = pCreationSpec ? pCreationSpec->pVisibilitySpec : nullptr;
+	auto pExportedDataSpec = pCreationSpec ? pCreationSpec->pExportedDataSpec : nullptr;
 
 	{
 		std::scoped_lock lock(g_meshes_mutex);
@@ -978,6 +995,41 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 	return true;
 }
 
+bool SceneBuilder::updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node) {
+	assert(pCreationSpec);
+
+	const std::string instanceName = pCreationSpec->pExportedDataSpec->name;
+
+	if(meshID >= mMeshes.size()) {
+		LLOG_ERR << "Unable to update mesh instance named \"" << instanceName << "\". Mesh id " << meshID << " exceeds number of meshes !!!";
+		return false;
+	}
+
+	auto& instances = mMeshes[meshID].instances;
+
+	auto match = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == instanceName; });
+	if(match == instances.end()) return false;
+
+	const uint32_t nodeID = match->nodeId;
+
+	if(nodeID >= mSceneGraph.size()) {
+		LLOG_ERR << "Unable to update transform node for instance named \"" << instanceName << "\". Node id " << nodeID << " exceeds number of nodes !!!";
+	}
+
+	auto& internalNode = mSceneGraph[nodeID];
+
+	if(internalNode.transform != node.transform) {
+
+		LLOG_INF << "Updating shit for instance " << instanceName;
+
+		if(mpScene) {
+			mpScene->updateNodeTransform(nodeID, node.transform);
+		}
+	}
+
+	return true;
+}
+
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
 	if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addCurveInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
 	if (curveID >= mCurves.size()) throw std::runtime_error("SceneBuilder::addCurveInstance() - curveID " + std::to_string(curveID) + " is out of range");
@@ -987,7 +1039,7 @@ void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
 }
 
 bool SceneBuilder::doesNodeHaveAnimation(uint32_t nodeID) const {
-	assert(nodeID != kInvalidNode && nodeID < mSceneGraph.size());
+	assert(nodeID != kInvalidNodeID && nodeID < mSceneGraph.size());
 	for (const auto& pAnimation : mSceneData.animations) {
 		if (pAnimation->getNodeID() == nodeID) return true;
 	}
@@ -996,7 +1048,7 @@ bool SceneBuilder::doesNodeHaveAnimation(uint32_t nodeID) const {
 }
 
 bool SceneBuilder::isNodeAnimated(uint32_t nodeID) const {
-	while (nodeID != kInvalidNode) {
+	while (nodeID != kInvalidNodeID) {
 		if (doesNodeHaveAnimation(nodeID)) return true;
 		nodeID = mSceneGraph[nodeID].parent;
 	}
@@ -1007,7 +1059,7 @@ bool SceneBuilder::isNodeAnimated(uint32_t nodeID) const {
 void SceneBuilder::setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping) {
 	assert(nodeID < mSceneGraph.size());
 
-	while (nodeID != kInvalidNode) {
+	while (nodeID != kInvalidNodeID) {
 		for (const auto& pAnimation : mSceneData.animations) {
 			if (pAnimation->getNodeID() == nodeID) {
 				pAnimation->setInterpolationMode(interpolationMode);
@@ -1030,9 +1082,9 @@ GridVolume::SharedPtr SceneBuilder::getGridVolume(const std::string& name) const
 
 uint32_t SceneBuilder::addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID) {
 	assert(pGridVolume);
-	assert((nodeID == kInvalidNode || nodeID < mSceneGraph.size()) && "'nodeID' is out of range");
+	assert((nodeID == kInvalidNodeID || nodeID < mSceneGraph.size()) && "'nodeID' is out of range");
 
-	if (nodeID != kInvalidNode) {
+	if (nodeID != kInvalidNodeID) {
 		pGridVolume->setHasAnimation(true);
 		pGridVolume->setNodeID(nodeID);
 	}
@@ -1045,11 +1097,22 @@ uint32_t SceneBuilder::addGridVolume(const GridVolume::SharedPtr& pGridVolume, u
 // Lights
 
 Light::SharedPtr SceneBuilder::getLight(const std::string& name) const {
-	for (const auto& pLight : mSceneData.lights) {
-		if (pLight->getName() == name) return pLight;
-	}
-	return nullptr;
+	if(mpScene) return mpScene->getLightByName(name);
+
+	auto match = std::find_if(mSceneData.lights.begin(), mSceneData.lights.end(), [&] (const Light::SharedPtr& l) { return l->getName() == name; });
+  if(match != mSceneData.lights.end()) {
+      return *match;
+  }
+  return nullptr;
 }
+
+Light::SharedPtr SceneBuilder::getLight(uint32_t lightID) const {
+	if(mpScene) return mpScene->getLight(lightID);
+
+	if(lightID >= mSceneData.lights.size()) return nullptr;
+	return mSceneData.lights[lightID];
+}
+
 
 uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight) {
 	assert(pLight);
@@ -1058,14 +1121,29 @@ uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight) {
 	return (uint32_t)mSceneData.lights.size() - 1;
 }
 
+bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {
+ 	Light::SharedPtr pLight = getLight(name);
+ 	if(!pLight) {
+ 		LLOG_WRN << "Light named \"" << name << "\" don't exist. Unable to update.";
+ 		return false;
+ 	}
+
+ 	if((uint32_t)pLight->getType() != (uint32_t)newLight.getType()) {
+ 		LLOG_ERR << "Unable to update " << to_string(pLight->getType()) << " light with " << to_string(newLight.getType()) << " light data!";
+ 		return false;
+ 	}
+
+ 	pLight->update(newLight);
+}
+
 // Internal
 
 void SceneBuilder::updateLinkedObjects(uint32_t nodeID, uint32_t newNodeID) {
 	// Helper function to update all objects linked from a node to point to newNodeID.
 	// This is useful when modifying the graph.
 
-	assert(nodeID != kInvalidNode && nodeID < mSceneGraph.size());
-	assert(newNodeID != kInvalidNode && newNodeID < mSceneGraph.size());
+	assert(nodeID != kInvalidNodeID && nodeID < mSceneGraph.size());
+	assert(newNodeID != kInvalidNodeID && newNodeID < mSceneGraph.size());
 	const auto& node = mSceneGraph[nodeID];
 
 	for (auto childID : node.children) {
@@ -1107,7 +1185,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 	// all the nodes are static. The function returns false if the necessary conditions are not met.
 
 	// Check that nodes are valid.
-	if (parentNodeID == kInvalidNode || childNodeID == kInvalidNode) return false;
+	if (parentNodeID == kInvalidNodeID || childNodeID == kInvalidNodeID) return false;
 	assert(parentNodeID < mSceneGraph.size() && childNodeID < mSceneGraph.size());
 
 	if (mSceneGraph[parentNodeID].dontOptimize || mSceneGraph[childNodeID].dontOptimize) return false;
@@ -1119,7 +1197,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 	uint32_t prevNodeID = childNodeID;
 	uint32_t nodeID = child.parent;
 
-	while (nodeID != kInvalidNode) {
+	while (nodeID != kInvalidNodeID) {
 		assert(nodeID < mSceneGraph.size());
 		const auto& node = mSceneGraph[nodeID];
 
@@ -1140,7 +1218,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 		nodeID = mSceneGraph[nodeID].parent;
 	}
 
-	if (nodeID == kInvalidNode) return false; // We didn't find the parent.
+	if (nodeID == kInvalidNodeID) return false; // We didn't find the parent.
 
 	// Update all linked objects to point to the new parent node.
 	updateLinkedObjects(childNodeID, parentNodeID);
@@ -1173,7 +1251,7 @@ bool SceneBuilder::mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID) {
 	// The function returns false if the necessary conditions are not met.
 
 	// Check that nodes are valid and compatible for merging.
-	if (dstNodeID == kInvalidNode || srcNodeID == kInvalidNode) return false;
+	if (dstNodeID == kInvalidNodeID || srcNodeID == kInvalidNodeID) return false;
 	assert(dstNodeID < mSceneGraph.size() && srcNodeID < mSceneGraph.size());
 
 	auto& dst = mSceneGraph[dstNodeID];
@@ -1245,7 +1323,7 @@ void SceneBuilder::prepareSceneGraph() {
 	// It appends pointers to all animatable objects to their respective scene graph nodes.
 
 	auto addAnimatable = [this](Animatable* pObject, const std::string& name) {
-		if (auto nodeID = pObject->getNodeID(); nodeID != kInvalidNode) {
+		if (auto nodeID = pObject->getNodeID(); nodeID != kInvalidNodeID) {
 			if (nodeID >= mSceneGraph.size()) throw std::runtime_error("Invalid node ID in animatable object named '" + name + "'");
 			mSceneGraph[nodeID].animatable.push_back(pObject);
 		}
@@ -1256,7 +1334,7 @@ void SceneBuilder::prepareSceneGraph() {
 	for (const auto& gridVolume : mSceneData.gridVolumes) addAnimatable(gridVolume.get(), gridVolume->getName());
 
 	for (const auto& mesh : mMeshes) {
-		if (mesh.skeletonNodeID != kInvalidNode)
+		if (mesh.skeletonNodeID != kInvalidNodeID)
 		{
 			mSceneGraph[mesh.skeletonNodeID].dontOptimize = true;
 		}
@@ -1373,10 +1451,10 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			}
 
 			// Compute the object->world transform for the node.
-			assert(nodeID != kInvalidNode);
+			assert(nodeID != kInvalidNodeID);
 
 			glm::mat4 transform = glm::identity<glm::mat4>();
-			while (nodeID != kInvalidNode) {
+			while (nodeID != kInvalidNodeID) {
 				assert(nodeID < mSceneGraph.size());
 				transform = mSceneGraph[nodeID].transform * transform;
 
@@ -1514,10 +1592,10 @@ void SceneBuilder::pretransformStaticMeshes() {
 
 		// Compute the object->world transform for the node.
 		auto nodeID = mesh.instances[0].nodeId;
-		assert(nodeID != kInvalidNode);
+		assert(nodeID != kInvalidNodeID);
 
 		glm::mat4 transform = glm::identity<glm::mat4>();
-		while (nodeID != kInvalidNode) {
+		while (nodeID != kInvalidNodeID) {
 			assert(nodeID < mSceneGraph.size());
 			transform = mSceneGraph[nodeID].transform * transform;
 
@@ -2466,7 +2544,7 @@ void SceneBuilder::createMeshData() {
 
 		if (mesh.isSkinned()) {
 			// Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
-			assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNode);
+			assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNodeID);
 
 			for (uint32_t i = 0; i < mesh.vertexCount; i++) {
 				SkinningVertexData& s = mSceneData.meshSkinningData[mesh.skinningVertexOffset + i];
@@ -2475,7 +2553,7 @@ void SceneBuilder::createMeshData() {
 				s.bindMatrixID = (uint32_t)mesh.instances[0].nodeId;
 
 				// If a skeleton's world transform node is not explicitly set, it is the same transform as the instance (Assimp behavior)
-				s.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0].nodeId : mesh.skeletonNodeID;
+				s.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNodeID ? (uint32_t)mesh.instances[0].nodeId : mesh.skeletonNodeID;
 			}
 		}
 	}

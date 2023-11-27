@@ -103,8 +103,6 @@ void MaterialSystem::finalize() {
 	}
 
 	mTextureDescCount = textureManager()->getTextureDescCount(); // TODO: make it scene dependent!
-
-	//mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + textureManager()->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
 	mUDIMTextureCount = textureManager()->getUDIMTexturesCount();
 
@@ -384,11 +382,9 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 			pMaterial->getTextures(textures, true); // true to append instead of erasing vector
 		}
 
-		//textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], textures);
 		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
 		textureManager()->setExtendedTexturesShaderData(mpMaterialsBlock[kExtendedTexturesDataName], mTextureDescCount);
 		textureManager()->setVirtualTexturesShaderData(mpMaterialsBlock[kVirtualTexturesDataName],mpMaterialsBlock[kVirtualPagesResidencyDataName], mTextureDescCount);
-		//textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableBufferName], mUDIMTextureCount * 100);
 	}
 

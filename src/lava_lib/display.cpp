@@ -21,6 +21,16 @@ const std::string& Display::makeChannelName(Display::NamingScheme namingScheme, 
 	return kChannelNameDesc[(uint32_t)namingScheme].channelNames[channelIndex];
 }
 
+std::string Display::makeImageHashString(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, 
+      const std::vector<UserParameter>& userParams, const MetaData* pMetaData) {
+
+    std::string hashString = image_name;
+    hashString += ":" + std::to_string(width) + ": " + std::to_string(height);
+
+    for(const auto& channel: channels) hashString += ":" + channel.name + "_" + to_string(channel.format);    
+
+    return hashString;
+}
 
 bool Display::setStringParameter(const std::string& name, const std::vector<std::string>& strings) {
 	return false;

@@ -24,29 +24,29 @@ class LAVA_API DisplayOIIO: private Display {
 
     static bool isDiplayTypeSupported(Display::DisplayType display_type);
 
-    virtual bool openImage(const std::string& image_name, uint width, uint height, 
+    bool openImage(const std::string& image_name, uint width, uint height, 
       const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams, const MetaData* pMetaData = nullptr) override;
     
-    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
+    bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
       const std::vector<UserParameter>& userParams, const std::string& channel_prefix, const MetaData* pMetaData = nullptr) override;
     
-    virtual bool closeImage(uint imageHandle) override;
-    virtual bool closeAll() override;
+    bool closeImage(uint imageHandle) override;
+    bool closeAll() override;
 
-    virtual bool sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *data) override;
-    virtual bool sendImage(uint imageHandle, uint width, uint height, const uint8_t *data) override;
+    bool sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *data) override;
+    bool sendImage(uint imageHandle, uint width, uint height, const uint8_t *data) override;
 
-    virtual bool setStringParameter(const std::string& name, const std::vector<std::string>& strings) override;
-    virtual bool setIntParameter(const std::string& name, const std::vector<int>& ints) override;
-    virtual bool setFloatParameter(const std::string& name, const std::vector<float>& floats) override;
+    bool setStringParameter(const std::string& name, const std::vector<std::string>& strings) override;
+    bool setIntParameter(const std::string& name, const std::vector<int>& ints) override;
+    bool setFloatParameter(const std::string& name, const std::vector<float>& floats) override;
 
-    virtual bool opened(uint imageHandle) const final;
-    virtual bool closed(uint imageHandle) const final;
+    bool opened(uint imageHandle) const final;
+    bool closed(uint imageHandle) const final;
 
-    virtual bool supportsMetaData() const override;
-    virtual const std::string& imageName(uint imageHandle) const final;
-    virtual uint imageWidth(uint imageHandle) const final;
-    virtual uint imageHeight(uint imageHandle) const final;
+    bool supportsMetaData() const override;
+    const std::string& imageName(uint imageHandle) const final;
+    uint imageWidth(uint imageHandle) const final;
+    uint imageHeight(uint imageHandle) const final;
 
   private:
     struct ImageData {

@@ -609,7 +609,7 @@ namespace {
 		bool currentIsBone = isBone(data, n.name);
 		assert(currentIsBone == false || pCurrent->mNumMeshes == 0);
 
-		n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : SceneBuilder::kInvalidNode;
+		n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : SceneBuilder::kInvalidNodeID;
 		n.transform = aiCast(pCurrent->mTransformation);
 		n.localToBindPose = getLocalToBindPoseMatrix(data, n.name);
 

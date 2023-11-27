@@ -624,7 +624,9 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	const bool visible_primary = pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
-	Falcor::Light::SharedPtr pLight = nullptr;
+	const bool update = (mIPRmode == ast::IPRMode::UPDATE);
+
+	Falcor::Light::SharedPtr pLight = update ? pSceneBuilder->getLight(light_name) : nullptr;
 
 	if(light_type == "distant") {
 		// Directional light
@@ -781,8 +783,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pLight->setSpecularIntensity(to_float3(light_specular_color));
 		pLight->setIndirectDiffuseIntensity(to_float3(light_indirect_diffuse_color));
 		pLight->setIndirectSpecularIntensity(to_float3(light_indirect_specular_color));
-		uint32_t light_id = pSceneBuilder->addLight(pLight);
-		mLightsMap[light_name] = light_id;
+
+		if(update && pLight) {
+			LLOG_INF << "Update light " << light_name;
+			pSceneBuilder->updateLight(light_name, *pLight.get());
+		} else {
+			uint32_t light_id = pSceneBuilder->addLight(pLight);
+			mLightsMap[light_name] = light_id;
+		}
 	}
 }
 
@@ -1340,10 +1348,6 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   return pMaterial;
 }
 
-Falcor::StandardMaterial::SharedPtr Session::updateMaterialFromLSD(const std::string& material_name, const Property* pShaderProp) {
-	
-}
-
 bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name) {
 	assert(mpCurrentScope);
 
@@ -1375,7 +1379,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	uint32_t exportedInstanceID = pObj->getPropertyValue(ast::Style::OBJECT, "id", (uint32_t)SceneBuilder::kInvalidExportedID);
+	const int _id = pObj->getPropertyValue(ast::Style::OBJECT, "id", (int)SceneBuilder::kInvalidExportedID);
+
+	uint32_t exportedInstanceID = (_id < 0) ? SceneBuilder::kInvalidExportedID : static_cast<uint32_t>(_id);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
 	uint32_t meshID = kMaxMeshID;
@@ -1404,36 +1410,26 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 
 	LLOG_TRC << "meshID " << meshID;
 
-	Falcor::SceneBuilder::Node node = {};
-	node.name = it->first;
-	node.transform = pObj->getTransformList()[0];
-	node.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
- 	node.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
-
-	uint32_t nodeID = kMaxNodeID;
-
-	if(update) {
-		nodeID = pSceneBuilder->updateNode(node);
-	} else {
-		nodeID = pSceneBuilder->addNode(node);
-	}
+	Falcor::SceneBuilder::Node transformNode = {};
+	transformNode.name = it->first;
+	transformNode.transform = pObj->getTransformList()[0];
+	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
+ 	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
-	StandardMaterial::SharedPtr pNewMaterial = nullptr;
-
 	if(update) {
 		// Update material if needed
-		if(!pSceneBuilder->updateMaterialFromLSD(material_name, pShaderProp)) {
+		auto pUpdatedMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
+		if(!pSceneBuilder->updateMaterial(material_name, pUpdatedMaterial)) {
 			LLOG_ERR << "Error updating material " << material_name;
 			return false;
 		}
-	} else {
-	 	// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
-		pNewMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
+	} else if(!pMaterial) {
+		pMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
 	}
 
 	// Instance exported data
@@ -1462,13 +1458,14 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   creationSpec.pExportedDataSpec = &exportedSpec;
   creationSpec.pVisibilitySpec = &visibilitySpec;
   creationSpec.pShadingSpec = &shadingSpec;
-  creationSpec.pMaterialOverride = pNewMaterial;
+  creationSpec.pMaterialOverride = pMaterial;
 
   if(update) {
   	// Update mesh instance
-  	return pSceneBuilder->updateMeshInstance(nodeID, meshID, &creationSpec);
+  	return pSceneBuilder->updateMeshInstance(meshID, &creationSpec, transformNode);
   } else {
-  	// Add a mesh instance to a node
+  	// Add a mesh instance
+  	const uint32_t nodeID = pSceneBuilder->addNode(transformNode);
   	return pSceneBuilder->addMeshInstance(nodeID, meshID, &creationSpec);
 	}
 }

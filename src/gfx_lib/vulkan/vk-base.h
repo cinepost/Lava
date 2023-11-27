@@ -11,10 +11,8 @@
 #include "vk-descriptor-allocator.h"
 #include "vk-device-queue.h"
 
-namespace gfx
-{
-namespace vk
-{
+namespace gfx {
+namespace vk {
 
     class DeviceImpl;
     class InputLayoutImpl;

@@ -28,28 +28,29 @@
 #include "stdafx.h"
 #include "HairMaterial.h"
 
-namespace Falcor
-{
-    HairMaterial::SharedPtr HairMaterial::create(Device::SharedPtr pDevice, const std::string& name)
-    {
-        return SharedPtr(new HairMaterial(pDevice, name));
-    }
+namespace Falcor {
 
-    HairMaterial::HairMaterial(Device::SharedPtr pDevice, const std::string& name)
-        : BasicMaterial(pDevice, name, MaterialType::Hair)
-    {
-        // Setup additional texture slots.
-        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true }; // Note: No alpha support
-        mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
-    }
+HairMaterial::SharedPtr HairMaterial::create(Device::SharedPtr pDevice, const std::string& name) {
+    return SharedPtr(new HairMaterial(pDevice, name));
+}
+
+HairMaterial::HairMaterial(Device::SharedPtr pDevice, const std::string& name): BasicMaterial(pDevice, name, MaterialType::Hair) {
+    // Setup additional texture slots.
+    mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true }; // Note: No alpha support
+    mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
+}
+
+void HairMaterial::update(const Material::SharedPtr& pMaterial) {
+    BasicMaterial::update(pMaterial);
+}
 
 #ifdef SCRIPTING
-    SCRIPT_BINDING(HairMaterial)
-    {
-        SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
+SCRIPT_BINDING(HairMaterial)
+{
+    SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
-        pybind11::class_<HairMaterial, BasicMaterial, HairMaterial::SharedPtr> material(m, "HairMaterial");
-        material.def(pybind11::init(&HairMaterial::create), "name"_a = "");
-    }
+    pybind11::class_<HairMaterial, BasicMaterial, HairMaterial::SharedPtr> material(m, "HairMaterial");
+    material.def(pybind11::init(&HairMaterial::create), "name"_a = "");
+}
 #endif
 }

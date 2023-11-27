@@ -60,6 +60,9 @@ class dlldecl Light : public Animatable {
     */
     virtual void setShaderData(const ShaderVar& var);
 
+
+    virtual void update(const Light& light); 
+
     /** Get total light power
     */
     virtual float getPower() const = 0;
@@ -214,6 +217,8 @@ class dlldecl PointLight : public Light {
     static SharedPtr create(const std::string& name = "");
     ~PointLight() = default;
 
+    void update(const Light& light) override;
+
     /** Get total light power (needed for light picking)
     */
     float getPower() const override;
@@ -281,6 +286,8 @@ class dlldecl DirectionalLight : public Light {
     static SharedPtr create(const std::string& name = "");
     ~DirectionalLight() = default;
 
+    void update(const Light& light) override;
+
     /** Set the light's world-space direction.
         \param[in] dir Light direction. Does not have to be normalized.
     */
@@ -302,6 +309,7 @@ class dlldecl DirectionalLight : public Light {
 
   private:
     DirectionalLight(const std::string& name);
+    virtual void update();
 };
 
 /** Distant light source.
@@ -314,6 +322,8 @@ class dlldecl DistantLight : public Light {
 
     static SharedPtr create(const std::string& name = "");
     ~DistantLight() = default;
+
+    void update(const Light& light) override;
 
     /** Set the half-angle subtended by the light
         \param[in] theta Light angle
@@ -379,6 +389,8 @@ class dlldecl EnvironmentLight: public Light {
     static SharedPtr create(const std::string& name = "", Texture::SharedPtr pTexture = nullptr);
     ~EnvironmentLight() = default;
 
+    void update(const Light& light) override;
+
     /** Get total light power
     */
     float getPower() const override;
@@ -439,6 +451,8 @@ class dlldecl PhysicalSunSkyLight: public Light {
     static SharedPtr create(const std::string& name = "");
     ~PhysicalSunSkyLight() = default;
 
+    void update(const Light& light) override;
+
     /** Get total light power
     */
     float getPower() const override;
@@ -491,6 +505,8 @@ class dlldecl AnalyticAreaLight : public Light {
     };
 
     ~AnalyticAreaLight() = default;
+
+    void update(const Light& light) override;
 
     /** Set light source scaling
         \param[in] scale x,y,z scaling factors
@@ -562,6 +578,8 @@ class dlldecl RectLight : public AnalyticAreaLight {
     static SharedPtr create(const std::string& name = "");
     ~RectLight() = default;
 
+    void update(const Light& light) override;
+
   private:
     RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
 
@@ -578,6 +596,8 @@ class dlldecl DiscLight : public AnalyticAreaLight {
     static SharedPtr create(const std::string& name = "");
     ~DiscLight() = default;
 
+    void update(const Light& light) override;
+
   private:
     DiscLight(const std::string& name) : AnalyticAreaLight(name, LightType::Disc) {}
 
@@ -593,6 +613,8 @@ class dlldecl SphereLight : public AnalyticAreaLight {
 
     static SharedPtr create(const std::string& name = "");
     ~SphereLight() = default;
+
+    void update(const Light& light) override;
 
 private:
     SphereLight(const std::string& name) : AnalyticAreaLight(name, LightType::Sphere) {}

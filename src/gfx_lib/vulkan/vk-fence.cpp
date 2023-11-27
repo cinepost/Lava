@@ -4,28 +4,21 @@
 #include "vk-device.h"
 #include "vk-util.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-FenceImpl::FenceImpl(DeviceImpl* device)
-    : m_device(device)
-{}
+FenceImpl::FenceImpl(DeviceImpl* device): m_device(device) {}
 
-FenceImpl::~FenceImpl()
-{
-    if (m_semaphore)
-    {
+FenceImpl::~FenceImpl() {
+    if (m_semaphore != VK_NULL_HANDLE) {
         m_device->m_api.vkDestroySemaphore(m_device->m_api.m_device, m_semaphore, nullptr);
     }
 }
 
-Result FenceImpl::init(const IFence::Desc& desc)
-{
+Result FenceImpl::init(const IFence::Desc& desc) {
     if (!m_device->m_api.m_extendedFeatures.vulkan12Features.timelineSemaphore)
         return SLANG_E_NOT_AVAILABLE;
 
@@ -40,26 +33,31 @@ Result FenceImpl::init(const IFence::Desc& desc)
     createInfo.pNext = &timelineCreateInfo;
     createInfo.flags = 0;
 
-    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateSemaphore(
-        m_device->m_api.m_device, &createInfo, nullptr, &m_semaphore));
+    VkResult res = m_device->m_api.vkCreateSemaphore(m_device->m_api.m_device, &createInfo, nullptr, &m_semaphore);
+
+    if(res == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+        LLOG_ERR << "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+        return SLANG_FAIL;
+    } else if(res == VK_ERROR_OUT_OF_HOST_MEMORY) {
+        LLOG_ERR << "VK_ERROR_OUT_OF_HOST_MEMORY";
+        return SLANG_FAIL;
+    }
+
+    //SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateSemaphore(m_device->m_api.m_device, &createInfo, nullptr, &m_semaphore));
 
     return SLANG_OK;
 }
 
-Result FenceImpl::getCurrentValue(uint64_t* outValue)
-{
-    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreCounterValue(
-        m_device->m_api.m_device, m_semaphore, outValue));
+Result FenceImpl::getCurrentValue(uint64_t* outValue) {
+    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreCounterValue(m_device->m_api.m_device, m_semaphore, outValue));
     return SLANG_OK;
 }
 
-Result FenceImpl::setCurrentValue(uint64_t value)
-{
+Result FenceImpl::setCurrentValue(uint64_t value) {
     uint64_t currentValue = 0;
-    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreCounterValue(
-        m_device->m_api.m_device, m_semaphore, &currentValue));
-    if (currentValue < value)
-    {
+    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreCounterValue(m_device->m_api.m_device, m_semaphore, &currentValue));
+    
+    if (currentValue < value) {
         VkSemaphoreSignalInfo signalInfo;
         signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
         signalInfo.pNext = NULL;
@@ -72,11 +70,9 @@ Result FenceImpl::setCurrentValue(uint64_t value)
     return SLANG_OK;
 }
 
-Result FenceImpl::getSharedHandle(InteropHandle* outHandle)
-{
+Result FenceImpl::getSharedHandle(InteropHandle* outHandle) {
     // Check if a shared handle already exists.
-    if (sharedHandle.handleValue != 0)
-    {
+    if (sharedHandle.handleValue != 0) {
         *outHandle = sharedHandle;
         return SLANG_OK;
     }
@@ -95,8 +91,7 @@ Result FenceImpl::getSharedHandle(InteropHandle* outHandle)
     return SLANG_OK;
 }
 
-Result FenceImpl::getNativeHandle(InteropHandle* outNativeHandle)
-{
+Result FenceImpl::getNativeHandle(InteropHandle* outNativeHandle) {
     outNativeHandle->handleValue = 0;
     return SLANG_FAIL;
 }
