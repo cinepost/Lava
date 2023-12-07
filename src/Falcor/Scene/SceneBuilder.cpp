@@ -196,7 +196,29 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 
 }
 
-}  // namespace anon
+}  // namespace
+
+
+uint32_t SceneBuilder::MeshID::get() const {
+	try {
+		LLOG_WRN << "Getting uint";
+		return std::get<uint32_t>(v);	
+	} catch (const std::bad_variant_access&) {
+		auto& f = std::get<std::shared_future<uint32_t>>(v);
+		try {
+			LLOG_WRN << "Getting future";
+			const uint meshID = f.get();
+			v = meshID;
+			return meshID;
+		} catch(const std::exception& e) {
+     	LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
+     	return SceneBuilder::kInvalidMeshID;
+    }
+	} catch (...) {
+		LLOG_ERR << "Some fkn error";
+		return SceneBuilder::kInvalidMeshID;
+	}
+}
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
 	mpFence = GpuFence::create(mpDevice);
@@ -224,6 +246,28 @@ bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& i
 	return success;
 }
 
+void SceneBuilder::resetScene(bool reuseExisting) {
+	if(mpScene && reuseExisting) {
+		// There is a chance that we've already updated scene materials but then reset was requested due to meshes or instances changes
+		LLOG_INF << "resetScene reuse existing";
+		mSceneData.pMaterialSystem = std::move(mpScene->mpMaterialSystem);
+		mSceneData.lights = std::move(mpScene->mLights);
+		mSceneData.sceneGraph = std::move(mpScene->mSceneGraph);
+	} else {
+		LLOG_INF << "resetScene";
+		if(!mSceneData.pMaterialSystem) mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
+	}
+
+	mReBuildMeshGroups = true;
+	mpScene.reset();
+
+	LLOG_WRN << "After reset(): Scene use count = " << mpScene.use_count();
+}
+
+void SceneBuilder::freeTemporaryResources() {
+	
+}
+
 Scene::SharedPtr SceneBuilder::getScene() {
 	if (mpScene) {
 		if(mUpdateSceneMaterials) {
@@ -233,6 +277,8 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 		return mpScene;
 	}
+
+	LLOG_WRN << "Getting scene fresh";
 
 	mAddGeoTasks.wait();
 
@@ -322,7 +368,14 @@ Scene::SharedPtr SceneBuilder::getScene() {
 }
 
 uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
-	return addProcessedMesh(processMesh(mesh));
+	const uint32_t meshID = addProcessedMesh(processMesh(mesh));
+	if(meshID != kInvalidNodeID) {
+		auto it = mMeshMap.find(mesh.name);
+		if(it == mMeshMap.end()) {
+			mMeshMap[mesh.name] = meshID;
+		}
+	}
+	return meshID;
 }
 
 uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial) {
@@ -715,6 +768,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		}
 		assert(mMeshletLists.size() == mMeshes.size());
 
+
+
 	}
 
 	return ret;
@@ -838,10 +893,14 @@ Material::SharedPtr SceneBuilder::getMaterial(const std::string& name) const {
 }
 
 bool SceneBuilder::updateMaterial(const std::string& name, const Material::SharedPtr& pNewMaterial) {
+	LLOG_INF << "mpScene " << (mpScene ? "YES" : "NO");
+	LLOG_INF << "mSceneData.pMaterialSystem " << (mSceneData.pMaterialSystem ? "YES" : "NO");
 	MaterialSystem* pMaterialSystem = mpScene ? mpScene->mpMaterialSystem.get() : mSceneData.pMaterialSystem.get();
 	assert(pMaterialSystem);
 
+	LLOG_INF << "pMaterialSystem " << (pMaterialSystem ? "YES" : "NO");
 	auto pMaterial = pMaterialSystem->getMaterialByName(name);
+	LLOG_INF << "pMaterial " << (pMaterial ? "YES" : "NO");
 	pMaterial->update(pNewMaterial);
 	bool updated = !is_set(pMaterial->getUpdates(), Material::UpdateFlags::None);
 	if(updated && mpScene) mUpdateSceneMaterials = true;
@@ -949,7 +1008,10 @@ uint32_t SceneBuilder::updateNode(const Node& node) {
 		if(existingNode.transform != newTransform) {
 			existingNode.transform = newTransform;
 		}
+	} else {
+		return addNode(node);
 	}
+	return nodeID;
 }
 
 bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec) {
@@ -963,10 +1025,21 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 		return false;
 	}
 
+	// Check if instance already exist. If so just update it.
+	if(pCreationSpec && pCreationSpec->pExportedDataSpec && mInstanceToMeshMap.find(pCreationSpec->pExportedDataSpec->name) != mInstanceToMeshMap.end()) {
+		const uint32_t meshID = mInstanceToMeshMap[pCreationSpec->pExportedDataSpec->name];
+		return updateMeshInstance(meshID, pCreationSpec, mSceneGraph[nodeID]);
+	} 
+
+	// Add instance
 	auto pMaterialOverride = pCreationSpec ? pCreationSpec->pMaterialOverride : nullptr;
 	auto pShadingSpec = pCreationSpec ? pCreationSpec->pShadingSpec : nullptr;
 	auto pVisibilitySpec = pCreationSpec ? pCreationSpec->pVisibilitySpec : nullptr;
 	auto pExportedDataSpec = pCreationSpec ? pCreationSpec->pExportedDataSpec : nullptr;
+
+	if(pExportedDataSpec) {
+		mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
+	}
 
 	{
 		std::scoped_lock lock(g_meshes_mutex);
@@ -998,35 +1071,109 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 bool SceneBuilder::updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node) {
 	assert(pCreationSpec);
 
-	const std::string instanceName = pCreationSpec->pExportedDataSpec->name;
+	const std::string instance_name = pCreationSpec->pExportedDataSpec->name;
 
 	if(meshID >= mMeshes.size()) {
-		LLOG_ERR << "Unable to update mesh instance named \"" << instanceName << "\". Mesh id " << meshID << " exceeds number of meshes !!!";
+		LLOG_ERR << "Unable to update mesh instance named \"" << instance_name << "\". Mesh id " << meshID << " exceeds number of meshes !!!";
 		return false;
 	}
 
 	auto& instances = mMeshes[meshID].instances;
 
-	auto match = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == instanceName; });
-	if(match == instances.end()) return false;
+	auto match = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == instance_name; });
+	if(match == instances.end()) {
+		// There is a chance that instance was deleted in previous update... Let's try create it again.
+		const bool created = addMeshInstance(updateNode(node), meshID, pCreationSpec);
+		if(!created) {
+			LLOG_ERR << "Unable to update/re-create mesh instance named \"" << instance_name << "\" !!!";
+		}
+		return created;
+	}
 
 	const uint32_t nodeID = match->nodeId;
 
 	if(nodeID >= mSceneGraph.size()) {
-		LLOG_ERR << "Unable to update transform node for instance named \"" << instanceName << "\". Node id " << nodeID << " exceeds number of nodes !!!";
+		LLOG_ERR << "Unable to update transform node for instance named \"" << instance_name << "\". Node id " << nodeID << " exceeds number of nodes !!!";
 	}
 
 	auto& internalNode = mSceneGraph[nodeID];
 
 	if(internalNode.transform != node.transform) {
-
-		LLOG_INF << "Updating shit for instance " << instanceName;
-
 		if(mpScene) {
 			mpScene->updateNodeTransform(nodeID, node.transform);
 		}
 	}
 
+	return true;
+}
+
+bool SceneBuilder::deleteMeshInstance(const std::string& name) {
+	auto it = mInstanceToMeshMap.find(name);
+	if(it == mInstanceToMeshMap.end()) {
+		LLOG_ERR << "Unable to delete mesh instance \"" << name << "\". There is no such instance!";
+		return false;
+	}
+
+	const auto meshID = mInstanceToMeshMap[name];
+	auto& mesh = mMeshes[meshID];
+	auto& instances = mesh.instances;
+
+	auto it_mesh = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == name; });
+	if(it_mesh == instances.end()) {
+		LLOG_ERR << "Unable to delete mesh instance \"" << name << "\". Possible scene/builder data corruption !!!";
+		return false;
+	}
+
+	mInstanceToMeshMap.erase(it);
+	instances.erase(it_mesh);
+
+	// Delete mesh it there are no instances left
+	if(instances.empty()) {
+		const bool deleted = deleteMesh(mesh.name);
+		if(!deleted) return false;
+	}
+
+	mUpdateSceneInstances = true;
+
+	resetScene(true); // reuse existing scene resources
+
+	return true;
+}
+
+bool SceneBuilder::deleteMesh(const std::string& meshName) {
+	{ // thread safety
+		std::scoped_lock lock(g_meshes_mutex);
+
+		// Remove mMeshMap entry. Inefficient now... TODO: think about better way to track mesh names to mesh indices
+		auto it = mMeshMap.find(meshName);
+
+		if(it == mMeshMap.end()) {
+			LLOG_ERR << "Unable to delete mesh \"" << meshName << "\". No mesh found in scene!";
+			return false;
+		}	
+
+		const uint32_t meshID = it->second; //kInvalidMeshID;
+/*
+		try	{
+      meshID = std::get<uint32_t>(it->second);
+    }
+    catch (const std::bad_variant_access& ex)
+    {
+      meshID = std::get<std::shared_future<uint32_t>>(it->second).get();
+    }
+*/
+		if(meshID >= mMeshes.size()) {
+			LLOG_ERR << "Unable to delete mesh \"" << meshName << "\". Mesh id exceeds meshes count in scene!";
+			return false;
+		}
+
+		mMeshMap.erase(it);
+		mMeshes.erase(mMeshes.begin() + meshID);
+	}
+
+	mReBuildMeshGroups = true;
+	
+	resetScene(true);
 	return true;
 }
 
@@ -1124,7 +1271,7 @@ uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight) {
 bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {
  	Light::SharedPtr pLight = getLight(name);
  	if(!pLight) {
- 		LLOG_WRN << "Light named \"" << name << "\" don't exist. Unable to update.";
+ 		LLOG_WRN << "Light named \"" << name << "\" does not exist. Unable to update.";
  		return false;
  	}
 
@@ -1715,6 +1862,10 @@ void SceneBuilder::calculateMeshBoundingBoxes() {
 }
 
 void SceneBuilder::createMeshGroups() {
+	if(mReBuildMeshGroups && !mMeshGroups.empty()) {
+		mMeshGroups.clear();
+	}
+	
 	assert(mMeshGroups.empty());
 
 	// This function sorts meshes into groups based on their properties.
@@ -1877,6 +2028,8 @@ void SceneBuilder::createMeshGroups() {
 	for (const auto& it : displacedInstancesToMeshList) {
 		addMeshes(it.second, false, true, is_set(mFlags, Flags::RTDontMergeInstanced));
 	}
+
+	mReBuildMeshGroups = false;
 }
 
 std::pair<std::optional<uint32_t>, std::optional<uint32_t>> SceneBuilder::splitMesh(const uint32_t meshID, const int axis, const float pos) {
@@ -2228,6 +2381,7 @@ void SceneBuilder::sortMeshes() {
 
 	// Sort meshes by new IDs.
 	assert(meshMap.size() == mMeshes.size());
+	
 	std::vector<MeshSpec> sortedMeshes(mMeshes.size());
 	for (size_t i = 0; i < mMeshes.size(); ++i) {
 		sortedMeshes[meshMap[(uint32_t)i]] = std::move(mMeshes[i]);

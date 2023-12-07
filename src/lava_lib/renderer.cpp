@@ -258,7 +258,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
 
 	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
 	mpDepthPass->setScene(pRenderContext, pScene);
 	mpDepthPass->setCullMode(cullMode);
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
@@ -275,7 +274,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
 		pPathTracerPass->setScene(pRenderContext, pScene);
-		//pPathTracerPass->setColorFormat(ResourceFormat::RGBA16Float);
 		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
 
   } else if (shadingPassType == std::string("deferred")) {
@@ -607,10 +605,20 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::UV:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.uv", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}
 	}
+
+	mpRenderGraph->setScene(pScene);
 	
 	// Compile graph
 	std::string log;
@@ -782,8 +790,6 @@ void Renderer::bindAOVPlanesToResources() {
 }
 
 bool Renderer::prepareFrame(const FrameInfo& frame_info) {
-	_mpScene = nullptr;
-
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return false;
@@ -797,23 +803,40 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	auto renderRegionDims = frame_info.renderRegionDims();
 	finalizeScene(frame_info);
 
+	if(mRenderPassesDict != mPrevRenderPassesDict) {
+		mpRenderGraph.reset();
+		mPrevRenderPassesDict = mRenderPassesDict;
+	}
+
 	if (!mpRenderGraph) {
 		createRenderGraph(frame_info);
-	} else if (
-		(mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || 
-		(mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || 
-		(mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+	} else { 
+		auto pScene = mpSceneBuilder->getScene();
+		bool recompile = false;
+
+		if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
 		
-		// Change rendering graph frame dimensions
-		mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
-		if(mpTexturesResolvePassGraph) {
-			mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+			// Change rendering graph frame dimensions
+			mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
+			if(mpTexturesResolvePassGraph) {
+				mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+			}
+			recompile = true;
 		}
 
-		std::string compilationLog;
-		if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
-			LLOG_ERR << "Error render graph compilation ! " << compilationLog;
-			return false;
+		if(mpRenderGraph->getScene() != pScene) {
+			mpRenderGraph->setScene(pScene);
+			recompile = true;
+		}
+
+		if(recompile) {
+			LLOG_WRN << "Recompiling render graph!";
+			std::string compilationLog;
+			if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
+				LLOG_ERR << "Error render graph compilation ! " << compilationLog;
+				return false;
+			}
+			recompile = false;
 		}
 	}
 	bindAOVPlanesToResources();
@@ -825,10 +848,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mCurrentSampleNumber = 0;
 	mCurrentFrameInfo = frame_info;
 
-	auto pScene = mpSceneBuilder->getScene();
-	if (pScene) {
-		_mpScene = pScene.get();
-	}
+	//auto& pScene = mpSceneBuilder->getScene();
 
 	mpDevice->getRenderContext()->flush(true);
 	mDirty = false;
@@ -846,7 +866,8 @@ void Renderer::renderSample() {
 		return;
 	}
 
-	if (!_mpScene) {
+	auto pScene = mpSceneBuilder->getScene();
+	if (!pScene) {
 		LLOG_ERR << "Scene not ready for rendering !!!";
 		return;
 	}
@@ -857,11 +878,6 @@ void Renderer::renderSample() {
 		// First frame sample
 		if(mpTexturesResolvePassGraph) {
 			mpTexturesResolvePassGraph->execute(pRenderContext);
-			if( 1 == 2) {
-				// internal texture debugging 
-				Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
-				pOutTex->captureToFile(0, 0, "/home/max/vtex_dbg.png");
-			}
 		}
 	}
 
@@ -873,7 +889,7 @@ void Renderer::renderSample() {
 	}
 
 	double currentTime = 0;
-	_mpScene->update(pRenderContext, currentTime);
+	pScene->update(pRenderContext, currentTime);
 
 	mCurrentSampleNumber++;
 
@@ -909,8 +925,6 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 uint32_t Renderer::addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial) {
 	return mpSceneBuilder->addMaterial(pMaterial);
 }
-
-// HYDRA section begin
 
 bool  Renderer::queryAOVPlaneGeometry(const AOVName& name, AOVPlaneGeometry& aov_plane_geometry) const {
 	auto pAOVPlane = getAOVPlane(name);

@@ -80,12 +80,14 @@ class Session {
     void cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values);
     void cmdProcedural(const std::string& procedural, const Vector3& bbox_min, const Vector3& bbox_max, const std::map<std::string, Property::Value>& arguments);
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);
+    void cmdDelete(lsd::ast::Style style, const std::string& name);
     void cmdImage(lsd::ast::DisplayType display_type, const std::string& filename);
     void cmdTransform(const Matrix4& transform);
     bool cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name);
     void cmdMTransform(const Matrix4& transform);
     bool cmdGeometry(const std::string& name);
     void cmdTime(double time);
+    void cmdReset();
     void cmdQuit();
 
     void pushLight(const scope::Light::SharedPtr pLight);
@@ -109,6 +111,8 @@ class Session {
  	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj, bool update);
     void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 
+    void cleanup();
+
   private:
     bool mFailed = false;
     bool  mIPR = false;
@@ -122,11 +126,9 @@ class Session {
 
     Renderer::FrameInfo             mCurrentFrameInfo;
 
-    //RendererIface::GlobalData       mGlobalData;
     DisplayInfo		                  mCurrentDisplayInfo;
     CameraInfo                      mCurrentCameraInfo;
     double                          mCurrentTime = 0;
-    //RendererIface::FrameData		    mFrameData;
 
     scope::ScopeBase::SharedPtr		  mpCurrentScope;
     scope::Material::SharedPtr      mpMaterialScope;
@@ -137,8 +139,9 @@ class Session {
 
     Renderer::Config                mRendererConfig;
 
-    std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
-    std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
+    std::set<std::string> mTemporaryGeometriesPaths;
+
+    std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id TODO: move to SceneBuilder asap!
 };
 
 static inline std::string to_string(const Session::TileInfo& tileInfo) {

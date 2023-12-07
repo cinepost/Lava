@@ -215,6 +215,10 @@ void Visitor::operator()(ast::cmd_geometry const& c) const {
     mpSession->cmdGeometry(c.geometry_name);
 }
 
+void Visitor::operator()(ast::cmd_delete const& c) const {
+    mpSession->cmdDelete(c.style, c.name);
+}
+
 void Visitor::operator()(ast::cmd_deviceoption const& c) const {
 
 }
@@ -260,7 +264,7 @@ void Visitor::operator()(ast::cmd_raytrace const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_reset const& c) const {
-
+    mpSession->cmdReset();
 }
 
 void Visitor::operator()(ast::ray_embeddedfile const& c) const {

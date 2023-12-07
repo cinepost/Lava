@@ -55,8 +55,27 @@ class dlldecl SceneBuilder {
     using SharedPtr = std::shared_ptr<SceneBuilder>;
 
     static const uint32_t kInvalidNodeID = Animatable::kInvalidNode;
-    static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
-    static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;    ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;     ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidMeshID = Animatable::kInvalidNode;        ///< Largest uint32 value (-1)
+
+    class MeshID {
+        public:
+            MeshID(): v(kInvalidMeshID) {};
+            MeshID(uint32_t id): v(id) {};
+            MeshID(std::shared_future<uint32_t> f): v(f) {};
+        
+            uint32_t get() const;
+
+        private:
+            mutable std::variant<uint32_t, std::shared_future<uint32_t>> v;
+
+        public:
+            operator uint32_t () const { return get(); };
+
+            void operator=(uint32_t id) { v = id; }
+            void operator=(std::shared_future<uint32_t> f) { v = f;}
+    };
 
     struct InstanceShadingSpec {
         bool        isMatte = false;
@@ -418,6 +437,10 @@ class dlldecl SceneBuilder {
     
     bool updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node);
 
+    bool deleteMeshInstance(const std::string& name);
+
+    bool deleteMesh(const std::string& meshName);
+
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
@@ -660,7 +683,14 @@ class dlldecl SceneBuilder {
     */
     void setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
+    const std::unordered_map<std::string, MeshID>& meshMap() const { return mMeshMap; }; 
+
+    void freeTemporaryResources();
+
     ~SceneBuilder();
+
+private:
+    void resetScene(bool reuseExisting = false);
 
 protected:
     SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
@@ -799,7 +829,11 @@ protected:
 
     // Meshes
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
+    //std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
+    std::unordered_map<std::string, MeshID>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
 
+    // Instances
+    std::unordered_map<std::string, uint32_t> mInstanceToMeshMap;
 
     // Curves
     CurveList mCurves;
@@ -870,9 +904,19 @@ protected:
     void createMeshBoundingBoxes();
     void calculateCurveBoundingBoxes();
 
-    // Scene update flags
+    enum class DynamicUpdateFlags: uint32_t {
+        None                    = 0x0,
+        UpdateSceneMaterials    = 0x1,
+        UpdateSceneNodes        = 0x2,
+        UpdateSceneInstances    = 0x4,
+        UpdateMeshGroups        = 0x8,
+    };
+
+    // Scene dynamic update flags
     bool mUpdateSceneMaterials = false;
     bool mUpdateSceneNodes = false;
+    bool mUpdateSceneInstances = false;
+    bool mReBuildMeshGroups = true;
 
     friend class SceneCache;
 };

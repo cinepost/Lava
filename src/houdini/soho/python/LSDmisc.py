@@ -257,19 +257,19 @@ def header(now, propdefs):
     if not tmpsharedstorage:
         # We still need to create a storage path, so put it in the HIP
         # directory.  This is where assets will be saved for the LSD.
-        tmpsharedstorage = hou.expandString("$HIP/ifds/storage")
+        tmpsharedstorage = hou.expandString("$HIP/lsds/storage")
     else:
         tmpsharedstorage = tmpsharedstorage.Value[0]
     if not isValidTempDir(tmpsharedstorage):
         soho.warning("Path specified by lv_tmpsharedstorage is read-only.  %s" % (
                     "this may cause issues with non-inline geometry"))
-        tmpsharedstorage = hou.expandString("$HOUDINI_TEMP_DIR/ifds/storage")
+        tmpsharedstorage = hou.expandString("$HOUDINI_TEMP_DIR/lsds/storage")
 
     if not tmplocalstorage:
         # We still need to create a storage path, so put it in the
         # HOUDINI_TEMP_DIR directory.  This is where assets will be saved for
         # the LSD.
-        tmplocalstorage = hou.expandString("$HOUDINI_TEMP_DIR/ifds/storage")
+        tmplocalstorage = hou.expandString("$HOUDINI_TEMP_DIR/lsds/storage")
     else:
         tmplocalstorage = tmplocalstorage.Value[0]
 
@@ -297,7 +297,7 @@ def header(now, propdefs):
                 hipname.Value[0], int(frame), frame_frac)
         ExternalSharedSessionId = '%s_shared' % (hipname.Value[0])
 
-    if os.getenv('MANTRA_DEBUG_INLINE_STORAGE'):
+    if os.getenv('LAVA_DEBUG_INLINE_STORAGE'):
         # Normally, we want to rely on the lv_inlinestorage parameter (which
         # defaults to False).  For convenience we can set this variable to
         # override the setting.  Note that this may impact performance since
@@ -338,7 +338,7 @@ def getSharedStoragePath():
         try:
             os.makedirs(TmpSharedStorage)
         except:
-            TmpSharedStorage =hou.expandString('$HOUDINI_TEMP_DIR/ifds/storage')
+            TmpSharedStorage =hou.expandString('$HOUDINI_TEMP_DIR/lsds/storage')
             if not os.path.isdir(TmpSharedStorage):
                 os.makedirs(TmpSharedStorage)
         os.umask(umask)
@@ -351,7 +351,7 @@ def getLocalStoragePath():
         try:
             os.makedirs(TmpLocalStorage)
         except:
-            TmpLocalStorage = hou.expandString('$HOUDINI_TEMP_DIR/ifds/storage')
+            TmpLocalStorage = hou.expandString('$HOUDINI_TEMP_DIR/lsds/storage')
             if not os.path.isdir(TmpLocalStorage):
                 os.makedirs(TmpLocalStorage)
         os.umask(umask)

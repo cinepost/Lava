@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
+#include <atomic>
 #include <sstream>
 #include <numeric>
 
@@ -52,6 +53,8 @@
 #include <glm/gtx/string_cast.hpp>
 
 //#include "nvvk/buffers_vk.hpp"
+
+static std::atomic<uint32_t> _cnt = 0;
 
 namespace Falcor {
 
@@ -247,9 +250,12 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     // Init ray tracing. 
     // TODO: Init only if needed...
     initRayTracing();
+
+    LLOG_WRN << "Scenes count " << (uint32_t)_cnt++;
 }
 
 Scene::~Scene() {
+    _cnt--;
     printMeshletsStats();
 }
 

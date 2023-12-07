@@ -210,8 +210,37 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 }
 
 void Session::cmdQuit() {
+	cleanup();
+
 	mpRenderer = nullptr;
   mpDevice = nullptr;
+}
+
+void Session::cleanup() {
+// Remove temporary geometries from filesystem
+  const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
+  if(!mTemporaryGeometriesPaths.empty()) {
+    for(auto const& fullpath: mTemporaryGeometriesPaths) {
+      boost::system::error_code ec;
+      bool retval = fs::remove_all(fullpath, ec);
+      if(!ec) {  // success
+        if(retval) {
+          LLOG_DBG << "Removed temporary geometry file " << fullpath;
+        } else {
+          LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
+        }
+      } else {  // error removing temp file
+        LLOG_ERR << "Error removing temporary geometry file " << fullpath;
+      }
+    }
+  }
+}
+
+void Session::cmdReset() {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+  if(!pSceneBuilder) return;
+
+  pSceneBuilder->freeTemporaryResources();
 }
 
 bool Session::cmdRaytrace() {
@@ -555,7 +584,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
 
   auto pSceneBuilder = mpRenderer->sceneBuilder();
   if(!pSceneBuilder) {
-		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+		LLOG_ERR << "Unable to push geometry \"" << name << "\" (bgeo). SceneBuilder not ready !!!";
 		return;
   }
 
@@ -565,7 +594,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
   pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
  	if(!pBgeo) {
- 		LLOG_ERR << "Can't load geometry (bgeo) !!!";
+ 		LLOG_ERR << "Unable to load \"" << name << "\" geometry (bgeo) !!!";
  		return;
  	}
 
@@ -573,7 +602,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
     pBgeo->printSummary(std::cout);
 #endif
 
-   mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
+  pSceneBuilder->addGeometry(pBgeo, name);
 }
 
 void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
@@ -586,7 +615,7 @@ void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr 
 	}
 
 	// async mesh add 
-   	mMeshMap[name] = pSceneBuilder->addGeometryAsync(pGeo, name);
+  pSceneBuilder->addGeometryAsync(pGeo, name);
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
@@ -856,6 +885,18 @@ void Session::cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::
 	}
 }
 
+void Session::cmdDelete(lsd::ast::Style style, const std::string& name) {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+  if(!pSceneBuilder) return;
+
+	switch (style) {
+		case lsd::ast::Style::OBJECT:
+			pSceneBuilder->deleteMeshInstance(name);
+		default:
+			break;
+	}
+}
+
 void Session::cmdTransform(const Matrix4& transform) {
 	auto pScope = std::dynamic_pointer_cast<scope::Transformable>(mpCurrentScope);
 	if(!pScope) {
@@ -1007,11 +1048,24 @@ bool Session::cmdEnd() {
 				// Check if we are in IPR update mode. If so and geometry is being flagged as temporary we should ignore it.
 				// We also want to check that geometry was already pushed to scene builder during IPR generate mode.
 				if(pScopeGeo->isTemporary() && mIPRmode == ast::IPRMode::UPDATE) {
-					if (mMeshMap.find(pScopeGeo->detailName()) != mMeshMap.end()) {
+					auto pSceneBuilder = mpRenderer->sceneBuilder();
+					if (!pSceneBuilder) {
+						return false;
+					}
+
+					const auto& mesh_map = pSceneBuilder->meshMap();
+					if (mesh_map.find(pScopeGeo->detailName()) != mesh_map.end()) {
 						// mesh already exist. all ok
 						break;
+					} else {
+						LLOG_WRN << "Mesh " << pScopeGeo->detailName() << " doesn't exit. Pushing...";
 					}
 				}
+
+				// If temporary bgeo, mark it so we can delete it later
+				if(pScopeGeo->isTemporary() && !pScopeGeo->isInline()) {
+          mTemporaryGeometriesPaths.insert(pScopeGeo->detailFilePath().string());
+        }
 
 				bool pushGeoAsync = mpGlobal->getPropertyValue(ast::Style::GLOBAL, "async_geo", bool(true));
 				if( pScopeGeo->isInline() || !pushGeoAsync) {
@@ -1031,6 +1085,7 @@ bool Session::cmdEnd() {
 
 				const bool update = (mIPRmode == ast::IPRMode::UPDATE) ? true : false;
 				if(!pushGeometryInstance(pScopeObj, update)) {
+					LLOG_FTL << "Error " << (update ? "updating" : "creating") << " geometry instance \"" << pScopeObj->geometryName() << "\"";
 					mFailed = true;
 					return false;
 				}
@@ -1373,8 +1428,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	auto it = mMeshMap.find(pObj->geometryName());
-	if(it == mMeshMap.end()) {
+	const auto& mesh_map = pSceneBuilder->meshMap();
+	auto it = mesh_map.find(pObj->geometryName());
+	if(it == mesh_map.end()) {
 		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
 		return false;
 	}
@@ -1384,31 +1440,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	uint32_t exportedInstanceID = (_id < 0) ? SceneBuilder::kInvalidExportedID : static_cast<uint32_t>(_id);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
-	uint32_t meshID = kMaxMeshID;
-
-	try {
-		meshID = std::get<uint32_t>(it->second);	
-		LLOG_DBG << "Getting sync meshID for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
-	} catch (const std::bad_variant_access&) {
-		auto& f = std::get<std::shared_future<uint32_t>>(it->second);
-		try {
-			meshID = f.get();
-			LLOG_DBG << "Getting async meshID for obj_name " << obj_name;	
-		} catch(const std::exception& e) {
-     	LLOG_ERR << "Async geo instance creation error!!! Exception from the thread: " << e.what();
-     	return false;
-    }
-	} catch (...) {
-		LLOG_ERR << "Async geo instance creation error!!! Unable to get mesh id for object: " << obj_name;
-	}
-
-	if (meshID == kMaxMeshID) {
-		return false;
-	}
-
-	it->second = meshID;
-
-	LLOG_TRC << "meshID " << meshID;
+	const uint32_t meshID = it->second; //kMaxMeshID;
+	LLOG_WRN << "Updating mesh " << meshID << " instance";
 
 	Falcor::SceneBuilder::Node transformNode = {};
 	transformNode.name = it->first;

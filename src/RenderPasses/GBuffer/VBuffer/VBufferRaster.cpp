@@ -131,9 +131,7 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
 }
 
 void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    if(mpScene == pScene) return;
-
-    mpScene = pScene;
+    GBufferBase::setScene(pRenderContext, pScene);
 
     mRaster.pVars = nullptr;
 

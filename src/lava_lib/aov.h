@@ -47,6 +47,7 @@ enum class AOVBuiltinName: uint8_t {
   MICROPOLY_ID,
   MESHLET_COLOR,
   MICROPOLY_COLOR,
+  UV,
 
   EdgeDetectPass,
   AmbientOcclusionPass,
@@ -77,6 +78,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(MICROPOLY_ID);
     type_2_string(MESHLET_COLOR);
     type_2_string(MICROPOLY_COLOR);
+    type_2_string(UV);
 
     type_2_string(EdgeDetectPass);
     type_2_string(AmbientOcclusionPass);
@@ -108,19 +110,19 @@ struct AOVName : boost::variant< AOVBuiltinName, std::string > {
   AOVName(const std::string& name):  boost::variant< AOVBuiltinName, std::string >(name) {};
   AOVName(const AOVBuiltinName& name):  boost::variant< AOVBuiltinName, std::string >(name) {};
 
-  inline operator std::string() const { return boost::apply_visitor(aov_name_visitor(), *this); }
-  inline operator AOVBuiltinName() const { return boost::apply_visitor(aov_builtin_name_visitor(), *this); }
+  operator std::string() const { return boost::apply_visitor(aov_name_visitor(), *this); }
+  operator AOVBuiltinName() const { return boost::apply_visitor(aov_builtin_name_visitor(), *this); }
   
-  inline bool operator==(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) == str); }
-  inline bool operator==(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) == to_string(name)); }
+  bool operator==(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) == str); }
+  bool operator==(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) == to_string(name)); }
   
-  inline bool operator!=(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) != str); }
-  inline bool operator!=(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) != to_string(name)); }
+  bool operator!=(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) != str); }
+  bool operator!=(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) != to_string(name)); }
 
-  inline AOVName operator=(const std::string& str) { return AOVName(str); }
-  inline AOVName operator=(const AOVBuiltinName& name) { return AOVName(name); }
+  AOVName operator=(const std::string& str) { return AOVName(str); }
+  AOVName operator=(const AOVBuiltinName& name) { return AOVName(name); }
   
-  inline std::string operator+(const char* str) const { return std::string(str) + boost::apply_visitor(aov_name_visitor(), *this); }
+  std::string operator+(const char* str) const { return std::string(str) + boost::apply_visitor(aov_name_visitor(), *this); }
 };
 
 struct AOVPlaneInfo {
@@ -167,7 +169,7 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
     Falcor::ResourceFormat  format() const { return mInfo.format; }
     const AOVPlaneInfo&     info() const { return mInfo; }
-    const std::string&             filename() const { return mInfo.filenameOverride; }
+    const std::string&      filename() const { return mInfo.filenameOverride; }
 
     void update(const AOVPlaneInfo& info);
 

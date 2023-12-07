@@ -62,22 +62,7 @@ SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags):
 
 SceneBuilder::~SceneBuilder() {
     // Remove temporary geometries from filesystem
-    const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
-    if(!mTemporaryGeometriesPaths.empty()) {
-        for(auto const& fullpath: mTemporaryGeometriesPaths) {
-            boost::system::error_code ec;
-            bool retval = fs::remove_all(fullpath, ec);
-            if(!ec) {  // success
-                if(retval) {
-                    LLOG_DBG << "Removed temporary geometry file " << fullpath;
-                } else {
-                    LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
-                }
-            } else {  // error removing temp file
-                LLOG_ERR << "Error removing temporary geometry file " << fullpath;
-            }
-        }
-    }
+    freeTemporaryResources();
     
     LLOG_INF << "\nSceneBuilder stats:";
     LLOG_INF << "\t Unique triangles count: " << std::to_string(mUniqueTrianglesCount);
@@ -389,10 +374,12 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     mUniqueTrianglesCount += mesh_face_count;
 
-    return Falcor::SceneBuilder::addMesh(mesh);
+    const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
+    mMeshMap[name] = meshID;
+    return meshID;
 }
 
-std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
+const std::shared_future<uint32_t>& SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
     assert(pGeo);
 
     // Pass the task to thread pool to run asynchronously
@@ -421,14 +408,13 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::Sha
 
         result = this->addGeometry(pBgeo, name);
         
-        if(pGeo->isTemporary()) {
-            mTemporaryGeometriesPaths.insert(fullpath);
-        }
-        
         return result;
     }));
 
-    return mAddGeoTasks.back();
+    const std::shared_future<uint32_t>& meshID = mAddGeoTasks.back();
+    mMeshMap[name] = meshID;
+
+    return meshID;
 }
 
 void SceneBuilder::finalize() {

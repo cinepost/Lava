@@ -290,7 +290,11 @@ namespace Falcor {
 	}
 
 	gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
-		return mpApiData->pTransientResourceHeaps[mCurrentBackBufferIndex].get();
+		if( !mHeadless ) {
+			return mpApiData->pTransientResourceHeaps[mCurrentBackBufferIndex].get();
+		} else {
+			return mpApiData->pTransientResourceHeaps[0].get();
+		}
 	}
 
 	void Device::present() {

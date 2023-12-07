@@ -55,6 +55,7 @@ RasterizerOrderedTexture2D<float>  gOutFresnel;
 RasterizerOrderedTexture2D<float>  gPrimID;
 RasterizerOrderedTexture2D<float>  gOpID;
 RasterizerOrderedTexture2D<float16_t>  gVariance;
+RasterizerOrderedTexture2D<float2> gUV;
 
 RasterizerOrderedTexture2D<float16_t4> gLastFrameSum;
 
@@ -128,6 +129,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOpID)
     gOpID[ipos] = d.opID;
 #endif  // gOpID
+
+#if is_valid(gUV)
+    gUV[ipos] = d.uv;
+#endif  // gUV
 
 }
 
@@ -231,6 +236,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         // Ray level 0 (camera ray)
         aov_data.position = sd.posW;
         aov_data.normal = N;
+        aov_data.uv = sd.uv;
         //aov_data.tangent_normal = mi.sf.toLocal(N);
         aov_data.albedo = bsdfProperties.diffuseReflectionAlbedo;
     }

@@ -400,6 +400,8 @@ void AccumulatePass::reset() {
 }
 
 void AccumulatePass::setScene(const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+    
     mpScene = pScene;
     if(mpScene) mpCamera = mpScene->getCamera();
 

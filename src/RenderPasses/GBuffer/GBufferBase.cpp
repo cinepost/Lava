@@ -127,6 +127,8 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
 }
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+    
     mpScene = pScene;
     mFrameCount = 0;
     updateSamplePattern();

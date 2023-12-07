@@ -215,6 +215,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     Falcor::Dictionary              mRendererConfDict;
     Falcor::Dictionary              mRenderPassesDict;
 
+    Falcor::Dictionary              mPrevRenderPassesDict;
+
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 
     std::map<std::string, Falcor::MaterialX::SharedPtr> mMaterialXs; ///< Materialx materials map
@@ -224,9 +226,6 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     bool mDirty = true;
 
   private:
-    // RenderFrame private
-    Scene* _mpScene = nullptr;
-
     friend class RendererIface;
 }; 
 

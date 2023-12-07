@@ -4,6 +4,8 @@
 #include "vk-device.h"
 #include "vk-util.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace gfx {
 
 using namespace Slang;
@@ -16,16 +18,18 @@ void TransientResourceHeapImpl::advanceFence() {
         m_fences.setCount(m_fenceIndex + 1);
         VkFenceCreateInfo fenceCreateInfo = {};
         fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCreateInfo.pNext = nullptr;
         fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         m_device->m_api.vkCreateFence(m_device->m_api.m_device, &fenceCreateInfo, nullptr, &m_fences[m_fenceIndex]);
+
+        if(m_fences[m_fenceIndex] == VK_NULL_HANDLE) {
+            LLOG_FTL << "TransientResourceHeapImpl::advanceFence() fence == VK_NULL_HANDLE";
+        }
     }
 }
 
 Result TransientResourceHeapImpl::init(const ITransientResourceHeap::Desc& desc, DeviceImpl* device) {
-    Super::init(
-        desc,
-        (uint32_t)device->m_api.m_deviceProperties.limits.minUniformBufferOffsetAlignment,
-        device);
+    Super::init(desc, (uint32_t)device->m_api.m_deviceProperties.limits.minUniformBufferOffsetAlignment, device);
 
     m_descSetAllocator.m_api = &device->m_api;
 
