@@ -110,7 +110,7 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 }
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    (if mpScene == pScene) return;
+    if (mpScene == pScene) return;
     mpScene = pScene;
     mDirty = true;
 }

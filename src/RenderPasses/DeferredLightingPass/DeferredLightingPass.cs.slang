@@ -485,9 +485,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // early out
     if (any(ipos >= gFrameDim)) return;
 
-    gInOutColor[ipos] = float4(1, 0, 0, 1);
-    return;
-
     #if is_valid(gTextureGrads)
         const float4 texGrads = gTextureGrads[ipos];
         //gInOutColor[ipos] = texGrads;
