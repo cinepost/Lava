@@ -251,12 +251,20 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     // TODO: Init only if needed...
     initRayTracing();
 
-    LLOG_WRN << "Scenes count " << (uint32_t)_cnt++;
+    LLOG_WRN << "Scenes count " << (uint32_t)(++_cnt);
 }
 
 Scene::~Scene() {
+    mpDevice->getRenderContext()->flush(true);
+
+    //for(auto & pBlas: mBlasObjects) {
+    //    mpDevice->getApiHandle()->destroyAccelerationStructure(pBlas->getApiHandle());
+    //    pBlas.reset();
+    //}
+
     _cnt--;
     printMeshletsStats();
+    LLOG_WRN << "Scene destroyed!";
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -2708,11 +2716,6 @@ void Scene::buildBlas(RenderContext* pContext) {
                     LLOG_DBG << "Acceleration structure build started...";
                     pContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
                     LLOG_DBG << "Acceleration structure build done.";
-                    
-                    //LLOG_TRC << "Flushing pContext ... ";
-                    //pContext->flush(true);
-                    //LLOG_TRC << "Flushing pContext done.";
-
                 }
 
                 // Read back the calculated final size requirements for each BLAS.

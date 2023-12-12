@@ -51,7 +51,6 @@ namespace fs = boost::filesystem;
 
 #include "lava_utils_lib/logging.h"
 
-std::mutex g_meshes_mutex;
 std::mutex g_buffers_mutex;
 std::mutex g_buffers_indices_mutex;
 std::mutex g_buffers_static_data_mutex;
@@ -199,16 +198,21 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 }  // namespace
 
 
-uint32_t SceneBuilder::MeshID::get() const {
+uint32_t SceneBuilder::MeshID::_get() const {
+	LLOG_WRN << "MeshID::_get()";
 	try {
-		LLOG_WRN << "Getting uint";
-		return std::get<uint32_t>(v);	
+		LLOG_WRN << "MeshID uint";
+		const uint32_t meshID = std::get<uint32_t>(v);
+		LLOG_WRN << "MeshID uint get";
+		return meshID;	
 	} catch (const std::bad_variant_access&) {
+		LLOG_WRN << "MeshID future";
 		auto& f = std::get<std::shared_future<uint32_t>>(v);
 		try {
-			LLOG_WRN << "Getting future";
-			const uint meshID = f.get();
+			LLOG_WRN << "MeshID future try get";
+			const uint32_t meshID = f.get();
 			v = meshID;
+			LLOG_WRN << "MeshID future get";
 			return meshID;
 		} catch(const std::exception& e) {
      	LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
@@ -218,6 +222,16 @@ uint32_t SceneBuilder::MeshID::get() const {
 		LLOG_ERR << "Some fkn error";
 		return SceneBuilder::kInvalidMeshID;
 	}
+}
+
+void SceneBuilder::MeshID::operator=(uint32_t id) { 
+	LLOG_WRN << "var 1";
+	v = id; 
+}
+
+void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t> f) { 
+	LLOG_WRN << "var 2";
+	v = f;
 }
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
@@ -247,21 +261,24 @@ bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& i
 }
 
 void SceneBuilder::resetScene(bool reuseExisting) {
-	if(mpScene && reuseExisting) {
-		// There is a chance that we've already updated scene materials but then reset was requested due to meshes or instances changes
-		LLOG_INF << "resetScene reuse existing";
-		mSceneData.pMaterialSystem = std::move(mpScene->mpMaterialSystem);
-		mSceneData.lights = std::move(mpScene->mLights);
-		mSceneData.sceneGraph = std::move(mpScene->mSceneGraph);
+	if(mpScene) {
+		if(reuseExisting) {
+			// There is a chance that we've already updated scene materials but then reset was requested due to meshes or instances changes
+			LLOG_DBG << "resetScene reuse existing";
+			mSceneData.pMaterialSystem = std::move(mpScene->mpMaterialSystem);
+			mSceneData.lights = std::move(mpScene->mLights);
+			mSceneData.sceneGraph = std::move(mpScene->mSceneGraph);
+			mSceneData.cameras = std::move(mpScene->mCameras);
+		}
+		mpScene.reset();
 	} else {
-		LLOG_INF << "resetScene";
+		LLOG_DBG << "resetScene";
 		if(!mSceneData.pMaterialSystem) mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
 	}
 
 	mReBuildMeshGroups = true;
-	mpScene.reset();
 
-	LLOG_WRN << "After reset(): Scene use count = " << mpScene.use_count();
+	LLOG_DBG << "SceneBuilder scene use count: " << mpScene.use_count();
 }
 
 void SceneBuilder::freeTemporaryResources() {
@@ -277,8 +294,6 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 		return mpScene;
 	}
-
-	LLOG_WRN << "Getting scene fresh";
 
 	mAddGeoTasks.wait();
 
@@ -368,11 +383,37 @@ Scene::SharedPtr SceneBuilder::getScene() {
 }
 
 uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
-	const uint32_t meshID = addProcessedMesh(processMesh(mesh));
-	if(meshID != kInvalidNodeID) {
+	LLOG_WRN << "SceneBuilder::addMesh(" << mesh.name << ")";
+	{ // thread safety
+		LLOG_WRN << "SceneBuilder::addMesh() lock";
+		
+		//std::scoped_lock lock(mMeshesMutex);
+		std::unique_lock<std::mutex> lock(mMeshesMutex);
+
 		auto it = mMeshMap.find(mesh.name);
-		if(it == mMeshMap.end()) {
-			mMeshMap[mesh.name] = meshID;
+		if(it != mMeshMap.end()) {
+			lock.release();
+			LLOG_DBG << "Mesh " << mesh.name << " already exists in SceneBuilder with id "<< (uint32_t)it->second;
+			return it->second;
+		}
+	}
+
+	const uint32_t meshID = addProcessedMesh(processMesh(mesh));
+	return meshID;
+}
+
+uint32_t SceneBuilder::getMeshID(const std::string& name) {
+	LLOG_WRN << "SceneBuilder::getMeshID("<< name <<")";
+	uint32_t meshID = kInvalidMeshID;
+
+	{ // thread safety
+		//std::scoped_lock lock(mMeshesMutex);
+		std::unique_lock<std::mutex> lock(mMeshesMutex);
+		auto it = mMeshMap.find(name);
+		if(it != mMeshMap.end()) {
+			lock.release();
+			LLOG_DBG << "Mesh " << name << " already exists in SceneBuilder";
+			meshID = (uint32_t)it->second;
 		}
 	}
 	return meshID;
@@ -732,18 +773,18 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
 	spec.hasMeshlets = mesh.meshletSpecs.size() > 0;
 
-	uint32_t ret = 0;
+	uint32_t meshID = kInvalidMeshID;
 	{ // thread safety
-		std::scoped_lock lock(g_meshes_mutex);
+		std::scoped_lock lock(mMeshesMutex);
 
-		mMeshes.push_back(spec);
-
-		if (mMeshes.size() > std::numeric_limits<uint32_t>::max()) {
+		if (mMeshes.size() >= std::numeric_limits<uint32_t>::max()) {
 			throw std::runtime_error("Trying to build a scene that exceeds supported number of meshes");
 		}
 
-		ret = (uint32_t)(mMeshes.size() - 1);
-	
+		mMeshes.push_back(spec);
+		meshID = (uint32_t)(mMeshes.size() - 1);
+		mMeshMap[mesh.name] = meshID;
+
 		// Meshlets part
 		if(mesh.meshletSpecs.size() > 0) {
 			MeshletList meshlets;
@@ -768,11 +809,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		}
 		assert(mMeshletLists.size() == mMeshes.size());
 
-
-
 	}
 
-	return ret;
+	return meshID;
 }
 
 void SceneBuilder::addCustomPrimitive(uint32_t userID, const AABB& aabb) {
@@ -1042,7 +1081,7 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 	}
 
 	{
-		std::scoped_lock lock(g_meshes_mutex);
+		std::scoped_lock lock(mMeshesMutex);
 
 		mMeshes[meshID].instances.push_back({});
 		MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
@@ -1142,7 +1181,7 @@ bool SceneBuilder::deleteMeshInstance(const std::string& name) {
 
 bool SceneBuilder::deleteMesh(const std::string& meshName) {
 	{ // thread safety
-		std::scoped_lock lock(g_meshes_mutex);
+		std::scoped_lock lock(mMeshesMutex);
 
 		// Remove mMeshMap entry. Inefficient now... TODO: think about better way to track mesh names to mesh indices
 		auto it = mMeshMap.find(meshName);

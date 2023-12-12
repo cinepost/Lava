@@ -252,13 +252,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// Main render graph
 	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
-	
+	mpRenderGraph->setScene(pScene);
+
 	// Depth pass
 	Falcor::Dictionary depthPassDictionary(mRenderPassesDict);
 	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
 
 	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	mpDepthPass->setScene(pRenderContext, pScene);
+	//mpDepthPass->setScene(pRenderContext, pScene);
 	mpDepthPass->setCullMode(cullMode);
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
 
@@ -273,19 +274,19 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	if (shadingPassType == std::string("pathtracer")) {
 
 		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
-		pPathTracerPass->setScene(pRenderContext, pScene);
+		//pPathTracerPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
 
   } else if (shadingPassType == std::string("deferred")) {
 
 		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-		pDeferredLightingPass->setScene(pRenderContext, pScene);
+		//pDeferredLightingPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
 
 	} else if (shadingPassType == std::string("debug")) {
 
 		auto pDebugShadingPass = DebugShadingPass::create(pRenderContext, {});
-		pDebugShadingPass->setScene(pRenderContext, pScene);
+		//pDebugShadingPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
 
 	} else {
@@ -306,7 +307,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
+		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -314,7 +315,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
+		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -322,7 +323,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
+		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -345,7 +346,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
 		pDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
-		pDepthPrePass->setScene(pRenderContext, pScene);
+		//pDepthPrePass->setScene(pRenderContext, pScene);
 		pDepthPrePass->setCullMode(cullMode);
 		mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
 
@@ -376,7 +377,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// TODO: handle transparency    
 	mpEnvPass->setOpacity(1.0f);
 
-	mpEnvPass->setScene(pRenderContext, pScene);
+	//mpEnvPass->setScene(pRenderContext, pScene);
 	mpRenderGraph->addPass(mpEnvPass, "EnvPass");
 	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
@@ -419,7 +420,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional edgedetect pass
 		if (renderPassName == "EdgeDetectPass") {
 			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pEdgeDetectPass->setScene(pRenderContext, pScene);
+			//pEdgeDetectPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -433,7 +434,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
 			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pAmbientOcclusionPass->setScene(pRenderContext, pScene);
+			//pAmbientOcclusionPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -447,7 +448,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
 			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pCryptomattePass->setScene(pRenderContext, pScene);
+			//pCryptomattePass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -618,7 +619,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		}
 	}
 
-	mpRenderGraph->setScene(pScene);
+	//mpRenderGraph->setScene(pScene);
 	
 	// Compile graph
 	std::string log;

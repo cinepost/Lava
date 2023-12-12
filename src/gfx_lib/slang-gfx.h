@@ -2437,6 +2437,8 @@ class IDevice: public ISlangUnknown {
 			const IAccelerationStructure::CreateDesc& desc,
 			IAccelerationStructure** outView) = 0;
 
+		virtual SLANG_NO_THROW void SLANG_MCALL destroyAccelerationStructure(IAccelerationStructure* as) = 0;
+
 		virtual SLANG_NO_THROW Result SLANG_MCALL
 			createFence(const IFence::Desc& desc, IFence** outFence) = 0;
 

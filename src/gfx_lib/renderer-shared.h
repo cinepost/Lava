@@ -1266,6 +1266,8 @@ public:
         const IAccelerationStructure::CreateDesc& desc,
         IAccelerationStructure** outView) override;
 
+    virtual SLANG_NO_THROW void SLANG_MCALL destroyAccelerationStructure(IAccelerationStructure* as) override;
+
     // Provides a default implementation that returns SLANG_E_NOT_AVAILABLE for platforms
     // without ray tracing support.
     virtual SLANG_NO_THROW Result SLANG_MCALL

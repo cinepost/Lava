@@ -374,8 +374,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     mUniqueTrianglesCount += mesh_face_count;
 
-    const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
-    mMeshMap[name] = meshID;
+    //const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
+    const uint32_t meshID = addProcessedMesh(processMesh(mesh));
     return meshID;
 }
 
@@ -412,7 +412,11 @@ const std::shared_future<uint32_t>& SceneBuilder::addGeometryAsync(lsd::scope::G
     }));
 
     const std::shared_future<uint32_t>& meshID = mAddGeoTasks.back();
-    mMeshMap[name] = meshID;
+    
+    { // thread safety
+        std::scoped_lock lock(mMeshesMutex);
+        mMeshMap[name] = meshID;
+    }
 
     return meshID;
 }

@@ -534,6 +534,11 @@ Result DebugDevice::createAccelerationStructure(
 	return SLANG_OK;
 }
 
+void DebugDevice::destroyAccelerationStructure(IAccelerationStructure* as) {
+	baseObject->destroyAccelerationStructure(as);
+}
+
+
 Result DebugDevice::createFramebufferLayout(
 	IFramebufferLayout::Desc const& desc,
 	IFramebufferLayout** outFrameBuffer)

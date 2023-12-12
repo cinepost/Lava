@@ -65,16 +65,16 @@ class dlldecl SceneBuilder {
             MeshID(uint32_t id): v(id) {};
             MeshID(std::shared_future<uint32_t> f): v(f) {};
         
-            uint32_t get() const;
+            uint32_t _get() const;
 
         private:
             mutable std::variant<uint32_t, std::shared_future<uint32_t>> v;
 
         public:
-            operator uint32_t () const { return get(); };
+            operator uint32_t () const { return _get(); };
 
-            void operator=(uint32_t id) { v = id; }
-            void operator=(std::shared_future<uint32_t> f) { v = f;}
+            void operator=(uint32_t id);
+            void operator=(std::shared_future<uint32_t> f);
     };
 
     struct InstanceShadingSpec {
@@ -145,6 +145,10 @@ class dlldecl SceneBuilder {
     */
     struct Mesh {
         //Mesh(const Mesh&) = delete;//{ std::cout << "A copy was made.\n"; }
+
+        //struct TopologyHash {
+        //    uint64_t 
+        //}
 
         using AttribName = std::string;
         using StringList = std::vector<std::string>;
@@ -446,6 +450,8 @@ class dlldecl SceneBuilder {
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
     */
     uint32_t addMesh(const Mesh& meshDesc);
+
+    uint32_t getMeshID(const std::string& name);
 
     /** Add a triangle mesh.
         \param The triangle mesh to add.
@@ -844,6 +850,10 @@ protected:
     std::vector<Material::SharedPtr> mMaterials;
     std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::unordered_map<const Material*, uint32_t> mMaterialToId;
+
+
+    // mt
+    std::mutex mMeshesMutex;
 
     BS::multi_future<uint32_t> mAddGeoTasks;
 

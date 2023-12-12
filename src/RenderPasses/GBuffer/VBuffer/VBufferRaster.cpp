@@ -135,8 +135,8 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
     mRaster.pVars = nullptr;
 
-    if (pScene) {
-        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
+    if (mpScene && mDirty) {
+        if (mpScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
             throw std::runtime_error("VBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
         }
 

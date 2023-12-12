@@ -1420,18 +1420,13 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool update) {
 	assert(pObj);
 
-	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
+	auto const& mesh_name = pObj->geometryName();
+
+	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << mesh_name;
 	
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if (!pSceneBuilder) {
 		LLOG_ERR << "Unable to push geometry instance. SceneBuilder not ready !!!";
-		return false;
-	}
-
-	const auto& mesh_map = pSceneBuilder->meshMap();
-	auto it = mesh_map.find(pObj->geometryName());
-	if(it == mesh_map.end()) {
-		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
 		return false;
 	}
 
@@ -1440,11 +1435,16 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	uint32_t exportedInstanceID = (_id < 0) ? SceneBuilder::kInvalidExportedID : static_cast<uint32_t>(_id);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
-	const uint32_t meshID = it->second; //kMaxMeshID;
+	const uint32_t meshID = pSceneBuilder->getMeshID(mesh_name);
+	if(meshID == SceneBuilder::kInvalidMeshID) {
+		LLOG_FTL << "Error getting id for mesh " << mesh_name;
+		return false;
+	}
+
 	LLOG_WRN << "Updating mesh " << meshID << " instance";
 
 	Falcor::SceneBuilder::Node transformNode = {};
-	transformNode.name = it->first;
+	transformNode.name = mesh_name;
 	transformNode.transform = pObj->getTransformList()[0];
 	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.

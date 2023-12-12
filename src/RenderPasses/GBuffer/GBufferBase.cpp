@@ -128,14 +128,15 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     if(mpScene == pScene) return;
-    
+
+    mDirty = true;    
     mpScene = pScene;
     mFrameCount = 0;
     updateSamplePattern();
 
-    if (pScene) {
+    if (mpScene) {
         // Trigger graph recompilation if we need to change the V-buffer format.
-        ResourceFormat format = pScene->getHitInfo().getFormat();
+        ResourceFormat format = mpScene->getHitInfo().getFormat();
         if (format != mVBufferFormat) {
             mVBufferFormat = format;
             mPassChangedCB();
