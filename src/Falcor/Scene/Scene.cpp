@@ -2265,7 +2265,6 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         if (globalMatrices[matrixID] != glm::identity<glm::mat4>()) {
                             // Get the GPU address of the transform in row-major format.
                             desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
-
                             if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }

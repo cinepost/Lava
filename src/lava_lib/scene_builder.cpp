@@ -376,6 +376,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     //const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
     const uint32_t meshID = addProcessedMesh(processMesh(mesh));
+
     return meshID;
 }
 

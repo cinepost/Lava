@@ -199,20 +199,14 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 
 
 uint32_t SceneBuilder::MeshID::_get() const {
-	LLOG_WRN << "MeshID::_get()";
 	try {
-		LLOG_WRN << "MeshID uint";
 		const uint32_t meshID = std::get<uint32_t>(v);
-		LLOG_WRN << "MeshID uint get";
 		return meshID;	
 	} catch (const std::bad_variant_access&) {
-		LLOG_WRN << "MeshID future";
 		auto& f = std::get<std::shared_future<uint32_t>>(v);
 		try {
-			LLOG_WRN << "MeshID future try get";
 			const uint32_t meshID = f.get();
 			v = meshID;
-			LLOG_WRN << "MeshID future get";
 			return meshID;
 		} catch(const std::exception& e) {
      	LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
@@ -225,12 +219,10 @@ uint32_t SceneBuilder::MeshID::_get() const {
 }
 
 void SceneBuilder::MeshID::operator=(uint32_t id) { 
-	LLOG_WRN << "var 1";
 	v = id; 
 }
 
 void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t> f) { 
-	LLOG_WRN << "var 2";
 	v = f;
 }
 
@@ -383,40 +375,43 @@ Scene::SharedPtr SceneBuilder::getScene() {
 }
 
 uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
-	LLOG_WRN << "SceneBuilder::addMesh(" << mesh.name << ")";
-	{ // thread safety
-		LLOG_WRN << "SceneBuilder::addMesh() lock";
-		
-		//std::scoped_lock lock(mMeshesMutex);
-		std::unique_lock<std::mutex> lock(mMeshesMutex);
-
+	MeshID* pMeshID = nullptr;
+    { // thread safety
+		std::scoped_lock lock(mMeshesMutex);
 		auto it = mMeshMap.find(mesh.name);
 		if(it != mMeshMap.end()) {
-			lock.release();
 			LLOG_DBG << "Mesh " << mesh.name << " already exists in SceneBuilder with id "<< (uint32_t)it->second;
-			return it->second;
+			pMeshID = &it->second;
 		}
-	}
+    }
 
-	const uint32_t meshID = addProcessedMesh(processMesh(mesh));
-	return meshID;
+	return pMeshID ? (uint32_t)(*pMeshID) : addProcessedMesh(processMesh(mesh));
 }
 
 uint32_t SceneBuilder::getMeshID(const std::string& name) {
-	LLOG_WRN << "SceneBuilder::getMeshID("<< name <<")";
-	uint32_t meshID = kInvalidMeshID;
+	MeshID* pMeshID = nullptr;
 
 	{ // thread safety
-		//std::scoped_lock lock(mMeshesMutex);
-		std::unique_lock<std::mutex> lock(mMeshesMutex);
-		auto it = mMeshMap.find(name);
+		std::scoped_lock lock(mMeshesMutex);	
+        auto it = mMeshMap.find(name);
 		if(it != mMeshMap.end()) {
-			lock.release();
 			LLOG_DBG << "Mesh " << name << " already exists in SceneBuilder";
-			meshID = (uint32_t)it->second;
-		}
-	}
-	return meshID;
+			pMeshID = &it->second;
+        }
+    }
+	return pMeshID ? (uint32_t)(*pMeshID) : kInvalidMeshID;
+}
+
+bool  SceneBuilder::meshExist(const std::string& name) {
+    { // thread safety
+        std::scoped_lock lock(mMeshesMutex);    
+        auto it = mMeshMap.find(name);
+        if(it != mMeshMap.end()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial) {
@@ -777,6 +772,11 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);
 
+        if(mpScene) {
+            mReBuildMeshGroups = true;
+            resetScene(true);
+        }
+
 		if (mMeshes.size() >= std::numeric_limits<uint32_t>::max()) {
 			throw std::runtime_error("Trying to build a scene that exceeds supported number of meshes");
 		}
@@ -910,8 +910,7 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
 	assert(pMaterial);
-	const uint32_t materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
-	return materialID;
+	return mpScene ? mpScene->addMaterial(pMaterial) : mSceneData.pMaterialSystem->addMaterial(pMaterial);
 }
 
 bool SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
@@ -940,6 +939,7 @@ bool SceneBuilder::updateMaterial(const std::string& name, const Material::Share
 	LLOG_INF << "pMaterialSystem " << (pMaterialSystem ? "YES" : "NO");
 	auto pMaterial = pMaterialSystem->getMaterialByName(name);
 	LLOG_INF << "pMaterial " << (pMaterial ? "YES" : "NO");
+
 	pMaterial->update(pNewMaterial);
 	bool updated = !is_set(pMaterial->getUpdates(), Material::UpdateFlags::None);
 	if(updated && mpScene) mUpdateSceneMaterials = true;
@@ -948,7 +948,8 @@ bool SceneBuilder::updateMaterial(const std::string& name, const Material::Share
 }
 
 bool SceneBuilder::getMaterialID(const std::string& name, uint32_t& materialId) const {
-	return mSceneData.pMaterialSystem->getMaterialIDByName(name, materialId);
+    MaterialSystem::SharedPtr pMaterialSystem = mpScene ? mpScene->mpMaterialSystem : mSceneData.pMaterialSystem;
+	return pMaterialSystem->getMaterialIDByName(name, materialId);
 }
 
 // Cameras
@@ -1053,6 +1054,22 @@ uint32_t SceneBuilder::updateNode(const Node& node) {
 	return nodeID;
 }
 
+bool SceneBuilder::meshHasInstance(uint32_t meshID, const std::string& instance_name) {
+    if (meshID >= mMeshes.size()) {
+        LLOG_ERR << "SceneBuilder::meshHasInstance() - meshID " << std::to_string(meshID) << " is out of range.";
+        return false;
+    }
+
+    {   // thread safety
+        std::scoped_lock lock(mMeshesMutex);
+
+        auto& instances = mMeshes[meshID].instances;
+        auto match = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == instance_name; });
+        if(match == instances.end()) return false;
+    }
+    return true;
+}
+
 bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec) {
 	if (nodeID >= mSceneGraph.size()) {
 		LLOG_ERR << "SceneBuilder::addMeshInstance() - nodeID " << std::to_string(nodeID) << " is out of range. No mesh instance created !!!";
@@ -1080,31 +1097,35 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 		mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
 	}
 
-	{
+
+    MeshInstanceSpec* pInstance = nullptr;
+
+    {
 		std::scoped_lock lock(mMeshesMutex);
 
 		mMeshes[meshID].instances.push_back({});
-		MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
-		instance.nodeId = nodeID;
-		instance.overrideMaterial = pMaterialOverride ? true : false;
-
-		if (pMaterialOverride) {
-			uint32_t materialID;
-			if(getMaterialID(pMaterialOverride->getName(), materialID)) {
-				instance.materialId = materialID;
-			} else if(pMaterialOverride) {
-				instance.materialId = addMaterial(pMaterialOverride);
-			}
-		}
-
-		if (pShadingSpec) instance.shading = *pShadingSpec;
-		if (pVisibilitySpec) instance.visibility = *pVisibilitySpec;
-		if (pExportedDataSpec) instance.exported = *pExportedDataSpec;
-	
-		LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
+		pInstance = &mMeshes[meshID].instances.back();
 	}
 
-	return true;
+    pInstance->nodeId = nodeID;
+	pInstance->overrideMaterial = pMaterialOverride ? true : false;
+
+	if (pMaterialOverride) {
+		uint32_t materialID;
+		if(getMaterialID(pMaterialOverride->getName(), materialID)) {
+			pInstance->materialId = materialID;
+		} else if(pMaterialOverride) {
+			pInstance->materialId = addMaterial(pMaterialOverride);
+		}
+	}
+
+	if (pShadingSpec) pInstance->shading = *pShadingSpec;
+	if (pVisibilitySpec) pInstance->visibility = *pVisibilitySpec;
+	if (pExportedDataSpec) pInstance->exported = *pExportedDataSpec;
+	
+	LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(pInstance->materialId);
+	
+    return true;
 }
 
 bool SceneBuilder::updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node) {
@@ -1192,23 +1213,47 @@ bool SceneBuilder::deleteMesh(const std::string& meshName) {
 		}	
 
 		const uint32_t meshID = it->second; //kInvalidMeshID;
-/*
-		try	{
-      meshID = std::get<uint32_t>(it->second);
-    }
-    catch (const std::bad_variant_access& ex)
-    {
-      meshID = std::get<std::shared_future<uint32_t>>(it->second).get();
-    }
-*/
+
 		if(meshID >= mMeshes.size()) {
 			LLOG_ERR << "Unable to delete mesh \"" << meshName << "\". Mesh id exceeds meshes count in scene!";
 			return false;
 		}
 
+        LLOG_WRN << "Deleting mesh " << meshName << "with mesh id: " << meshID;
+
 		mMeshMap.erase(it);
 		mMeshes.erase(mMeshes.begin() + meshID);
+
+        // Update instance to mesh map
+        for(auto& entry: mInstanceToMeshMap) {
+            if(entry.second > meshID) {
+                LLOG_WRN << "updating instance to mesh id";
+                entry.second -= 1;
+            }
+        }
+
+        // Update meshes map
+        for(auto& entry: mMeshMap) {
+            if(entry.second > meshID) {
+                LLOG_WRN << "updating mesh map id";
+                entry.second = entry.second - 1;
+            }
+        }
+
+        // Update scene graph
+        for(auto& node: mSceneGraph) {
+            for(size_t id = 0; id < node.meshes.size(); ++id) {
+                if(node.meshes[id] == meshID) {
+                    LLOG_WRN << "updating scene grap node";
+                    node.meshes.erase(node.meshes.begin() + id);      
+                }
+            }
+        }
 	}
+
+    LLOG_WRN << "mMeshes size " << mMeshes.size();
+    LLOG_WRN << "mMeshMap size " << mMeshMap.size();
+    LLOG_WRN << "mInstanceToMeshMap size " << mInstanceToMeshMap.size();
 
 	mReBuildMeshGroups = true;
 	
@@ -1520,8 +1565,7 @@ void SceneBuilder::prepareSceneGraph() {
 	for (const auto& gridVolume : mSceneData.gridVolumes) addAnimatable(gridVolume.get(), gridVolume->getName());
 
 	for (const auto& mesh : mMeshes) {
-		if (mesh.skeletonNodeID != kInvalidNodeID)
-		{
+		if (mesh.skeletonNodeID != kInvalidNodeID) {
 			mSceneGraph[mesh.skeletonNodeID].dontOptimize = true;
 		}
 	}
@@ -1591,7 +1635,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 	// The pass is disabled by default. Can lead to a large increase in memory use.
 
 	if (!is_set(mFlags, Flags::FlattenStaticMeshInstances)) {
-		return;
+        return;
 	}
 
 	size_t flattenedInstanceCount = 0;
@@ -2442,6 +2486,11 @@ void SceneBuilder::createGlobalBuffers() {
 	assert(mSceneData.meshSkinningData.empty());
 	assert(mSceneData.perPrimitiveMaterialIDsData.empty());
 
+    mSceneData.meshIndexData.clear();
+    mSceneData.meshStaticData.clear();
+    mSceneData.meshSkinningData.clear();
+    mSceneData.perPrimitiveMaterialIDsData.clear();
+
 	const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
 	// Count total number of vertex and index data elements.
@@ -2503,9 +2552,11 @@ void SceneBuilder::createGlobalBuffers() {
 		}
 
 		// Free the mesh local data.
-		mesh.indexData.clear();
-		mesh.staticData.clear();
-		mesh.skinningData.clear();
+        if(!is_set(mFlags, Flags::DontFreeLocalMeshData)) {
+		  mesh.indexData.clear();
+		  mesh.staticData.clear();
+		  mesh.skinningData.clear();
+        }
 	}
 
 	// Initialize offsets for prev vertex data for vertex-animated meshes
@@ -2814,6 +2865,11 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 	assert(mSceneData.meshInstanceNamesData.empty());
 	assert(mSceneData.meshIdToInstanceIds.empty());
 	assert(mSceneData.meshGroups.empty());
+
+    mSceneData.meshInstanceData.clear();
+    mSceneData.meshInstanceNamesData.clear();
+    mSceneData.meshIdToInstanceIds.clear();
+    mSceneData.meshGroups.clear();
 
 	auto& instanceData = mSceneData.meshInstanceData;
 	auto& instanceNamesData = mSceneData.meshInstanceNamesData;

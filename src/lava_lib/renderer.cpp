@@ -73,12 +73,7 @@ bool Renderer::init(const Config& config) {
 
 	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
 	if (mCurrentConfig.useRaytracing) sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
-
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
-
 	if (mCurrentConfig.generateMeshlets) sceneBuilderFlags |= SceneBuilder::Flags::GenerateMeshlets;
-
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 
@@ -91,6 +86,9 @@ bool Renderer::init(const Config& config) {
     sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontFreeLocalMeshData;
+	} else {
+		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
 	}
 
 	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;

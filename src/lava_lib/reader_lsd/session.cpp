@@ -1053,8 +1053,7 @@ bool Session::cmdEnd() {
 						return false;
 					}
 
-					const auto& mesh_map = pSceneBuilder->meshMap();
-					if (mesh_map.find(pScopeGeo->detailName()) != mesh_map.end()) {
+					if (pSceneBuilder->meshExist(pScopeGeo->detailName())) {
 						// mesh already exist. all ok
 						break;
 					} else {
@@ -1441,10 +1440,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	LLOG_WRN << "Updating mesh " << meshID << " instance";
+	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) update = false;
+
+	LLOG_DBG << (update ? "Updating" : "Creating") << " mesh " << meshID << " instance named " << obj_name;
 
 	Falcor::SceneBuilder::Node transformNode = {};
-	transformNode.name = mesh_name;
+	transformNode.name = obj_name;
 	transformNode.transform = pObj->getTransformList()[0];
 	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
@@ -1498,7 +1499,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   	return pSceneBuilder->updateMeshInstance(meshID, &creationSpec, transformNode);
   } else {
   	// Add a mesh instance
+  	LLOG_WRN << "1";
   	const uint32_t nodeID = pSceneBuilder->addNode(transformNode);
+  	LLOG_WRN << "2";
   	return pSceneBuilder->addMeshInstance(nodeID, meshID, &creationSpec);
 	}
 }

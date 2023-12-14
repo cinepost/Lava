@@ -698,6 +698,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
     const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
+    uint32_t addMaterial(const Material::SharedPtr& pMaterial) { return mpMaterialSystem->addMaterial(pMaterial); }
+
     /** Get a list of all materials in the scene.
     */
     const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }

@@ -143,7 +143,7 @@ Result BufferResourceImpl::setDebugName(const char* name) {
     Parent::setDebugName(name);
     auto api = m_buffer.m_api;
     if (api->vkDebugMarkerSetObjectNameEXT) {
-        LLOG_TRC << "Buffet debug name: " << std::string(name);
+        LLOG_TRC << "Buffer debug name: " << std::string(name);
         VkDebugMarkerObjectNameInfoEXT nameDesc = {};
         nameDesc.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
         nameDesc.object = (uint64_t)m_buffer.m_buffer;

@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_
 
 #include <set>
+#include <mutex>
 
 #include "Material.h"
 
@@ -235,6 +236,8 @@ class dlldecl MaterialSystem {
 		// UI variables
 		std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.
 		bool mSortMaterialsByName = false;                          ///< If true, display materials sorted by name, rather than by ID.
+
+		std::mutex mMaterialsMutex;
 
 		friend class Material;
 		friend class SceneCache;

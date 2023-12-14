@@ -134,6 +134,7 @@ class dlldecl SceneBuilder {
         UseRaytracing                   = 0x20000,  ///< Use raytracing
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
         GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
+        DontFreeLocalMeshData           = 0x100000, ///< Keep local mesh data for scene rebuild purposes
 
         UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
@@ -439,6 +440,8 @@ class dlldecl SceneBuilder {
     */
     bool addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec = nullptr);
     
+    bool meshHasInstance(uint32_t meshID, const std::string& instance_name);
+
     bool updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node);
 
     bool deleteMeshInstance(const std::string& name);
@@ -452,6 +455,8 @@ class dlldecl SceneBuilder {
     uint32_t addMesh(const Mesh& meshDesc);
 
     uint32_t getMeshID(const std::string& name);
+
+    bool meshExist(const std::string& name);
 
     /** Add a triangle mesh.
         \param The triangle mesh to add.
