@@ -32,6 +32,7 @@ file( GLOB SOURCES
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/InternalDictionary.cpp
+    ./Utils/Geometry/*.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp

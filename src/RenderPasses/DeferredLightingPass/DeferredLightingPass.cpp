@@ -52,6 +52,7 @@ namespace {
         { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
         { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
+        { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
         { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
         { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },

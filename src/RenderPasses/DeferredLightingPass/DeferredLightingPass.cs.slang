@@ -46,6 +46,7 @@ RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutEmission;
+RasterizerOrderedTexture2D<float>  gOutRoughness;
 RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float4> gOutTangentNormals;
@@ -101,6 +102,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOutEmission)
     gOutEmission[ipos] = float4(d.emission, .0);
 #endif  // gOutEmission
+
+#if is_valid(gOutRoughness)
+    gOutRoughness[ipos] = d.roughness;
+#endif  // gOutRoughness
 
 #if is_valid(gOutNormals)
     gOutNormals[ipos] = float4(d.normal, .0f);
@@ -614,9 +619,16 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if is_valid(gOutFresnel)
     {
-        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.N));
+        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.frame.N));
     }
 #endif
+
+#if is_valid(gOutRoughness)
+    {
+        const IMaterialInstance mi = gScene.materials.getMaterialInstance(primaryShadingData, primaryLod);
+        aov_data.roughness = mi.getProperties(primaryShadingData).roughness;
+    }
+#endif  // gOutEmission
 
 #if is_valid(gOutEmission)
     {

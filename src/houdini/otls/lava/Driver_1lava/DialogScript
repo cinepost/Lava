@@ -1048,6 +1048,7 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+
                 parm {
                     name    "lv_quickplane_emission"
                     label   "Emission"
@@ -1062,6 +1063,27 @@
                     type    string
                     default { "float16" }
                     hidewhen "{ lv_quickplane_emission == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_quickplane_roughness"
+                    label   "Roughness"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_roughness"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_roughness == 0 }"
                     menu {
                         [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                         language python

@@ -1082,10 +1082,15 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
+				if(pScopeObj->geometryName().empty()) {
+					LLOG_WRN << "Empty geometry instance skipped.";
+					break;
+				}
+
 				const bool update = (mIPRmode == ast::IPRMode::UPDATE) ? true : false;
 				if(!pushGeometryInstance(pScopeObj, update)) {
-					LLOG_FTL << "Error " << (update ? "updating" : "creating") << " geometry instance \"" << pScopeObj->geometryName() << "\"";
-					mFailed = true;
+					LLOG_WRN << "Error " << (update ? "updating" : "creating") << " geometry " << pScopeObj->geometryName() << " instance !";
+					setFailed(true);
 					return false;
 				}
 			}
@@ -1167,6 +1172,11 @@ bool Session::cmdEnd() {
 
 	mpCurrentScope = pParentScope;
 	return result;
+}
+
+void Session::setFailed(bool state) {
+	if(!state) return;
+	mFailed = state;
 }
 
 void Session::addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD) {

@@ -22,6 +22,8 @@ __quickplanes = {
 
     "emission":         QuickPlane("EMISSION",                 "vector3",       "float16",    False,      {}),
 
+    "roughness":        QuickPlane("ROUGHNESS",                "float",         "float16",    False,      {}),
+
     "shadow":           QuickPlane("SHADOW",                   "vector3",       "float16",    False,      {}),
 
     "fresnel":          QuickPlane("FRESNEL",                  "float",         "float16",    False,      {}),
@@ -50,6 +52,7 @@ __toggleplanedict = {
     'lv_quickplane_nt':                     ['tangent_normals'],
     'lv_quickplane_albedo':                 ['albedo'],
     'lv_quickplane_emission':               ['emission'],
+    'lv_quickplane_roughness':              ['roughness'],
     'lv_quickplane_shadow':                 ['shadow'],
     'lv_quickplane_fresnel':                ['fresnel'],
     'lv_quickplane_object_id':              ['object_id'],

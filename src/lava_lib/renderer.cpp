@@ -561,6 +561,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::ROUGHNESS:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.roughness", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::Prim_Id:
 				{
 					if(pAccPass) {

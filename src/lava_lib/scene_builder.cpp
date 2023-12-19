@@ -61,6 +61,8 @@ SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags):
 }
 
 SceneBuilder::~SceneBuilder() {
+    mAddGeoTasks.wait();
+    
     // Remove temporary geometries from filesystem
     freeTemporaryResources();
     
