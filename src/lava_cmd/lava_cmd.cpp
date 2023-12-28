@@ -354,7 +354,7 @@ int main(int argc, char** argv){
           LLOG_DBG << "Reading scene from stdin ...\n";
           auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
           
-          echo_input = true; // TODO: remove
+          //echo_input = true; // TODO: remove
 
           reader->init(pRenderer, echo_input);
 

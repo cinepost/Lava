@@ -60,6 +60,10 @@ namespace Falcor {
 	
 namespace {
 
+//
+constexpr size_t kMaxMeshIPRBufferDataSize = 1024 * 1024 * 1024; // 1GB mesh list data size for IPR;
+
+
 // Large mesh groups are split in order to reduce the size of the largest BLAS.
 // The target is max 16M triangles per BLAS (= approx 0.5GB post-compaction). Note that this is not a strict limit.
 const size_t kMaxTrianglesPerBLAS = 1ull << 24;
@@ -915,6 +919,12 @@ uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
 
 bool SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
 	assert(pMaterial);
+	if(path.empty()) {
+		// no texture path provided
+		pMaterial->clearTexture(slot);
+		return true; 
+	}
+
 	if (!mpMaterialTextureLoader) {
 		mpMaterialTextureLoader.reset(new MaterialTextureLoader(mpDevice, !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
 	}
@@ -1227,7 +1237,7 @@ bool SceneBuilder::deleteMesh(const std::string& meshName) {
         // Update instance to mesh map
         for(auto& entry: mInstanceToMeshMap) {
             if(entry.second > meshID) {
-                LLOG_WRN << "updating instance to mesh id";
+                LLOG_TRC << "updating instance to mesh id";
                 entry.second -= 1;
             }
         }
@@ -1235,7 +1245,7 @@ bool SceneBuilder::deleteMesh(const std::string& meshName) {
         // Update meshes map
         for(auto& entry: mMeshMap) {
             if(entry.second > meshID) {
-                LLOG_WRN << "updating mesh map id";
+                LLOG_TRC << "updating mesh map id";
                 entry.second = entry.second - 1;
             }
         }
@@ -1244,16 +1254,12 @@ bool SceneBuilder::deleteMesh(const std::string& meshName) {
         for(auto& node: mSceneGraph) {
             for(size_t id = 0; id < node.meshes.size(); ++id) {
                 if(node.meshes[id] == meshID) {
-                    LLOG_WRN << "updating scene grap node";
+                    LLOG_TRC << "updating scene grap node";
                     node.meshes.erase(node.meshes.begin() + id);      
                 }
             }
         }
 	}
-
-    LLOG_WRN << "mMeshes size " << mMeshes.size();
-    LLOG_WRN << "mMeshMap size " << mMeshMap.size();
-    LLOG_WRN << "mInstanceToMeshMap size " << mInstanceToMeshMap.size();
 
 	mReBuildMeshGroups = true;
 	
@@ -2552,7 +2558,7 @@ void SceneBuilder::createGlobalBuffers() {
 		}
 
 		// Free the mesh local data.
-        if(!is_set(mFlags, Flags::DontFreeLocalMeshData)) {
+        if(!is_set(mFlags, Flags::KeepLocalMeshData)) {
 		  mesh.indexData.clear();
 		  mesh.staticData.clear();
 		  mesh.skinningData.clear();

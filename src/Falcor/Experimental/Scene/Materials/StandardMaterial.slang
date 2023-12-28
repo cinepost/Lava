@@ -74,19 +74,19 @@ struct StandardMaterial : MaterialBase, IMaterial {
 
             d.diffuse = lerp(baseColor, float3(0), metallic);
             d.specular = lerp(float3(F0), baseColor, metallic);
-            d.roughness = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
+            d.roughness = max(0.0f, ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r) * data.roughness;
             d.metallic = metallic;
         }
 #if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
         else // ShadingModel::SpecGloss
         {
-            float metallic = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod).r * data.metallic;
+            float metallic = max(0.0f, ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod).r) * data.metallic;
 
             const float reflecttint = 0.0f;
 
             d.diffuse = baseColor;
             d.specular = lerp(float3(1), baseColor, reflecttint);
-            d.roughness = 1 - ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
+            d.roughness = 1 - max(0.0f, ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r) * data.roughness;
             d.metallic = metallic;
         }
 #endif
@@ -98,33 +98,43 @@ struct StandardMaterial : MaterialBase, IMaterial {
         ShadingFrame sf = sd.frame;
         if (isNormalMappingEnabled(hints)) {
             float3 encodedNormal = {0.f, 0.f, 1.f};
-            float  factor = 1.f;
+            const float  factor = data.bumpNormalFactor;
             
             [[ branch ]]
-            if(data.getNormalMapMode() == NormalMapMode::Bump) {
-                float4 ddxy = .5f * ms.ddxy(sd.uv, lod);
+            switch(data.getNormalMapMode()) {
+                case NormalMapMode::Bump:
+                    float4 ddxy = .5f * ms.ddxy(sd.uv, lod);
 
-                float uH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r;
-                float bH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.xy, float4(0.f), lod).r;
-                float lH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r;
-                float rH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.zw, float4(0.f), lod).r;
+                    float uH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.xy, float4(0.f), lod).r;
+                    float bH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.xy, float4(0.f), lod).r;
+                    float lH = ms.sampleTexture(data.texNormalMap, s, sd.uv + ddxy.zw, float4(0.f), lod).r;
+                    float rH = ms.sampleTexture(data.texNormalMap, s, sd.uv - ddxy.zw, float4(0.f), lod).r;
 
-                float dy = (rH - lH) * factor;
-                float dx = (bH - uH) * factor;
-                float dz = sqrt (1.0 - dx*dx - dy*dy);
-                encodedNormal = float3(dx, dy, dz);
-            } else {
-                encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-                encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
-                encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
+                    float dy = (rH - lH) * factor;
+                    float dx = (bH - uH) * factor;
+                    float dz = 1.0f; //sqrt (1.0 - dx*dx - dy*dy);
+                    encodedNormal = normalize(float3(dx, dy, dz));
+                    sf = computeShadingFrameFromBumpMap(sd, encodedNormal);
+                    break;
+                case NormalMapMode::Normal:
+                    encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+                    encodedNormal.x = data.isNormalMapXFlipped() ? (1.f - encodedNormal.x) : encodedNormal.x;
+                    encodedNormal.y = data.isNormalMapYFlipped() ? (1.f - encodedNormal.y) : encodedNormal.y;
+
+                    //encodedNormal = {0.f, 0.f, 1.0f};
+                    //sf = ShadingFrame(sd.frame.fromLocal(normalize(encodedNormal)), sd.tangentW);
+                    
+                    sf = computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
+                    break;
+                default:
+                    break;
             }
-            sf = computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
         }
         
-        flipShadingNormal(sd, sf);
-        
+        //flipShadingNormal(sd, sf);
+
         if (isAdjustShadingNormalEnabled(hints)) {
-            adjustShadingNormal(sd, sf);
+            //adjustShadingNormal(sd, sf);
         }
 
         // Sample the emissive texture.

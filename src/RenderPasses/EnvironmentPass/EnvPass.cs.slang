@@ -102,9 +102,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         AnalyticLightSample ls = {};
         if(intersectLight(cameraPosW, rayDir, light, ls)) {
-            backColor.rgb += ls.Li * light.directDiffuseIntensity;
+            backColor.rgb += ls.Li;
             backColor.a = 1.0f;
-            // && (ls.distance < localMaxDistance)
             localMaxDistance = ls.distance;
         }
     }

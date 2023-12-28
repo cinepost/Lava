@@ -77,7 +77,7 @@ bool Renderer::init(const Config& config) {
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 
-	if(config.optimizeForIPR) {
+	if(config.optimizeForIPR || config.optimizeForBatch) {
 		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMeshes;
@@ -86,7 +86,10 @@ bool Renderer::init(const Config& config) {
     sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-    sceneBuilderFlags |= SceneBuilder::Flags::DontFreeLocalMeshData;
+    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
+    if(config.optimizeForBatch) {
+    	sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
+    }
 	} else {
 		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
 	}

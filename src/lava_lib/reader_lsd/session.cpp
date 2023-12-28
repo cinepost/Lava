@@ -646,10 +646,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
 
-	lsd::Vector3 light_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "diffuse_color", light_color);
-	lsd::Vector3 light_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "specular_color", light_diffuse_color);
-	lsd::Vector3 light_indirect_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color", light_diffuse_color);
-	lsd::Vector3 light_indirect_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color", light_specular_color);
+	lsd::Vector3 light_direct_diffuse_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "direct_diffuse_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_direct_specular_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "direct_specular_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_indirect_diffuse_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_indirect_specular_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
 
 	const bool visible_primary = pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
@@ -808,10 +808,11 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			}
 		}
 
-		pLight->setDiffuseIntensity(to_float3(light_diffuse_color));
-		pLight->setSpecularIntensity(to_float3(light_specular_color));
-		pLight->setIndirectDiffuseIntensity(to_float3(light_indirect_diffuse_color));
-		pLight->setIndirectSpecularIntensity(to_float3(light_indirect_specular_color));
+		pLight->setIntensity(to_float3(light_color));
+		pLight->setDiffuseIntensityMultiplier(to_float3(light_direct_diffuse_color_multiplier));
+		pLight->setSpecularIntensityMultiplier(to_float3(light_direct_specular_color_multiplier));
+		pLight->setIndirectDiffuseIntensityMultiplier(to_float3(light_indirect_diffuse_color_multiplier));
+		pLight->setIndirectSpecularIntensityMultiplier(to_float3(light_indirect_specular_color_multiplier));
 
 		if(update && pLight) {
 			LLOG_INF << "Update light " << light_name;
@@ -1365,9 +1366,11 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
     pMaterial->setTransmissionColor(trans_color);
     pMaterial->setSpecularTransmission(transmission);
 
-    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+    if(surface_use_basenormal_texture) {
+    	pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+  	}
 
-    float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
+  	float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
     pMaterial->setNormalBumpMapFactor(_normal_bump_scale);
 
   	//bool loadAsSrgb = true;
@@ -1375,37 +1378,45 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
     LLOG_TRC << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
-    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
+    if(surface_use_basecolor_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
+    if(surface_use_metallic_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
+    if(surface_use_emission_texture) { 
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
+    if(surface_use_roughness_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
+    } else {
+    	pMaterial->setTexture(Falcor::Material::TextureSlot::Roughness, nullptr);
     }
 
-    if((surface_base_normal_texture_path != ""  || surface_base_bump_texture_path != "") && surface_use_basenormal_texture) { 
+    if(surface_use_basenormal_texture) { 
     	
-    	std::string _base_normal_bump_texture_path = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? surface_base_bump_texture_path : surface_base_normal_texture_path;
-
-    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, _base_normal_bump_texture_path, loadTexturesAsSparse)) {
-    		return nullptr;
+    	if(pMaterial->getNormalMapMode() == NormalMapMode::Bump) {
+    		if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_bump_texture_path, loadTexturesAsSparse)) {
+    			return nullptr;
+    		}
+    	} else if(pMaterial->getNormalMapMode() == NormalMapMode::Normal) {
+				if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse)) {
+    			return nullptr;
+    		}
     	}
+    } else {
+    	pMaterial->setNormalMap(nullptr);
     }
   }
 
@@ -1509,9 +1520,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   	return pSceneBuilder->updateMeshInstance(meshID, &creationSpec, transformNode);
   } else {
   	// Add a mesh instance
-  	LLOG_WRN << "1";
   	const uint32_t nodeID = pSceneBuilder->addNode(transformNode);
-  	LLOG_WRN << "2";
   	return pSceneBuilder->addMeshInstance(nodeID, meshID, &creationSpec);
 	}
 }

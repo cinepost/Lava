@@ -162,22 +162,22 @@ class dlldecl BasicMaterial : public Material {
 
 		/** Set normal map flipping.
 		*/
-		void setNormalMapFlipX(bool flip) { mData.setNormalMapXFlip(flip); };
-		void setNormalMapFlipY(bool flip) { mData.setNormalMapYFlip(flip); };
+		void setNormalMapFlipX(bool flip);
+		void setNormalMapFlipY(bool flip);
 
 		/** Get normal map flipping.
 		*/
-		bool getNormalMapFlipX(bool flip) const { return mData.isNormalMapXFlipped(); };
-		bool getNormalMapFlipY(bool flip) const { return mData.isNormalMapYFlipped(); };
+		bool getNormalMapFlipX() const { return mData.isNormalMapXFlipped(); };
+		bool getNormalMapFlipY() const { return mData.isNormalMapYFlipped(); };
 
 		/** Set/Get normal map mode.
 		*/
-		void setNormalMapMode(NormalMapMode mode) { mData.setNormalMapMode(mode); };
+		void setNormalMapMode(NormalMapMode mode);
 		NormalMapMode getNormalMapMode() const { return mData.getNormalMapMode(); };
 
 		/** Set/Get normal map/bump factor.
 		*/
-		void setNormalBumpMapFactor(float factor) { mData.bumpNormalFactor = static_cast<float16_t>(factor); };
+		void setNormalBumpMapFactor(float factor);
 		float getNormalBumpMapFactor() const { return static_cast<float>(mData.bumpNormalFactor); };
 
 		/** Set the displacement map.

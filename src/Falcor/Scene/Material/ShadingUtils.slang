@@ -84,7 +84,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     float3 mapN = { 0.f, 0.f, 1.f };
     switch (type) {
         case NormalMapType::RGB:
-            mapN = rgbToNormal(encodedNormal);
+            mapN = normalize(rgbToNormal(encodedNormal));
             break;
         case NormalMapType::RG:
             mapN = rgToNormal(encodedNormal.rg);
@@ -99,6 +99,17 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
 
     // Apply the transformation.
     return ShadingFrame(sd.frame.fromLocal(mapN), sd.tangentW);
+}
+
+/** Compute shading frame at shading point by applying bump mapping.
+    This function perturbs the shading normal using a local normal sampled from a normal map.
+    \param[in] sd Shading data.
+    \param[in] normal Shading normal in local space.
+    \return Shading frame in world space.
+*/
+ShadingFrame computeShadingFrameFromBumpMap(const ShadingData sd, const float3 shadingNormal) {
+    // Apply the transformation.
+    return ShadingFrame(sd.frame.fromLocal(shadingNormal), sd.tangentW);
 }
 
 /** Flip shading normal for backfacing hit on double-sided material.

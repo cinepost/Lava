@@ -114,6 +114,14 @@ class dlldecl SceneBuilder {
         Material::SharedPtr         pMaterialOverride = nullptr;
     };
 
+    enum class UpdateMode: uint8_t {
+        None,
+        IPR,
+        Batch,
+        Default = None
+    };
+
+
     /** Flags that control how the scene will be built. They can be combined together.
     */
     enum class Flags: uint32_t {
@@ -138,7 +146,8 @@ class dlldecl SceneBuilder {
         UseRaytracing                   = 0x20000,  ///< Use raytracing
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
         GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
-        DontFreeLocalMeshData           = 0x100000, ///< Keep local mesh data for scene rebuild purposes
+        KeepMeshData                    = 0x100000, ///< Keep mesh list for batch mode updates
+        KeepLocalMeshData               = 0x200000, ///< Keep local mesh data for scene rebuild purposes
 
         UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
@@ -567,7 +576,7 @@ protected:
         uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
         uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
         uint32_t vertexCount = 0;                   ///< Number of vertices.
-        uint32_t skeletonNodeID = kInvalidNodeID;     ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+        uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
         bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
         bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
         bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).
@@ -583,6 +592,15 @@ protected:
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
+
+
+        size_t   getHostMemUsage() const {
+            return  instances.size() * sizeof(MeshInstanceSpec) + 
+                    indexData.size() * sizeof(uint32_t) +
+                    staticData.size() * sizeof(StaticVertexData) +
+                    skinningData.size() * sizeof(SkinningVertexData) +
+                    perPrimitiveMaterialIDsData.size() * sizeof(int32_t);
+        }
 
         uint32_t getTriangleCount() const {
             assert(topology == Vao::Topology::TriangleList);
@@ -738,6 +756,8 @@ protected:
         UpdateSceneInstances    = 0x4,
         UpdateMeshGroups        = 0x8,
     };
+
+    UpdateMode mUpdateMode = UpdateMode::Batch;
 
     // Scene dynamic update flags
     bool mUpdateSceneMaterials = false;

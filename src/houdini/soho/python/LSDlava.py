@@ -313,10 +313,10 @@ def initializeFeatures(settings):
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
 
-    Light("diffuse_color",           "float", "lv_diffuse_color", skipdefault=True)
-    Light("specular_color",          "float", "lv_specular_color", skipdefault=True)
-    Light("indirect_diffuse_color",  "float", "lv_indirect_diffuse_color", skipdefault=True)
-    Light("indirect_specular_color", "float", "lv_indirect_specular_color", skipdefault=True)
+    Light("direct_diffuse_color_multiplier",    "float", "lv_direct_diffuse_color_multiplier", skipdefault=True)
+    Light("direct_specular_color_multiplier",   "float", "lv_direct_specular_color_multiplier", skipdefault=True)
+    Light("indirect_diffuse_color_multiplier",  "float", "lv_indirect_diffuse_color_multiplier", skipdefault=True)
+    Light("indirect_specular_color_multiplier", "float", "lv_indirect_specular_color_multiplier", skipdefault=True)
 
     Light("physical_sky", "bool", "lv_enable_physical_sky", skipdefault=True)
 

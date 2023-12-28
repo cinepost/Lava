@@ -230,9 +230,9 @@ def get_light_color(plist):
     exposure = plist['light_exposure'].Value[0]
     brightness = intensity * pow(2, exposure)
 
-    color[0] *= brightness # * math.pi * 2
-    color[1] *= brightness # * math.pi * 2
-    color[2] *= brightness # * math.pi * 2
+    color[0] *= brightness
+    color[1] *= brightness
+    color[2] *= brightness
     return color
 
 # Properties in the HoudiniLight object which get mapped to the
@@ -272,64 +272,52 @@ def get_lava_light_intensity(obj, now):
     return intensity * pow(2, exposure)
 
 
-def light_diffuse_color(obj, now, value):
+def light_direct_diffuse_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_direct_diffuse', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_diffuse_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_direct_diffuse_color_multiplier', now, value):
         return True
 
+    value = (1, 1, 1)
     return False
 
-def light_specular_color(obj, now, value):
+def light_direct_specular_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_direct_specular', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_specular_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_direct_specular_color_multiplier', now, value):
         return True
 
+    value = (1, 1, 1)
     return False
 
-def light_indirect_diffuse_color(obj, now, value):
+def light_indirect_diffuse_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_indirect_diffuse', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_indirect_diffuse_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_indirect_diffuse_color_multiplier', now, value):
         return True
 
+    value = (1, 1, 1)
     return True
 
-def light_indirect_specular_color(obj, now, value):
+def light_indirect_specular_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_indirect_specular', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_indirect_specular_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_indirect_specular_color_multiplier', now, value):
         return True
 
+    value = (1, 1, 1)
     return True
 
 def light_shader(obj, now, value):
@@ -350,11 +338,6 @@ def light_shader(obj, now, value):
     light_path = obj.getDefaultedString('vm_uvlightpaths', now, ['-diffuse & -volume'])[0]
     
     light_color = get_light_color(plist)
-
-    #if not isarealight(obj, now):
-    #    light_color[0] *= math.pi * 2
-    #    light_color[1] *= math.pi * 2
-    #    light_color[2] *= math.pi * 2
 
     if ltype == 'ambient':
         shader = 'opdef:/Shop/v_ambient lightcolor %g %g %g' % \
@@ -396,10 +379,8 @@ lshadowParms = {
     'shadow_blur'           : SohoParm('shadow_blur', 'real', [0], False),
     'shadow_transparent'    : SohoParm('shadow_transparent', 'int', [1], False),
     'shadowmap_file'        : SohoParm('shadowmap_file', 'string', [''], False),
-    'shadowmap_time_zero'   : SohoParm('shadowmap_time_zero', 'int',
-                                        [1], False),
-    'vm_iprraytraceshadows' : SohoParm('vm_iprraytraceshadows', 'int',
-                                        [1], False),
+    'shadowmap_time_zero'   : SohoParm('shadowmap_time_zero', 'int', [1], False),
+    'vm_iprraytraceshadows' : SohoParm('vm_iprraytraceshadows', 'int', [1], False),
 }
 
 def shadow_shader(obj, now, value):
@@ -665,10 +646,10 @@ parmMap = {
     'lv_picture'            :   vm_picture,
     'lv_visible_primary'    :   visible_primary,
 
-    'lv_diffuse_color'              :    light_diffuse_color,
-    'lv_specular_color'             :    light_specular_color,
-    'lv_indirect_diffuse_color'     :    light_indirect_diffuse_color,
-    'lv_indirect_specular_color'    :    light_indirect_specular_color,
+    'lv_direct_diffuse_color_multiplier'       :    light_direct_diffuse_color_multiplier,
+    'lv_direct_specular_color_multiplier'      :    light_direct_specular_color_multiplier,
+    'lv_indirect_diffuse_color_multiplier'     :    light_indirect_diffuse_color_multiplier,
+    'lv_indirect_specular_color_multiplier'    :    light_indirect_specular_color_multiplier,
 
     # Settings for point cloud lights
     'lv_renderengine'   :       vm_renderengine,

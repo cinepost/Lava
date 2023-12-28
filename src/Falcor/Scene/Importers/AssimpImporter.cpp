@@ -304,8 +304,8 @@ namespace {
 
 	bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight) {
 		pLight->setName(pAiLight->mName.C_Str());
-		pLight->setDiffuseIntensity(aiCast(pAiLight->mColorDiffuse));
-		pLight->setSpecularIntensity(aiCast(pAiLight->mColorSpecular));
+		pLight->setIntensity(aiCast(pAiLight->mColorDiffuse));
+		//pLight->setSpecularIntensity(aiCast(pAiLight->mColorSpecular));
 
 		// Find if the light is affected by a node
 		uint32_t nodeID = data.getFalcorNodeID(pAiLight->mName.C_Str(), 0);

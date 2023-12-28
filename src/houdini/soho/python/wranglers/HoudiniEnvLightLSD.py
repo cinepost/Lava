@@ -148,64 +148,52 @@ def get_lava_light_intensity(obj, now):
     return intensity * pow(2, exposure)
 
 
-def light_diffuse_color(obj, now, value):
+def light_direct_diffuse_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_direct_diffuse', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_diffuse_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_direct_diffuse_color_multiplier', now, value):
         return True
 
+    value = (1.0, 1.0, 1.0)
     return False
 
-def light_specular_color(obj, now, value):
+def light_direct_specular_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_direct_specular', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_specular_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_direct_specular_color_multiplier', now, value):
         return True
 
+    value = (1.0, 1.0, 1.0)
     return False
 
-def light_indirect_diffuse_color(obj, now, value):
+def light_indirect_diffuse_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_indirect_diffuse', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_indirect_diffuse_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_indirect_diffuse_color_multiplier', now, value):
         return True
 
+    value = (1.0, 1.0, 1.0)
     return True
 
-def light_indirect_specular_color(obj, now, value):
+def light_indirect_specular_color_multiplier(obj, now, value):
     contribution = [1]
     if obj.evalInt('lv_contribute_indirect_specular', now, contribution) and (contribution[0] == 0):
-        value[0] = (0, 0, 0)
+        value[0] = (.0, .0, .0)
         return True
 
-    intensity = get_lava_light_intensity(obj, now)
-    if obj.evalFloat('lv_light_indirect_specular_color', now, value):
-        value[0] = value[0] * intensity
-        value[1] = value[1] * intensity
-        value[2] = value[2] * intensity
+    if obj.evalFloat('lv_light_indirect_specular_color_multiplier', now, value):
         return True
 
+    value = (1.0, 1.0, 1.0)
     return True
 
 def backgroundString(obj, now, value):
@@ -374,10 +362,10 @@ parmMap = {
     'lv_visible_primary'            :    visible_primary,
     'lv_envintensity'               :    envintensity,
 
-    'lv_diffuse_color'              :    light_diffuse_color,
-    'lv_specular_color'             :    light_specular_color,
-    'lv_indirect_diffuse_color'     :    light_indirect_diffuse_color,
-    'lv_indirect_specular_color'    :    light_indirect_specular_color,
+    'lv_direct_diffuse_color_multiplier'       :    light_direct_diffuse_color_multiplier,
+    'lv_direct_specular_color_multiplier'      :    light_direct_specular_color_multiplier,
+    'lv_indirect_diffuse_color_multiplier'     :    light_indirect_diffuse_color_multiplier,
+    'lv_indirect_specular_color_multiplier'    :    light_indirect_specular_color_multiplier,
 
     'shop_lightpath'    :       light_shader,
     'shop_shadowpath'   :       shadow_shader,

@@ -1073,6 +1073,7 @@ public:
     static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
     void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData);
+    
     void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
     Shader::DefineList getSceneSDFGridDefines() const;
