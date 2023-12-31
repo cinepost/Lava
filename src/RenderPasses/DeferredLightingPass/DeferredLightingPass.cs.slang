@@ -185,8 +185,7 @@ uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary) {
 //#endif
 
     }
-    hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
-    return hints;
+    return 0;//hints;
 }
 
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {

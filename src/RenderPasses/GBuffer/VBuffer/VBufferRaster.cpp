@@ -165,9 +165,18 @@ void VBufferRaster::initDepth(RenderContext* pContext, const RenderData& renderD
         //mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource);
 
         DepthStencilState::Desc dsDesc;
-        dsDesc.setDepthFunc(DepthStencilState::Func::Less).setDepthWriteMask(true).setDepthEnabled(true);
+        dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true).setDepthEnabled(true);
         mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
     }    
+}
+
+void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& renderData) {
+    if(!mHighpDepthEnabled && !mDirty) return;
+
+    mpHighpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+
+    mpTestTexture = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
@@ -179,6 +188,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
     
     initDepth(pRenderContext, renderData);
+    initFineDepth(pRenderContext, renderData);
 
     auto pDepthInternal = renderData[kDepthName]->asTexture();
 
@@ -187,6 +197,11 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     
     /// Clear depth if we are using internal one.
     pRenderContext->clearDsv(pDepthInternal->getDSV().get(), 1.f, 0);
+
+    /// Clear fine depth buffer.
+    //pRenderContext->clearUAV(mpFineDepth->getUAV().get(), uint4(0));
+    pRenderContext->clearUAV(mpHighpDepth->getUAV().get(), float4(std::numeric_limits<float>::max()));
+    pRenderContext->clearUAV(mpTestTexture->getUAV().get(), uint4(0));
     
     // If there is no scene, we're done.
     if (!mpScene) return;
@@ -197,7 +212,9 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     if(mDirty) {
         // Set program defines.
         mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-    
+        mRaster.pProgram->addDefine("is_valid_gCamZDepth", mpHighpDepth != nullptr ? "1" : "0");
+        mRaster.pProgram->addDefine("is_valid_gTestTexture", mpTestTexture != nullptr ? "1" : "0");
+
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
         mRaster.pProgram->addDefines(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
@@ -284,8 +301,11 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         if(mDirty) {
             mpFbo->attachColorTarget(pOutput, 0);
             mpFbo->attachDepthStencilTarget(pDepthInternal);
-            
+        
             mRaster.pState->setFbo(mpFbo); // Sets the viewport
+            mRaster.pVars["gVBuffer"] = pOutput;
+            mRaster.pVars["gCamZDepth"] = mpHighpDepth;
+            mRaster.pVars["gTestTexture"] = mpTestTexture;
             mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
 
             // Bind extra outpu channels as UAV buffers.
@@ -298,6 +318,8 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         // Rasterize the scene.
         mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), mForceCullMode ? mCullMode : kDefaultCullMode);
     }
+
+    //mpTestTexture->captureToFile(0, 0, "/home/max/ztest.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
 
     mDirty = false;
 }
@@ -363,6 +385,14 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
 VBufferRaster& VBufferRaster::setPerPixelJitterRaster(bool state) {
     if(mPerPixelJitterRaster != state) {
         mPerPixelJitterRaster = state;
+        mDirty = true;
+    }
+    return *this;
+}
+
+VBufferRaster& VBufferRaster::setHighpDepth(bool state) {
+    if(mHighpDepthEnabled != state) {
+        mHighpDepthEnabled = state;
         mDirty = true;
     }
     return *this;

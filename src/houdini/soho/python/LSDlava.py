@@ -189,6 +189,9 @@ def initializeFeatures(settings):
     Image("image", "ToneMappingPass.exposureValue", "float", "lv_tonemap_exposure")
     Image("image", "ToneMappingPass.autoExposure", "bool", "lv_tonemap_auto_exposure")
 
+    Image("image", "VBufferRasterPass.highp_depth", "bool", "lv_primary_raygen_hw_highp_depth", skipdefault=False)
+    Image("image", "VBufferRasterPass.better_aa", "bool", "lv_primary_raygen_hw_better_aa", skipdefault=False)
+
     # -- Photon --
     Photon("photon", "photoncfile", "string", "lv_photoncfile")
     Photon("photon", "photoncount", "int", "lv_photoncount")

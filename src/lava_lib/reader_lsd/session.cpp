@@ -288,6 +288,9 @@ bool Session::cmdRaytrace() {
 	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
 	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 
+	passDict["MAIN.VBufferRasterPass.highp_depth"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.highp_depth", bool(false));
+	passDict["MAIN.VBufferRasterPass.better_aa"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.better_aa", bool(false));
+
 	auto pMainOutputPlane = mpRenderer->getAOVPlane("MAIN");
 
 	if(!pMainOutputPlane) {

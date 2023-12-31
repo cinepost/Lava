@@ -1429,6 +1429,7 @@
         name    "images_1"
         label   "Rendering"
 
+        //-------------------------------------------------
         parm {
             name    "lv_primary_raygen_type"
             label   "Primary Ray Generator"
@@ -1441,6 +1442,23 @@
             }
             parmtag { "script_callback_language" "python" }
         }
+        parm {
+            name    "lv_primary_raygen_hw_highp_depth"
+            label   "High precision depth"
+            type    toggle
+            default { "0" }
+            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            parmtag { "script_callback_language" "python" }
+        }
+        parm {
+            name    "lv_primary_raygen_hw_better_aa"
+            label   "Better anti-aliasing"
+            type    toggle
+            default { "0" }
+            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            parmtag { "script_callback_language" "python" }
+        }
+        //---------------------------------------------------
 
         parm {
             name    "lv_shading_pass_type"
@@ -1884,6 +1902,7 @@
         group {
             name    "rpasses_1_1"
             label   "Edge Detect"
+            disablewhen "{lv_plane_edgedetect == 0}"
 
             // EdgeDetectPass Depth
             parm {

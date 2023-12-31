@@ -50,7 +50,8 @@ class PASS_API VBufferRaster : public GBufferBase {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
-    VBufferRaster& setPerPixelJitterRaster(bool state=false);
+    VBufferRaster& setHighpDepth(bool state);
+    VBufferRaster& setPerPixelJitterRaster(bool state);
 
   private:
     struct SubPass {
@@ -65,11 +66,17 @@ class PASS_API VBufferRaster : public GBufferBase {
 
     virtual void parseDictionary(const Dictionary& dict) override;
     void initDepth(RenderContext* pContext, const RenderData& renderData);
+    void initFineDepth(RenderContext* pContext, const RenderData& renderData);
     void initQuarterBuffers(RenderContext* pContext, const RenderData& renderData);
 
     // Internal state
     Fbo::SharedPtr                mpFbo;
     Texture::SharedPtr            mpDepth;
+
+    Texture::SharedPtr            mpHighpDepth;
+    Texture::SharedPtr            mpTestTexture;
+
+    bool mHighpDepthEnabled = false;
 
     // Quad view rendering (fake per-pixel jitter)
     bool mPerPixelJitterRaster = false;

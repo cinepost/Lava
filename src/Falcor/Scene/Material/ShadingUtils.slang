@@ -84,7 +84,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     float3 mapN = { 0.f, 0.f, 1.f };
     switch (type) {
         case NormalMapType::RGB:
-            mapN = normalize(rgbToNormal(encodedNormal));
+            mapN = rgbToNormal(encodedNormal);
             break;
         case NormalMapType::RG:
             mapN = rgToNormal(encodedNormal.rg);
@@ -98,7 +98,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     // If it occurs we should foremost fix the asset, or if problems persist add a check here.
 
     // Apply the transformation.
-    return ShadingFrame(sd.frame.fromLocal(mapN), sd.tangentW);
+    return ShadingFrame(sd.frame.fromLocal(normalize(mapN)), sd.tangentW);
 }
 
 /** Compute shading frame at shading point by applying bump mapping.

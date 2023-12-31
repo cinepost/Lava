@@ -308,7 +308,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -316,15 +315,20 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
+			lightingPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			lightingPassDictionary["better_aa"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("swraster")) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -421,7 +425,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional edgedetect pass
 		if (renderPassName == "EdgeDetectPass") {
 			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pEdgeDetectPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -435,7 +438,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
 			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pAmbientOcclusionPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -449,7 +451,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
 			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pCryptomattePass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
