@@ -173,7 +173,11 @@ void DeviceManager::enumerateDevices() {
     VkPhysicalDeviceProperties properties;
     for( auto const &physicalDevice: mPhysicalDevices) {
         vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-        mDeviceNames[id] = std::string(properties.deviceName);
+        auto & deviceInfo = mDeviceInfos[id];
+
+        deviceInfo.deviceName = std::string(properties.deviceName);
+        ::memcpy(&deviceInfo.pipelineCacheUUID[0], &properties.pipelineCacheUUID, sizeof(uint8_t) * VK_UUID_SIZE);
+        deviceInfo.limits = properties.limits;
         id++;
     }
 }

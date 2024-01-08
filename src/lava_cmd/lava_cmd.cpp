@@ -104,9 +104,8 @@ void atexitHandler()  {
 void listGPUs() {
   auto pDeviceManager = DeviceManager::create();
   std::cout << "Available rendering devices:\n";
-  const auto& deviceMap = pDeviceManager->listDevices();
-  for( auto const& [gpu_id, name]: deviceMap ) {
-    std::cout << "\t[" << std::to_string(static_cast<uint32_t>(gpu_id)) << "] : " << name << "\n";
+  for( auto const& [gpu_id, info]: pDeviceManager->deviceInfos()) {
+    std::cout << "\t[" << std::to_string(static_cast<uint32_t>(gpu_id)) << "] : " << info.deviceName << "\n";
   }
   std::cout << std::endl;
 }
@@ -133,7 +132,7 @@ int main(int argc, char** argv){
 
     gExecTimeStart = std::chrono::high_resolution_clock::now();
 
-    int gpuID = -1; // automatic gpu selection
+    uint8_t gpuID = 255; // automatic gpu selection
 
     bool read_stdin = false;
 
@@ -178,7 +177,7 @@ int main(int argc, char** argv){
     bool fconv_flag = false; // force virtual textures (re)conversion
     po::options_description config("Configuration");
     config.add_options()
-      ("device,d", po::value<int>(&gpuID)->default_value(0), "Use specific device")
+      ("device,d", po::value<uint8_t>(&gpuID)->default_value(0), "Use specific device")
       ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
       ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
       ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
@@ -306,9 +305,19 @@ int main(int argc, char** argv){
       device_desc.height = 720;
       device_desc.validationLayerOuputFilename = vkValidationFilename;
 
+      Device::SharedPtr pDevice;
       LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
-      auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
+      pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
       LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
+
+      {
+        const auto& deviceInfos = pDeviceManager->deviceInfos();
+        auto it = deviceInfos.find(gpuID);
+
+        if (it != deviceInfos.end()) {
+          std::cout << "Rendering using device [" << static_cast<unsigned int>(gpuID) << "]: " << it->second.deviceName << std::endl;
+        }
+      }
 
       // Start scripting system
       Falcor::Scripting::start();
