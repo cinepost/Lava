@@ -30,7 +30,7 @@
 import Scene.Raster;
 import Utils.Math.MathHelpers;
 
-RasterizerOrderedTexture2D<float> gCamZDepth;
+RasterizerOrderedTexture2D<float> gHighpDepth;
 
 RasterizerOrderedTexture2D<float4> gTestTexture;
 
@@ -120,7 +120,9 @@ float ff(const float a, const float b, float value) {
     return (value - a) / (b - a);
 }
 
-//[earlydepthstencil]
+#if !is_valid(gHighpDepth)
+[earlydepthstencil]
+#endif
 VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
 
@@ -130,17 +132,14 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);
 
-    bool reuseVBuffer = false;
-
     beginInvocationInterlock();
 
-#if is_valid(gCamZDepth)
+#if is_valid(gHighpDepth)
     // Cam depth
-    if(vsOut.camZ > gCamZDepth[ipos]) {
-        reuseVBuffer = true;
-        //discard;
+    if(vsOut.camZ > gHighpDepth[ipos]) {
+        discard;
     } else {
-        gCamZDepth[ipos] = vsOut.camZ;
+        gHighpDepth[ipos] = vsOut.camZ;
     }
 #endif
 
@@ -154,14 +153,9 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     triangleHit.primitiveIndex = triangleIndex;
     triangleHit.barycentrics = barycentrics.yz;
 
-    if(reuseVBuffer) {
-        psOut.packedHitInfo = gVBuffer[ipos];
-    } else {
-        // Store hit information.
-        psOut.packedHitInfo = triangleHit.pack();
-        gVBuffer[ipos] = psOut.packedHitInfo;
-    }
-
+    // Store hit information.
+    psOut.packedHitInfo = triangleHit.pack();
+    
 
 #if SCENE_HAS_PERPRIM_MATERIALS
     materialID = gScene.getMaterialID(triangleHit);

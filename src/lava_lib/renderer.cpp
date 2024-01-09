@@ -313,16 +313,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	} else if ( primaryRaygenType == std::string("hwraster")) {
 
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
 		pVBufferPass->setCullMode(cullMode);
-
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
-			lightingPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
-
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
-			lightingPassDictionary["better_aa"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
-
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("swraster")) {

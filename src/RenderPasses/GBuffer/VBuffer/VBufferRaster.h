@@ -76,11 +76,11 @@ class PASS_API VBufferRaster : public GBufferBase {
     Texture::SharedPtr            mpHighpDepth;
     Texture::SharedPtr            mpTestTexture;
 
-    bool mHighpDepthEnabled = false;
+    bool mHighpDepthEnabled       = false;
 
     // Quad view rendering (fake per-pixel jitter)
-    bool mPerPixelJitterRaster = false;
-    uint2  mQuarterFrameDim    = {0, 0};
+    bool mPerPixelJitterRaster    = false;
+    uint2  mQuarterFrameDim       = {0, 0};
     std::array<SubPass, 4>        mSubPasses;
     ComputeProgram::SharedPtr     mpCombineQuadsProgram;
     ComputeVars::SharedPtr        mpCombineQuadsVars;
