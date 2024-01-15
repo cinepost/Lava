@@ -341,7 +341,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pPass["gOutputFilteredImage"] = pFilteredImage;
         pPass["gOutputFilteredDepth"] = pFilteredDepth;
 
-        LLOG_WRN << "execute veritcal filtering";
         pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
 

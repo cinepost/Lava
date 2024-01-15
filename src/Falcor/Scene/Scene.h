@@ -58,6 +58,7 @@
 
 #include "Falcor/Scene/Camera/CameraController.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
+#include "Falcor/Scene/Lights/LightLinker.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Displacement/DisplacementUpdateTask.slang"
 #include "SceneTypes.slang"
@@ -991,9 +992,13 @@ public:
         std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
+
+        // Lights
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
         LightProfile::SharedPtr pLightProfile;                  ///< Global light profile.
+        LightLinker::SharedPtr  pLightLinker;                   ///< Scene lights linker.
 
+        // Materials
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
 
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
@@ -1294,6 +1299,7 @@ public:
     std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
     std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
+    LightLinker::SharedPtr     mpLightLinker;
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
     LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.

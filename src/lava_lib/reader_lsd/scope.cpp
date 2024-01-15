@@ -201,9 +201,11 @@ void Geo::cleanUpGeometry() {
 Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pObject = std::make_shared<Object>(pParent);
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
-	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "lightmask", std::string(), Property::Owner::SYS)) return nullptr;
-	if(!pObject->declareProperty(Style::OBJECT, Type::BOOL, "matte", bool(false), Property::Owner::SYS)) return nullptr;
+	if(!pObject->declareProperty(Style::OBJECT, Type::BOOL, 	"matte", bool(false), Property::Owner::SYS)) return nullptr;
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "surface", std::string(), Property::Owner::SYS)) return nullptr;	
+
+	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "lightmask", std::string(), Property::Owner::SYS)) return nullptr;
+	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "reflectmask", std::string(), Property::Owner::SYS)) return nullptr;
 
 	auto pProp = pObject->getProperty(Style::OBJECT, "surface");
 	if(!pProp) return nullptr;
@@ -256,7 +258,8 @@ Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 
 	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shader", std::string(), Property::Owner::SYS)) return nullptr;	
 	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shadow", std::string(), Property::Owner::SYS)) return nullptr;	
-	
+	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shadowmask", std::string(), Property::Owner::SYS)) return nullptr;
+
 	auto pShaderProp = pLight->getProperty(Style::LIGHT, "shader");
 	if(!pShaderProp) return nullptr;
 

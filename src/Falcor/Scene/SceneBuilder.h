@@ -112,6 +112,9 @@ class dlldecl SceneBuilder {
         InstanceVisibilitySpec*     pVisibilitySpec = nullptr;
         InstanceShadingSpec*        pShadingSpec = nullptr;
         Material::SharedPtr         pMaterialOverride = nullptr;
+
+        LightLinker::LightNamesList isolatedLightNames;   ///< Light names list that illuminates this instance. If empty then instance illuinated by all active scene lights. 
+
     };
 
     enum class UpdateMode: uint8_t {
@@ -547,15 +550,20 @@ protected:
         uint32_t    materialId;
         bool        overrideMaterial = false;
 
+        uint32_t    lightSetIndex = LightLinker::kInvalidLightSetIndex;
+        uint32_t    shadowTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+        uint32_t    reflectTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+        uint32_t    refractTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+
         InstanceExportedDataSpec    exported;
         InstanceShadingSpec         shading;
         InstanceVisibilitySpec      visibility;
 
-        uint32_t perPrimMaterialIndicesOffset = 0;  ///< Offest into per-primitive material indices array. 
-        uint32_t perPrimMaterialIndicesCount  = 0;  ///< Number of per-primitive materials. 
+        uint32_t perPrimMaterialIndicesOffset = 0;      ///< Offest into per-primitive material indices array. 
+        uint32_t perPrimMaterialIndicesCount  = 0;      ///< Number of per-primitive materials. 
 
         std::vector<int32_t> perPrimitiveMaterialIDsData;
-
+        
         bool hasMultipleMaterials() const {
             return perPrimMaterialIndicesCount > 0;
         }

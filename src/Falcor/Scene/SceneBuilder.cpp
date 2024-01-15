@@ -233,6 +233,7 @@ void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t> f) {
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
 	mpFence = GpuFence::create(mpDevice);
 	mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
+	mSceneData.pLightLinker = LightLinker::create(mpDevice);
 
 	if(is_set(mFlags, SceneBuilder::Flags::GenerateMeshlets)) {
 		mpMeshletBuilder = MeshletBuilder::create();
@@ -261,6 +262,7 @@ void SceneBuilder::resetScene(bool reuseExisting) {
 		if(reuseExisting) {
 			// There is a chance that we've already updated scene materials but then reset was requested due to meshes or instances changes
 			LLOG_DBG << "resetScene reuse existing";
+			mSceneData.pLightLinker = std::move(mpScene->mpLightLinker);
 			mSceneData.pMaterialSystem = std::move(mpScene->mpMaterialSystem);
 			mSceneData.lights = std::move(mpScene->mLights);
 			mSceneData.sceneGraph = std::move(mpScene->mSceneGraph);
@@ -269,6 +271,7 @@ void SceneBuilder::resetScene(bool reuseExisting) {
 		mpScene.reset();
 	} else {
 		LLOG_DBG << "resetScene";
+		if(!mSceneData.pLightLinker) mSceneData.pLightLinker = LightLinker::create(mpDevice);
 		if(!mSceneData.pMaterialSystem) mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
 	}
 
@@ -1103,18 +1106,31 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 	auto pVisibilitySpec = pCreationSpec ? pCreationSpec->pVisibilitySpec : nullptr;
 	auto pExportedDataSpec = pCreationSpec ? pCreationSpec->pExportedDataSpec : nullptr;
 
-	if(pExportedDataSpec) {
-		mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
-	}
 
+	MeshInstanceSpec* pInstance = nullptr;
 
-    MeshInstanceSpec* pInstance = nullptr;
+    // Some basic thread safety
 
     {
 		std::scoped_lock lock(mMeshesMutex);
 
+		if(pExportedDataSpec) mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
+
 		mMeshes[meshID].instances.push_back({});
 		pInstance = &mMeshes[meshID].instances.back();
+
+		// We might move for lazy LightLinker creation in the future... So we do this here.
+		if(!pCreationSpec->isolatedLightNames.empty()) {
+			if(!mSceneData.pLightLinker) mSceneData.pLightLinker = LightLinker::create(mpDevice);
+			assert(mSceneData.pLightLinker && "No light linker present but required !!!");	
+		}
+	}
+
+	// It should be safe to release lock now... maybe...
+
+	pInstance->lightSetIndex = 0; // Default light set
+	if(mSceneData.pLightLinker && !pCreationSpec->isolatedLightNames.empty()) {
+		pInstance->lightSetIndex = mSceneData.pLightLinker->getLightSetIndex(pCreationSpec->isolatedLightNames);
 	}
 
     pInstance->nodeId = nodeID;
@@ -1355,7 +1371,15 @@ uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight) {
 	assert(pLight);
 	mSceneData.lights.push_back(pLight);
 	assert(mSceneData.lights.size() <= std::numeric_limits<uint32_t>::max());
-	return (uint32_t)mSceneData.lights.size() - 1;
+	
+	const uint32_t lightsCount = (uint32_t)mSceneData.lights.size() - 1;
+
+	if(mSceneData.pLightLinker) {
+		const uint32_t lightLinkerLightsCount = mSceneData.pLightLinker->addLight(pLight);
+		assert(lightsCount == lightLinkerLightsCount);
+	}
+
+	return lightsCount;
 }
 
 bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {

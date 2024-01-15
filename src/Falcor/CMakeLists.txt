@@ -26,6 +26,7 @@ file( GLOB SOURCES
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
     ./Scene/Lights/*.cpp
+    ./Scene/Lights/LightLinker.cpp
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp

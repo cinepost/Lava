@@ -102,6 +102,7 @@ namespace {
     const std::string kCameraSpeed = "cameraSpeed";
     const std::string kLights = "lights";
     const std::string kLightProfile = "lightProfile";
+    const std::string kLightLinker = "lightLinker";
     const std::string kAnimated = "animated";
     const std::string kRenderSettings = "renderSettings";
     const std::string kUpdateCallback = "updateCallback";
@@ -140,7 +141,9 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mCameras = std::move(sceneData.cameras);
     mSelectedCamera = sceneData.selectedCamera;
     mCameraSpeed = sceneData.cameraSpeed;
+    
     mLights = std::move(sceneData.lights);
+    mpLightLinker = std::move(sceneData.pLightLinker);
 
     mpMaterialSystem = std::move(sceneData.pMaterialSystem);
     mMaterialXs = std::move(sceneData.materialxs);
@@ -291,6 +294,7 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_HAS_32BIT_INDICES", "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", "0");
     defines.add("SCENE_HAS_PERPRIM_MATERIALS", "0");
+    defines.add("SCENE_HAS_LIGHT_LINKER", "0");
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
@@ -310,6 +314,7 @@ Shader::DefineList Scene::getSceneDefines() const {
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
     defines.add("SCENE_HAS_PERPRIM_MATERIALS", !mPerPrimMaterialIDs.empty() ? "1" : "0");
+    defines.add("SCENE_HAS_LIGHT_LINKER", mpLightLinker != nullptr ? "1" : "0");
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
 
@@ -1211,6 +1216,10 @@ void Scene::finalize() {
     if (mpLightProfile) {
         mpLightProfile->bake(mpDevice->getRenderContext());
         mpLightProfile->setShaderData(mpSceneBlock[kLightProfile]);
+    }
+
+    if (mpLightLinker) {
+        mpLightLinker->setShaderData(mpSceneBlock[kLightLinker]);
     }
 
     updateBounds();
