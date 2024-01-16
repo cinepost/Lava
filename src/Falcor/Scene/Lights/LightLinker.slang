@@ -37,10 +37,10 @@ struct LightLinker {
     uint                                        lightSetsCount;
     
     // These buffers are only valid if traceSetsCount > 0.
-    //[root] StructuredBuffer<PackedEmissiveTriangle> traceSetsData;      
-
+    
     StructuredBuffer<LightData>                 lights;
-    StructuredBuffer<LightSet>                  lightSets;
+    StructuredBuffer<LightSetData>              lightSets;
+    StructuredBuffer<uint>                      indirectionTable;   // indirection table used to address individual lights inside light sets.
 
     static const uint kInvalidLightSetIndex   = 0xffffffff;
 

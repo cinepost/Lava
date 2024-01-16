@@ -94,8 +94,11 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
 
         uint32_t addLight(const Light::SharedPtr& pLight);
 
-        uint32_t getLightSetIndex(const LightNamesList& lightNames) const;
+        uint32_t getOrCreateLightSetIndex(const std::string& lightNamesString);
+
         uint32_t getOrCreateLightSetIndex(const LightNamesList& lightNames);
+
+        bool findLightSetIndex(const LightNamesList& lightNames, uint32_t& index) const;
 
         /** Bind the light collection data to a given shader var
             \param[in] var The shader variable to set the data into.
@@ -124,23 +127,26 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         };
 
     private:
-        struct LightSetCPU {
-            std::set<std::string> mLightNames;
+        class LightSet {
+            public:
+                LightSet() = delete;
+                LightSet(const LightNamesList& lightNames);
+                LightSet(const std::set<std::string>& lightNamesSet);
 
-            uint32_t mLightsCount;           
-            uint32_t mLightsOffset;             ///< Light sets indices buffer offset
+                bool hasLightName(const std::string& name) const;
+                size_t lightsCount() const { return mLightNames.size(); }
 
-            bool hasLightName(const std::string& name) const;
-            void addLightName(const std::string& name);
-            size_t lightsCount() const { return mLightNames.size(); }
+                const LightSetData&  getData() const { return mLightSetData; }
+        
+                const std::set<std::string>& lightNames() const { return mLightNames; }
 
-            operator LightSet() const { return { .lightsCount = mLightsCount, .lightsOffset = mLightsOffset}; }
-        };
+            private:
+                std::set<std::string> mLightNames;
 
-        void buildLightsBuffer();
+                LightSetData          mLightSetData;
+            };
 
-        bool findLightSetIndex(const LightNamesList& lightNames, uint32_t& index) const;
-
+        void buildBuffers() const;
 
     protected:
         LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene = nullptr);
@@ -155,16 +161,20 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         mutable CPUOutOfDateFlags               mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
 
-        bool                                    mLightsChanged = false;
-
         std::map<std::string, Light::SharedPtr> mLightsMap;                     ///< All analytic lights. Note that not all may be active.
 
-        std::vector<LightSetCPU>                mLightSets;
+        std::vector<LightSet>                   mLightSets;
 
         std::vector<uint32_t>                   mLightSetsIndicesBuffer;        ///< Light sets light indices.
 
+        // State
+        mutable bool                            mLightSetsChanged = false;
+        mutable bool                            mLightsChanged = false;
+
         // Resources
-        Buffer::SharedPtr mpLightsBuffer;
+        mutable Buffer::SharedPtr mpLightsDataBuffer;
+        mutable Buffer::SharedPtr mpLightSetsDataBuffer;
+        mutable Buffer::SharedPtr mpIndirectionBuffer;
 
 };
 /*
