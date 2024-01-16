@@ -36,7 +36,7 @@ import Utils.Math.PackedFormats;
 
 BEGIN_NAMESPACE_FALCOR
 
-struct LightSet {
+struct LightSetData {
     uint    lightsCount;
     uint    lightsOffset;
 

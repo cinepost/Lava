@@ -1130,7 +1130,7 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 
 	pInstance->lightSetIndex = 0; // Default light set
 	if(mSceneData.pLightLinker && !pCreationSpec->isolatedLightNames.empty()) {
-		pInstance->lightSetIndex = mSceneData.pLightLinker->getLightSetIndex(pCreationSpec->isolatedLightNames);
+		pInstance->lightSetIndex = mSceneData.pLightLinker->getOrCreateLightSetIndex(pCreationSpec->isolatedLightNames);
 	}
 
     pInstance->nodeId = nodeID;
