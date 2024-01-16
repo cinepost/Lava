@@ -102,6 +102,8 @@ class Session {
     void setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 cropRegion = {0.0f, 0.0f, 1.0f, 1.0f});
     bool prepareFrameData();
  	  bool prepareDisplayData();
+
+    void setFailed(bool state); // Mark session as failed (unable to continue).
  	
     void setEnvVariable(const std::string& key, const std::string& value);
 

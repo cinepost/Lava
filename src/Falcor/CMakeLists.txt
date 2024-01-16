@@ -26,12 +26,14 @@ file( GLOB SOURCES
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
     ./Scene/Lights/*.cpp
+    ./Scene/Lights/LightLinker.cpp
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/InternalDictionary.cpp
+    ./Utils/Geometry/*.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp

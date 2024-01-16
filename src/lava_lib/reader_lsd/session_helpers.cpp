@@ -13,7 +13,7 @@ namespace lava {
 namespace lsd {
 
 // TODO: handle requred channels (RGB/RGBA)
-static Falcor::ResourceFormat resolveShadingResourceFormat(Display::TypeFormat fmt, uint numchannels) {
+static inline Falcor::ResourceFormat resolveShadingResourceFormat(Display::TypeFormat fmt, uint numchannels) {
     assert(numchannels <= 4);
 
     switch(fmt) {
@@ -104,7 +104,7 @@ static inline uint32_t componentsCountFromLSDTypeName(const std::string& type_na
 	return 4;
 }
 
-Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels) {
+inline Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels) {
 	assert((0 < numChannels) && ( numChannels <= 4));
 
 	bool norm = isNormalizedTypeName(type_name);
@@ -179,7 +179,7 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, co
 }
 
 
-Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_pattern_name) {
+inline Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_pattern_name) {
 	if( sample_pattern_name == "stratified" ) return Renderer::SamplePattern::Stratified;
 	if( sample_pattern_name == "halton" )  return Renderer::SamplePattern::Halton;
 	return Renderer::SamplePattern::Center;	

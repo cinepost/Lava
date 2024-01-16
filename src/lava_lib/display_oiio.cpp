@@ -30,6 +30,13 @@ inline static oiio::TypeDesc channelFormatToOIIO(Display::TypeFormat display_for
 	return oiio::TypeDesc::BASETYPE::UINT8;
 }
 
+static const std::string kExrColorChannelPrefix = "";//"Color";
+
+inline static const std::string& fixChannelPrefix(const std::string& s) {
+	if(s == "c" || s == "C") return kExrColorChannelPrefix;
+	return s;
+}
+
 DisplayOIIO::DisplayOIIO() {
 	mCurrentImageID = 0;
 	mImages.clear();
@@ -103,7 +110,9 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 
 	for( uint32_t i = 0; i < numChannels; i++) {
 		uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
-		channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
+		std::string prefix = (channel_prefix == "C") ? "Color" : channel_prefix;
+		channels.push_back(makeDisplayChannel(fixChannelPrefix(channel_prefix), i, format_type, numChannelBits, NamingScheme::RGBA));
+		LLOG_WRN << "channel name " << channels.back().name;
 	}
 
 	return openImage(image_name, width, height, channels, imageHandle, userParams, pMetaData);
@@ -111,7 +120,7 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 
 bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, 
 	const std::vector<UserParameter>& userParams, const MetaData* pMetaData) {
-	
+
 	if( channels.size() < 1) { LLOG_FTL << "No image channels specified !!!"; return false; }
 	if( width == 0 || height == 0) { LLOG_FTL << "Wrong image dimensions !!!"; return false; }
 

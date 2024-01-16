@@ -43,6 +43,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       bool useAsyncGeometryProcessing = true;
       bool generateMeshlets = false;
       bool optimizeForIPR = false;
+      bool optimizeForBatch = true;
 
       bool        forceVirtualTexturesReconversion = false;
       std::string virtualTexturesCompressionQuality = "high";

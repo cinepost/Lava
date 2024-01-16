@@ -73,16 +73,11 @@ bool Renderer::init(const Config& config) {
 
 	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
 	if (mCurrentConfig.useRaytracing) sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
-
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
-
 	if (mCurrentConfig.generateMeshlets) sceneBuilderFlags |= SceneBuilder::Flags::GenerateMeshlets;
-
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 
-	if(config.optimizeForIPR) {
+	if(config.optimizeForIPR || config.optimizeForBatch) {
 		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMeshes;
@@ -91,6 +86,12 @@ bool Renderer::init(const Config& config) {
     sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
+    if(config.optimizeForBatch) {
+    	sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
+    }
+	} else {
+		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
 	}
 
 	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
@@ -307,15 +308,19 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("hwraster")) {
 
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -323,7 +328,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
-		//pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -420,7 +424,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional edgedetect pass
 		if (renderPassName == "EdgeDetectPass") {
 			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pEdgeDetectPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -434,7 +437,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
 			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pAmbientOcclusionPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -448,7 +450,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
 			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
-			//pCryptomattePass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -560,6 +561,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.fresnel", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::ROUGHNESS:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.roughness", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;

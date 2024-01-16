@@ -111,6 +111,10 @@ void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
     setTransmissionColor(pBasicMaterial->getTransmissionColor());
     setDiffuseTransmission(pBasicMaterial->getDiffuseTransmission());
     setSpecularTransmission(pBasicMaterial->getSpecularTransmission());
+    setNormalBumpMapFactor(pBasicMaterial->getNormalBumpMapFactor());
+    setNormalMapMode(pBasicMaterial->getNormalMapMode());
+    setNormalMapFlipX(pBasicMaterial->getNormalMapFlipX());
+    setNormalMapFlipY(pBasicMaterial->getNormalMapFlipY());
 }
 
 const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
@@ -367,10 +371,9 @@ void BasicMaterial::prepareDisplacementMapForRendering() {
 }
 
 void BasicMaterial::setDisplacementScale(float scale) {
-    if (mData.displacementScale != scale) {
-        mData.displacementScale = scale;
-        markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
-    }
+    if (mData.displacementScale == scale) return;
+    mData.displacementScale = scale;
+    markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
 }
 
 void BasicMaterial::setDisplacementOffset(float offset) {
@@ -396,18 +399,43 @@ void BasicMaterial::setBaseColor(const float3& color) {
 }
 
 void BasicMaterial::setReflectivity(const float& reflectivity) {
-    if (mData.reflectivity != (float16_t)reflectivity) {
-        mData.reflectivity = (float16_t)reflectivity;
-        markUpdates(UpdateFlags::DataChanged);
-    }
+    const float16_t r = static_cast<float16_t>(reflectivity);
+    if (mData.reflectivity == r) return;
+    mData.reflectivity = r;
+    markUpdates(UpdateFlags::DataChanged);
 }
 
 void BasicMaterial::setTransmissionColor(const float3& transmissionColor) {
-    if (mData.transmission != (float16_t3)transmissionColor) {
-        mData.transmission = (float16_t3)transmissionColor;
-        markUpdates(UpdateFlags::DataChanged);
-    }
+    const float16_t3 t = static_cast<float16_t3>(transmissionColor);
+    if (mData.transmission == t) return;
+    mData.transmission = t;
+    markUpdates(UpdateFlags::DataChanged);
 }
+
+void BasicMaterial::setNormalBumpMapFactor(float factor) { 
+    const float16_t f = static_cast<float16_t>(factor);
+    if(mData.bumpNormalFactor == f) return;
+    mData.bumpNormalFactor = f;
+    markUpdates(UpdateFlags::DataChanged); 
+};
+
+void BasicMaterial::setNormalMapMode(NormalMapMode mode) { 
+    if(mData.getNormalMapMode() == mode) return;
+    mData.setNormalMapMode(mode);
+    markUpdates(UpdateFlags::DataChanged); 
+};
+
+void BasicMaterial::setNormalMapFlipX(bool flip) { 
+    if(getNormalMapFlipX() == flip) return;
+    mData.setNormalMapXFlip(flip);
+    markUpdates(UpdateFlags::DataChanged); 
+};
+
+void BasicMaterial::setNormalMapFlipY(bool flip) {
+    if(getNormalMapFlipY() == flip) return; 
+    mData.setNormalMapYFlip(flip);
+    markUpdates(UpdateFlags::DataChanged); 
+};
 
 void BasicMaterial::setDiffuseTransmission(float diffuseTransmission) {
     if (mData.diffuseTransmission != (float16_t)diffuseTransmission) {

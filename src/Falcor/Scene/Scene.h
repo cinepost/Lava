@@ -58,6 +58,7 @@
 
 #include "Falcor/Scene/Camera/CameraController.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
+#include "Falcor/Scene/Lights/LightLinker.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Displacement/DisplacementUpdateTask.slang"
 #include "SceneTypes.slang"
@@ -698,6 +699,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
     const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
+    uint32_t addMaterial(const Material::SharedPtr& pMaterial) { return mpMaterialSystem->addMaterial(pMaterial); }
+
     /** Get a list of all materials in the scene.
     */
     const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
@@ -989,9 +992,13 @@ public:
         std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
+
+        // Lights
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
         LightProfile::SharedPtr pLightProfile;                  ///< Global light profile.
+        LightLinker::SharedPtr  pLightLinker;                   ///< Scene lights linker.
 
+        // Materials
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
 
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
@@ -1071,6 +1078,7 @@ public:
     static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
     void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData);
+    
     void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
     Shader::DefineList getSceneSDFGridDefines() const;
@@ -1291,6 +1299,7 @@ public:
     std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
     std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
+    LightLinker::SharedPtr     mpLightLinker;
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
     LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.

@@ -55,13 +55,20 @@ namespace Falcor {
 #endif
 
 class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> {
- public:
+  public:
+    struct DeviceInfo {
+        std::string deviceName;
+        std::array<uint8_t, VK_UUID_SIZE> pipelineCacheUUID;
+        VkPhysicalDeviceLimits limits;
+    };
+
+  public:
     using SharedPtr = std::shared_ptr<DeviceManager>;
     using SharedConstPtr = std::shared_ptr<const DeviceManager>;
 
     ~DeviceManager();
 
-    const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
+    const std::unordered_map<uint8_t, DeviceInfo>& deviceInfos() { return mDeviceInfos; }
     std::vector<Device::SharedPtr> renderingDevices() const;
 
     Device::SharedPtr renderingDevice(uint8_t gpuId) const;
@@ -98,7 +105,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     bool mInitialized = false;
     bool mEnableValidationLayer = false;
 
-    std::unordered_map<uint8_t, std::string> mDeviceNames;
+    std::unordered_map<uint8_t, DeviceInfo> mDeviceInfos;
     std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 
 
     uint8_t mDefaultDisplayDeviceID = 0;

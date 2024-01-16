@@ -36,6 +36,7 @@ enum class AOVBuiltinName: uint8_t {
   SHADOW,
   FRESNEL,
   EMISSION,
+  ROUGHNESS,
   OBJECT_ID,
   MATERIAL_ID,
   INSTANCE_ID,
@@ -68,6 +69,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(SHADOW);
     type_2_string(FRESNEL);
     type_2_string(EMISSION);
+    type_2_string(ROUGHNESS);
     type_2_string(OBJECT_ID);
     type_2_string(MATERIAL_ID);
     type_2_string(INSTANCE_ID);

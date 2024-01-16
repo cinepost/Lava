@@ -189,6 +189,9 @@ def initializeFeatures(settings):
     Image("image", "ToneMappingPass.exposureValue", "float", "lv_tonemap_exposure")
     Image("image", "ToneMappingPass.autoExposure", "bool", "lv_tonemap_auto_exposure")
 
+    Image("image", "VBufferRasterPass.highp_depth", "bool", "lv_primary_raygen_hw_highp_depth", skipdefault=False)
+    Image("image", "VBufferRasterPass.better_aa", "bool", "lv_primary_raygen_hw_better_aa", skipdefault=False)
+
     # -- Photon --
     Photon("photon", "photoncfile", "string", "lv_photoncfile")
     Photon("photon", "photoncount", "int", "lv_photoncount")
@@ -313,10 +316,10 @@ def initializeFeatures(settings):
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
 
-    Light("diffuse_color",           "float", "lv_diffuse_color", skipdefault=True)
-    Light("specular_color",          "float", "lv_specular_color", skipdefault=True)
-    Light("indirect_diffuse_color",  "float", "lv_indirect_diffuse_color", skipdefault=True)
-    Light("indirect_specular_color", "float", "lv_indirect_specular_color", skipdefault=True)
+    Light("direct_diffuse_color_multiplier",    "float", "lv_direct_diffuse_color_multiplier", skipdefault=True)
+    Light("direct_specular_color_multiplier",   "float", "lv_direct_specular_color_multiplier", skipdefault=True)
+    Light("indirect_diffuse_color_multiplier",  "float", "lv_indirect_diffuse_color_multiplier", skipdefault=True)
+    Light("indirect_specular_color_multiplier", "float", "lv_indirect_specular_color_multiplier", skipdefault=True)
 
     Light("physical_sky", "bool", "lv_enable_physical_sky", skipdefault=True)
 

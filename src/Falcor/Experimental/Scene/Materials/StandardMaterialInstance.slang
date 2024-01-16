@@ -189,4 +189,8 @@ struct StandardMaterialInstance : IMaterialInstance
         }
     }
 
+    ShadingFrame getShadingFrame() {
+        return sf;
+    }
+
 };

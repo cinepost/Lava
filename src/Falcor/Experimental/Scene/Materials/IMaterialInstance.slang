@@ -186,4 +186,6 @@ interface IMaterialInstance
     */
     uint getLobeTypes(const ShadingData sd);
 
+
+    ShadingFrame getShadingFrame();
 }

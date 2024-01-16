@@ -28,7 +28,6 @@
 #include "stdafx.h"
 
 #include <numeric>
-#include <mutex>
 
 #include "Falcor/Core/API/RenderContext.h"
 
@@ -39,7 +38,6 @@
 
 #include "MaterialSystem.h"
 
-std::mutex g_materials_mutex;
 
 namespace Falcor {
 
@@ -168,7 +166,7 @@ uint32_t MaterialSystem::addMaterial(const Material::SharedPtr& pMaterial) {
 	assert(pMaterial);
 
 	{
-    std::scoped_lock lock(g_materials_mutex);
+    std::scoped_lock lock(mMaterialsMutex);
 
 		// Reuse previously added materials.
 		if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
