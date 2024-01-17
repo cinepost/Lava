@@ -62,8 +62,8 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
 
         using LightNamesList = std::vector<std::string>; // type alias for std::vector<std::string>
 
-        static const uint32_t kInvalidLightSetIndex   = 0xffffffff;
-        static const uint32_t kInvalidTraceSetIndex   = 0xffffffff;
+        static const uint32_t       kInvalidLightSetIndex   = 0xffffffff;
+        static const uint32_t       kInvalidTraceSetIndex   = 0xffffffff;
 
         enum class UpdateFlags : uint32_t {
             None                = 0u,   ///< Nothing was changed.
@@ -96,9 +96,9 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
 
         uint32_t getOrCreateLightSetIndex(const std::string& lightNamesString);
 
-        uint32_t getOrCreateLightSetIndex(const LightNamesList& lightNames);
+        uint32_t getOrCreateLightSetIndex(const LightNamesList& lightNamesList);
 
-        bool findLightSetIndex(const LightNamesList& lightNames, uint32_t& index) const;
+        bool findLightSetIndex(const LightNamesList& lightNamesList, uint32_t& index) const;
 
         /** Bind the light collection data to a given shader var
             \param[in] var The shader variable to set the data into.
@@ -117,13 +117,15 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         */
         uint64_t getMemoryUsageInBytes() const;
 
+        static LightNamesList lightNamesStringToList(const std::string& lightNamesString);
+
         // Internal update flags. This only public for enum_class_operators() to work.
         enum class CPUOutOfDateFlags : uint32_t {
-            None         = 0,
-            TriangleData = 0x1,
-            FluxData     = 0x2,
+            None          = 0,
+            LightsData    = 0x1,
+            LightSetsData = 0x2,
 
-            All          = TriangleData | FluxData
+            All           = LightsData | LightSetsData
         };
 
     private:
@@ -144,6 +146,8 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
                 std::set<std::string> mLightNames;
 
                 LightSetData          mLightSetData;
+
+                friend LightLinker;
             };
 
         void buildBuffers() const;
@@ -161,9 +165,9 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         mutable CPUOutOfDateFlags               mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
 
-        std::map<std::string, Light::SharedPtr> mLightsMap;                     ///< All analytic lights. Note that not all may be active.
+        std::unordered_map<std::string, Light::SharedPtr> mLightsMap;                     ///< All analytic lights. Note that not all may be active.
 
-        std::vector<LightSet>                   mLightSets;
+        mutable std::vector<LightSet>           mLightSets;
 
         std::vector<uint32_t>                   mLightSetsIndicesBuffer;        ///< Light sets light indices.
 
@@ -174,7 +178,7 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         // Resources
         mutable Buffer::SharedPtr mpLightsDataBuffer;
         mutable Buffer::SharedPtr mpLightSetsDataBuffer;
-        mutable Buffer::SharedPtr mpIndirectionBuffer;
+        mutable Buffer::SharedPtr mpIndirectionTableBuffer;
 
 };
 /*

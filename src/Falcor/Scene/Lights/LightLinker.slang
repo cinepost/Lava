@@ -34,6 +34,7 @@ __exported import Scene.Lights.LightLinkerShared;
 
 
 struct LightLinker {
+    uint                                        globalLightsCount;
     uint                                        lightSetsCount;
     
     // These buffers are only valid if traceSetsCount > 0.
@@ -51,11 +52,14 @@ struct LightLinker {
         return lightSetsCount;
     }
 
-    uint getLightsCount(uint lightSetIndex) {
+    uint getLightCount(uint lightSetIndex) {
         return lightSets[lightSetIndex].lightsCount;
     }
 
     LightData getLight(uint lightSetIndex, uint lightIndex) {
-        return lights[lightSets[lightSetIndex].lightsOffset + lightIndex];
+        uint idx = lightIndex;
+        if(lightSetIndex > 0) idx = indirectionTable[lightSets[lightSetIndex].lightsOffset + lightIndex];
+    
+        return lights[idx];
     }
 };

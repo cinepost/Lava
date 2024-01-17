@@ -2957,6 +2957,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 				geomInstance.externalID = instance.exported.id;
 				geomInstance.vbOffset = mesh.staticVertexOffset;
 				geomInstance.ibOffset = mesh.indexOffset;
+				geomInstance.lightSetIndex = instance.lightSetIndex;
 
 				// As of now we only acknowledge mesh per-primitive material assignment. Per instance per-primitive material assignment planned... 
 				if(instance.hasMultipleMaterials() || mesh.hasMultipleMaterials()) {

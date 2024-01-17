@@ -280,16 +280,20 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     float3 specularColor = float3(0.f);
     float3 shadowColor   = float3(1.f);
 
-    // Process lights
-#if _SCENE_LIGHT_COUNT
-    [unroll]
-    for (int lightIndex = 0; lightIndex < _SCENE_LIGHT_COUNT; lightIndex++) {
-#else
-    [loop]
-    for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
-#endif
+    const uint lightSetIndex = gScene.getLightSetIndex(triangleHit.instanceID);
+    const uint lightCount = gScene.getLightCount(lightSetIndex);
 
-        LightData light = gScene.getLight(lightIndex);
+    //if(lightSetIndex == 0) surfaceColor = float3(lightCount, 0, 0);
+    //if(lightSetIndex == 1) surfaceColor = float3(0, lightCount, 0);
+    //if(lightSetIndex == 2) surfaceColor = float3(0, 0, lightCount);
+
+    //return surfaceColor;
+
+    // Process lights
+    [loop]
+    for (int lightIndex = 0; lightIndex < lightCount; lightIndex++) {
+
+        LightData light = gScene.getLight(lightSetIndex, lightIndex);
         float3 shadowFactor = float3(1.0f);
         if(rayData.level == 0) {
             if(!light.contributesDirectIllumination()) continue;

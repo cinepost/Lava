@@ -313,12 +313,30 @@ struct Scene
     }
 
 #if SCENE_HAS_LIGHT_LINKER
-    LightData getLight(uint lightSet, uint lightIndex) {
-        return lightLinker.getLight(lightSet, lightIndex);
+    LightData getLight(uint lightSetIndex, uint lightIndex) {
+        return lightLinker.getLight(lightSetIndex, lightIndex);
     }
+
+    uint getLightCount(uint lightSetIndex) {
+        return lightLinker.getLightCount(lightSetIndex);
+    }
+
+    uint getLightSetIndex(const GeometryInstanceID instanceID) {
+        const GeometryInstanceData instance = getGeometryInstance(instanceID);
+        return instance.lightSetIndex;
+    }
+
 #else
-    LightData getLight(uint lightSet, uint lightIndex) {
+    LightData getLight(uint lightSetIndex, uint lightIndex) {
         return lights[lightIndex];
+    }
+
+    uint getLightCount(uint lightSetIndex) {
+        return lightCount;
+    }
+
+    uint getLightSetIndex(const GeometryInstanceID instanceID) {
+        return 0;
     }
 #endif
 

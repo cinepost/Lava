@@ -43,10 +43,12 @@
 #include "LightLinker.h"
 
 
+namespace {
+    static const std::string    kLightNamesDelims       = "\t\n,| ";
+}
+
+
 namespace Falcor {
-
-
-static const std::string kLightNamesDelims = "\t\n,| ";
 
 LightLinker::LightSet::LightSet(const LightNamesList& lightNames) {
     for(const std::string& lightName: lightNames) if(!lightName.empty()) mLightNames.insert(lightName);
@@ -72,6 +74,11 @@ LightLinker::LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene>
     assert(pDevice);
     mpDevice = pDevice;
     mpScene = pScene ? pScene : nullptr;
+
+    // Global light set (includes all lights)
+    mLightSets.push_back(LightSet(std::vector<std::string>()));
+    mLightSets[0].mLightSetData.lightsCount = 0;
+    mLightSets[0].mLightSetData.lightsOffset = 0;
 }
 
 bool LightLinker::update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus) {
@@ -89,8 +96,15 @@ uint32_t LightLinker::addLight(const Light::SharedPtr& pLight) {
     assert(pLight);
     mLightsMap[pLight->getName()] = pLight;
     assert(mLightsMap.size() <= std::numeric_limits<uint32_t>::max());
+
+
+    LLOG_WRN << "LightLinker::addLight(...)";
+    LLOG_WRN << "LightLinker::addLight(...) mLightsMap.size() " << mLightsMap.size();
+    mLightSets[0].mLightSetData.lightsCount = static_cast<uint32_t>(mLightsMap.size());
+    LLOG_WRN << "LightLinker::addLight(...) mLightSets[0].mLightSetData.lightsCount " << mLightSets[0].mLightSetData.lightsCount;
+
     mLightsChanged = true;
-    return mLightsMap.size() - 1;
+    return static_cast<uint32_t>(mLightsMap.size() - 1);
 }
 
 void LightLinker::setShaderData(const ShaderVar& var) const {
@@ -99,17 +113,28 @@ void LightLinker::setShaderData(const ShaderVar& var) const {
     buildBuffers();
 
     // Set variables.
+    var["globalLightsCount"] = mLightsMap.size();
+
+    LLOG_WRN << "LightLinker global lights count " << mLightsMap.size();
+
     var["lightSetsCount"] = mLightSets.size();
-    
+
+    LLOG_WRN << "LightLinker lightSetsCount " << mLightSets.size();
+
+    for(uint32_t idx = 0; idx < mLightSets.size(); ++idx) {
+        LLOG_WRN << "LightLinker lightSets[" << idx << "] lightsCount " << mLightSets[idx].getData().lightsCount;
+    }
+
     // Bind buffers.
     var["lights"] = mpLightsDataBuffer;
     var["lightSets"] = mpLightSetsDataBuffer;
+    var["indirectionTable"] = mpIndirectionTableBuffer;
 }
 
 void LightLinker::buildBuffers() const {
     if(mLightsMap.empty()) return;
 
-    const bool rebuildIndirectionBuffer = mLightsChanged || mLightSetsChanged;
+    const bool rebuildIndirectionBuffer = mLightsChanged || mLightSetsChanged || !mpIndirectionTableBuffer;
 
     // Lights data buffer
     if(!mpLightsDataBuffer || mLightsChanged) {
@@ -126,10 +151,42 @@ void LightLinker::buildBuffers() const {
         mLightsChanged = false;
     }
 
-    // Light sets buffer
-    if(!mpLightSetsDataBuffer || mLightSetsChanged) {
+    // Indirection buffer
+    std::vector<uint32_t> indirectionData;
 
+    if(rebuildIndirectionBuffer) {
+
+        // Indirection table with light sets data update
+        if(rebuildIndirectionBuffer) {
+            for(size_t i = 1; i < mLightSets.size(); ++i) {
+
+                LightSet& lightSet = mLightSets[i];
+                
+                lightSet.mLightSetData.lightsOffset = static_cast<uint32_t>(indirectionData.size());
+                lightSet.mLightSetData.lightsCount = 0;
+                std::unordered_map<std::string, Light::SharedPtr>::const_iterator it;
+                
+                for(const std::string& lightName: lightSet.lightNames()) {
+                    it = mLightsMap.find(lightName);
+                    if(it != mLightsMap.end()) {
+                        lightSet.mLightSetData.lightsCount++;
+                        indirectionData.push_back(std::distance(mLightsMap.begin(), it));
+                    }
+                }
+            }
+
+            if(!indirectionData.empty()) {
+                mpIndirectionTableBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)indirectionData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, indirectionData.data(), false);
+                mpIndirectionTableBuffer->setName("LightLinker::mpIndirectionTableBuffer");
+            }
+        }
+    }
+
+        // Light sets data
+    if(!mpLightSetsDataBuffer || mLightSetsChanged) {
         std::vector<LightSetData> lightSetsData(mLightSets.size());
+
+        // Actual light sets
         size_t light_set_idx = 0;
         for(auto const& lightSet : mLightSets) {
             lightSetsData[light_set_idx++] = lightSet.getData();
@@ -141,31 +198,40 @@ void LightLinker::buildBuffers() const {
     }
 }
 
-uint32_t LightLinker::getOrCreateLightSetIndex(const std::string& lightNamesString) {
-    LightNamesList lightNames;
+LightLinker::LightNamesList LightLinker::lightNamesStringToList(const std::string& lightNamesString) {
+    LightNamesList lightNamesList;
     if(!lightNamesString.empty()) {
-        boost::split(lightNames, lightNamesString, boost::is_any_of(kLightNamesDelims));
+        boost::split(lightNamesList, lightNamesString, boost::is_any_of(kLightNamesDelims));
     }
-
-    return getOrCreateLightSetIndex(lightNames);
+    return lightNamesList;
 }
 
-uint32_t LightLinker::getOrCreateLightSetIndex(const LightNamesList& lightNames) {
+uint32_t LightLinker::getOrCreateLightSetIndex(const std::string& lightNamesString) {
+    LightNamesList lightNamesList;
+    if(!lightNamesString.empty()) {
+        lightNamesList = lightNamesStringToList(lightNamesString);
+        return getOrCreateLightSetIndex(lightNamesList);
+    }
+    return 0;
+}
+
+uint32_t LightLinker::getOrCreateLightSetIndex(const LightNamesList& lightNamesList) {
+    LLOG_WRN << "LightLinker::getOrCreateLightSetIndex(...)";
     uint32_t index = 0;
-    if(lightNames.empty()) return index;
-    if(!findLightSetIndex(lightNames, index)) {
+    if(lightNamesList.empty()) return index;
+    if(!findLightSetIndex(lightNamesList, index)) {
         mLightSetsChanged = true;
-        mLightSets.push_back(LightSet(lightNames));
+        mLightSets.push_back(LightSet(lightNamesList));
     }
     return index;
 }
 
-bool LightLinker::findLightSetIndex(const LightNamesList& lightNames, uint32_t& index) const {
+bool LightLinker::findLightSetIndex(const LightNamesList& lightNamesList, uint32_t& index) const {
     index = 0;
 
     for(const auto& lightSet: mLightSets) {
         std::set<std::string> lightNameSet;
-        for(const std::string& lightName: lightNames) if(!lightName.empty()) lightNameSet.insert(lightName);
+        for(const std::string& lightName: lightNamesList) if(!lightName.empty()) lightNameSet.insert(lightName);
         if(lightSet.lightNames() == lightNameSet) return true;
         index++;
     }

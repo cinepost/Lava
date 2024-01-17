@@ -8,6 +8,7 @@
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Lights/LightLinker.h"
 
 #include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/Material/MaterialTypes.slang"
@@ -1517,6 +1518,11 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   creationSpec.pVisibilitySpec = &visibilitySpec;
   creationSpec.pShadingSpec = &shadingSpec;
   creationSpec.pMaterialOverride = pMaterial;
+
+  const std::string lightMaskString = pObj->getPropertyValue(ast::Style::OBJECT, "lightmask", std::string());
+  if(!lightMaskString.empty()) {
+  	creationSpec.isolatedLightNames = LightLinker::lightNamesStringToList(lightMaskString);
+  }
 
   if(update) {
   	// Update mesh instance
