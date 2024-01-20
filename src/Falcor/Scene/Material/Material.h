@@ -109,6 +109,8 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		*/
 		virtual Material::UpdateFlags update(MaterialSystem* pOwner) = 0;
 
+		virtual void update(const Material::SharedPtr& pMaterial) = 0;
+
 		/** Set the material name.
 		*/
 		virtual void setName(const std::string& name) { mName = name; }
@@ -290,6 +292,8 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		std::vector<Texture::SharedPtr> getTextures() const;
 
 		void getTextures(std::vector<Texture::SharedPtr>& textures, bool append = true) const;
+
+		const UpdateFlags& getUpdates() const { return mUpdates; }
 
 	protected:
 		Material(Device::SharedPtr pDevice, const std::string& name, MaterialType type);

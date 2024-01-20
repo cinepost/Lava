@@ -382,7 +382,7 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
     	const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
 		
 		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
-		pContext->flush(true);
+		//pContext->flush(true);
 		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
 
 		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
@@ -392,7 +392,7 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 	} else {
 		uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
 		pContext->readTextureSubresource(this, subresource, pTextureData);
-		pContext->flush(true);
+		//pContext->flush(true);
 	}
 
 }
@@ -421,7 +421,7 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 		pContext->readTextureSubresource(this, subresource, textureData);
 	//}
 
-	pContext->flush(true);
+	//pContext->flush(true);
 }
 
 void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {

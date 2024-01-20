@@ -13,23 +13,23 @@ def add_light_lava_parameters(node, rebuild=True):
 	old_lava_folder = group.findFolder('Lava') or group.find('folder_lava')
 	lava_folder = hou.FolderParmTemplate('folder_lava', "Lava", tags={'lava_name':'root'})
 
+	# Patch obsolete parameters
+	#if(node.parm("lv_light_specular_color"))
+
+
 	# Lava light common
 	common_folder = hou.FolderParmTemplate('folder_lava_common', "Common", tags={'lava_name':'common'})
-	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_diffuse_color','Diffuse Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
-		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_direct_diffuse_color_multiplier','Diffuse Color Multiplier', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
 
-	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_specular_color','Specular Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
-		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_direct_specular_color_multiplier','Specular Color Multiplier', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
 
-	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_diffuse_color','Indirect Diffuse Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
-		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_diffuse_color_multiplier','Indirect Diffuse Color Multiplier', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
 
-	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_specular_color','Indirect Specular Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
-		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_specular_color_multiplier','Indirect Specular Color Multiplier', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
 	
 	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_direct_diffuse','Contribute Direct Diffuse', True))
 	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_direct_specular','Contribute Direct Specular', True))
@@ -42,7 +42,6 @@ def add_light_lava_parameters(node, rebuild=True):
 		phys_sunsky_folder = hou.FolderParmTemplate('folder_lava_envlight', "Physical Sky", tags={'lava_name':'phys_sky'})
 		addParmTemplate(node, phys_sunsky_folder, hou.ToggleParmTemplate('lv_enable_physical_sky','Enable physical sky', False))
 		lava_folder.addParmTemplate(phys_sunsky_folder)
-		#{ light_enable == 0 } { skymap_enable != 0 }
 
 
 	# Lava light shadows

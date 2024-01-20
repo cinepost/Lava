@@ -31,6 +31,8 @@
 #include <limits>
 #include <numeric>
 
+#include "boost/system/error_code.hpp"
+
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
 
@@ -59,13 +61,10 @@ SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags):
 }
 
 SceneBuilder::~SceneBuilder() {
-    // Remove temporary geometries from filysystem
-    const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
-    if(!mTemporaryGeometriesPaths.empty()) {
-        for(auto const& fullpath: mTemporaryGeometriesPaths) {
-            fs::remove(fullpath);
-        }
-    }
+    mAddGeoTasks.wait();
+    
+    // Remove temporary geometries from filesystem
+    freeTemporaryResources();
     
     LLOG_INF << "\nSceneBuilder stats:";
     LLOG_INF << "\t Unique triangles count: " << std::to_string(mUniqueTrianglesCount);
@@ -377,10 +376,13 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     mUniqueTrianglesCount += mesh_face_count;
 
-    return Falcor::SceneBuilder::addMesh(mesh);
+    //const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
+    const uint32_t meshID = addProcessedMesh(processMesh(mesh));
+
+    return meshID;
 }
 
-std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
+const std::shared_future<uint32_t>& SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
     assert(pGeo);
 
     // Pass the task to thread pool to run asynchronously
@@ -409,14 +411,17 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::Sha
 
         result = this->addGeometry(pBgeo, name);
         
-        if(pGeo->isTemporary()) {
-            mTemporaryGeometriesPaths.insert(fullpath);
-        }
-        
         return result;
     }));
 
-    return mAddGeoTasks.back();
+    const std::shared_future<uint32_t>& meshID = mAddGeoTasks.back();
+    
+    { // thread safety
+        std::scoped_lock lock(mMeshesMutex);
+        mMeshMap[name] = meshID;
+    }
+
+    return meshID;
 }
 
 void SceneBuilder::finalize() {

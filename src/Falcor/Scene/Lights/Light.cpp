@@ -37,7 +37,8 @@ namespace Falcor {
 
 static_assert(sizeof(LightData) % 16 == 0, "LightData struct size should be a multiple of 16");
 
-static float16_t kMinColorComponentContribution = (float16_t)0.0001f;
+static const float kMinColorComponentContribution = 0.00001f;
+static constexpr float kAreaEPSILON = std::numeric_limits<float>::epsilon() ;
 static constexpr float M_2PI = (float)M_PI * 2.0f;
 
 static inline bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
@@ -49,6 +50,10 @@ static inline bool checkOffset(const std::string& structName, UniformShaderVarOf
     return true;
 }
 
+static inline float maxColorComponentValue(const float3& color) {
+    return std::max(std::max(color[0], color[1]), color[2]);
+}
+
 static inline float16_t maxColorComponentValue(const float16_t3& color) {
     return std::max(std::max(color[0], color[1]), color[2]);
 }
@@ -56,38 +61,65 @@ static inline float16_t maxColorComponentValue(const float16_t3& color) {
 // Light
 
 void Light::setActive(bool active) {
-    if (active != mActive) {
-        mActive = active;
-        mActiveChanged = true;
-    }
+    if (mActive == active) return;
+    mActive = active;
+    mActiveChanged = true;
 }
 void Light::setDevice(Device::SharedPtr pDevice) { 
     if(mpDevice == pDevice) return;
     mpDevice = pDevice;
 };
 
-void Light::setDiffuseIntensity(const float3& intensity) {
-    mData.directDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+void Light::setIntensity(const float3& intensity) {
+    if(mIntensity == intensity) return;
+    mIntensity = intensity;
     update();
 }
 
-void Light::setSpecularIntensity(const float3& intensity) {
-    mData.directSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+void Light::setDiffuseIntensityMultiplier(const float3& multiplier) {
+    if(mData.directDiffuseIntensityMultiplier == (float16_t3)multiplier) return;
+    mData.directDiffuseIntensityMultiplier = (float16_t3)multiplier;
     update();
 }
 
-void Light::setIndirectDiffuseIntensity(const float3& intensity) {
-    mData.indirectDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+void Light::setSpecularIntensityMultiplier(const float3& multiplier) {
+    if(mData.directSpecularIntensityMultiplier == (float16_t3)multiplier) return;
+    mData.directSpecularIntensityMultiplier = (float16_t3)multiplier;
     update();
 }
 
-void Light::setIndirectSpecularIntensity(const float3& intensity) {
-    mData.indirectSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+void Light::setIndirectDiffuseIntensityMultiplier(const float3& multiplier) {
+    if(mData.indirectDiffuseIntensityMultiplier == (float16_t3)multiplier) return;
+    mData.indirectDiffuseIntensityMultiplier = (float16_t3)multiplier;
     update();
+}
+
+void Light::setIndirectSpecularIntensityMultiplier(const float3& multiplier) {
+    if(mData.indirectSpecularIntensityMultiplier == (float16_t3)multiplier) return;
+    mData.indirectSpecularIntensityMultiplier = (float16_t3)multiplier;
+    update();
+}
+
+float3 Light::getDirectDiffuseIntensity() const {
+    return mIntensity * static_cast<float3>(mData.directDiffuseIntensityMultiplier);
+}
+
+float3 Light::getDirectSpecularIntensity() const {
+    return mIntensity * static_cast<float3>(mData.indirectDiffuseIntensityMultiplier);
+}
+
+float3 Light::getIndirectDiffuseIntensity() const {
+    return mIntensity * static_cast<float3>(mData.indirectDiffuseIntensityMultiplier);
+}
+
+float3 Light::getIndirectSpecularIntensity() const {
+    return mIntensity * static_cast<float3>(mData.indirectSpecularIntensityMultiplier);
 }
 
 void Light::setShadowColor(const float3& shadowColor) {
-    mData.shadowColor = (float16_t3)shadowColor;
+    if(mData.shadowColor == shadowColor) return;
+    mData.shadowColor = shadowColor;
+    update();
 }
 
 void Light::setShadowType(LightShadowType shadowType) { 
@@ -101,24 +133,36 @@ void Light::setLightSamplerID(uint id) {
 }
 
 void Light::setLightRadius(float radius) {
+    if(mData.radius == radius) return;
     mData.radius = radius;
+    update();
 }
 
 void Light::update() {
-    if(maxColorComponentValue(mData.directDiffuseIntensity) > kMinColorComponentContribution) {
+    mData.intensity = mIntensity * M_2PI;
+
+    if(maxColorComponentValue(getDirectDiffuseIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContribureDirectDiffuse;
+    } else {
+        mData.flags != (uint32_t)LightDataFlags::ContribureDirectDiffuse;
     }
 
-    if(maxColorComponentValue(mData.directSpecularIntensity) > kMinColorComponentContribution) {
+    if(maxColorComponentValue(getDirectSpecularIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeDirectSpecular;
+    } else {
+        mData.flags != (uint32_t)LightDataFlags::ContributeDirectSpecular;
     }
 
-    if(maxColorComponentValue(mData.indirectDiffuseIntensity) > kMinColorComponentContribution) {
+    if(maxColorComponentValue(getIndirectDiffuseIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeIndirectDiffuse;
+    } else {
+        mData.flags != (uint32_t)LightDataFlags::ContributeIndirectDiffuse;
     }
 
-    if(maxColorComponentValue(mData.indirectSpecularIntensity) > kMinColorComponentContribution) {
+    if(maxColorComponentValue(getIndirectSpecularIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeIndirectSpecular;
+    } else {
+        mData.flags != (uint32_t)LightDataFlags::ContributeIndirectSpecular;
     }
 }
 
@@ -128,10 +172,11 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Position;
     if (mPrevData.dirW != mData.dirW) mChanges |= Changes::Direction;
     
-    if (mPrevData.directDiffuseIntensity != mData.directDiffuseIntensity) mChanges |= Changes::Intensity;
-    if (mPrevData.directSpecularIntensity != mData.directSpecularIntensity) mChanges |= Changes::Intensity;
-    if (mPrevData.indirectDiffuseIntensity != mData.indirectDiffuseIntensity) mChanges |= Changes::Intensity;
-    if (mPrevData.indirectSpecularIntensity != mData.indirectSpecularIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.intensity != mData.intensity) mChanges |= Changes::Intensity;
+    if (mPrevData.directDiffuseIntensityMultiplier != mData.directDiffuseIntensityMultiplier) mChanges |= Changes::Intensity;
+    if (mPrevData.directSpecularIntensityMultiplier != mData.directSpecularIntensityMultiplier) mChanges |= Changes::Intensity;
+    if (mPrevData.indirectDiffuseIntensityMultiplier != mData.indirectDiffuseIntensityMultiplier) mChanges |= Changes::Intensity;
+    if (mPrevData.indirectSpecularIntensityMultiplier != mData.indirectSpecularIntensityMultiplier) mChanges |= Changes::Intensity;
 
     if (mPrevData.openingAngle != mData.openingAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
@@ -170,8 +215,23 @@ void Light::setShaderData(const ShaderVar& var) {
 }
 
 Light::Light(const std::string& name, LightType type) : mName(name) {
+    mIntensity = float3(.0f);
     mData.setLightType(type);
     mData.flags = 0x0;
+}
+
+void Light::update(const Light& light) {
+    setCameraVisibility(light.getCameraVisibility());
+    setShadowColor(light.getShadowColor());
+    setShadowType(light.getShadowType());
+    setLightRadius(light.getLightRadius());
+    setActive(light.isActive());
+    setIntensity(light.getIntensity());
+    setDiffuseIntensityMultiplier(light.getDiffuseIntensityMultiplier());
+    setSpecularIntensityMultiplier(light.getSpecularIntensityMultiplier());
+    setIndirectDiffuseIntensityMultiplier(light.getIndirectDiffuseIntensityMultiplier());
+    setIndirectSpecularIntensityMultiplier(light.getIndirectSpecularIntensityMultiplier());
+    setCameraVisibility(light.getCameraVisibility());
 }
 
 void Light::setTexture(Texture::SharedPtr pTexture) {
@@ -199,6 +259,14 @@ PointLight::SharedPtr PointLight::create(const std::string& name) {
 PointLight::PointLight(const std::string& name) : Light(name, LightType::Point) {
     mPrevData = mData;
     mData.flags |= (uint32_t)LightDataFlags::DeltaPosition; 
+}
+
+void PointLight::update(const Light& light) {
+    Light::update(light);
+    const PointLight& pointLight = dynamic_cast<const PointLight&>(light);
+    setWorldPosition(pointLight.getWorldPosition());
+    setWorldDirection(pointLight.getWorldDirection());
+    setOpeningAngle(pointLight.getOpeningAngle());
 }
 
 void PointLight::setWorldDirection(const float3& dir) {
@@ -233,7 +301,7 @@ void PointLight::setWorldPosition(const float3& pos) {
 }
 
 float PointLight::getPower() const {
-    return luminance((float3)mData.directDiffuseIntensity) * 4.f * (float)M_PI;
+    return luminance((float3)mData.intensity) * 4.f * (float)M_PI;
 }
 
 void PointLight::setOpeningAngle(float openingAngle) {
@@ -281,6 +349,14 @@ DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
     return SharedPtr(new DirectionalLight(name));
 }
 
+void DirectionalLight::update() {
+    Light::update();
+}
+
+void DirectionalLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void DirectionalLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) // NaNs propagate
     {
@@ -308,24 +384,8 @@ DistantLight::DistantLight(const std::string& name) : Light(name, LightType::Dis
     mPrevData = mData;
 }
 
-void DistantLight::setDiffuseIntensity(const float3& intensity) {
-    mDiffuseIntensity = intensity;
-    update();
-};
-
-void DistantLight::setSpecularIntensity(const float3& intensity) {
-    mSpecularIntensity = intensity;
-    update();
-};
-
-void DistantLight::setIndirectDiffuseIntensity(const float3& intensity) {
-    mIndirectDiffuseIntensity = intensity;
-    update();
-}
-
-void DistantLight::setIndirectSpecularIntensity(const float3& intensity) {
-    mIndirectSpecularIntensity = intensity;
-    update();
+void DistantLight::update(const Light& light) {
+    Light::update(light);
 }
 
 void DistantLight::setAngle(float angle) {
@@ -363,18 +423,12 @@ void DistantLight::update() {
     }
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
 
-    LLOG_WRN << "cosSubtendedAngle " << std::to_string(mData.cosSubtendedAngle);
-
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
     } else {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
     }
 
-    mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity * M_2PI);
-    mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity * M_2PI);
-    mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity * M_2PI);
-    mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity * M_2PI);
     Light::update();
 }
 
@@ -398,6 +452,10 @@ EnvironmentLight::SharedPtr EnvironmentLight::create(const std::string& name, Te
     return SharedPtr(new EnvironmentLight(name, pTexture));
 }
 
+void EnvironmentLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
 
 }
@@ -415,22 +473,6 @@ void EnvironmentLight::update() {
 float EnvironmentLight::getPower() const { 
     // TODO: calculate total power in prepass or use special ltx value
     return 0.f; 
-}
-
-void EnvironmentLight::setDiffuseIntensity(const float3& intensity) {
-    mData.directDiffuseIntensity = (float16_t3)(intensity);
-}
-
-void EnvironmentLight::setSpecularIntensity(const float3& intensity) {
-    mData.directSpecularIntensity = (float16_t3)(intensity);
-}
-
-void EnvironmentLight::setIndirectDiffuseIntensity(const float3& intensity) {
-    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
-}
-
-void EnvironmentLight::setIndirectSpecularIntensity(const float3& intensity) {
-    mData.indirectSpecularIntensity = (float16_t3)(intensity);
 }
 
 void EnvironmentLight::setTexture(Texture::SharedPtr pTexture) {
@@ -456,6 +498,10 @@ PhysicalSunSkyLight::SharedPtr PhysicalSunSkyLight::create(const std::string& na
     return SharedPtr(new PhysicalSunSkyLight(name));
 }
 
+void PhysicalSunSkyLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void PhysicalSunSkyLight::setDevice(Device::SharedPtr pDevice) {
     Light::setDevice(pDevice);
     if (mpDevice) {
@@ -477,42 +523,34 @@ float PhysicalSunSkyLight::getPower() const {
     return 0.f; 
 }
 
-void PhysicalSunSkyLight::setDiffuseIntensity(const float3& intensity) {
-    mData.directDiffuseIntensity = (float16_t3)(intensity);
-}
-
-void PhysicalSunSkyLight::setSpecularIntensity(const float3& intensity) {
-    mData.directSpecularIntensity = (float16_t3)(intensity);
-}
-
-void PhysicalSunSkyLight::setIndirectDiffuseIntensity(const float3& intensity) {
-    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
-}
-
-void PhysicalSunSkyLight::setIndirectSpecularIntensity(const float3& intensity) {
-    mData.indirectSpecularIntensity = (float16_t3)(intensity);
-}
 
 // AnalyticAreaLight
 
 AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : Light(name, type) {
-    mData.tangent = float3(1, 0, 0);
-    mData.bitangent = float3(0, 1, 0);
-    mData.surfaceArea = 1.0f;
+    mData.tangent = float3(1.f, 0.f, 0.f);
+    mData.bitangent = float3(0.f, 1.f, 0.f);
+    mData.surfaceArea = 1.f;
     mData.flags |= (uint32_t)LightDataFlags::Area; 
 
-    mScaling = float3(0.5, 0.5, 0.5); // 0.5 is a "radius" of a unit sized light primitive
+    mUnnormalizedIntensity = float3(0.f);
+    mScaling = float3(0.5f, 0.5f, 0.5f); // 0.5 is a "radius" of a unit sized light primitive
     update();
     mPrevData = mData;
 }
 
+void AnalyticAreaLight::update(const Light& light) {
+    Light::update(light);
+}
+
 void AnalyticAreaLight::setScaling(float3 scale) { 
-    mScaling = scale * 0.5f; // We do this multiplication to make our area light of a unit size  
+    const float3 s = scale * 0.5f;  // We do this multiplication to make our area light of a unit size 
+    if(mScaling == s) return;
+    mScaling = s; 
     update(); 
 }
 
 float AnalyticAreaLight::getPower() const {
-    return luminance((float3)mData.directDiffuseIntensity) * (float)M_PI * mData.surfaceArea;
+    return luminance((float3)mData.intensity) * (float)M_PI * mData.surfaceArea;
 }
 
 void AnalyticAreaLight::setSingleSided(bool value) { 
@@ -522,29 +560,36 @@ void AnalyticAreaLight::setSingleSided(bool value) {
     update();
 }
 
-void AnalyticAreaLight::setDiffuseIntensity(const float3& intensity) {
-    mData.directDiffuseIntensity = (float16_t3)(intensity);
+void AnalyticAreaLight::setIntensity(const float3& intensity) {
+    if(mUnnormalizedIntensity == intensity) return;
+    
+    mUnnormalizedIntensity = intensity;
+    update();
 }
 
-void AnalyticAreaLight::setSpecularIntensity(const float3& intensity) {
-    mData.directSpecularIntensity = (float16_t3)(intensity);
+void AnalyticAreaLight::setTransformMatrix(const glm::mat4& mtx) { 
+    if(mTransformMatrix == mtx) return;
+    mTransformMatrix = mtx; 
+    update(); 
 }
 
-void AnalyticAreaLight::setIndirectDiffuseIntensity(const float3& intensity) {
-    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
-}
-
-void AnalyticAreaLight::setIndirectSpecularIntensity(const float3& intensity) {
-    mData.indirectSpecularIntensity = (float16_t3)(intensity);
+void AnalyticAreaLight::setNormalizeArea(bool value) { 
+    if(mNormalizeArea == value) return; 
+    mNormalizeArea = value;
+    update();
 }
 
 void AnalyticAreaLight::update() {
-    // Update matrix
     mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
     mData.transMatInv = glm::inverse(mData.transMat);
-
     mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
+    
+    if(mNormalizeArea) {
+        mData.intensity = (mUnnormalizedIntensity / mData.surfaceArea) * (float)M_2PI; //M_SQRT2;
+    } else {
+        mData.intensity = mUnnormalizedIntensity;
+    }
     Light::update();
 }
 
@@ -554,14 +599,17 @@ RectLight::SharedPtr RectLight::create(const std::string& name) {
     return SharedPtr(new RectLight(name));
 }
 
+void RectLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
+}
+
 void RectLight::update() {
+    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    const float a = std::max(kAreaEPSILON, 4.0f * rx * ry );
+    
+    mData.surfaceArea = a;
     AnalyticAreaLight::update();
-
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-
-    mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 4.0f * rx * ry );
-    Light::update();
 }
 
 // DiscLight
@@ -570,13 +618,18 @@ DiscLight::SharedPtr DiscLight::create(const std::string& name) {
     return SharedPtr(new DiscLight(name));
 }
 
-void DiscLight::update() {
-    AnalyticAreaLight::update();
+void DiscLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
+}
 
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    mData.surfaceArea = std::max(std::numeric_limits<float>::min(), (float)M_PI * rx * ry);
-    Light::update();
+
+void DiscLight::update() {
+    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    const float a = std::max(kAreaEPSILON, (float)M_PI * rx * ry);
+    
+    mData.surfaceArea = a;
+    AnalyticAreaLight::update();
 }
 
 // SphereLight
@@ -585,17 +638,19 @@ SphereLight::SharedPtr SphereLight::create(const std::string& name) {
     return SharedPtr(new SphereLight(name));
 }
 
-void SphereLight::update() {
-    AnalyticAreaLight::update();
+void SphereLight::update(const Light& light) {
+    AnalyticAreaLight::update(light);
+}
 
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
-    mData.surfaceArea = std::max(
-        std::numeric_limits<float>::min(), 
+void SphereLight::update() {
+    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    const float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+    const float a = std::max( kAreaEPSILON, 
         4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));
 
-    Light::update();
+    mData.surfaceArea = a;
+    AnalyticAreaLight::update();
 }
 
 

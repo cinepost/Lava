@@ -4,18 +4,13 @@
 #include "vk-base.h"
 #include "vk-device.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-class CommandQueueImpl
-    : public ICommandQueue
-    , public ComObject
-{
+class CommandQueueImpl: public ICommandQueue, public ComObject {
 public:
     SLANG_COM_OBJECT_IUNKNOWN_ALL
     ICommandQueue* getInterface(const Guid& guid);
@@ -25,11 +20,12 @@ public:
     RefPtr<DeviceImpl> m_renderer;
     VkQueue m_queue;
     uint32_t m_queueFamilyIndex;
-    struct FenceWaitInfo
-    {
+    
+    struct FenceWaitInfo {
         RefPtr<FenceImpl> fence;
         uint64_t waitValue;
     };
+    
     List<FenceWaitInfo> m_pendingWaitFences;
     VkSemaphore m_pendingWaitSemaphores[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     List<VkCommandBuffer> m_submitCommandBuffers;

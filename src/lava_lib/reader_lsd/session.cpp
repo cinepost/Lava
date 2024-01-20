@@ -8,6 +8,7 @@
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Lights/LightLinker.h"
 
 #include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/Material/MaterialTypes.slang"
@@ -35,6 +36,8 @@
 
 
 static constexpr float halfC = (float)M_PI / 180.0f;
+static constexpr uint32_t kMaxMeshID = std::numeric_limits<uint32_t>::max();
+static constexpr uint32_t kMaxNodeID = std::numeric_limits<uint32_t>::max();
 
 namespace lava {
 
@@ -208,7 +211,37 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 }
 
 void Session::cmdQuit() {
-	//mpRendererIface = nullptr;
+	cleanup();
+
+	mpRenderer = nullptr;
+  mpDevice = nullptr;
+}
+
+void Session::cleanup() {
+// Remove temporary geometries from filesystem
+  const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
+  if(!mTemporaryGeometriesPaths.empty()) {
+    for(auto const& fullpath: mTemporaryGeometriesPaths) {
+      boost::system::error_code ec;
+      bool retval = fs::remove_all(fullpath, ec);
+      if(!ec) {  // success
+        if(retval) {
+          LLOG_DBG << "Removed temporary geometry file " << fullpath;
+        } else {
+          LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
+        }
+      } else {  // error removing temp file
+        LLOG_ERR << "Error removing temporary geometry file " << fullpath;
+      }
+    }
+  }
+}
+
+void Session::cmdReset() {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+  if(!pSceneBuilder) return;
+
+  pSceneBuilder->freeTemporaryResources();
 }
 
 bool Session::cmdRaytrace() {
@@ -255,6 +288,9 @@ bool Session::cmdRaytrace() {
 	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
 	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
 	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
+
+	passDict["MAIN.VBufferRasterPass.highp_depth"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.highp_depth", bool(false));
+	passDict["MAIN.VBufferRasterPass.better_aa"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.better_aa", bool(false));
 
 	auto pMainOutputPlane = mpRenderer->getAOVPlane("MAIN");
 
@@ -321,6 +357,7 @@ bool Session::cmdRaytrace() {
 	}
 
 	LLOG_INF << "Rendering image tiles:";
+	LLOG_INF << "Image resolution: " << resolution[0] << "x" << resolution[1];
 	for(const TileInfo& tileInfo: tiles) LLOG_INF << to_string(tileInfo);
 
 	// Get renderer aov planes
@@ -350,7 +387,7 @@ bool Session::cmdRaytrace() {
 	
 		// houdini display driver section
 		if((mpDisplay->type() == DisplayType::HOUDINI) || (mpDisplay->type() == DisplayType::MD) || (mpDisplay->type() == DisplayType::IP)) {
-			clearDisplayBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true));
+			clearDisplayBeforeRendering = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.zeroimage", bool(true)) && !mIPR;
 			const int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
 			const int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
 			const std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
@@ -368,11 +405,11 @@ bool Session::cmdRaytrace() {
 			userParams.push_back(Display::makeStringsParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange}));
 	    	
 			if ((mplayPortNum > 0) && mIPR) {
-	    		userParams.push_back(Display::makeStringsParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)}));
-	    		imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
-	    	}
+	    	userParams.push_back(Display::makeStringsParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)}));
+	    	imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
+	    }
 
-	    	if (houdiniPortNum > 0) userParams.push_back(Display::makeIntsParameter("houdiniportnum", {houdiniPortNum}));
+	    if (houdiniPortNum > 0) userParams.push_back(Display::makeIntsParameter("houdiniportnum", {houdiniPortNum}));
 		}
 
     	// Open main image plane
@@ -383,9 +420,9 @@ bool Session::cmdRaytrace() {
     		if(pMainOutputPlane->hasMetaData()) {
     			auto metaData = pMainOutputPlane->getMetaData();	
     			result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C", &metaData);
-        	} else {
-        		result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C");
-        	}
+      	} else {
+      		result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C");
+      	}
     		if(!result) LLOG_FTL << "Unable to open main output plane image !!!";
     		return result;
     	};
@@ -439,36 +476,37 @@ bool Session::cmdRaytrace() {
 	}
 ///////
 
-	// It there was request to fill image with zero data before the rendering starts, we have to check out configuration meets certain criteria
-	// First fo all there should be no additional displays that refers to the same image as main output plane driver (mpDisplay) that are postponed
-	// to be opened later (after frame is rendered). Aslo we skip this step if the main output driver is not interactive, e.g it writes to a filesystem
-	// as there is no benifit in doing this.
-	// TODO: mark displays that we are going to open later and check they are writing to the same image as main mpDisplay!
-	if(clearDisplayBeforeRendering && mpDisplay->isInteractive()) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
+  initDisplayTimeReport.addTotal("Display init total time");
+  initDisplayTimeReport.printToLog();
 
+  // Frame rendering
+  TimeReport renderingTimeReport;
+	
+	LLOG_INF << "Rendering image started...";
+	setUpCamera(mpRenderer->currentCamera());
+  
+  for(const auto& tile: tiles) {
+  	LLOG_DBG << "Rendering " << to_string(tile);
 
-    initDisplayTimeReport.addTotal("Display init total time");
-    initDisplayTimeReport.printToLog();
+  	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+    frameInfo.renderRegion = tile.renderRegion;
 
-    // Frame rendering
-    TimeReport renderingTimeReport;
-		
-		LLOG_INF << "Rendering image started...";
-		setUpCamera(mpRenderer->currentCamera());
-    
-    for(const auto& tile: tiles) {
-    	LLOG_DBG << "Rendering " << to_string(tile);
-
-    	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
-      	frameInfo.renderRegion = tile.renderRegion;
-
-    	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
-    	mpRenderer->prepareFrame(frameInfo);
+  	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+  	mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
 		if(!pMainOutputPlane->getAOVPlaneGeometry(aov_geometry)) {
 			LLOG_FTL << "No AOV !!!";
 			break;
+		}
+
+		// It there was request to fill image with zero data before the rendering starts, we have to check out configuration meets certain criteria
+		// First fo all there should be no additional displays that refers to the same image as main output plane driver (mpDisplay) that are postponed
+		// to be opened later (after frame is rendered). Aslo we skip this step if the main output driver is not interactive, e.g it writes to a filesystem
+		// as there is no benifit in doing this.
+		// TODO: mark displays that we are going to open later and check they are writing to the same image as main mpDisplay!
+		if(clearDisplayBeforeRendering && mpDisplay->isInteractive()) {
+			sendImageRegionData(hImage, mpDisplay.get(), frameInfo, nullptr);
 		}
 
 		long int sampleUpdateIterations = 0;
@@ -500,13 +538,13 @@ bool Session::cmdRaytrace() {
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainOutputPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region
 		if (!sendImageRegionData(hImage, mpDisplay.get(), frameInfo, pMainOutputPlane.get())) break;
-		
+	
 		// Send secondary aov image planes data
-    	for(auto& entry: aovPlanes) {
-    		uint hImage = entry.first;
-	    	auto& pPlane = entry.second;
-	    	if (pPlane && pPlane->isEnabled()) {
-	    		AOVPlaneGeometry aov_geometry;
+  	for(auto& entry: aovPlanes) {
+  		uint hImage = entry.first;
+    	auto& pPlane = entry.second;
+    	if (pPlane && pPlane->isEnabled()) {
+    		AOVPlaneGeometry aov_geometry;
 				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
 					LLOG_ERR << "Error getting AOV " << std::string(pPlane->name()) << " geometry!";
 					continue;
@@ -519,8 +557,8 @@ bool Session::cmdRaytrace() {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
-	    	}
-	    }
+    	}
+    }
 	}
 
 	LLOG_DBG << "Closing display...";
@@ -550,8 +588,8 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
 
   auto pSceneBuilder = mpRenderer->sceneBuilder();
   if(!pSceneBuilder) {
-	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
-	return;
+		LLOG_ERR << "Unable to push geometry \"" << name << "\" (bgeo). SceneBuilder not ready !!!";
+		return;
   }
 
  	// immediate mesh add
@@ -560,7 +598,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
   pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
  	if(!pBgeo) {
- 		LLOG_ERR << "Can't load geometry (bgeo) !!!";
+ 		LLOG_ERR << "Unable to load \"" << name << "\" geometry (bgeo) !!!";
  		return;
  	}
 
@@ -568,7 +606,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
     pBgeo->printSummary(std::cout);
 #endif
 
-   mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
+  pSceneBuilder->addGeometry(pBgeo, name);
 }
 
 void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
@@ -581,7 +619,7 @@ void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr 
 	}
 
 	// async mesh add 
-   	mMeshMap[name] = pSceneBuilder->addGeometryAsync(pGeo, name);
+  pSceneBuilder->addGeometryAsync(pGeo, name);
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
@@ -612,14 +650,16 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
 
-	lsd::Vector3 light_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "diffuse_color", light_color);
-	lsd::Vector3 light_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "specular_color", light_diffuse_color);
-	lsd::Vector3 light_indirect_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color", light_diffuse_color);
-	lsd::Vector3 light_indirect_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color", light_specular_color);
+	lsd::Vector3 light_direct_diffuse_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "direct_diffuse_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_direct_specular_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "direct_specular_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_indirect_diffuse_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
+	lsd::Vector3 light_indirect_specular_color_multiplier = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color_multiplier", lsd::Vector3{1.0, 1.0, 1.0});
 
 	const bool visible_primary = pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
-	Falcor::Light::SharedPtr pLight = nullptr;
+	const bool update = (mIPRmode == ast::IPRMode::UPDATE);
+
+	Falcor::Light::SharedPtr pLight = update ? pSceneBuilder->getLight(light_name) : nullptr;
 
 	if(light_type == "distant") {
 		// Directional light
@@ -772,12 +812,18 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			}
 		}
 
-		pLight->setDiffuseIntensity(to_float3(light_diffuse_color));
-		pLight->setSpecularIntensity(to_float3(light_specular_color));
-		pLight->setIndirectDiffuseIntensity(to_float3(light_indirect_diffuse_color));
-		pLight->setIndirectSpecularIntensity(to_float3(light_indirect_specular_color));
-		uint32_t light_id = pSceneBuilder->addLight(pLight);
-		mLightsMap[light_name] = light_id;
+		pLight->setIntensity(to_float3(light_color));
+		pLight->setDiffuseIntensityMultiplier(to_float3(light_direct_diffuse_color_multiplier));
+		pLight->setSpecularIntensityMultiplier(to_float3(light_direct_specular_color_multiplier));
+		pLight->setIndirectDiffuseIntensityMultiplier(to_float3(light_indirect_diffuse_color_multiplier));
+		pLight->setIndirectSpecularIntensityMultiplier(to_float3(light_indirect_specular_color_multiplier));
+
+		if(update && pLight) {
+			pSceneBuilder->updateLight(light_name, *pLight.get());
+		} else {
+			uint32_t light_id = pSceneBuilder->addLight(pLight);
+			mLightsMap[light_name] = light_id;
+		}
 	}
 }
 
@@ -786,7 +832,6 @@ void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
 	}
-	auto pProp = mpCurrentScope->getProperty(style, token);
 	if(!mpCurrentScope->getProperty(style, token)) {
 		mpCurrentScope->declareProperty(style, valueType(value), token, value, Property::Owner::USER);
 	} else {
@@ -844,6 +889,26 @@ void Session::cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::
 	}
 }
 
+void Session::cmdDelete(lsd::ast::Style style, const std::string& name) {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+  if(!pSceneBuilder) return;
+
+	switch (style) {
+		case lsd::ast::Style::OBJECT:
+			pSceneBuilder->deleteMeshInstance(name);
+			break;
+		case lsd::ast::Style::LIGHT:
+			if(mIPR && (mIPRmode == ast::IPRMode::UPDATE)) {
+				pSceneBuilder->setLightActive(name, false);
+			} else {
+				pSceneBuilder->deleteLight(name);
+			}
+			break;
+		default:
+			break;
+	}
+}
+
 void Session::cmdTransform(const Matrix4& transform) {
 	auto pScope = std::dynamic_pointer_cast<scope::Transformable>(mpCurrentScope);
 	if(!pScope) {
@@ -877,7 +942,9 @@ scope::ScopeBase::SharedPtr Session::getCurrentScope() {
 
 void Session::cmdIPRmode(lsd::ast::IPRMode mode, bool stash) {
 	LLOG_DBG << "cmdIPRmode " << to_string(mode) << " stash " << stash;
-	if (!mIPR) mIPR = true;
+	if (!mIPR && (mode == ast::IPRMode::GENERATE || mode == ast::IPRMode::UPDATE)) {
+		mRendererConfig.optimizeForIPR = mIPR = true;
+	}
 	mIPRmode = mode;
 }
 
@@ -990,6 +1057,27 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
+				// Check if we are in IPR update mode. If so and geometry is being flagged as temporary we should ignore it.
+				// We also want to check that geometry was already pushed to scene builder during IPR generate mode.
+				if(pScopeGeo->isTemporary() && mIPRmode == ast::IPRMode::UPDATE) {
+					auto pSceneBuilder = mpRenderer->sceneBuilder();
+					if (!pSceneBuilder) {
+						return false;
+					}
+
+					if (pSceneBuilder->meshExist(pScopeGeo->detailName())) {
+						// mesh already exist. all ok
+						break;
+					} else {
+						LLOG_WRN << "Mesh " << pScopeGeo->detailName() << " doesn't exit. Pushing...";
+					}
+				}
+
+				// If temporary bgeo, mark it so we can delete it later
+				if(pScopeGeo->isTemporary() && !pScopeGeo->isInline()) {
+          mTemporaryGeometriesPaths.insert(pScopeGeo->detailFilePath().string());
+        }
+
 				bool pushGeoAsync = mpGlobal->getPropertyValue(ast::Style::GLOBAL, "async_geo", bool(true));
 				if( pScopeGeo->isInline() || !pushGeoAsync) {
 					pushBgeo(pScopeGeo->detailName(), pScopeGeo);
@@ -1006,8 +1094,15 @@ bool Session::cmdEnd() {
 					return false;
 				}
 
-				if(!pushGeometryInstance(pScopeObj)) {
-					mFailed = true;
+				if(pScopeObj->geometryName().empty()) {
+					LLOG_WRN << "Empty geometry instance skipped.";
+					break;
+				}
+
+				const bool update = (mIPRmode == ast::IPRMode::UPDATE) ? true : false;
+				if(!pushGeometryInstance(pScopeObj, update)) {
+					LLOG_WRN << "Error " << (update ? "updating" : "creating") << " geometry " << pScopeObj->geometryName() << " instance !";
+					setFailed(true);
 					return false;
 				}
 			}
@@ -1015,7 +1110,7 @@ bool Session::cmdEnd() {
 		case ast::Style::PLANE:
 			{
 				scope::Plane::SharedPtr pScopePlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
-				auto pPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pScopePlane));
+				auto pPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pScopePlane), mIPR);
 				
 				// Check if output plane wants own display for image output
 				const std::string& display_filename = pPlane->filename();
@@ -1089,6 +1184,11 @@ bool Session::cmdEnd() {
 
 	mpCurrentScope = pParentScope;
 	return result;
+}
+
+void Session::setFailed(bool state) {
+	if(!state) return;
+	mFailed = state;
 }
 
 void Session::addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD) {
@@ -1277,9 +1377,11 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
     pMaterial->setTransmissionColor(trans_color);
     pMaterial->setSpecularTransmission(transmission);
 
-    pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+    if(surface_use_basenormal_texture) {
+    	pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
+  	}
 
-    float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
+  	float _normal_bump_scale = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? (basebump_scale /* to match Mantra */) : basenormal_scale;
     pMaterial->setNormalBumpMapFactor(_normal_bump_scale);
 
   	//bool loadAsSrgb = true;
@@ -1287,37 +1389,45 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
     LLOG_TRC << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
-    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
+    if(surface_use_basecolor_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
+    if(surface_use_metallic_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
+    if(surface_use_emission_texture) { 
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }
 
-    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
+    if(surface_use_roughness_texture) {
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
+    } else {
+    	pMaterial->setTexture(Falcor::Material::TextureSlot::Roughness, nullptr);
     }
 
-    if((surface_base_normal_texture_path != ""  || surface_base_bump_texture_path != "") && surface_use_basenormal_texture) { 
+    if(surface_use_basenormal_texture) { 
     	
-    	std::string _base_normal_bump_texture_path = (pMaterial->getNormalMapMode() == NormalMapMode::Bump) ? surface_base_bump_texture_path : surface_base_normal_texture_path;
-
-    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, _base_normal_bump_texture_path, loadTexturesAsSparse)) {
-    		return nullptr;
+    	if(pMaterial->getNormalMapMode() == NormalMapMode::Bump) {
+    		if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_bump_texture_path, loadTexturesAsSparse)) {
+    			return nullptr;
+    		}
+    	} else if(pMaterial->getNormalMapMode() == NormalMapMode::Normal) {
+				if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse)) {
+    			return nullptr;
+    		}
     	}
+    } else {
+    	pMaterial->setNormalMap(nullptr);
     }
   }
 
@@ -1337,10 +1447,13 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 	return true;
 }
 
-bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
+
+bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool update) {
 	assert(pObj);
 
-	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
+	auto const& mesh_name = pObj->geometryName();
+
+	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << mesh_name;
 	
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if (!pSceneBuilder) {
@@ -1348,65 +1461,40 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
-	auto it = mMeshMap.find(pObj->geometryName());
-	if(it == mMeshMap.end()) {
-		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
-		return false;
-	}
+	const int _id = pObj->getPropertyValue(ast::Style::OBJECT, "id", (int)SceneBuilder::kInvalidExportedID);
 
-	uint32_t exportedInstanceID = SceneBuilder::kInvalidExportedID;
-	const Property* pIDProperty = pObj->getProperty(ast::Style::OBJECT, "id");
-	if(pIDProperty) {
-		exportedInstanceID = pIDProperty->get<uint32_t>();
-	}
+	uint32_t exportedInstanceID = (_id < 0) ? SceneBuilder::kInvalidExportedID : static_cast<uint32_t>(_id);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
-	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
-
-	try {
-		mesh_id = std::get<uint32_t>(it->second);	
-		LLOG_DBG << "Getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
-	} catch (const std::bad_variant_access&) {
-		auto& f = std::get<std::shared_future<uint32_t>>(it->second);
-		try {
-			mesh_id = f.get();
-			LLOG_DBG << "Getting async mesh_id for obj_name " << obj_name;	
-		} catch(const std::exception& e) {
-        	LLOG_ERR << "Async geo instance creation error!!! Exception from the thread: " << e.what();
-        	return false;
-    	}
-	} catch (...) {
-		LLOG_ERR << "Async geo instance creation error!!! Unable to get mesh id for object: " << obj_name;
-	}
-
-	if (mesh_id == std::numeric_limits<uint32_t>::max()) {
+	const uint32_t meshID = pSceneBuilder->getMeshID(mesh_name);
+	if(meshID == SceneBuilder::kInvalidMeshID) {
+		LLOG_FTL << "Error getting id for mesh " << mesh_name;
 		return false;
 	}
-	it->second = mesh_id;
 
-	LLOG_TRC << "mesh_id " << mesh_id;
+	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) update = false;
 
-	Falcor::SceneBuilder::Node node = {};
-	node.name = it->first;
-	node.transform = pObj->getTransformList()[0];
-	node.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
-    node.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
-	/*
-		glm::mat4(1), // For skinned meshes. World transform at bind time.
-		glm::mat4(1), // For bones. Inverse bind transform.
-		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
-	};
-	*/
+	LLOG_DBG << (update ? "Updating" : "Creating") << " mesh " << meshID << " instance named " << obj_name;
 
-	uint32_t node_id = pSceneBuilder->addNode(node);
+	Falcor::SceneBuilder::Node transformNode = {};
+	transformNode.name = obj_name;
+	transformNode.transform = pObj->getTransformList()[0];
+	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
+ 	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
-	if (!pMaterial) {
-		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
+	if(update) {
+		// Update material if needed
+		auto pUpdatedMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
+		if(!pSceneBuilder->updateMaterial(material_name, pUpdatedMaterial)) {
+			LLOG_ERR << "Error updating material " << material_name;
+			return false;
+		}
+	} else if(!pMaterial) {
 		pMaterial = createStandardMaterialFromLSD(material_name, pShaderProp);
 	}
 
@@ -1438,8 +1526,19 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
   creationSpec.pShadingSpec = &shadingSpec;
   creationSpec.pMaterialOverride = pMaterial;
 
-  // Add a mesh instance to a node
-  return pSceneBuilder->addMeshInstance(node_id, mesh_id, &creationSpec);
+  const std::string lightMaskString = pObj->getPropertyValue(ast::Style::OBJECT, "lightmask", std::string());
+  if(!lightMaskString.empty()) {
+  	creationSpec.isolatedLightNames = LightLinker::lightNamesStringToList(lightMaskString);
+  }
+
+  if(update) {
+  	// Update mesh instance
+  	return pSceneBuilder->updateMeshInstance(meshID, &creationSpec, transformNode);
+  } else {
+  	// Add a mesh instance
+  	const uint32_t nodeID = pSceneBuilder->addNode(transformNode);
+  	return pSceneBuilder->addMeshInstance(nodeID, meshID, &creationSpec);
+	}
 }
 
 

@@ -123,4 +123,8 @@ struct ClothMaterialInstance : IMaterialInstance
         return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
     }
 
+    ShadingFrame getShadingFrame() {
+        return sf;
+    }
+
 };

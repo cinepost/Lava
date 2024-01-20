@@ -36,6 +36,9 @@ import DeferredLightingAOV;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
+static const bool kAdjustShadingNormals = true;
+
+
 // Extra input channels
 Texture2D<float> gDepth;
 Texture2D<PackedHitInfo> gVbuffer;
@@ -46,6 +49,7 @@ RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutEmission;
+RasterizerOrderedTexture2D<float>  gOutRoughness;
 RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float4> gOutTangentNormals;
@@ -55,6 +59,7 @@ RasterizerOrderedTexture2D<float>  gOutFresnel;
 RasterizerOrderedTexture2D<float>  gPrimID;
 RasterizerOrderedTexture2D<float>  gOpID;
 RasterizerOrderedTexture2D<float16_t>  gVariance;
+RasterizerOrderedTexture2D<float2> gUV;
 
 RasterizerOrderedTexture2D<float16_t4> gLastFrameSum;
 
@@ -101,6 +106,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
     gOutEmission[ipos] = float4(d.emission, .0);
 #endif  // gOutEmission
 
+#if is_valid(gOutRoughness)
+    gOutRoughness[ipos] = d.roughness;
+#endif  // gOutRoughness
+
 #if is_valid(gOutNormals)
     gOutNormals[ipos] = float4(d.normal, .0f);
 #endif  // gOutNormals
@@ -128,6 +137,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOpID)
     gOpID[ipos] = d.opID;
 #endif  // gOpID
+
+#if is_valid(gUV)
+    gUV[ipos] = d.uv;
+#endif  // gUV
 
 }
 
@@ -158,6 +171,22 @@ struct RayData {
         return r;
     }
 };
+
+/** Determine hints to use when creating the material instance.
+*/
+uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary) {
+    uint hints = 0;
+    if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle) {
+
+//#if GBUFFER_ADJUST_SHADING_NORMALS
+        if (kAdjustShadingNormals || isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
+//#else
+        if (kAdjustShadingNormals && !isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
+//#endif
+
+    }
+    return 0;//hints;
+}
 
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
     uint txw, txh;
@@ -214,8 +243,11 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     //let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE;
 
+    const bool isPrimaryHit = (rayData.level == 0);
+
     // Create BSDF instance and query its properties.
-    const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod);
+    let hints = getMaterialInstanceHints(rayData.hit, isPrimaryHit);
+    const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod, hints);
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
     const float3 N = bsdfProperties.guideNormal;
@@ -231,7 +263,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         // Ray level 0 (camera ray)
         aov_data.position = sd.posW;
         aov_data.normal = N;
-        //aov_data.tangent_normal = mi.sf.toLocal(N);
+        aov_data.uv = sd.uv;
+        aov_data.tangent_normal = sd.frame.toLocal(N);
         aov_data.albedo = bsdfProperties.diffuseReflectionAlbedo;
     }
 
@@ -247,16 +280,20 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     float3 specularColor = float3(0.f);
     float3 shadowColor   = float3(1.f);
 
-    // Process lights
-#if _SCENE_LIGHT_COUNT
-    [unroll]
-    for (int lightIndex = 0; lightIndex < _SCENE_LIGHT_COUNT; lightIndex++) {
-#else
-    [loop]
-    for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
-#endif
+    const uint lightSetIndex = gScene.getLightSetIndex(triangleHit.instanceID);
+    const uint lightCount = gScene.getLightCount(lightSetIndex);
 
-        LightData light = gScene.getLight(lightIndex);
+    //if(lightSetIndex == 0) surfaceColor = float3(lightCount, 0, 0);
+    //if(lightSetIndex == 1) surfaceColor = float3(0, lightCount, 0);
+    //if(lightSetIndex == 2) surfaceColor = float3(0, 0, lightCount);
+
+    //return surfaceColor;
+
+    // Process lights
+    [loop]
+    for (int lightIndex = 0; lightIndex < lightCount; lightIndex++) {
+
+        LightData light = gScene.getLight(lightSetIndex, lightIndex);
         float3 shadowFactor = float3(1.0f);
         if(rayData.level == 0) {
             if(!light.contributesDirectIllumination()) continue;
@@ -304,15 +341,15 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
             [[branch ]] if ((rayData.level == 0 && light.contributesDirectDiffuseIllumination()) || (rayData.level > 0 && light.contributesIndirectDiffuseIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                diffuseColor += mi.eval(sd, ls.dir, sg) * ls.Li *((rayData.level == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
+                diffuseColor += mi.eval(sd, ls.dir, sg) * ls.Li *((rayData.level == 0) ? light.directDiffuseIntensityMultiplier : light.indirectDiffuseIntensityMultiplier ) * shadowFactor * misDiffWeight;
             }
 
             [[branch ]] if ((rayData.level == 0 && light.contributesDirectSpecularIllumination()) || (rayData.level > 0 && light.contributesIndirectSpecularIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
+                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misSpecWeight;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
-                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misRefrWeight;
+                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misRefrWeight;
             }
 
             shadowColor *= shadowFactor;
@@ -366,15 +403,15 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                     if(bsdfSample.isLobe(LobeType::DiffuseReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                         float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
-                        diffuseColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
+                        diffuseColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directDiffuseIntensityMultiplier : light.indirectDiffuseIntensityMultiplier ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
                         float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
-                        specularColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
+                        specularColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
                         float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
-                        specularColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
+                        specularColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misWeight;
                     }
                 }
             }
@@ -458,7 +495,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                         if(!light.isDeltaLight()) {
                             AnalyticLightSample ls;
                             if (intersectLight(sd.posW, rayData.dir, light, ls)) {
-                                surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity );
+                                surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier );
                             }
                         }
                     }
@@ -481,8 +518,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     #if is_valid(gTextureGrads)
         const float4 texGrads = gTextureGrads[ipos];
-        //gInOutColor[ipos] = texGrads;
-        //return;
     #endif
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
@@ -608,9 +643,16 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if is_valid(gOutFresnel)
     {
-        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.N));
+        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.frame.N));
     }
 #endif
+
+#if is_valid(gOutRoughness)
+    {
+        const IMaterialInstance mi = gScene.materials.getMaterialInstance(primaryShadingData, primaryLod);
+        aov_data.roughness = mi.getProperties(primaryShadingData).roughness;
+    }
+#endif  // gOutEmission
 
 #if is_valid(gOutEmission)
     {

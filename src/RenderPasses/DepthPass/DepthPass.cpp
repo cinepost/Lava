@@ -110,11 +110,14 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 }
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    if (mpScene == pScene) return;
     mpScene = pScene;
     mDirty = true;
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    if(!mpScene) return;
+
     const auto& pDepth = renderData[kDepth]->asTexture();
     mpFbo->attachDepthStencilTarget(pDepth);
 
@@ -133,12 +136,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     bool clearStencil = false;
     pRenderContext->clearDsv(pDepth->getDSV().get(), .0f, 1, clearDepth, clearStencil);
 
-    //mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
-    //mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
-    
-    if (mpScene) {
-        mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
-    }
+    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
     mDirty = false;
 }
 

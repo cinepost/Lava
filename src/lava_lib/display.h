@@ -85,6 +85,9 @@ class LAVA_API Display {
   public:
     static const std::string& makeChannelName(Display::NamingScheme namingScheme, uint32_t channelIndex);
 
+  protected:
+    static std::string makeImageHashString(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, 
+      const std::vector<UserParameter>& userParams, const MetaData* pMetaData = nullptr);
 
   protected:
     DisplayType mDisplayType = DisplayType::NONE;

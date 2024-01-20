@@ -54,7 +54,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
     
-    if (!hit.isValid()) return;
+    if (!hit.isValid()) {
+        gInOutColor[pixelPos] = float4(1, 0, 0, 1);
+        return;
+    }
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();

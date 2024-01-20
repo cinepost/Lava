@@ -232,6 +232,11 @@ void EchoVisitor::operator()(ast::cmd_deviceoption const& c) const {
     _os << "\x1b[0m\n";
 }
 
+void EchoVisitor::operator()(ast::cmd_delete const& c) const {
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_delete: style: " << c.style << " name: " << c.name << "\x1b[0m\n";
+}
+
 void EchoVisitor::operator()(ast::cmd_declare const& c) const {
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " values: ";

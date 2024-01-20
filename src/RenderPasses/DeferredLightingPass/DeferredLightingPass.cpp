@@ -52,6 +52,7 @@ namespace {
         { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
         { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
+        { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
         { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
         { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
@@ -62,7 +63,8 @@ namespace {
         // Service outputs
         { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
         { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
-        { "variance",         "gVariance",          "Ray variance",                  true /* optional */, ResourceFormat::R16Float },
+        { "variance",         "gVariance",          "Ray variance buffer",           true /* optional */, ResourceFormat::R16Float },
+        { "uv",               "gUV",                "Texture coordinates buffer",    true /* optional */, ResourceFormat::RG16Float },
     };
 
     const std::string kFrameSampleCount = "frameSampleCount";
@@ -155,6 +157,7 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
     if(mpScene == pScene) return;
     mpScene = pScene;
     mpLightingPass = nullptr;
+    mDirty = true;
 }
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {

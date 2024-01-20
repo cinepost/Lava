@@ -65,14 +65,12 @@ typedef size_t Offset;
 
 const uint64_t kTimeoutInfinite = 0xFFFFFFFFFFFFFFFF;
 
-enum class StructType
-{
+enum class StructType {
 	D3D12ExtendedDesc,
 };
 
 // TODO: Rename to Stage
-enum class StageType
-{
+enum class StageType {
 	Unknown,
 	Vertex,
 	Hull,
@@ -92,8 +90,7 @@ enum class StageType
 };
 
 // TODO: Implementation or backend or something else?
-enum class DeviceType
-{
+enum class DeviceType {
 	Unknown,
 	Default,
 	DirectX11,
@@ -106,8 +103,7 @@ enum class DeviceType
 };
 
 // TODO: Why does this exist it should go poof
-enum class ProjectionStyle
-{
+enum class ProjectionStyle {
 	Unknown,
 	OpenGl, 
 	DirectX,
@@ -117,8 +113,7 @@ enum class ProjectionStyle
 
 // TODO: This should also go poof
 /// The style of the binding
-enum class BindingStyle
-{
+enum class BindingStyle {
 	Unknown,
 	DirectX,
 	OpenGl,
@@ -129,8 +124,7 @@ enum class BindingStyle
 };
 
 // TODO: Is this actually a flag when there are no bit fields?
-enum class AccessFlag
-{
+enum class AccessFlag {
 	None,
 	Read,
 	Write,
@@ -424,8 +418,7 @@ enum class Format
 // TODO: Pick : pixel or texel
 // TODO: Block is a good term for what it is
 // TODO: Width/Height/Depth/whatever should not be used. We should use extentX, extentY, etc.
-struct FormatInfo
-{
+struct FormatInfo {
 	GfxCount channelCount;         ///< The amount of channels in the format. Only set if the channelType is set 
 	uint8_t channelType;           ///< One of SlangScalarType None if type isn't made up of elements of type. TODO: Change to uint32_t?
 
@@ -435,13 +428,11 @@ struct FormatInfo
 	GfxCount blockHeight;          ///< The height of a block in pixels.
 };
 
-enum class InputSlotClass
-{
+enum class InputSlotClass {
 	PerVertex, PerInstance
 };
 
-struct InputElementDesc
-{
+struct InputElementDesc {
 	char const* semanticName;      ///< The name of the corresponding parameter in shader code.
 	GfxIndex semanticIndex;        ///< The index of the corresponding parameter in shader code. Only needed if multiple parameters share a semantic name.
 	Format format;                 ///< The format of the data being fetched for this element.
@@ -449,15 +440,13 @@ struct InputElementDesc
 	GfxIndex bufferSlotIndex;      ///< The index of the vertex stream to fetch this element's data from.
 };
 
-struct VertexStreamDesc
-{
+struct VertexStreamDesc {
 	Size stride;                   ///< The stride in bytes for this vertex stream.
 	InputSlotClass slotClass;      ///< Whether the stream contains per-vertex or per-instance data.
 	GfxCount instanceDataStepRate; ///< How many instances to draw per chunk of data.
 };
 
-enum class PrimitiveType
-{
+enum class PrimitiveType {
 	Point, Line, Triangle, Patch
 };
 
@@ -2447,6 +2436,8 @@ class IDevice: public ISlangUnknown {
 		virtual SLANG_NO_THROW Result SLANG_MCALL createAccelerationStructure(
 			const IAccelerationStructure::CreateDesc& desc,
 			IAccelerationStructure** outView) = 0;
+
+		virtual SLANG_NO_THROW void SLANG_MCALL destroyAccelerationStructure(IAccelerationStructure* as) = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL
 			createFence(const IFence::Desc& desc, IFence** outFence) = 0;

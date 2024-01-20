@@ -44,6 +44,10 @@
 #include "MaterialX/MaterialX.h"
 #include "VertexAttrib.slangh"
 
+#include "Falcor/Scene/Lights/LightLinker.h"
+
+#include "SceneBuilderMesh.h"
+
 
 namespace Falcor {
 
@@ -54,9 +58,30 @@ class dlldecl SceneBuilder {
  public:
     using SharedPtr = std::shared_ptr<SceneBuilder>;
 
-    static const uint32_t kInvalidNode = Animatable::kInvalidNode;
-    static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
-    static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;  ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidNodeID = Animatable::kInvalidNode;
+    static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;    ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidMeshletID = Animatable::kInvalidNode;     ///< Largest uint32 value (-1)
+    static const uint32_t kInvalidMeshID = Animatable::kInvalidNode;        ///< Largest uint32 value (-1)
+
+    using Mesh = SceneBuilderMesh;
+
+    class MeshID {
+        public:
+            MeshID(): v(kInvalidMeshID) {};
+            MeshID(uint32_t id): v(id) {};
+            MeshID(std::shared_future<uint32_t> f): v(f) {};
+        
+            uint32_t _get() const;
+
+        private:
+            mutable std::variant<uint32_t, std::shared_future<uint32_t>> v;
+
+        public:
+            operator uint32_t () const { return _get(); };
+
+            void operator=(uint32_t id);
+            void operator=(std::shared_future<uint32_t> f);
+    };
 
     struct InstanceShadingSpec {
         bool        isMatte = false;
@@ -89,7 +114,18 @@ class dlldecl SceneBuilder {
         InstanceVisibilitySpec*     pVisibilitySpec = nullptr;
         InstanceShadingSpec*        pShadingSpec = nullptr;
         Material::SharedPtr         pMaterialOverride = nullptr;
+
+        LightLinker::StringList     isolatedLightNames;   ///< Light names list that illuminates this instance. If empty then instance illuinated by all active scene lights. 
+
     };
+
+    enum class UpdateMode: uint8_t {
+        None,
+        IPR,
+        Batch,
+        Default = None
+    };
+
 
     /** Flags that control how the scene will be built. They can be combined together.
     */
@@ -115,199 +151,13 @@ class dlldecl SceneBuilder {
         UseRaytracing                   = 0x20000,  ///< Use raytracing
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
         GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
+        KeepMeshData                    = 0x100000, ///< Keep mesh list for batch mode updates
+        KeepLocalMeshData               = 0x200000, ///< Keep local mesh data for scene rebuild purposes
 
         UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
 
         Default = None
-    };
-
-    /** Mesh description
-    */
-    struct Mesh {
-        //Mesh(const Mesh&) = delete;//{ std::cout << "A copy was made.\n"; }
-
-        using AttribName = std::string;
-        using StringList = std::vector<std::string>;
-        using AttributesStrings = std::unordered_map<AttribName, StringList>;
-
-        enum class AttributeFrequency {
-            None,
-            Constant,       ///< Constant value for mesh. The element count must be 1.
-            Uniform,        ///< One value per face. The element count must match `faceCount`.
-            Vertex,         ///< One value per vertex. The element count must match `vertexCount`.
-            FaceVarying,    ///< One value per vertex per face. The element count must match `indexCount`.
-        };
-
-        template<typename T>
-        struct Attribute {
-            const T* pData = nullptr;
-            AttributeFrequency frequency = AttributeFrequency::None;
-        };
-
-        std::string name;                           ///< The mesh's name.
-        uint32_t faceCount = 0;                     ///< The number of primitives the mesh has.
-        uint32_t vertexCount = 0;                   ///< The number of vertices the mesh has.
-        uint32_t indexCount = 0;                    ///< The number of indices the mesh has.
-        const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
-        Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
-        Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
-
-        Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
-        Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
-        Attribute<float4> tangents;                 ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.
-        Attribute<float> curveRadii;                ///< Array of vertex curve radii. This field is optional.
-        Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
-        Attribute<uint4> boneIDs;                   ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
-        Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
-        Attribute<int32_t> materialIDs;
-
-        AttributesStrings attributesStrings;
-
-
-        bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
-        bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
-        bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
-        uint32_t skeletonNodeId = kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
-
-        template<typename T>
-        uint32_t getAttributeIndex(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const {
-            switch (attribute.frequency) {
-                case AttributeFrequency::Constant:
-                    return 0;
-                case AttributeFrequency::Uniform:
-                    return face;
-                case AttributeFrequency::Vertex:
-                    return pIndices[face * 3 + vert];
-                case AttributeFrequency::FaceVarying:
-                    return face * 3 + vert;
-                default:
-                    should_not_get_here();
-            }
-            return Scene::kInvalidIndex;
-        }
-
-        const AttributesStrings& getAttributesStrings() const { return attributesStrings; }
-
-        StringList* attributeStringList(const std::string& name, bool createMissing = false) {
-            auto it = attributesStrings.find(name);
-            if(it != attributesStrings.end()) return &it->second;
-            
-            if(createMissing) {
-                attributesStrings.insert(std::make_pair(name, StringList()));
-                return &attributesStrings[name];
-            }
-            return nullptr;
-        }
-
-        StringList* materialAttributeStrings(bool createMissing) {
-            return attributeStringList("material", createMissing);
-        }
-
-        bool hasMultipleMaterials() const {
-            return materialIDs.pData != nullptr;
-        }
-
-        template<typename T>
-        T get(const Attribute<T>& attribute, uint32_t index) const {
-            if (attribute.pData) {
-                return attribute.pData[index];
-            }
-            return T{};
-        }
-
-        template<typename T>
-        T get(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const {
-            if (attribute.pData) {
-                return get(attribute, getAttributeIndex(attribute, face, vert));
-            }
-            return T{};
-        }
-
-        template<typename T>
-        size_t getAttributeCount(const Attribute<T>& attribute) {
-            switch (attribute.frequency) {
-                case AttributeFrequency::Constant:
-                    return 1;
-                case AttributeFrequency::Uniform:
-                    return faceCount;
-                case AttributeFrequency::Vertex:
-                    return vertexCount;
-                case AttributeFrequency::FaceVarying:
-                    return 3 * faceCount;
-                default:
-                    should_not_get_here();
-            }
-            return 0;
-        }
-
-
-        float3 getPosition(uint32_t face, uint32_t vert) const { return get(positions, face, vert); }
-        float3 getNormal(uint32_t face, uint32_t vert) const { return get(normals, face, vert); }
-        float4 getTangent(uint32_t face, uint32_t vert) const { return get(tangents, face, vert); }
-        float2 getTexCrd(uint32_t face, uint32_t vert) const { return get(texCrds, face, vert); }
-        float getCurveRadii(uint32_t face, uint32_t vert) const { return get(curveRadii, face, vert); }
-
-        struct Vertex {
-            float3 position;
-            float3 normal;
-            float4 tangent;
-            float2 texCrd;
-            float curveRadius;
-            uint4 boneIDs;
-            float4 boneWeights;
-        };
-
-        struct VertexAttributeIndices {
-            uint32_t positionIdx;
-            uint32_t normalIdx;
-            uint32_t tangentIdx;
-            uint32_t texCrdIdx;
-            uint32_t curveRadiusIdx;
-            uint32_t boneIDsIdx;
-            uint32_t boneWeightsIdx;
-        };
-
-
-        Vertex getVertex(uint32_t face, uint32_t vert) const {
-            Vertex v = {};
-            v.position = get(positions, face, vert);
-            v.normal = get(normals, face, vert);
-            v.tangent = get(tangents, face, vert);
-            v.texCrd = get(texCrds, face, vert);
-            v.curveRadius = get(curveRadii, face, vert);
-            v.boneIDs = get(boneIDs, face, vert);
-            v.boneWeights = get(boneWeights, face, vert);
-            return v;
-        }
-
-        Vertex getVertex(const VertexAttributeIndices& attributeIndices) {
-            Vertex v = {};
-            v.position = get(positions, attributeIndices.positionIdx);
-            v.normal = get(normals, attributeIndices.normalIdx);
-            v.tangent = get(tangents, attributeIndices.tangentIdx);
-            v.texCrd = get(texCrds, attributeIndices.texCrdIdx);
-            v.curveRadius = get(curveRadii, attributeIndices.curveRadiusIdx);
-            v.boneIDs = get(boneIDs, attributeIndices.boneIDsIdx);
-            v.boneWeights = get(boneWeights, attributeIndices.boneWeightsIdx);
-            return v;
-        }
-
-        VertexAttributeIndices getAttributeIndices(uint32_t face, uint32_t vert) {
-            VertexAttributeIndices v = {};
-            v.positionIdx = getAttributeIndex(positions, face, vert);
-            v.normalIdx = getAttributeIndex(normals, face, vert);
-            v.tangentIdx = getAttributeIndex(tangents, face, vert);
-            v.texCrdIdx = getAttributeIndex(texCrds, face, vert);
-            v.curveRadiusIdx = getAttributeIndex(curveRadii, face, vert);
-            v.boneIDsIdx = getAttributeIndex(boneIDs, face, vert);
-            v.boneWeightsIdx = getAttributeIndex(boneWeights, face, vert);
-            return v;
-        }
-
-        bool hasBones() const {
-            return boneWeights.pData || boneIDs.pData;
-        }
     };
 
     struct MeshletSpec {
@@ -325,7 +175,7 @@ class dlldecl SceneBuilder {
         std::string name;
         Vao::Topology topology = Vao::Topology::Undefined;
         Material::SharedPtr pMaterial;
-        uint32_t skeletonNodeId = kInvalidNode; ///< Forwarded from Mesh struct.
+        uint32_t skeletonNodeId = kInvalidNodeID; ///< Forwarded from Mesh struct.
 
         uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
         bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
@@ -380,7 +230,7 @@ class dlldecl SceneBuilder {
         float4x4 transform;
         float4x4 meshBind;          // For skinned meshes. World transform at bind time.
         float4x4 localToBindPose;   // For bones. Inverse bind transform.
-        uint32_t parent = kInvalidNode;
+        uint32_t parent = kInvalidNodeID;
     };
 
     using InstanceMatrices = std::vector<float4x4>;
@@ -414,13 +264,25 @@ class dlldecl SceneBuilder {
 
     /** Add a mesh instance to a node
     */
-    bool addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* creationSpec = nullptr);
+    bool addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec = nullptr);
     
+    bool meshHasInstance(uint32_t meshID, const std::string& instance_name);
+
+    bool updateMeshInstance(uint32_t meshID, const MeshInstanceCreationSpec* pCreationSpec, const Node& node);
+
+    bool deleteMeshInstance(const std::string& name);
+
+    bool deleteMesh(const std::string& meshName);
+
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
     */
     uint32_t addMesh(const Mesh& meshDesc);
+
+    uint32_t getMeshID(const std::string& name);
+
+    bool meshExist(const std::string& name);
 
     /** Add a triangle mesh.
         \param The triangle mesh to add.
@@ -496,6 +358,8 @@ class dlldecl SceneBuilder {
     */
     Material::SharedPtr getMaterial(const std::string& name) const;
 
+    bool updateMaterial(const std::string& name, const Material::SharedPtr& pNewMaterial);
+
     bool getMaterialID(const std::string& name, uint32_t& materialId) const;
 
     /** Add a material.
@@ -539,7 +403,7 @@ class dlldecl SceneBuilder {
         \param nodeID The node to attach the volume to (optional).
         \return The ID of the volume in the scene.
     */
-    uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNode);
+    uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNodeID);
 
     // Lights
 
@@ -554,11 +418,21 @@ class dlldecl SceneBuilder {
     */
     Light::SharedPtr getLight(const std::string& name) const;
 
+    Light::SharedPtr getLight(uint32_t lightID) const;
+
     /** Add a light source
         \param pLight The light object.
         \return The light ID
     */
     uint32_t addLight(const Light::SharedPtr& pLight);
+
+    bool updateLight(const std::string& name, const Light& newLight);
+
+    void setLightsActive(bool state);
+
+    void deleteLight(const std::string& name);
+
+    void setLightActive(const std::string& name, bool state);
 
     // Environment map
 
@@ -629,6 +503,16 @@ class dlldecl SceneBuilder {
     */
     uint32_t addNode(const Node& node);
 
+    /** Gets a node from the graph.
+        \return The node ID.
+    */
+    uint32_t getInternalNode(const std::string& name);
+
+    /** Updates a node in the graph.
+        \return The updated node ID.
+    */
+    uint32_t updateNode(const Node& node);
+
     /** Add a curve instance to a node.
     */
     void addCurveInstance(uint32_t nodeID, uint32_t curveID);
@@ -642,7 +526,14 @@ class dlldecl SceneBuilder {
     */
     void setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
+    const std::unordered_map<std::string, MeshID>& meshMap() const { return mMeshMap; }; 
+
+    void freeTemporaryResources();
+
     ~SceneBuilder();
+
+private:
+    void resetScene(bool reuseExisting = false);
 
 protected:
     SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
@@ -657,7 +548,7 @@ protected:
         std::vector<Animatable*> animatable;    ///< Pointers to all animatable objects attached to this node.
         bool dontOptimize = false;              ///< Whether node should be ignored in optimization passes
 
-         /** Returns true if node has any attached scene objects.
+        /** Returns true if node has any attached scene objects.
         */
         bool hasObjects() const { return !meshes.empty() || !curves.empty() || !animatable.empty(); }
     };
@@ -667,15 +558,20 @@ protected:
         uint32_t    materialId;
         bool        overrideMaterial = false;
 
+        uint32_t    lightSetIndex = LightLinker::kInvalidLightSetIndex;
+        uint32_t    shadowTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+        uint32_t    reflectTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+        uint32_t    refractTraceSetIndex = LightLinker::kInvalidTraceSetIndex;
+
         InstanceExportedDataSpec    exported;
         InstanceShadingSpec         shading;
         InstanceVisibilitySpec      visibility;
 
-        uint32_t perPrimMaterialIndicesOffset = 0;  ///< Offest into per-primitive material indices array. 
-        uint32_t perPrimMaterialIndicesCount  = 0;  ///< Number of per-primitive materials. 
+        uint32_t perPrimMaterialIndicesOffset = 0;      ///< Offest into per-primitive material indices array. 
+        uint32_t perPrimMaterialIndicesCount  = 0;      ///< Number of per-primitive materials. 
 
         std::vector<int32_t> perPrimitiveMaterialIDsData;
-
+        
         bool hasMultipleMaterials() const {
             return perPrimMaterialIndicesCount > 0;
         }
@@ -696,7 +592,7 @@ protected:
         uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
         uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
         uint32_t vertexCount = 0;                   ///< Number of vertices.
-        uint32_t skeletonNodeID = kInvalidNode;     ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+        uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
         bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
         bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
         bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).
@@ -712,6 +608,15 @@ protected:
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
+
+
+        size_t   getHostMemUsage() const {
+            return  instances.size() * sizeof(MeshInstanceSpec) + 
+                    indexData.size() * sizeof(uint32_t) +
+                    staticData.size() * sizeof(StaticVertexData) +
+                    skinningData.size() * sizeof(SkinningVertexData) +
+                    perPrimitiveMaterialIDsData.size() * sizeof(int32_t);
+        }
 
         uint32_t getTriangleCount() const {
             assert(topology == Vao::Topology::TriangleList);
@@ -781,7 +686,11 @@ protected:
 
     // Meshes
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
+    //std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
+    std::unordered_map<std::string, MeshID>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
 
+    // Instances
+    std::unordered_map<std::string, uint32_t> mInstanceToMeshMap;
 
     // Curves
     CurveList mCurves;
@@ -792,6 +701,10 @@ protected:
     std::vector<Material::SharedPtr> mMaterials;
     std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::unordered_map<const Material*, uint32_t> mMaterialToId;
+
+
+    // mt
+    std::mutex mMeshesMutex;
 
     BS::multi_future<uint32_t> mAddGeoTasks;
 
@@ -851,6 +764,22 @@ protected:
     void createSceneGraph();
     void createMeshBoundingBoxes();
     void calculateCurveBoundingBoxes();
+
+    enum class DynamicUpdateFlags: uint32_t {
+        None                    = 0x0,
+        UpdateSceneMaterials    = 0x1,
+        UpdateSceneNodes        = 0x2,
+        UpdateSceneInstances    = 0x4,
+        UpdateMeshGroups        = 0x8,
+    };
+
+    UpdateMode mUpdateMode = UpdateMode::Batch;
+
+    // Scene dynamic update flags
+    bool mUpdateSceneMaterials = false;
+    bool mUpdateSceneNodes = false;
+    bool mUpdateSceneInstances = false;
+    bool mReBuildMeshGroups = true;
 
     friend class SceneCache;
 };

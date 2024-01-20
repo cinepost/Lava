@@ -4,6 +4,49 @@
 
 namespace Falcor {
 
+bool InternalDictionary::Value::operator==(const Value& other) const { 
+    if(type() != other.type()) return false;
+    
+    if(type() == typeid(std::string))
+        return std::any_cast<std::string>(mValue) == std::any_cast<std::string>(other.mValue);
+
+    if(type() == typeid(float))
+        return std::any_cast<float>(mValue) == std::any_cast<float>(other.mValue);
+
+    if(type() == typeid(int))
+        return std::any_cast<int>(mValue) == std::any_cast<int>(other.mValue);
+
+    if(type() == typeid(uint))
+        return std::any_cast<uint>(mValue) == std::any_cast<uint>(other.mValue);
+
+    if(type() == typeid(bool))
+        return std::any_cast<bool>(mValue) == std::any_cast<bool>(other.mValue);
+
+    if(type() == typeid(Falcor::float2))
+        return std::any_cast<Falcor::float2>(mValue) == std::any_cast<Falcor::float2>(other.mValue);
+
+    if(type() == typeid(Falcor::float3))
+        return std::any_cast<Falcor::float3>(mValue) == std::any_cast<Falcor::float3>(other.mValue);
+
+    if(type() == typeid(Falcor::float4))
+        return std::any_cast<Falcor::float4>(mValue) == std::any_cast<Falcor::float4>(other.mValue);
+
+    if(type() == typeid(Falcor::int2))
+        return std::any_cast<Falcor::int2>(mValue) == std::any_cast<Falcor::int2>(other.mValue);
+
+    if(type() == typeid(Falcor::int3))
+        return std::any_cast<Falcor::int3>(mValue) == std::any_cast<Falcor::int3>(other.mValue);
+
+    if(type() == typeid(Falcor::int4))
+        return std::any_cast<Falcor::int4>(mValue) == std::any_cast<Falcor::int4>(other.mValue);
+
+    throw std::runtime_error("InternalDictionary::Value comparison of unimplemented for type !!!");
+}
+
+bool InternalDictionary::operator==(const InternalDictionary& other) const {
+    return mContainer == other.mContainer;
+}
+
 InternalDictionary::Value::operator std::string() const {
     if(mValue.type() == typeid(std::string))
         return std::any_cast<std::string>(mValue);

@@ -126,7 +126,7 @@ namespace ast {
     enum class Style { GLOBAL, MATERIAL, NODE, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
     enum class EmbedDataType { TEXTURE, UNKNOWN };
     enum class EmbedDataEncoding { UUENCODED, UNKNOWN };
-    enum class IPRMode { GENERATE, UPDATE };
+    enum class IPRMode { DEFAULT, GENERATE, UPDATE };
 
     typedef lava::Display::DisplayType DisplayType;
     
@@ -145,6 +145,7 @@ namespace ast {
     struct cmd_end;
     struct cmd_edge;
     struct cmd_detail;
+    struct cmd_delete;
     struct cmd_geometry;
     struct cmd_procedural;
     struct cmd_property;
@@ -178,6 +179,7 @@ namespace ast {
         cmd_edge,
         cmd_quit,
         cmd_detail,
+        cmd_delete,
         cmd_geometry,
         cmd_procedural,
         cmd_property,
@@ -264,6 +266,11 @@ namespace ast {
         bool temporary;
         std::string name;
         std::string filename;
+    };
+
+    struct cmd_delete {
+        Style style;
+        std::string name;
     };
 
     struct cmd_image {
@@ -471,6 +478,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_iprmode, mode, stash)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, prop_type, prop_name, prop_value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_delete, style, name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, temporary, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_procedural, bbox_min, bbox_max, procedural, arguments)
@@ -738,8 +746,9 @@ namespace parser {
 
     struct IPRModesTable : x3::symbols<ast::IPRMode> {
         IPRModesTable() {
-            add ("generate"    , ast::IPRMode::GENERATE)
-                ("update"     ,  ast::IPRMode::UPDATE);
+            add ("default"    , ast::IPRMode::DEFAULT)
+                ("generate"   , ast::IPRMode::GENERATE)
+                ("update"     , ast::IPRMode::UPDATE);
         }
     } const ipr_mode;
 
@@ -910,6 +919,10 @@ namespace parser {
         | "cmd_detail" >> lit("-v") >> null_vector3 >> vector3 >> attr(false) >> obj_name >> obj_name
         | "cmd_detail" >> lit("-V") >> vector3 >> vector3 >>  attr(false) >> obj_name >> obj_name;
 
+    auto const cmd_delete
+        = x3::rule<class cmd_detail, ast::cmd_delete>{"cmd_delete"}
+        = "cmd_delete" >> declare_style >> obj_name;
+
     auto const cmd_geometry
         = x3::rule<class cmd_geometry, ast::cmd_geometry>{"cmd_geometry"}
         = "cmd_geometry" >> obj_name >> eps;
@@ -939,7 +952,7 @@ namespace parser {
         = "ray_embeddedfile" >> embedded_data_type >> any_string >> embedded_data_encoding >> int_;
 
     auto const cmd = setenv | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset | cmd_edge |
-        cmd_socket |
+        cmd_socket | cmd_delete |
         cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption | ray_embeddedfile |
         ifthen | endif;
 

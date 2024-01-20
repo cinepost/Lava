@@ -82,6 +82,7 @@ namespace Falcor {
 class Device;
 class RtProgram;
 class RtProgramVars;
+class LightLinker;
 
  /** This class is the main scene representation.
     It holds all scene resources such as geometry, cameras, lights, and materials.
@@ -219,6 +220,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         SDFGridConfigChanged        = 0x400000,     ///< SDF grid config changed.
         SDFGeometryChanged          = 0x800000,     ///< SDF grid geometry changed.
         MeshesChanged               = 0x1000000,    ///< Mesh data changed (skinning or vertex animations).
+        LightLinkerChanged          = 0x2000000,    ///< LightLinker changed.
         All                         = -1
     };
 
@@ -374,6 +376,14 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         /** Convert to python dict.
         */
         //pybind11::dict toPython() const;
+    };
+
+    // Ray tracing acceleration structure
+    struct TlasData {
+        RtAccelerationStructure::SharedPtr pTlasObject;
+        Buffer::SharedPtr pTlasBuffer;
+        Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
+        UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
     };
 
     const SceneStats& getSceneStats() const { return mSceneStats; }
@@ -698,6 +708,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
     const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
+    uint32_t addMaterial(const Material::SharedPtr& pMaterial) { return mpMaterialSystem->addMaterial(pMaterial); }
+
     /** Get a list of all materials in the scene.
     */
     const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterialSystem->getMaterials(); }
@@ -736,23 +748,23 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the scene bounds
     */
-    inline const AABB& getSceneBounds() const { return mSceneBB; }
+    const AABB& getSceneBounds() const { return mSceneBB; }
 
     /** Get a mesh's bounds
     */
-    inline const AABB& getMeshBounds(uint32_t meshID) const { return mMeshBBs[meshID]; }
+    const AABB& getMeshBounds(uint32_t meshID) const { return mMeshBBs[meshID]; }
 
     /** Get a curve's bounds in object space.
     */
-    inline const AABB& getCurveBounds(uint32_t curveID) const { return mCurveBBs[curveID]; }
+    const AABB& getCurveBounds(uint32_t curveID) const { return mCurveBBs[curveID]; }
 
     /** Get the number of lights in the scene
     */
-    inline uint32_t getLightCount() const { return (uint32_t)mLights.size(); }
+    uint32_t getLightCount() const { return (uint32_t)mLights.size(); }
 
     /** Get a light
     */
-    inline const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
+    const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
 
     /** Get a light by name
     */
@@ -760,15 +772,15 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get a list of all active lights in the scene.
     */
-    inline const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
+    const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
 
     /** Get the number of active lights in the scene.
     */
-    inline uint32_t getActiveLightCount() const { return (uint32_t)mActiveLights.size(); }
+    uint32_t getActiveLightCount() const { return (uint32_t)mActiveLights.size(); }
 
     /** Get an active light.
     */
-    inline const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
+    const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
 
 
     /** Get the light collection representing all the mesh lights in the scene.
@@ -779,20 +791,25 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     const LightCollection::SharedPtr& getLightCollection(RenderContext* pContext);
 
+    /** Get LightLinker
+    */
+
+    std::shared_ptr<LightLinker>& getLightLinker() { return mpLightLinker; }
+
     /** Get the environment map or nullptr if it doesn't exist.
     */
-    inline const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
     //VkAccelerationStructureKHR getTlas() const;
 
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
     */
-    inline void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
+    void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
 
     /** Get the scene's TLAS update mode when raytracing.
     */
-    inline UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
+    UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
 
     /** Set how the scene's BLASes are updated when raytracing.
         BLASes are REFIT by default
@@ -801,7 +818,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the scene's BLAS update mode when raytracing.
     */
-    inline UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
+    UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
 
     /** Update the scene. Call this once per frame to update the camera location, animations, etc.
         \param pContext
@@ -812,7 +829,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get the changes that happened during the last update
         The flags only change during an `update()` call, if something changed between calling `update()` and `getUpdates()`, the returned result will not reflect it
     */
-    inline UpdateFlags getUpdates() const { return mUpdates; }
+    UpdateFlags getUpdates() const { return mUpdates; }
 
     /** Render the scene using the rasterizer.
         Note the rasterizer state bound to 'pState' is ignored.
@@ -867,16 +884,16 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
         \return VAO object or nullptr if no meshes using 32-bit indices.
     */
-    inline const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
+    const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
 
     /** Get the scene's VAO for 16-bit vertex indices.
         \return VAO object or nullptr if no meshes using 16-bit indices.
     */
-    inline const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
+    const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
 
     /** Get the scene's VAO for curves.
     */
-    inline const Vao::SharedPtr& getCurveVao() const { return mpCurveVao; }
+    const Vao::SharedPtr& getCurveVao() const { return mpCurveVao; }
 
     /** Set an environment map.
         \param[in] pEnvMap Environment map. Can be nullptr.
@@ -890,23 +907,23 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the filename that the scene was loaded from
     */
-    inline const std::string& getFilename() const { return mFilename; }
+    const std::string& getFilename() const { return mFilename; }
 
     /** Get the animation controller.
     */
-    inline const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
+    const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
 
     /** Returns true if scene has animation data.
     */
-    inline bool hasAnimation() const { return mpAnimationController->hasAnimations(); }
+    bool hasAnimation() const { return mpAnimationController->hasAnimations(); }
 
     /** Enable/disable scene animation.
     */
-    inline void setIsAnimated(bool isAnimated) { mpAnimationController->setEnabled(isAnimated); }
+    void setIsAnimated(bool isAnimated) { mpAnimationController->setEnabled(isAnimated); }
 
     /** Returns true if scene animation is enabled.
     */
-    inline bool isAnimated() const { return mpAnimationController->isEnabled(); };
+    bool isAnimated() const { return mpAnimationController->isEnabled(); };
 
     /** Toggle all animations on or off.
     */
@@ -915,7 +932,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get the parameter block with all scene resources.
         Note that the camera is not bound automatically.
     */
-    inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
+    const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
 
     /** Set the BLAS geometry index into the local vars for each geometry.
         This is a workaround before GeometryIndex() is supported in shaders.
@@ -989,9 +1006,13 @@ public:
         std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
-        std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
-        LightProfile::SharedPtr pLightProfile;                  ///< Global light profile.
 
+        // Lights
+        std::vector<Light::SharedPtr>   lights;                 ///< List of light sources.
+        LightProfile::SharedPtr         pLightProfile;          ///< Global light profile.
+        std::shared_ptr<LightLinker>    pLightLinker;           ///< Scene lights linker.
+
+        // Materials
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
 
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
@@ -1071,6 +1092,7 @@ public:
     static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
     void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData);
+    
     void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
     Shader::DefineList getSceneSDFGridDefines() const;
@@ -1178,6 +1200,7 @@ public:
     UpdateFlags updateGridVolumes(bool forceUpdate);
     UpdateFlags updateEnvMap(bool forceUpdate);
     UpdateFlags updateMaterials(bool forceUpdate);
+    UpdateFlags updateLightLinker(bool forceUpdate);
     UpdateFlags updateGeometry(bool forceUpdate);
     UpdateFlags updateProceduralPrimitives(bool forceUpdate);
     UpdateFlags updateRaytracingAABBData(bool forceUpdate);
@@ -1291,6 +1314,7 @@ public:
     std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
     std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
+    std::shared_ptr<LightLinker>  mpLightLinker;
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
     LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.
@@ -1356,14 +1380,6 @@ public:
     std::vector<uint32_t>       mMeshIdToBlasId;
 
     bool mTlasBuilt = false;
-
-    // Ray tracing acceleration structure
-    struct TlasData {
-        RtAccelerationStructure::SharedPtr pTlasObject;
-        Buffer::SharedPtr pTlasBuffer;
-        Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
-        UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
-    };
 
     std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
                                                         ///< Number of ray types in program affects Shader Table indexing

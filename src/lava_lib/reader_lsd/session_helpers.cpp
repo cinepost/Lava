@@ -13,7 +13,7 @@ namespace lava {
 namespace lsd {
 
 // TODO: handle requred channels (RGB/RGBA)
-static Falcor::ResourceFormat resolveShadingResourceFormat(Display::TypeFormat fmt, uint numchannels) {
+static inline Falcor::ResourceFormat resolveShadingResourceFormat(Display::TypeFormat fmt, uint numchannels) {
     assert(numchannels <= 4);
 
     switch(fmt) {
@@ -90,7 +90,6 @@ static inline bool isNormalizedTypeName(const std::string& type_name) {
 
 static inline uint32_t componentsCountFromLSDTypeName(const std::string& type_name) {
 	if(type_name == "float") return 1;
-	if(type_name == "int") return 1;
 	
 	if(type_name == "vector2") return 2;
 	if(type_name == "int2") return 2;
@@ -105,7 +104,7 @@ static inline uint32_t componentsCountFromLSDTypeName(const std::string& type_na
 	return 4;
 }
 
-Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels) {
+inline Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels) {
 	assert((0 < numChannels) && ( numChannels <= 4));
 
 	bool norm = isNormalizedTypeName(type_name);
@@ -158,7 +157,7 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, co
 			default: return Falcor::ResourceFormat::RGBA32Uint;
 		}
 	}
-	if( format_name == "float16") {
+	if( format_name == "float16" || format_name == "half") {
 		switch (numChannels) {
 			case 1: return Falcor::ResourceFormat::R16Float;
 			case 2: return Falcor::ResourceFormat::RG16Float;
@@ -180,7 +179,7 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, co
 }
 
 
-Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_pattern_name) {
+inline Renderer::SamplePattern resolveSamplePatternType(const std::string& sample_pattern_name) {
 	if( sample_pattern_name == "stratified" ) return Renderer::SamplePattern::Stratified;
 	if( sample_pattern_name == "halton" )  return Renderer::SamplePattern::Halton;
 	return Renderer::SamplePattern::Center;	
@@ -200,7 +199,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	}
 
 	const std::string filename = pPlane->getPropertyValue(ast::Style::PLANE, "filename", std::string(""));
-	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
+	const std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
 	const std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 	const std::string pixel_filter_name = pPlane->getPropertyValue(ast::Style::PLANE, "pfilter", std::string("box"));
 	const std::string source_pass_name = pPlane->getPropertyValue(ast::Style::PLANE, "sourcepass", std::string(""));

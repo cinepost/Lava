@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,38 +25,41 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Scene/Material/BasicMaterial.h"
+import Utils.Attributes;
+import Scene.SceneTypes;
+import Scene.ShadingData;
 
-namespace Falcor {
-/** Class representing a hair material.
+__exported import Scene.Lights.LightData;
+__exported import Scene.Lights.LightLinkerShared;
 
-    Texture channel layout:
 
-        BaseColor
-            - RGB - Absorption coefficient, sigmaA
-            - A   - Opacity
-        Specular
-            - R   - Longitudinal roughness, betaM
-            - G   - Azimuthal roughness, betaN
-            - B   - The angle that the small scales on the surface of hair are offset from the base cylinder (in degrees).
-            - A   - Unused
+struct LightLinker {
+    uint                                        globalLightsCount;
+    uint                                        lightSetsCount;
+    
+    // These buffers are only valid if traceSetsCount > 0.
+    
+    StructuredBuffer<LightData>                 lights;
+    StructuredBuffer<LightSetData>              lightSets;
+    StructuredBuffer<uint>                      indirectionTable;   // indirection table used to address individual lights inside light sets.
 
-    See additional texture channels defined in BasicMaterial.
-*/
-class dlldecl HairMaterial : public BasicMaterial {
-    public:
-        using SharedPtr = std::shared_ptr<HairMaterial>;
+    static const uint kInvalidLightSetIndex   = 0xffffffff;
 
-        /** Create a new hair material.
-            \param[in] name The material name.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "");
 
-        void update(const Material::SharedPtr& pMaterial) override;
+    // Lights access
 
-    protected:
-        HairMaterial(Device::SharedPtr pDevice, const std::string& name);
+    uint getLightSetsCount() {
+        return lightSetsCount;
+    }
+
+    uint getLightCount(uint lightSetIndex) {
+        return lightSets[lightSetIndex].lightsCount;
+    }
+
+    LightData getLight(uint lightSetIndex, uint lightIndex) {
+        uint idx = lightIndex;
+        if(lightSetIndex > 0) idx = indirectionTable[lightSets[lightSetIndex].lightsOffset + lightIndex];
+    
+        return lights[idx];
+    }
 };
-
-}

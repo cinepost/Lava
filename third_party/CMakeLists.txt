@@ -109,7 +109,6 @@ if( NOT EXTERNAL_TBB_VERSION )
   if(WIN32)
   set(EXTERNAL_TBB_VERSION 2021.8.0)  
   else()
-  #set(EXTERNAL_TBB_VERSION 2020.2)
   set(EXTERNAL_TBB_VERSION 2021.9.0)
   endif()
 endif()
@@ -134,27 +133,14 @@ else()
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
     
-    # CONFIGURE_COMMAND ""
-    # CONFIGURE_COMMAND cmake -DTBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build -DTBB_BUILD_PREFIX=${TBB_PREFIX}
     CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
     CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
-    # CMAKE_ARGS -D CMAKE_INSTALL_PREFIX=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
     
-    # BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
-    # BUILD_COMMAND cmake --build . -j 8 --config Release
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
-    # INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-
     INSTALL_COMMAND cmake --install . --config ${DEPS_BUILD_TYPE}
-
-    # INSTALL_COMMAND ${CMAKE_COMMAND}
-    #   -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
-    #   -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
-    #   -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-    #   -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
@@ -167,16 +153,6 @@ else()
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
     
-#    CONFIGURE_COMMAND ""    
-#    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
-#    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-    
-#    INSTALL_COMMAND ${CMAKE_COMMAND}
-#      -D TBB_LIBS_DIR=${EXTERNALS_BINARY_DIR}/tbb/build/${TBB_PREFIX}_release
-#      -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
-#      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-#      -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
-
     CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
     CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
     CMAKE_ARGS -D TBB_TEST:BOOL=OFF
@@ -185,8 +161,6 @@ else()
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
-
-#    INSTALL_COMMAND cmake --install . --config ${DEPS_BUILD_TYPE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
@@ -1156,7 +1130,6 @@ else()
     CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=${OIDN_BUILD_STATIC_LIBS}
-    #CMAKE_ARGS -D OIDN_API_NAMESPACE:STRING=myoidn
     CMAKE_ARGS -D OIDN_FILTER_RT:BOOL=ON
     CMAKE_ARGS -D OIDN_FILTER_RTLIGHTMAP:BOOL=OFF
     CMAKE_ARGS -D OIDN_APPS:BOOL=OFF
@@ -1371,14 +1344,10 @@ else()
   find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
   
   if(WIN32)
-    # COMMAND msbuild -m FreeImage.2017.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
     set(FREE_COMMAND "msbuild;-m;FreeImage.2017.sln;/property:Configuration=${DEPS_BUILD_TYPE};/property:Platform=x64")
-    # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage
     set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage)
   else()
-    # COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
     set(FREE_COMMAND "${MAKE_EXECUTABLE};-f;Makefile.gnu")
-    # -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
     set(FREE_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build)
   endif()
 
@@ -1463,14 +1432,6 @@ message("Slang build config " ${SLANG_BUILD_CONFIG})
 
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
-# if(WIN32)
-# # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
-# set(CONF_PREMAKE_URL "https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true")
-# else()
-# # -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
-# set(CONF_PREMAKE_URL "https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true")
-# endif()
-
 if(WIN32)
 ExternalProject_Add( Slang
   PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
@@ -1497,10 +1458,7 @@ ExternalProject_Add( Slang
   
   BUILD_COMMAND 
     COMMAND
-      # ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
       msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
-
-      # BUILD_COMMAND cmake --build . -j 8 --config Release
 
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
@@ -1536,9 +1494,6 @@ ExternalProject_Add( Slang
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
   BUILD_COMMAND 
-    #COMMAND ${CMAKE_COMMAND}
-    #  -D SOURCE_DIR=<SOURCE_DIR>
-    #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
     COMMAND
       ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
 

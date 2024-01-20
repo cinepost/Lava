@@ -27,10 +27,13 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include <atomic>
+
 #include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/GpuFence.h"
+
 
 namespace Falcor {
 

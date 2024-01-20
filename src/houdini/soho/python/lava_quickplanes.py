@@ -22,6 +22,8 @@ __quickplanes = {
 
     "emission":         QuickPlane("EMISSION",                 "vector3",       "float16",    False,      {}),
 
+    "roughness":        QuickPlane("ROUGHNESS",                "float",         "float16",    False,      {}),
+
     "shadow":           QuickPlane("SHADOW",                   "vector3",       "float16",    False,      {}),
 
     "fresnel":          QuickPlane("FRESNEL",                  "float",         "float16",    False,      {}),
@@ -39,6 +41,7 @@ __quickplanes = {
     "variance":         QuickPlane("VARIANCE",                 "float",         "float16",    False,      {}),
     "meshlet_color":    QuickPlane("MESHLET_COLOR",            "vector3",       "float16",    False,      {}),
     "micropoly_color":  QuickPlane("MICROPOLY_COLOR",          "vector3",       "float16",    False,      {}),
+    "uv":               QuickPlane("UV",                       "vector3",       "float16",    False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -49,18 +52,20 @@ __toggleplanedict = {
     'lv_quickplane_nt':                     ['tangent_normals'],
     'lv_quickplane_albedo':                 ['albedo'],
     'lv_quickplane_emission':               ['emission'],
+    'lv_quickplane_roughness':              ['roughness'],
     'lv_quickplane_shadow':                 ['shadow'],
     'lv_quickplane_fresnel':                ['fresnel'],
     'lv_quickplane_object_id':              ['object_id'],
     'lv_quickplane_material_id':            ['material_id'],
     'lv_quickplane_instance_id':            ['instance_id'],
-    'lv_quickplane_variance':               ['variance'],
 
     # ipr/diagnistics
     'lv_quickplane_op_id':                  ['op_id'],
     'lv_quickplane_prim_id':                ['prim_id'],
+    'lv_quickplane_variance':               ['variance'],
     'lv_quickplane_meshlet_color':          ['meshlet_color'],
     'lv_quickplane_micropoly_color':        ['micropoly_color'],
+    'lv_quickplane_uv':                     ['uv'],
 }
 
 def getPlaneDict():

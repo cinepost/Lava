@@ -150,7 +150,7 @@ void Material::getTextures(std::vector<Texture::SharedPtr>& textures, bool appen
 
 bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) {
     if(!pTexture) {
-        LLOG_WRN << "Null texture provided for material '" << getName() << "' at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
+        LLOG_DBG << "Null texture provided for material '" << getName() << "' at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
     }
 
     if (!hasTextureSlot(slot)) {
@@ -159,7 +159,7 @@ bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTex
     }
 
     if (pTexture == getTexture(slot)) {
-        LLOG_WRN << "Material '" << getName() << "' already have texture at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
+        // This texture already assigned
         return false;
     }
 

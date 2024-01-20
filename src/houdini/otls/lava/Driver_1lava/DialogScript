@@ -1048,6 +1048,7 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+
                 parm {
                     name    "lv_quickplane_emission"
                     label   "Emission"
@@ -1068,7 +1069,36 @@
                     }
                     parmtag { "script_callback_language" "python" }
                 }
+
+                parm {
+                    name    "lv_quickplane_roughness"
+                    label   "Roughness"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_roughness"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_roughness == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
                 
+                parm {
+                    name    "sepparm_shadow_1_1"
+                    label   "Separator"
+                    type    separator
+                    hidewhen "{ lv_quickplane_shadow == 0 }"
+                    default { "" }
+                }
+
                 parm {
                     name    "lv_quickplane_shadow"
                     label   "Shadow"
@@ -1088,6 +1118,28 @@
                         language python
                     }
                     parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_quickplane_shadow_type"
+                    label   "Shadow Type"
+                    type    string
+                    default { "cast" }
+                    hidewhen "{ lv_quickplane_shadow == 0 }"
+                    menu {
+                        "cast"    "Cast shadow type only"
+                        "form"    "Form shadow type only"
+                        "both"    "Both shadow types"
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "sepparm_shadow_1_2"
+                    label   "Separator"
+                    type    separator
+                    hidewhen "{ lv_quickplane_shadow == 0 }"
+                    default { "" }
                 }
 
                 parm {
@@ -1214,6 +1266,27 @@
                     type    string
                     default { "float16" }
                     hidewhen "{ lv_quickplane_micropoly_color == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_quickplane_uv"
+                    label   "Texture Coordinates"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_uv"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_uv == 0 }"
                     menu {
                         [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                         language python
@@ -1356,6 +1429,7 @@
         name    "images_1"
         label   "Rendering"
 
+        //-------------------------------------------------
         parm {
             name    "lv_primary_raygen_type"
             label   "Primary Ray Generator"
@@ -1368,6 +1442,23 @@
             }
             parmtag { "script_callback_language" "python" }
         }
+        parm {
+            name    "lv_primary_raygen_hw_highp_depth"
+            label   "High precision depth"
+            type    toggle
+            default { "0" }
+            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            parmtag { "script_callback_language" "python" }
+        }
+        parm {
+            name    "lv_primary_raygen_hw_better_aa"
+            label   "Better anti-aliasing"
+            type    toggle
+            default { "0" }
+            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            parmtag { "script_callback_language" "python" }
+        }
+        //---------------------------------------------------
 
         parm {
             name    "lv_shading_pass_type"
@@ -1811,6 +1902,7 @@
         group {
             name    "rpasses_1_1"
             label   "Edge Detect"
+            disablewhen "{lv_plane_edgedetect == 0}"
 
             // EdgeDetectPass Depth
             parm {

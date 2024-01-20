@@ -341,7 +341,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pPass["gOutputFilteredImage"] = pFilteredImage;
         pPass["gOutputFilteredDepth"] = pFilteredDepth;
 
-        LLOG_WRN << "execute veritcal filtering";
         pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
 
@@ -400,8 +399,10 @@ void AccumulatePass::reset() {
 }
 
 void AccumulatePass::setScene(const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+
     mpScene = pScene;
-    if(mpScene) mpCamera = mpScene->getCamera();
+    mpCamera = mpScene ? mpScene->getCamera() : nullptr;
 
     // Reset accumulation when the scene changes.
     reset();

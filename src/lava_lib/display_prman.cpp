@@ -159,7 +159,7 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
 
 bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, 
     const std::vector<UserParameter>& userParams, const std::string& channel_prefix, const MetaData* pMetaData) {
-    
+
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -178,6 +178,16 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
     if( width == 0 || height == 0) {
         LLOG_FTL << "Wrong image dimensions !!!";
         return false;
+    }
+
+    // Check if image is already opened (used in batch and ipr modes)
+    const std::string hashString = makeImageHashString(image_name, width, height, channels, imageHandle, userParams, pMetaData);
+
+    if(auto match = std::find_if(mImages.begin(), mImages.end(), [&] (const ImageData& im) { return im.hash == hashString; }); match != mImages.end()) {
+        if(match->opened) {
+            imageHandle = std::distance(mImages.begin(), match);
+            return true;
+        }
     }
 
     uint entrySize = 0;
@@ -285,6 +295,7 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
 
     auto& image_data = mImages.back();
     image_data.name = image_name;
+    image_data.hash = hashString;
     image_data.handle = pvImage;
     image_data.width = img_info.width;
     image_data.height = img_info.height;
@@ -365,6 +376,7 @@ bool DisplayPrman::sendImageRegion(uint imageHandle, uint x, uint y, uint width,
     }
 
     if(!mForceScanLines) {
+        if(!mWriteFunc) LLOG_ERR << "no mWriteFunc";
         // Send data to direct
         PtDspyError err = mWriteFunc(image_data.handle, x, x + width, y, y + height, image_data.entrySize, pData);
         if(err != PkDspyErrorNone ) {

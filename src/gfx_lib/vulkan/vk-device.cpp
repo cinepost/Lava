@@ -1103,6 +1103,16 @@ Result DeviceImpl::createAccelerationStructure(const IAccelerationStructure::Cre
 	return SLANG_OK;
 }
 
+void DeviceImpl::destroyAccelerationStructure(IAccelerationStructure* as) {
+	auto pAccelerationStructure = static_cast<AccelerationStructureImpl*>(as);
+	if(!pAccelerationStructure) return;
+
+	if(pAccelerationStructure->m_vkHandle != VK_NULL_HANDLE) {
+  	LLOG_DBG << "Destroying acceleration structure";
+  	m_api.vkDestroyAccelerationStructureKHR(m_api.m_device, pAccelerationStructure->m_vkHandle, nullptr);
+	}
+}
+
 void DeviceImpl::_transitionImageLayout(
 	VkCommandBuffer commandBuffer,
 	VkImage image,

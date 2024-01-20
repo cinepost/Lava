@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
+#include <atomic>
 #include <sstream>
 #include <numeric>
 
@@ -42,6 +43,8 @@
 #include "Falcor/Core/Program/RtProgram.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
+#include "Falcor/Scene/Lights/LightLinker.h"
+
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Math/MathHelpers.h"
 #include "Falcor/Utils/Timing/Profiler.h"
@@ -52,6 +55,8 @@
 #include <glm/gtx/string_cast.hpp>
 
 //#include "nvvk/buffers_vk.hpp"
+
+static std::atomic<uint32_t> _cnt = 0;
 
 namespace Falcor {
 
@@ -99,6 +104,7 @@ namespace {
     const std::string kCameraSpeed = "cameraSpeed";
     const std::string kLights = "lights";
     const std::string kLightProfile = "lightProfile";
+    const std::string kLightLinker = "lightLinker";
     const std::string kAnimated = "animated";
     const std::string kRenderSettings = "renderSettings";
     const std::string kUpdateCallback = "updateCallback";
@@ -137,7 +143,9 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mCameras = std::move(sceneData.cameras);
     mSelectedCamera = sceneData.selectedCamera;
     mCameraSpeed = sceneData.cameraSpeed;
+    
     mLights = std::move(sceneData.lights);
+    mpLightLinker = std::move(sceneData.pLightLinker);
 
     mpMaterialSystem = std::move(sceneData.pMaterialSystem);
     mMaterialXs = std::move(sceneData.materialxs);
@@ -247,10 +255,21 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     // Init ray tracing. 
     // TODO: Init only if needed...
     initRayTracing();
+
+    LLOG_WRN << "Scenes count " << (uint32_t)(++_cnt);
 }
 
 Scene::~Scene() {
+    mpDevice->getRenderContext()->flush(true);
+
+    //for(auto & pBlas: mBlasObjects) {
+    //    mpDevice->getApiHandle()->destroyAccelerationStructure(pBlas->getApiHandle());
+    //    pBlas.reset();
+    //}
+
+    _cnt--;
     printMeshletsStats();
+    LLOG_WRN << "Scene destroyed!";
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -280,6 +299,7 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
+    defines.add(LightLinker::getDefaultDefines());
     defines.add(MaterialSystem::getDefaultDefines());
 
     return defines;
@@ -296,10 +316,10 @@ Shader::DefineList Scene::getSceneDefines() const {
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
     defines.add("SCENE_HAS_PERPRIM_MATERIALS", !mPerPrimMaterialIDs.empty() ? "1" : "0");
-
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
 
     defines.add(mHitInfo.getDefines());
+    defines.add(mpLightLinker ? mpLightLinker->getDefines() : LightLinker::getDefaultDefines());
     defines.add(mpMaterialSystem->getDefines());
 
     defines.add(getSceneLightSamplersDefines());
@@ -853,6 +873,21 @@ Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
     return flags;
 }
 
+Scene::UpdateFlags Scene::updateLightLinker(bool forceUpdate) {
+    if(!mpLightLinker) return UpdateFlags::None;
+
+    // Update light linker.
+    LightLinker::UpdateFlags lightLinkerUpdates = mpLightLinker->update(forceUpdate);
+
+    UpdateFlags flags = UpdateFlags::None;
+    if (forceUpdate || (lightLinkerUpdates != LightLinker::UpdateFlags::None)) {
+        flags |= UpdateFlags::LightLinkerChanged;
+        mpLightLinker->setShaderData(mpSceneBlock[kLightLinker]);
+    }
+
+    return flags;
+}
+
 void Scene::uploadSelectedCamera() {
     getCamera()->setShaderData(mpSceneBlock[kCamera]);
 }
@@ -1211,6 +1246,7 @@ void Scene::finalize() {
     uploadSelectedCamera();
     addViewpoint();
     updateLights(true);
+    updateLightLinker(true); // Important !!! Must be called after lights update!
     updateGridVolumes(true);
     updateEnvMap(true);
     updateMaterials(true);
@@ -1702,6 +1738,7 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
 
     mUpdates |= updateSelectedCamera(false);
     mUpdates |= updateLights(false);
+    mUpdates |= updateLightLinker(false); // Important ! Must be called after lights update !!!
     mUpdates |= updateGridVolumes(false);
     mUpdates |= updateEnvMap(false);
     mUpdates |= updateMaterials(false);
@@ -2019,10 +2056,10 @@ GridVolume::SharedPtr Scene::getGridVolumeByName(const std::string& name) const 
 }
 
 Light::SharedPtr Scene::getLightByName(const std::string& name) const {
-    for (const auto& l : mLights) {
-        if (l->getName() == name) return l;
+    auto match = std::find_if(mLights.begin(), mLights.end(), [&] (const Light::SharedPtr& l) { return l->getName() == name; });
+    if(match != mLights.end()) {
+        return *match;
     }
-
     return nullptr;
 }
 
@@ -2251,7 +2288,6 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         if (globalMatrices[matrixID] != glm::identity<glm::mat4>()) {
                             // Get the GPU address of the transform in row-major format.
                             desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
-
                             if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }
@@ -2702,11 +2738,6 @@ void Scene::buildBlas(RenderContext* pContext) {
                     LLOG_DBG << "Acceleration structure build started...";
                     pContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
                     LLOG_DBG << "Acceleration structure build done.";
-                    
-                    //LLOG_TRC << "Flushing pContext ... ";
-                    //pContext->flush(true);
-                    //LLOG_TRC << "Flushing pContext done.";
-
                 }
 
                 // Read back the calculated final size requirements for each BLAS.

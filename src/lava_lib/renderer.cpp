@@ -73,16 +73,26 @@ bool Renderer::init(const Config& config) {
 
 	if( mCurrentConfig.tangentGenerationMode != "mikkt" ) sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
 	if (mCurrentConfig.useRaytracing) sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
-
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
-
 	if (mCurrentConfig.generateMeshlets) sceneBuilderFlags |= SceneBuilder::Flags::GenerateMeshlets;
 
-	LLOG_TRC << "SceneBuilder flags: " << to_string(sceneBuilderFlags);
-
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
-	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-	//sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+
+	if(config.optimizeForIPR || config.optimizeForBatch) {
+		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMeshes;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeStatic;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeDynamic;
+    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
+    if(config.optimizeForBatch) {
+    	sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
+    }
+	} else {
+		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
+	}
 
 	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
@@ -123,9 +133,14 @@ Renderer::~Renderer() {
 	Falcor::OSServices::stop();
 }
 
-AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
+AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info, bool updateExisting) {
 	LLOG_DBG << "Adding aov " << info.name;
-	if (mAOVPlanes.find(info.name) != mAOVPlanes.end()) {
+	auto it = mAOVPlanes.find(info.name);
+	if (it != mAOVPlanes.end()) {
+		if(updateExisting) {
+			it->second->update(info);
+			return it->second;
+		}
 		LLOG_ERR << "AOV plane named \"" << info.name << "\" already exist !";
 		return nullptr;
 	}
@@ -238,14 +253,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// Main render graph
 	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
-	
+	mpRenderGraph->setScene(pScene);
+
 	// Depth pass
 	Falcor::Dictionary depthPassDictionary(mRenderPassesDict);
 	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
 
 	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
-	mpDepthPass->setScene(pRenderContext, pScene);
+	//mpDepthPass->setScene(pRenderContext, pScene);
 	mpDepthPass->setCullMode(cullMode);
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
 
@@ -260,20 +275,19 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	if (shadingPassType == std::string("pathtracer")) {
 
 		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
-		pPathTracerPass->setScene(pRenderContext, pScene);
-		//pPathTracerPass->setColorFormat(ResourceFormat::RGBA16Float);
+		//pPathTracerPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
 
   } else if (shadingPassType == std::string("deferred")) {
 
 		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-		pDeferredLightingPass->setScene(pRenderContext, pScene);
+		//pDeferredLightingPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
 
 	} else if (shadingPassType == std::string("debug")) {
 
 		auto pDebugShadingPass = DebugShadingPass::create(pRenderContext, {});
-		pDebugShadingPass->setScene(pRenderContext, pScene);
+		//pDebugShadingPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
 
 	} else {
@@ -294,15 +308,19 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("hwraster")) {
 
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -310,7 +328,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setScene(pRenderContext, pScene);
 		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
@@ -333,7 +350,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
 		pDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
-		pDepthPrePass->setScene(pRenderContext, pScene);
+		//pDepthPrePass->setScene(pRenderContext, pScene);
 		pDepthPrePass->setCullMode(cullMode);
 		mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
 
@@ -364,7 +381,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// TODO: handle transparency    
 	mpEnvPass->setOpacity(1.0f);
 
-	mpEnvPass->setScene(pRenderContext, pScene);
+	//mpEnvPass->setScene(pRenderContext, pScene);
 	mpRenderGraph->addPass(mpEnvPass, "EnvPass");
 	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
@@ -407,7 +424,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional edgedetect pass
 		if (renderPassName == "EdgeDetectPass") {
 			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pEdgeDetectPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -421,7 +437,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
 			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pAmbientOcclusionPass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -435,7 +450,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
 			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
-			pCryptomattePass->setScene(pRenderContext, pScene);
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -550,6 +564,14 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::ROUGHNESS:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.roughness", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::Prim_Id:
 				{
 					if(pAccPass) {
@@ -593,10 +615,20 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::UV:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("ShadingPass.uv", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}
 	}
+
+	//mpRenderGraph->setScene(pScene);
 	
 	// Compile graph
 	std::string log;
@@ -748,8 +780,6 @@ void Renderer::finalizeScene(const FrameInfo& frame_info) {
 		mpCamera->setPatternGenerator(mpSampleGenerator, mInvRegionDim);
 	}
 
-	//mpCamera->setJitter({0.0f, 0.0f}); // TODO: remove!!!
-
 	mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), frame_info.frameNumber);
 }
 
@@ -770,8 +800,6 @@ void Renderer::bindAOVPlanesToResources() {
 }
 
 bool Renderer::prepareFrame(const FrameInfo& frame_info) {
-	_mpScene = nullptr;
-
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return false;
@@ -785,23 +813,40 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	auto renderRegionDims = frame_info.renderRegionDims();
 	finalizeScene(frame_info);
 
+	if(mRenderPassesDict != mPrevRenderPassesDict) {
+		mpRenderGraph.reset();
+		mPrevRenderPassesDict = mRenderPassesDict;
+	}
+
 	if (!mpRenderGraph) {
 		createRenderGraph(frame_info);
-	} else if (
-		(mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || 
-		(mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || 
-		(mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+	} else { 
+		auto pScene = mpSceneBuilder->getScene();
+		bool recompile = false;
+
+		if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
 		
-		// Change rendering graph frame dimensions
-		mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
-		if(mpTexturesResolvePassGraph) {
-			mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+			// Change rendering graph frame dimensions
+			mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
+			if(mpTexturesResolvePassGraph) {
+				mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+			}
+			recompile = true;
 		}
 
-		std::string compilationLog;
-		if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
-			LLOG_ERR << "Error render graph compilation ! " << compilationLog;
-			return false;
+		if(mpRenderGraph->getScene() != pScene) {
+			mpRenderGraph->setScene(pScene);
+			recompile = true;
+		}
+
+		if(recompile) {
+			LLOG_WRN << "Recompiling render graph!";
+			std::string compilationLog;
+			if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
+				LLOG_ERR << "Error render graph compilation ! " << compilationLog;
+				return false;
+			}
+			recompile = false;
 		}
 	}
 	bindAOVPlanesToResources();
@@ -813,10 +858,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mCurrentSampleNumber = 0;
 	mCurrentFrameInfo = frame_info;
 
-	auto pScene = mpSceneBuilder->getScene();
-	if (pScene) {
-		_mpScene = pScene.get();
-	}
+	//auto& pScene = mpSceneBuilder->getScene();
 
 	mpDevice->getRenderContext()->flush(true);
 	mDirty = false;
@@ -834,7 +876,8 @@ void Renderer::renderSample() {
 		return;
 	}
 
-	if (!_mpScene) {
+	auto pScene = mpSceneBuilder->getScene();
+	if (!pScene) {
 		LLOG_ERR << "Scene not ready for rendering !!!";
 		return;
 	}
@@ -845,11 +888,6 @@ void Renderer::renderSample() {
 		// First frame sample
 		if(mpTexturesResolvePassGraph) {
 			mpTexturesResolvePassGraph->execute(pRenderContext);
-			if( 1 == 2) {
-				// internal texture debugging 
-				Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
-				pOutTex->captureToFile(0, 0, "/home/max/vtex_dbg.png");
-			}
 		}
 	}
 
@@ -861,7 +899,7 @@ void Renderer::renderSample() {
 	}
 
 	double currentTime = 0;
-	_mpScene->update(pRenderContext, currentTime);
+	pScene->update(pRenderContext, currentTime);
 
 	mCurrentSampleNumber++;
 
@@ -897,8 +935,6 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 uint32_t Renderer::addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial) {
 	return mpSceneBuilder->addMaterial(pMaterial);
 }
-
-// HYDRA section begin
 
 bool  Renderer::queryAOVPlaneGeometry(const AOVName& name, AOVPlaneGeometry& aov_plane_geometry) const {
 	auto pAOVPlane = getAOVPlane(name);

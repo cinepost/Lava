@@ -205,7 +205,7 @@ bool PropertiesContainer::declareProperty(ast::Style style, Property::Type type,
     auto propKey = PropertyKey(style, name);
     const PropertiesMap::iterator it = mPropertiesMap.find(propKey);
     if (it != mPropertiesMap.end()) {
-        LLOG_ERR << "Property \"" << to_string(propKey) << "\" declared already!!!";
+        LLOG_DBG << "Property \"" << to_string(propKey) << "\" declared already !";
         return false;
     }
 

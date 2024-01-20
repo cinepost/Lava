@@ -49,9 +49,9 @@ import Experimental.Scene.Lights.PhysicalSkySampler;
 __exported import Utils.Sampling.SamplingSphericalCaps;
 __exported import PSCMaps;
 
-//#ifndef AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
-//#define AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA 1
-//#endif
+#ifndef AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
+#define AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA 1
+#endif
 
 static const float kMinLightDistSqr = 1e-9f;
 static const float kMaxLightDistance = FLT_MAX;
@@ -68,8 +68,7 @@ struct AnalyticLightSample {
     float3  dir;            ///< Direction from the shading point to the sampled point on the light in world space (normalized).
     float3  shadowDir;      ///< Shadow ray direction. Used for artificial soft shadows.
     float   distance;       ///< Distance from the shading point to sampled point on the light.
-    float3  Li;             ///< Classic incident radiance at the shading point (unshadowed). Note: Already divided by the pdf. For old workflow without separate contributions
-    float   i;              ///< Incident irradiance multyplier.
+    float3  Li;             ///< Incident irradiance.
     
     float   pdf;            ///< Probability density function with respect to solid angle at the shading point.
     float3  dbg;
@@ -81,7 +80,6 @@ struct AnalyticLightSample {
 */
 bool validateAreaLightSample(const float3 shadingPosW, const LightData light, inout AnalyticLightSample ls) {
 
-    ls.i = 1.0f;
     ls.pdf = 0.0f;
 
     // Compute direction and distance to light.
@@ -100,10 +98,10 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, in
         ls.normalW *= -1.0f;
     }
 
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
     
     // Compute the PDF with respect to solid angle. Note this may be +inf.
-    ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea);
+    ls.pdf = distSqr / abs(cosTheta);
     return true;
 }
 
@@ -145,8 +143,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
     //   |         |
     // p[3](w)---p[2](z)
 
-    ls.i = 1.0f;
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
 
     const float3 localShadingPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
     const float3 localNormal = normalize(mul(light.transMat, float4(shadingNormalW, 0.f)).xyz);
@@ -266,7 +263,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
         ls.normalW *= -1.0f;
     }
 
-    ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea * local_visible_area);
+    ls.pdf = distSqr / (abs(cosTheta) * local_visible_area);
     return true;
 }
 
@@ -379,9 +376,7 @@ bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNorm
     }
 
     ls.pdf *= cosTheta;
-
-    ls.i = 1.0f;
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
 
     return true;
 }
@@ -474,8 +469,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, const f
     // A DistantLight's angle defines the solid angle it subtends.
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
-    ls.i = 1.0f;
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
     
     ls.pdf = 0.f;
     return true;
@@ -497,8 +491,7 @@ bool intersectDistantLight(const float3 shadingPosW, const float3 dir, const Lig
     // A DistantLight's angle defines the solid angle it subtends.
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
-    ls.i = 1.0f;
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
     
     ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
     return true;
@@ -522,8 +515,7 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
     ls.dir = ls.shadowDir = -light.dirW;
 
     // Setup incident radiance. For directional lights there is no falloff or cosine term.
-    ls.i = 1.0f;
-    ls.Li = float3(1.0);
+    ls.Li = light.intensity;
 
     // For a directional light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
@@ -572,8 +564,7 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, const flo
 
     // Compute incident radiance at shading point.
     float _k = falloff / distSqr;
-    ls.i = _k;
-    ls.Li = float3(1.0) * _k;
+    ls.Li = light.intensity * _k;
     
     // For a point light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
@@ -592,18 +583,16 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     if(sampler.sample(rnd.xy, els)) {
         float lod = 0.f;
         ls.dir = ls.shadowDir = mul(els.dir, (float3x3)light.transMat);
-        ls.Li = els.Le;
+        ls.Li = light.intensity * els.Le;
         ls.pdf = els.pdf;
     } else {
         ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
-        ls.Li = float3(1.0, 1.0, 1.0);
+        ls.Li = light.intensity;
         ls.pdf = 1.0f;
     }
 
     ls.distance = kMaxLightDistance;
     ls.normalW = -normalize(ls.dir);
-
-    ls.i = 1.0f;
     
     return true;
 }
@@ -616,12 +605,10 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
     ls.dir = ls.shadowDir = normalize(dir);
 
     ls.normalW = -normalize(ls.dir);
-
-    ls.i = 1.0f;
     
     EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
     float lod = 0.f;
-    ls.Li = sampler.eval(mul(ls.dir, (float3x3)light.transMatInv), lod);
+    ls.Li = light.intensity * sampler.eval(mul(ls.dir, (float3x3)light.transMatInv), lod);
 
     ls.pdf = 0.0f;
 
@@ -639,18 +626,16 @@ bool samplePhysicalSkyLight(const float3 shadingPosW, const float3 shadingNormal
     if(sampler.sample(rnd.xy, els)) {
         float lod = 0.f;
         ls.dir = ls.shadowDir = els.dir;
-        ls.Li = els.Le;
+        ls.Li = light.intensity * els.Le;
         ls.pdf = els.pdf;
     } else {
         ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd.xy, shadingNormalW); 
-        ls.Li = float3(1.0, 1.0, 1.0);
+        ls.Li = light.intensity;
         ls.pdf = 1.0f;
     }
 
     ls.distance = kMaxLightDistance;
     ls.normalW = -normalize(ls.dir);
-
-    ls.i = 1.0f;
     
     return true;
 }
@@ -662,11 +647,10 @@ bool intersectPhysicalSkyLight(const float3 shadingPosW, const float3 dir, const
     ls.distance = kMaxLightDistance;
     ls.dir = ls.shadowDir = normalize(dir);
 
-    ls.i = 1.0f;
 
     PhysicalSkySampler sampler = gScene.physkySamplers[light.getLightSamplerID()];
     float lod = 0.f;
-    ls.Li = sampler.eval(ls.dir, lod);
+    ls.Li = light.intensity * sampler.eval(ls.dir, lod);
 
     ls.pdf = 0.0f;
 

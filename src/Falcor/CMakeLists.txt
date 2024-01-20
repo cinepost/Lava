@@ -26,12 +26,14 @@ file( GLOB SOURCES
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
     ./Scene/Lights/*.cpp
+    ./Scene/Lights/LightLinker.cpp
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/InternalDictionary.cpp
+    ./Utils/Geometry/*.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -139,6 +141,14 @@ endif()
 find_package( LZ4 REQUIRED )
 if(WIN32)
     include_directories( ${LZ4_INCLUDE_DIR} )
+endif()
+
+set(TBB_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package( TBB ${EXTERNAL_TBB_VERSION} EXACT)
+
+if( TBB_FOUND )
+  message("TBB version ${Tbb_VERSION} found ...")
+  message(STATUS "Tbb_INCLUDE_DIR ${Tbb_INCLUDE_DIR}")
 endif()
 
 # ZLIB

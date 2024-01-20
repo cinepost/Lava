@@ -168,6 +168,10 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 
 std::vector<uint8_t> CopyContext::ReadTextureTask::getData() {
 	mpFence->syncCpu();
+	mpContext->getLowLevelData()->closeCommandBuffer();
+	mpContext->device()->getCurrentTransientResourceHeap()->synchronizeAndReset();
+	mpContext->getLowLevelData()->openCommandBuffer();
+
 	// Get buffer data
 	std::vector<uint8_t> result;
 	result.resize((size_t)mRowCount * mActualRowSize);
@@ -190,6 +194,10 @@ std::vector<uint8_t> CopyContext::ReadTextureTask::getData() {
 
 void CopyContext::ReadTextureTask::getData(uint8_t* textureData) {
 	mpFence->syncCpu();
+
+	mpContext->getLowLevelData()->closeCommandBuffer();
+	mpContext->device()->getCurrentTransientResourceHeap()->synchronizeAndReset();
+	mpContext->getLowLevelData()->openCommandBuffer();
 	
 	// Get buffer data
 	uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));

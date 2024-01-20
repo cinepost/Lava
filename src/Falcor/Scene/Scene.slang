@@ -31,6 +31,7 @@ __exported import Scene.HitInfo;
 __exported import Scene.SceneTypes;
 __exported import Scene.Camera.Camera;
 __exported import Scene.Lights.LightData;
+__exported import Scene.Lights.LightLinker;
 __exported import Scene.Lights.LightCollection;
 __exported import Scene.Lights.LightProfile;
 __exported import Scene.Lights.EnvMap;
@@ -51,6 +52,10 @@ import Experimental.Scene.Lights.PhysicalSkySampler;
 // This error occurs when a shader imports Scene.slang without setting the defines
 // returned by Scene::getSceneDefines().
 #error "SCENE_GEOMETRY_TYPES not defined!"
+#endif
+
+#ifndef SCENE_HAS_LIGHT_LINKER
+#error "SCENE_HAS_LIGHT_LINKER not defined!"
 #endif
 
 /** Scene data required for rendering.
@@ -135,6 +140,7 @@ struct Scene
     uint lightCount;
     StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
+    LightLinker     lightLinker;
     LightProfile lightProfile;
     EnvMap envMap;
     Camera camera;
@@ -298,35 +304,57 @@ struct Scene
 
     // Lights access
 
-    uint getLightCount()
-    {
+    uint getLightCount() {
         return lightCount;
     }
 
-    LightData getLight(uint lightIndex)
-    {
+    LightData getLight(uint lightIndex) {
         return lights[lightIndex];
     }
 
+#if SCENE_HAS_LIGHT_LINKER
+    LightData getLight(uint lightSetIndex, uint lightIndex) {
+        return lightLinker.getLight(lightSetIndex, lightIndex);
+    }
+
+    uint getLightCount(uint lightSetIndex) {
+        return lightLinker.getLightCount(lightSetIndex);
+    }
+
+    uint getLightSetIndex(const GeometryInstanceID instanceID) {
+        const GeometryInstanceData instance = getGeometryInstance(instanceID);
+        return instance.lightSetIndex;
+    }
+
+#else
+    LightData getLight(uint lightSetIndex, uint lightIndex) {
+        return lights[lightIndex];
+    }
+
+    uint getLightCount(uint lightSetIndex) {
+        return lightCount;
+    }
+
+    uint getLightSetIndex(const GeometryInstanceID instanceID) {
+        return 0;
+    }
+#endif
+
     // Volume access
 
-    uint getGridCount()
-    {
+    uint getGridCount() {
         return SCENE_GRID_COUNT;
     }
 
-    void getGrid(const uint gridIndex, out Grid grid)
-    {
+    void getGrid(const uint gridIndex, out Grid grid) {
         grid = grids[gridIndex];
     }
 
-    uint getGridVolumeCount()
-    {
+    uint getGridVolumeCount() {
         return gridVolumeCount;
     }
 
-    GridVolume getGridVolume(const uint volumeIndex)
-    {
+    GridVolume getGridVolume(const uint volumeIndex) {
         return gridVolumes[volumeIndex];
     }
 

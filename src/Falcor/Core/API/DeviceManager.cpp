@@ -78,7 +78,7 @@ std::vector<Device::SharedPtr> DeviceManager::renderingDevices() const {
 }
 
 bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
-    if(mDeviceNames.find(gpuId) != mDeviceNames.end()) {
+    if(mDeviceInfos.find(gpuId) != mDeviceInfos.end()) {
         return true;
     }
     LLOG_ERR << "Device " << std::to_string(static_cast<uint16_t>(gpuId)) << "not enumerated !";
@@ -100,8 +100,8 @@ Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
 
 void DeviceManager::printEnumeratedDevices() const {
     LLOG_INF << "Enumerated physical devices...";
-    for( auto &it: mDeviceNames) {
-        LLOG_INF << "Physical device id: " << std::to_string(static_cast<uint16_t>(it.first)) << ", name: " << it.second;
+    for( auto &it: mDeviceInfos) {
+        LLOG_INF << "Physical device id: " << std::to_string(static_cast<uint16_t>(it.first)) << ", name: " << it.second.deviceName;
     }
 }
 
@@ -114,8 +114,7 @@ Device::SharedPtr DeviceManager::defaultDisplayDevice() const {
 }
 
 void DeviceManager::setDefaultRenderingDevice(uint8_t gpuId) {
-    if(gpuId < mRenderingDevices.size())
-        mDefaultRenderingDeviceID = gpuId;
+    if(gpuId < mRenderingDevices.size()) mDefaultRenderingDeviceID = gpuId;
 }
 
 #ifdef SCRIPTING

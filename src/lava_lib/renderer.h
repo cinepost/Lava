@@ -42,6 +42,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       bool useVirtualTexturing = false;
       bool useAsyncGeometryProcessing = true;
       bool generateMeshlets = false;
+      bool optimizeForIPR = false;
+      bool optimizeForBatch = true;
 
       bool        forceVirtualTexturesReconversion = false;
       std::string virtualTexturesCompressionQuality = "high";
@@ -109,7 +111,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
 
     const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
 
-    AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
+    AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info, bool updateExisting = false);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     bool deleteAOVPlane(const AOVName& name);
     void setAOVPlaneState(const AOVName& name, AOVPlane::State state);
@@ -214,6 +216,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     Falcor::Dictionary              mRendererConfDict;
     Falcor::Dictionary              mRenderPassesDict;
 
+    Falcor::Dictionary              mPrevRenderPassesDict;
+
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 
     std::map<std::string, Falcor::MaterialX::SharedPtr> mMaterialXs; ///< Materialx materials map
@@ -223,9 +227,6 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     bool mDirty = true;
 
   private:
-    // RenderFrame private
-    Scene* _mpScene = nullptr;
-
     friend class RendererIface;
 }; 
 

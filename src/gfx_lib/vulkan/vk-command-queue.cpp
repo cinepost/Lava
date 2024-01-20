@@ -49,11 +49,8 @@ Result CommandQueueImpl::getNativeHandle(InteropHandle* outHandle) {
 
 const CommandQueueImpl::Desc& CommandQueueImpl::getDesc() { return m_desc; }
 
-Result CommandQueueImpl::waitForFenceValuesOnDevice(
-    GfxCount fenceCount, IFence** fences, uint64_t* waitValues)
-{
-    for (GfxIndex i = 0; i < fenceCount; ++i)
-    {
+Result CommandQueueImpl::waitForFenceValuesOnDevice(GfxCount fenceCount, IFence** fences, uint64_t* waitValues) {
+    for (GfxIndex i = 0; i < fenceCount; ++i) {
         FenceWaitInfo waitInfo;
         waitInfo.fence = static_cast<FenceImpl*>(fences[i]);
         waitInfo.waitValue = waitValues[i];
@@ -68,8 +65,9 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
 
     for (uint32_t i = 0; i < count; i++) {
         auto cmdBufImpl = static_cast<CommandBufferImpl*>(commandBuffers[i]);
-        if (!cmdBufImpl->m_isPreCommandBufferEmpty)
+        if (!cmdBufImpl->m_isPreCommandBufferEmpty) {
             m_submitCommandBuffers.add(cmdBufImpl->m_preCommandBuffer);
+        }
         auto vkCmdBuf = cmdBufImpl->m_commandBuffer;
         m_submitCommandBuffers.add(vkCmdBuf);
     }
@@ -81,8 +79,7 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    VkPipelineStageFlags stageFlag[] = {
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+    VkPipelineStageFlags stageFlag[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
     submitInfo.pWaitDstStageMask = stageFlag;
     submitInfo.commandBufferCount = (uint32_t)m_submitCommandBuffers.getCount();
     submitInfo.pCommandBuffers = m_submitCommandBuffers.getBuffer();
@@ -129,11 +126,19 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
     if (count) {
         auto commandBufferImpl = static_cast<CommandBufferImpl*>(commandBuffers[0]);
         vkFence = commandBufferImpl->m_transientHeap->getCurrentFence();
-        vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence);
+
+        if(vkFence == VK_NULL_HANDLE) {
+            LLOG_FTL << "CommandQueueImpl::queueSubmitImpl() vkFence == VK_NULL_HANDLE !!!";
+        }
+
+        if(vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence) == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+            LLOG_FTL << "vCommandQueueImpl::queueSubmitImpl() kResetFences() VK_ERROR_OUT_OF_DEVICE_MEMORY !!!";
+        }
         commandBufferImpl->m_transientHeap->advanceFence();
     }
 
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
+
     m_pendingWaitSemaphores[0] = m_semaphore;
     m_pendingWaitSemaphores[1] = VK_NULL_HANDLE;
 }

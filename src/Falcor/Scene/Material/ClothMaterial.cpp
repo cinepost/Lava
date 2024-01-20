@@ -28,30 +28,27 @@
 #include "stdafx.h"
 #include "ClothMaterial.h"
 
-namespace Falcor
+namespace Falcor {
+
+ClothMaterial::SharedPtr ClothMaterial::create(Device::SharedPtr pDevice, const std::string& name) {
+    return SharedPtr(new ClothMaterial(pDevice, name));
+}
+
+ClothMaterial::ClothMaterial(Device::SharedPtr pDevice, const std::string& name)
+    : BasicMaterial(pDevice, name, MaterialType::Cloth)
 {
-    ClothMaterial::SharedPtr ClothMaterial::create(Device::SharedPtr pDevice, const std::string& name)
-    {
-        return SharedPtr(new ClothMaterial(pDevice, name));
-    }
+    // Setup additional texture slots.
+    mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true };
+    mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
+    mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
+}
 
-    ClothMaterial::ClothMaterial(Device::SharedPtr pDevice, const std::string& name)
-        : BasicMaterial(pDevice, name, MaterialType::Cloth)
-    {
-        // Setup additional texture slots.
-        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true };
-        mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
-        mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
+void ClothMaterial::setRoughness(float roughness) {
+    if (mData.roughness != (float16_t)roughness) {
+        mData.roughness = (float16_t)roughness;
+        markUpdates(UpdateFlags::DataChanged);
     }
-
-    void ClothMaterial::setRoughness(float roughness)
-    {
-        if (mData.roughness != (float16_t)roughness)
-        {
-            mData.roughness = (float16_t)roughness;
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
+}
 
 #ifdef SCRIPTING
     SCRIPT_BINDING(ClothMaterial)

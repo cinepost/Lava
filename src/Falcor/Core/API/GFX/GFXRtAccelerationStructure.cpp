@@ -37,6 +37,7 @@ RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, cons
 }
 
 RtAccelerationStructure::~RtAccelerationStructure() {
+    //mpDevice->getApiHandle()->destroyAccelerationStructure(mApiHandle.get());
     mpDevice->releaseResource(mApiHandle);
 }
 

@@ -132,4 +132,8 @@ struct HairMaterialInstance : IMaterialInstance
         return (uint)LobeType::DiffuseReflection | (uint)LobeType::DiffuseTransmission;
     }
 
+    ShadingFrame getShadingFrame() {
+        return sf;
+    }
+
 };

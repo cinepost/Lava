@@ -195,7 +195,7 @@ struct GeometryInstanceData
     uint geometryIndex;     ///< GeometryIndex in BLAS.
     uint internalID;        ///< Internal scene id.
     uint externalID;        ///< External dcc id.
-    uint _pad0;
+    uint lightSetIndex;     ///< LightSet index in LightLinker. If set to 0 then all lights used.
 
 #ifdef HOST_CODE
     GeometryInstanceData() = default;

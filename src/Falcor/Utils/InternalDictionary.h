@@ -52,6 +52,9 @@ namespace Falcor {
             template<typename T>
             operator T() const { return std::any_cast<T>(mValue); }
 
+            bool operator==(const Value& other) const;
+            bool operator!=(const Value& other) const { return !(other == *this); }
+
             operator uint() const;
 
             operator std::string() const;
@@ -75,6 +78,9 @@ namespace Falcor {
             \return A new object, or throws an exception if creation failed.
         */
         static SharedPtr create() { return SharedPtr(new InternalDictionary); }
+
+        bool operator==(const InternalDictionary& other) const;
+        bool operator!=(const InternalDictionary& other) const { return !(other == *this); }
 
         Value& operator[](const std::string& key) { return mContainer[key]; }
         const Value& operator[](const std::string& key) const { return mContainer.at(key); }

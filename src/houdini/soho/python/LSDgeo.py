@@ -733,6 +733,7 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
                     else:
                         # Find out where to save the external asset.
                         sessionid = LSDmisc.ExternalSessionId
+                        reuse = False
                         canreuse = reuse
                         if not reuse and LSDmisc.PipeStream:
                             # Pass the -T option to delete file after rendering.

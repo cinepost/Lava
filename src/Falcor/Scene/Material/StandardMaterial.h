@@ -77,6 +77,8 @@ class dlldecl StandardMaterial : public BasicMaterial {
 		*/
 		static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
 
+		void update(const Material::SharedPtr& pMaterial) override;
+
 		/** Get the shading model.
 		*/
 		ShadingModel getShadingModel() const { return mData.getShadingModel(); }
