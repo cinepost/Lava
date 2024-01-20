@@ -296,6 +296,7 @@ bool LightLinker::buildLightSetsData(bool force) {
 
 LightLinker::StringList LightLinker::lightNamesStringToList(const std::string& lightNamesString) {
     StringList lightNamesList;
+
     if(!lightNamesString.empty()) {
         boost::split(lightNamesList, lightNamesString, boost::is_any_of(kLightNamesDelims));
     }
@@ -304,6 +305,7 @@ LightLinker::StringList LightLinker::lightNamesStringToList(const std::string& l
 
 uint32_t LightLinker::getOrCreateLightSetIndex(const std::string& lightNamesString) {
     StringList lightNamesList;
+
     if(!lightNamesString.empty()) {
         lightNamesList = lightNamesStringToList(lightNamesString);
         return getOrCreateLightSetIndex(lightNamesList);

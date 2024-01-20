@@ -116,7 +116,6 @@ class dlldecl SceneBuilder {
         Material::SharedPtr         pMaterialOverride = nullptr;
 
         LightLinker::StringList     isolatedLightNames;   ///< Light names list that illuminates this instance. If empty then instance illuinated by all active scene lights. 
-
     };
 
     enum class UpdateMode: uint8_t {

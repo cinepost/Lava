@@ -562,7 +562,6 @@ void AnalyticAreaLight::setSingleSided(bool value) {
 
 void AnalyticAreaLight::setIntensity(const float3& intensity) {
     if(mUnnormalizedIntensity == intensity) return;
-    
     mUnnormalizedIntensity = intensity;
     update();
 }
@@ -607,7 +606,7 @@ void RectLight::update() {
     const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
     const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
     const float a = std::max(kAreaEPSILON, 4.0f * rx * ry );
-    
+
     mData.surfaceArea = a;
     AnalyticAreaLight::update();
 }

@@ -296,6 +296,7 @@ Shader::DefineList Scene::getDefaultSceneDefines() {
     defines.add("SCENE_HAS_32BIT_INDICES", "0");
     defines.add("SCENE_USE_LIGHT_PROFILE", "0");
     defines.add("SCENE_HAS_PERPRIM_MATERIALS", "0");
+    defines.add("SCENE_HAS_LIGHT_LINKER", "0");
 
     defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", "1.f");
 
@@ -1232,6 +1233,10 @@ void Scene::finalize() {
     if (mpLightProfile) {
         mpLightProfile->bake(mpDevice->getRenderContext());
         mpLightProfile->setShaderData(mpSceneBlock[kLightProfile]);
+    }
+
+    if (mpLightLinker) {
+        mpLightLinker->setShaderData(mpSceneBlock[kLightLinker]);
     }
 
     updateBounds();

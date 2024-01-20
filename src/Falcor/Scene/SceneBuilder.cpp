@@ -276,7 +276,6 @@ void SceneBuilder::resetScene(bool reuseExisting) {
 	}
 
 	mReBuildMeshGroups = true;
-
 	LLOG_DBG << "SceneBuilder scene use count: " << mpScene.use_count();
 }
 
@@ -948,7 +947,6 @@ bool SceneBuilder::updateMaterial(const std::string& name, const Material::Share
 	assert(pMaterialSystem);
 
 	auto pMaterial = pMaterialSystem->getMaterialByName(name);
-	
 	pMaterial->update(pNewMaterial);
 	bool updated = !is_set(pMaterial->getUpdates(), Material::UpdateFlags::None);
 	if(updated && mpScene) mUpdateSceneMaterials = true;

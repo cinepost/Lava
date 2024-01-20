@@ -118,6 +118,7 @@ class Session {
   private:
     bool mFailed = false;
     bool mIPR = false;
+
     ast::IPRMode mIPRmode = ast::IPRMode::DEFAULT;
 
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 

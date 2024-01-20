@@ -71,7 +71,6 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
             None                = 0u,   ///< Nothing was changed.
             LightsChanged       = 1u,   ///< Lights data changed.
             LightSetsChanged    = 2u,   ///< LightSets data changed.
-
             All                 = LightsChanged | LightSetsChanged
         };
 
@@ -150,7 +149,6 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         };
 
     private:
-
         class NameSet {
             public:
                 NameSet(const StringList& names);
