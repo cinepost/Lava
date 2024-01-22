@@ -532,7 +532,7 @@ AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : 
     mData.surfaceArea = 1.f;
     mData.flags |= (uint32_t)LightDataFlags::Area; 
 
-    mUnnormalizedIntensity = float3(0.f);
+    mIntensity = float3(0.f);
     mScaling = float3(0.5f, 0.5f, 0.5f); // 0.5 is a "radius" of a unit sized light primitive
     update();
     mPrevData = mData;
@@ -560,12 +560,6 @@ void AnalyticAreaLight::setSingleSided(bool value) {
     update();
 }
 
-void AnalyticAreaLight::setIntensity(const float3& intensity) {
-    if(mUnnormalizedIntensity == intensity) return;
-    mUnnormalizedIntensity = intensity;
-    update();
-}
-
 void AnalyticAreaLight::setTransformMatrix(const glm::mat4& mtx) { 
     if(mTransformMatrix == mtx) return;
     mTransformMatrix = mtx; 
@@ -584,12 +578,13 @@ void AnalyticAreaLight::update() {
     mData.transMatInv = glm::inverse(mData.transMat);
     mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
     
-    if(mNormalizeArea) {
-        mData.intensity = (mUnnormalizedIntensity / mData.surfaceArea) * (float)M_2PI; //M_SQRT2;
-    } else {
-        mData.intensity = mUnnormalizedIntensity;
-    }
     Light::update();
+
+    if(mNormalizeArea) {
+        mData.intensity = (mIntensity / mData.surfaceArea) * (float)M_2PI; //M_SQRT2;
+    } else {
+        mData.intensity = mIntensity;
+    }
 }
 
 // RectLight

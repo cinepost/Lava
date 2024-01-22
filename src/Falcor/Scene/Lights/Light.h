@@ -492,8 +492,6 @@ class dlldecl AnalyticAreaLight : public Light {
 
     void setNormalizeArea(bool value);
 
-    virtual void setIntensity(const float3& intensity) override;
-
     bool isAreaNormalized() const { return mNormalizeArea; }
 
     /** Get transform matrix
