@@ -44,6 +44,15 @@ struct UniformSampleGenerator : ISampleGenerator
         UniformSampleGenerator internal;
     }
 
+//   /** Initializes the sample generator.
+//       \param[in] seed Seed value.
+//    */
+//    __init(uint4 seed)
+//    {
+//        UniformSampleGenerator sampleGenerator;
+//        sampleGenerator.rng = createXoshiro128StarStar({ seed[0], seed[1], seed[2], seed[3] });
+//    }
+
     /** Initializes the sample generator for a given pixel and sample number.
         \param[in] pixel Pixel id.
         \param[in] sampleNumber Sample number.

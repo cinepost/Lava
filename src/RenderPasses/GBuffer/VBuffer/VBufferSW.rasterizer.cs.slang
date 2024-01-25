@@ -28,6 +28,7 @@
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
 
+import Utils.Sampling.SampleGenerator;
 import VBufferSW;
 
 #ifndef MICROPOLY_MAX_BB_SIZE
@@ -48,6 +49,8 @@ groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
 groupshared Meshlet meshlet;
 
+groupshared SampleGenerator sg;
+
 groupshared uint   indices[MESHLET_MAX_POLYGONS_COUNT * 4];
 groupshared uint   prim_ids[MESHLET_MAX_POLYGONS_COUNT];
 groupshared float3 positions[MESHLET_MAX_VERTICES_COUNT];
@@ -56,7 +59,7 @@ groupshared float3 positions[MESHLET_MAX_VERTICES_COUNT];
 #define is_valid(name) (is_valid_##name != 0)
 
 
-float3 transformPoint(const float3 p) {
+float3 transformPointToScreen(const float3 p) {
     const float4 pV = mul(float4(p, 1.f), gScene.camera.getViewProj());
     float3 pS = pV.xyz / pV.w;
     pS.xy *= float2(.5f, -.5f);
@@ -111,9 +114,12 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
     for(float y = min_p.y; y <= max_p.y; y += 1.0f) {
         float2 texcoord = texcoord_x + texcoord_y;
         for(float x = min_p.x; x <= max_p.x; x += 1.0f) {
+            const uint2 pixelPos = uint2(x, y);
+
+            gVBufferSW.writeAUX(pixelPos, uint4(0.0, 0.0, 1.0, 1.0));
+
             if(texcoord.x >= 0.0f && texcoord.y >= 0.0f && texcoord.x + texcoord.y <= 1.0f) {
                 float z = p10.z * texcoord.x + p20.z * texcoord.y + p0.z;
-                uint2 pixelPos = uint2(x, y);
                 const uint uint_z = asuint(z);
                 
                 const uint64_t z64 = uint64_t(asuint(z)) << 32;
@@ -129,15 +135,7 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
                 if ( prim_value < v) {
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
-
-#if is_valid(gMeshletID)
-                    gMeshletID[pixelPos] = draw.meshletID;
-#endif // gMeshletID
-
-#if is_valid(gMicroPolyID)
-                    gMicroPolyID[pixelPos] = primitiveIndex;
-#endif // gMicroPolyID
-
+                    gVBufferSW.writeMicroPolyID(pixelPos, primitiveIndex);
 
                     gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
                     gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
@@ -152,13 +150,44 @@ void rasterizeTriangle(float3 p0, float3 p1, float3 p2, uint primitiveIndex, boo
 void rasterizePoint(float3 p, float radius = .5f) {
     const float2 frame_size = gVBufferSW.frameDimF;
 
-    [[branch]] if(p.x < radius || p.y < radius || p.x >= (frame_size.x + radius) || p.y >= (frame_size.y + radius)) return;
+    // TODO: eraly offscreen test here
+
+    const uint2 screenCenter = uint2(p.xy);
+    const uint screenRadius = uint(ceil(radius));
 
     TriangleHit triangleHit = {};
-    //GeometryInstanceID instanceID;
     triangleHit.primitiveIndex = 1;
-    triangleHit.barycentrics = float2(0.5f);
-    gVBufferSW.writeHit(uint2(p.x, p.y), HitInfo(triangleHit.pack()));
+
+    SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, 123);
+
+    for( uint x = screenCenter.x - screenRadius; x < screenCenter.x + screenRadius; x++) {
+        for( uint y = screenCenter.y - screenRadius; y < screenCenter.y + screenRadius; y++) {
+            const uint2 pixelPos = uint2(x, y);
+
+            if((p.x > frame_size.x) || (p.y > frame_size.y)) continue;
+
+            float2 jitter = sampleNext2D(lsg);
+
+            const float r1 = float(x) - p.x;
+            const float r2 = float(y) - p.y;
+            if(sqrt(r1*r1+r2*r2) >= radius) continue;
+
+            triangleHit.barycentrics = float2(0.5f);
+            gVBufferSW.writeAUX(pixelPos, float4(1.0, jitter.x, jitter.y, 1.0));
+
+        }
+    }
+
+/*
+    const uint64_t z64 = uint64_t(asuint(1.0)) << 32;
+    const uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) << 3;
+
+    uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+    if ( prim_value < v) {
+        gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+        gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
+    }
+*/
 }
 
 [numthreads(THREADS_COUNT, 1, 1)]
@@ -176,6 +205,8 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     [[branch]] if(thread_id == 0u) {
         draw = gMeshletDrawList[group_id];
         if(draw.drawCount > 0u) {
+            //sg = SampleGenerator(uint4(groupID, groupIdx));
+
             instanceID.index = draw.instanceID;
             instance = gScene.getGeometryInstance(instanceID);
             meshDesc = gScene.getMeshDesc(instanceID);
@@ -184,6 +215,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             triangleCount = meshlet.indexCount / 3;
         }  
     }
+
     GroupMemoryBarrierWithGroupSync();
 
     [[branch]] if(draw.drawCount == 0u) return;
@@ -208,7 +240,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     uint vi2 = thread_id + THREADS_COUNT;
     if(vi < meshlet.vertexCount) {
         uint vertexOffset = meshlet.vertexOffset + gScene.meshletVertices[vi];
-        positions[vi] = transformPoint(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
+        positions[vi] = transformPointToScreen(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
 
     }
 
@@ -217,7 +249,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     // Transform more vertices if needed
     if(vi2 < meshlet.vertexCount) {
         uint vertexOffset = meshlet.vertexOffset + gScene.meshletVertices[vi2];
-        positions[vi2] = transformPoint(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
+        positions[vi2] = transformPointToScreen(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -230,4 +262,6 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     const uint meshletTriangleRootIndex = thread_id * 3u;
     rasterizeTriangle(positions[indices[meshletTriangleRootIndex]], positions[indices[meshletTriangleRootIndex + 1]], positions[indices[meshletTriangleRootIndex + 2]], prim_ids[thread_id], cullCCW);
+
+    rasterizePoint(float3(100.0, 100.0, 1.0), 15.0f);
 }

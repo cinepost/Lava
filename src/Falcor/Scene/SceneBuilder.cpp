@@ -1347,10 +1347,10 @@ Light::SharedPtr SceneBuilder::getLight(const std::string& name) const {
 	if(mpScene) return mpScene->getLightByName(name);
 
 	auto match = std::find_if(mSceneData.lights.begin(), mSceneData.lights.end(), [&] (const Light::SharedPtr& l) { return l->getName() == name; });
-  if(match != mSceneData.lights.end()) {
-      return *match;
-  }
-  return nullptr;
+  	if(match != mSceneData.lights.end()) {
+		return *match;
+  	}
+  	return nullptr;
 }
 
 Light::SharedPtr SceneBuilder::getLight(uint32_t lightID) const {
@@ -1384,6 +1384,8 @@ bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {
  	}
 
  	if((uint32_t)pLight->getType() != (uint32_t)newLight.getType()) {
+
+
  		LLOG_ERR << "Unable to update " << to_string(pLight->getType()) << " light with " << to_string(newLight.getType()) << " light data!";
  		return false;
  	}

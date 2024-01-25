@@ -61,6 +61,10 @@ namespace {
     const std::string kVBufferName = "vbuffer";
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
+
+    const std::string kOuputTime       = "time";
+    const std::string kOuputAUX        = "aux";
+
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
         { "normals",        "gNormals",         "Normals buffer",                  true /* optional */, ResourceFormat::RG32Float   },
@@ -72,7 +76,8 @@ namespace {
         { "micropoly_id",   "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
 
         // Debug channels
-        { "time",           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
+        { kOuputAUX,            "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float  },
+        { kOuputTime,           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
     };
 };
 
@@ -81,7 +86,7 @@ VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dict
     return SharedPtr(new VBufferSW(pRenderContext->device(), dict));
 }
 
-VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo) {
+VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
     parseDictionary(dict);
 
     // Create sample generator
@@ -126,12 +131,12 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
+    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
+    clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
+        
     // If there is no scene, clear the output and return.
-    if (mpScene == nullptr) {
-        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
-        clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
-        return;
-    }
+    if (mpScene == nullptr) return;
+    
 
     // Check for scene changes.
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) || is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged)) {
@@ -176,7 +181,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         Program::DefineList defines;
         defines.add(mpScene->getSceneDefines());
-        defines.add(mpSampleGenerator->getDefines());
+        if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
+        
         defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
@@ -184,13 +190,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
         defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
-
+        
         mpComputeRasterizerPass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
-        mpSampleGenerator->setShaderData(var);
     }
 
     if(!mpComputeReconstructPass || mDirty) {
@@ -311,6 +316,13 @@ void VBufferSW::recreateMeshletDrawList() {
 
 void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBufferBase::setScene(pRenderContext, pScene);
+    
+    if(mpScene) {
+        mpCamera = mpScene->getCamera();
+    } else {
+        mpCamera = nullptr;
+    }
+
     recreatePrograms();
 }
 

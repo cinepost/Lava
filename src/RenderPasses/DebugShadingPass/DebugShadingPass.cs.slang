@@ -32,11 +32,16 @@ Buffer<float4> gFalseColorBuffer;
 // Main output channel
 RWTexture2D<float4> gInOutColor;
 
+// Extra input/output channels
+RWTexture2D<float4>  gAUX;  // Auxiliary debug data
+RWTexture2D<uint>   gTime; // Timing debug buffer
+
 // Extra output channels
 RWTexture2D<float>  gPrimID;
 RWTexture2D<float>  gOpID;
 RWTexture2D<float4> gMeshletColor;
 RWTexture2D<float4> gMicroPolyColor;
+RWTexture2D<float4> gTimeFalseColor;
 
 cbuffer PerFrameCB {
     uint2               gFrameDim;
@@ -53,9 +58,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(pixelPos >= gFrameDim)) return;
 
     const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
-    
+
     if (!hit.isValid()) {
-        gInOutColor[pixelPos] = float4(1, 0, 0, 1);
+        gInOutColor[pixelPos] = float4(1, 0, 0, 0);
         return;
     }
 

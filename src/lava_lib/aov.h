@@ -49,6 +49,7 @@ enum class AOVBuiltinName: uint8_t {
   MESHLET_COLOR,
   MICROPOLY_COLOR,
   UV,
+  AUX,
 
   EdgeDetectPass,
   AmbientOcclusionPass,
@@ -81,6 +82,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(MESHLET_COLOR);
     type_2_string(MICROPOLY_COLOR);
     type_2_string(UV);
+    type_2_string(AUX);
 
     type_2_string(EdgeDetectPass);
     type_2_string(AmbientOcclusionPass);

@@ -68,6 +68,9 @@ class PASS_API VBufferSW : public GBufferBase {
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
 
+
+		Camera::SharedPtr mpCamera;
+
 		// Internal state
 		bool mComputeDOF = false;           						///< Flag indicating if depth-of-field is computed for the current frame.
 		SampleGenerator::SharedPtr mpSampleGenerator;

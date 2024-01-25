@@ -1294,6 +1294,27 @@
                     parmtag { "script_callback_language" "python" }
                 }
 
+                parm {
+                    name    "lv_quickplane_aux"
+                    label   "Auxiliary Debug Plane"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_aux"
+                    label   "Quantize"
+                    type    string
+                    default { "uint32" }
+                    hidewhen "{ lv_quickplane_aux == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
             }
 
             groupcollapsible {

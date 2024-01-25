@@ -48,11 +48,12 @@ RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
 
-RWTexture2D<uint> gMeshletID;
-RWTexture2D<uint> gMicroPolyID;
+RWTexture2D<uint>   gMeshletID;
+RWTexture2D<uint>   gMicroPolyID;
 
 // Optional debug buffers
-RWTexture2D<uint> gTime;
+RWTexture2D<float4>  gAUX;  // Just a four channel auxiliary debug buffer for whatever
+RWTexture2D<uint>   gTime; // Timing debug buffer
 
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -83,14 +84,20 @@ struct VBufferSW {
     uint dispatchX;
     uint meshletDrawsCount;
 
-    void writeMeshletID(uint2 pixel, uint meshletID) {
-//#if is_valid(gMeshletID)
-        gMeshletID[pixel] = pixel.x;
-//#endif // gMeshletID    
+    void writeMeshletID(uint2 pixelPos, uint meshletID) {
+#if is_valid(gMeshletID)
+        gMeshletID[pixelPos] = meshletID;
+#endif // gMeshletID    
     }
 
-    void writeHit(uint2 pixel, const HitInfo hit) {
-        gVBuffer[pixel] = hit.getData();
+    void writeMicroPolyID(uint2 pixelPos, uint microPolyID) {
+#if is_valid(gMicroPolyID)
+        gMicroPolyID[pixelPos] = meshletID;
+#endif // gMeshletID  
+    }
+
+    void writeHit(uint2 pixelPos, const HitInfo hit) {
+        gVBuffer[pixelPos] = hit.getData();
 
         VertexData v;
         float depth = 1.f;
@@ -105,24 +112,34 @@ struct VBufferSW {
 
         }
 
-        if (is_valid(gDepth)) {
+#if is_valid(gDepth)
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
-            gDepth[pixel] = curPosH.z / curPosH.w;
-        }
+            gDepth[pixelPos] = curPosH.z / curPosH.w;
+#endif
 
-        if (is_valid(gMotionVector)) {
+#if is_valid(gMotionVector)
             // Compute motion vector.
-            float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
-            gMotionVector[pixel] = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
-        }
+            gMotionVector[pixelPos] = calcMotionVector(pixelPos + float2(0.5f, 0.5f), prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+#endif
     }
 
-    void writeMiss(uint2 pixel) {
-        gVBuffer[pixel] = uint4(0);
+    void writeMiss(uint2 pixelPos) {
+        gVBuffer[pixelPos] = uint4(0);
 
-        if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
-        if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};
+#if is_valid(gDepth)          
+        gDepth[pixelPos] = 1.f;
+#endif
+
+#if is_valid(gMotionVector)
+        gMotionVector[pixelPos] = {};
+#endif
+    }
+
+    void writeAUX(uint2 pixelPos, uint4 data) {
+#if is_valid(gAUX)
+        gAUX[pixelPos] = data;
+#endif
     }
 };
