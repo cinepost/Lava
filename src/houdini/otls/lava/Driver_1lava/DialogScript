@@ -1464,19 +1464,19 @@
             parmtag { "script_callback_language" "python" }
         }
         parm {
-            name    "lv_primary_raygen_hw_highp_depth"
-            label   "High precision depth"
+            name    "lv_primary_raygen_highp_depth"
+            label   "High Precision Depth"
             type    toggle
             default { "0" }
-            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            hidewhen "{ lv_primary_raygen_type != hwraster || lv_primary_raygen_type != swraster }"
             parmtag { "script_callback_language" "python" }
         }
         parm {
-            name    "lv_primary_raygen_hw_better_aa"
-            label   "Better anti-aliasing"
+            name    "lv_primary_raygen_better_aa"
+            label   "Better Anti-Aliasing"
             type    toggle
             default { "0" }
-            hidewhen "{ lv_primary_raygen_type != hwraster }"
+            hidewhen "{ lv_primary_raygen_type != hwraster || lv_primary_raygen_type != swraster }"
             parmtag { "script_callback_language" "python" }
         }
         //---------------------------------------------------
@@ -1505,6 +1505,13 @@
         parm {
             name    "lv_dof"
             label   "Enable Depth Of Field"
+            type    toggle
+            default { "0" }
+            parmtag { "script_callback_language" "python" }
+        }
+        parm {
+            name    "lv_subd"
+            label   "Enable Subdivision Surfaces"
             type    toggle
             default { "0" }
             parmtag { "script_callback_language" "python" }

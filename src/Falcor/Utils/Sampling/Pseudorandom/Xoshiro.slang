@@ -37,20 +37,17 @@
     See the original public domain code: http://xoshiro.di.unimi.it/xoshiro128starstar.c
 */
 
-struct Xoshiro128StarStar
-{
+struct Xoshiro128StarStar {
     uint state[4];
 };
 
-uint rotl(const uint x, int k)
-{
+uint rotl(const uint x, int k) {
     return (x << k) | (x >> (32 - k));
 }
 
 /** Generates the next pseudorandom number in the sequence (32 bits).
 */
-uint nextRandom(inout Xoshiro128StarStar rng)
-{
+uint nextRandom(inout Xoshiro128StarStar rng) {
     const uint32_t result_starstar = rotl(rng.state[0] * 5, 7) * 9;
 	const uint32_t t = rng.state[1] << 9;
 
@@ -68,8 +65,7 @@ uint nextRandom(inout Xoshiro128StarStar rng)
 /** Jump function for the generator. It is equivalent to 2^64 calls to nextRandom().
     It can be used to generate 2^64 non-overlapping subsequences for parallel computations.
 */
-void jump(inout Xoshiro128StarStar rng)
-{
+void jump(inout Xoshiro128StarStar rng) {
     static const uint32_t JUMP[] = { 0x8764000b, 0xf542d2d3, 0x6fa035c3, 0x77f2db5b };
 
     uint32_t s0 = 0;
@@ -77,12 +73,9 @@ void jump(inout Xoshiro128StarStar rng)
     uint32_t s2 = 0;
     uint32_t s3 = 0;
 
-    for (int i = 0; i < 4; i++)
-    {
-        for (int b = 0; b < 32; b++)
-        {
-            if (JUMP[i] & (1u << b))
-            {
+    for (int i = 0; i < 4; i++) {
+        for (int b = 0; b < 32; b++) {
+            if (JUMP[i] & (1u << b)) {
                 s0 ^= rng.state[0];
                 s1 ^= rng.state[1];
                 s2 ^= rng.state[2];
@@ -103,8 +96,7 @@ void jump(inout Xoshiro128StarStar rng)
     It is recommended to use SplitMix64 for creating the initial state.
     \param[in] s Array of 4x 32-bit values of initial state (seed).
 */
-Xoshiro128StarStar createXoshiro128StarStar(uint s[4])
-{
+Xoshiro128StarStar createXoshiro128StarStar(uint s[4]) {
     Xoshiro128StarStar rng;
     rng.state[0] = s[0];
     rng.state[1] = s[1];

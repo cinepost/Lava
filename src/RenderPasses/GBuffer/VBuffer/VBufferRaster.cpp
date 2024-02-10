@@ -53,7 +53,7 @@ namespace {
     // Extra output channels.
     const ChannelList kVBufferExtraOutputChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
-        { "texGrads",         "gTextureGrads",      "Texture coordiante gradients",     true /* optional */, ResourceFormat::RGBA16Float },
+        { "texGrads",         "gTextureGrads",      "Texture coordinate gradients",     true /* optional */, ResourceFormat::RGBA16Float },
     };
 }
 

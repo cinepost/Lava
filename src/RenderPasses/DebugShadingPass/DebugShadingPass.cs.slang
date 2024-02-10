@@ -6,10 +6,6 @@ import Scene.Shading;
 import Utils.Math.MathHelpers;
 import Utils.Color.FalseColorGenerator;
 
-//import Experimental.Scene.Materials.Fresnel;
-//import Experimental.Scene.Materials.Microfacet;
-//import Experimental.Scene.Materials.StandardMaterial;
-
 #ifndef FALSE_COLOR_BUFFER_SIZE
 #define FALSE_COLOR_BUFFER_SIZE 0
 #endif
@@ -20,8 +16,6 @@ import Utils.Color.FalseColorGenerator;
 Texture2D<PackedHitInfo> gVBuffer;
 
 // Extra input channels
-Texture2D<uint> gMeshletID;
-Texture2D<uint> gMicroPolyID;
 Texture2D<float> gDepth;
 Texture2D<float4> gTextureGrads;
 Texture2D<float2> gMotionVector;
@@ -33,8 +27,10 @@ Buffer<float4> gFalseColorBuffer;
 RWTexture2D<float4> gInOutColor;
 
 // Extra input/output channels
+RWTexture2D<uint>    gMeshletID;
+RWTexture2D<uint>    gMicroPolyID;
 RWTexture2D<float4>  gAUX;  // Auxiliary debug data
-RWTexture2D<uint>   gTime; // Timing debug buffer
+RWTexture2D<uint>    gTime; // Timing debug buffer
 
 // Extra output channels
 RWTexture2D<float>  gPrimID;

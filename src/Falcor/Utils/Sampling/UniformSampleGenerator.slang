@@ -37,28 +37,24 @@ import Utils.Math.BitTricks;
 
     This sample generator requires shader model 6.0 or above.
 */
-struct UniformSampleGenerator : ISampleGenerator
-{
-    struct Padded
-    {
+struct UniformSampleGenerator : ISampleGenerator {
+    struct Padded {
         UniformSampleGenerator internal;
     }
 
-//   /** Initializes the sample generator.
-//       \param[in] seed Seed value.
-//    */
-//    __init(uint4 seed)
-//    {
-//        UniformSampleGenerator sampleGenerator;
-//        sampleGenerator.rng = createXoshiro128StarStar({ seed[0], seed[1], seed[2], seed[3] });
-//    }
+   /** Initializes the sample generator.
+       \param[in] seed Seed value.
+    */
+    __init(uint4 seed) {
+        UniformSampleGenerator sampleGenerator;
+        sampleGenerator.rng = createXoshiro128StarStar({ seed[0], seed[1], seed[2], seed[3] });
+    }
 
     /** Initializes the sample generator for a given pixel and sample number.
         \param[in] pixel Pixel id.
         \param[in] sampleNumber Sample number.
     */
-    __init(uint2 pixel, uint sampleNumber)
-    {
+    __init(uint2 pixel, uint sampleNumber) {
         UniformSampleGenerator sampleGenerator;
 
         // Use SplitMix64 generator to generate a good pseudorandom initial state.
@@ -80,8 +76,7 @@ struct UniformSampleGenerator : ISampleGenerator
 
     /** Returns the next sample value. This function updates the state.
     */
-    [mutating] uint next()
-    {
+    [mutating] uint next() {
         return nextRandom(rng);
     }
 

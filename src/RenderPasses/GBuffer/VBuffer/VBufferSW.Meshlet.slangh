@@ -3,11 +3,19 @@
 
 BEGIN_NAMESPACE_FALCOR
 
+enum class MeshletDrawFlags : uint32_t
+{
+    None = 0x0,
+
+    // Mesh flags.
+    Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
+};
+
 struct MeshletDraw {
     uint instanceID;        // Geometry instance index
     uint meshletID;         // Meshlet index
     uint drawCount;
-    uint pad;
+    uint flags;
 };
 
 END_NAMESPACE_FALCOR

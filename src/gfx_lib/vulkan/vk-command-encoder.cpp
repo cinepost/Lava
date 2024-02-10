@@ -710,9 +710,7 @@ void ResourceCommandEncoder::_clearDepthImage(
 	}
 }
 
-void ResourceCommandEncoder::_clearBuffer(
-	VkBuffer buffer, uint64_t bufferSize, const IResourceView::Desc& desc, uint32_t clearValue)
-{
+void ResourceCommandEncoder::_clearBuffer(VkBuffer buffer, uint64_t bufferSize, const IResourceView::Desc& desc, uint32_t clearValue) {
 	auto& api = m_commandBuffer->m_renderer->m_api;
 
 	FormatInfo info = {};
@@ -721,90 +719,84 @@ void ResourceCommandEncoder::_clearBuffer(
 	auto elementCount = desc.bufferRange.elementCount;
 	auto clearStart = (uint64_t)desc.bufferRange.firstElement * texelSize;
 	auto clearSize = bufferSize - clearStart;
-	if (elementCount != 0)
-	{
+	if (elementCount != 0) {
 		clearSize = (uint64_t)elementCount * texelSize;
 	}
-	api.vkCmdFillBuffer(
-		m_commandBuffer->m_commandBuffer, buffer, clearStart, clearSize, clearValue);
+	api.vkCmdFillBuffer(m_commandBuffer->m_commandBuffer, buffer, clearStart, clearSize, clearValue);
 }
 
-void ResourceCommandEncoder::clearResourceView(
-	IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags)
-{
+void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags) {
 	auto& api = m_commandBuffer->m_renderer->m_api;
-	switch (view->getViewDesc()->type)
-	{
-	case IResourceView::Type::RenderTarget:
-		{
-			auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
-			_clearColorImage(viewImpl, clearValue);
-		}
-		break;
-	case IResourceView::Type::DepthStencil:
-		{
-			auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
-			_clearDepthImage(viewImpl, clearValue, flags);
-		}
-		break;
-	case IResourceView::Type::UnorderedAccess:
-		{
-			auto viewImplBase = static_cast<ResourceViewImpl*>(view);
-			switch (viewImplBase->m_type)
+	switch (view->getViewDesc()->type) {
+		case IResourceView::Type::RenderTarget:
 			{
-			case ResourceViewImpl::ViewType::Texture:
-				{
-					auto viewImpl = static_cast<TextureResourceViewImpl*>(viewImplBase);
-					if ((flags & ClearResourceViewFlags::ClearDepth) ||
-						(flags & ClearResourceViewFlags::ClearStencil))
-					{
-						_clearDepthImage(viewImpl, clearValue, flags);
-					}
-					else
-					{
-						_clearColorImage(viewImpl, clearValue);
-					}
-				}
-				break;
-			case ResourceViewImpl::ViewType::PlainBuffer:
-				{
-					assert(
-						clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
-						clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
-						clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
-					auto viewImpl = static_cast<PlainBufferResourceViewImpl*>(viewImplBase);
-					uint64_t clearStart = viewImpl->m_desc.bufferRange.firstElement;
-					uint64_t clearSize = viewImpl->m_desc.bufferRange.elementCount;
-
-					if (clearSize == 0)
-						clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
-					if (viewImpl->m_desc.bufferElementSize != 0)
-						clearSize *= viewImpl->m_desc.bufferElementSize;
-					api.vkCmdFillBuffer(
-						m_commandBuffer->m_commandBuffer,
-						viewImpl->m_buffer->m_buffer.m_buffer,
-						clearStart,
-						clearSize,
-						clearValue->color.uintValues[0]);
-				}
-				break;
-			case ResourceViewImpl::ViewType::TexelBuffer:
-				{
-					assert(
-						clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
-						clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
-						clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
-					auto viewImpl = static_cast<TexelBufferResourceViewImpl*>(viewImplBase);
-					_clearBuffer(
-						viewImpl->m_buffer->m_buffer.m_buffer,
-						viewImpl->m_buffer->getDesc()->sizeInBytes,
-						viewImpl->m_desc,
-						clearValue->color.uintValues[0]);
-				}
-				break;
+				auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
+				_clearColorImage(viewImpl, clearValue);
 			}
-		}
-		break;
+			break;
+		case IResourceView::Type::DepthStencil:
+			{
+				auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
+				_clearDepthImage(viewImpl, clearValue, flags);
+			}
+			break;
+		case IResourceView::Type::UnorderedAccess:
+			{
+				auto viewImplBase = static_cast<ResourceViewImpl*>(view);
+				switch (viewImplBase->m_type) {
+					case ResourceViewImpl::ViewType::Texture:
+						{
+							auto viewImpl = static_cast<TextureResourceViewImpl*>(viewImplBase);
+							if ((flags & ClearResourceViewFlags::ClearDepth) ||
+								(flags & ClearResourceViewFlags::ClearStencil))
+							{
+								_clearDepthImage(viewImpl, clearValue, flags);
+							}
+							else
+							{
+								_clearColorImage(viewImpl, clearValue);
+							}
+						}
+						break;
+					case ResourceViewImpl::ViewType::PlainBuffer:
+						{
+							assert(
+								clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
+								clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
+								clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
+							auto viewImpl = static_cast<PlainBufferResourceViewImpl*>(viewImplBase);
+							uint64_t clearStart = viewImpl->m_desc.bufferRange.firstElement;
+							uint64_t clearSize = viewImpl->m_desc.bufferRange.elementCount;
+
+							if (clearSize == 0)
+								clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
+							if (viewImpl->m_desc.bufferElementSize != 0)
+								clearSize *= viewImpl->m_desc.bufferElementSize;
+							api.vkCmdFillBuffer(
+								m_commandBuffer->m_commandBuffer,
+								viewImpl->m_buffer->m_buffer.m_buffer,
+								clearStart,
+								clearSize,
+								clearValue->color.uintValues[0]);
+						}
+						break;
+					case ResourceViewImpl::ViewType::TexelBuffer:
+						{
+							assert(
+								clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
+								clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
+								clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
+							auto viewImpl = static_cast<TexelBufferResourceViewImpl*>(viewImplBase);
+							_clearBuffer(
+								viewImpl->m_buffer->m_buffer.m_buffer,
+								viewImpl->m_buffer->getDesc()->sizeInBytes,
+								viewImpl->m_desc,
+								clearValue->color.uintValues[0]);
+						}
+						break;
+				}
+			}
+			break;
 	}
 }
 
@@ -826,10 +818,8 @@ void ResourceCommandEncoder::resolveResource(
 	auto srcImageLayout = VulkanUtil::getImageLayoutFromState(sourceState);
 	auto dstImageLayout = VulkanUtil::getImageLayoutFromState(destState);
 
-	for (GfxIndex layer = 0; layer < sourceRange.layerCount; ++layer)
-	{
-		for (GfxIndex mip = 0; mip < sourceRange.mipLevelCount; ++mip)
-		{
+	for (GfxIndex layer = 0; layer < sourceRange.layerCount; ++layer) {
+		for (GfxIndex mip = 0; mip < sourceRange.mipLevelCount; ++mip) {
 			VkImageResolve region = {};
 			region.srcSubresource.aspectMask = VulkanUtil::getAspectMask(sourceRange.aspectMask, srcTexture->m_vkformat);
 			region.srcSubresource.baseArrayLayer = layer + sourceRange.baseArrayLayer;

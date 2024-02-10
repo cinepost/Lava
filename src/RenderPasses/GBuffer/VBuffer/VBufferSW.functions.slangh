@@ -1,0 +1,32 @@
+// 2D point - triangle intersection
+float2 triIntersect(float2 p, float2 a, float2 b, float2 c) {
+    float2  ca = c - a, // vector from c to a
+            ba = b - a, // vector from b to a
+            pa = p - a; // vector from p to a
+
+    float u = (a.x*ca.y + pa.y*ca.x - p.x*ca.y) / (ba.y*ca.x - ba.x*ca.y);
+    float v = (pa.y - u*ba.y) / ca.y;
+    
+    if (u<0. || v<0. || u+v>1.)  return float2(-1.0); // no intersection
+    return float2(u, v); // return u and v
+}
+
+
+// Transform world position to sceen space
+float4 transformPointToScreen(const float3 p) {
+    //const float4 pV = mul(float4(p, 1.f), gScene.camera.getViewProj());
+    const float4 pV = mul(float4(p, 1.f), gScene.camera.getViewProjMatNoJitter());
+    float4 pS = float4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * float2(.5f, -.5f) + float2(0.5f);
+    pS.xy = pS.xy * float2(gVBufferSW.frameDim) - float2(0.5f);
+    return pS;
+}
+
+double4 transformPointToScreenDouble(const double3 p) {
+    //const double4 pV = mul(double4(p, 1.0), gScene.camera.getViewProj());
+    const double4 pV = mul(double4(p, 1.0), gScene.camera.getViewProjMatNoJitter());
+    double4 pS = double4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * double2(.5, -.5) + double2(0.5);
+    pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
+    return pS;
+}

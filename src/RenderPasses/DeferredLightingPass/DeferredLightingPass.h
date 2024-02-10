@@ -90,24 +90,24 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpLightingPass;
 
-		uint2 mFrameDim = { 0, 0 };
-		uint32_t mFrameSampleCount = 16;
-		uint32_t mSuperSampleCount = 1;
+		uint2 			mFrameDim = { 0, 0 };
+		uint32_t 		mFrameSampleCount = 16;
+		uint32_t 		mSuperSampleCount = 1;
 
-		uint32_t 	mSampleNumber = 0;
+		uint32_t 		mSampleNumber = 0;
 		float16_t3  mColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
 		float16_t3  mIndirectColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
-		bool     	mUseSTBN = false;
-		float    	mRayBias = 0.001f;
+		bool     		mUseSTBN = false;
+		float    		mRayBias = 0.001f;
 		uint      	mShadingRate = 1;
-		uint 		mRayReflectLimit = 0;
-		uint 		mRayRefractLimit = 0;
+		uint 				mRayReflectLimit = 0;
+		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
 
-		bool        mUseVariance = true;
+		bool      	mUseVariance = true;
 
-		float 		mRayContribThreshold = 0.1f;
-		uint        mRussRouletteLevel = 2u;
+		float 			mRayContribThreshold = 0.1f;
+		uint      	mRussRouletteLevel = 2u;
 
 		Sampler::SharedPtr                  mpNoiseSampler;
 		Texture::SharedPtr                  mpBlueNoiseTexture;

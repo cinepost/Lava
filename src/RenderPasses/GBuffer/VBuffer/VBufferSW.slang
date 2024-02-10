@@ -32,12 +32,12 @@ import Utils.Sampling.SampleGenerator;
 
 #include "VBufferSW.Meshlet.slangh"
 
+#define is_valid(name) (is_valid_##name != 0)
+
 RWTexture2D<PackedHitInfo> gVBuffer;
 
 RWByteAddressBuffer gHiZBuffer;
-RWByteAddressBuffer gLocalDepthPrimBuffer;
-RWByteAddressBuffer gLocalDepthParmBuffer;
-RWByteAddressBuffer gLocalDepthInstBuffer;
+RWByteAddressBuffer gLocalDepthBuffer;
 
 // Meshlets related buffers
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
@@ -47,20 +47,15 @@ RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+RWTexture2D<float4> gTextureGrads;
 
 RWTexture2D<uint>   gMeshletID;
 RWTexture2D<uint>   gMicroPolyID;
 
 // Optional debug buffers
-RWTexture2D<float4>  gAUX;  // Just a four channel auxiliary debug buffer for whatever
+RWTexture2D<float4> gAUX;  // Just a four channel auxiliary debug buffer for whatever
 RWTexture2D<uint>   gTime; // Timing debug buffer
 
-
-#define is_valid(name) (is_valid_##name != 0)
-
-//#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST)
-//#error "Not all defines are set!"
-//#endif
 
 #if !defined(COMPUTE_DEPTH_OF_FIELD) 
 #define COMPUTE_DEPTH_OF_FIELD false
@@ -80,7 +75,7 @@ struct VBufferSW {
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
 
     uint2 frameDim;
-    float2 frameDimF;
+    uint sampleNumber;
     uint dispatchX;
     uint meshletDrawsCount;
 
@@ -92,7 +87,7 @@ struct VBufferSW {
 
     void writeMicroPolyID(uint2 pixelPos, uint microPolyID) {
 #if is_valid(gMicroPolyID)
-        gMicroPolyID[pixelPos] = meshletID;
+        gMicroPolyID[pixelPos] = microPolyID;
 #endif // gMeshletID  
     }
 
@@ -137,7 +132,7 @@ struct VBufferSW {
 #endif
     }
 
-    void writeAUX(uint2 pixelPos, uint4 data) {
+    void writeAUX(uint2 pixelPos, float4 data) {
 #if is_valid(gAUX)
         gAUX[pixelPos] = data;
 #endif

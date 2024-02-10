@@ -384,7 +384,9 @@ bool DisplayOIIO::sendImage(uint imageHandle, uint width, uint height, const uin
 		auto pMasterImData = masterImageData(imageHandle);
 		if(!pMasterImData) { LLOG_ERR << "Unable to find master image for multi-image " << imData.name << "!!!"; return false; }
 		pMasterImData->pOut->write_image(oiio::TypeDesc::UNKNOWN, pData, imData.entrySize);
-	} 
+	}
+
+	std::cout << "Image data written to " << imData.name << std::endl; 
 
 	return true;
 }

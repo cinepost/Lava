@@ -87,6 +87,8 @@ bool Renderer::init(const Config& config) {
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
     sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
+    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshletSpecData;
+    
     if(config.optimizeForBatch) {
     	sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
     }
@@ -325,6 +327,12 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("swraster")) {
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);

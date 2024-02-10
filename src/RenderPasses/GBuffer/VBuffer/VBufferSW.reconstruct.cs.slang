@@ -3,6 +3,10 @@ import VBufferSW;
 
 ConstantBuffer<VBufferSW> gVBufferSW;
 
+ByteAddressBuffer gLocalDepthPrimBuffer;
+ByteAddressBuffer gLocalDepthParmBuffer;
+ByteAddressBuffer gLocalDepthInstBuffer;
+
 [numthreads(16, 16, 1)]
 void reconstruct(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // pixel position

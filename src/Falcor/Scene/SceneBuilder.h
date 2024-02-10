@@ -151,7 +151,8 @@ class dlldecl SceneBuilder {
         UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
         GenerateMeshlets                = 0x80000,  ///< Generate meshlets data
         KeepMeshData                    = 0x100000, ///< Keep mesh list for batch mode updates
-        KeepLocalMeshData               = 0x200000, ///< Keep local mesh data for scene rebuild purposes
+        KeepLocalMeshData               = 0x200000, ///< Keep local mesh data for scene rebuilds
+        KeepLocalMeshletSpecData        = 0x400000, ///< Keep local meshlet spec data for scene rebuilds
 
         UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
@@ -164,6 +165,8 @@ class dlldecl SceneBuilder {
         std::vector<uint32_t> vertices;             ///< Meshlet vertices that point to global scene vertex data.
         std::vector<uint8_t>  indices;              ///< Indices of a primitive verices. Vector size should be equal to indexCount.
         std::vector<uint32_t> primitiveIndices;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+    
+        bool        use16BitIndices = false;
     };
 
     /** Pre-processed mesh data.

@@ -105,7 +105,7 @@ enum class MeshFlags : uint32_t
 struct MeshDesc {
     uint vbOffset;          ///< Offset into global vertex buffer.
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
-    uint mbOffset;
+    uint mbOffset; 
     uint vertexCount;       ///< Vertex count.    
     
     uint indexCount;        ///< Index count, or zero if non-indexed.
@@ -400,15 +400,13 @@ struct Meshlet {
     uint vertexOffset;
     uint indexOffset;
     uint primIndexOffset;
+    uint _pad0;
 
     /* Number of vertices and triangles used in the meshlet; data is stored in a consecutive range defined by offset and count */
     uint vertexCount;
     uint indexCount;
     uint packedData  = 0;
-
-
-    uint4 _pad0;
-    uint2 _pad1;
+    uint _pad1;
 
     float16_t4 bounding_sphere; ///< xyz -> object space origin, w -> radius
     float16_t4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin

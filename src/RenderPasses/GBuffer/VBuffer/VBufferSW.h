@@ -58,12 +58,17 @@ class PASS_API VBufferSW : public GBufferBase {
 		Dictionary getScriptingDictionary() override;
 		void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
+		void setPerPixelJitterRaster(bool value);
+		void enableSubdivisions(bool value);
+		void enableDisplacement(bool value);
+
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
-		void recreateBuffers();
-		void recreatePrograms();
-		void recreateMeshletDrawList();
+		void createBuffers();
+		void createJitterTexture();
+		void createPrograms();
+		void createMeshletDrawList();
 
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
@@ -74,23 +79,36 @@ class PASS_API VBufferSW : public GBufferBase {
 		// Internal state
 		bool mComputeDOF = false;           						///< Flag indicating if depth-of-field is computed for the current frame.
 		SampleGenerator::SharedPtr mpSampleGenerator;
+		uint32_t mSampleNumber = 0;
 
+		bool mUsePerPixelJitter = true;
+		bool mUseD64 = true;
 		bool mUseCompute = true;
 		bool mUseDOF = true;                						///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
-		bool mUseSubdivisions = true;
+		bool mUseSubdivisions = false;
+		bool mUseDisplacement = false;
 
-		ComputePass::SharedPtr mpComputeMeshletsBuilderPass;
-		ComputePass::SharedPtr mpComputeFrustumCullingPass;
-		ComputePass::SharedPtr mpComputeRasterizerPass;
-		ComputePass::SharedPtr mpComputeReconstructPass;
+		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
+		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
+		ComputePass::SharedPtr 	mpComputeTesselatorPass;
+		ComputePass::SharedPtr 	mpComputeRasterizerPass;
+		ComputePass::SharedPtr 	mpComputeReconstructPass;
+		ComputePass::SharedPtr 	mpComputeJitterPass;
 
 		// Local buffers
-		Buffer::SharedPtr      mpLocalDepthPrimBuffer;  ///< Local depth-primitiveID buffer
-		Buffer::SharedPtr      mpLocalDepthParmBuffer;  ///< Local depth-barycentric parametrization buffer
-		Buffer::SharedPtr      mpLocalDepthInstBuffer;  ///< Local depth-instanceIndex buffer
+		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
+		Buffer::SharedPtr      	mpHiZBuffer;
 
-		Buffer::SharedPtr      mpHiZBuffer;
+		// Tesselator buffers
+		Buffer::SharedPtr    		mpIndicesBuffer;
+		Buffer::SharedPtr    		mpPrimIndicesBuffer; 
+		Buffer::SharedPtr      	mpPositionsBuffer;
+		Buffer::SharedPtr       mpCocsBuffer;
+
+		// Local textures
+		Texture::SharedPtr     	mpJitterTexture;
+		Sampler::SharedPtr     	mpJitterSampler;
 
 		// Meshlets part
-		Buffer::SharedPtr      mpMeshletDrawListBuffer;
+		Buffer::SharedPtr      	mpMeshletDrawListBuffer;
 };

@@ -328,7 +328,7 @@ bool LightLinker::findLightSetIndex(const StringList& lightNamesList, uint32_t& 
 
     for(const auto& lightSet: mLightSets) {
         std::set<std::string> lightNameSet;
-        for(const std::string& lightName: lightNamesList) if(!lightName.empty()) lightNameSet.insert(lightName);
+        for(const std::string& lightName: lightNamesList) if(!lightName.empty() || (lightNamesList.size() == 1)) lightNameSet.insert(lightName);
         if(lightSet.names() == lightNameSet) return true;
         index++;
     }

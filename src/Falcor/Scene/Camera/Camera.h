@@ -282,6 +282,8 @@ public:
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
+    std::vector<std::string> getDataFormattedDebugStrings() const;
+
     enum class Changes {
         None            = 0x0,
         Movement        = 0x1,

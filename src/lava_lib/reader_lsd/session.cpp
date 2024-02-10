@@ -265,6 +265,8 @@ bool Session::cmdRaytrace() {
   passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
   passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
+	passDict["useSubdivisions"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usesubdivs", bool(false));
+	passDict["useDisplacement"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedisplace", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 
@@ -1526,10 +1528,14 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   creationSpec.pShadingSpec = &shadingSpec;
   creationSpec.pMaterialOverride = pMaterial;
 
-  const std::string lightMaskString = pObj->getPropertyValue(ast::Style::OBJECT, "lightmask", std::string());
-  if(!lightMaskString.empty()) {
-  	creationSpec.isolatedLightNames = LightLinker::lightNamesStringToList(lightMaskString);
-  }
+  if(pObj->isDeclared(ast::Style::OBJECT, "lightmask")) {
+  	const std::string lightMaskString = pObj->getPropertyValue(ast::Style::OBJECT, "lightmask", std::string());
+  	if(!lightMaskString.empty()) {
+  		creationSpec.isolatedLightNames = LightLinker::lightNamesStringToList(lightMaskString);
+  	} else {
+  		creationSpec.isolatedLightNames = LightLinker::StringList({""});
+  	}
+	}
 
   if(update) {
   	// Update mesh instance

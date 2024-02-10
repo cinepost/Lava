@@ -350,8 +350,38 @@ void Camera::updateFromAnimation(const glm::mat4& transform) {
 }
 
 void Camera::setBackgroundImageFilename(const std::string& filename) {
-if(mBackgroundImageFilename == filename) return;
+	if(mBackgroundImageFilename == filename) return;
 	mBackgroundImageFilename = filename;
+}
+
+std::vector<std::string> Camera::getDataFormattedDebugStrings() const {
+	  
+	  std::vector<std::string> out;
+
+	  out.push_back("World position: " + to_string(mData.posW));
+	  out.push_back("World position prev: " + to_string(mData.prevPosW));
+	  out.push_back("Up: " + to_string(mData.up));
+	  out.push_back("Target: " + to_string(mData.target));
+	  out.push_back("Camera U: " + to_string(mData.cameraU));
+	  out.push_back("Camera V: " + to_string(mData.cameraV));
+	  out.push_back("Camera W: " + to_string(mData.cameraW));
+    out.push_back("Focal length: " + std::to_string(mData.focalLength));
+    out.push_back("Aspect ratio: " + std::to_string(mData.aspectRatio));
+    out.push_back("Clipping plane near: " + std::to_string(mData.nearZ));
+    out.push_back("Clipping plane far: " + std::to_string(mData.farZ));
+    out.push_back("Crop region: " + to_string(mData.cropRegion));
+
+    out.push_back("Frame height: " + std::to_string(mData.frameHeight));
+    out.push_back("Frame width: " + std::to_string(mData.frameWidth));
+    out.push_back("Focal distance: " + std::to_string(mData.focalDistance));
+    out.push_back("Aperture radius: " + std::to_string(mData.apertureRadius));
+
+    out.push_back("Shutter speed: " + std::to_string(mData.shutterSpeed));
+    out.push_back("ISO: " + std::to_string(mData.ISOSpeed));
+
+    out.push_back("Backend color: " + to_string(mData.backgroundColor));
+
+    return out;
 }
 
 std::string Camera::getScript(const std::string& cameraVar) {

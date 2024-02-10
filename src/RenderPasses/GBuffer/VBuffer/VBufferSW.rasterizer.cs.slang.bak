@@ -41,15 +41,9 @@ import VBufferSW;
 #define MICROPOLY_MAX_BB_SIZE 8.f // 4x4 pixel micropoly
 #endif
 
-#ifndef USE_PP_JITTER
-#define USE_PP_JITTER true
-#endif
-
 #ifndef USE_D64
 #define USE_D64 true
 #endif
-
-#define is_valid(name) (is_valid_##name != 0)
 
 ConstantBuffer<VBufferSW> gVBufferSW;
 
@@ -73,14 +67,12 @@ groupshared uint        prim_ids[MESHLET_MAX_POLYGONS_COUNT];
 groupshared float3      positions[MESHLET_MAX_VERTICES_COUNT];
 groupshared float       cocs[MESHLET_MAX_VERTICES_COUNT];
 
-#if USE_D64
-groupshared double      z64pos[MESHLET_MAX_VERTICES_COUNT];
-#endif
-
 RWStructuredBuffer<uint32_t>    gIndicesBuffer;
 RWStructuredBuffer<uint32_t>    gPrimIndicesBuffer; 
 RWStructuredBuffer<float3>      gPositionsBuffer;
 RWStructuredBuffer<float>       gCocsBuffer;
+
+#define is_valid(name) (is_valid_##name != 0)
 
 static const float2 jitterBound = float2(0.5f);
 
@@ -95,11 +87,14 @@ void writeMicropolyPixel(uint3 pos, float2 texcoord, uint geometryInstanceIndex,
     const uint64_t parm_value = (z64 | (tx << 16)) | ty;
     const uint64_t inst_value = z64 | geometryInstanceIndex;
 
-    const uint64_t v = gLocalDepthBuffer.InterlockedMinU64(idx, prim_value);
+    const uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
     
     if ( prim_value < v) {
         gVBufferSW.writeMeshletID(pos.xy, meshletID);
         gVBufferSW.writeMicroPolyID(pos.xy, primitiveIndex);
+
+        gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+        gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
     }
 }
 
@@ -165,10 +160,14 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
                 const uint64_t parm_value = (z64 | (tx << 16)) | ty;
                 const uint64_t inst_value = z64 | instanceID.index;
                 
-                uint64_t v = gLocalDepthBuffer.InterlockedMinU64(idx, prim_value);
+                uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
                 if ( prim_value < v) {
+
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, primitiveIndex);
+
+                    gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+                    gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
                 }
             }
             texcoord += texcoord_dx;
@@ -181,11 +180,11 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
     float3 p0 = positions[pi0], p1 = positions[pi1], p2 = positions[pi2];
     [[branch]] if((p0.z < 0.0f && p1.z < 0.0f && p2.z < 0.0f) || (p0.z > 1.0f && p1.z > 1.0f && p2.z > 1.0f)) return;
 
+#if !COMPUTE_DEPTH_OF_FIELD
     float3 p10 = p1 - p0;
     float3 p20 = p2 - p0;
-
-#if !COMPUTE_DEPTH_OF_FIELD
     float det = p20.x * p10.y - p20.y * p10.x;
+
     // CCW culling
     [[branch]] if(cullCCW && det < 0.0f) return;
 #endif
@@ -217,41 +216,50 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
             pj2.xy += aaj + coc_sample * c2;
 
 #if COMPUTE_DEPTH_OF_FIELD
+            float3 p10 = float3(pj1.xy - pj0.xy, .0);
+            float3 p20 = float3(pj2.xy - pj0.xy, .0);
+            
             // CCW culling
-            [[branch]] if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
+            [[branch]] if(cullCCW && cross(p10, p20).z > 0.0f) continue;
 #endif
 
             float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
             
             if( uv.x < 0.) continue;
 
-#if USE_D64
-            double z0 = z64pos[pi0], z1 = z64pos[pi1], z2 = z64pos[pi2];
-            double z = (z1 - z0) * uv.x + (z2 - z0) * uv.y + z0;
-#else
             float z = p10.z * uv.x + p20.z * uv.y + p0.z;
-#endif
             if(z < 0.0f || z > 1.0) continue;
 
-#if USE_D64
-            const uint64_t depth_value = z * UINT64_MAX;
-            const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;       
-            [[branch]] if ( depth_value < gLocalDepthBuffer.InterlockedMinU64(idx, depth_value)) {
-#else
-            const uint32_t depth_value = z * 4294967295u;
-            const uint idx = (gVBufferSW.frameDim.x * y + x) << 2;
-            uint32_t out_value = depth_value;
-            gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value);
-            [[branch]] if ( depth_value < out_value) {
-#endif
+            
+            //gVBufferSW.writeAUX(uint2(x, y), float4(jitter.x, jitter.y, 0.f, 1.f));
+
+            const uint64_t z64 = uint64_t(asuint(z)) << 32;
+            
+            const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;
+            const uint64_t prim_value = z64 | primitiveIndex;
+            const uint tx = asuint(f32tof16(uv.x));
+            const uint ty = asuint(f32tof16(uv.y));
+            const uint64_t parm_value = (z64 | (tx << 16)) | ty;
+            const uint64_t inst_value = z64 | instanceID.index;
+       
+            uint64_t v = gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+
+            //uint64_t v = gLocalDepthPrimBuffer.Load<uint64_t>(idx);
+            
+            [[branch]] if ( prim_value < v) {
+            //gLocalDepthPrimBuffer.InterlockedMinU64(idx, prim_value);
+
+                gVBufferSW.writeMeshletID(uint2(x, y), draw.meshletID);
+                gVBufferSW.writeMicroPolyID(uint2(x, y), primitiveIndex);
+
+                //gLocalDepthParmBuffer.InterlockedMinU64(idx, parm_value);
+                //gLocalDepthInstBuffer.InterlockedMinU64(idx, inst_value);
+            
                 TriangleHit triangleHit = {};
                 triangleHit.instanceID.index = instanceID.index;
                 triangleHit.primitiveIndex = primitiveIndex;
                 triangleHit.barycentrics = uv;   
-
                 gVBufferSW.writeHit(uint2(x, y), HitInfo(triangleHit.pack()));
-                gVBufferSW.writeMeshletID(uint2(x, y), draw.meshletID);
-                gVBufferSW.writeMicroPolyID(uint2(x, y), primitiveIndex);
             }
         }
     } 
@@ -338,14 +346,11 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     const uint vi1 = thread_id + THREADS_COUNT;
     if(vi0 < meshlet.vertexCount) {
         uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi0];
-#if USE_D64
-        double4 pS = transformPointToScreenDouble(mul(double4(gScene.getVertex(vertexOffset).position, 1.0), worldMat).xyz);
-        z64pos[vi0] = pS.z;
-#else
-        float4 pS = transformPointToScreen(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
-#endif
+        float3 pW = mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz;
+        float4 pS = transformPointToScreen(pW);
         positions[vi0] = pS.xyz;
 #if COMPUTE_DEPTH_OF_FIELD
+        //cocs[vi0] = abs(distance(pW, gScene.camera.data.posW) - gScene.camera.data.focalDistance);
         cocs[vi0] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
 #else
         cocs[vi0] = 0.0f;
@@ -355,14 +360,11 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     // Transform more vertices if needed
     if(vi1 < meshlet.vertexCount) {
         uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi1];
-#if USE_D64
-        double4 pS = transformPointToScreenDouble(mul(double4(gScene.getVertex(vertexOffset).position, 1.0), worldMat).xyz);
-        z64pos[vi1] = pS.z;
-#else
-        float4 pS = transformPointToScreen(mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz);
-#endif
+        float3 pW = mul(float4(gScene.getVertex(vertexOffset).position, 1.f), worldMat).xyz;
+        float4 pS = transformPointToScreen(pW);
         positions[vi1] = pS.xyz;
 #if COMPUTE_DEPTH_OF_FIELD
+        cocs[vi1] = abs(distance(pW, gScene.camera.data.posW) - gScene.camera.data.focalDistance);
         cocs[vi1] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
 #else
         cocs[vi1] = 0.0f;

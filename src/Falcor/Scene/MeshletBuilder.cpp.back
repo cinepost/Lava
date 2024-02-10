@@ -39,26 +39,17 @@ void MeshletBuilder::generateMeshlets(SceneBuilder::ProcessedMesh& mesh) {
 
     std::set<uint32_t> pointIndices; // this set is used to avoid having duplicate vertices within meshlet
     std::vector<uint3> triangles;
-    std::vector<uint4> quads;
 
     SceneBuilder::MeshletSpec meshletSpec = {};
     meshletSpec.type = MeshletType::Triangles;
 
-    LLOG_TRC << "Meshlet start index: " << mesh_start_index;
+    if(mesh.use16BitIndices) {
+      LLOG_WRN << "16 bit indices !!!!!!!!!!";
+    }
 
     // Run through mesh indices until we reach max number of elements (points or tris)
     for(uint32_t i = mesh_start_index; i < mesh.indexCount; i+=3) {
       //LLOG_WRN << "! " << mesh.indexData[i] << " " << mesh.indexData[i+1] << " " << mesh.indexData[i+2];
-
-      //mesh_start_index = i;
-
-      const bool maxIndicesPerMeshletReached  = ((meshletSpec.type == MeshletType::Triangles) && (triangles.size() > MESHLET_MAX_POLYGONS_COUNT)) ||
-                                                ((meshletSpec.type == MeshletType::Quads) && (quads.size() > MESHLET_MAX_POLYGONS_COUNT));
-
-      if (maxIndicesPerMeshletReached) {
-        LLOG_TRC << "Maximum meshlet polys reached for mesh " << mesh.name;
-        break;
-      }
 
       uint32_t mIdx0, mIdx1, mIdx2;
 
@@ -72,39 +63,40 @@ void MeshletBuilder::generateMeshlets(SceneBuilder::ProcessedMesh& mesh) {
         mIdx2 = mesh.indexData[i+2];
       }
 
-      const bool newV0 = pointIndices.find(mIdx0) == pointIndices.end();
-      const bool newV1 = pointIndices.find(mIdx1) == pointIndices.end();
-      const bool newV2 = pointIndices.find(mIdx2) == pointIndices.end();
+      std::set<uint32_t>::iterator it0 = pointIndices.find(mIdx0);
+      std::set<uint32_t>::iterator it1 = pointIndices.find(mIdx1);
+      std::set<uint32_t>::iterator it2 = pointIndices.find(mIdx2);
+
+      const bool newV0 = it0 == pointIndices.end();
+      const bool newV1 = it1 == pointIndices.end();
+      const bool newV2 = it2 == pointIndices.end();
 
       const size_t new_vertices_count = (newV0 ? 1 : 0) + (newV1 ? 1 : 0) + (newV2 ? 1 : 0);
 
       const bool maxVerticesPerMeshletReached = ((pointIndices.size() + new_vertices_count) > MESHLET_MAX_VERTICES_COUNT);
+      const bool maxIndicesPerMeshletReached  = ((meshletSpec.type == MeshletType::Triangles) && ((meshletIndices.size() + 3) > maximumMeshletTriangleIndices)) ||
+                                                ((meshletSpec.type == MeshletType::Quads) && ((meshletIndices.size() + 4) > maximumMeshletQuadIndices));
 
-      if (maxVerticesPerMeshletReached) {
-        LLOG_TRC << "Maximum meshlet vertices reached for mesh " << mesh.name;
+      if (maxVerticesPerMeshletReached || maxIndicesPerMeshletReached) {
+        LLOG_TRC << (maxIndicesPerMeshletReached ? std::string("Maximum meshlet polys reached for mesh ") : std::string("Maximum meshlet vertices reached for mesh ")) << mesh.name;
+        mesh_start_index = i;
         break;
       }
 
-      triangles.push_back({mIdx0, mIdx1, mIdx2});
-
-      if(newV0) pointIndices.insert(mIdx0);
-      if(newV1) pointIndices.insert(mIdx1);
-      if(newV2) pointIndices.insert(mIdx2);
+      // These are per meshlet local indices. Guaranteed not to exceed value of 255 (by default we use max 128 elements)
+      meshletIndices.push_back(std::distance(pointIndices.begin(), newV0 ? pointIndices.insert(mIdx0).first : it0));
+      meshletIndices.push_back(std::distance(pointIndices.begin(), newV1 ? pointIndices.insert(mIdx1).first : it1));
+      meshletIndices.push_back(std::distance(pointIndices.begin(), newV2 ? pointIndices.insert(mIdx2).first : it2));
 
       meshletPrimIndices.push_back(i / 3u);
       mesh_start_index += 3;
     }
 
-    // These are per meshlet local indices. Guaranteed not to exceed value of 255 (by default we use max 128 elements)
-    for(const auto& triangle: triangles) {
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[0])));
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[1])));
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[2])));
+    for(auto pi : pointIndices) {
+    	meshletVertices.push_back(pi);
+      //LLOG_WRN << pi;
     }
 
-    for(auto pi : pointIndices) meshletVertices.push_back(pi);
-    
-    meshletSpec.use16BitIndices = mesh.use16BitIndices;
     meshletSpec.vertices = std::move(meshletVertices);
     meshletSpec.indices = std::move(meshletIndices);
     meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
@@ -113,8 +105,6 @@ void MeshletBuilder::generateMeshlets(SceneBuilder::ProcessedMesh& mesh) {
 
     meshletSpecs.push_back(std::move(meshletSpec));
   }
-
-
   LLOG_DBG << "Generated " << meshletSpecs.size() << " meshlet specs for mesh \"" << mesh.name;
 }
 

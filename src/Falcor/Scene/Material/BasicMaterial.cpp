@@ -171,7 +171,7 @@ void BasicMaterial::setAlphaMode(AlphaMode alphaMode) {
 
 void BasicMaterial::setAlphaThreshold(float alphaThreshold) {
     if (!isAlphaSupported()) {
-        LLOG_WRN << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
+        LLOG_DBG << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
         return;
     }
     if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold) {
@@ -182,10 +182,9 @@ void BasicMaterial::setAlphaThreshold(float alphaThreshold) {
 }
 
 void BasicMaterial::setIndexOfRefraction(float IoR) {
-    if (mData.IoR != (float16_t)IoR) {
-        mData.IoR = (float16_t)IoR;
-        markUpdates(UpdateFlags::DataChanged);
-    }
+    if (mData.IoR == (float16_t)IoR) return;
+    mData.IoR = (float16_t)IoR;
+    markUpdates(UpdateFlags::DataChanged);
 }
 
 void BasicMaterial::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {

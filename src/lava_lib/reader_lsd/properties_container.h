@@ -173,7 +173,11 @@ class PropertiesContainer: public std::enable_shared_from_this<PropertiesContain
     template<typename T>
     const T getPropertyValue(ast::Style style, const std::string& name, const T& default_value) const;
 
+    //template<typename T>
+    //bool getPropertyValue(ast::Style style, const std::string& name, T& value) const;
+
     bool propertyExist(ast::Style style, const std::string& name) const;
+    bool isDeclared(ast::Style style, const std::string& name) const { return propertyExist(style, name); }
 
     const PropertiesContainer filterProperties(ast::Style style, const std::regex& re) const;
     const PropertiesContainer filterProperties(ast::Style style) const;
