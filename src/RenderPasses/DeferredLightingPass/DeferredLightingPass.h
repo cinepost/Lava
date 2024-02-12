@@ -79,6 +79,8 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		DeferredLightingPass& setRayRefractLimit(int limit);
 		DeferredLightingPass& setRayDiffuseLimit(int limit);
 
+		void enableDepthOfField(bool value);
+
 		void setRayContribThreshold(float value = 0.1f);
     void setRussRoulleteLevel(uint value = 2u);
 
@@ -104,6 +106,7 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
 
+		bool        mUseDOF = false;
 		bool      	mUseVariance = true;
 
 		float 			mRayContribThreshold = 0.1f;

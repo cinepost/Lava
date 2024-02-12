@@ -5,6 +5,7 @@ import Scene.Shading;
 
 import Utils.Math.MathHelpers;
 import Utils.Color.FalseColorGenerator;
+import Utils.Color.HeatMapColorGenerator;
 
 #ifndef FALSE_COLOR_BUFFER_SIZE
 #define FALSE_COLOR_BUFFER_SIZE 0
@@ -16,21 +17,25 @@ import Utils.Color.FalseColorGenerator;
 Texture2D<PackedHitInfo> gVBuffer;
 
 // Extra input channels
-Texture2D<float> gDepth;
-Texture2D<float4> gTextureGrads;
-Texture2D<float2> gMotionVector;
+Texture2D<float>    gDepth;
+Texture2D<float4>   gTextureGrads;
+Texture2D<float2>   gMotionVector;
 
 // Extra input buffers
-Buffer<float4> gFalseColorBuffer;
+RWTexture2D<uint>   gDrawCount;
+
+// Extra input buffers
+Buffer<float4>      gFalseColorBuffer;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;
 
 // Extra input/output channels
-RWTexture2D<uint>    gMeshletID;
-RWTexture2D<uint>    gMicroPolyID;
-RWTexture2D<float4>  gAUX;  // Auxiliary debug data
-RWTexture2D<uint>    gTime; // Timing debug buffer
+RWTexture2D<uint>   gMeshletID;
+RWTexture2D<uint>   gMicroPolyID;
+RWTexture2D<float4> gAUX;  // Auxiliary debug data
+RWTexture2D<uint>   gTime; // Timing debug buffer
+RWTexture2D<float2> gUV;
 
 // Extra output channels
 RWTexture2D<float>  gPrimID;
@@ -38,12 +43,15 @@ RWTexture2D<float>  gOpID;
 RWTexture2D<float4> gMeshletColor;
 RWTexture2D<float4> gMicroPolyColor;
 RWTexture2D<float4> gTimeFalseColor;
+RWTexture2D<float4> gMeshletDrawHeatMap;
 
 cbuffer PerFrameCB {
     uint2               gFrameDim;
 };
 
 uniform FalseColorGenerator gFalseColorGenerator;
+uniform HeatMapColorGenerator gHeatMapColorGenerator;
+
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
@@ -56,13 +64,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
 
     if (!hit.isValid()) {
-        gInOutColor[pixelPos] = float4(1, 0, 0, 0);
+        gInOutColor[pixelPos] = float4(0, 0, 0, 0);
         return;
     }
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     gInOutColor[pixelPos] = float4(barycentrics, 1.f);
+
+#if is_valid(gUV)
+    gUV[pixelPos] = gScene.getVertexData(triangleHit).texC;
+#endif  // gUV
 
 #if is_valid(gMeshletColor) && is_valid(gMeshletID)
     gMeshletColor[pixelPos] = float4(gFalseColorGenerator.getColor(gMeshletID[pixelPos]).rgb, 1.0f);
@@ -80,5 +92,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #if is_valid(gOpID)
     gOpID[pixelPos] = triangleHit.instanceID.index;
 #endif  // gOpID
+
+#if is_valid(gDrawCount) && is_valid(gMeshletDrawHeatMap)
+    uint draw_count = gDrawCount[pixelPos];
+    float temp = (draw_count - 1.0f) * 0.25f;
+    gMeshletDrawHeatMap[pixelPos] = float4(gHeatMapColorGenerator.getColor(temp).rgb, draw_count);
+#endif
 
 }

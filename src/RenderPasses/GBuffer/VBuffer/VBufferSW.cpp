@@ -69,6 +69,7 @@ namespace {
 
     const std::string kOuputTime       = "time";
     const std::string kOuputAUX        = "aux";
+    const std::string kOutputDrawCount = "drawCount";
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
@@ -84,6 +85,7 @@ namespace {
         // Debug channels
         { kOuputAUX,        "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
         { kOuputTime,       "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
+        { kOutputDrawCount, "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
     };
 };
 
@@ -117,6 +119,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseDisplacement) enableDisplacement(static_cast<bool>(value));
         else if (key == kUseD64) mUseD64 = static_cast<bool>(value);
         else if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
+        else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -253,7 +256,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
     }
-
+/*
     if(!mpComputeReconstructPass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeReconstructFile).csEntry("reconstruct").setShaderModel("6_5");
@@ -265,7 +268,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         mpComputeReconstructPass = ComputePass::create(mpDevice, desc, defines, true);
     }
-
+*/
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
     const uint32_t groupsX = meshletDrawsCount * kMaxGroupThreads;
 
@@ -291,6 +294,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         var["gVBufferSW"]["frameDim"] = mFrameDim;
+        var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
+        var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
         var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
         var["gVBufferSW"]["dispatchX"] = groupsX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
@@ -317,9 +322,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             var[channel.texname] = pTex;
         };
 
-        for (const auto& channel : kVBufferExtraChannels) bind(channel);
+        // Bind extra output channels
+        for (const auto& channel : kVBufferExtraChannels) {
+            bind(channel);
+        }
     }
-
+/*
     {
         ShaderVar var = mpComputeReconstructPass->getRootVar();
         var["gVBufferSW"]["frameDim"] = mFrameDim;
@@ -338,7 +346,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         for (const auto& channel : kVBufferExtraChannels) bind(channel);
     }
-
+*/
     {
         ShaderVar var = mpComputeJitterPass->getRootVar();
         var["PerFrameCB"]["gJitterTextureDim"] = mFrameDim;
@@ -475,5 +483,11 @@ void VBufferSW::enableDisplacement(bool value) {
 void VBufferSW::setPerPixelJitterRaster(bool value) {
     if (mUsePerPixelJitter == value) return;
     mUsePerPixelJitter = value;
+    mDirty = true;
+}
+
+void VBufferSW::enableDepthOfField(bool value) {
+    if(mUseDOF == value) return;
+    mUseDOF = value;
     mDirty = true;
 }

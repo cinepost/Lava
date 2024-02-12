@@ -42,6 +42,8 @@ __quickplanes = {
     "meshlet_color":    QuickPlane("MESHLET_COLOR",            "vector3",       "float16",    False,      {}),
     "micropoly_color":  QuickPlane("MICROPOLY_COLOR",          "vector3",       "float16",    False,      {}),
     "uv":               QuickPlane("UV",                       "vector3",       "float16",    False,      {}),
+    "texGrads":         QuickPlane("TEXGRADS",                 "vector4",       "float16",    False,      {}),
+    "meshlet_draw":     QuickPlane("MESHLET_DRAW_HEATMAP",     "vector4",       "float16",    False,      {}),
     "aux":              QuickPlane("AUX",                      "vector4",       "float32",    False,      {}),
 }
 
@@ -67,6 +69,8 @@ __toggleplanedict = {
     'lv_quickplane_meshlet_color':          ['meshlet_color'],
     'lv_quickplane_micropoly_color':        ['micropoly_color'],
     'lv_quickplane_uv':                     ['uv'],
+    'lv_quickplane_texgrads':               ['texGrads'],
+    'lv_quickplane_meshlet_draw':           ['meshlet_draw'],
     'lv_quickplane_aux':                    ['aux'],
 }
 

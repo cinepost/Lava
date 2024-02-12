@@ -1253,6 +1253,27 @@
                 }
 
                 parm {
+                    name    "lv_quickplane_meshlet_draw"
+                    label   "Meshlet Draw Heatmap"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_meshlet_draw"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_meshlet_draw == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_quickplane_micropoly_color"
                     label   "Micropolygon Color"
                     type    toggle
@@ -1287,6 +1308,27 @@
                     type    string
                     default { "float16" }
                     hidewhen "{ lv_quickplane_uv == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_quickplane_texgrads"
+                    label   "Texture Coordinate Gradients"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_texgrads"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_texgrads == 0 }"
                     menu {
                         [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                         language python

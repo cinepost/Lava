@@ -38,6 +38,7 @@ namespace {
     const std::string kInputDepth = "depth";
     const std::string kInputTexGrads = "texGrads";
     const std::string kInputMotionVectors = "mvec";
+    const std::string kUseDOF = "useDOF";
 
     const std::string kShaderModel = "6_5";
 
@@ -105,6 +106,7 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         #endif
         else if (key == kRussianRouletteLevel) pThis->setRussRoulleteLevel((uint)value);
         else if (key == kRayContributionThreshold) pThis->setRayContribThreshold(value);
+        else if (key == kUseDOF) pThis->enableDepthOfField(static_cast<bool>(value));
     }
 
     return pThis;
@@ -194,6 +196,9 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         defines.add("_USE_VARIANCE", mUseVariance ? "1" : "0");
         defines.add("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
+        defines.add("USE_DEPTH_OF_FIELD", mUseDOF ? "1" : "0");
+        
+
         defines.add("is_valid_gLastFrameSum", mpLastFrameSum != nullptr ? "1" : "0");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         
@@ -379,4 +384,10 @@ void DeferredLightingPass::setRayContribThreshold(float value) {
 void DeferredLightingPass::setRussRoulleteLevel(uint value) {
     if(mRussRouletteLevel == value) return;
     mRussRouletteLevel = value;
+}
+
+void DeferredLightingPass::enableDepthOfField(bool value) {
+    if(mUseDOF == value) return;
+    mUseDOF = value;
+    mDirty = true;
 }

@@ -49,6 +49,8 @@ enum class AOVBuiltinName: uint8_t {
   MESHLET_COLOR,
   MICROPOLY_COLOR,
   UV,
+  TEXGRADS,
+  MESHLET_DRAW_HEATMAP,
   AUX,
 
   EdgeDetectPass,
@@ -61,6 +63,7 @@ enum class AOVBuiltinName: uint8_t {
 inline std::string to_string(AOVBuiltinName name) {
 #define type_2_string(a) case AOVBuiltinName::a: return #a;
   switch (name) {
+    // Simple passes
     type_2_string(MAIN);
     type_2_string(POSITION);
     type_2_string(DEPTH);
@@ -76,14 +79,19 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(INSTANCE_ID);
     type_2_string(Prim_Id);
     type_2_string(Op_Id);
+
+    // Debug passes
     type_2_string(VARIANCE);
     type_2_string(MESHLET_ID);
     type_2_string(MICROPOLY_ID);
     type_2_string(MESHLET_COLOR);
     type_2_string(MICROPOLY_COLOR);
     type_2_string(UV);
+    type_2_string(TEXGRADS);
+    type_2_string(MESHLET_DRAW_HEATMAP);
     type_2_string(AUX);
 
+    // Complex passes
     type_2_string(EdgeDetectPass);
     type_2_string(AmbientOcclusionPass);
     type_2_string(CryptomattePass);

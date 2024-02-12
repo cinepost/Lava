@@ -24,6 +24,10 @@ import DeferredLightingAOV;
 #define _MAX_RAY_LEVEL 0
 #endif
 
+#ifndef USE_DEPTH_OF_FIELD
+#define USE_DEPTH_OF_FIELD false
+#endif
+
 #define _FIX_SHADOW_TERMINATOR
 #define _USE_MULTIPLE_IMPORTANCE_SAMPLING
 #define _CACHE_NEXT_RAY
@@ -528,8 +532,15 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
+    // Sample generator
+    SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
+
+#if USE_DEPTH_OF_FIELD
+    const float3 rayDir = normalize(gScene.camera.computeRayThinlens(ipos, gFrameDim, sampleNext2D(sg)).dir);
+#else
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
-    
+#endif
+
     ITextureSampler primaryLod = createTextureSampler(ipos);
     //ITextureSampler primaryLod = TailTextureSampler();
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
@@ -540,9 +551,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     [[branch]] if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) {
         return;
     }
-
-    // Sample generator
-    SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
 
     float2 screenUV = float2(ipos) / float2(gFrameDim); 
 

@@ -61,6 +61,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void setPerPixelJitterRaster(bool value);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
+		void enableDepthOfField(bool value);
 
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);

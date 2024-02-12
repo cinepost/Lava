@@ -7,6 +7,7 @@
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Utils/Color/FalseColorGenerator.h"
+#include "Falcor/Utils/Color/HeatMapColorGenerator.h"
 
 using namespace Falcor;
 
@@ -36,13 +37,14 @@ class PASS_API DebugShadingPass : public RenderPass {
 
 		void generateMeshletColorBuffer(const RenderData& renderData);
 		
-		Scene::SharedPtr                mpScene;
-		ComputePass::SharedPtr          mpShadingPass;
+		Scene::SharedPtr                	mpScene;
+		ComputePass::SharedPtr          	mpShadingPass;
 
-		ResourceFormat                  mFalseColorFormat = ResourceFormat::RGBA16Float;
+		ResourceFormat                  	mFalseColorFormat = ResourceFormat::RGBA16Float;
 
-		FalseColorGenerator::SharedPtr  mpFalseColorGenerator;
-		Buffer::SharedPtr               mpMeshletColorBuffer;
+		FalseColorGenerator::SharedPtr  	mpFalseColorGenerator;
+		HeatMapColorGenerator::SharedPtr  mpHeatMapColorGenerator;
+		Buffer::SharedPtr               	mpMeshletColorBuffer;
 
 		uint2 mFrameDim = { 0, 0 };
 		

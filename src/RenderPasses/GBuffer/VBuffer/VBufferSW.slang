@@ -53,8 +53,9 @@ RWTexture2D<uint>   gMeshletID;
 RWTexture2D<uint>   gMicroPolyID;
 
 // Optional debug buffers
-RWTexture2D<float4> gAUX;  // Just a four channel auxiliary debug buffer for whatever
-RWTexture2D<uint>   gTime; // Timing debug buffer
+RWTexture2D<uint>       gDrawCount; // Number of writes into visibility buffer
+RWTexture2D<float4>     gAUX;       // Just a four channel auxiliary debug buffer for whatever
+RWTexture2D<uint>       gTime;      // Timing debug buffer
 
 
 #if !defined(COMPUTE_DEPTH_OF_FIELD) 
@@ -75,6 +76,8 @@ struct VBufferSW {
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
 
     uint2 frameDim;
+    float2 frameDimInv;
+    float2 frameDimInv2;
     uint sampleNumber;
     uint dispatchX;
     uint meshletDrawsCount;
@@ -88,7 +91,13 @@ struct VBufferSW {
     void writeMicroPolyID(uint2 pixelPos, uint microPolyID) {
 #if is_valid(gMicroPolyID)
         gMicroPolyID[pixelPos] = microPolyID;
-#endif // gMeshletID  
+#endif // gMicroPolyID  
+    }
+
+    void writeTexGrads(uint2 pixelPos, float4 grads) {
+#if is_valid(gTextureGrads)
+        gTextureGrads[pixelPos] = grads;
+#endif // gTextureGrads  
     }
 
     void writeHit(uint2 pixelPos, const HitInfo hit) {

@@ -51,9 +51,11 @@ file( GLOB SOURCES
 
     ./Utils/Color/*.cpp
     ./Utils/Color/FalseColorGenerator.cpp
+    ./Utils/Color/HeatMapColorGenerator.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Sampling/*.cpp
     ./Utils/Sampling/Pseudorandom/*.cpp
+    ./Utils/Shading/*.cpp
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp

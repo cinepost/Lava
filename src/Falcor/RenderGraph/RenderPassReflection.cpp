@@ -186,6 +186,13 @@ namespace Falcor
         return nullptr;
     }
 
+    const bool RenderPassReflection::hasField(const std::string& name) const {
+        for (const auto& field : mFields) {
+            if (field.getName() == name) return true;
+        }
+        return false;
+    }
+
     RenderPassReflection::Field* RenderPassReflection::getField(const std::string& name) {
         for (auto& field : mFields) {
             if (field.getName() == name) return &field;

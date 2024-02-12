@@ -631,12 +631,28 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::TEXGRADS:
+				{
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("VBufferPass.texGrads", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::AUX:
 				{
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("VBufferPass.aux", "ShadingPass.aux");
 						mpRenderGraph->addEdge("ShadingPass.aux", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::MESHLET_DRAW_HEATMAP:
+				{
+					if(pAccPass) {
+						mpRenderGraph->addEdge("VBufferPass.drawCount", "ShadingPass.drawCount");
+						mpRenderGraph->addEdge("ShadingPass.meshlet_draw", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;

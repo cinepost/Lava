@@ -87,6 +87,21 @@ inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelLi
 	}
 }
 
+/** Adds a list of input buffers to the render pass reflection.
+	\param[in] reflector Render pass reflection object.
+	\param[in] channels List of channels.
+	\param[in] bindFlags Optional bind flags. The default is 'ShaderResource' for all inputs.
+*/
+inline void addRenderPassInputBuffers(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const uint2 dim = {}) {
+	for (const auto& it : channels) {
+		if (it.format == ResourceFormat::Unknown) continue;
+		auto& buff = reflector.addInput(it.name, it.desc).rawBuffer(dim.x * dim.y * getFormatBytesPerBlock(it.format));
+		buff.bindFlags(bindFlags);
+		if (it.format != ResourceFormat::Unknown) buff.format(it.format);
+		if (it.optional) buff.flags(RenderPassReflection::Field::Flags::Optional);
+	}
+}
+
 /** Adds a list of output channels to the render pass reflection.
 	\param[in] reflector Render pass reflection object.
 	\param[in] channels List of channels.
@@ -100,6 +115,22 @@ inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelL
 		if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
 	}
 }
+
+/** Adds a list of output buffers to the render pass reflection.
+	\param[in] reflector Render pass reflection object.
+	\param[in] channels List of channels.
+	\param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
+*/
+inline void addRenderPassOutputBuffers(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {}) {
+	for (const auto& it : channels) {
+		if (it.format == ResourceFormat::Unknown) continue;
+		auto& buff = reflector.addOutput(it.name, it.desc).rawBuffer(dim.x * dim.y * getFormatBytesPerBlock(it.format));
+		buff.bindFlags(bindFlags);
+		if (it.format != ResourceFormat::Unknown) buff.format(it.format);
+		if (it.optional) buff.flags(RenderPassReflection::Field::Flags::Optional);
+	}
+}
+
 
 /** Adds a list of input-output channels to the render pass reflection.
 	\param[in] reflector Render pass reflection object.
