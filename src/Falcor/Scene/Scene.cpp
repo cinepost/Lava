@@ -63,7 +63,7 @@ namespace Falcor {
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
 static_assert(sizeof(GeometryInstanceData) % 16 == 0, "GeometryInstanceData size should be a multiple of 16");
 static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
-static_assert(sizeof(Meshlet) % 16 == 0, "Meshlet size should be a multiple of 16");
+static_assert(sizeof(PackedMeshletData) % 16 == 0, "Meshlet size should be a multiple of 16");
 
 namespace {
     // Large scenes are split into multiple BLAS groups in order to reduce build memory usage.
@@ -76,7 +76,7 @@ namespace {
     const std::string kGeometryInstanceBufferName = "geometryInstances";
     const std::string kMeshBufferName = "meshes";
     const std::string kMeshletGroupsBufferName = "meshletGroups";
-    const std::string kMeshletIndicesBufferName = "meshletIndexData";
+    const std::string kMeshletIndicesBufferName = "meshletLocalIndexData";
     const std::string kMeshletVerticesBufferName = "meshletVertices";
     const std::string kMeshletPrimIndicesBufferName = "meshletPrimIndices";
     const std::string kMeshletsBufferName = "meshlets";
@@ -188,7 +188,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mHas32BitIndices = sceneData.has32BitIndices;
 
     mMeshletGroups = std::move(sceneData.meshletGroups);
-    mMeshlets = std::move(sceneData.meshlets);
+    mMeshletsData = std::move(sceneData.meshletsData);
     mMeshletVertices = std::move(sceneData.meshletVertices);
     mMeshletIndices = std::move(sceneData.meshletIndices);
     mMeshletPrimIndices = std::move(sceneData.meshletPrimIndices);
@@ -769,8 +769,8 @@ void Scene::initResources() {
         mpMeshletGroupsBuffer->setName("Scene::mpMeshletGroupsBuffer");
     }
     
-    if (!mMeshlets.empty()) {
-        mpMeshletsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletsBufferName], (uint32_t)mMeshlets.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    if (!mMeshletsData.empty()) {
+        mpMeshletsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshletsBufferName], (uint32_t)mMeshletsData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMeshletsBuffer->setName("Scene::mpMeshletsBuffer");
     }
 
@@ -805,7 +805,7 @@ void Scene::uploadResources() {
 
     // Meshlets.
     if (!mMeshletGroups.empty()) mpMeshletGroupsBuffer->setBlob(mMeshletGroups.data(), 0, sizeof(MeshletGroup) * mMeshletGroups.size());
-    if (!mMeshlets.empty()) mpMeshletsBuffer->setBlob(mMeshlets.data(), 0, sizeof(Meshlet) * mMeshlets.size());
+    if (!mMeshletsData.empty()) mpMeshletsBuffer->setBlob(mMeshletsData.data(), 0, sizeof(PackedMeshletData) * mMeshletsData.size());
     if (!mMeshletVertices.empty()) mpMeshletVerticesBuffer->setBlob(mMeshletVertices.data(), 0, sizeof(uint32_t) * mMeshletVertices.size());
     if (!mMeshletIndices.empty()) mpMeshletIndicesBuffer->setBlob(mMeshletIndices.data(), 0, sizeof(uint8_t) * mMeshletIndices.size());
     if (!mMeshletPrimIndices.empty()) mpMeshletPrimIndicesBuffer->setBlob(mMeshletPrimIndices.data(), 0, sizeof(uint32_t) * mMeshletPrimIndices.size());
@@ -1266,7 +1266,7 @@ void Scene::finalize() {
 }
 
 void Scene::printMeshletsStats() const {
-    if(mMeshlets.empty()) return;
+    if(mMeshletsData.empty()) return;
     LLOG_INF << "Meshlets count: " << mSceneStats.meshletsCount;
     LLOG_INF << "Meshlets data memory size: " << formatByteSize(mSceneStats.meshletsMemoryInBytes);
 }
@@ -1342,8 +1342,8 @@ void Scene::updateGeometryStats() {
     }
 
     // Meshlets
-    s.meshletsCount = mMeshlets.size();
-    s.meshletsMemoryInBytes += s.meshletsCount * sizeof(Meshlet);
+    s.meshletsCount = mMeshletsData.size();
+    s.meshletsMemoryInBytes += s.meshletsCount * sizeof(PackedMeshletData);
     s.meshletsMemoryInBytes += mMeshletGroups.size() * sizeof(MeshletGroup);
     s.meshletsMemoryInBytes += mMeshletVertices.size() * sizeof(uint32_t);
     s.meshletsMemoryInBytes += mMeshletIndices.size() * sizeof(uint8_t);
@@ -1763,6 +1763,11 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
     if (mBlasDataValid && blasUpdateRequired) {
         invalidateTlasCache();
         buildBlas(pContext);
+    }
+
+    // TODO: This is a very simple and straightforward way. We need to make it better, faster and more precise
+    if(!mBlasDataValid || is_set(mUpdates, UpdateFlags::MeshesChanged)) {
+        mUpdates |= UpdateFlags::MeshletsChanged;
     }
 
     // Update light collection
@@ -2768,7 +2773,7 @@ void Scene::buildBlas(RenderContext* pContext) {
                     
                     LLOG_TRC << "Calculated blas size is " << byteSize;
 
-                    if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index " + std::to_string(blasId));
+                    if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index (byteSize == 0)" + std::to_string(blasId));
 
                     blas.blasByteSize = align_to(kAccelerationStructureByteAlignment, byteSize);
                     blas.blasByteOffset = group.finalByteSize;

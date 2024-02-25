@@ -372,6 +372,46 @@ void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_
     mpExe->execute(c, frameNumber, sampleNumber);
 }
 
+bool RenderGraph::beginFrame() {
+    return beginFrame(mpDevice->getRenderContext(), 0);
+}
+
+bool RenderGraph::beginFrame(RenderContext* pContext, uint32_t frameNumber) {
+    std::string log;
+    if (!compile(pContext, log)) {
+        LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::beginFrame() call";
+        return false;
+    }
+
+    assert(mpExe);
+    RenderGraphExe::Context c;
+    c.pGraphDictionary = mpPassDictionary;
+    c.pRenderContext = pContext;
+    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
+    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    return mpExe->beginFrame(c, frameNumber);
+}
+
+void RenderGraph::endFrame() {
+    endFrame(mpDevice->getRenderContext(), 0);
+}
+
+void RenderGraph::endFrame(RenderContext* pContext, uint32_t frameNumber) {
+    std::string log;
+    if (!compile(pContext, log)) {
+        LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::startFrame() call";
+        return;
+    }
+
+    assert(mpExe);
+    RenderGraphExe::Context c;
+    c.pGraphDictionary = mpPassDictionary;
+    c.pRenderContext = pContext;
+    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
+    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    mpExe->endFrame(c);
+}
+
 void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {

@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERSW_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERSW_H_
+
 #include "../GBufferBase.h"
+#include "Falcor/Core/API/RasterizerState.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/SceneTypes.slang"
 
@@ -41,7 +44,6 @@ using namespace Falcor;
 class PASS_API VBufferSW : public GBufferBase {
 	public:
 		using SharedPtr = std::shared_ptr<VBufferSW>;
-		using MeshletsList = std::vector<Meshlet>;
 		using VerticesList = std::vector<uint32_t>;
 		using TrianglesList = std::vector<uint32_t>;
 
@@ -58,6 +60,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		Dictionary getScriptingDictionary() override;
 		void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
+		virtual void setCullMode(RasterizerState::CullMode mode) override;
+		void setCullMode(const std::string& mode_str);
 		void setPerPixelJitterRaster(bool value);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
@@ -65,6 +69,8 @@ class PASS_API VBufferSW : public GBufferBase {
 
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
+
+		void preProcessMeshlets();
 
 		void createBuffers();
 		void createJitterTexture();
@@ -113,3 +119,5 @@ class PASS_API VBufferSW : public GBufferBase {
 		// Meshlets part
 		Buffer::SharedPtr      	mpMeshletDrawListBuffer;
 };
+
+#endif   // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERSW_H_

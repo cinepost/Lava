@@ -334,7 +334,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     [[branch]] if(thread_id < triangleCount) {
         const uint meshletTriangleRootIndex = thread_id * 3u;
         prim_ids[thread_id] = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
-        const uint8_t3 _indices = gScene.meshletIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
+        const uint8_t3 _indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
 
         indices[meshletTriangleRootIndex] = _indices[0];
         indices[meshletTriangleRootIndex + 1] = _indices[1];

@@ -419,7 +419,7 @@ void PathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
 }
 
 void PathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    if (!beginFrame(pRenderContext, renderData)) return;
+    //if (!beginFrame(pRenderContext, renderData)) return; <-- this should be called by rendergraph executor itself
 
     // Update shader program specialization.
     updatePrograms();
@@ -454,7 +454,8 @@ void PathTracer::execute(RenderContext* pRenderContext, const RenderData& render
     // Resolve pass.
     resolvePass(pRenderContext, renderData);
 
-    endFrame(pRenderContext, renderData);
+
+    //endFrame(pRenderContext, renderData); <-- this should be called by rendergraph executor itself
 }
 
 PathTracer::TracePass::TracePass(Device::SharedPtr pDevice, const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)

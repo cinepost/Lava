@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
+
+#include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
 
 import Utils.Sampling.SampleGenerator;
@@ -64,7 +66,7 @@ groupshared GeometryInstanceID instanceID;
 groupshared GeometryInstanceData instance;
 groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
-groupshared Meshlet meshlet;
+groupshared MeshletData meshlet;
 
 groupshared uint32_t            indices[MESHLET_MAX_POLYGONS_COUNT * 4];
 groupshared uint                prim_ids[MESHLET_MAX_POLYGONS_COUNT];
@@ -186,7 +188,11 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
 #if !COMPUTE_DEPTH_OF_FIELD
     float det = pt20.x * pt10.y - pt20.y * pt10.x;
     // CCW culling
+    #if CULL_MODE == CULL_BACK
     [[branch]] if(cullCCW && det < 0.0f) return;
+    #elif CULL_MODE == CULL_FRONT
+    [[branch]] if(cullCCW && det > 0.0f) return;
+    #endif
 #endif
 
     float c0 = cocs[pi0], c1 = cocs[pi1], c2 = cocs[pi2];
@@ -194,13 +200,18 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
     c1 *= gScene.camera.data.apertureRadius * gScene.camera.data.focalDistance * gScene.camera.data.focalLength;
     c2 *= gScene.camera.data.apertureRadius * gScene.camera.data.focalDistance * gScene.camera.data.focalLength;
 
-    uint2 bb_min = uint2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
-    uint2 bb_max = uint2(ceil(max(max(pt0.x + c0, pt1.x + c1), pt2.x + c2) + jitterBound.x), ceil(max(max(pt0.y + c0, pt1.y + c1), pt2.y + c2) + jitterBound.y));
+    int2 bb_min = int2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
+    int2 bb_max = int2(ceil(max(max(pt0.x + c0, pt1.x + c1), pt2.x + c2) + jitterBound.x), ceil(max(max(pt0.y + c0, pt1.y + c1), pt2.y + c2) + jitterBound.y));
+
+    if((bb_max.x < 0) || (bb_max.y < 0) || (bb_min.x > (gVBufferSW.frameDim.x-2)) || (bb_min.y > (gVBufferSW.frameDim.y-2))) return;
+
+    uint2 bb_min_u = uint2(clamp(bb_min, int2(0), int2(gVBufferSW.frameDim - int2(1))));
+    uint2 bb_max_u = uint2(clamp(bb_max, int2(0), int2(gVBufferSW.frameDim - int2(1))));
 
     SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
 
-    for(uint x=bb_min.x; x<bb_max.x; x++) {
-        for(uint y=bb_min.y; y<bb_max.y; y++) {
+    for(uint y=bb_min_u.y; y<bb_max_u.y; y++) {
+        for(uint x=bb_min_u.x; x<bb_max_u.x; x++) {
 
             // Jitter (noise) [0, 1] range
             float2 jitter = gJitterTexture[uint2(x - 128 * floor( x / 128.0), y - 128 * floor(y / 128.0))].xy;
@@ -217,7 +228,11 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
 
 #if COMPUTE_DEPTH_OF_FIELD
             // CCW culling
+            #if CULL_MODE == CULL_BACK
             [[branch]] if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
+            #elif CULL_MODE == CULL_FRONT
+            [[branch]] if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z < 0.0f) continue;
+            #endif
 #endif
 
             float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
@@ -262,7 +277,7 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
                 BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
                 GradientInterpolationResults g = interpolate2DWithDeriv(deriv, tcrd0, tcrd1, tcrd2);
 
-                gVBufferSW.writeTexGrads(pixelPos, float4(g.dx, g.dy));
+                gVBufferSW.writeTexGrads(pixelPos, float4(clamp(g.dx, float2(-1.0f), float2(1.0f)), clamp(g.dy, float2(-1.0f), float2(1.0f))));
 #endif
 
                 gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
@@ -331,7 +346,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             instance = gScene.getGeometryInstance(instanceID);
             meshDesc = gScene.getMeshDesc(instanceID);
             worldMat = gScene.getWorldMatrix(instanceID);
-            meshlet = gScene.meshlets[draw.meshletID];
+            meshlet = gScene.meshlets[draw.meshletID].unpack();
             triangleCount = meshlet.indexCount / 3;
         }  
     }
@@ -346,7 +361,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     [[branch]] if(thread_id < triangleCount) {
         const uint meshletTriangleRootIndex = thread_id * 3u;
         prim_ids[thread_id] = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
-        const uint8_t3 _indices = gScene.meshletIndexData.Load<uint8_t3>(meshlet.indexOffset + meshletTriangleRootIndex);
+        const uint8_t3 _indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + meshletTriangleRootIndex);
 
         indices[meshletTriangleRootIndex] = _indices[0];
         indices[meshletTriangleRootIndex + 1] = _indices[1];
@@ -383,5 +398,4 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     const uint meshletTriangleRootIndex = thread_id * 3u;
     rasterizeTriangle2(indices[meshletTriangleRootIndex], indices[meshletTriangleRootIndex + 1], indices[meshletTriangleRootIndex + 2], prim_ids[thread_id], cullCCW);
-
 }

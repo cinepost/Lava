@@ -53,6 +53,10 @@ class dlldecl RenderGraphExe {
     */
     void execute(const Context& ctx, uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
 
+    bool beginFrame(const Context& ctx, uint32_t frameNumber = 0);
+
+    void endFrame(const Context& ctx, uint32_t frameNumber = 0);
+
     /** Resolve graph's per frame sparse resources
     */
     void resolvePerFrameSparseResources(const Context& ctx);

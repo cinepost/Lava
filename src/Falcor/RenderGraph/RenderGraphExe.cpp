@@ -45,6 +45,35 @@ namespace Falcor {
         }
     }
 
+    bool RenderGraphExe::beginFrame(const Context& ctx, uint32_t frameNumber) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::beginFrame()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+            
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
+            if(!pass.pPass->beginFrame(ctx.pRenderContext, renderData)) {
+                LLOG_ERR << "Error beginning frame for pass " << pass.name;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void RenderGraphExe::endFrame(const Context& ctx, uint32_t frameNumber) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::endFrame()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+            
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
+            pass.pPass->endFrame(ctx.pRenderContext, renderData);
+        }
+    }
+
     void RenderGraphExe::resolvePerFrameSparseResources(const Context& ctx) {
         auto pDevice = ctx.pRenderContext->device();
         PROFILE(pDevice, "RenderGraphExe::resolvePerFrameSparseResources()");

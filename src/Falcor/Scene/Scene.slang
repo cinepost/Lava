@@ -85,10 +85,11 @@ struct Scene
 
     // Meshlets
     StructuredBuffer<MeshletGroup> meshletGroups;
-    StructuredBuffer<Meshlet> meshlets;
-    StructuredBuffer<uint> meshletVertices;                         ///< Meshlet point indices data. Maps to vertices buffer.
+    //StructuredBuffer<Meshlet> meshlets;
+    StructuredBuffer<PackedMeshletData> meshlets;
+    StructuredBuffer<uint> meshletVertices;                         ///< Meshlet point indices data. Maps to mesh vertices buffer.
     StructuredBuffer<uint> meshletPrimIndices;                      ///< Meshlet primitive indices data.   
-    ByteAddressBuffer meshletIndexData;                             ///< Local meshlet point indices, three indices per triangle. Maps to meshletVertices buffer.
+    ByteAddressBuffer      meshletLocalIndexData;                   ///< Local meshlet point indices, three/four indices per primitive. Maps to meshletVertices buffer.
 
     [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
     StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, for dynamic meshes only.

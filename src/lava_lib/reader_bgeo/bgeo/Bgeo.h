@@ -17,6 +17,8 @@
 #include "Primitive.h"
 #include "Attribute.h"
 
+#include "Falcor/Utils/Math/Vector.h"
+
 namespace ika {
 namespace bgeo {
 
@@ -63,11 +65,19 @@ class Bgeo: public std::enable_shared_from_this<Bgeo> {
     // attributes ///////
 
     void getP(std::vector<float>& P) const;
+    void getP(std::vector<Falcor::float3>& P) const;
+    
     void getPointN(std::vector<float>& N) const;
+    void getPointN(std::vector<Falcor::float3>& N) const;
+    
     void getPointUV(std::vector<float>& uv) const;
+    void getPointUV(std::vector<Falcor::float2>& uv) const;
 
     void getVertexN(std::vector<float>& N) const;
+    void getVertexN(std::vector<Falcor::float3>& N) const;
+
     void getVertexUV(std::vector<float>& uv) const;
+    void getVertexUV(std::vector<Falcor::float2>& uv) const;
 
     int64_t getPointAttributeCount() const;
     typedef std::shared_ptr<Attribute> AttributePtr;

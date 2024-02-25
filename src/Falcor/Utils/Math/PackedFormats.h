@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 #define SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 
+#include <cmath>
+#include <algorithm>
 #include "Falcor/Utils/Math/Vector.h"
 
 /** Host-side utility functions for format conversion.
@@ -80,6 +82,35 @@ inline uint encodeNormal2x16(float3 normal) {
 inline float3 decodeNormal2x16(uint packedNormal) {
     float2 octNormal = glm::unpackSnorm2x16(packedNormal);
     return oct_to_ndir_snorm(octNormal);
+}
+
+// -------- From FormatConversion.slang
+
+/** Convert float value to 8-bit unorm (unsafe version).
+    \param[in] v Float value assumed to be in [0,1].
+    \return 8-bit unorm in low bits, high bits all zeros.
+*/
+inline uint packUnorm8_unsafe(float v) {
+    return (uint)std::trunc(v * 255.f + 0.5f);
+}
+
+/** Convert float value to 8-bit unorm.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Float value.
+    \return 8-bit unorm in low bits, high bits all zeros.
+*/
+inline uint packUnorm8(float v) {
+    v = std::isnan(v) ? 0.f : std::clamp(v, 0.0f, 1.0f);
+    return packUnorm8_unsafe(v);
+}
+
+/** Pack three floats into 8-bit unorm values.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Three float values.
+    \return Packed 8-bit unorm values in low bits, high bits all zeros.
+*/
+inline uint packUnorm3x8(float3 v) {
+    return (packUnorm8(v.z) << 16) | (packUnorm8(v.y) << 8) | packUnorm8(v.x);
 }
 
 }  // namespace Falcor

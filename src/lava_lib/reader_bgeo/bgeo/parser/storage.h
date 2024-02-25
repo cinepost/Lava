@@ -21,8 +21,7 @@ namespace parser
 namespace storage
 {
 
-enum Storage
-{
+enum Storage {
     UnknownStorage = 0,
     Int32,
     Fpreal32,

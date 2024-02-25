@@ -149,26 +149,26 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     // get basic bgeo data P, N, UV
 
-    std::vector<float> P;
+    std::vector<float3> P;
     pBgeo->getP(P);
-    assert(P.size() / 3 == bgeo_point_count && "P positions count not equal to the bgeo points count !!!");
-    LLOG_TRC << "P<float> size: " << P.size();
+    assert(P.size() == bgeo_point_count && "P positions count not equal to the bgeo points count !!!");
+    LLOG_TRC << "P<float3> size: " << P.size();
 
-    std::vector<float> N;
+    std::vector<float3> N;
     pBgeo->getPointN(N);
-    LLOG_TRC << "N<float> size: " << N.size();
+    LLOG_TRC << "N<float3> size: " << N.size();
     
-    std::vector<float> UV;
+    std::vector<float2> UV;
     pBgeo->getPointUV(UV);
-    LLOG_TRC << "UV<float> size: " << UV.size();
+    LLOG_TRC << "UV<float2> size: " << UV.size();
 
-    std::vector<float> vN;
+    std::vector<float3> vN;
     pBgeo->getVertexN(vN);
-    LLOG_TRC << "vN<float> size: " << vN.size();
+    LLOG_TRC << "vN<float3> size: " << vN.size();
     
-    std::vector<float> vUV;
+    std::vector<float2> vUV;
     pBgeo->getVertexUV(vUV);
-    LLOG_TRC << "vUV<float> size: " << vUV.size();
+    LLOG_TRC << "vUV<float2> size: " << vUV.size();
 
     bool unique_points = false; // separate points only if we have any vertex data present
     if(vN.size() || vUV.size()) unique_points = true; 
@@ -182,63 +182,53 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     if(pDetail && unique_points) {
         auto const& vt_map = pDetail->getVertexMap();
 
-        assert(vt_map.vertexCount == bgeo_vertex_count && "Bgeo detail vertices count not equal to the number of bgeo vertices count !!!");
+        if(vt_map.vertexCount != bgeo_vertex_count) {
+            LLOG_ERR << "Bgeo " << name << " detail vertices count not equal to the number of bgeo vertices count !!!";
+            return SceneBuilder::kInvalidMeshID;
+        }
 
         ika::bgeo::parser::int32 point_idx;
         const ika::bgeo::parser::int32* vt_idx_ptr = vt_map.getVertices();
         
         if( unique_points) {
-            positions.resize(bgeo_vertex_count);
+             positions.resize(bgeo_vertex_count);
             // fill in vertex positions
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-                point_idx = vt_idx_ptr[i] * 3;
-                positions[i] = {P[point_idx], P[point_idx+1], P[point_idx+2]};
+            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+                positions[i] = P[vt_idx_ptr[i]];
             }
         }
 
         // fill in normals
-        if (vN.size() || N.size()) normals.resize(bgeo_vertex_count);
-        if (vN.size()) {
-            size_t ii = 0;
-            assert(vN.size() / 3 == bgeo_vertex_count && "Vertex normals count not equal to the number of bgeo verices count !!!");
+        if (!vN.empty() || !N.empty()) normals.resize(bgeo_vertex_count);
+        if (!vN.empty()) {
+            assert(vN.size() == bgeo_vertex_count && "Vertex normals count not equal to the number of bgeo verices count !!!");
             // use vertex normals
-            for( size_t i = 0; i < bgeo_vertex_count; i++){
-                normals[i] = {vN[ii], vN[ii+1], vN[ii+2]};
-                ii += 3;
+            for( size_t i = 0; i < bgeo_vertex_count; ++i){
+                normals[i] = vN[i];
             }
-        } else if (N.size() && unique_points) {
+        } else if (!N.empty() && unique_points) {
             // use point normals
             assert(N.size() == P.size() && "Point normals count not equal to the number of bgeo points !!!");
 
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-                point_idx = vt_idx_ptr[i] * 3;
-                normals[i] = {N[point_idx], N[point_idx+1], N[point_idx+2]};
+            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+                normals[i] = N[vt_idx_ptr[i]];
             }
         }
 
         // fill in texture coordinates
-        if (vUV.size() || UV.size()) uv_coords.resize(bgeo_vertex_count);
-        if (vUV.size()) {
-            size_t ii = 0;
-            assert(vUV.size()/2 == bgeo_vertex_count && "Vertex texture coordinates count not equal to the number of bgeo verices count !!!");
+        if (!vUV.empty() || !UV.empty()) uv_coords.resize(bgeo_vertex_count);
+        if (!vUV.empty()) {
+            assert(vUV.size() == bgeo_vertex_count && "Vertex texture coordinates count not equal to the number of bgeo verices count !!!");
             // use vertex normals
-            for( size_t i = 0; i < bgeo_vertex_count; i++){
-                uv_coords[i] = {
-                    vUV[ii], 
-                    vUV[ii+1]
-                };
-                ii += 2;
+            for( size_t i = 0; i < bgeo_vertex_count; ++i){
+                uv_coords[i] = vUV[i];
             }
-        } else if (UV.size() && unique_points) {
+        } else if (!UV.empty() && unique_points) {
             // use point normals
-            assert(UV.size()/2 == P.size()/3 && "Point texture coordinates count not equal to the number of bgeo points !!!");
+            assert(UV.size() == P.size() && "Point texture coordinates count not equal to the number of bgeo points !!!");
 
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-                point_idx = vt_idx_ptr[i]*2;
-                uv_coords[i] = {
-                    UV[point_idx], 
-                    UV[point_idx+1]
-                };
+            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+                uv_coords[i] = UV[vt_idx_ptr[i]];
             }
         } else {
             // no coords provided from bgeo. fill with zeroes as this field is required
@@ -255,7 +245,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     std::vector<uint32_t> indices;
     std::vector<int32_t> prim_start_indices;
 
-    for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); p_i++) {
+    for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); ++p_i) {
         const auto& pPrim = pBgeo->getPrimitive(p_i);
         if(!pPrim) {
             LLOG_WRN << "Unable to get primitive number: " << p_i;
@@ -276,7 +266,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     // process faces
                     int32_t csi; // face current start index
                     int32_t nsi; // next face start index
-                    for( uint32_t i = 0; i < (prim_start_indices.size() - 1); i++){
+                    for( uint32_t i = 0; i < (prim_start_indices.size() - 1); ++i){
                         csi = prim_start_indices[i];
                         nsi = prim_start_indices[i+1];
                         uint edgesCount = nsi-csi;
@@ -345,7 +335,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
         mesh.positions.pData = (float3*)positions.data();
     } else {
         mesh.positions.frequency = Mesh::AttributeFrequency::FaceVarying;
-        mesh.vertexCount = P.size() / 3;
+        mesh.vertexCount = P.size();
         mesh.positions.pData = (float3*)P.data();
     }
 

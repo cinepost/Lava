@@ -47,10 +47,8 @@ headerParms = {
     "ropname"           : SohoParm("object:name", "string", key="ropname"),
     "hip"               : SohoParm("$HIP",        "string", key="hip"),
     "hipname"           : SohoParm("$HIPNAME",    "string", key="hipname"),
-    "seqnumber"         : SohoParm("state:sequencenumber", "int",
-                                        key="seqnumber"),
-    "seqlength"         : SohoParm("state:sequencelength", "int",
-                                        key="seqlength"),
+    "seqnumber"         : SohoParm("state:sequencenumber", "int", key="seqnumber"),
+    "seqlength"         : SohoParm("state:sequencelength", "int", key="seqlength"),
 
     "soho_program"      : SohoParm("soho_program", "string"),
     "hver"              : SohoParm("state:houdiniversion", "string", ["9.0"], False, key="hver"),
@@ -71,7 +69,8 @@ configParms = {
     "lv_fconv"                  : SohoParm("lv_fconv", "bool", key="lv_fconv", skipdefault=False),
     "lv_async_geo"              : SohoParm("lv_async_geo", "bool", key="lv_async_geo", skipdefault=False),
     "lv_async_vtex"             : SohoParm("lv_async_vtex", "bool", key="lv_async_vtex", skipdefault=False),
-    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
+    "lv_meshlet_generator"      : SohoParm("lv_meshlet_generator", "bool", key="lv_meshlet_generator", skipdefault=False),
+#    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
     "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
     "lv_vtex_tlc"               : SohoParm("lv_vtex_tlc", "string", key="lv_vtex_tlc", skipdefault=False),
     "lv_vtex_tlc_level"         : SohoParm("lv_vtex_tlc_level", "int", key="lv_vtex_tlc_level", skipdefault=False),
@@ -204,7 +203,8 @@ def header(now, propdefs):
 
     cmd_config('fconv', cfg_plist.get('lv_fconv', None))
     cmd_config('async_vtex', cfg_plist.get('lv_async_vtex', None))
-    cmd_config('cull_mode', cfg_plist.get('lv_cull_mode', None))
+    cmd_config('meshlet_generator', cfg_plist.get('lv_meshlet_generator', None))
+    #cmd_config('cull_mode', cfg_plist.get('lv_cull_mode', None))
     cmd_config('vtex_conv_quality', cfg_plist.get('lv_vtex_conv_quality', None))
     cmd_config('vtex_tlc', cfg_plist.get('lv_vtex_tlc', None))
     cmd_config('vtex_tlc_level', cfg_plist.get('lv_vtex_tlc_level', None))

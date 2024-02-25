@@ -75,7 +75,7 @@ class dlldecl CopyContext {
 
     virtual ~CopyContext();
 
-    inline std::shared_ptr<Device> device() const { return mpDevice; };
+    std::shared_ptr<Device> device() const { return mpDevice; };
 
     /** Create a copy context.
         \param[in] queue Command queue handle.

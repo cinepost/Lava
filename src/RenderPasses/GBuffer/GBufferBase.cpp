@@ -197,3 +197,9 @@ Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const st
     }
     return pTex;
 }
+
+void GBufferBase::setCullMode(RasterizerState::CullMode mode) { 
+    if(mCullMode == mode) return;
+    mCullMode = mode; 
+    mDirty = true;
+}

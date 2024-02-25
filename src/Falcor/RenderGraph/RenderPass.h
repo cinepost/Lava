@@ -158,6 +158,14 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) = 0;
 
+    /** Render pass frame dependent data preparation.
+    */
+    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) {};
+
+    /** Render pass frame dependent data clearance.
+    */
+    virtual void endFrame(RenderContext *pContext, const RenderData& renderData) {};
+
     /** If pass has frame dependent sparse resources they should be resolved within this call
     */
     virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {}

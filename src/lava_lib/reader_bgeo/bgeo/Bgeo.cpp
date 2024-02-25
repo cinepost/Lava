@@ -178,48 +178,85 @@ void Bgeo::getP(std::vector<float>& P) const {
     attribute->data.copyTo(P.data(), 3, P.size(), 0, pointCount);
 }
 
+void Bgeo::getP(std::vector<Falcor::float3>& P) const {
+    const bgeo::parser::Attribute* attribute = m_pimpl->detail->getPointAttributeByName("P");
+    assert(attribute); // should always have point P
+
+    int64_t pointCount = getPointCount();
+    P.resize(pointCount);
+    attribute->data.copyTo(reinterpret_cast<float*>(P.data()), 3, pointCount * 3, 0, pointCount);
+}
+
 void Bgeo::getPointN(std::vector<float>& N) const {
     const bgeo::parser::Attribute* attribute = m_pimpl->detail->getPointAttributeByName("N");
-    if (!attribute) {
-        return;
-    }
+    if (!attribute) return;
 
     int64_t pointCount = getPointCount();
     N.resize(3 * pointCount);
     attribute->data.copyTo(N.data(), 3, pointCount, 0, pointCount);
 }
 
+void Bgeo::getPointN(std::vector<Falcor::float3>& N) const {
+    const bgeo::parser::Attribute* attribute = m_pimpl->detail->getPointAttributeByName("N");
+    if (!attribute) return;
+
+    int64_t pointCount = getPointCount();
+    N.resize(pointCount);
+    attribute->data.copyTo(reinterpret_cast<float*>(N.data()), 3, pointCount * 3, 0, pointCount);
+}
+
 void Bgeo::getPointUV(std::vector<float>& uv) const {
     const bgeo::parser::Attribute* attribute = m_pimpl->detail->getPointAttributeByName("uv");
-    if (!attribute) {
-        return;
-    }
+    if (!attribute) return;
 
     int64_t pointCount = getPointCount();
     uv.resize(2 * pointCount);
     attribute->data.copyTo(uv.data(), 2, pointCount, 0, pointCount);
 }
 
+void Bgeo::getPointUV(std::vector<Falcor::float2>& uv) const {
+    const bgeo::parser::Attribute* attribute = m_pimpl->detail->getPointAttributeByName("uv");
+    if (!attribute) return;
+
+    int64_t pointCount = getPointCount();
+    uv.resize(pointCount);
+    attribute->data.copyTo(reinterpret_cast<float*>(uv.data()), 2, pointCount * 2, 0, pointCount);
+}
+
 void Bgeo::getVertexN(std::vector<float>& N) const {
     const bgeo::parser::Attribute* attribute = m_pimpl->detail->getVertexAttributeByName("N");
-    if (!attribute) {
-        return;
-    }
+    if (!attribute) return;
 
     int64_t vertexCount = getTotalVertexCount();
     N.resize(3 * vertexCount);
     attribute->data.copyTo(N.data(), 3, vertexCount, 0, vertexCount);
 }
 
+void Bgeo::getVertexN(std::vector<Falcor::float3>& N) const {
+    const bgeo::parser::Attribute* attribute = m_pimpl->detail->getVertexAttributeByName("N");
+    if (!attribute) return;
+
+    int64_t vertexCount = getTotalVertexCount();
+    N.resize(vertexCount);
+    attribute->data.copyTo(reinterpret_cast<float*>(N.data()), 3, vertexCount * 3, 0, vertexCount);
+}
+
 void Bgeo::getVertexUV(std::vector<float>& uv) const {
     const bgeo::parser::Attribute* attribute = m_pimpl->detail->getVertexAttributeByName("uv");
-    if (!attribute) {
-        return;
-    }
+    if (!attribute) return;
 
     int64_t vertexCount = getTotalVertexCount();
     uv.resize(2 * vertexCount);
     attribute->data.copyTo(uv.data(), 2, vertexCount, 0, vertexCount);
+}
+
+void Bgeo::getVertexUV(std::vector<Falcor::float2>& uv) const {
+    const bgeo::parser::Attribute* attribute = m_pimpl->detail->getVertexAttributeByName("uv");
+    if (!attribute) return;
+
+    int64_t vertexCount = getTotalVertexCount();
+    uv.resize(vertexCount);
+    attribute->data.copyTo(reinterpret_cast<float*>(uv.data()), 2, vertexCount * 2, 0, vertexCount);
 }
 
 Bgeo::PrimitivePtr Bgeo::getPrimitive(int64_t index) const {

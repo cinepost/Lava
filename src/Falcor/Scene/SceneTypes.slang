@@ -30,9 +30,12 @@
 #include "SceneDefines.slangh"
 
 #ifdef HOST_CODE
+#include "Utils/Math/AABB.h"
 #include "Utils/Math/PackedFormats.h"
 #else
 import Utils.Math.PackedFormats;
+import Utils.Math.FormatConversion;
+import Utils.Math.AABB;
 #endif
 
 BEGIN_NAMESPACE_FALCOR
@@ -42,8 +45,7 @@ BEGIN_NAMESPACE_FALCOR
     All instances are sequentially indexed, with mesh instances first.
     This may change in the future, but a lot of existing code relies on it.
 */
-struct GeometryInstanceID
-{
+struct GeometryInstanceID {
     uint index;             ///< Global instance index. This is computed as InstanceID() + GeometryIndex().
 
 #ifndef HOST_CODE
@@ -51,8 +53,7 @@ struct GeometryInstanceID
         \param[in] instanceID The DXR InstanceID() system value.
         \param[in] geometryIndex The DXR GeometryIndex() system value.
     */
-    __init(uint instanceID, uint geometryIndex)
-    {
+    __init(uint instanceID, uint geometryIndex) {
         index = instanceID + geometryIndex;
     }
 #endif
@@ -60,8 +61,7 @@ struct GeometryInstanceID
 
 /** Geometry types in the scene.
 */
-enum class GeometryType : uint32_t
-{
+enum class GeometryType : uint32_t {
     None                    = GEOMETRY_TYPE_NONE,
     TriangleMesh            = GEOMETRY_TYPE_TRIANGLE_MESH,
     DisplacedTriangleMesh   = GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH,
@@ -74,8 +74,7 @@ enum class GeometryType : uint32_t
 
 /** Flags indicating what geometry types exist in the scene.
 */
-enum class GeometryTypeFlags : uint32_t
-{
+enum class GeometryTypeFlags : uint32_t {
     TriangleMesh            = (1u << GEOMETRY_TYPE_TRIANGLE_MESH),
     DisplacedTriangleMesh   = (1u << GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH),
     Curve                   = (1u << GEOMETRY_TYPE_CURVE),
@@ -87,8 +86,7 @@ enum class GeometryTypeFlags : uint32_t
 enum_class_operators(GeometryTypeFlags);
 #endif
 
-enum class MeshFlags : uint32_t
-{
+enum class MeshFlags : uint32_t {
     None = 0x0,
     Use16BitIndices = 0x1,          ///< Indices are in 16-bit format. The default is 32-bit.
     IsSkinned = 0x2,                ///< Mesh is skinned and has corresponding vertex data.
@@ -153,8 +151,7 @@ struct MeshDesc {
     }
 };
 
-enum class GeometryInstanceFlags : uint32_t
-{
+enum class GeometryInstanceFlags : uint32_t {
     None = 0x0,
 
     // Mesh flags.
@@ -177,8 +174,7 @@ enum class GeometryInstanceFlags : uint32_t
     HasMultipleMaterials = 0x4000,
 };
 
-struct GeometryInstanceData
-{
+struct GeometryInstanceData {
     static const uint kTypeBits = 3;
     static const uint kTypeOffset = 32 - kTypeBits;
 
@@ -233,21 +229,17 @@ struct GeometryInstanceData
     }
 };
 
-struct StaticVertexData
-{
+struct StaticVertexData {
     float3 position;    ///< Position.
     float3 normal;      ///< Shading normal.
     float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
-    
     float2 texCrd;      ///< Texture coordinates.
-
     float curveRadius;  ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 };
 
 /** Vertex data packed into 32B for aligned access.
 */
-struct PackedStaticVertexData
-{
+struct PackedStaticVertexData {
     float3 position;
     float  texU;
     float3 packedNormalTangentCurveRadius;
@@ -256,16 +248,14 @@ struct PackedStaticVertexData
 #ifdef HOST_CODE
     PackedStaticVertexData() = default;
     PackedStaticVertexData(const StaticVertexData& v) { pack(v); }
-    void pack(const StaticVertexData& v)
-    {
+    void pack(const StaticVertexData& v) {
         position = v.position;
         texU = v.texCrd[0];
         texV = v.texCrd[1];
 
         float packedTangentSignCurveRadius = v.tangent.w;
 
-        if (v.curveRadius > 0.f)
-        {
+        if (v.curveRadius > 0.f) {
             // This is safe because if v.curveRadius > 0 then v.tangent.w != 0 (curves always have valid tangents).
             assert(v.tangent.w != 0.f);
             packedTangentSignCurveRadius *= v.curveRadius;
@@ -277,8 +267,7 @@ struct PackedStaticVertexData
     }
 
 #else // !HOST_CODE
-    [mutating] void pack(const StaticVertexData v)
-    {
+    [mutating] void pack(const StaticVertexData v) {
         position = v.position;
         texU = v.texCrd[0];
         texV = v.texCrd[1];
@@ -295,8 +284,7 @@ struct PackedStaticVertexData
         packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
 
-    StaticVertexData unpack()
-    {
+    StaticVertexData unpack() {
         StaticVertexData v;
         v.position = position;
         v.texCrd = float2(texU, texV);
@@ -317,13 +305,11 @@ struct PackedStaticVertexData
 #endif
 };
 
-struct PrevVertexData
-{
+struct PrevVertexData {
     float3 position;
 };
 
-struct SkinningVertexData
-{
+struct SkinningVertexData {
     uint4 boneID;
     float4 boneWeight;
     uint staticIndex;       ///< The index in the static vertex buffer.
@@ -336,8 +322,7 @@ struct SkinningVertexData
     The bitangent should be computed: cross(normal, tangent.xyz) * tangent.w.
     The tangent space is orthogonalized in prepareShadingData().
 */
-struct VertexData
-{
+struct VertexData {
     float3 posW;            ///< Position in world space.
     float3 normalW;         ///< Shading normal in world space (normalized).
     float4 tangentW;        ///< Shading tangent in world space (normalized). The last component is guaranteed to be +-1.0 or zero if tangents are missing.
@@ -347,8 +332,7 @@ struct VertexData
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
 };
 
-struct CurveDesc
-{
+struct CurveDesc {
     uint vbOffset;      ///< Offset into global curve vertex buffer.
     uint ibOffset;      ///< Offset into global curve index buffer.
     uint vertexCount;   ///< Vertex count.
@@ -356,38 +340,33 @@ struct CurveDesc
     uint degree;        ///< Polynomial degree of curve; linear (1) by default.
     uint materialID;    ///< Material ID.
 
-    uint getSegmentCount() CONST_FUNCTION
-    {
+    uint getSegmentCount() CONST_FUNCTION {
         return indexCount;
     }
 };
 
-struct StaticCurveVertexData
-{
+struct StaticCurveVertexData {
     float3 position;    ///< Position.
     float radius;       ///< Radius of the sphere at curve ends.
     float2 texCrd;      ///< Texture coordinates.
 };
 
 
-struct DynamicCurveVertexData
-{
+struct DynamicCurveVertexData {
     float3 position;    ///< Position.
 };
 
 /** Custom primitive data.
     The custom primitives are currently mapped 1:1 to the list of custom primitive AABBs.
 */
-struct CustomPrimitiveDesc
-{
+struct CustomPrimitiveDesc {
     uint userID;        ///< User-defined ID that is specified during scene creation. This can be used to identify different sub-types of custom primitives.
     uint aabbOffset;    ///< Offset into list of procedural primitive AABBs.
 };
 
 /** Meshlet types in the scene.
 */
-enum class MeshletType : uint32_t
-{
+enum class MeshletType : uint32_t {
     Triangles               = GEOMETRY_TYPE_TRIANGLE_MESH,
     Quads                   = GEOMETRY_TYPE_QUAD_MESH,
     Count
@@ -395,21 +374,110 @@ enum class MeshletType : uint32_t
 
 /** Struct representing meshlet data. 40 (64) bytes.
 */
-struct Meshlet {   
-    /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
-    uint vertexOffset;
-    uint indexOffset;
-    uint primIndexOffset;
-    uint _pad0;
+//struct Meshlet {   
+//    /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
+//    uint vertexOffset;
+//    uint indexOffset;
+//    uint primIndexOffset;
+//   uint _pad0;
 
     /* Number of vertices and triangles used in the meshlet; data is stored in a consecutive range defined by offset and count */
-    uint vertexCount;
-    uint indexCount;
-    uint packedData  = 0;
-    uint _pad1;
+//    uint vertexCount;
+//    uint indexCount;
+//    uint packedData  = 0;
+//    uint _pad1;
 
-    float16_t4 bounding_sphere; ///< xyz -> object space origin, w -> radius
-    float16_t4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
+//    float16_t4 bounding_sphere; ///< xyz -> object space origin, w -> radius
+//    float16_t4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
+//};
+
+
+struct MeshletData {
+    uint    localIndexOffset;
+    uint    vertexOffset;
+    uint    primIndexOffset;
+    uint    vertexCount;
+    uint    indexCount;
+
+    AABB    bbox;
+    float3  coneNormal;
+    float   coneAngle;
+};
+
+
+/** Meshlet data packed into 128B for aligned access.
+*/
+struct PackedMeshletData {
+    uint4 packedDataA = {};
+    uint4 packedDataB = {};
+
+    // packedDataA.x - meshlets local index buffer offset
+    // packedDataA.y - meshlets vertices buffer offset
+    // packedDataA.z - meshlets primitive index buffer offset
+
+    // packedDataA.w
+    static const uint kConeNormalBits = 24;    // cone normal stored as 3x8 unorm values
+    static const uint kConeAngleBits = 8;      // cone angle (sin) in 8 bits unorm float
+
+    static const uint kConeNormalOffset = 0;
+    static const uint kConeAngleOffset = kConeNormalBits;
+
+    // packedDataB.x
+    static const uint kBBoxMinXBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kBBoxMinYBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kBBoxMinZBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kIndicesCountBits = 8;    // number of vertex indices - 1 in the meshlet
+
+    static const uint kBBoxMinXOffset = 0;
+    static const uint kBBoxMinYOffset = kBBoxMinXOffset + kBBoxMinXBits;
+    static const uint kBBoxMinZOffset = kBBoxMinYOffset + kBBoxMinYBits;
+    static const uint kIndicesCountOffset = kBBoxMinZOffset + kBBoxMinZBits;
+
+    // packedDataB.y
+    static const uint kBBoxMaxXBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kBBoxMaxYBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kBBoxMaxZBits = 8;        // bounding box coord relative to object bbox UNORM8
+    static const uint kVertexCountBits = 8;     // number of vertices - 1 in the meshlet
+
+    static const uint kBBoxMaxXOffset = 0;
+    static const uint kBBoxMaxYOffset = kBBoxMaxXOffset + kBBoxMaxXBits;
+    static const uint kBBoxMaxZOffset = kBBoxMaxYOffset + kBBoxMaxYBits;
+    static const uint kVertexCountOffset = kBBoxMaxZOffset + kBBoxMaxZBits;
+
+
+#ifdef HOST_CODE
+    PackedMeshletData() = default;
+    PackedMeshletData(const MeshletData& m) { pack(m); }
+    void pack(const MeshletData& m) {
+
+        packedDataA.x = m.localIndexOffset;
+        packedDataA.y = m.vertexOffset;
+        packedDataA.z = m.primIndexOffset;
+        packedDataA.w = packUnorm3x8(m.coneNormal) | (packUnorm8(m.coneAngle) << kConeAngleOffset);
+
+        packedDataB.x = packUnorm3x8(m.bbox.minPoint) | ((m.indexCount - 1) << kIndicesCountOffset);
+        packedDataB.y = packUnorm3x8(m.bbox.maxPoint) | ((m.vertexCount - 1) << kVertexCountOffset);
+        packedDataB.z = encodeNormal2x16(m.coneNormal);
+        
+    }
+
+#else // !HOST_CODE
+    MeshletData unpack() {
+        MeshletData m;
+
+        m.localIndexOffset = packedDataA.x;
+        m.vertexOffset = packedDataA.y;
+        m.primIndexOffset = packedDataA.z;
+        m.coneNormal = unpackUnorm3x8(packedDataA.w);
+        m.coneAngle = unpackUnorm8(packedDataA.w >> kConeAngleOffset);
+
+        m.bbox = {unpackUnorm3x8(packedDataB.x), unpackUnorm3x8(packedDataB.y)};
+        m.indexCount = (packedDataB.x >> kIndicesCountOffset) + 1;
+        m.vertexCount = (packedDataB.y >> kVertexCountOffset) + 1;
+
+        return m;
+    }
+#endif
 };
 
 struct MeshletGroup {

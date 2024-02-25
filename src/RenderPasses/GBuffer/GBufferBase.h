@@ -64,7 +64,7 @@ class PASS_API GBufferBase : public RenderPass {
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
+    virtual void setCullMode(RasterizerState::CullMode mode);
     
     GBufferBase& setDepthBufferFormat(ResourceFormat format);
     

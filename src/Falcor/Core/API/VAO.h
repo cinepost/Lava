@@ -54,7 +54,8 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
 		LineList,
 		LineStrip,
 		TriangleList,
-		TriangleStrip
+		TriangleStrip,
+		QuadList,
 	};
 
 	struct ElementDesc {

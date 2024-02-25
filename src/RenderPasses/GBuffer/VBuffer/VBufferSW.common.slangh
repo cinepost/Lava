@@ -1,0 +1,12 @@
+#ifndef _VBUFFERSW_COMMON_SLANGH
+#define _VBUFFERSW_COMMON_SLANGH
+
+#define CULL_NONE 0
+#define CULL_BACK 1
+#define CULL_FRONT 2
+
+#ifndef CULL_MODE
+#define CULL_MODE CULL_BACK
+#endif
+
+#endif  // _VBUFFERSW_COMMON_SLANGH

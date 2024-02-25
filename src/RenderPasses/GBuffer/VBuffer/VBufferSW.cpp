@@ -54,6 +54,7 @@ namespace {
     // Scripting options.
     const char kUseD64[] = "highp_depth";
     const char kPerPixelJitterRaster[] = "per_pixel_jitter";
+    const char kCullMode[] = "cullMode";
     const char kUseCompute[] = "useCompute";
     const char kUseDOF[] = "useDOF";
     const char kUseSubdivisions[] = "useSubdivisions";
@@ -89,6 +90,21 @@ namespace {
     };
 };
 
+static inline const std::string& to_define_string(RasterizerState::CullMode mode) {
+    static const std::string kCullNone = "CULL_NONE";
+    static const std::string kCullFront = "CULL_FRONT";
+    static const std::string kCullBack = "CULL_BACK";
+
+    switch(mode) {
+        case RasterizerState::CullMode::Front:
+            return kCullFront;
+        case RasterizerState::CullMode::Back:
+            return kCullBack;
+        default:
+            return kCullNone;
+    }
+}
+
 VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferSW(pRenderContext->device(), dict));
 }
@@ -120,6 +136,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseD64) mUseD64 = static_cast<bool>(value);
         else if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
+        else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -240,6 +257,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         defines.add("USE_D64", mUseD64 ? "1" : "0");
         defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");
+        defines.add("CULL_MODE", to_define_string(mCullMode));
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
@@ -407,7 +425,7 @@ void VBufferSW::createBuffers() {
 }
 
 void VBufferSW::createMeshletDrawList() {
-    if(!mDirty || (mpScene->meshlets().size() == 0)) return;
+    if(!mDirty || mpScene->meshletsData().empty()) return;
 
     std::vector<MeshletDraw> meshletsDrawList;
     
@@ -418,18 +436,19 @@ void VBufferSW::createMeshletDrawList() {
         const uint32_t meshID = instanceData.geometryID;
         if(mpScene->hasMeshlets(meshID)) {
             const MeshletGroup& meshletGroup = mpScene->meshletGroup(meshID);
+            if(meshletGroup.meshlets_count == 0) continue;
             LLOG_TRC << "Mesh " << meshID << " has " << meshletGroup.meshlets_count << " meshlets";
             for(uint32_t i = 0; i < meshletGroup.meshlets_count; ++i) {
                 MeshletDraw draw = {};
                 draw.instanceID = instanceID;
                 draw.meshletID = meshletGroup.meshlet_offset + i;
-                draw.drawCount = 1; //( i == 0 || i == 1 || i == 2 ) ? 1 : 0;
+                draw.drawCount = 1;
                 meshletsDrawList.push_back(draw);
             }
         }
     }
 
-    LLOG_DBG << "Meshlets count is " << mpScene->meshlets().size();
+    LLOG_DBG << "Meshlets count is " << mpScene->meshletsData().size();
     LLOG_DBG << "Meshlets draw list size is " << meshletsDrawList.size();
 
     // Create buffers
@@ -441,6 +460,10 @@ void VBufferSW::createMeshletDrawList() {
     } else {
         mpMeshletDrawListBuffer = nullptr;
     }
+}
+
+void VBufferSW::preProcessMeshlets() {
+    
 }
 
 void VBufferSW::createJitterTexture() {
@@ -490,4 +513,20 @@ void VBufferSW::enableDepthOfField(bool value) {
     if(mUseDOF == value) return;
     mUseDOF = value;
     mDirty = true;
+}
+
+void VBufferSW::setCullMode(RasterizerState::CullMode mode) {
+    if(mCullMode == mode) return;
+    GBufferBase::setCullMode(mode);
+    mDirty = true;
+}
+
+void VBufferSW::setCullMode(const std::string& mode_str) {
+    RasterizerState::CullMode mode = RasterizerState::CullMode::Back;
+    if(mode_str == "back") {
+        mode = RasterizerState::CullMode::Back;
+    } else if(mode_str == "front") {  
+        mode = RasterizerState::CullMode::Front;
+    }
+    setCullMode(mode);
 }

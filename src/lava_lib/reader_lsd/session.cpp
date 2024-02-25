@@ -101,6 +101,7 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 	if (name == "vtex_tlc") { mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return; }
 	if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
 	if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
+	if (name == "meshlet_generator") { mRendererConfig.meshletsGenerationMode = boost::get<std::string>(value); return; }
 
 	LLOG_WRN << "Unsupported renderer configuration property: " << name << " of type:" << to_string(type);
 	return;
@@ -265,6 +266,7 @@ bool Session::cmdRaytrace() {
   passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
   passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
+	passDict["cullMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "cullmode", std::string("back"));
 	passDict["useSubdivisions"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usesubdivs", bool(false));
 	passDict["useDisplacement"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedisplace", bool(false));
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));

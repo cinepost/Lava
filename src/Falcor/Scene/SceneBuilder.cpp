@@ -680,9 +680,9 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	}
 
 	// Build meshlets. If needed...
-	if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
-		mpMeshletBuilder->generateMeshlets(processedMesh);
-	}
+	//if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
+	//	mpMeshletBuilder->generateMeshlets(processedMesh);
+	//}
 
 	return processedMesh;
 }
@@ -773,7 +773,10 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		spec.prevVertexCount = spec.skinningVertexCount;
 	}
 
-	spec.hasMeshlets = mesh.meshletSpecs.size() > 0;
+	// Build meshlets. If needed...
+	if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
+		mpMeshletBuilder->generateMeshlets(spec, MeshletBuilder::BuildMode::MESHOPT);
+	}
 
 	uint32_t meshID = kInvalidMeshID;
 	{ // thread safety
@@ -791,28 +794,30 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		mMeshes.push_back(spec);
 		meshID = (uint32_t)(mMeshes.size() - 1);
 		mMeshMap[mesh.name] = meshID;
+	}
 
-		// Meshlets part
-		if(mesh.meshletSpecs.size() > 0) {
+	{ // Meshlets part
+		std::scoped_lock lock(mMeshletsMutex);
+
+		if(spec.hasMeshlets()) {
 			MeshletList meshlets;
-			for(const auto& spec: mesh.meshletSpecs) {
+			for(const auto& meshletSpec: spec.meshletSpecs) {
 				
-				Meshlet meshlet;
+				MeshletData meshlet;
 				meshlet.vertexOffset = mMeshletVertices.size();
-				meshlet.indexOffset =  mMeshletIndices.size();
+				meshlet.localIndexOffset =  mMeshletIndices.size();
 				meshlet.primIndexOffset = mMeshletPrimIndices.size();
-				meshlet.vertexCount = spec.vertices.size();
-				meshlet.indexCount =  spec.indices.size();
-
+				meshlet.vertexCount = meshletSpec.vertices.size();
+				meshlet.indexCount =  meshletSpec.indices.size();
 
 				if(keepMeshletSpecsData) {
-					mMeshletIndices.insert(mMeshletIndices.end(), spec.indices.begin(), spec.indices.end());
-					mMeshletVertices.insert(mMeshletVertices.end(), spec.vertices.begin(), spec.vertices.end());
-					mMeshletPrimIndices.insert(mMeshletPrimIndices.end(), spec.primitiveIndices.begin(), spec.primitiveIndices.end());
+					mMeshletIndices.insert(mMeshletIndices.end(), meshletSpec.indices.begin(), meshletSpec.indices.end());
+					mMeshletVertices.insert(mMeshletVertices.end(), meshletSpec.vertices.begin(), meshletSpec.vertices.end());
+					mMeshletPrimIndices.insert(mMeshletPrimIndices.end(), meshletSpec.primitiveIndices.begin(), meshletSpec.primitiveIndices.end());
 				} else {
-					mMeshletIndices.insert(mMeshletIndices.end(),std::make_move_iterator(spec.indices.begin()), std::make_move_iterator(spec.indices.end()));
-					mMeshletVertices.insert(mMeshletVertices.end(),std::make_move_iterator(spec.vertices.begin()), std::make_move_iterator(spec.vertices.end()));
-					mMeshletPrimIndices.insert(mMeshletPrimIndices.end(),std::make_move_iterator(spec.primitiveIndices.begin()), std::make_move_iterator(spec.primitiveIndices.end()));
+					mMeshletIndices.insert(mMeshletIndices.end(),std::make_move_iterator(meshletSpec.indices.begin()), std::make_move_iterator(meshletSpec.indices.end()));
+					mMeshletVertices.insert(mMeshletVertices.end(),std::make_move_iterator(meshletSpec.vertices.begin()), std::make_move_iterator(meshletSpec.vertices.end()));
+					mMeshletPrimIndices.insert(mMeshletPrimIndices.end(),std::make_move_iterator(meshletSpec.primitiveIndices.begin()), std::make_move_iterator(meshletSpec.primitiveIndices.end()));
 				}
 				
 				// Pad data structures by 64 bits
@@ -827,7 +832,6 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 			mMeshletLists.push_back({});
 		}
 		assert(mMeshletLists.size() == mMeshes.size());
-
 	}
 
 	return meshID;
@@ -2846,7 +2850,7 @@ void SceneBuilder::createMeshData() {
 		meshFlags |= mesh.isFrontFaceCW ? (uint32_t)MeshFlags::IsFrontFaceCW : 0;
 		meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
 		meshFlags |= mesh.isAnimated ? (uint32_t)MeshFlags::IsAnimated : 0;
-		meshFlags |= mesh.hasMeshlets ? (uint32_t)MeshFlags::HasMeshlets : 0;
+		meshFlags |= mesh.hasMeshlets() ? (uint32_t)MeshFlags::HasMeshlets : 0;
 		meshFlags |= mesh.hasMultipleMaterials() ? (uint32_t)MeshFlags::HasMultipleMaterials : 0;
 		meshData[meshID].flags = meshFlags;
 
@@ -2876,7 +2880,7 @@ void SceneBuilder::createMeshletsData() {
 	LLOG_WRN << "SceneBuilder::createMeshletsData()";
 	uint32_t globalMeshletOffset = 0;
 
-	mSceneData.meshlets.clear();
+	mSceneData.meshletsData.clear();
 	mSceneData.meshletGroups.clear();
 	mSceneData.meshletIndices.clear();
 	mSceneData.meshletVertices.clear();
@@ -2893,16 +2897,13 @@ void SceneBuilder::createMeshletsData() {
 
 		if(meshletList.size() > 0) {
 			meshletGroup.meshlet_offset = globalMeshletOffset;
-			for(const auto& meshlet: meshletList) {
-				mSceneData.meshlets.push_back(meshlet);
+			for(const auto& meshletData: meshletList) {
+				mSceneData.meshletsData.push_back(std::move(PackedMeshletData(meshletData)));
 				meshletGroup.meshlets_count++;
 				globalMeshletOffset++;
 			}
 		}
 		mSceneData.meshletGroups.push_back(std::move(meshletGroup));
-		//mSceneData.meshletIndices.insert(mSceneData.meshletIndices.end(), mMeshletIndices.begin(), mMeshletIndices.end());
-		//mSceneData.meshletVertices.insert(mSceneData.meshletVertices.end(), mMeshletVertices.begin(), mMeshletVertices.end());
-		//mSceneData.meshletPrimIndices.insert(mSceneData.meshletPrimIndices.end(), mMeshletPrimIndices.begin(), mMeshletPrimIndices.end());
 	}
 
 	mSceneData.meshletIndices = std::move(mMeshletIndices);
@@ -2912,22 +2913,6 @@ void SceneBuilder::createMeshletsData() {
 	if(mSceneData.meshletIndices.empty()) LLOG_ERR << "Meshlets indices buffer is empty !!!";
 	if(mSceneData.meshletVertices.empty()) LLOG_ERR << "Meshlets vertices buffer is empty !!!";
 	if(mSceneData.meshletPrimIndices.empty()) LLOG_ERR << "Meshlets prim-indices buffer is empty !!!";
-/*
-	std::cout << std::endl << "Meshlet indices:" << std::endl;
-	for(const auto& idx: mSceneData.meshletIndices) {
-		std::cout << static_cast<uint32_t>(idx) << " ";
-	}
-
-	std::cout << std::endl << "Meshlet vertices:" << std::endl;
-	for(const auto& vtx: mSceneData.meshletVertices) {
-		std::cout << static_cast<uint32_t>(vtx) << " ";
-	}
-
-	std::cout << std::endl << "Meshlet prim-indices:" << std::endl;
-	for(const auto& idx: mSceneData.meshletPrimIndices) {
-		std::cout << static_cast<uint32_t>(idx) << " ";
-	}
-*/
 }
 
 void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {

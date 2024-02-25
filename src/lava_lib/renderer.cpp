@@ -310,7 +310,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("hwraster")) {
@@ -323,7 +322,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Hardware rasterizer vbuffer generator
 		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("swraster")) {
@@ -336,7 +334,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
-		pVBufferPass->setCullMode(cullMode);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else {
@@ -851,6 +848,8 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 		mPrevRenderPassesDict = mRenderPassesDict;
 	}
 
+	auto pRenderContext = mpDevice->getRenderContext();
+
 	if (!mpRenderGraph) {
 		createRenderGraph(frame_info);
 	} else { 
@@ -875,7 +874,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 		if(recompile) {
 			LLOG_WRN << "Recompiling render graph!";
 			std::string compilationLog;
-			if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
+			if(! mpRenderGraph->compile(pRenderContext, compilationLog)) {
 				LLOG_ERR << "Error render graph compilation ! " << compilationLog;
 				return false;
 			}
@@ -893,7 +892,15 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 
 	//auto& pScene = mpSceneBuilder->getScene();
 
-	mpDevice->getRenderContext()->flush(true);
+	// Clear previous frame dependent data
+	mpRenderGraph->endFrame(pRenderContext);
+	
+	// Prepare frame dependent data
+	if(!mpRenderGraph->beginFrame(pRenderContext)) {
+		return false;
+	} 
+
+	pRenderContext->flush(true);
 	mDirty = false;
 }
 
@@ -935,7 +942,6 @@ void Renderer::renderSample() {
 	pScene->update(pRenderContext, currentTime);
 
 	mCurrentSampleNumber++;
-
 }
 
 const uint8_t* Renderer::getAOVPlaneImageData(const AOVName& name) {

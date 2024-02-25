@@ -162,11 +162,11 @@ class dlldecl SceneBuilder {
 
     struct MeshletSpec {
         MeshletType type = MeshletType::Triangles;
-        std::vector<uint32_t> vertices;             ///< Meshlet vertices that point to global scene vertex data.
-        std::vector<uint8_t>  indices;              ///< Indices of a primitive verices. Vector size should be equal to indexCount.
-        std::vector<uint32_t> primitiveIndices;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
+        std::vector<uint32_t>   vertices;             ///< Meshlet vertices that point to global scene vertex data.
+        std::vector<uint8_t>    indices;              ///< Indices of a primitive verices. Vector size should be equal to indexCount.
+        std::vector<uint32_t>   primitiveIndices;     ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
     
-        bool        use16BitIndices = false;
+        AABB                    aabbLocal;            ///< Axis aligned bounding box relative to object aabb;
     };
 
     /** Pre-processed mesh data.
@@ -186,8 +186,6 @@ class dlldecl SceneBuilder {
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
-
-        std::vector<MeshletSpec> meshletSpecs;
 
         bool hasMultipleMaterials() const { return !perPrimitiveMaterialIDsData.empty(); }
     };
@@ -574,9 +572,24 @@ protected:
 
         std::vector<int32_t> perPrimitiveMaterialIDsData;
         
-        bool hasMultipleMaterials() const {
-            return perPrimMaterialIndicesCount > 0;
-        }
+        bool hasMultipleMaterials() const { return perPrimMaterialIndicesCount > 0; }
+    };
+
+    class PrimitiveAdjacency {
+        public:
+            PrimitiveAdjacency(): mValid(false) {}
+            const std::vector<uint32_t>& counts() const { return mCounts; }
+            const std::vector<uint32_t>& offsets() const { return mOffsets; }
+            const std::vector<uint32_t>& data() const { return mData; }
+            bool isValid() const { return mValid && !mCounts.empty() && !mOffsets.empty() && !mData.empty(); }
+    
+        private:
+            std::vector<uint32_t> mCounts;
+            std::vector<uint32_t> mOffsets;
+            std::vector<uint32_t> mData;
+            bool mValid;
+
+        friend class MeshletBuilder;
     };
 
     struct MeshSpec {
@@ -601,7 +614,6 @@ protected:
         bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
         bool isDisplaced = false;                   ///< True if mesh has displacement map.
         bool isAnimated = false;                    ///< True if mesh has vertex animations.
-        bool hasMeshlets = false;                   ///< True if mesh has generated meshlets.
         AABB boundingBox;                           ///< Mesh bounding-box in object space.
         std::vector<MeshInstanceSpec> instances;    ///< All instances of this mesh.
 
@@ -611,6 +623,11 @@ protected:
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
 
+        // Meshlets data.
+        std::vector<MeshletSpec> meshletSpecs;
+
+        // Primitives adjacency data.
+        PrimitiveAdjacency adjacency;
 
         size_t   getHostMemUsage() const {
             return  instances.size() * sizeof(MeshInstanceSpec) + 
@@ -623,6 +640,17 @@ protected:
         uint32_t getTriangleCount() const {
             assert(topology == Vao::Topology::TriangleList);
             return (indexCount > 0 ? indexCount : vertexCount) / 3;
+        }
+
+        uint32_t getPrimitiveCount() const {
+            switch(topology) {
+                case Vao::Topology::TriangleList:
+                    return (indexCount > 0 ? indexCount : vertexCount) / 3;
+                case Vao::Topology::QuadList:
+                    return (indexCount > 0 ? indexCount : vertexCount) / 4;
+                default:
+                    return 0;
+            }
         }
 
         uint32_t getIndex(const size_t i) const {
@@ -640,6 +668,10 @@ protected:
 
         bool hasMultipleMaterials() const {
             return perPrimMaterialIndicesCount > 0;
+        }
+
+        bool hasMeshlets() const {
+            return !meshletSpecs.empty();
         }
     };
 
@@ -663,7 +695,7 @@ protected:
 
     using SceneGraph = std::vector<InternalNode>;
     using MeshList = std::vector<MeshSpec>;
-    using MeshletList = std::vector<Meshlet>;
+    using MeshletList = std::vector<MeshletData>;
     using MeshGroup = Scene::MeshGroup;
     using MeshGroupList = std::vector<MeshGroup>;
     using CurveList = std::vector<CurveSpec>;
@@ -679,14 +711,8 @@ protected:
     SceneGraph mSceneGraph;
     const Flags mFlags;
 
-    // Meshlets
-    MeshList mMeshes;
-    std::vector<MeshletList> mMeshletLists;
-    std::vector<uint32_t> mMeshletVertices;    ///< Meshlet vertices that point to global scene vertex data.
-    std::vector<uint8_t>  mMeshletIndices;     ///< Indices of a primitive verices. Vector size should be equal to indexCount.
-    std::vector<uint32_t> mMeshletPrimIndices; ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
-
     // Meshes
+    MeshList mMeshes;
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
     //std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
     std::unordered_map<std::string, MeshID>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
@@ -696,6 +722,12 @@ protected:
 
     // Curves
     CurveList mCurves;
+
+    // Meshlets
+    std::vector<MeshletList> mMeshletLists;
+    std::vector<uint32_t> mMeshletVertices;    ///< Meshlet vertices that point to global scene vertex data.
+    std::vector<uint8_t>  mMeshletIndices;     ///< Indices of a primitive verices. Vector size should be equal to indexCount.
+    std::vector<uint32_t> mMeshletPrimIndices; ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
 
     std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
     GpuFence::SharedPtr mpFence;
@@ -707,6 +739,7 @@ protected:
 
     // mt
     std::mutex mMeshesMutex;
+    std::mutex mMeshletsMutex;
 
     BS::multi_future<uint32_t> mAddGeoTasks;
 
@@ -784,6 +817,7 @@ protected:
     bool mReBuildMeshGroups = true;
 
     friend class SceneCache;
+    friend class MeshletBuilder;
 };
 
 inline std::string to_string(SceneBuilder::Flags f) {

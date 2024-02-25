@@ -1577,7 +1577,7 @@
             name    "lv_cull_mode"
             label   "Cull Mode"
             type    string
-            default { "none" }
+            default { "back" }
             menu {
                 "none"  "None"
                 "back"  "Back"
@@ -1825,6 +1825,18 @@
                 menu {
                     "mikkt" "Pre Computed"
                     "frag"  "Render Time"
+                }
+                parmtag { "editor" "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_meshlet_generator"
+                label   "Meshlets Generator"
+                type    string
+                default { "raw" }
+                menu {
+                    "raw" "Raw"
+                    "optimal"  "Optimized"
                 }
                 parmtag { "editor" "0" }
                 parmtag { "script_callback_language" "python" }

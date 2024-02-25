@@ -111,6 +111,12 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void execute();
     void execute(RenderContext* pContext, uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
 
+    bool beginFrame();
+    bool beginFrame(RenderContext* pContext, uint32_t frameNumber = 0);
+
+    void endFrame();
+    void endFrame(RenderContext* pContext, uint32_t frameNumber = 0);
+
     /** Resolves graph's per frame sparse resources
     */
     void resolvePerFrameSparseResources(RenderContext* pContext);

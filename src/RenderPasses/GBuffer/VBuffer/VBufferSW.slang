@@ -30,6 +30,7 @@ __exported import Scene.Shading;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 
+#include "VBufferSW.common.slangh"
 #include "VBufferSW.Meshlet.slangh"
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -101,32 +102,8 @@ struct VBufferSW {
     }
 
     void writeHit(uint2 pixelPos, const HitInfo hit) {
+        //GroupMemoryBarrierWithGroupSync();
         gVBuffer[pixelPos] = hit.getData();
-
-        VertexData v;
-        float depth = 1.f;
-        float3 prevPosW = float3(0.f);
-        float2 motionVector = float2(0.f);
-
-        if (hit.getType() == HitType::Triangle) {
-            
-            const TriangleHit triangleHit = hit.getTriangleHit();
-            v = gScene.getVertexData(triangleHit);
-            prevPosW = gScene.getPrevPosW(triangleHit);
-
-        }
-
-#if is_valid(gDepth)
-            // Compute depth similar to raster (NDC).
-            float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
-            gDepth[pixelPos] = curPosH.z / curPosH.w;
-#endif
-
-#if is_valid(gMotionVector)
-            // Compute motion vector.
-            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
-            gMotionVector[pixelPos] = calcMotionVector(pixelPos + float2(0.5f, 0.5f), prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
-#endif
     }
 
     void writeMiss(uint2 pixelPos) {

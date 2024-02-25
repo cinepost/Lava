@@ -220,7 +220,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         SDFGridConfigChanged        = 0x400000,     ///< SDF grid config changed.
         SDFGeometryChanged          = 0x800000,     ///< SDF grid geometry changed.
         MeshesChanged               = 0x1000000,    ///< Mesh data changed (skinning or vertex animations).
-        LightLinkerChanged          = 0x2000000,    ///< LightLinker changed.
+        MeshletsChanged             = 0x2000000,    ///< Meshets data changed.
+        LightLinkerChanged          = 0x4000000,    ///< LightLinker changed.
         All                         = -1
     };
 
@@ -961,7 +962,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     const MeshletGroup& meshletGroup(uint32_t meshID) const { return mMeshletGroups[meshID]; }
 
-    const std::vector<Meshlet>& meshlets() const { return mMeshlets; }
+    const std::vector<PackedMeshletData>& meshletsData() const { return mMeshletsData; }
 
     /** Get a list of raytracing BLAS IDs for all meshes. The list is arranged by mesh ID.
     */
@@ -1042,7 +1043,7 @@ public:
 
         // Meshlet data
         std::vector<MeshletGroup> meshletGroups;                ///< Meshlet groups. Elements index is a mesh is essentialy.
-        std::vector<Meshlet>  meshlets;                         ///< Meshlet list.
+        std::vector<PackedMeshletData>  meshletsData;           ///< Meshlets list in packed format.
         std::vector<uint32_t> meshletVertices;
         std::vector<uint32_t> meshletPrimIndices;
         std::vector<uint8_t>  meshletIndices;
@@ -1252,7 +1253,7 @@ public:
 
     // Meshlets
     std::vector<MeshletGroup> mMeshletGroups;                   ///< MeshletGroups represent meshlet collections that represent mesh. One group per mesh.
-    std::vector<Meshlet> mMeshlets;                             ///< Meshlets data.
+    std::vector<PackedMeshletData> mMeshletsData;               ///< Meshlets data in packed format.
     std::vector<uint32_t> mMeshletVertices;
     std::vector<uint32_t> mMeshletPrimIndices;
     std::vector<uint8_t> mMeshletIndices;
