@@ -592,6 +592,7 @@ protected:
         friend class MeshletBuilder;
     };
 
+public:
     struct MeshSpec {
         std::string name;
         Vao::Topology topology = Vao::Topology::Undefined;
@@ -642,7 +643,7 @@ protected:
             return (indexCount > 0 ? indexCount : vertexCount) / 3;
         }
 
-        uint32_t getPrimitiveCount() const {
+        uint32_t getPrimitivesCount() const {
             switch(topology) {
                 case Vao::Topology::TriangleList:
                     return (indexCount > 0 ? indexCount : vertexCount) / 3;
@@ -692,7 +693,8 @@ protected:
         std::vector<uint32_t> indexData;    ///< Vertex indices in 32-bit.
         std::vector<StaticCurveVertexData> staticData;
     };
-
+    
+protected:
     using SceneGraph = std::vector<InternalNode>;
     using MeshList = std::vector<MeshSpec>;
     using MeshletList = std::vector<MeshletData>;
