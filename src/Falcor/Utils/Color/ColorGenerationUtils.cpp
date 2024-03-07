@@ -40,7 +40,8 @@ static std::mt19937 rndEngine(rd());
 
 namespace Falcor {
 
-static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
+static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha, const uint32_t* pSeed) {
+    if(pSeed) rndEngine.seed(*pSeed);
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
     float16_t4 prevColorVal;
 
@@ -68,7 +69,9 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr 
     return Buffer::create(pDevice, sizeof(float16_t) * colorVector.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, colorVector.data());
 }
 
-static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
+static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha, const uint32_t* pSeed) {
+    if(pSeed) rndEngine.seed(*pSeed);
+
     std::uniform_real_distribution<float>   rndDist(0.0f, 1.0f);
     
     using float32_t4 = std::array<float, 4>;
@@ -115,7 +118,7 @@ static inline Buffer::SharedPtr generateRandomColorsBufferUInt8(Device::SharedPt
 }
 #endif
 
-Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t elementsCount, ResourceFormat colorFormat, bool solidAlpha) {
+Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t elementsCount, ResourceFormat colorFormat, bool solidAlpha, const uint32_t* pSeed) {
     Buffer::SharedPtr pBuffer;
 
     if( getFormatChannelCount(colorFormat) != 4) {
@@ -128,9 +131,9 @@ Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t
     switch(formatType) {
         case FormatType::Float:
             if( isHalfFloatFormat(colorFormat)) { 
-                pBuffer = generateRandomColorsBufferF16(pDevice, elementsCount, solidAlpha); 
+                pBuffer = generateRandomColorsBufferF16(pDevice, elementsCount, solidAlpha, pSeed); 
             } else { 
-                pBuffer = generateRandomColorsBufferF32(pDevice, elementsCount, solidAlpha); 
+                pBuffer = generateRandomColorsBufferF32(pDevice, elementsCount, solidAlpha, pSeed); 
             }
             break;
         case FormatType::Uint:

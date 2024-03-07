@@ -66,8 +66,8 @@ SceneBuilder::~SceneBuilder() {
     // Remove temporary geometries from filesystem
     freeTemporaryResources();
     
-    LLOG_INF << "\nSceneBuilder stats:";
-    LLOG_INF << "\t Unique triangles count: " << std::to_string(mUniqueTrianglesCount);
+    LLOG_INF << "SceneBuilder stats:";
+    LLOG_INF << "\tUnique triangles count: " << std::to_string(mUniqueTrianglesCount);
     LLOG_INF << std::endl;
 }
 

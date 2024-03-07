@@ -213,9 +213,9 @@ uint32_t SceneBuilder::MeshID::_get() const {
 			v = meshID;
 			return meshID;
 		} catch(const std::exception& e) {
-     	LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
-     	return SceneBuilder::kInvalidMeshID;
-    }
+     		LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
+     		return SceneBuilder::kInvalidMeshID;
+    	}
 	} catch (...) {
 		LLOG_ERR << "Some fkn error";
 		return SceneBuilder::kInvalidMeshID;
@@ -679,11 +679,6 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 		}
 	}
 
-	// Build meshlets. If needed...
-	//if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
-	//	mpMeshletBuilder->generateMeshlets(processedMesh);
-	//}
-
 	return processedMesh;
 }
 
@@ -775,6 +770,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
 	// Build meshlets. If needed...
 	if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
+		// thread safe
+		std::scoped_lock lock(spec.mMutex);
 		mpMeshletBuilder->generateMeshlets(spec, MeshletBuilder::BuildMode::MESHOPT);
 	}
 

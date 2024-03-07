@@ -64,8 +64,8 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         using StringSet      = std::set<std::string>;
         using LightMap       = std::unordered_map<std::string, Light::SharedPtr>;
 
-        static const uint32_t       kInvalidLightSetIndex   = 0xffffffff;
-        static const uint32_t       kInvalidTraceSetIndex   = 0xffffffff;
+        static constexpr uint32_t       kInvalidLightSetIndex   = 0xffffffff;
+        static constexpr uint32_t       kInvalidTraceSetIndex   = 0xffffffff;
 
         enum class UpdateFlags : uint32_t {
             None                = 0u,   ///< Nothing was changed.

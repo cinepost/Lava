@@ -40,7 +40,7 @@
 
 namespace Falcor {
 
-FALCOR_API Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t elementsCount, ResourceFormat colorFormat, bool solidAlpha = true);
+FALCOR_API Buffer::SharedPtr generateRandomColorsBuffer(Device::SharedPtr pDevice, uint32_t elementsCount, ResourceFormat colorFormat, bool solidAlpha = true, const uint32_t* pSeed = nullptr);
 
 }  // namespace Falcor
 

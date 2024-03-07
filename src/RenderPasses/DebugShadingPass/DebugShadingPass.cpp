@@ -204,7 +204,8 @@ void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) 
     if(mpMeshletColorBuffer || !renderData[kInputOuputMeshlet]->asTexture()) return;
 
     static bool solidAplha = true;
-    mpMeshletColorBuffer = generateRandomColorsBuffer(mpDevice, meshletColorCycleSize, mFalseColorFormat, solidAplha);
+    static const uint32_t seed = 12345u;
+    mpMeshletColorBuffer = generateRandomColorsBuffer(mpDevice, meshletColorCycleSize, mFalseColorFormat, solidAplha, &seed);
 }
 
 DebugShadingPass& DebugShadingPass::setColorFormat(ResourceFormat format) {

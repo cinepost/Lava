@@ -1,5 +1,5 @@
 #include "Falcor/Utils/Geometry/GeometryHash.h"
-#include "Falcor/Scene/SceneBuilderMesh.h"
+
 
 namespace Falcor {
 
@@ -7,7 +7,7 @@ GeometryHash GeometryHash::create(const ika::bgeo::Bgeo& bgeo) {
 	return GeometryHash();
 }
 
-GeometryHash GeometryHash::create(const SceneBuilderMesh& mesh) {
+GeometryHash GeometryHash::create(const Geometry::Mesh& mesh) {
 	return GeometryHash();
 }
 
