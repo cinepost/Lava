@@ -18,12 +18,9 @@
 #include "StorageTraits.h"
 #include "ByteBuffer.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 class NumericData
 {
@@ -42,16 +39,12 @@ public:
     explicit NumericData(int64 elementCount = 0);
 
     bool operator == (const NumericData& numeric) const;
-    bool operator != (const NumericData& numeric) const
-    {
-        return !(*this == numeric);
-    }
+    bool operator != (const NumericData& numeric) const { return !(*this == numeric); }
 
     void swap(NumericData& data);
 
     void load(UT_JSONParser& parser);
-    void loadArray(UT_JSONParser& parser, storage::Storage storage,
-                   int32 count);
+    void loadArray(UT_JSONParser& parser, storage::Storage storage, int32 count);
 
     int64 elementCount;
 
@@ -67,26 +60,19 @@ public:
     template <typename T>
     void getUnpackedData(std::vector<T>& unpacked) const;
 
-    void getUnpackedData(uint8* unpacked, int64 unpackedByteCount,
-                         int64 storageSize) const;
+    void getUnpackedData(uint8* unpacked, int64 unpackedByteCount, int64 storageSize) const;
 
     // copy elementCopyCount tuples into targetData. supply target tuplesize and
     // sourceElementCount to ensure buffer is big enough. target tuple size can be
     // smaller than the source tuple size, in which case only the tuple size elements
     // are copied into target.
-    void copyTo(fpreal64* target, int32 targetTupleSize, int64 targetElementCount,
-                int64 sourceIndex, int64 elementCopyCount) const
-    {
-        if (elementCopyCount <= 0)
-        {
-            return;
-        }
+    void copyTo(fpreal64* target, int32 targetTupleSize, int64 targetElementCount, int64 sourceIndex, int64 elementCopyCount) const {
+        if (elementCopyCount <= 0) return;
 
         assert(targetTupleSize <= tupleSize);
         assert(elementCopyCount <= targetElementCount);
 
-        if (storage == storage::Fpreal32)
-        {
+        if (storage == storage::Fpreal32) {
             // FIXME: this is inefficient - it should be unpacked directly into target.
             std::vector<fpreal32> unpacked;
             getUnpackedData(unpacked);
@@ -95,12 +81,9 @@ public:
             // have to cast
             const fpreal32* source = unpacked.data();
 
-            for (int64 i = 0; i < elementCopyCount; ++i)
-            {
-                for (int j = 0; j < targetTupleSize; ++j)
-                {
-                    target[i * targetTupleSize + j] =
-                            source[(sourceIndex + i) * tupleSize + j];
+            for (int64 i = 0; i < elementCopyCount; ++i) {
+                for (int j = 0; j < targetTupleSize; ++j) {
+                    target[i * targetTupleSize + j] = source[(sourceIndex + i) * tupleSize + j];
                 }
             }
         }
@@ -119,13 +102,8 @@ public:
 //        }
     }
 
-    void copyTo(fpreal32* target, int32 targetTupleSize, int64 targetElementCount,
-                int64 sourceIndex, int64 elementCopyCount) const
-    {
-        if (elementCopyCount <= 0)
-        {
-            return;
-        }
+    void copyTo(fpreal32* target, int32 targetTupleSize, int64 targetElementCount, int64 sourceIndex, int64 elementCopyCount) const {
+        if (elementCopyCount <= 0) return;
 
         assert(targetTupleSize <= tupleSize);
         assert(elementCopyCount <= targetElementCount);
@@ -134,18 +112,14 @@ public:
         std::vector<fpreal32> unpacked;
         getUnpackedData(unpacked);
 
-        if (storage == storage::Fpreal32)
-        {
+        if (storage == storage::Fpreal32) {
             assert(sourceIndex * tupleSize < unpacked.size());
             // have to cast
             //const fpreal32* source = data.data.dataAs<fpreal32>();
             const fpreal32* source = unpacked.data();
 
-            for (int64 i = 0; i < elementCopyCount; ++i)
-            {
-                memcpy(&target[i * targetTupleSize],
-                       &source[(sourceIndex + i) * tupleSize],
-                       sizeof(fpreal32) * targetTupleSize);
+            for (int64 i = 0; i < elementCopyCount; ++i) {
+                memcpy(&target[i * targetTupleSize], &source[(sourceIndex + i) * tupleSize], sizeof(fpreal32) * targetTupleSize);
             }
         }
 //        else if (storage == storage::Fpreal64)
@@ -167,9 +141,7 @@ public:
 };
 
 template <typename T>
-/*static*/ NumericData NumericData::create(int64 elementCount, int32 size,
-                                           const std::vector<T>& tuples)
-{
+/*static*/ NumericData NumericData::create(int64 elementCount, int32 size, const std::vector<T>& tuples) {
     NumericData numeric(elementCount);
     numeric.storage = storage::Traits<T>::StorageId;
     numeric.tupleSize = size;
@@ -197,22 +169,16 @@ template <typename T>
     numeric.pageSize = pageSize;
     numeric.constantPageFlags = constantPageFlags;
 
-    if (numeric.packing.empty())
-    {
-        numeric.packing.resize(1, numeric.tupleSize);
-    }
+    if (numeric.packing.empty()) numeric.packing.resize(1, numeric.tupleSize);
 
     return numeric;
 }
 
 template <typename T>
-void NumericData::getUnpackedData(std::vector<T>& unpacked) const
-{
+void NumericData::getUnpackedData(std::vector<T>& unpacked) const {
     assert(storage == storage::Traits<T>::StorageId);
     unpacked.resize(elementCount * tupleSize);
-    getUnpackedData(reinterpret_cast<uint8*>(unpacked.data()),
-                    unpacked.size() * storage::Traits<T>::Size,
-                    storage::Traits<T>::Size);
+    getUnpackedData(reinterpret_cast<uint8*>(unpacked.data()), unpacked.size() * storage::Traits<T>::Size, storage::Traits<T>::Size);
 }
 
 } // namespace parser

@@ -87,28 +87,24 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   
   auto& adjacency = mesh.adjacency;
 
-  auto& adj_counts = adjacency.counts;
-  auto& adj_offsets = adjacency.offsets;
-  auto& adj_data = adjacency.data; 
-
-  adj_counts.resize(mesh.vertexCount);
-  adj_offsets.resize(mesh.vertexCount);
-  adj_data.resize(mesh.indexCount);
+  adjacency.counts.resize(mesh.vertexCount);
+  adjacency.offsets.resize(mesh.vertexCount);
+  adjacency.data.resize(mesh.indexCount);
 
   // fill prim counts
-  memset(adj_counts.data(), 0, mesh.vertexCount * sizeof(uint32_t));
+  memset(adjacency.counts.data(), 0, mesh.vertexCount * sizeof(uint32_t));
 
   for (size_t i = 0; i < static_cast<size_t>(mesh.indexCount); ++i) {
     assert(mesh.getIndex(i) < mesh.vertexCount);
-    adj_counts[mesh.getIndex(i)]++;
+    adjacency.counts[mesh.getIndex(i)]++;
   }
 
   // fill offset table
   uint32_t offset = 0;
 
   for (size_t i = 0; i < static_cast<size_t>(mesh.vertexCount); ++i) {
-    adj_offsets[i] = offset;
-    offset += adj_counts[i];
+    adjacency.offsets[i] = offset;
+    offset += adjacency.counts[i];
   }
 
   assert(offset == mesh.indexCount);
@@ -117,15 +113,15 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   for (size_t i = 0; i < prim_count; ++i) {
     uint32_t a = mesh.getIndex(i * 3 + 0), b = mesh.getIndex(i * 3 + 1), c = mesh.getIndex(i * 3 + 2);
 
-    adj_data[adj_offsets[a]++] = uint32_t(i);
-    adj_data[adj_offsets[b]++] = uint32_t(i);
-    adj_data[adj_offsets[c]++] = uint32_t(i);
+    adjacency.data[adjacency.offsets[a]++] = uint32_t(i);
+    adjacency.data[adjacency.offsets[b]++] = uint32_t(i);
+    adjacency.data[adjacency.offsets[c]++] = uint32_t(i);
   }
 
   // fix offsets that have been disturbed by the previous pass
   for (size_t i = 0; i < static_cast<size_t>(mesh.vertexCount); ++i) {
-    assert(adj_offsets[i] >= adj_counts[i]);
-    adj_offsets[i] -= adj_counts[i];
+    assert(adjacency.offsets[i] >= adjacency.counts[i]);
+    adjacency.offsets[i] -= adjacency.counts[i];
   }
 }
 
@@ -137,15 +133,17 @@ static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, cons
   const auto& adjacency = mesh.adjacency;
 
   for (size_t i = 0; i < meshletSpec.vertexCount(); ++i) {
-    uint32_t index = meshletSpec.vertices[i];
+    uint32_t vtx = mesh.getIndex(meshletSpec.vertices[i]);
 
-    const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[index];
-    size_t neighbors_size = adjacency.counts[index];
+    const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[vtx];
+    size_t neighbors_size = adjacency.counts[vtx];
+
+    //LLOG_WRN << "Vertex " << vtx << " has " << neighbors_size << " neighbor prims" << " offset " << adjacency.offsets[vtx];
 
     for (size_t j = 0; j < neighbors_size; ++j) {
       uint32_t prim = neighbors[j];
       uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
-      uint32_t extra = (used[a] == 0xff) + (used[b] == 0xff) + (used[c] == 0xff);
+      uint32_t extra = uint32_t(used[a] == 0xff) + uint32_t(used[b] == 0xff) + uint32_t(used[c] == 0xff);
 
       // triangles that don't add new vertices to meshlets are max. priority
       if (extra != 0) {
@@ -158,7 +156,10 @@ static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, cons
       }
 
       // since topology-based priority is always more important than the score, we can skip scoring in some cases
-      if (extra > best_extra) continue;
+      if (extra > best_extra) {
+        LLOG_WRN << "Extra " << extra << " best_extra " << best_extra;
+        continue;
+      }
 
       float score = 0;
 
@@ -332,41 +333,43 @@ static void kdtreeNearest(std::vector<KDNode>& nodes, uint32_t root, const float
     kdtreeNearest(nodes, root + 1 + first, points, stride, emitted_flags, position, result, limit);
 
     // only process the other node if it can have a match based on closest distance so far
-    if (fabsf(delta) <= limit)
+    if (fabsf(delta) <= limit) {
       kdtreeNearest(nodes, root + 1 + second, points, stride, emitted_flags, position, result, limit);
+    }
   }
 }
 
-static bool appendMeshlet(SceneBuilder::MeshletSpec& meshletSpec, uint32_t a, uint32_t b, uint32_t c, uint8_t* used, std::vector<SceneBuilder::MeshletSpec>& meshletSpecs, size_t max_vertices, size_t max_prims) {
-  uint8_t& av = used[a];
-  uint8_t& bv = used[b];
-  uint8_t& cv = used[c];
+static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, SceneBuilder::MeshletSpec& meshletSpec, uint32_t prim_id, uint32_t a, uint32_t b, uint32_t c, uint8_t* used, std::vector<SceneBuilder::MeshletSpec>& meshletSpecs, size_t max_vertices, size_t max_prims) {
+  uint8_t av = used[a];
+  uint8_t bv = used[b];
+  uint8_t cv = used[c];
 
   bool result = false;
 
-  uint32_t used_extra = (av == 0xff) + (bv == 0xff) + (cv == 0xff);
+  const uint32_t used_extra = (av == 0xff) + (bv == 0xff) + (cv == 0xff);
 
   if (((meshletSpec.vertexCount() + used_extra) >= max_vertices) || (meshletSpec.primitiveCount() >= max_prims)) {
     for (size_t j = 0; j < meshletSpec.vertexCount(); ++j) {
-      used[meshletSpec.vertices[j]] = 0xff;
+      used[mesh.getIndex(meshletSpec.vertices[j])] = 0xff;
     }
-
-    LLOG_WRN << "Finished meshlet vertex_count " << meshletSpec.vertices.size() << " indices " << meshletSpec.indices.size();
-    meshletSpecs.push_back(meshletSpec);
+    //meshletSpecs.push_back(meshletSpec);
     result = true;
   }
 
   if (av == 0xff) {
+    used[a] = 0;
     av = (uint8_t)meshletSpec.vertexCount();
     meshletSpec.vertices.push_back(a);
   }
 
   if (bv == 0xff) {
+    used[b] = 0;
     bv = (uint8_t)meshletSpec.vertexCount();
     meshletSpec.vertices.push_back(b);
   }
 
   if (cv == 0xff) {
+    used[c] = 0;
     cv = (uint8_t)meshletSpec.vertexCount();
     meshletSpec.vertices.push_back(c);
   }
@@ -374,6 +377,8 @@ static bool appendMeshlet(SceneBuilder::MeshletSpec& meshletSpec, uint32_t a, ui
   meshletSpec.indices.push_back(av);
   meshletSpec.indices.push_back(bv);
   meshletSpec.indices.push_back(cv);
+
+  meshletSpec.primitiveIndices.push_back(prim_id);
 
   return result;
 }
@@ -523,6 +528,13 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   
   buildPrimitiveAdjacency(mesh);
 
+  LLOG_WRN << "Mesh vertex count " << mesh.vertexCount;
+  LLOG_WRN << "Mesh index count " << mesh.indexCount;
+
+  LLOG_WRN << "Mesh adjacency counts size " << mesh.adjacency.counts.size();
+  LLOG_WRN << "Mesh adjacency offsets size " << mesh.adjacency.offsets.size();
+  //auto& adj_data = mesh.adjacency.data;
+
   assert(static_cast<size_t>(vertex_count) == mesh.adjacency.counts.size());
   
   std::vector<uint32_t> live_primitives(vertex_count);
@@ -570,6 +582,8 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
 
   for (;;) {
     cycle_count++;
+    LLOG_WRN << "Cycle " << (cycle_count - 1);
+
     Cone meshlet_cone = getMeshletCone(meshlet_cone_acc, meshletSpec.primitiveCount());
 
     uint32_t best_extra = 0;
@@ -587,15 +601,15 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
       float limit = FLT_MAX;
 
       kdtreeNearest(nodes, 0, &prim_cones[0].px, sizeof(Cone) / sizeof(float), emitted_flags.data(), position, index, limit);
-      LLOG_WRN << "Cycle " << cycle_count << " Best prim is -1. Found nearest in kdtree is " << index;
+      LLOG_WRN << "Neighbor best_prim is -1. Nearest in kdtree is " << index;
 
       best_prim = index;
     } else {
-      LLOG_WRN << "Cycle " << cycle_count << " Best prim is " << best_prim << ". Found neighbor.";
+      LLOG_WRN << "Neighbor best_prim is " << best_prim;
     }
 
     if (best_prim == ~0u) {
-      LLOG_WRN << "Cycle count " << cycle_count << " . Breaking...";
+      LLOG_WRN << "Breaking...";
       break;
     }
 
@@ -603,12 +617,20 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     assert(a < vertex_count && b < vertex_count && c < vertex_count);
 
     // add meshletSpec to the output; when the current meshletSpec is full we reset the accumulated bounds
-    if (appendMeshlet(meshletSpec, a, b, c, used.data(), mesh.meshletSpecs, max_vertices, max_triangles)) {
+    if (appendMeshlet(mesh, meshletSpec, best_prim, a, b, c, used.data(), mesh.meshletSpecs, max_vertices, max_triangles)) {
+      mesh.meshletSpecs.push_back(meshletSpec);
       LLOG_WRN << "Added meshlet";
       meshletSpec.reset();
       memset(&meshlet_cone_acc, 0, sizeof(meshlet_cone_acc));
       
-      //if(cycle_count == 1) break;
+      //if(cycle_count >= 2) break;
+      if(mesh.meshletSpecs.size() == 30) {
+        for(const auto& meshletSpec: mesh.meshletSpecs) {
+          LLOG_WRN << "Meshlet prim_count " << meshletSpec.primitiveCount();
+        }
+
+        break;
+      }
     }
 
     live_primitives[a]--;
@@ -617,6 +639,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
 
     // remove emitted triangle from adjacency data
     // this makes sure that we spend less time traversing these lists on subsequent iterations
+
     for (size_t k = 0; k < 3; ++k) {
       uint32_t index = mesh.getIndex(best_prim * 3 + k);
 
@@ -633,6 +656,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
         }
       }
     }
+
 
     // update aggregated meshletSpec cone data for scoring subsequent prim_cones
     meshlet_cone_acc.px += prim_cones[best_prim].px;

@@ -72,7 +72,7 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr 
 static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha, const uint32_t* pSeed) {
     if(pSeed) rndEngine.seed(*pSeed);
 
-    std::uniform_real_distribution<float>   rndDist(0.0f, 1.0f);
+    std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
     
     using float32_t4 = std::array<float, 4>;
     float32_t4 prevColorVal;
