@@ -201,18 +201,42 @@ Light::Changes Light::beginFrame() {
 }
 
 void Light::setShaderData(const ShaderVar& var) {
-//#if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
+    check_offset(flags);
+    check_offset(openingAngle);
+    check_offset(cosOpeningAngle);
+    check_offset(cosSubtendedAngle);
+    
+    check_offset(posW);
+    check_offset(flags_ex);
+
     check_offset(dirW);
-    check_offset(directDiffuseIntensity);
-    check_offset(directSpecularIntensity);
     check_offset(penumbraAngle);
+
+    check_offset(intensity);
+    check_offset(surfaceArea);
+
+    check_offset(shadowColor);
+    
+    check_offset(directDiffuseIntensityMultiplier);
+    check_offset(directSpecularIntensityMultiplier);
+    check_offset(indirectSpecularIntensityMultiplier);
+    check_offset(indirectDiffuseIntensityMultiplier);
+
+    check_offset(tangent);
+    check_offset(radius);
+
+    check_offset(bitangent);
+    check_offset(extraDataByteOffest);
+
     check_offset(transMat);
+    check_offset(transMatIT);
+    check_offset(transMatInv);
 #undef check_offset
-//#endif
 
     var.setBlob(mData);
 }
+
 
 Light::Light(const std::string& name, LightType type) : mName(name) {
     mIntensity = float3(.0f);

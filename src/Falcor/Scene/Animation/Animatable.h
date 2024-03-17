@@ -43,7 +43,7 @@ public:
     // for pybind11 bindings to work on inherited types.
     using SharedPtr = std::shared_ptr<Animatable>;
 
-    static const uint32_t kInvalidNode = -1;
+    static constexpr uint32_t kInvalidNode = -1;
 
     /** Set if object has animation data.
     */

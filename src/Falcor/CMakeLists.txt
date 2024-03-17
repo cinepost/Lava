@@ -23,6 +23,7 @@ file( GLOB SOURCES
     ./Rendering/RTXDI/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
+    ./Scene/Geometry.cpp
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
     ./Scene/Lights/*.cpp

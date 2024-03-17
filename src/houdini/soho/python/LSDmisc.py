@@ -69,7 +69,7 @@ configParms = {
     "lv_fconv"                  : SohoParm("lv_fconv", "bool", key="lv_fconv", skipdefault=False),
     "lv_async_geo"              : SohoParm("lv_async_geo", "bool", key="lv_async_geo", skipdefault=False),
     "lv_async_vtex"             : SohoParm("lv_async_vtex", "bool", key="lv_async_vtex", skipdefault=False),
-    "lv_meshlet_generator"      : SohoParm("lv_meshlet_generator", "bool", key="lv_meshlet_generator", skipdefault=False),
+    "lv_meshlet_generator"      : SohoParm("lv_meshlet_generator", "string", key="lv_meshlet_generator", skipdefault=False),
 #    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
     "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
     "lv_vtex_tlc"               : SohoParm("lv_vtex_tlc", "string", key="lv_vtex_tlc", skipdefault=False),

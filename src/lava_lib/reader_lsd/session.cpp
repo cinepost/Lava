@@ -9,6 +9,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Lights/LightLinker.h"
+#include "Falcor/Scene/Geometry.h"
 
 #include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/Material/MaterialTypes.slang"
@@ -92,16 +93,25 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
 
-	if (name == "vtoff") { mRendererConfig.useVirtualTexturing = get_bool(value); return; }
-	if (name == "fconv") { mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return; }
-	if (name == "async_geo") { mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return; }
-	if (name == "generate_meshlets") { mRendererConfig.generateMeshlets = get_bool(value); return; }
-	if (name == "cull_mode") { mRendererConfig.cullMode = boost::get<std::string>(value); return; }
-	if (name == "vtex_conv_quality") { mRendererConfig.virtualTexturesCompressionQuality = boost::get<std::string>(value); return; }
-	if (name == "vtex_tlc") { mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return; }
-	if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
-	if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
-	if (name == "meshlet_generator") { mRendererConfig.meshletsGenerationMode = boost::get<std::string>(value); return; }
+	LLOG_WRN << "cmdConfig " << to_string(type) << " " << name;
+
+	try {
+		if (name == "vtoff") { mRendererConfig.useVirtualTexturing = get_bool(value); return; }
+		if (name == "fconv") { mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return; }
+		if (name == "async_geo") { mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return; }
+		if (name == "generate_meshlets") { mRendererConfig.generateMeshlets = get_bool(value); return; }
+		if (name == "cull_mode") { mRendererConfig.cullMode = boost::get<std::string>(value); return; }
+		if (name == "vtex_conv_quality") { mRendererConfig.virtualTexturesCompressionQuality = boost::get<std::string>(value); return; }
+		if (name == "vtex_tlc") { mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return; }
+		if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
+		if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
+		if (name == "meshlet_generator") { mRendererConfig.meshletsGenerationMode = boost::get<std::string>(value); return; }
+  } catch (const boost::bad_get& ex) {
+  	LLOG_ERR << ex.what() << "\nError getting configuration value for key: " << name << " !!!";
+  	return;
+  } catch (...) {
+  	LLOG_ERR << "Error getting configuration value for key: " << name << " !!!";
+  }
 
 	LLOG_WRN << "Unsupported renderer configuration property: " << name << " of type:" << to_string(type);
 	return;
@@ -1465,9 +1475,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	const int _id = pObj->getPropertyValue(ast::Style::OBJECT, "id", (int)SceneBuilder::kInvalidExportedID);
+	const int _id = pObj->getPropertyValue(ast::Style::OBJECT, "id", (int)Geometry::kInvalidExportedID);
 
-	uint32_t exportedInstanceID = (_id < 0) ? SceneBuilder::kInvalidExportedID : static_cast<uint32_t>(_id);
+	uint32_t exportedInstanceID = (_id < 0) ? Geometry::kInvalidExportedID : static_cast<uint32_t>(_id);
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string());
 
 	const uint32_t meshID = pSceneBuilder->getMeshID(mesh_name);

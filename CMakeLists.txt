@@ -384,22 +384,6 @@ if(WIN32 AND COLLECT)
       message(" ")
       message("Collecting and installing portable build dependencies ...")
 
-      # Feel free to add some missing system dependecies here ;)
-      # set(REQ_SYS_LIBS
-      #     "libpython"
-      #     "libOpenColorIO"
-      #     "libicui18n"
-      #     "libicuuc"
-      #     "libjxrglue"
-      #     "libHalf"
-      #     "libcrystalhd"
-      #     "libvpx"
-      #     "libtinyxml"
-      #     "libyaml-cpp"
-      #     "libjpegxr"
-      #     "libicudata"
-      # )
-
       string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
 
       file(GET_RUNTIME_DEPENDENCIES
@@ -409,21 +393,6 @@ if(WIN32 AND COLLECT)
           CONFLICTING_DEPENDENCIES_PREFIX _c_deps
           #DIRECTORIES ${DEPS_INSTALL_DIR}
       )
-
-      # foreach(_file ${_r_deps})
-      #     if(${_file} MATCHES "^/usr/*|^/lib/*")
-      #         foreach(REQ_SYS_LIB_NAME ${REQ_SYS_LIBS})
-      #             if(${_file} MATCHES ".*${REQ_SYS_LIB_NAME}.*")
-      #                 file(INSTALL
-      #                     DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/sys"
-      #                     TYPE SHARED_LIBRARY
-      #                     FOLLOW_SYMLINK_CHAIN
-      #                     FILES "${_file}"
-      #                 )
-      #             endif()
-      #         endforeach()
-      #     endif()
-      # endforeach()
 
       foreach(_file ${_u_deps})
           find_library(UNRESOLVED_LIBRARY
