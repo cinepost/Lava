@@ -28,6 +28,11 @@ from LSDapi import *
 from soho import SohoParm
 from sohog import SohoGeometry
 
+try:
+    ui = hou.ui
+except:
+    ui = None
+
 theDetailRefs = {}
 theDetailRefsInv = {}
 theSavedDetails = {}
@@ -44,10 +49,15 @@ theOverrideFormatStr='<<%s>>'
 
 def _SohoGeometry(soppath, time = 0.0):
     geo = SohoGeometry(soppath, time)
-    return  geo.tesselate({
-        #'geo:convstyle': 'lod', 
-        'geo:triangulate': True
-    })
+    if geo:
+        geo_tesselated = geo.tesselate({'geo:convstyle': 'lod', 'geo:triangulate': True})
+        if geo_tesselated:
+            return geo_tesselated
+        else:
+            soho.error("Error tesselating geometry %s" % geo.getName());
+            return geo
+
+    return None
 
 def safeSopPathName(soppath):
     return re.sub(r'[^\w\d-]','_',soppath)
@@ -618,13 +628,13 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
     # it returns True. Note. It's the responsibility of object wrangler to
     # emit LSD correctly.
     if obj.wrangleInt(wrangler,'retainGeometry', now, [0])[0] :
-        return
+        return True
     
     proc = getProcedural(obj, now)
     if proc:
         saveRetainedProceduralRefs(proc, now)
         if not _forceGeometry(obj, now):
-            return
+            return True
 
     # Check for disk files (archives)
     files = _getDiskFiles(obj, now, times, velblur)
@@ -661,13 +671,15 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
             refs.add(obj.getName())
         theDetailRefsInv[obj.getName()] = baseName
         obj.storeData("lv_details", details)
-        return
+        return True
 
     # Geometry defined by SOPs
     soppath = obj.getDefaultedString("object:soppath", now, [''])[0]
     if not soppath:
         # No SOP associated with this object -- this may cause problems later.
-        return
+        msg = "Object %s has no sop path !!! Aborting..." % obj.getName()
+        soho.error(msg)
+        return False
 
     tbound = (times[0]-now, times[-1]-now, len(times))
 
@@ -694,8 +706,10 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
         inline = plist[0].Value[0]
         reuse = plist[1].Value[0]
         nframes = LSDmisc.SequenceLength
+        
         if nframes == 1:
             reuse = False
+
         for seg, eval_time in enumerate(times):
             details.append(name)
             if velblur and seg > 0:
@@ -708,9 +722,11 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
             else:
                 if velblur:
                     eval_time = now
+
                 gdp = _SohoGeometry(soppath, eval_time)
+                
                 saved = False
-                if gdp.Handle >= 0:
+                if gdp and gdp.Handle >= 0:
                     status = saveProperties(obj, soppath, gdp, eval_time)
                     cmd_comment("Save geometry for %s at time %g" % (soppath, eval_time))
                     cmd_start('geo')
@@ -790,10 +806,11 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
                         # easier to re-locate LSD files.
                         path = '/'.join([varname, path])
                         cmd_detail(tmpfile + name, path)
+
                 if not saved:
                     if obj.wrangleInt(wrangler,'soho_soperror', now, [1])[0]:
                         msg = 'Unable to save geometry for: %s' % soppath
-                        if gdp.Error:
+                        if gdp and gdp.Error:
                             msg = ''.join([msg, '\n\tSOP ', gdp.Error])
                         soho.error(msg)
                     cmd_comment('Saving geometry failed')
@@ -809,6 +826,8 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
         refs.add(obj.getName())
     theDetailRefsInv[obj.getName()] = soppath
     obj.storeData("lv_details", details)
+
+    return True
 
 def dereferenceGeometry(obj):
     #

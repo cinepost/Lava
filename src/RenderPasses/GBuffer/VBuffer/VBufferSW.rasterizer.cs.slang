@@ -37,7 +37,7 @@ import Utils.Shading.VisbufferUtils;
 import VBufferSW;
 
 #ifndef THREADS_COUNT
-#define THREADS_COUNT MESHLET_MAX_POLYGONS_COUNT
+#define THREADS_COUNT MESHLET_MAX_PRIM_COUNT
 #endif
 
 #ifndef MICROPOLY_MAX_BB_SIZE
@@ -59,7 +59,7 @@ ConstantBuffer<VBufferSW> gVBufferSW;
 Texture2D<float2> gJitterTexture;
 SamplerState gJitterSampler;
 
-groupshared uint triangleCount;
+groupshared uint primCount;
 
 groupshared float4x4 worldMat;
 groupshared GeometryInstanceID instanceID;
@@ -68,8 +68,8 @@ groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
 groupshared MeshletData meshlet;
 
-groupshared uint32_t            indices[MESHLET_MAX_POLYGONS_COUNT * 4];
-groupshared uint                prim_ids[MESHLET_MAX_POLYGONS_COUNT];
+groupshared uint32_t            indices[MESHLET_MAX_PRIM_COUNT * 4];
+groupshared uint                prim_ids[MESHLET_MAX_PRIM_COUNT];
 groupshared float4              positions[MESHLET_MAX_VERTICES_COUNT];
 groupshared StaticVertexData    vertex_data[MESHLET_MAX_VERTICES_COUNT];
 groupshared float               cocs[MESHLET_MAX_VERTICES_COUNT];
@@ -347,7 +347,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             meshDesc = gScene.getMeshDesc(instanceID);
             worldMat = gScene.getWorldMatrix(instanceID);
             meshlet = gScene.meshlets[draw.meshletID].unpack();
-            triangleCount = meshlet.indexCount / 3;
+            primCount = meshlet.primCount;
         }  
     }
 
@@ -357,45 +357,59 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     /// Fetch and transform stage
 
-    // Fetch indices
-    [[branch]] if(thread_id < triangleCount) {
-        const uint meshletTriangleRootIndex = thread_id * 3u;
-        prim_ids[thread_id] = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
-        const uint8_t3 _indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + meshletTriangleRootIndex);
-
-        indices[meshletTriangleRootIndex] = _indices[0];
-        indices[meshletTriangleRootIndex + 1] = _indices[1];
-        indices[meshletTriangleRootIndex + 2] = _indices[2];
-    }
-
     // Transform vertices
-    for(uint vi = thread_id; vi < meshlet.vertexCount; vi+=uint(THREADS_COUNT)) {
-        uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi];
+    const uint vi0 = thread_id;
+    const uint vi1 = thread_id + THREADS_COUNT;
+    if(vi0 < meshlet.vertexCount) {
+        uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi0];
+
         StaticVertexData v = gScene.getVertex(vertexOffset);
-        vertex_data[vi] = v;
+        vertex_data[vi0] = v;
 #if USE_D64
         double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
-        z64pos[vi] = pS.z;
+        z64pos[vi0] = pS.z;
 #else
         float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
 #endif
-        positions[vi] = pS;
+        positions[vi0] = pS;
+
 #if COMPUTE_DEPTH_OF_FIELD
-        cocs[vi] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
+        cocs[vi0] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
 #else
-        cocs[vi] = 0.0f;
+        cocs[vi0] = 0.0f;
 #endif
-    
+    }
+
+    // Transform more vertices if needed
+    if(vi1 < meshlet.vertexCount) {
+        uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi1];
+
+        StaticVertexData v = gScene.getVertex(vertexOffset);
+        vertex_data[vi1] = v;
+#if USE_D64
+        double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
+        z64pos[vi1] = pS.z;
+#else
+        float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
+#endif
+        positions[vi1] = pS;
+
+#if COMPUTE_DEPTH_OF_FIELD
+        cocs[vi1] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
+#else
+        cocs[vi1] = 0.0f;
+#endif
     }
 
     GroupMemoryBarrierWithGroupSync();
 
 
     /// Rasterizing stage
-    [[branch]]if(thread_id >= triangleCount) return;
+    [[branch]]if(thread_id >= primCount) return;
 
     const bool cullCCW = true;
+    const uint prim_id = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
+    const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + thread_id * 3u);
 
-    const uint meshletTriangleRootIndex = thread_id * 3u;
-    rasterizeTriangle2(indices[meshletTriangleRootIndex], indices[meshletTriangleRootIndex + 1], indices[meshletTriangleRootIndex + 2], prim_ids[thread_id], cullCCW);
+    rasterizeTriangle2(indices[0], indices[1], indices[2], prim_id, cullCCW);
 }

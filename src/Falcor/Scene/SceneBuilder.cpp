@@ -772,7 +772,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
 		// thread safe
 		std::scoped_lock lock(spec.mMutex);
-		mpMeshletBuilder->generateMeshlets(spec, MeshletBuilder::BuildMode::MESHOPT);
+		MeshletBuilder::BuildMode buildMode = is_set(mFlags, Flags::OptimizeMeshlets) ? MeshletBuilder::BuildMode::MESHOPT : MeshletBuilder::BuildMode::SCAN;
+		mpMeshletBuilder->generateMeshlets(spec, buildMode);
 	}
 
 	uint32_t meshID = kInvalidMeshID;
@@ -806,6 +807,7 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 				meshlet.primIndexOffset = mMeshletPrimIndices.size();
 				meshlet.vertexCount = meshletSpec.vertices.size();
 				meshlet.indexCount =  meshletSpec.indices.size();
+				meshlet.primCount = meshletSpec.primitiveIndices.size();
 
 				if(keepMeshletSpecsData) {
 					mMeshletIndices.insert(mMeshletIndices.end(), meshletSpec.indices.begin(), meshletSpec.indices.end());
@@ -818,9 +820,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 				}
 				
 				// Pad data structures by 64 bits
-				//while(mMeshletIndices.size() % 16 != 0) mMeshletIndices.push_back(0);
-				//while(mMeshletVertices.size() % 4 != 0) mMeshletVertices.push_back(0);
-				//while(mMeshletPrimIndices.size() % 4 != 0) mMeshletPrimIndices.push_back(0);
+				while(mMeshletIndices.size() % 16 != 0) mMeshletIndices.push_back(0);
+				while(mMeshletVertices.size() % 4 != 0) mMeshletVertices.push_back(0);
+				while(mMeshletPrimIndices.size() % 4 != 0) mMeshletPrimIndices.push_back(0);
 
 				meshlets.push_back(std::move(meshlet));
 			}

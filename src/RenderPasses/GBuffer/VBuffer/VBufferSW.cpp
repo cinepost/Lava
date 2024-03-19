@@ -411,7 +411,7 @@ void VBufferSW::createBuffers() {
 
     if(mUseSubdivisions || mUseDisplacement) {
         static const uint32_t kMaxEdgeSubdivisions = 3;
-        static constexpr uint32_t kMaxPolygonsCount = MESHLET_MAX_POLYGONS_COUNT * kMaxEdgeSubdivisions * kMaxEdgeSubdivisions;
+        static constexpr uint32_t kMaxPolygonsCount = MESHLET_MAX_PRIM_COUNT * kMaxEdgeSubdivisions * kMaxEdgeSubdivisions;
         static constexpr uint32_t kMaxIndices       = kMaxPolygonsCount * 3;
         static constexpr uint32_t kMaxPrimIndices   = kMaxPolygonsCount;
         static constexpr uint32_t kMaxPositions     = kMaxIndices;
@@ -527,6 +527,8 @@ void VBufferSW::setCullMode(const std::string& mode_str) {
         mode = RasterizerState::CullMode::Back;
     } else if(mode_str == "front") {  
         mode = RasterizerState::CullMode::Front;
+    } else {
+        mode = RasterizerState::CullMode::None;
     }
     setCullMode(mode);
 }

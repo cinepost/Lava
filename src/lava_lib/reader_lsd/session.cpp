@@ -92,9 +92,6 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
-
-	LLOG_WRN << "cmdConfig " << to_string(type) << " " << name;
-
 	try {
 		if (name == "vtoff") { mRendererConfig.useVirtualTexturing = get_bool(value); return; }
 		if (name == "fconv") { mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return; }

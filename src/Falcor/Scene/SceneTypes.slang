@@ -172,6 +172,7 @@ enum class GeometryInstanceFlags : uint32_t {
     ReceiveSelfShadows = 0x1000,
     DoubleSided = 0x2000,
     HasMultipleMaterials = 0x4000,
+    HasMUltipleMatrices  = 0x8000,
 };
 
 struct GeometryInstanceData {
@@ -372,25 +373,8 @@ enum class MeshletType : uint32_t {
     Count
 };
 
-/** Struct representing meshlet data. 40 (64) bytes.
+/** Structs representing meshlet data.
 */
-//struct Meshlet {   
-//    /* Offsets within meshlet_vertices and meshlet_triangles buffers with meshlet data */
-//    uint vertexOffset;
-//    uint indexOffset;
-//    uint primIndexOffset;
-//   uint _pad0;
-
-    /* Number of vertices and triangles used in the meshlet; data is stored in a consecutive range defined by offset and count */
-//    uint vertexCount;
-//    uint indexCount;
-//    uint packedData  = 0;
-//    uint _pad1;
-
-//    float16_t4 bounding_sphere; ///< xyz -> object space origin, w -> radius
-//    float16_t4 visibility_cone; ///< xyz -> cone direction, w -> cos/2 angle. origin is the bounding_sphere origin
-//};
-
 
 struct MeshletData {
     uint    localIndexOffset;
@@ -398,6 +382,7 @@ struct MeshletData {
     uint    primIndexOffset;
     uint    vertexCount;
     uint    indexCount;
+    uint    primCount;
 
     AABB    bbox;
     float3  coneNormal;
@@ -426,12 +411,12 @@ struct PackedMeshletData {
     static const uint kBBoxMinXBits = 8;        // bounding box coord relative to object bbox UNORM8
     static const uint kBBoxMinYBits = 8;        // bounding box coord relative to object bbox UNORM8
     static const uint kBBoxMinZBits = 8;        // bounding box coord relative to object bbox UNORM8
-    static const uint kIndicesCountBits = 8;    // number of vertex indices - 1 in the meshlet
+    static const uint kPrimCountBits = 8;       // number of vertex indices - 1 in the meshlet
 
     static const uint kBBoxMinXOffset = 0;
     static const uint kBBoxMinYOffset = kBBoxMinXOffset + kBBoxMinXBits;
     static const uint kBBoxMinZOffset = kBBoxMinYOffset + kBBoxMinYBits;
-    static const uint kIndicesCountOffset = kBBoxMinZOffset + kBBoxMinZBits;
+    static const uint kPrimCountOffset = kBBoxMinZOffset + kBBoxMinZBits;
 
     // packedDataB.y
     static const uint kBBoxMaxXBits = 8;        // bounding box coord relative to object bbox UNORM8
@@ -455,9 +440,9 @@ struct PackedMeshletData {
         packedDataA.z = m.primIndexOffset;
         packedDataA.w = packUnorm3x8(m.coneNormal) | (packUnorm8(m.coneAngle) << kConeAngleOffset);
 
-        packedDataB.x = packUnorm3x8(m.bbox.minPoint) | ((m.indexCount - 1) << kIndicesCountOffset);
+        packedDataB.x = packUnorm3x8(m.bbox.minPoint) | ((m.primCount - 1) << kPrimCountOffset);
         packedDataB.y = packUnorm3x8(m.bbox.maxPoint) | ((m.vertexCount - 1) << kVertexCountOffset);
-        packedDataB.z = encodeNormal2x16(m.coneNormal);
+        packedDataB.z = m.indexCount & 0x0000ffff;
         
     }
 
@@ -472,8 +457,9 @@ struct PackedMeshletData {
         m.coneAngle = unpackUnorm8(packedDataA.w >> kConeAngleOffset);
 
         m.bbox = {unpackUnorm3x8(packedDataB.x), unpackUnorm3x8(packedDataB.y)};
-        m.indexCount = (packedDataB.x >> kIndicesCountOffset) + 1;
+        m.primCount = (packedDataB.x >> kPrimCountOffset) + 1;
         m.vertexCount = (packedDataB.y >> kVertexCountOffset) + 1;
+        m.indexCount = packedDataB.z & 0x0000ffff;
 
         return m;
     }

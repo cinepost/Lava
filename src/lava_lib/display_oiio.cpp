@@ -112,7 +112,7 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 		uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
 		std::string prefix = (channel_prefix == "C") ? "Color" : channel_prefix;
 		channels.push_back(makeDisplayChannel(fixChannelPrefix(channel_prefix), i, format_type, numChannelBits, NamingScheme::RGBA));
-		LLOG_WRN << "channel name " << channels.back().name;
+		LLOG_TRC << "channel name " << channels.back().name;
 	}
 
 	return openImage(image_name, width, height, channels, imageHandle, userParams, pMetaData);

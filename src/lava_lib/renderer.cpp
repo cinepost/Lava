@@ -96,7 +96,9 @@ bool Renderer::init(const Config& config) {
 		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
 	}
 
-	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
+	if(config.meshletsGenerationMode != "scan") sceneBuilderFlags |= SceneBuilder::Flags::OptimizeMeshlets;
+
+	sceneBuilderFlags |= SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
 	mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
 	mpCamera = Falcor::Camera::create();

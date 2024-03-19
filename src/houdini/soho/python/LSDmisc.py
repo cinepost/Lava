@@ -203,8 +203,10 @@ def header(now, propdefs):
 
     cmd_config('fconv', cfg_plist.get('lv_fconv', None))
     cmd_config('async_vtex', cfg_plist.get('lv_async_vtex', None))
+    
     cmd_config('meshlet_generator', cfg_plist.get('lv_meshlet_generator', None))
-    #cmd_config('cull_mode', cfg_plist.get('lv_cull_mode', None))
+    cmd_config('cull_mode', cfg_plist.get('lv_cull_mode', None))
+    
     cmd_config('vtex_conv_quality', cfg_plist.get('lv_vtex_conv_quality', None))
     cmd_config('vtex_tlc', cfg_plist.get('lv_vtex_tlc', None))
     cmd_config('vtex_tlc_level', cfg_plist.get('lv_vtex_tlc_level', None))
@@ -213,6 +215,9 @@ def header(now, propdefs):
 
     cmd_declare_parm('global', 'async_geo', cfg_plist.get('lv_async_geo', None))
     cmd_declare_parm('global', 'vtoff', cfg_plist.get('lv_vtoff', None))
+    
+    #cmd_declare_parm('global', 'meshlet_generator', cfg_plist.get('lv_meshlet_generator', None))
+    #cmd_declare_parm('global', 'cull_mode', cfg_plist.get('lv_cull_mode', None))
     
     
 

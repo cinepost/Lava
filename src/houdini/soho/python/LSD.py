@@ -376,37 +376,36 @@ else:
     # Output retained geometry
     #
     LSDhooks.call('pre_geometry', parmlist, objparms, now, camera)
-    LSDframe.saveRetained(now, soho.objectList('objlist:instance'),
-                               soho.objectList('objlist:light'))
+    if LSDframe.saveRetained(now, soho.objectList('objlist:instance'), soho.objectList('objlist:light')):
 
-    #
-    # Output main image
-    #
-    if do_main and donecamera:
-        LSDmisc.setCameraBlur(camera_list[0], now)
-        LSDframe.renderObjects(now,
-                soho.objectList('objlist:instance'),
-                soho.objectList('objlist:light'),
-                soho.objectList('objlist:space'),
-                soho.objectList('objlist:fog'))
-        LSDhooks.call('post_mainimage', parmlist, objparms, now, camera_list[0])
-    elif do_main:
-        for sub_camera in camera_list:
-            if sub_camera:
-                if not LSDhooks.call('pre_mainimage', parmlist, objparms, now, sub_camera):
-                    cmd_comment('Main image from %s' % sub_camera.getName())
-                    LSDframe.render(sub_camera, now,
-                            soho.objectList('objlist:instance'),
-                            soho.objectList('objlist:light'),
-                            soho.objectList('objlist:space'),
-                            soho.objectList('objlist:fog'),
-                            forphoton=isphoton)
-                    # Always reset after intermediate (ie, non-last)
-                    # cameras, and for the last one only if quickexit
-                    # is false.
-                    if (not quickexit) or (sub_camera is not camera_list[-1]):
-                        cmd_reset()
-                LSDhooks.call('post_mainimage', parmlist, objparms, now, sub_camera)
+        #
+        # Output main image
+        #
+        if do_main and donecamera:
+            LSDmisc.setCameraBlur(camera_list[0], now)
+            LSDframe.renderObjects(now,
+                    soho.objectList('objlist:instance'),
+                    soho.objectList('objlist:light'),
+                    soho.objectList('objlist:space'),
+                    soho.objectList('objlist:fog'))
+            LSDhooks.call('post_mainimage', parmlist, objparms, now, camera_list[0])
+        elif do_main:
+            for sub_camera in camera_list:
+                if sub_camera:
+                    if not LSDhooks.call('pre_mainimage', parmlist, objparms, now, sub_camera):
+                        cmd_comment('Main image from %s' % sub_camera.getName())
+                        LSDframe.render(sub_camera, now,
+                                soho.objectList('objlist:instance'),
+                                soho.objectList('objlist:light'),
+                                soho.objectList('objlist:space'),
+                                soho.objectList('objlist:fog'),
+                                forphoton=isphoton)
+                        # Always reset after intermediate (ie, non-last)
+                        # cameras, and for the last one only if quickexit
+                        # is false.
+                        if (not quickexit) or (sub_camera is not camera_list[-1]):
+                            cmd_reset()
+                    LSDhooks.call('post_mainimage', parmlist, objparms, now, sub_camera)
 
 LSDhooks.call("post_lsdGen")
 LSDsettings.clearLists()

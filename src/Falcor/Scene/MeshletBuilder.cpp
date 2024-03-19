@@ -8,8 +8,12 @@ namespace Falcor {
 
 using Adjacency = Geometry::PrimitiveAdjacency;
 
-static constexpr uint32_t kMaximumMeshletTriangleIndices = MESHLET_MAX_POLYGONS_COUNT * 3u;
-static constexpr uint32_t kMaximumMeshletQuadIndices = MESHLET_MAX_POLYGONS_COUNT * 4u;
+static_assert(MESHLET_MAX_VERTICES_COUNT <= 256);
+static_assert(MESHLET_MAX_INDICES_COUNT <= 512);
+static_assert(MESHLET_MAX_PRIM_COUNT <= 128);
+
+static constexpr uint32_t kMaximumMeshletTriangleIndices = MESHLET_MAX_PRIM_COUNT * 3u;
+static constexpr uint32_t kMaximumMeshletQuadIndices = MESHLET_MAX_PRIM_COUNT * 4u;
 
 struct Cone {
   float px, py, pz;
@@ -419,6 +423,9 @@ MeshletBuilder::UniquePtr MeshletBuilder::create() {
 }
 
 void MeshletBuilder::generateMeshlets(SceneBuilder::MeshSpec& mesh, BuildMode mode) {
+  LLOG_WRN << "Mesh vertex count " << mesh.vertexCount;
+  LLOG_WRN << "Mesh index count " << mesh.indexCount;
+
   const std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
   switch(mode) {
     case BuildMode::MESHOPT: 
@@ -451,7 +458,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
     std::vector<uint32_t> meshletPrimIndices;
     std::vector<uint8_t>  meshletIndices;
 
-    std::set<uint32_t> pointIndices; // this set is used to avoid having duplicate vertices within meshlet
+    std::set<uint32_t> vertices; // this set is used to avoid having duplicate vertices within meshlet
     std::vector<uint3> triangles;
     std::vector<uint4> quads;
 
@@ -462,23 +469,23 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
     // Run through mesh indices until we reach max number of elements (points or tris)
     for(uint32_t i = mesh_start_index; i < mesh.indexCount; i+=3) {
-      const bool maxIndicesPerMeshletReached  = ((meshletSpec.type == MeshletType::Triangles) && (triangles.size() > MESHLET_MAX_POLYGONS_COUNT)) ||
-                                                ((meshletSpec.type == MeshletType::Quads) && (quads.size() > MESHLET_MAX_POLYGONS_COUNT));
+      const bool maxIndicesPerMeshletReached  = ((meshletSpec.type == MeshletType::Triangles) && (triangles.size() > MESHLET_MAX_PRIM_COUNT)) ||
+                                                ((meshletSpec.type == MeshletType::Quads) && (quads.size() > MESHLET_MAX_PRIM_COUNT));
 
       if (maxIndicesPerMeshletReached) {
         LLOG_TRC << "Maximum meshlet polys reached for mesh " << mesh.name;
         break;
       }
 
-      uint32_t mIdx0 = mesh.getIndex(i), mIdx1 = mesh.getIndex(i+1), mIdx2 = mesh.getIndex(i+2);
+      const uint32_t mIdx0 = mesh.getIndex(i), mIdx1 = mesh.getIndex(i+1), mIdx2 = mesh.getIndex(i+2);
 
-      const bool newV0 = pointIndices.find(mIdx0) == pointIndices.end();
-      const bool newV1 = pointIndices.find(mIdx1) == pointIndices.end();
-      const bool newV2 = pointIndices.find(mIdx2) == pointIndices.end();
+      const bool newV0 = vertices.find(mIdx0) == vertices.end();
+      const bool newV1 = vertices.find(mIdx1) == vertices.end();
+      const bool newV2 = vertices.find(mIdx2) == vertices.end();
 
       const size_t new_vertices_count = (newV0 ? 1 : 0) + (newV1 ? 1 : 0) + (newV2 ? 1 : 0);
 
-      const bool maxVerticesPerMeshletReached = ((pointIndices.size() + new_vertices_count) > MESHLET_MAX_VERTICES_COUNT);
+      const bool maxVerticesPerMeshletReached = ((vertices.size() + new_vertices_count) > MESHLET_MAX_VERTICES_COUNT);
 
       if (maxVerticesPerMeshletReached) {
         LLOG_TRC << "Maximum meshlet vertices reached for mesh " << mesh.name;
@@ -487,9 +494,9 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
       triangles.push_back({mIdx0, mIdx1, mIdx2});
 
-      if(newV0) pointIndices.insert(mIdx0);
-      if(newV1) pointIndices.insert(mIdx1);
-      if(newV2) pointIndices.insert(mIdx2);
+      if(newV0) vertices.insert(mIdx0);
+      if(newV1) vertices.insert(mIdx1);
+      if(newV2) vertices.insert(mIdx2);
 
       meshletPrimIndices.push_back(i / 3u);
       mesh_start_index += 3;
@@ -497,18 +504,18 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
     // These are per meshlet local indices. Guaranteed not to exceed value of 255 (by default we use max 128 elements)
     for(const auto& triangle: triangles) {
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[0])));
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[1])));
-      meshletIndices.push_back(std::distance(pointIndices.begin(), pointIndices.find(triangle[2])));
+      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[0])));
+      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[1])));
+      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[2])));
     }
 
-    for(auto pi : pointIndices) meshletVertices.push_back(pi);
+    for(auto pi : vertices) meshletVertices.push_back(pi);
 
     meshletSpec.vertices = std::move(meshletVertices);
     meshletSpec.indices = std::move(meshletIndices);
     meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
-    LLOG_TRC << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
-      " vertices. " << meshletSpec.indices.size() << " indices.";
+    LLOG_WRN << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+      " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
     meshletSpecs.push_back(std::move(meshletSpec));
   }
@@ -517,8 +524,8 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 }
 
 void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
-  static const uint32_t max_vertices = MESHLET_MAX_POLYGONS_COUNT * 4u;
-  static const uint32_t max_triangles = MESHLET_MAX_POLYGONS_COUNT;
+  static const uint32_t max_vertices = MESHLET_MAX_VERTICES_COUNT;
+  static const uint32_t max_triangles = MESHLET_MAX_PRIM_COUNT;
   static const float    cone_weight = .5f;
 
   assert(cone_weight >= 0.0f && cone_weight <= 1.0f);
@@ -527,9 +534,6 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   if(vertex_count == 0) return;
   
   buildPrimitiveAdjacency(mesh);
-
-  LLOG_WRN << "Mesh vertex count " << mesh.vertexCount;
-  LLOG_WRN << "Mesh index count " << mesh.indexCount;
 
   LLOG_WRN << "Mesh adjacency counts size " << mesh.adjacency.counts.size();
   LLOG_WRN << "Mesh adjacency offsets size " << mesh.adjacency.offsets.size();
@@ -572,8 +576,8 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   memset(used.data(), -1, vertex_count);
 
   SceneBuilder::MeshletSpec meshletSpec = {};
-  meshletSpec.primitiveIndices.reserve(MESHLET_MAX_POLYGONS_COUNT);
-  meshletSpec.indices.reserve(MESHLET_MAX_POLYGONS_COUNT * 4);
+  meshletSpec.primitiveIndices.reserve(MESHLET_MAX_PRIM_COUNT);
+  meshletSpec.indices.reserve(MESHLET_MAX_INDICES_COUNT);
   meshletSpec.vertices.reserve(MESHLET_MAX_VERTICES_COUNT);
 
   Cone meshlet_cone_acc = {};

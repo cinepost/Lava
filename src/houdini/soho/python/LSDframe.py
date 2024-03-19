@@ -1598,7 +1598,7 @@ def outputObjects(now, objlist, lightlist, spacelist, foglist,
 def saveRetained(now, objlist, lightlist):
 
     if LSDhooks.call('pre_saveRetained', now, objlist, lightlist):
-        return
+        return True
 
     cmd_comment('Retained geometry')
     for obj in objlist:
@@ -1611,15 +1611,19 @@ def saveRetained(now, objlist, lightlist):
                     LSDgeo.saveRetained(inst_obj, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3])
 
         mbinfo = LSDmisc.geo_mbsamples(obj, now)
-        LSDgeo.saveRetained(obj, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3])
+        if not LSDgeo.saveRetained(obj, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3]):
+            return False
+    
     for light in lightlist:
         wrangler = LSDsettings.getLightWrangler(light, now, 'light_wrangler')
         if isGeoLight(light, wrangler, now):
             mbinfo = LSDmisc.geo_mbsamples(light, now)
             LSDgeo.saveRetained(light, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3])
+    
     cmd_comment(None)
 
     LSDhooks.call('post_saveRetained', now, objlist, lightlist)
+    return True
 
 # This operation will produce the block containing the camera, imager and
 # global variables.
