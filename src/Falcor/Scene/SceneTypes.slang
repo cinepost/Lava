@@ -381,7 +381,6 @@ struct MeshletData {
     uint    vertexOffset;
     uint    primIndexOffset;
     uint    vertexCount;
-    uint    indexCount;
     uint    primCount;
 
     AABB    bbox;
@@ -441,9 +440,7 @@ struct PackedMeshletData {
         packedDataA.w = packUnorm3x8(m.coneNormal) | (packUnorm8(m.coneAngle) << kConeAngleOffset);
 
         packedDataB.x = packUnorm3x8(m.bbox.minPoint) | ((m.primCount - 1) << kPrimCountOffset);
-        packedDataB.y = packUnorm3x8(m.bbox.maxPoint) | ((m.vertexCount - 1) << kVertexCountOffset);
-        packedDataB.z = m.indexCount & 0x0000ffff;
-        
+        packedDataB.y = packUnorm3x8(m.bbox.maxPoint) | ((m.vertexCount - 1) << kVertexCountOffset);        
     }
 
 #else // !HOST_CODE
@@ -459,7 +456,6 @@ struct PackedMeshletData {
         m.bbox = {unpackUnorm3x8(packedDataB.x), unpackUnorm3x8(packedDataB.y)};
         m.primCount = (packedDataB.x >> kPrimCountOffset) + 1;
         m.vertexCount = (packedDataB.y >> kVertexCountOffset) + 1;
-        m.indexCount = packedDataB.z & 0x0000ffff;
 
         return m;
     }

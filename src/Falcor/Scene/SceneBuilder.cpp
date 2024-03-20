@@ -806,7 +806,6 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 				meshlet.localIndexOffset =  mMeshletIndices.size();
 				meshlet.primIndexOffset = mMeshletPrimIndices.size();
 				meshlet.vertexCount = meshletSpec.vertices.size();
-				meshlet.indexCount =  meshletSpec.indices.size();
 				meshlet.primCount = meshletSpec.primitiveIndices.size();
 
 				if(keepMeshletSpecsData) {
