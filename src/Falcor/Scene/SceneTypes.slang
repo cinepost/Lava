@@ -194,6 +194,11 @@ struct GeometryInstanceData {
     uint externalID;        ///< External dcc id.
     uint lightSetIndex;     ///< LightSet index in LightLinker. If set to 0 then all lights used.
 
+    uint8_t matrixCount;
+    uint8_t _pad0;
+    uint16_t _pad1;
+    uint3 _pad2;
+    
 #ifdef HOST_CODE
     GeometryInstanceData() = default;
 

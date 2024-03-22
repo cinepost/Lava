@@ -652,6 +652,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Updates a node in the graph.
     */
     void updateNodeTransform(uint32_t nodeID, const float4x4& transform);
+    void updateNodeTransformList(uint32_t nodeID, const std::vector<float4x4>& transformList);
+    void clearNodeTransformList(uint32_t nodeID);
 
     /** Get the number of custom primitives.
     */
@@ -993,6 +995,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         std::string name;
         uint32_t parent = kInvalidNode;
         float4x4 transform;         ///< The node's transformation matrix.
+        std::vector<float4x4> transformList;     ///< The node's transformation matrix list. if not empty this list is used for motion blur rendering.
         float4x4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
         float4x4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
     };

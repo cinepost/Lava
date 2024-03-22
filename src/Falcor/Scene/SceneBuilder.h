@@ -190,6 +190,7 @@ class dlldecl SceneBuilder {
     struct Node {
         std::string name;
         float4x4 transform;
+        std::vector<float4x4> transformList;
         float4x4 meshBind;          // For skinned meshes. World transform at bind time.
         float4x4 localToBindPose;   // For bones. Inverse bind transform.
         uint32_t parent = kInvalidNodeID;

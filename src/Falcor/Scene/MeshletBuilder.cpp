@@ -11,23 +11,9 @@ using Adjacency = Geometry::PrimitiveAdjacency;
 static_assert(MESHLET_MAX_VERTICES_COUNT <= 255);
 static_assert(MESHLET_MAX_PRIM_COUNT <= 512);
 
-static constexpr uint32_t kMaximumMeshletTriangleIndices = MESHLET_MAX_PRIM_COUNT * 3u;
-static constexpr uint32_t kMaximumMeshletQuadIndices = MESHLET_MAX_PRIM_COUNT * 4u;
+static constexpr uint32_t kMaximumMeshletVertices = MESHLET_MAX_VERTICES_COUNT;
+static constexpr uint32_t kMaximumMeshletPrims = MESHLET_MAX_PRIM_COUNT;
 
-
-struct TempMeshletData {
-  std::set<uint32_t> vertices;  // this set is used to avoid having duplicate vertices within meshlet
-  std::vector<uint3> triangles; // indices grouped by 3
-
-  TempMeshletData() {
-    triangles.reserve(size_t(MESHLET_MAX_PRIM_COUNT));
-  }
-
-  void reset() {
-    vertices.clear();
-    triangles.clear();
-  }
-};
 
 struct Cone {
   float px, py, pz;
@@ -155,8 +141,6 @@ static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, cons
     const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[vtx];
     size_t neighbors_size = adjacency.counts[vtx];
 
-    //LLOG_WRN << "Vertex " << vtx << " has " << neighbors_size << " neighbor prims" << " offset " << adjacency.offsets[vtx];
-
     for (size_t j = 0; j < neighbors_size; ++j) {
       uint32_t prim = neighbors[j];
       uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
@@ -174,7 +158,6 @@ static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, cons
 
       // since topology-based priority is always more important than the score, we can skip scoring in some cases
       if (extra > best_extra) {
-        LLOG_WRN << "Extra " << extra << " best_extra " << best_extra;
         continue;
       }
 
@@ -356,7 +339,7 @@ static void kdtreeNearest(std::vector<KDNode>& nodes, uint32_t root, const float
   }
 }
 
-static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, TempMeshletData& temp_meshlet, SceneBuilder::MeshletSpec& meshlet_spec, uint32_t prim_id, uint32_t a, uint32_t b, uint32_t c, uint8_t* used, std::vector<SceneBuilder::MeshletSpec>& meshletSpecs, size_t max_vertices, size_t max_prims) {
+static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, SceneBuilder::MeshletSpec& meshlet_spec, uint32_t prim_id, uint32_t a, uint32_t b, uint32_t c, uint8_t* used, std::vector<SceneBuilder::MeshletSpec>& meshletSpecs) {
   uint8_t& av = used[a];
   uint8_t& bv = used[b];
   uint8_t& cv = used[c];
@@ -365,9 +348,9 @@ static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, TempMeshletData& t
 
   const uint32_t used_extra = (av == 0xff) + (bv == 0xff) + (cv == 0xff);
 
-  if (((meshlet_spec.vertexCount() + used_extra) > max_vertices) || ((meshlet_spec.primitiveIndices.size() + 1) > max_prims)) {
+  if (((meshlet_spec.vertexCount() + used_extra) > kMaximumMeshletVertices) || ((meshlet_spec.primitiveIndices.size() + 1) > kMaximumMeshletPrims)) {
     for (size_t j = 0; j < meshlet_spec.vertexCount(); ++j) {
-      used[mesh.getIndex(meshlet_spec.vertices[j])] = 0xff;
+      used[meshlet_spec.vertices[j]] = 0xff;
     }
     meshletSpecs.push_back(meshlet_spec);
     meshlet_spec.reset();
@@ -397,48 +380,6 @@ static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, TempMeshletData& t
 
   return result;
 }
-
-static void finishMeshlet(TempMeshletData& temp_meshlet, SceneBuilder::MeshletSpec& meshlet_spec) {
-  for(const auto& triangle: temp_meshlet.triangles) {
-      meshlet_spec.indices.push_back(std::distance(temp_meshlet.vertices.begin(), temp_meshlet.vertices.find(triangle[0])));
-      meshlet_spec.indices.push_back(std::distance(temp_meshlet.vertices.begin(), temp_meshlet.vertices.find(triangle[1])));
-      meshlet_spec.indices.push_back(std::distance(temp_meshlet.vertices.begin(), temp_meshlet.vertices.find(triangle[2])));
-    }
-
-    for(auto pi : temp_meshlet.vertices) meshlet_spec.vertices.push_back(pi);
-}
-
-static bool appendMeshlet2(const SceneBuilder::MeshSpec& mesh, TempMeshletData& temp_meshlet, SceneBuilder::MeshletSpec& meshlet_spec, uint32_t prim_id, uint32_t a, uint32_t b, uint32_t c, uint8_t* used, std::vector<SceneBuilder::MeshletSpec>& meshletSpecs, size_t max_vertices, size_t max_prims) {
-  uint8_t av = used[a];
-  uint8_t bv = used[b];
-  uint8_t cv = used[c];
-
-  const bool newV0 = temp_meshlet.vertices.find(a) == temp_meshlet.vertices.end();
-  const bool newV1 = temp_meshlet.vertices.find(b) == temp_meshlet.vertices.end();
-  const bool newV2 = temp_meshlet.vertices.find(c) == temp_meshlet.vertices.end();
-
-  const size_t new_vertices_count = (newV0 ? 1 : 0) + (newV1 ? 1 : 0) + (newV2 ? 1 : 0);
-
-  if (((temp_meshlet.vertices.size() + new_vertices_count) > max_vertices) || ((temp_meshlet.triangles.size() + 3) > max_prims)) {
-    finishMeshlet(temp_meshlet, meshlet_spec);
-    for (size_t j = 0; j < meshlet_spec.vertexCount(); ++j) {
-      used[mesh.getIndex(meshlet_spec.vertices[j])] = 0;
-    }
-    meshletSpecs.push_back(meshlet_spec);
-    return true;
-  }
-
-  temp_meshlet.triangles.push_back({a, b, c});
-
-  if(newV0) temp_meshlet.vertices.insert(a);
-  if(newV1) temp_meshlet.vertices.insert(b);
-  if(newV2) temp_meshlet.vertices.insert(c);
-
-  meshlet_spec.primitiveIndices.push_back(prim_id);
-
-  return false;
-}
-
 
 MeshletBuilder::Stats::Stats() {
   mTotalMeshletsBuildCount = 0;
@@ -522,8 +463,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
     // Run through mesh indices until we reach max number of elements (points or tris)
     for(uint32_t i = mesh_start_index; i < mesh.indexCount; i+=3) {
-      const bool maxIndicesPerMeshletReached  = ((meshletSpec.type == MeshletType::Triangles) && (triangles.size() > MESHLET_MAX_PRIM_COUNT));
-                                             //|| ((meshletSpec.type == MeshletType::Quads) && (quads.size() > MESHLET_MAX_PRIM_COUNT));
+      const bool maxIndicesPerMeshletReached = (meshletSpec.type == MeshletType::Triangles) && (triangles.size() > kMaximumMeshletPrims);
 
       if (maxIndicesPerMeshletReached) {
         LLOG_TRC << "Maximum meshlet polys reached for mesh " << mesh.name;
@@ -538,7 +478,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
       const size_t new_vertices_count = (newV0 ? 1 : 0) + (newV1 ? 1 : 0) + (newV2 ? 1 : 0);
 
-      const bool maxVerticesPerMeshletReached = ((vertices.size() + new_vertices_count) > MESHLET_MAX_VERTICES_COUNT);
+      const bool maxVerticesPerMeshletReached = ((vertices.size() + new_vertices_count) > kMaximumMeshletVertices);
 
       if (maxVerticesPerMeshletReached) {
         LLOG_TRC << "Maximum meshlet vertices reached for mesh " << mesh.name;
@@ -577,8 +517,6 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 }
 
 void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
-  static const uint32_t max_vertices = MESHLET_MAX_VERTICES_COUNT;
-  static const uint32_t max_triangles = MESHLET_MAX_PRIM_COUNT;
   static const float    cone_weight = .5f;
 
   assert(cone_weight >= 0.0f && cone_weight <= 1.0f);
@@ -613,7 +551,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
 
   // assuming each meshlet is a square patch, expected radius is sqrt(expected area)
   float triangle_area_avg = prim_count == 0 ? 0.f : mesh_area / float(prim_count) * 0.5f;
-  float meshlet_expected_radius = sqrtf(triangle_area_avg * max_triangles) * 0.5f;
+  float meshlet_expected_radius = sqrtf(triangle_area_avg * kMaximumMeshletPrims) * 0.5f;
 
   // build a kd-tree for nearest neighbor lookup
   std::vector<uint32_t> kdindices(prim_count);
@@ -633,7 +571,6 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   meshlet_spec.indices.reserve(MESHLET_MAX_PRIM_COUNT * 4u);
   meshlet_spec.vertices.reserve(MESHLET_MAX_VERTICES_COUNT);
 
-  TempMeshletData tmp_meshlet_data = TempMeshletData();
   Cone meshlet_cone_acc = {};
 
   for (;;) {
@@ -643,7 +580,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     uint32_t best_prim = getNeighborTriangle(mesh, meshlet_spec, &meshlet_cone, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, cone_weight, &best_extra);
 
     // if the best triangle doesn't fit into current meshlet, the spatial scoring we've used is not very meaningful, so we re-select using topological scoring
-    if (best_prim != ~0u && (meshlet_spec.vertexCount() + best_extra > max_vertices || meshlet_spec.primitiveCount() >= max_triangles)) {
+    if (best_prim != ~0u && (meshlet_spec.vertexCount() + best_extra > kMaximumMeshletVertices || meshlet_spec.primitiveCount() >= kMaximumMeshletPrims)) {
       best_prim = getNeighborTriangle(mesh, meshlet_spec, NULL, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, 0.f, NULL);
     }
 
@@ -666,8 +603,12 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     assert(a < vertex_count && b < vertex_count && c < vertex_count);
 
     // add meshletSpec to the output; when the current meshletSpec is full we reset the accumulated bounds
-    if (appendMeshlet(mesh, tmp_meshlet_data, meshlet_spec, best_prim, a, b, c, used.data(), mesh.meshletSpecs, max_vertices, max_triangles)) {
-      tmp_meshlet_data.reset();
+    if (appendMeshlet(mesh, meshlet_spec, best_prim, a, b, c, used.data(), mesh.meshletSpecs)) {
+      const auto& meshletSpec = mesh.meshletSpecs.back();
+
+      LLOG_WRN << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+      " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
+
       memset(&meshlet_cone_acc, 0, sizeof(meshlet_cone_acc));
       /*
       if(mesh.meshletSpecs.size() == 30000) {
@@ -686,7 +627,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     // remove emitted triangle from adjacency data
     // this makes sure that we spend less time traversing these lists on subsequent iterations
 
-    for (size_t k = 0; k < 3; ++k) {
+    for (uint32_t k = 0; k < 3; ++k) {
       uint32_t index = mesh.getIndex(best_prim * 3 + k);
 
       uint32_t* neighbors = mesh.adjacency.data.data() + mesh.adjacency.offsets[index];

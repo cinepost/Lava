@@ -334,6 +334,7 @@ public:
 #endif
 
 namespace Falcor {
+
 /** Converts ShaderType enum elements to a string.
     \param[in] type Type to convert to string
     \return Shader type as a string

@@ -3303,6 +3303,32 @@ void Scene::updateNodeTransform(uint32_t nodeID, const float4x4& transform) {
     node.transform = validateTransformMatrix(transform);
     mpAnimationController->setNodeEdited(nodeID);
 }
+
+void Scene::updateNodeTransformList(uint32_t nodeID, const std::vector<float4x4>& transformList) {
+    assert(nodeID < mSceneGraph.size());
+
+    Node& node = mSceneGraph[nodeID];
+    std::vector<float4x4> validTransformList(transformList.size());
+
+    for(size_t i = 0; i < transformList.size(); i++) {
+        validTransformList[i] = validateTransformMatrix(transformList[i]);
+    }
+
+    if( node.transformList != validTransformList) {
+        node.transformList = std::move(validTransformList);
+        mpAnimationController->setNodeEdited(nodeID);
+    }
+}
+
+void Scene::clearNodeTransformList(uint32_t nodeID) {
+    assert(nodeID < mSceneGraph.size());
+
+    Node& node = mSceneGraph[nodeID];
+    if(!node.transformList.empty()) {
+        node.transformList.clear();
+        mpAnimationController->setNodeEdited(nodeID);
+    }
+}
     
 void Scene::setEnvMap(EnvMap::SharedPtr pEnvMap) {
     if (mpEnvMap == pEnvMap) return;

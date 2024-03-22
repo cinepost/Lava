@@ -36,15 +36,13 @@
 #include "Falcor/Core/Framework.h"
 #include "lava_utils_lib/logging.h"
 
-namespace Falcor
-{
+namespace Falcor {
     /** Generate a vector that is orthogonal to the input vector
         This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents.
         \param[in] u Unit vector.
         \return v Unit vector that is orthogonal to u.
     */
-    inline float3 perp_stark(const float3& u)
-    {
+    inline float3 perp_stark(const float3& u) {
         // TODO: Validate this and look at numerical precision etc. Are there better ways to do it?
         float3 a = abs(u);
         uint32_t uyx = (a.x - a.y) < 0 ? 1 : 0;
@@ -62,8 +60,7 @@ namespace Falcor
         \param[out] t Unit tangent vector.
         \param[out] b Unit bitangent vector.
     */
-    inline void buildFrame(const float3& n, float3& t, float3& b)
-    {
+    inline void buildFrame(const float3& n, float3& t, float3& b) {
         t = perp_stark(n);
         b = cross(n, t);
     }
@@ -73,12 +70,11 @@ namespace Falcor
         \return True if valid else false.
     */
     template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
-    inline bool isMatrixValid(const glm::mat<C, R, T, Q>& matrix)
-    {
-        for (glm::length_t c = 0; c < C; c++)
-        {
-            if (glm::any(glm::isinf(matrix[c])) || glm::any(glm::isnan(matrix[c])))
+    inline bool isMatrixValid(const glm::mat<C, R, T, Q>& matrix) {
+        for (glm::length_t c = 0; c < C; c++) {
+            if (glm::any(glm::isinf(matrix[c])) || glm::any(glm::isnan(matrix[c]))) {
                 return false;
+            }
         }
         return true;
     }
@@ -88,22 +84,22 @@ namespace Falcor
         \return True if affine else false.
     */
     template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
-    inline bool isMatrixAffine(const glm::mat<C, R, T, Q>& matrix)
-    {
+    inline bool isMatrixAffine(const glm::mat<C, R, T, Q>& matrix) {
         GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_GENTYPE, "'isMatrixAffine' only accept floating-point inputs");
 
         const glm::length_t lastRow = R - 1;
         const glm::length_t lastCol = C - 1;
 
         bool affine = true;
-        for (glm::length_t c = 0; c < lastCol; c++)
-        {
-            if (matrix[c][lastRow] != 0.f)
+        for (glm::length_t c = 0; c < lastCol; c++) {
+            if (matrix[c][lastRow] != 0.f) {
                 affine = false;
+            }
         }
 
-        if (matrix[lastCol][lastRow] != 1.f)
+        if (matrix[lastCol][lastRow] != 1.f) {
             affine = false;
+        }
 
         return affine;
     }
@@ -112,17 +108,14 @@ namespace Falcor
         \param[in] transform Transform matrix.
         \return A copy of the matrix that is affine.
     */
-    inline glm::mat4x4 validateTransformMatrix(const glm::mat4x4& transform)
-    {
+    inline glm::mat4x4 validateTransformMatrix(const glm::mat4x4& transform) {
         glm::mat4x4 newMatrix(transform);
 
-        if (!isMatrixValid(newMatrix))
-        {
+        if (!isMatrixValid(newMatrix)) {
             throw std::runtime_error("Transform matrix has inf/nan values!");
         }
 
-        if (!isMatrixAffine(newMatrix))
-        {
+        if (!isMatrixAffine(newMatrix)) {
             LLOG_WRN << "Transform matrix is not affine. Setting last row to (0,0,0,1).";
             newMatrix[0][3] = newMatrix[1][3] = newMatrix[2][3] = 0.f;
             newMatrix[3][3] = 1.f;

@@ -35,7 +35,7 @@ BEGIN_NAMESPACE_FALCOR
 #endif
 
 #ifndef MESHLET_MAX_PRIM_COUNT // Meshlet max number of triangles/quads
-#define MESHLET_MAX_PRIM_COUNT 512
+#define MESHLET_MAX_PRIM_COUNT 128
 #endif
 
 #define GEOMETRY_TYPE_NONE                      0

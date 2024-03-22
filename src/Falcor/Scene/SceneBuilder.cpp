@@ -306,7 +306,11 @@ Scene::SharedPtr SceneBuilder::getScene() {
 		auto dummyMesh = TriangleMesh::createDummy();
 		auto dummyMaterial = StandardMaterial::create(mpDevice, "Dummy");
 		auto meshID = addTriangleMesh(dummyMesh, dummyMaterial);
-		Node dummyNode = { "Dummy", glm::identity<glm::mat4>(), glm::identity<glm::mat4>() };
+		
+		Node dummyNode;
+		dummyNode.name = "Dummy";
+		dummyNode.transform = glm::identity<glm::mat4>(); 
+		dummyNode.meshBind = glm::identity<glm::mat4>();
 		auto nodeID = addNode(dummyNode);
 		addMeshInstance(nodeID, meshID);
 	}
@@ -1007,7 +1011,9 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 		LLOG_WRN << "Animatable object is already animated.";
 		return nullptr;
 	}
-	if (nodeID == kInvalidNodeID) nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
+	if (nodeID == kInvalidNodeID) {
+		nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), {}, glm::identity<glm::mat4>() });
+	}
 
 	pAnimatable->setNodeID(nodeID);
 	pAnimatable->setHasAnimation(true);
@@ -1193,10 +1199,14 @@ bool SceneBuilder::updateMeshInstance(uint32_t meshID, const MeshInstanceCreatio
 
 	auto& internalNode = mSceneGraph[nodeID];
 
-	if(internalNode.transform != node.transform) {
-		if(mpScene) {
-			mpScene->updateNodeTransform(nodeID, node.transform);
-		}
+	if(!mpScene) return true;
+
+	if(internalNode.transform != node.transform) mpScene->updateNodeTransform(nodeID, node.transform);
+
+	if(node.transformList.empty()) {
+		mpScene->clearNodeTransformList(nodeID);
+	} else {
+		mpScene->updateNodeTransformList(nodeID, node.transformList);
 	}
 
 	return true;
@@ -1302,6 +1312,8 @@ void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
 
 bool SceneBuilder::doesNodeHaveAnimation(uint32_t nodeID) const {
 	assert(nodeID != kInvalidNodeID && nodeID < mSceneGraph.size());
+	if(!mSceneGraph[nodeID].transformList.empty()) return true;
+
 	for (const auto& pAnimation : mSceneData.animations) {
 		if (pAnimation->getNodeID() == nodeID) return true;
 	}
@@ -1769,7 +1781,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			prevNode.meshes.erase(it);
 
 			// Link mesh to new top-level node.
-			uint32_t newNodeID = addNode(Node{newMesh->name, transform, glm::identity<glm::mat4>()});
+			uint32_t newNodeID = addNode(Node{newMesh->name, transform, {}, glm::identity<glm::mat4>()});
 			auto& newNode = mSceneGraph[newNodeID];
 
 			// Clear the copied list of instance parents, and replace with the new, single instance parent.
@@ -1875,7 +1887,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 	// This step is a prerequisite for the ray tracing optimizations we do later.
 
 	// Add an identity transform node.
-	uint32_t identityNodeID = addNode(Node{ "Identity", glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
+	uint32_t identityNodeID = addNode(Node{ "Identity", glm::identity<glm::mat4>(), {}, glm::identity<glm::mat4>() });
 	auto& identityNode = mSceneGraph[identityNodeID];
 
 	size_t transformedMeshCount = 0;

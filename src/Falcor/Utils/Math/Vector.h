@@ -29,6 +29,7 @@
 #define SRC_FALCOR_UTILS_MATH_VECTOR_H_
 
 #include <string>
+#include <vector>
 
 #define GLM_FORCE_CTOR_INIT
 #define GLM_ENABLE_EXPERIMENTAL
@@ -53,6 +54,14 @@ using int4 = glm::ivec4;
 using bool2 = glm::bvec2;
 using bool3 = glm::bvec3;
 using bool4 = glm::bvec4;
+
+inline bool operator==(const std::vector<glm::float4x4>& v1, const std::vector<glm::float4x4>& v2) {
+  return v1.size() == v2.size() && memcmp(&v1.front(), &v2.front(), sizeof(glm::float4x4) * v1.size()) == 0;
+};
+
+inline bool operator!=(const std::vector<glm::float4x4>& v1, const std::vector<glm::float4x4>& v2) {
+  return !(v1 == v2);
+}
 
 inline std::string to_string(const float2& v) { return "float2(" + std::to_string(v.x) + "," + std::to_string(v.y) + ")"; }
 inline std::string to_string(const float3& v) { return "float3(" + std::to_string(v.x) + "," + std::to_string(v.y) + "," + std::to_string(v.z) + ")"; }
