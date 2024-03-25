@@ -48,7 +48,7 @@ struct CameraData
     float    focalLength            = 21.0f;                    ///< Camera focal length in mm. Default is 59 degree vertical, 90 horizontal FOV at 16:9 aspect ratio.
     
     float3   prevPosW               = float3(0, 0, 0);          ///< Camera world-space position associated to previous frame.
-    float    _paading0;
+    float    _padding0;
     
     float3   up                     = float3(0, 1, 0);          ///< Camera world-space up vector.
     float    aspectRatio            = 1.7777777f;               ///< Camera film frame aspect ratio, equal to frameWidth / frameHeight
