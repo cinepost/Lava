@@ -129,7 +129,7 @@ struct GBufferRT
     float3 computeDdxPosW(float3 posW, float3 normW, float2 invFrameDim)
     {
         float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
-        float distanceToHit = length(posW - gScene.camera.data.posW);
+        float distanceToHit = length(posW - gScene.camera.getPosW());
         float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
         float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraV), projRight);
         return distRight * projRight;
@@ -138,7 +138,7 @@ struct GBufferRT
     float3 computeDdyPosW(float3 posW, float3 normW, float2 invFrameDim)
     {
         float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
-        float distanceToHit = length(posW - gScene.camera.data.posW);
+        float distanceToHit = length(posW - gScene.camera.getPosW());
         float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
         float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraU), projUp);
         return distUp * projUp;

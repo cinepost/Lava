@@ -160,8 +160,8 @@ struct SDFGridIntersector
         gScene.getSDFGrid(instanceID, sdfGrid);
 
         // Load Matrices.
-        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
-        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixOffset);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         // Convert ray origin and direction to local space.
         float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
@@ -183,8 +183,8 @@ struct SDFGridIntersector
         gScene.getSDFGrid(instanceID, sdfGrid);
 
         // Load Matrices.
-        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
-        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixOffset);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         // Convert ray origin and direction to local space.
         float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);

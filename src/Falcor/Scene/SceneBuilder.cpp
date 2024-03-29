@@ -309,7 +309,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 		
 		Node dummyNode;
 		dummyNode.name = "Dummy";
-		dummyNode.transform = glm::identity<glm::mat4>(); 
+		dummyNode.transformList = {glm::identity<glm::mat4>()}; 
 		dummyNode.meshBind = glm::identity<glm::mat4>();
 		auto nodeID = addNode(dummyNode);
 		addMeshInstance(nodeID, meshID);
@@ -1012,7 +1012,7 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 		return nullptr;
 	}
 	if (nodeID == kInvalidNodeID) {
-		nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), {}, glm::identity<glm::mat4>() });
+		nodeID = addNode(Node{ name, {glm::identity<glm::mat4>()}, {}, glm::identity<glm::mat4>() });
 	}
 
 	pAnimatable->setNodeID(nodeID);
@@ -1042,9 +1042,17 @@ static inline glm::mat4 validateMatrix(const glm::mat4& m, const char* field) {
 	return _m;
 }
 
+static inline std::vector<glm::mat4> validateMatrixList(const std::vector<glm::mat4>& list, const char* field) {
+	std::vector<glm::mat4> validatedList(list.size());
+	for(size_t i = 0; i < list.size(); ++i) {
+		validatedList[i] = validateMatrix(list[i], field);
+	}
+	return validatedList;
+}
+
 uint32_t SceneBuilder::addNode(const Node& node) {
 	InternalNode internalNode(node);
-	internalNode.transform = validateMatrix(node.transform, "transform");
+	internalNode.transformList = validateMatrixList(node.transformList, "transformList");
 	internalNode.localToBindPose = validateMatrix(node.localToBindPose, "localToBindPose");
 
 	static_assert(kInvalidNodeID >= std::numeric_limits<uint32_t>::max());
@@ -1072,9 +1080,9 @@ uint32_t SceneBuilder::updateNode(const Node& node) {
 	uint32_t nodeID = getInternalNode(node.name);
 	if(nodeID != kInvalidNodeID ) {
 		auto& existingNode = mSceneGraph[nodeID];
-		auto newTransform = validateMatrix(node.transform, "transform");
-		if(existingNode.transform != newTransform) {
-			existingNode.transform = newTransform;
+		auto newTransformList = validateMatrixList(node.transformList, "transformList");
+		if(existingNode.transformList != newTransformList) {
+			existingNode.transformList = newTransformList;
 		}
 	} else {
 		return addNode(node);
@@ -1201,7 +1209,7 @@ bool SceneBuilder::updateMeshInstance(uint32_t meshID, const MeshInstanceCreatio
 
 	if(!mpScene) return true;
 
-	if(internalNode.transform != node.transform) mpScene->updateNodeTransform(nodeID, node.transform);
+	if(internalNode.transformList != node.transformList) mpScene->updateNodeTransformList(nodeID, node.transformList);
 
 	if(node.transformList.empty()) {
 		mpScene->clearNodeTransformList(nodeID);
@@ -1317,7 +1325,6 @@ bool SceneBuilder::doesNodeHaveAnimation(uint32_t nodeID) const {
 	for (const auto& pAnimation : mSceneData.animations) {
 		if (pAnimation->getNodeID() == nodeID) return true;
 	}
-
 	return false;
 }
 
@@ -1326,7 +1333,6 @@ bool SceneBuilder::isNodeAnimated(uint32_t nodeID) const {
 		if (doesNodeHaveAnimation(nodeID)) return true;
 		nodeID = mSceneGraph[nodeID].parent;
 	}
-
 	return false;
 }
 
@@ -1501,11 +1507,11 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 	assert(parentNodeID < mSceneGraph.size() && childNodeID < mSceneGraph.size());
 
 	if (mSceneGraph[parentNodeID].dontOptimize || mSceneGraph[childNodeID].dontOptimize) return false;
-	if (doesNodeHaveAnimation(childNodeID)) return false;
+	if (doesNodeHaveAnimation(childNodeID) || (mSceneGraph[parentNodeID].transformList.size() != mSceneGraph[childNodeID].transformList.size())) return false;
 
 	// Compute the combined transform.
 	auto& child = mSceneGraph[childNodeID];
-	glm::mat4 transform = child.transform;
+	glm::mat4 transform = child.transformList[0];
 	uint32_t prevNodeID = childNodeID;
 	uint32_t nodeID = child.parent;
 
@@ -1523,8 +1529,8 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 		assert(node.children[0] == prevNodeID);
 
 		// Update the transform and step to the parent.
-		transform = node.transform * transform;
-
+		transform = node.transformList[0] * transform;
+		
 		if (nodeID == parentNodeID) break;
 		prevNodeID = nodeID;
 		nodeID = mSceneGraph[nodeID].parent;
@@ -1542,7 +1548,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 
 	parent = std::move(child);
 	parent.parent = oldParentID;
-	parent.transform = transform;
+	parent.transformList = {transform};
 
 	// Reset the now unused nodes below the parent to a valid empty state.
 	// TODO: Run a separate optimization pass to compact the node list.
@@ -1573,7 +1579,7 @@ bool SceneBuilder::mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID) {
 	if (doesNodeHaveAnimation(dstNodeID) || doesNodeHaveAnimation(srcNodeID)) return false;
 
 	if (dst.parent != src.parent ||
-		dst.transform != src.transform ||
+		dst.transformList != src.transformList ||
 		dst.localToBindPose != src.localToBindPose) return false;
 
 	// Update all linked objects to point to the dest node.
@@ -1767,7 +1773,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			glm::mat4 transform = glm::identity<glm::mat4>();
 			while (nodeID != kInvalidNodeID) {
 				assert(nodeID < mSceneGraph.size());
-				transform = mSceneGraph[nodeID].transform * transform;
+				transform = mSceneGraph[nodeID].transformList[0] * transform;
 
 				nodeID = mSceneGraph[nodeID].parent;
 			}
@@ -1781,7 +1787,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			prevNode.meshes.erase(it);
 
 			// Link mesh to new top-level node.
-			uint32_t newNodeID = addNode(Node{newMesh->name, transform, {}, glm::identity<glm::mat4>()});
+			uint32_t newNodeID = addNode(Node{newMesh->name, {transform}, {}, glm::identity<glm::mat4>()});
 			auto& newNode = mSceneGraph[newNodeID];
 
 			// Clear the copied list of instance parents, and replace with the new, single instance parent.
@@ -1850,7 +1856,12 @@ void SceneBuilder::optimizeSceneGraph() {
 		const auto& lhs = mSceneGraph[lhsID];
 		const auto& rhs = mSceneGraph[rhsID];
 		if (lhs.parent != rhs.parent) return lhs.parent < rhs.parent;
-		if (lhs.transform != rhs.transform) return lessThan(lhs.transform, rhs.transform);
+		
+		if (lhs.transformList.size() != rhs.transformList.size()) return lhs.transformList.size() < rhs.transformList.size();
+
+		for(size_t i = 0; i < lhs.transformList.size(); ++i) {
+			if (lhs.transformList[i] != rhs.transformList[i]) return lessThan(lhs.transformList[i], rhs.transformList[i]);
+		}
 		if (lhs.localToBindPose != rhs.localToBindPose) return lessThan(lhs.localToBindPose, rhs.localToBindPose);
 		return false;
 	};
@@ -1887,7 +1898,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 	// This step is a prerequisite for the ray tracing optimizations we do later.
 
 	// Add an identity transform node.
-	uint32_t identityNodeID = addNode(Node{ "Identity", glm::identity<glm::mat4>(), {}, glm::identity<glm::mat4>() });
+	uint32_t identityNodeID = addNode(Node{ "Identity", {glm::identity<glm::mat4>()}, {}, glm::identity<glm::mat4>() });
 	auto& identityNode = mSceneGraph[identityNodeID];
 
 	size_t transformedMeshCount = 0;
@@ -1908,7 +1919,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 		glm::mat4 transform = glm::identity<glm::mat4>();
 		while (nodeID != kInvalidNodeID) {
 			assert(nodeID < mSceneGraph.size());
-			transform = mSceneGraph[nodeID].transform * transform;
+			transform = mSceneGraph[nodeID].transformList[0] * transform;
 
 			nodeID = mSceneGraph[nodeID].parent;
 		}
@@ -2798,7 +2809,7 @@ void SceneBuilder::updateSDFGridID(uint32_t oldID, uint32_t newID) {
 	for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstancesData) {
 		if (sdfGridInstance.geometryID == oldID) {
 			sdfGridInstance.geometryID = newID;
-			InternalNode& node = mSceneGraph[sdfGridInstance.globalMatrixID];
+			InternalNode& node = mSceneGraph[sdfGridInstance.globalMatrixOffset];
 			std::replace(node.sdfGrids.begin(), node.sdfGrids.end(), oldID, newID);
 		}
 	}
@@ -3013,7 +3024,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 					: mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
 				GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
-				geomInstance.globalMatrixID = nodeID;
+				geomInstance.nodeID = nodeID;
 				geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
 				geomInstance.geometryID = meshID;
 				geomInstance.externalID = instance.exported.id;
@@ -3109,7 +3120,7 @@ void SceneBuilder::createCurveInstanceData(uint32_t& tlasInstanceIndex) {
 		for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
 			auto const& instance = curve.instances[instanceIdx];
 			GeometryInstanceData geomInstance(GeometryType::Curve);
-			geomInstance.globalMatrixID = instance;
+			geomInstance.nodeID = instance;
 			geomInstance.materialID = curve.materialId;
 			geomInstance.geometryID = curveID;
 			//geomInstance.externalID = instance.exported.id;
@@ -3132,7 +3143,7 @@ void SceneBuilder::createSceneGraph() {
 
 	for (size_t i = 0; i < mSceneGraph.size(); i++) {
 		assert(mSceneGraph[i].parent <= std::numeric_limits<uint32_t>::max());
-		mSceneData.sceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].meshBind, mSceneGraph[i].localToBindPose);
+		mSceneData.sceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transformList, mSceneGraph[i].meshBind, mSceneGraph[i].localToBindPose);
 	}
 }
 

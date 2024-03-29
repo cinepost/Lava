@@ -166,7 +166,11 @@ void RTXDI::beginFrame(RenderContext* pRenderContext, const uint2& frameDim) {
     mpScene->getLightCollection(pRenderContext);
 
     // Initialize previous frame camera data.
-    if (mFrameIndex == 0) mPrevCameraData = mpScene->getCamera()->getData();
+    if (mFrameIndex == 0) {
+        auto const& pCamera = mpScene->getCamera();
+        mPrevCameraData = pCamera->getData();
+        mPrevCameraXformData = pCamera->getXformData();
+    }
 
     // Update the screen resolution.
     if (frameDim != mFrameDim) {
@@ -220,7 +224,9 @@ void RTXDI::endFrame(RenderContext* pRenderContext) {
     mCurrentSurfaceBufferIndex = 1 - mCurrentSurfaceBufferIndex;
 
     // Remember this frame's camera data for use next frame.
-    mPrevCameraData = mpScene->getCamera()->getData();
+    auto const& pCamera = mpScene->getCamera();
+    mPrevCameraData = pCamera->getData();
+    mPrevCameraXformData = pCamera->getXformData();
 #endif
 
     mpPixelDebug->endFrame(pRenderContext);
@@ -313,9 +319,9 @@ void RTXDI::setShaderDataInternal(const ShaderVar& rootVar, const Texture::Share
     var["enablePermutationSampling"] = mOptions.enablePermutationSampling;
 
     // Parameters for last frame's camera coordinate
-    var["prevCameraU"] = mPrevCameraData.cameraU;
-    var["prevCameraV"] = mPrevCameraData.cameraV;
-    var["prevCameraW"] = mPrevCameraData.cameraW;
+    var["prevCameraU"] = mPrevCameraXformData.cameraU;
+    var["prevCameraV"] = mPrevCameraXformData.cameraV;
+    var["prevCameraW"] = mPrevCameraXformData.cameraW;
     var["prevCameraJitter"] = float2(mPrevCameraData.jitterX, mPrevCameraData.jitterY);
 
     // Setup textures and other buffers needed by the RTXDI bridge

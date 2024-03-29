@@ -48,28 +48,13 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
     : mpScene(pScene)
     , mAnimations(animations)
     , mNodesEdited(pScene->mSceneGraph.size())
-    , mLocalMatrices(pScene->mSceneGraph.size())
-    , mGlobalMatrices(pScene->mSceneGraph.size())
-    , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
+    , mLocalMatrixLists(pScene->mSceneGraph.size())
+    , mGlobalMatrixLists(pScene->mSceneGraph.size())
+    , mInvTransposeGlobalMatrixLists(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
 {
     mpDevice = pScene->device();
     assert(mpDevice);
-
-    // Create GPU resources.
-    assert(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
-    uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
-
-    if (float4Count > 0) {
-        mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
-        mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
-        mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
-        mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
-    }
 
     // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
     // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
@@ -91,6 +76,31 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
     // Determine length of global animation loop.
     for (const auto& pAnimation : mAnimations) {
         mGlobalAnimationLength = std::max(mGlobalAnimationLength, pAnimation->getDuration());
+    }
+}
+
+void AnimationController::createBuffers(size_t matrixCount) {
+    if(matrixCount == 0) return;
+    assert(matrixCount * 4 <= std::numeric_limits<uint32_t>::max());
+    uint32_t float4Count = (uint32_t)matrixCount * 4;
+
+    if (float4Count = 0) return;
+
+    if(!mpWorldMatricesBuffer || mpWorldMatricesBuffer->getElementCount() != matrixCount) {
+        mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
+    }
+    if(!mpPrevWorldMatricesBuffer || mpPrevWorldMatricesBuffer->getElementCount() != matrixCount) {
+        mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
+    }
+    if(!mpInvTransposeWorldMatricesBuffer || mpInvTransposeWorldMatricesBuffer->getElementCount() != matrixCount) {
+        mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
+    }
+    if(!mpPrevInvTransposeWorldMatricesBuffer || mpPrevInvTransposeWorldMatricesBuffer->getElementCount() != matrixCount) {
+        mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
     }
 }
 
@@ -172,8 +182,8 @@ void AnimationController::setIsLooped(bool looped) {
 }
 
 void AnimationController::initLocalMatrices() {
-    for (size_t i = 0; i < mLocalMatrices.size(); i++) {
-        mLocalMatrices[i] = mpScene->mSceneGraph[i].transform;
+    for (size_t i = 0; i < mLocalMatrixLists.size(); i++) {
+        mLocalMatrixLists[i] = mpScene->mSceneGraph[i].transformList;
     }
 }
 
@@ -187,7 +197,7 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime) {
     bool edited = false;
     for (size_t i = 0; i < sceneGraph.size(); ++i) {
         if (mNodesEdited[i]) {
-            mLocalMatrices[i] = sceneGraph[i].transform;
+            mLocalMatrixLists[i] = sceneGraph[i].transformList;
             mNodesEdited[i] = false;
             mMatricesChanged[i] = true;
             edited = true;
@@ -266,7 +276,7 @@ void AnimationController::updateLocalMatrices(double time) {
     for (auto& pAnimation : mAnimations) {
         uint32_t nodeID = pAnimation->getNodeID();
         assert(nodeID < mLocalMatrices.size());
-        mLocalMatrices[nodeID] = pAnimation->animate(time);
+        mLocalMatrixLists[nodeID] = {pAnimation->animate(time)};
         mMatricesChanged[nodeID] = true;
     }
 }
@@ -274,7 +284,7 @@ void AnimationController::updateLocalMatrices(double time) {
 void AnimationController::updateWorldMatrices(bool updateAll) {
     const auto& sceneGraph = mpScene->mSceneGraph;
 
-    for (size_t i = 0; i < mGlobalMatrices.size(); i++) {
+    for (size_t i = 0; i < mGlobalMatrixLists.size(); i++) {
         // Propagate matrix change flag to children.
         if (sceneGraph[i].parent != SceneBuilder::kInvalidNodeID) {
             mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent];
@@ -282,45 +292,69 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
 
         if (!mMatricesChanged[i] && !updateAll) continue;
 
-        mGlobalMatrices[i] = mLocalMatrices[i];
+        mGlobalMatrixLists[i] = mLocalMatrixLists[i];
 
-        if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNodeID) {
-            mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent] * mGlobalMatrices[i];
+        if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNodeID && (mGlobalMatrixLists[i].size() == mGlobalMatrixLists[sceneGraph[i].parent].size())) {
+            for(size_t ii = 0; ii < mGlobalMatrixLists[i].size(); ++ii) {
+                mGlobalMatrixLists[i][ii] = mGlobalMatrixLists[sceneGraph[i].parent][ii] * mGlobalMatrixLists[i][ii];
+            }
         }
 
-        mInvTransposeGlobalMatrices[i] = transpose(inverse(mGlobalMatrices[i]));
+        assert(mInvTransposeGlobalMatrixLists[i].size() == mGlobalMatrixLists[i].size());
+        for(size_t ii = 0; ii < mGlobalMatrixLists[i].size(); ++ii){
+            mInvTransposeGlobalMatrixLists[i][ii] = transpose(inverse(mGlobalMatrixLists[i][ii]));
+        }
 
         if (mpSkinningPass) {
-            mSkinningMatrices[i] = mGlobalMatrices[i] * sceneGraph[i].localToBindSpace;
+            mSkinningMatrices[i] = mGlobalMatrixLists[i][0] * sceneGraph[i].localToBindSpace;
             mInvTransposeSkinningMatrices[i] = transpose(inverse(mSkinningMatrices[i]));
         }
     }
 }
 
 void AnimationController::uploadWorldMatrices(bool uploadAll) {
-    if (mGlobalMatrices.empty()) return;
+    if (mGlobalMatrixLists.empty()) return;
 
-    assert(mGlobalMatrices.size() == mInvTransposeGlobalMatrices.size());
+    assert(mGlobalMatrixLists.size() == mInvTransposeGlobalMatrixLists.size());
+
+    size_t totalMatricesCount = 0;
+    for(auto const& list: mGlobalMatrixLists) totalMatricesCount += list.size();
+
+    createBuffers(totalMatricesCount);
     assert(mpWorldMatricesBuffer && mpInvTransposeWorldMatricesBuffer);
+
+    if(totalMatricesCount != mpWorldMatricesBuffer->getElementCount()) {
+        uploadAll = true;
+    }
 
     if (uploadAll) {
         // Upload all matrices.
-        mpWorldMatricesBuffer->setBlob(mGlobalMatrices.data(), 0, mpWorldMatricesBuffer->getSize());
-        mpInvTransposeWorldMatricesBuffer->setBlob(mInvTransposeGlobalMatrices.data(), 0, mpInvTransposeWorldMatricesBuffer->getSize());
+        std::vector<float4x4> globalMatrices;
+        std::vector<float4x4> invTransposeGlobalMatrices;
+        for(size_t i = 0; i < mGlobalMatrixLists.size(); ++i) {
+            for(auto& m: mGlobalMatrixLists[i]) globalMatrices.push_back(m);
+            for(auto& m: mInvTransposeGlobalMatrixLists[i]) invTransposeGlobalMatrices.push_back(m);
+        }
+        mpWorldMatricesBuffer->setBlob(globalMatrices.data(), 0, mpWorldMatricesBuffer->getSize());
+        mpInvTransposeWorldMatricesBuffer->setBlob(invTransposeGlobalMatrices.data(), 0, mpInvTransposeWorldMatricesBuffer->getSize());
     } else {
         // Upload changed matrices only.
-        for (size_t i = 0; i < mGlobalMatrices.size();) {
-            // Detect ranges of consecutive matrices that have all changed or not.
-            size_t offset = i;
-            bool changed = mMatricesChanged[i];
-            while (i < mGlobalMatrices.size() && mMatricesChanged[i] == changed) ++i;
-
+        size_t offset = 0;
+        for (size_t i = 0; i < mGlobalMatrixLists.size();) {
             // Upload range of changed matrices.
-            if (changed) {
-                size_t count = i - offset;
-                mpWorldMatricesBuffer->setBlob(&mGlobalMatrices[offset], offset * sizeof(float4x4), count * sizeof(float4x4));
-                mpInvTransposeWorldMatricesBuffer->setBlob(&mInvTransposeGlobalMatrices[offset], offset * sizeof(float4x4), count * sizeof(float4x4));
+            if (mMatricesChanged[i]) {
+                std::vector<float4x4> globalMatrices;
+                std::vector<float4x4> invTransposeGlobalMatrices;
+                for(size_t ii = i; ii < mGlobalMatrixLists.size(); ++ii) {
+                    for(auto& m: mGlobalMatrixLists[ii]) globalMatrices.push_back(m);
+                    for(auto& m: mInvTransposeGlobalMatrixLists[ii]) invTransposeGlobalMatrices.push_back(m);
+                }
+
+                mpWorldMatricesBuffer->setBlob(globalMatrices.data(), offset * sizeof(float4x4), globalMatrices.size() * sizeof(float4x4));
+                mpInvTransposeWorldMatricesBuffer->setBlob(invTransposeGlobalMatrices.data(), offset * sizeof(float4x4), invTransposeGlobalMatrices.size() * sizeof(float4x4));
+                break;
             }
+            offset+=mGlobalMatrixLists[i].size();
         }
     }
 }

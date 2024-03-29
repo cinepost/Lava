@@ -97,7 +97,7 @@ VSOut defaultVS(VSIn vIn) {
     }
     
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
-    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMatNoJitter());
 
     return vOut;
 }

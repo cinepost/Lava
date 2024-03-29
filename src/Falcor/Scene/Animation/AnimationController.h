@@ -116,17 +116,17 @@ public:
 
     /** Check if a matrix changed since last frame.
     */
-    bool isMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+    bool isMatrixListChanged(size_t nodeID) const { return mMatricesChanged[nodeID]; }
 
     /** Get the local matrices.
         These represent the current local transform for each scene graph node.
     */
-    const std::vector<glm::mat4>& getLocalMatrices() const { return mLocalMatrices; }
+    const std::vector<std::vector<float4x4>>& getLocalMatrixLists() const { return mLocalMatrixLists; }
 
     /** Get the global matrices.
         These represent the current object-to-world space transform for each scene graph node.
     */
-    const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
+    const std::vector<std::vector<float4x4>>& getGlobalMatrixLists() const { return mGlobalMatrixLists; }
 
     /** Get the previous vertex data buffer for dynamic meshes.
         \return Buffer containing the previous vertex data, or nullptr if no dynamic meshes exist.
@@ -151,6 +151,7 @@ private:
     void updateWorldMatrices(bool updateAll = false);
     void uploadWorldMatrices(bool uploadAll = false);
 
+    void createBuffers(size_t matrixCount);
     void bindBuffers();
 
     void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
@@ -159,9 +160,12 @@ private:
     // Animation
     std::vector<Animation::SharedPtr> mAnimations;
     std::vector<bool> mNodesEdited;
-    std::vector<float4x4> mLocalMatrices;
-    std::vector<float4x4> mGlobalMatrices;
-    std::vector<float4x4> mInvTransposeGlobalMatrices;
+    //std::vector<float4x4> mLocalMatrices;
+    std::vector<std::vector<float4x4>> mLocalMatrixLists;
+    //std::vector<float4x4> mGlobalMatrices;
+    std::vector<std::vector<float4x4>> mGlobalMatrixLists;
+    //std::vector<float4x4> mInvTransposeGlobalMatrices;
+    std::vector<std::vector<float4x4>> mInvTransposeGlobalMatrixLists;
     std::vector<bool> mMatricesChanged;         ///< Flag per matrix, true if matrix changed since last frame.
 
     bool mFirstUpdate = true;       ///< True if this is the first update.

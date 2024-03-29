@@ -60,13 +60,11 @@ namespace
     };
 };
 
-VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferRT(pRenderContext->device(), dict));
 }
 
-RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
-{
+RenderPassReflection VBufferRT::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     // Add the required output. This always exists.
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
@@ -77,8 +75,7 @@ RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBufferBase::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
@@ -87,8 +84,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
     // If there is no scene, clear the output and return.
-    if (mpScene == nullptr)
-    {
+    if (mpScene == nullptr) {
         pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
         clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
         return;
@@ -104,8 +100,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (mUseDOF)
-    {
+    if (mUseDOF) {
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
     }
 
@@ -115,8 +110,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 }
 
 
-Dictionary VBufferRT::getScriptingDictionary()
-{
+Dictionary VBufferRT::getScriptingDictionary() {
     Dictionary dict = GBufferBase::getScriptingDictionary();
     dict[kUseCompute] = mUseCompute;
     dict[kUseDOF] = mUseDOF;
@@ -124,24 +118,20 @@ Dictionary VBufferRT::getScriptingDictionary()
     return dict;
 }
 
-void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBufferBase::setScene(pRenderContext, pScene);
-
     recreatePrograms();
 }
 
-void VBufferRT::recreatePrograms()
-{
+void VBufferRT::recreatePrograms() {
+    if(!mDirty) return;
     mRaytrace.pProgram = nullptr;
     mRaytrace.pVars = nullptr;
     mpComputePass = nullptr;
 }
 
-void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    if (!mRaytrace.pProgram || !mRaytrace.pVars)
-    {
+void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData) {
+    if (!mRaytrace.pProgram || !mRaytrace.pVars) {
         Program::DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
@@ -162,20 +152,17 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
 
         // Add hit group with intersection shader for triangle meshes with displacement maps.
-        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
         }
 
         // Add hit group with intersection shader for curves (represented as linear swept spheres).
-        if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::Curve)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
         }
 
         // Add hit group with intersection shader for SDF grids.
-        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
         }
 
@@ -198,16 +185,13 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
 }
 
-void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
+void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
         throw std::runtime_error("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
     // Create compute pass.
-    if (!mpComputePass)
-    {
+    if (!mpComputePass) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -231,11 +215,11 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     ShaderVar var = mpComputePass->getRootVar();
     setShaderData(var, renderData);
 
+    LLOG_WRN << "Execute VBufferRT compute pass";
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
 
-Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const
-{
+Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const {
     Program::DefineList defines;
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
@@ -252,8 +236,7 @@ Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) co
     return defines;
 }
 
-void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData)
-{
+void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData) {
     var["gVBufferRT"]["frameDim"] = mFrameDim;
     var["gVBufferRT"]["frameCount"] = mFrameCount;
 
@@ -261,28 +244,24 @@ void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     var["gVBuffer"] = getOutput(renderData, kVBufferName);
 
     // Bind output channels as UAV buffers.
-    auto bind = [&](const ChannelDesc& channel)
-    {
+    auto bind = [&](const ChannelDesc& channel) {
         Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
     for (const auto& channel : kVBufferExtraChannels) bind(channel);
 }
 
-VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo)
-{
+VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo) {
     parseDictionary(dict);
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 }
 
-void VBufferRT::parseDictionary(const Dictionary& dict)
-{
+void VBufferRT::parseDictionary(const Dictionary& dict) {
     GBufferBase::parseDictionary(dict);
 
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kUseCompute) mUseCompute = value;
         else if (key == kUseDOF) mUseDOF = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.

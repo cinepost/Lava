@@ -43,8 +43,7 @@ RWTexture2D<uint> gTime;
 #error "Not all defines are set!"
 #endif
 
-struct VBufferRT
-{
+struct VBufferRT {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
@@ -52,21 +51,16 @@ struct VBufferRT
     uint2 frameDim;
     uint frameCount;
 
-    Ray generateRay(uint2 pixel)
-    {
-        if (kComputeDepthOfField)
-        {
+    Ray generateRay(uint2 pixel) {
+        if (kComputeDepthOfField) {
             SampleGenerator sg = SampleGenerator(pixel, frameCount);
             return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg));
-        }
-        else
-        {
+        } else {
             return gScene.camera.computeRayPinhole(pixel, frameDim);
         }
     }
 
-    void writeHit(uint2 pixel, float3 rayOrigin, float3 rayDir, const HitInfo hit)
-    {
+    void writeHit(uint2 pixel, float3 rayOrigin, float3 rayDir, const HitInfo hit) {
         gVBuffer[pixel] = hit.getData();
 
         VertexData v;
@@ -100,15 +94,14 @@ struct VBufferRT
             prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
         }
 
-        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid)
-        {
+        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid) {
             // Compute depth similar to raster (NDC).
-            float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+            float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.getViewProjMatNoJitter());
             depth = curPosH.z / curPosH.w;
 
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
-            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMatNoJitter());
             motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         }
 
@@ -116,27 +109,23 @@ struct VBufferRT
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
     }
 
-    void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir)
-    {
+    void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir) {
         gVBuffer[pixel] = {};
 
         if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};
     }
 
-    void writeAux(uint2 pixel, const Ray ray)
-    {
+    void writeAux(uint2 pixel, const Ray ray) {
         // Write view direction.
         if (is_valid(gViewW)) gViewW[pixel] = float4(-ray.dir, 0.f);
     }
 
-    void beginTime(inout GpuTimer timer)
-    {
+    void beginTime(inout GpuTimer timer) {
         if (is_valid(gTime)) timer.start();
     }
 
-    void endTime(uint2 pixel, inout GpuTimer timer)
-    {
+    void endTime(uint2 pixel, inout GpuTimer timer) {
         if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
     }
 };

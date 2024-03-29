@@ -31,6 +31,7 @@
 #include "CameraData.slang"
 
 #include "Falcor/Core/Framework.h" 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Falcor/Core/API/ParameterBlock.h"
@@ -42,9 +43,8 @@ class ParameterBlock;
 
 /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
 */
-class dlldecl Camera : public Animatable
-{
-public:
+class dlldecl Camera : public Animatable {
+  public:
     using SharedPtr = std::shared_ptr<Camera>;
     using SharedConstPtr = std::shared_ptr<const Camera>;
 
@@ -54,6 +54,7 @@ public:
     /** Create a new camera object.
     */
     static SharedPtr create();
+    static SharedPtr create(const Device::SharedPtr& pDevice);
     ~Camera();
 
     /** Name the camera.
@@ -70,7 +71,7 @@ public:
 
     /** Get the camera's aspect ratio.
     */
-    inline float getAspectRatio() const { return mData.aspectRatio; }
+    float getAspectRatio() const { return mData.aspectRatio; }
 
     /** Set camera focal length in mm. See FalcorMath.h for helper functions to convert between fovY angles.
     */
@@ -78,7 +79,7 @@ public:
 
     /** Get the camera's focal length. See FalcorMath.h for helper functions to convert between fovY angles.
     */
-    inline float getFocalLength() const { return mData.focalLength; }
+    float getFocalLength() const { return mData.focalLength; }
 
     /** Set the camera's normalized crop region box.
     */
@@ -86,7 +87,7 @@ public:
 
     /** Get the camera's normalized crop region box.
     */
-    inline float4 getCropRegion() const { return mData.cropRegion; }
+    float4 getCropRegion() const { return mData.cropRegion; }
 
     /** Set the camera's film plane height in mm.
     */
@@ -94,7 +95,7 @@ public:
 
     /** Get the camera's film plane height in mm.
     */
-    inline float getFrameHeight() const { return mData.frameHeight; }
+    float getFrameHeight() const { return mData.frameHeight; }
 
     /** Set the camera's film plane width in mm.
     */
@@ -102,7 +103,7 @@ public:
 
     /** Get the camera's film plane width in mm.
     */
-    inline float getFrameWidth() const { return mData.frameWidth; }
+    float getFrameWidth() const { return mData.frameWidth; }
 
     /** Set the camera's focal distance in scene units.  Used for depth-of-field.
     */
@@ -110,7 +111,7 @@ public:
 
     /** Get the camera's focal distance in scene units.
     */
-    inline float getFocalDistance() const { return mData.focalDistance; }
+    float getFocalDistance() const { return mData.focalDistance; }
 
     /** Set camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
     */
@@ -118,7 +119,7 @@ public:
 
     /** Get camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
     */
-    inline float getApertureRadius() const { return mData.apertureRadius; }
+    float getApertureRadius() const { return mData.apertureRadius; }
 
     /** Set camera shutter speed in seconds.
     */
@@ -126,7 +127,7 @@ public:
 
     /** Get camera shutter speed in seconds.
     */
-    inline float getShutterSpeed() const { return mData.shutterSpeed; }
+    float getShutterSpeed() const { return mData.shutterSpeed; }
 
     /** Set camera's film speed based on ISO standards.
     */
@@ -134,31 +135,31 @@ public:
 
     /** Get camera's film speed based on ISO standards.
     */
-    inline float getISOSpeed() const { return mData.ISOSpeed; }
+    float getISOSpeed() const { return mData.ISOSpeed; }
 
     /** Get the camera's world space position.
     */
-    inline const float3& getPosition() const { return mData.posW; }
+    float3 getPosition(size_t i = 0) const;
 
     /** Get the camera's world space up vector.
     */
-    inline const float3& getUpVector() const {return mData.up;}
+    float3 getUpVector(size_t i = 0) const;
 
     /** Get the camera's world space target position.
     */
-    inline const float3& getTarget() const { return mData.target; }
+    float3 getTarget(size_t i = 0) const;
 
     /** Set the camera's world space position.
     */
-    void setPosition(const float3& posW) { mData.posW = posW; mDirty = true; }
+    void setPosition(const float3& posW);
 
     /** Set the camera's world space up vector.
     */
-    void setUpVector(const float3& up) { mData.up = up; mDirty = true; }
+    void setUpVector(const float3& up);
 
     /** Set the camera's world space target position.
     */
-    void setTarget(const float3& target) { mData.target = target; mDirty = true; }
+    void setTarget(const float3& target);
 
     /** Set the camera's depth range.
     */
@@ -170,7 +171,7 @@ public:
 
     /** Get the near plane depth.
     */
-    inline float getNearPlane() const { return mData.nearZ; }
+    float getNearPlane() const { return mData.nearZ; }
 
     /** Set the far plane depth.
     */
@@ -178,7 +179,7 @@ public:
 
     /** Get the far plane depth.
     */
-    inline float getFarPlane() const { return mData.farZ; }
+    float getFarPlane() const { return mData.farZ; }
 
     /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
     */
@@ -232,6 +233,7 @@ public:
     /** Get the view matrix.
     */
     const glm::mat4& getViewMatrix() const;
+    const std::vector<glm::mat4> getViewMatrixList() const;
 
     /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
     */
@@ -260,6 +262,7 @@ public:
     /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
     void setViewMatrix(const glm::mat4& view);
+    void setViewMatrixList(const std::vector<glm::mat4>& views);
 
     /** Enable or disable usage of persistent projection matrix
         \param[in] persistent whether to set it persistent
@@ -279,6 +282,8 @@ public:
     /** Returns the raw camera data
     */
     const CameraData& getData() const { calculateCameraParameters(); return  mData; }
+
+    const CameraXformData& getXformData() const { calculateCameraParameters(); return  mXformList[0]; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
@@ -307,15 +312,22 @@ public:
 
     std::string getScript(const std::string& cameraVar);
 
-private:
+  private:
     Camera();
+    Camera(const Device::SharedPtr& pDevice);
     Changes mChanges = Changes::None;
+
+    Device::SharedPtr mpDevice;
 
     mutable bool mDirty = true;
     mutable bool mEnablePersistentProjMat = false;
     mutable bool mEnablePersistentViewMat = false;
     mutable glm::mat4 mPersistentProjMat;
-    mutable glm::mat4 mPersistentViewMat;
+    mutable std::vector<glm::mat4> mPersistentViewMatList;
+
+    mutable float3 mPosW;
+    mutable float3 mUp;
+    mutable float3 mTarget;
 
     std::string mName;
     std::string mBackgroundImageFilename;
@@ -324,7 +336,11 @@ private:
 
     void calculateCameraParameters() const;
     mutable CameraData mData;
+    mutable std::vector<CameraXformData> mXformList;
     CameraData mPrevData;
+    std::vector<CameraXformData> mPrevXformList;
+
+    mutable Buffer::SharedPtr mpXformListBuffer;
 
     struct {
         float3 xyz;     ///< Camera frustum plane position

@@ -207,23 +207,23 @@ struct Scene
     }
 
     float4x4 getWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
-        return loadWorldMatrix(matrixID);
+        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadWorldMatrix(matrixOffset);
     }
 
     float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
-        return loadPrevWorldMatrix(matrixID);
+        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadPrevWorldMatrix(matrixOffset);
     }
 
     float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
-        return loadInverseTransposeWorldMatrix(matrixID);
+        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadInverseTransposeWorldMatrix(matrixOffset);
     }
 
     float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
-        return loadPrevInverseTransposeWorldMatrix(matrixID);
+        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadPrevInverseTransposeWorldMatrix(matrixOffset);
     }
 
     bool isWorldMatrixFlippedWinding(const GeometryInstanceID instanceID) {
@@ -785,7 +785,7 @@ struct Scene
             prevPos += vertices[vtxIndices[2]].position * barycentrics[2];
         }
 
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
         return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
     }
 
@@ -825,7 +825,7 @@ struct Scene
         // Offset surface along the displaced direction to avoid self-intersections because of precision.
         prevPos += prevNormal * (hit.displacement * DisplacementData::kSurfaceSafetyScaleBias.x + DisplacementData::kSurfaceSafetyScaleBias.y);
 
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
         return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
     }
 
@@ -995,8 +995,8 @@ struct Scene
         const SDFGrid sdfGrid = sdfGrids[instance.geometryID];
 
         // Load Matrices.
-        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
-        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixOffset);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         const float3 hitPosition = mul(worldInvTransposeMat, posW - worldMat[3].xyz);
 
@@ -1035,9 +1035,9 @@ struct Scene
         const GeometryInstanceData instance = geometryInstances[hit.instanceID.index];
 
         // Load Matrices.
-        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
-        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixOffset);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
 
         return mul(float4(mul(worldInvTransposeMat, posW - worldMat[3].xyz), 1.0f), prevWorldMat).xyz;
     }

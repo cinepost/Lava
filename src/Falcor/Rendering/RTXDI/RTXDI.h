@@ -234,6 +234,7 @@ private:
     uint32_t    mCurrentSurfaceBufferIndex = 0;                 ///< Index of the surface buffer used for the current frame (0 or 1).
 
     CameraData  mPrevCameraData;                                ///< Previous frame's camera data.
+    CameraXformData  mPrevCameraXformData;                      ///< Previous frame's camera transform data.
 
     // RTXDI categorizes lights into local, infinite and an environment light.
     // Falcor has emissive (triangle) lights, analytic lights (point, area, directional, distant) and an environment light.

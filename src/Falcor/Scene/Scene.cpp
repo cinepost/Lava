@@ -894,36 +894,39 @@ void Scene::uploadSelectedCamera() {
 }
 
 void Scene::updateBounds() {
-    const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
+    //const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
+    const auto& globalMatrixLists = mpAnimationController->getGlobalMatrixLists();
 
     mSceneBB = AABB();
 
     for (const auto& inst : mGeometryInstanceData) {
-        const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
-        switch (inst.getType()) {
-            case GeometryType::TriangleMesh:
-            case GeometryType::DisplacedTriangleMesh: 
-            {
-                const AABB& meshBB = mMeshBBs[inst.geometryID];
-                mSceneBB |= meshBB.transform(transform);
-                break;
-            }
-            case GeometryType::Curve:
-            {
-                const AABB& curveBB = mCurveBBs[inst.geometryID];
-                mSceneBB |= curveBB.transform(transform);
-                break;
-            }
-            case GeometryType::SDFGrid:
-            {
-                float3x3 transform3x3 = glm::mat3(transform);
-                transform3x3[0] = glm::abs(transform3x3[0]);
-                transform3x3[1] = glm::abs(transform3x3[1]);
-                transform3x3[2] = glm::abs(transform3x3[2]);
-                float3 center = transform[3];
-                float3 halfExtent = transform3x3 * float3(0.5f);
-                mSceneBB |= AABB(center - halfExtent, center + halfExtent);
-                break;
+        const auto& matrixList = globalMatrixLists[inst.nodeID];
+        for(const glm::mat4& transform: matrixList) {
+            switch (inst.getType()) {
+                case GeometryType::TriangleMesh:
+                case GeometryType::DisplacedTriangleMesh: 
+                {
+                    const AABB& meshBB = mMeshBBs[inst.geometryID];
+                    mSceneBB |= meshBB.transform(transform);
+                    break;
+                }
+                case GeometryType::Curve:
+                {
+                    const AABB& curveBB = mCurveBBs[inst.geometryID];
+                    mSceneBB |= curveBB.transform(transform);
+                    break;
+                }
+                case GeometryType::SDFGrid:
+                {
+                    float3x3 transform3x3 = glm::mat3(transform);
+                    transform3x3[0] = glm::abs(transform3x3[0]);
+                    transform3x3[1] = glm::abs(transform3x3[1]);
+                    transform3x3[2] = glm::abs(transform3x3[2]);
+                    float3 center = transform[3];
+                    float3 halfExtent = transform3x3 * float3(0.5f);
+                    mSceneBB |= AABB(center - halfExtent, center + halfExtent);
+                    break;
+                }
             }
         }
     }
@@ -968,14 +971,18 @@ void Scene::updateGeometryInstances(bool forceUpdate) {
     if (mGeometryInstanceData.empty()) return;
 
     bool dataChanged = false;
-    const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
+    const auto& globalMatrixLists = mpAnimationController->getGlobalMatrixLists();
 
+    std::vector<uint32_t>
+
+    size_t matrixOffset = 0;
     for (auto& inst : mGeometryInstanceData) {
         if (inst.getType() == GeometryType::TriangleMesh || inst.getType() == GeometryType::DisplacedTriangleMesh) {
             uint32_t prevFlags = inst.flags;
+            uint8_t  prevMatrixCount = inst.matrixCount;
 
-            assert(inst.globalMatrixID < globalMatrices.size());
-            const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
+            assert(inst.nodeID < globalMatrixLists.size());
+            const auto& transformList = globalMatrixLists[inst.nodeID];
             bool isTransformFlipped = doesTransformFlip(transform);
             bool isObjectFrontFaceCW = getMesh(inst.geometryID).isFrontFaceCW();
             bool isWorldFrontFaceCW = isObjectFrontFaceCW ^ isTransformFlipped;
@@ -990,7 +997,9 @@ void Scene::updateGeometryInstances(bool forceUpdate) {
             else inst.flags &= ~(uint32_t)GeometryInstanceFlags::IsWorldFrontFaceCW;
 
             dataChanged |= (inst.flags != prevFlags);
+            dataChanged |= (inst.matrixCount != prevMatrixCount);
         }
+        matrixOffset += globalMatrixLists
     }
 
     if (forceUpdate || dataChanged) {
@@ -1511,7 +1520,7 @@ bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& 
     if (nodeID == kInvalidNode) return false;
 
     if (force || (animatable.hasAnimation() && animatable.isAnimated())) {
-        if (!controller.isMatrixChanged(nodeID) && !force) return false;
+        if (!controller.isMatrixListChanged(nodeID) && !force) return false;
 
         glm::mat4 transform = controller.getGlobalMatrices()[nodeID];
         animatable.updateFromAnimation(transform);
@@ -1727,7 +1736,7 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
         if (mpAnimationController->hasSkinnedMeshes()) mUpdates |= UpdateFlags::MeshesChanged;
 
         for (const auto& inst : mGeometryInstanceData) {
-            if (mpAnimationController->isMatrixChanged(inst.globalMatrixID)) {
+            if (mpAnimationController->isMatrixListChanged(inst.nodeID)) {
                 mUpdates |= UpdateFlags::GeometryMoved;
             }
         }
@@ -2292,13 +2301,14 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         assert(mMeshIdToInstanceIds[meshID].size() == 1);
                         uint32_t instanceID = mMeshIdToInstanceIds[meshID][0];
                         assert(instanceID < mGeometryInstanceData.size());
-                        uint32_t matrixID = mGeometryInstanceData[instanceID].globalMatrixID;
+                        uint32_t nodeID = mGeometryInstanceData[instanceID].nodeID;
 
-                        assert(matrixID < globalMatrices.size());
-                        if (globalMatrices[matrixID] != glm::identity<glm::mat4>()) {
+                        assert(nodeID < globalMatricxLists.size());
+                        static const std::vector<glm::mat4> defaultList = {glm::identity<glm::mat4>()};
+                        if (globalMatrixLists[nodeID] != defaultList) {
                             // Get the GPU address of the transform in row-major format.
                             desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
-                            if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
+                            if (glm::determinant(globalMatrices[nodeID]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }
                     triangleWindings |= frontFaceCW ? 1 : 2;
@@ -2955,12 +2965,12 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 if (!isStatic) {
                     // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
                     // Just pick the matrix from the first mesh.
-                    const uint32_t matrixId = mGeometryInstanceData[desc.instanceID].globalMatrixID;
-                    transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
+                    const uint32_t nodeId = mGeometryInstanceData[desc.instanceID].nodeID;
+                    transform4x4 = transpose(mpAnimationController->getGlobalMatrixLists()[nodeId][0]);
 
                     // Verify that all meshes have matching tranforms.
                     for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                        assert(matrixId == mGeometryInstanceData[desc.instanceID + geometryIndex].globalMatrixID);
+                        assert(nodeId == mGeometryInstanceData[desc.instanceID + geometryIndex].nodeID);
                     }
                 }
                 std::memcpy(desc.transform, &transform4x4, sizeof(desc.transform));
@@ -3002,8 +3012,8 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         // Just pick the matrix from the first curve.
         auto it = std::find_if(mGeometryInstanceData.begin(), mGeometryInstanceData.end(), [](const auto& inst) { return inst.getType() == GeometryType::Curve; });
         assert(it != mGeometryInstanceData.end());
-        const uint32_t matrixId = it->globalMatrixID;
-        desc.setTransform(mpAnimationController->getGlobalMatrices()[matrixId]);
+        const uint32_t nodeId = it->nodeID;
+        desc.setTransform(mpAnimationController->getGlobalMatrixLists()[nodeId][0]);
 
         // Verify that instance data has the correct instanceIndex and geometryIndex.
         for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)mCurveDesc.size(); geometryIndex++) {
@@ -3045,7 +3055,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
             // Start SDF grid hit group after the curve hit groups.
             desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-            desc.setTransform(mpAnimationController->getGlobalMatrices()[instance.globalMatrixID]);
+            desc.setTransform(mpAnimationController->getGlobalMatrixLists()[instance.nodeID][0]);
 
             // Verify that instance data has the correct instanceIndex and geometryIndex.
             assert((uint32_t)instanceDescs.size() == instance.instanceIndex);
@@ -3300,7 +3310,8 @@ void Scene::updateNodeTransform(uint32_t nodeID, const float4x4& transform) {
     assert(nodeID < mSceneGraph.size());
 
     Node& node = mSceneGraph[nodeID];
-    node.transform = validateTransformMatrix(transform);
+    node.transformList.resize(1);
+    node.transformList[0] = validateTransformMatrix(transform);
     mpAnimationController->setNodeEdited(nodeID);
 }
 

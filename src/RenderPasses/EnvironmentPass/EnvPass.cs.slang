@@ -94,7 +94,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     float  localMaxDistance = FLT_MAX;
-    float3 cameraPosW = gCamera.getPosition();
+    float3 cameraPosW = gCamera.getPosW();
 
     for(uint i = 0; i < lightsCount; ++i) {
         const LightData light = gScene.getLight(gLightIDs[i]);

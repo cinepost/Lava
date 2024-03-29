@@ -285,9 +285,11 @@ namespace {
 				SceneBuilder::Node n;
 				n.name = "Camera.BaseMatrix";
 				n.parent = nodeID;
-				n.transform = pCamera->getViewMatrix();
+				n.transformList = pCamera->getViewMatrixList();
 				// GLTF2 has the view direction reversed.
-				if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
+				if (importMode == ImportMode::GLTF2) {
+					for(auto& transform: n.transformList) transform[2] = -transform[2];
+				}
 				nodeID = data.builder.addNode(n);
 				if (data.builder.isNodeAnimated(nodeID)) {
 					pCamera->setNodeID(nodeID);
@@ -313,7 +315,7 @@ namespace {
 			SceneBuilder::Node n;
 			n.name = pLight->getName() + ".BaseMatrix";
 			n.parent = nodeID;
-			n.transform = baseMatrix;
+			n.transformList = {baseMatrix};
 			nodeID = data.builder.addNode(n);
 			pLight->setHasAnimation(true);
 			pLight->setNodeID(nodeID);
@@ -610,7 +612,7 @@ namespace {
 		assert(currentIsBone == false || pCurrent->mNumMeshes == 0);
 
 		n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : SceneBuilder::kInvalidNodeID;
-		n.transform = aiCast(pCurrent->mTransformation);
+		n.transformList = {aiCast(pCurrent->mTransformation)};
 		n.localToBindPose = getLocalToBindPoseMatrix(data, n.name);
 
 		data.addAiNode(pCurrent, data.builder.addNode(n));
@@ -668,7 +670,7 @@ namespace {
 						SceneBuilder::Node n;
 						n.name = "Node" + std::to_string(nodeID) + ".instance" + std::to_string(instance);
 						n.parent = nodeID;
-						n.transform = data.modelInstances[instance];
+						n.transformList = {data.modelInstances[instance]};
 						instanceNodeID = data.builder.addNode(n);
 					}
 					data.builder.addMeshInstance(instanceNodeID, meshID);

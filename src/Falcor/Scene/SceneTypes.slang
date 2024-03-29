@@ -180,7 +180,7 @@ struct GeometryInstanceData {
     static const uint kTypeOffset = 32 - kTypeBits;
 
     uint32_t flags;         ///< Upper kTypeBits bits are reserved for storing the type.
-    uint globalMatrixID;
+    uint nodeID;
     uint materialID;
     uint geometryID;
 
@@ -194,10 +194,10 @@ struct GeometryInstanceData {
     uint externalID;        ///< External dcc id.
     uint lightSetIndex;     ///< LightSet index in LightLinker. If set to 0 then all lights used.
 
-    uint8_t matrixCount;
-    uint8_t _pad0;
-    uint16_t _pad1;
-    uint3 _pad2;
+    uint globalMatrixOffset;
+    uint matrcesCount;
+    uint _pad0;
+    uint _pad1;
     
 #ifdef HOST_CODE
     GeometryInstanceData() = default;

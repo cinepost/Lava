@@ -29,13 +29,24 @@ import Scene.Camera.CameraData;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 
-struct Camera
-{
+struct Camera {
     CameraData data;
+    CameraXformData xform;                              // Backward compatibility. Also used for prev frame magic. 
+    StructuredBuffer<CameraXformData> xformListBuffer;  // Transofrm list. Used for inter frame motion blur rendering. Note that first elemrnt is equal to xform member.
+    uint8_t xformListBufferSize;
 
-    float3 getPosition() { return data.posW; }
-    float4x4 getViewProj() { return data.viewProjMat; }
-    float4x4 getViewProjMatNoJitter() { return data.viewProjMatNoJitter; }
+    float3 getPosW() { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
+    float4x4 getViewProj() { return xform.viewProjMat; }
+    float4x4 getViewProjMatNoJitter() { return xform.viewProjMat; }
+    float4x4 getPrevViewProjMatNoJitter() { return data.prevViewProjMat; }
+
+    CameraXformData getXformData(float t) {
+        return xformListBuffer[0];
+    }
+
+    float3 getPosW(float t) { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
+    float4x4 getViewProj(float t) { return getXformData(t).viewProjMat; }
+    float4x4 getViewProjMatNoJitter(float t) { return getXformData(t).viewProjMat; }
 
     float4 getBackgroundColor() { return data.backgroundColor; }
 
@@ -46,15 +57,14 @@ struct Camera
         \param[in] applyJitter true if jitter should be applied else false.
         \return Returns the camera ray.
     */
-    Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true)
-    {
+    Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true) {
         Ray ray;
 
         // Compute the normalized ray direction assuming a pinhole camera.
-        ray.origin = data.posW;
+        ray.origin = getPosW();
         ray.dir = normalize(computeNonNormalizedRayDirPinhole(pixel, frameDim, applyJitter));
 
-        float invCos = 1.f / dot(normalize(data.cameraW), ray.dir);
+        float invCos = 1.f / dot(normalize(xform.cameraW), ray.dir);
         ray.tMin = data.nearZ * invCos;
         ray.tMax = data.farZ * invCos;
 
@@ -68,8 +78,7 @@ struct Camera
         \param[in] applyJitter True if jitter should be applied else false.
         \return Returns the non-normalized ray direction
     */
-    float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true)
-    {
+    float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true) {
         // Compute sample position in screen space in [0,1] with origin at the top-left corner.
         // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
         float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim;
@@ -77,7 +86,7 @@ struct Camera
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
         // Compute the non-normalized ray direction assuming a pinhole camera.
-        return ndc.x * data.cameraU + ndc.y * data.cameraV + data.cameraW;
+        return ndc.x * xform.cameraU + ndc.y * xform.cameraV + xform.cameraW;
     }
 
 
@@ -88,8 +97,7 @@ struct Camera
         \param[in] u Uniform 2D sample.
         \return Returns the camera ray.
     */
-    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u)
-    {
+    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u) {
         Ray ray;
 
         // Sample position in screen space in [0,1] with origin at the top-left corner.
@@ -98,14 +106,14 @@ struct Camera
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
         // Compute the normalized ray direction assuming a thin-lens camera.
-        ray.origin = data.posW;
-        ray.dir = ndc.x * data.cameraU + ndc.y * data.cameraV + data.cameraW;
+        ray.origin = getPosW();
+        ray.dir = ndc.x * xform.cameraU + ndc.y * xform.cameraV + xform.cameraW;
         float2 apertureSample = sample_disk(u); // Sample lies in the unit disk [-1,1]^2
         float3 rayTarget = ray.origin + ray.dir;
-        ray.origin += data.apertureRadius * (apertureSample.x * normalize(data.cameraU) + apertureSample.y * normalize(data.cameraV));
+        ray.origin += data.apertureRadius * (apertureSample.x * normalize(xform.cameraU) + apertureSample.y * normalize(xform.cameraV));
         ray.dir = normalize(rayTarget - ray.origin);
 
-        float invCos = 1.f / dot(normalize(data.cameraW), ray.dir);
+        float invCos = 1.f / dot(normalize(xform.cameraW), ray.dir);
         ray.tMin = data.nearZ * invCos;
         ray.tMax = data.farZ * invCos;
 
