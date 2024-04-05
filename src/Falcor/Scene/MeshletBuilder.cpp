@@ -507,7 +507,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
     meshletSpec.vertices = std::move(meshletVertices);
     meshletSpec.indices = std::move(meshletIndices);
     meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
-    LLOG_WRN << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+    LLOG_DBG << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
     meshletSpecs.push_back(std::move(meshletSpec));
@@ -606,7 +606,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     if (appendMeshlet(mesh, meshlet_spec, best_prim, a, b, c, used.data(), mesh.meshletSpecs)) {
       const auto& meshletSpec = mesh.meshletSpecs.back();
 
-      LLOG_WRN << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+      LLOG_DBG << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
       memset(&meshlet_cone_acc, 0, sizeof(meshlet_cone_acc));

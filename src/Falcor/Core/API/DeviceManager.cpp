@@ -62,10 +62,6 @@ DeviceManager::SharedPtr DeviceManager::create(bool enableValidationLayer) {
         return nullptr;
     }
 
-#ifdef _DEBUG
-    pDeviceManager->printEnumeratedDevices();
-#endif
-
     return SharedPtr(pDeviceManager);
 }
 
@@ -99,9 +95,9 @@ Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
 
 
 void DeviceManager::printEnumeratedDevices() const {
-    LLOG_INF << "Enumerated physical devices...";
+    std::cout << "Enumerated physical devices..." << std::endl;
     for( auto &it: mDeviceInfos) {
-        LLOG_INF << "Physical device id: " << std::to_string(static_cast<uint16_t>(it.first)) << ", name: " << it.second.deviceName;
+        std::cout << "Physical device id: " << std::to_string(static_cast<uint16_t>(it.first)) << ", name: " << it.second.deviceName << std::endl;
     }
 }
 

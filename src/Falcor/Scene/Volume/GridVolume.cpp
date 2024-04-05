@@ -30,12 +30,8 @@
 
 #include <set>
 
-namespace Falcor
-{
-    namespace
-    {
-
-
+namespace Falcor {
+    namespace {
         // Constants.
         const float kMaxAnisotropy = 0.99f;
         const double kMinFrameRate = 1.0;
@@ -44,29 +40,24 @@ namespace Falcor
 
     static_assert(sizeof(GridVolumeData) % 16 == 0, "GridVolumeData size should be a multiple of 16");
 
-    GridVolume::GridVolume(Device::SharedPtr pDevice, const std::string& name) : mpDevice(pDevice), mName(name)
-    {
+    GridVolume::GridVolume(Device::SharedPtr pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
         mData.transform = glm::identity<glm::mat4>();
         mData.invTransform = glm::identity<glm::mat4>();
     }
 
-    GridVolume::SharedPtr GridVolume::create(Device::SharedPtr pDevice, const std::string& name)
-    {
+    GridVolume::SharedPtr GridVolume::create(Device::SharedPtr pDevice, const std::string& name) {
         return SharedPtr(new GridVolume(pDevice, name));
     }
 
-    bool GridVolume::loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname)
-    {
+    bool GridVolume::loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname) {
         auto grid = Grid::createFromFile(mpDevice, path, gridname);
         if (grid) setGrid(slot, grid);
         return grid != nullptr;
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty)
-    {
+    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty) {
         GridSequence grids;
-        for (const auto& path : paths)
-        {
+        for (const auto& path : paths) {
             auto grid = Grid::createFromFile(mpDevice, path, gridname);
             if (keepEmpty || grid) grids.push_back(grid);
         }
@@ -74,24 +65,20 @@ namespace Falcor
         return (uint32_t)grids.size();
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty)
-    {
+    uint32_t GridVolume::loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty) {
         fs::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
-        {
+        if (!findFileInDataDirectories(path, fullPath)) {
             LLOG_WRN << "Cannot find directory " << path;
             return 0;
         }
-        if (!fs::is_directory(fullPath))
-        {
+        if (!fs::is_directory(fullPath)) {
             LLOG_WRN << path << " is not a directory.";
             return 0;
         }
 
         // Enumerate grid files.
         std::vector<fs::path> paths;
-        for (auto p : fs::directory_iterator(fullPath))
-        {
+        for (auto p : fs::directory_iterator(fullPath)) {
             const auto& path = p.path();
             if (hasExtension(path, "nvdb") || hasExtension(path, "vdb")) paths.push_back(path);
         }
@@ -107,13 +94,11 @@ namespace Falcor
         return loadGridSequence(slot, paths, gridname, keepEmpty);
     }
 
-    void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids)
-    {
+    void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids) {
         uint32_t slotIndex = (uint32_t)slot;
         assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
-        if (mGrids[slotIndex] != grids)
-        {
+        if (mGrids[slotIndex] != grids) {
             mGrids[slotIndex] = grids;
             updateSequence();
             updateBounds();
@@ -121,21 +106,18 @@ namespace Falcor
         }
     }
 
-    const GridVolume::GridSequence& GridVolume::getGridSequence(GridSlot slot) const
-    {
+    const GridVolume::GridSequence& GridVolume::getGridSequence(GridSlot slot) const {
         uint32_t slotIndex = (uint32_t)slot;
         assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
         return mGrids[slotIndex];
     }
 
-    void GridVolume::setGrid(GridSlot slot, const Grid::SharedPtr& grid)
-    {
+    void GridVolume::setGrid(GridSlot slot, const Grid::SharedPtr& grid) {
         setGridSequence(slot, grid ? GridSequence{grid} : GridSequence{});
     }
 
-    const Grid::SharedPtr& GridVolume::getGrid(GridSlot slot) const
-    {
+    const Grid::SharedPtr& GridVolume::getGrid(GridSlot slot) const {
         static const Grid::SharedPtr kNullGrid;
 
         uint32_t slotIndex = (uint32_t)slot;
@@ -146,76 +128,61 @@ namespace Falcor
         return gridSequence.empty() ? kNullGrid : gridSequence[gridIndex];
     }
 
-    std::vector<Grid::SharedPtr> GridVolume::getAllGrids() const
-    {
+    std::vector<Grid::SharedPtr> GridVolume::getAllGrids() const {
         std::set<Grid::SharedPtr> uniqueGrids;
-        for (const auto& grids : mGrids)
-        {
+        for (const auto& grids : mGrids) {
             std::copy_if(grids.begin(), grids.end(), std::inserter(uniqueGrids, uniqueGrids.begin()), [] (const auto& grid) { return grid != nullptr; });
         }
         return std::vector<Grid::SharedPtr>(uniqueGrids.begin(), uniqueGrids.end());
     }
 
-    void GridVolume::setGridFrame(uint32_t gridFrame)
-    {
-        if (mGridFrame != gridFrame)
-        {
+    void GridVolume::setGridFrame(uint32_t gridFrame) {
+        if (mGridFrame != gridFrame) {
             mGridFrame = gridFrame;
             markUpdates(UpdateFlags::GridsChanged);
             updateBounds();
         }
     }
 
-    void GridVolume::setFrameRate(double frameRate)
-    {
+    void GridVolume::setFrameRate(double frameRate) {
         mFrameRate = clamp(frameRate, kMinFrameRate, kMaxFrameRate);
     }
 
-    void GridVolume::setPlaybackEnabled(bool enabled)
-    {
+    void GridVolume::setPlaybackEnabled(bool enabled) {
         mPlaybackEnabled = enabled;
     }
 
-    void GridVolume::updatePlayback(double currentTime)
-    {
+    void GridVolume::updatePlayback(double currentTime) {
         uint32_t frameCount = getGridFrameCount();
-        if (mPlaybackEnabled && frameCount > 0)
-        {
+        if (mPlaybackEnabled && frameCount > 0) {
             uint32_t frameIndex = (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate) % frameCount;
             setGridFrame(frameIndex);
         }
     }
 
-    void GridVolume::setDensityScale(float densityScale)
-    {
-        if (mData.densityScale != densityScale)
-        {
+    void GridVolume::setDensityScale(float densityScale) {
+        if (mData.densityScale != densityScale) {
             mData.densityScale = densityScale;
             markUpdates(UpdateFlags::PropertiesChanged);
         }
     }
 
-    void GridVolume::setEmissionScale(float emissionScale)
-    {
-        if (mData.emissionScale != emissionScale)
-        {
+    void GridVolume::setEmissionScale(float emissionScale) {
+        if (mData.emissionScale != emissionScale) {
             mData.emissionScale = emissionScale;
             markUpdates(UpdateFlags::PropertiesChanged);
         }
     }
 
-    void GridVolume::setAlbedo(const float3& albedo)
-    {
+    void GridVolume::setAlbedo(const float3& albedo) {
         auto clampedAlbedo = clamp(albedo, float3(0.f), float3(1.f));
-        if (mData.albedo != clampedAlbedo)
-        {
+        if (mData.albedo != clampedAlbedo) {
             mData.albedo = clampedAlbedo;
             markUpdates(UpdateFlags::PropertiesChanged);
         }
     }
 
-    void GridVolume::setAnisotropy(float anisotropy)
-    {
+    void GridVolume::setAnisotropy(float anisotropy) {
         auto clampedAnisotropy = clamp(anisotropy, -kMaxAnisotropy, kMaxAnisotropy);
         if (mData.anisotropy != clampedAnisotropy)
         {
@@ -224,33 +191,26 @@ namespace Falcor
         }
     }
 
-    void GridVolume::setEmissionMode(EmissionMode emissionMode)
-    {
-        if (mData.flags != (uint32_t)emissionMode)
-        {
+    void GridVolume::setEmissionMode(EmissionMode emissionMode) {
+        if (mData.flags != (uint32_t)emissionMode) {
             mData.flags = (uint32_t)emissionMode;
             markUpdates(UpdateFlags::PropertiesChanged);
         }
     }
 
-    GridVolume::EmissionMode GridVolume::getEmissionMode() const
-    {
+    GridVolume::EmissionMode GridVolume::getEmissionMode() const {
         return (EmissionMode)mData.flags;
     }
 
-    void GridVolume::setEmissionTemperature(float emissionTemperature)
-    {
-        if (mData.emissionTemperature != emissionTemperature)
-        {
+    void GridVolume::setEmissionTemperature(float emissionTemperature) {
+        if (mData.emissionTemperature != emissionTemperature) {
             mData.emissionTemperature = emissionTemperature;
             markUpdates(UpdateFlags::PropertiesChanged);
         }
     }
 
-    void GridVolume::updateFromAnimation(const glm::mat4& transform)
-    {
-        if (mData.transform != transform)
-        {
+    void GridVolume::updateFromAnimation(const glm::mat4& transform) {
+        if (mData.transform != transform) {
             mData.transform = transform;
             mData.invTransform = glm::inverse(transform);
             markUpdates(UpdateFlags::TransformChanged);
@@ -258,25 +218,26 @@ namespace Falcor
         }
     }
 
-    void GridVolume::updateSequence()
-    {
+    void GridVolume::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+        if(transformList.empty()) return;
+        updateFromAnimation(transformList[0]);
+    }
+
+    void GridVolume::updateSequence() {
         mGridFrameCount = 1;
         for (const auto& grids : mGrids) mGridFrameCount = std::max(mGridFrameCount, (uint32_t)grids.size());
         setGridFrame(std::min(mGridFrame, mGridFrameCount - 1));
     }
 
-    void GridVolume::updateBounds()
-    {
+    void GridVolume::updateBounds() {
         AABB bounds;
-        for (uint32_t slotIndex = 0; slotIndex < (uint32_t)GridSlot::Count; ++slotIndex)
-        {
+        for (uint32_t slotIndex = 0; slotIndex < (uint32_t)GridSlot::Count; ++slotIndex) {
             const auto& grid = getGrid((GridSlot)slotIndex);
             if (grid && grid->getVoxelCount() > 0) bounds.include(grid->getWorldBounds());
         }
         bounds = bounds.transform(mData.transform);
 
-        if (mBounds != bounds)
-        {
+        if (mBounds != bounds) {
             mBounds = bounds;
             mData.boundsMin = mBounds.valid() ? mBounds.minPoint : float3(0.f);
             mData.boundsMax = mBounds.valid() ? mBounds.maxPoint : float3(0.f);
@@ -284,15 +245,12 @@ namespace Falcor
         }
     }
 
-    void GridVolume::markUpdates(UpdateFlags updates)
-    {
+    void GridVolume::markUpdates(UpdateFlags updates) {
         mUpdates |= updates;
     }
 
-    void GridVolume::setFlags(uint32_t flags)
-    {
-        if (mData.flags != flags)
-        {
+    void GridVolume::setFlags(uint32_t flags) {
+        if (mData.flags != flags) {
             mData.flags = flags;
             markUpdates(UpdateFlags::PropertiesChanged);
         }

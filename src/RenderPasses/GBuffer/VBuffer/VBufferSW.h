@@ -56,6 +56,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
 		RenderPassReflection reflect(const CompileData& compileData) override;
+		void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 		Dictionary getScriptingDictionary() override;
 		void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
@@ -66,6 +67,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
 		void enableDepthOfField(bool value);
+		void enableMotionBlur(bool value);
 
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
@@ -84,14 +86,15 @@ class PASS_API VBufferSW : public GBufferBase {
 		Camera::SharedPtr mpCamera;
 
 		// Internal state
-		bool mComputeDOF = false;           						///< Flag indicating if depth-of-field is computed for the current frame.
 		SampleGenerator::SharedPtr mpSampleGenerator;
+		CPUSampleGenerator::SharedPtr mpRandomSampleGenerator;
 		uint32_t mSampleNumber = 0;
 
 		bool mUsePerPixelJitter = true;
 		bool mUseD64 = true;
 		bool mUseCompute = true;
 		bool mUseDOF = true;                						///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
+		bool mUseMotionBlur = true;
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 

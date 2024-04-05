@@ -29,23 +29,72 @@ import Scene.Camera.CameraData;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 
+
+CameraXformData lerp(CameraXformData lhs, CameraXformData rhs, float c) {
+    float _c = saturate(c);
+    CameraXformData result;
+
+    result.viewProjMat = lhs.viewProjMat * c + rhs.viewProjMat * (1.0 - c);
+
+    return result;
+}
+
 struct Camera {
     CameraData data;
     CameraXformData xform;                              // Backward compatibility. Also used for prev frame magic. 
     StructuredBuffer<CameraXformData> xformListBuffer;  // Transofrm list. Used for inter frame motion blur rendering. Note that first elemrnt is equal to xform member.
-    uint8_t xformListBufferSize;
+    uint xformListBufferSize;
+
+    // Time independent functions
 
     float3 getPosW() { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
-    float4x4 getViewProj() { return xform.viewProjMat; }
+    
+    float4x4 getViewProjMat() { return xform.viewProjMat; }
+    
+    float4x4 getViewProjMatJittered() {
+        float4x4 jitterMat = { 
+            float4(1.0f, 0.0f, 0.0f, 0.0f),
+            float4(0.0f, 1.0f, 0.0f, 0.0f),
+            float4(0.0f, 0.0f, 1.0f, 0.0f),
+            float4(2.0f * data.jitterX, 2.0f * data.jitterY, 0.0f, 1.0f)
+        };
+        float4x4 jitterMat1 = { 
+            float4(1.0f, 1.0f, 1.0f, 1.0f),
+            float4(1.0f, 1.0f, 1.0f, 1.0f),
+            float4(1.0f, 1.0f, 1.0f, 1.0f),
+            float4(2.0f * data.jitterX, 2.0f * data.jitterY, 0.0f, 1.0f)
+        };
+        float4x4 m = {
+            xform.viewProjMat[0] + float4(data.jitterX * 0.f, data.jitterY * 20.f, 0, 0),
+            xform.viewProjMat[1] + float4(data.jitterX * 0.f, data.jitterY * 20.f, 0, 0),
+            xform.viewProjMat[2] + float4(data.jitterX * 0.f, data.jitterY * 20.f, 0, 0),
+            xform.viewProjMat[3] + float4(data.jitterX * 0.f, data.jitterY * 20.f, 0, 0),
+        }; 
+        return (jitterMat * data.projMat) * xform.viewMat; 
+    }
+    
     float4x4 getViewProjMatNoJitter() { return xform.viewProjMat; }
-    float4x4 getPrevViewProjMatNoJitter() { return data.prevViewProjMat; }
+    
+    float4x4 getPrevViewProjMat() { return data.prevViewProjMat; }
+
+    // Time dependent functions
 
     CameraXformData getXformData(float t) {
-        return xformListBuffer[0];
+        if(xformListBufferSize == 0) return xform;
+        
+        float _t = saturate(t);
+        float fidx = _t * (xformListBufferSize - 1);
+        uint idx_l = floor(fidx);
+        uint idx_h = ceil(fidx);
+        return lerp(xformListBuffer[idx_l], xformListBuffer[idx_h], _t);
     }
 
     float3 getPosW(float t) { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
-    float4x4 getViewProj(float t) { return getXformData(t).viewProjMat; }
+    
+    float4x4 getViewProjMat(float t) { return getXformData(t).viewProjMat; }
+
+    float4x4 getViewProjMatJittered(float t) { return getViewProjMatJittered(); }
+    
     float4x4 getViewProjMatNoJitter(float t) { return getXformData(t).viewProjMat; }
 
     float4 getBackgroundColor() { return data.backgroundColor; }

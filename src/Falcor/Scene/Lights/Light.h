@@ -196,6 +196,7 @@ class dlldecl Light : public Animatable {
     Changes getChanges() const { return mChanges; }
 
     void updateFromAnimation(const glm::mat4& transform) override {}
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override {};
 
   protected:
     virtual void update();
@@ -282,6 +283,7 @@ class dlldecl PointLight : public Light {
     float getOpeningAngle() const { return mData.openingAngle; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
   private:
     virtual void update() override;
@@ -319,6 +321,7 @@ class dlldecl DirectionalLight : public Light {
     float getPower() const override { return 0.f; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
   private:
     DirectionalLight(const std::string& name);
@@ -362,6 +365,7 @@ class dlldecl DistantLight : public Light {
     float getPower() const override { return 0.f; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
   private:
     DistantLight(const std::string& name);
@@ -389,6 +393,7 @@ class dlldecl EnvironmentLight: public Light {
     float getPower() const override;
 
     void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
     /** Set transform matrix
       \param[in] mtx object to world space transform matrix
@@ -498,7 +503,8 @@ class dlldecl AnalyticAreaLight : public Light {
     */
     glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
-    virtual void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
+    void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
   protected:
     AnalyticAreaLight(const std::string& name, LightType type);

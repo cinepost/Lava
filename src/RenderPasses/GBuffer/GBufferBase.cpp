@@ -97,11 +97,12 @@ Dictionary GBufferBase::getScriptingDictionary() {
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {
+    mDirty = true;
     mFrameDim = compileData.defaultTexDims;
     mInvFrameDim = 1.f / float2(mFrameDim);
 
     if (mpScene) {
-        auto pCamera = mpScene->getCamera();
+        //auto pCamera = mpScene->getCamera();
         //pCamera->setPatternGenerator(pCamera->getPatternGenerator(), mInvFrameDim);
     }
 }

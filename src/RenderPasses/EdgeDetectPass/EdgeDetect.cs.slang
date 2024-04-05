@@ -112,7 +112,7 @@ float _getDepth(const uint2 ipos, const float defaultDepth, out bool valid) {
             return defaultDepth;
         }
 
-        const float4 screenP = mul(float4(sd.posW, 1.f), gScene.camera.getViewProj());
+        const float4 screenP = mul(float4(sd.posW, 1.f), gScene.camera.getViewProjMat());
         const float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
         valid = true;
         return -(viewP.z / viewP.w);
@@ -142,13 +142,13 @@ float3 _getNormalSS(const uint2 ipos, const float3 defaultN, out bool valid) {
         
         [[branch ]] if(!calcShadingData(rayDir, hit, sd)) { valid = false; return defaultN; }
 
-        //return normalize(mul(float4(sd.frame.N, 0.f), gScene.camera.getViewProj()).xyz);
+        //return normalize(mul(float4(sd.frame.N, 0.f), gScene.camera.getViewProjMat()).xyz);
         valid = true;
         return normalize(sd.frame.N);
 
     #elif is_valid(gNormal)
         valid = true;
-        return normalize(mul(float4(gNormal[ipos], 0.f), gScene.camera.getViewProj()).xyz);
+        return normalize(mul(float4(gNormal[ipos], 0.f), gScene.camera.getViewProjMat()).xyz);
     #else
         valid = false;
         return defaultN;

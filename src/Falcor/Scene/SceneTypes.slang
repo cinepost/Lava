@@ -195,7 +195,7 @@ struct GeometryInstanceData {
     uint lightSetIndex;     ///< LightSet index in LightLinker. If set to 0 then all lights used.
 
     uint globalMatrixOffset;
-    uint matrcesCount;
+    uint matrixCount;
     uint _pad0;
     uint _pad1;
     

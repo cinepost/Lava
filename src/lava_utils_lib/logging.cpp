@@ -36,7 +36,6 @@ static void init_log_common() {
 void console_color_formatter(boost::log::record_view const& rec, boost::log::formatting_ostream& strm) {
     auto severity = rec[boost::log::trivial::severity];
 
-#ifndef _WIN32
     if (severity) {
         // Set the color
         switch (severity.get()) {
@@ -54,7 +53,6 @@ void console_color_formatter(boost::log::record_view const& rec, boost::log::for
                 break;
         }
     }
-#endif
 
     // Shorter console time format
     auto date_time_formatter = boost::log::expressions::stream << std::setw(5) << std::setfill('0') << rec[line_id] << std::setfill(' ') << " | "
@@ -63,15 +61,11 @@ void console_color_formatter(boost::log::record_view const& rec, boost::log::for
     date_time_formatter(rec, strm);
 
     // Rest of the message
-    strm << " [" << rec[boost::log::trivial::severity] << "]"
-        << " - " << rec[boost::log::expressions::smessage];
+    strm << " [" << rec[boost::log::trivial::severity] << "]" << " - " << rec[boost::log::expressions::smessage];
 
-#ifndef _WIN32
-    if (severity) {
-        // Restore the default color
-        strm << "\033[0m";
-    }
-#endif
+    // Restore the default color
+    if (severity) strm << "\033[0m";
+    
 }
 
 // Initialize console logger
@@ -115,6 +109,11 @@ void shutdown_log() {
     g_log_stop_functions.empty();
     //boost::log::core::get()->flush();
     //boost::log::core::get()->remove_all_sinks();
+}
+
+void flush() {
+    if (g_logger_shutted_down) return;
+    boost::log::core::get()->flush();
 }
 
 // Initialize file logger

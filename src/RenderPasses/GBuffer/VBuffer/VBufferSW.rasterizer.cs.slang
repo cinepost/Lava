@@ -44,19 +44,13 @@ import VBufferSW;
 #define MICROPOLY_MAX_BB_SIZE 8.f // 4x4 pixel micropoly
 #endif
 
-#ifndef USE_PP_JITTER
-#define USE_PP_JITTER true
-#endif
-
-#ifndef USE_D64
-#define USE_D64 true
-#endif
+#define PP_AXIS_SIZE 2
 
 #define is_valid(name) (is_valid_##name != 0)
 
 ConstantBuffer<VBufferSW> gVBufferSW;
 
-Texture2D<float2> gJitterTexture;
+Texture2D<float4> gJitterTexture;
 SamplerState gJitterSampler;
 
 groupshared uint primCount;
@@ -72,7 +66,8 @@ groupshared uint32_t            indices[MESHLET_MAX_PRIM_COUNT * 4];
 groupshared uint                prim_ids[MESHLET_MAX_PRIM_COUNT];
 groupshared float4              positions[MESHLET_MAX_VERTICES_COUNT];
 groupshared StaticVertexData    vertex_data[MESHLET_MAX_VERTICES_COUNT];
-groupshared float               cocs[MESHLET_MAX_VERTICES_COUNT];
+
+groupshared float4              pp_positions[PP_AXIS_SIZE * PP_AXIS_SIZE][MESHLET_MAX_VERTICES_COUNT];
 
 #if USE_D64
 groupshared double      z64pos[MESHLET_MAX_VERTICES_COUNT];
@@ -84,7 +79,6 @@ RWStructuredBuffer<float3>      gPositionsBuffer;
 RWStructuredBuffer<float>       gCocsBuffer;
 
 static const float2 jitterBound = float2(0.5f);
-
 
 void writeMicropolyPixel(uint3 pos, float2 texcoord, uint geometryInstanceIndex, uint primitiveIndex, uint meshletID) {
     const uint64_t z64 = uint64_t(asuint(pos.z)) << 32;
@@ -118,68 +112,15 @@ void rasterizeMicroTriangle(float3 pt0, float3 pt1, float3 pt2, float2 min_p, fl
 }
 
 void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
+#if COMPUTE_MOTION_BLUR
+    float4 pt0 = transformPointToScreen(mul(float4(vertex_data[pi0].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
+    float4 pt1 = transformPointToScreen(mul(float4(vertex_data[pi1].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
+    float4 pt2 = transformPointToScreen(mul(float4(vertex_data[pi2].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
+
+#else
     float4 pt0 = positions[pi0], pt1 = positions[pi1], pt2 = positions[pi2];
-    [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
+#endif
 
-    const float2 frame_size = float2(gVBufferSW.frameDim);
-    float3 pt10 = pt1.xyz - pt0.xyz;
-    float3 pt20 = pt2.xyz - pt0.xyz;
-    float det = pt20.x * pt10.y - pt20.y * pt10.x;
-
-    
-    // CCW culling
-    [[branch]] if(cullCCW && det < 0.0f) return;
-
-    float2 min_p = round(min(min(pt0.xy, pt1.xy), pt2.xy));
-    float2 max_p = round(max(max(pt0.xy, pt1.xy), pt2.xy));
-
-    // Cut offscreen triangle
-    [[branch]] if(max_p.x < 0.0f || max_p.y < 0.0f || min_p.x >= frame_size.x || min_p.y >= frame_size.y) return;
-
-    //[[branch]] if(((max_p.x - min_p.x) <= MICROPOLY_MAX_BB_SIZE) && ((max_p.y - min_p.y) <= MICROPOLY_MAX_BB_SIZE)) rasterizeMicroTriangle(pt0, pt1, pt2, min_p, max_p); 
-
-    min_p = clamp(min_p, float2(0.0f), frame_size - 1.0f);
-    max_p = clamp(max_p, float2(0.0f), frame_size - 1.0f);
-
-    float2 texcoord_dx = float2(-pt20.y, pt10.y) / det;
-    float2 texcoord_dy = float2(pt20.x, -pt10.x) / det;
-
-    float2 texcoord_x = texcoord_dx * (min_p.x - pt0.x);
-    float2 texcoord_y = texcoord_dy * (min_p.y - pt0.y);
-
-    SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
-
-    for(float y = min_p.y; y <= max_p.y; y += 1.0f) {
-        float2 texcoord = texcoord_x + texcoord_y;
-        for(float x = min_p.x; x <= max_p.x; x += 1.0f) {
-            const uint2 pixelPos = uint2(x, y);
-
-            if(texcoord.x >= 0.0f && texcoord.y >= 0.0f && texcoord.x + texcoord.y <= 1.0f) {
-                float z = pt10.z * texcoord.x + pt20.z * texcoord.y + pt0.z;
-                
-                const uint64_t z64 = uint64_t(asuint(z)) << 32;
-                
-                const uint idx = (gVBufferSW.frameDim.x * pixelPos.y + pixelPos.x) << 3;
-                const uint64_t prim_value = z64 | primitiveIndex;
-                const uint tx = asuint(f32tof16(texcoord.x));
-                const uint ty = asuint(f32tof16(texcoord.y));
-                const uint64_t parm_value = (z64 | (tx << 16)) | ty;
-                const uint64_t inst_value = z64 | instanceID.index;
-                
-                uint64_t v = gLocalDepthBuffer.InterlockedMinU64(idx, prim_value);
-                if ( prim_value < v) {
-                    gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
-                    gVBufferSW.writeMicroPolyID(pixelPos, primitiveIndex);
-                }
-            }
-            texcoord += texcoord_dx;
-        }
-        texcoord_y += texcoord_dy;
-    }
-}
-
-void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
-    float4 pt0 = positions[pi0], pt1 = positions[pi1], pt2 = positions[pi2];
     [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
 
     float4 pt10 = pt1 - pt0;
@@ -195,10 +136,13 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
     #endif
 #endif
 
-    float c0 = cocs[pi0], c1 = cocs[pi1], c2 = cocs[pi2];
-    c0 *= gScene.camera.data.apertureRadius * gScene.camera.data.focalDistance * gScene.camera.data.focalLength;
-    c1 *= gScene.camera.data.apertureRadius * gScene.camera.data.focalDistance * gScene.camera.data.focalLength;
-    c2 *= gScene.camera.data.apertureRadius * gScene.camera.data.focalDistance * gScene.camera.data.focalLength;
+#if COMPUTE_DEPTH_OF_FIELD
+    float c0 = abs(1.0f - gScene.camera.data.focalDistance / pt0.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
+    float c1 = abs(1.0f - gScene.camera.data.focalDistance / pt1.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
+    float c2 = abs(1.0f - gScene.camera.data.focalDistance / pt2.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
+#else
+    float c0 = .0f, c1 = .0f, c2 = .0f;
+#endif
 
     int2 bb_min = int2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
     int2 bb_max = int2(ceil(max(max(pt0.x + c0, pt1.x + c1), pt2.x + c2) + jitterBound.x), ceil(max(max(pt0.y + c0, pt1.y + c1), pt2.y + c2) + jitterBound.y));
@@ -214,19 +158,19 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
         for(uint x=bb_min_u.x; x<bb_max_u.x; x++) {
 
             // Jitter (noise) [0, 1] range
-            float2 jitter = gJitterTexture[uint2(x - 128 * floor( x / 128.0), y - 128 * floor(y / 128.0))].xy;
+            float4 jitter = gJitterTexture[uint2(x - 128 * floor( x / 128.0), y - 128 * floor(y / 128.0))];
             
             // Anti aliasing jitter [-0.5, 0.5] range 
-            float2 aaj = jitter - float2(0.5);
-
-            float2 coc_sample = sample_disk(jitter); // range [-1, 1]
-            
-            float3 pj0 = pt0.xyz, pj1 = pt1.xyz, pj2 = pt2.xyz;
-            pj0.xy += aaj + coc_sample * c0; 
-            pj1.xy += aaj + coc_sample * c1; 
-            pj2.xy += aaj + coc_sample * c2;
+            float2 aaj = jitter.xy - float2(0.5);
+            float3 pj0 = pt0.xyz + float3(aaj, .0), pj1 = pt1.xyz + float3(aaj, .0), pj2 = pt2.xyz + float3(aaj, .0);
 
 #if COMPUTE_DEPTH_OF_FIELD
+            float2 coc_sample = sample_disk(jitter.zw); // range [-1, 1]
+            
+            pj0.xy += coc_sample * c0; 
+            pj1.xy += coc_sample * c1; 
+            pj2.xy += coc_sample * c2;
+            
             // CCW culling
             #if CULL_MODE == CULL_BACK
             [[branch]] if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
@@ -270,9 +214,9 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
 #if is_valid(gTextureGrads)
                 float2 tcrd0 = vertex_data[pi0].texCrd, tcrd1 = vertex_data[pi1].texCrd, tcrd2 = vertex_data[pi2].texCrd;
 
-                float4 pndc0 = mul( float4(mul( float4(vertex_data[pi0].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMatNoJitter());
-                float4 pndc1 = mul( float4(mul( float4(vertex_data[pi1].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMatNoJitter());
-                float4 pndc2 = mul( float4(mul( float4(vertex_data[pi2].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMatNoJitter());
+                float4 pndc0 = mul( float4(mul( float4(vertex_data[pi0].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
+                float4 pndc1 = mul( float4(mul( float4(vertex_data[pi1].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
+                float4 pndc2 = mul( float4(mul( float4(vertex_data[pi2].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
 
                 BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
                 GradientInterpolationResults g = interpolate2DWithDeriv(deriv, tcrd0, tcrd1, tcrd2);
@@ -292,40 +236,6 @@ void rasterizeTriangle2(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool 
     } 
 }
 
-
-void rasterizePoint(float3 p, float radius = .5f) {
-    const float2 frame_size = float2(gVBufferSW.frameDim);
-
-    // TODO: eraly offscreen test here
-
-    const uint2 screenCenter = uint2(p.xy);
-    const uint screenMaxRadius = uint(ceil(radius));
-
-    TriangleHit triangleHit = {};
-    triangleHit.primitiveIndex = 1;
-
-    SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
-
-    for( uint x = screenCenter.x - screenMaxRadius; x < screenCenter.x + screenMaxRadius; x++) {
-        for( uint y = screenCenter.y - screenMaxRadius; y < screenCenter.y + screenMaxRadius; y++) {
-            const uint2 pixelPos = uint2(x, y);
-
-            if((p.x > frame_size.x) || (p.y > frame_size.y)) continue;
-
-            float2 jitter = sampleNext2D(lsg);
-
-            const float r1 = jitter.x + float(x) - p.x;
-            const float r2 = jitter.y + float(y) - p.y;
-            if(sqrt(r1*r1+r2*r2) >= radius) continue;
-
-            triangleHit.barycentrics = float2(0.5f);
-            gVBufferSW.writeAUX(pixelPos, float4(1.f, 1.f, 1.f, 1.f));
-
-            writeMicropolyPixel(float3(pixelPos.xy, p.z), float2(0.5), 1, 1, 1);
-
-        }
-    }
-}
 
 [numthreads(THREADS_COUNT, 1, 1)]
 void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
@@ -369,14 +279,11 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
         double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
         z64pos[vi0] = pS.z;
 #else
-        float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
-        positions[vi0] = pS;
-
-#if COMPUTE_DEPTH_OF_FIELD
-        cocs[vi0] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
+#if COMPUTE_MOTION_BLUR
+        //float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
 #else
-        cocs[vi0] = 0.0f;
+        positions[vi0] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
+#endif
 #endif
     }
 
@@ -390,15 +297,13 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
         double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
         z64pos[vi1] = pS.z;
 #else
-        float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
-        positions[vi1] = pS;
-
-#if COMPUTE_DEPTH_OF_FIELD
-        cocs[vi1] = abs(pS.w - gScene.camera.data.focalDistance) / pS.w;
+#if COMPUTE_MOTION_BLUR
+        //float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
 #else
-        cocs[vi1] = 0.0f;
+        positions[vi1] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
 #endif
+#endif
+        
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -411,5 +316,5 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     const uint prim_id = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + thread_id * 3u);
 
-    rasterizeTriangle2(indices[0], indices[1], indices[2], prim_id, cullCCW);
+    rasterizeTriangle(indices[0], indices[1], indices[2], prim_id, cullCCW);
 }

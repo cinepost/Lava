@@ -9,4 +9,20 @@
 #define CULL_MODE CULL_BACK
 #endif
 
+#ifndef USE_PP_JITTER
+#define USE_PP_JITTER true
+#endif
+
+#ifndef USE_D64
+#define USE_D64 true
+#endif
+
+#ifndef COMPUTE_DEPTH_OF_FIELD
+#define COMPUTE_DEPTH_OF_FIELD false
+#endif
+
+#ifndef COMPUTE_MOTION_BLUR
+#define COMPUTE_MOTION_BLUR false
+#endif
+
 #endif  // _VBUFFERSW_COMMON_SLANGH

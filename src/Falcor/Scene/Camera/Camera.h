@@ -286,6 +286,7 @@ class dlldecl Camera : public Animatable {
     const CameraXformData& getXformData() const { calculateCameraParameters(); return  mXformList[0]; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
+    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
 
     std::vector<std::string> getDataFormattedDebugStrings() const;
 

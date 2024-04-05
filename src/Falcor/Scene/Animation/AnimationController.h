@@ -128,6 +128,8 @@ public:
     */
     const std::vector<std::vector<float4x4>>& getGlobalMatrixLists() const { return mGlobalMatrixLists; }
 
+    size_t getGlobalMatricesCount() const;
+
     /** Get the previous vertex data buffer for dynamic meshes.
         \return Buffer containing the previous vertex data, or nullptr if no dynamic meshes exist.
     */

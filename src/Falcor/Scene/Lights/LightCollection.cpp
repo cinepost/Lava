@@ -105,7 +105,7 @@ bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdat
         UpdateFlags updateFlags = UpdateFlags::None;
 
         // Check if instance transform changed.
-        if (pScene->getAnimationController()->isMatrixListChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
+        if (pScene->getAnimationController()->isMatrixListChanged(instanceData.nodeID)) updateFlags |= UpdateFlags::MatrixChanged;
 
         // Store update status.
         if (updateFlags != UpdateFlags::None) updatedLights.push_back(lightIdx);

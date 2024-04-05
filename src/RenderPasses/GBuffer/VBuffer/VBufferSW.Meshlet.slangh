@@ -3,8 +3,7 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-enum class MeshletDrawFlags : uint32_t
-{
+enum class MeshletDrawFlags : uint32_t {
     None = 0x0,
 
     // Mesh flags.

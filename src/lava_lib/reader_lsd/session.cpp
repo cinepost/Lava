@@ -278,6 +278,7 @@ bool Session::cmdRaytrace() {
   passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
   passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
+	passDict["useMotionBlur"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usemblur", bool(false));
 	passDict["cullMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "cullmode", std::string("back"));
 	passDict["useSubdivisions"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usesubdivs", bool(false));
 	passDict["useDisplacement"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedisplace", bool(false));

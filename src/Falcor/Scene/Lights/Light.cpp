@@ -361,6 +361,11 @@ void PointLight::updateFromAnimation(const glm::mat4& transform) {
     setWorldDirection(fwd);
 }
 
+void PointLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    if(transformList.empty()) return;
+    updateFromAnimation(transformList[0]);
+}
+
 // DirectionalLight
 
 DirectionalLight::DirectionalLight(const std::string& name) : Light(name, LightType::Directional) {
@@ -393,6 +398,11 @@ void DirectionalLight::setWorldDirection(const float3& dir) {
 void DirectionalLight::updateFromAnimation(const glm::mat4& transform) {
     float3 fwd = float3(-transform[2]);
     setWorldDirection(fwd);
+}
+
+void DirectionalLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    if(transformList.empty()) return;
+    updateFromAnimation(transformList[0]);
 }
 
 // Distant/Sun Light
@@ -461,6 +471,11 @@ void DistantLight::updateFromAnimation(const glm::mat4& transform) {
     setWorldDirection(fwd);
 }
 
+void DistantLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    if(transformList.empty()) return;
+    updateFromAnimation(transformList[0]);
+}
+
 // EnvironmentLight
 
 EnvironmentLight::EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture) : Light(name, LightType::Env) {
@@ -482,6 +497,11 @@ void EnvironmentLight::update(const Light& light) {
 
 void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
 
+}
+
+void EnvironmentLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    if(transformList.empty()) return;
+    updateFromAnimation(transformList[0]);
 }
 
 void EnvironmentLight::update() {
@@ -610,6 +630,16 @@ void AnalyticAreaLight::update() {
         mData.intensity = mIntensity;
     }
 }
+
+void AnalyticAreaLight::updateFromAnimation(const glm::mat4& transform) { 
+    setTransformMatrix(transform); 
+}
+
+void AnalyticAreaLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    if(transformList.empty()) return;
+    updateFromAnimation(transformList[0]);
+}
+
 
 // RectLight
 

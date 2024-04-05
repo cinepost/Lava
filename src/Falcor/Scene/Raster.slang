@@ -77,7 +77,7 @@ VSOut defaultVS(VSIn vIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
     vOut.posW = posW;
-    vOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
+    vOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProjMat());
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
@@ -97,7 +97,7 @@ VSOut defaultVS(VSIn vIn) {
     }
     
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
-    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMatNoJitter());
+    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMat());
 
     return vOut;
 }

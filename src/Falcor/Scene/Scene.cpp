@@ -120,7 +120,7 @@ namespace {
     const std::string kSelectViewpoint = "selectViewpoint";
 
     // Checks if the transform flips the coordinate system handedness (its determinant is negative).
-    bool doesTransformFlip(const glm::mat4& m) {
+    inline bool doesTransformFlip(const glm::mat4& m) {
         return glm::determinant((glm::mat3)m) < 0.f;
     }
 }
@@ -973,19 +973,41 @@ void Scene::updateGeometryInstances(bool forceUpdate) {
     bool dataChanged = false;
     const auto& globalMatrixLists = mpAnimationController->getGlobalMatrixLists();
 
-    std::vector<uint32_t>
+    struct OffsetAndCount {
+        uint32_t offset;
+        uint8_t count;
+    };
 
-    size_t matrixOffset = 0;
+    size_t currMatrixListOffset = 0;
+    std::vector<OffsetAndCount> matrixListsOffsetsAndCounts(globalMatrixLists.size());
+    for(size_t i = 0; i < globalMatrixLists.size(); ++i) {
+        auto const& list = globalMatrixLists[i];
+        matrixListsOffsetsAndCounts[i].offset = static_cast<uint32_t>(currMatrixListOffset);
+        matrixListsOffsetsAndCounts[i].count = static_cast<uint8_t>(list.size());
+        currMatrixListOffset += list.size();
+    }
+
     for (auto& inst : mGeometryInstanceData) {
         if (inst.getType() == GeometryType::TriangleMesh || inst.getType() == GeometryType::DisplacedTriangleMesh) {
             uint32_t prevFlags = inst.flags;
+            uint32_t prevMatrixOffset = inst.globalMatrixOffset;
             uint8_t  prevMatrixCount = inst.matrixCount;
 
             assert(inst.nodeID < globalMatrixLists.size());
+            assert(inst.nodeID < matrixListsOffsetsAndCounts.size());
+
             const auto& transformList = globalMatrixLists[inst.nodeID];
-            bool isTransformFlipped = doesTransformFlip(transform);
+            if(transformList.empty()) {
+                LLOG_ERR << "Transform matrix list is empty for instance " << inst.nodeID << " !!!";
+                continue;
+            }
+
+            bool isTransformFlipped = doesTransformFlip(transformList[0]);
             bool isObjectFrontFaceCW = getMesh(inst.geometryID).isFrontFaceCW();
             bool isWorldFrontFaceCW = isObjectFrontFaceCW ^ isTransformFlipped;
+
+            inst.globalMatrixOffset = matrixListsOffsetsAndCounts[inst.nodeID].offset;
+            inst.matrixCount = matrixListsOffsetsAndCounts[inst.nodeID].count;
 
             if (isTransformFlipped) inst.flags |= (uint32_t)GeometryInstanceFlags::TransformFlipped;
             else inst.flags &= ~(uint32_t)GeometryInstanceFlags::TransformFlipped;
@@ -997,9 +1019,9 @@ void Scene::updateGeometryInstances(bool forceUpdate) {
             else inst.flags &= ~(uint32_t)GeometryInstanceFlags::IsWorldFrontFaceCW;
 
             dataChanged |= (inst.flags != prevFlags);
+            dataChanged |= (inst.globalMatrixOffset != prevMatrixOffset);
             dataChanged |= (inst.matrixCount != prevMatrixCount);
         }
-        matrixOffset += globalMatrixLists
     }
 
     if (forceUpdate || dataChanged) {
@@ -1293,7 +1315,7 @@ void Scene::updateGeometryStats() {
     s.meshCount = getMeshCount();
     s.meshInstanceCount = 0;
     s.meshInstanceOpaqueCount = 0;
-    s.transformCount = getAnimationController()->getGlobalMatrices().size();
+    s.transformCount = getAnimationController()->getGlobalMatricesCount();
     s.uniqueVertexCount = 0;
     s.uniqueTriangleCount = 0;
     s.instancedVertexCount = 0;
@@ -1522,8 +1544,8 @@ bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& 
     if (force || (animatable.hasAnimation() && animatable.isAnimated())) {
         if (!controller.isMatrixListChanged(nodeID) && !force) return false;
 
-        glm::mat4 transform = controller.getGlobalMatrices()[nodeID];
-        animatable.updateFromAnimation(transform);
+        const auto& transformList = controller.getGlobalMatrixLists()[nodeID];
+        animatable.updateFromAnimation(transformList);
         return true;
     }
     return false;
@@ -2244,7 +2266,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
         const VertexBufferLayout::SharedConstPtr& pVbLayout = mpMeshVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
-        const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
+        const auto& globalMatrixLists = mpAnimationController->getGlobalMatrixLists();
 
         // Normally static geometry is already pre-transformed to world space by the SceneBuilder,
         // but if that isn't the case, we let DXR transform static geometry as part of the BLAS build.
@@ -2255,8 +2277,10 @@ void Scene::initGeomDesc(RenderContext* pContext) {
         auto getStaticMatricesBuffer = [&]() {
             if (!mpBlasStaticWorldMatrices) {
                 std::vector<glm::mat4> transposedMatrices;
-                transposedMatrices.reserve(globalMatrices.size());
-                for (const auto& m : globalMatrices) transposedMatrices.push_back(glm::transpose(m));
+                transposedMatrices.reserve(mpAnimationController->getGlobalMatricesCount());
+                for(const auto& matrixList: globalMatrixLists) {
+                    for(const auto& m : matrixList) transposedMatrices.push_back(glm::transpose(m));
+                }    
 
                 uint32_t float4Count = (uint32_t)transposedMatrices.size() * 4;
                 mpBlasStaticWorldMatrices = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, transposedMatrices.data(), false);
@@ -2301,14 +2325,15 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         assert(mMeshIdToInstanceIds[meshID].size() == 1);
                         uint32_t instanceID = mMeshIdToInstanceIds[meshID][0];
                         assert(instanceID < mGeometryInstanceData.size());
-                        uint32_t nodeID = mGeometryInstanceData[instanceID].nodeID;
+                        auto const& inst = mGeometryInstanceData[instanceID];
+                        uint32_t nodeID = inst.nodeID;
 
-                        assert(nodeID < globalMatricxLists.size());
+                        assert(nodeID < globalMatrixLists.size());
                         static const std::vector<glm::mat4> defaultList = {glm::identity<glm::mat4>()};
                         if (globalMatrixLists[nodeID] != defaultList) {
                             // Get the GPU address of the transform in row-major format.
-                            desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
-                            if (glm::determinant(globalMatrices[nodeID]) < 0.f) frontFaceCW = !frontFaceCW;
+                            desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + inst.globalMatrixOffset * 64ull;
+                            if (glm::determinant(globalMatrixLists[nodeID][0]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }
                     triangleWindings |= frontFaceCW ? 1 : 2;

@@ -160,7 +160,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Render pass frame dependent data preparation.
     */
-    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) {};
+    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) { return true; };
 
     /** Render pass frame dependent data clearance.
     */

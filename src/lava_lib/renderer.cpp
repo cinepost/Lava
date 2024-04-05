@@ -101,7 +101,7 @@ bool Renderer::init(const Config& config) {
 	sceneBuilderFlags |= SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
 	mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
-	mpCamera = Falcor::Camera::create();
+	mpCamera = Falcor::Camera::create(mpDevice);
 	mpCamera->setName("main");
 	mpSceneBuilder->addCamera(mpCamera);
 

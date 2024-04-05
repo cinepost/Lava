@@ -170,7 +170,7 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
     for (const auto& node : sceneData.sceneGraph) {
         stream.write(node.name);
         stream.write(node.parent);
-        stream.write(node.transform);
+        stream.write(node.transformList);
         stream.write(node.meshBind);
         stream.write(node.localToBindSpace);
     }
@@ -293,7 +293,7 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     for (auto &node : sceneData.sceneGraph) {
         stream.read(node.name);
         stream.read(node.parent);
-        stream.read(node.transform);
+        stream.read(node.transformList);
         stream.read(node.meshBind);
         stream.read(node.localToBindSpace);
     }

@@ -15,8 +15,7 @@ cbuffer PerFrameCB {
   uint              gSampleNumber;                 // Interframe sample number.
 };
 
-RWTexture2D<float2> gJitterTexture;
-
+RWTexture2D<float4> gJitterTexture;
 
 uint part1by1 (uint x) {
     x = (x & 0x0000ffffu);
@@ -126,20 +125,21 @@ void build(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // early out
     if (any(pixelPos >= gJitterTextureDim)) return;
 
-    float2 jitter = 0.f;
+    float4 jitter = 0.f;
 
 #if JITTER_TYPE == JITTER_TYPE_SIMPLE
 
     SampleGenerator lsg = SampleGenerator(pixelPos, gSampleNumber);
-    jitter = sampleNext2D(lsg);
+    jitter = float4(sampleNext2D(lsg), sampleNext2D(lsg));
 
 #elif JITTER_TYPE == JITTER_TYPE_R1
 
     SampleGenerator sg = SampleGenerator(gJitterTextureDim, gSampleNumber);
     uint2 jitterPosX = pixelPos + gJitterTextureDim * sampleNext2D(sg);
     uint2 jitterPosY = pixelPos + gJitterTextureDim * sampleNext2D(sg);
-    jitter.x = hilbert_r1_blue_noisef(jitterPosX);
-    jitter.y = hilbert_r1_blue_noisef(jitterPosY);
+    uint2 jitterPosZ = pixelPos + gJitterTextureDim * sampleNext2D(sg);
+    uint2 jitterPosW = pixelPos + gJitterTextureDim * sampleNext2D(sg);
+    jitter = float4(hilbert_r1_blue_noisef(jitterPosX), hilbert_r1_blue_noisef(jitterPosY), hilbert_r1_blue_noisef(jitterPosZ), hilbert_r1_blue_noisef(jitterPosW));
 
 #endif
 

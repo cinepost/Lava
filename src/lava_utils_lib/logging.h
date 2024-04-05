@@ -77,6 +77,7 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(global_logger, global_logger_type) {
 void init_log();
 void init_file_log(const std::string& logfilename, bool autoFlush = false);
 void shutdown_log();
+void flush();
 
 }}} // namespace lava::ut::log
 

@@ -313,7 +313,7 @@ def header(now, propdefs):
     LSDhooks.call('post_header', now)
 
 def _getBlur(obj, now, shutter=.5, offset=None, style='trailing', allow=1):
-    allow = obj.getDefaultedInt('allowmotionblur', now, [allow])[0]
+    allow = obj.getDefaultedInt('lv_allowmotionblur', now, [allow])[0]
     shadowtype = obj.getDefaultedString('shadow_type', now, ['off'])[0]
     shutter = obj.getDefaultedFloat('shutter', now, [shutter])[0]*FPSinv
     offset = obj.getDefaultedFloat('shutteroffset', now, [offset])[0]

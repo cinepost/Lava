@@ -833,7 +833,7 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		} else {
 			mMeshletLists.push_back({});
 		}
-		assert(mMeshletLists.size() == mMeshes.size());
+		assert((mMeshletLists.size() - 1) == meshID);
 	}
 
 	return meshID;

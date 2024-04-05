@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project("ThirdParty_External")
 
+include(FindPkgConfig)
 include(ExternalProject)
 include(ProcessorCount)
 
@@ -170,6 +171,46 @@ else()
 endif()
 
 
+#######################
+# CpuInfo
+#######################
+
+find_package(PkgConfig)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${EXTERNALS_INSTALL_DIR}/lib/pkgconfig")
+pkg_check_modules(CpuInfo IMPORTED_TARGET libcpuinfo)
+
+if( CpuInfo_FOUND )
+  message("CpuInfo found ...")
+  add_custom_target( CpuInfo COMMAND echo "CpuInfo build exists, skipping rebuild ...")
+else()
+  message("CpuInfo not found! Running external build ...")
+  set(CPUINFO_PREFIX cpuinfo)
+
+  ExternalProject_Add( CpuInfo
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${CPUINFO_PREFIX}
+    GIT_REPOSITORY https://github.com/pytorch/cpuinfo.git
+    GIT_TAG "main"
+    UPDATE_DISCONNECTED true
+    
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CPUINFO_LIBRARY_TYPE:STRING=shared
+    CMAKE_ARGS -D CPUINFO_RUNTIME_TYPE:STRING=shared
+    CMAKE_ARGS -D CPUINFO_LOG_LEVEL:STRING=none
+    CMAKE_ARGS -D CPUINFO_BUILD_TOOLS:BOOL=OFF
+    CMAKE_ARGS -D CPUINFO_BUILD_UNIT_TESTS:BOOL=OFF
+    CMAKE_ARGS -D CPUINFO_BUILD_MOCK_TESTS:BOOL=OFF
+    CMAKE_ARGS -D CPUINFO_BUILD_BENCHMARKS:BOOL=OFF
+    CMAKE_ARGS -D CPUINFO_BUILD_PKG_CONFIG:BOOL=ON
+
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${CPUINFO_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${CPUINFO_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CPUINFO_PREFIX}
+  )
+endif()
 
 #######################
 # Blosc2
@@ -1517,6 +1558,7 @@ add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
 add_dependencies( dummy_target 
   zlib
   Tbb
+  CpuInfo
   Blosc
   Boost
   PyBind

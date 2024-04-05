@@ -86,7 +86,7 @@ VBufferVSOut vsMain(VSIn vsIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
-    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)gScene.camera.getViewProj());
+    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)gScene.camera.getViewProjMatJittered());
     
     const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);
@@ -109,7 +109,7 @@ VBufferVSOut vsMain(VSIn vsIn) {
     }
 
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
-    vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+    vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMat());
 #endif
 
     return vsOut;

@@ -57,6 +57,7 @@ namespace {
     const char kCullMode[] = "cullMode";
     const char kUseCompute[] = "useCompute";
     const char kUseDOF[] = "useDOF";
+    const char kUseMotionBlur[] = "useMotionBlur";
     const char kUseSubdivisions[] = "useSubdivisions";
     const char kUseDisplacement[] = "useDisplacement";
 
@@ -130,7 +131,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
 
     for (const auto& [key, value] : dict) {
         if (key == kUseCompute) mUseCompute = static_cast<bool>(value);
-        else if (key == kUseDOF) mUseDOF = static_cast<bool>(value);
+        else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
         else if (key == kUseSubdivisions) enableSubdivisions(static_cast<bool>(value));
         else if (key == kUseDisplacement) enableDisplacement(static_cast<bool>(value));
         else if (key == kUseD64) mUseD64 = static_cast<bool>(value);
@@ -152,6 +153,11 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     return reflector;
 }
 
+void VBufferSW::compile(RenderContext* pRenderContext, const CompileData& compileData) {
+    GBufferBase::compile(pRenderContext, compileData);
+    mpRandomSampleGenerator = StratifiedSamplePattern::create(1024);
+}
+
 void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::AtomicInt64))  {
         LLOG_FTL << "VBufferSW: Atomic Int64 is not supported by the current device !!!";
@@ -170,7 +176,7 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
     clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
         
     // If there is no scene, clear the output and return.
-    if (mpScene == nullptr) return;
+    if (!mpScene) return;
     
 
     // Check for scene changes.
@@ -180,9 +186,8 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
-    mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
     if (mUseDOF) {
-        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
+        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = (mpScene->getCamera()->getApertureRadius() > 0.f) ? 2u : 0u;
     }
 
     executeCompute(pRenderContext, renderData);
@@ -209,6 +214,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     if(!mpMeshletDrawListBuffer) return;
 
+    // Random numbers [0, 1]
+    float2 rnd =  mpRandomSampleGenerator ? (mpRandomSampleGenerator->next() + float2(.5f)) : float2(.0f);
+
     const bool doTesselate = mUseDisplacement || mUseSubdivisions;
 
     if( !mpComputeJitterPass || mDirty) {
@@ -222,13 +230,16 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     // Create rasterization pass.
     if (doTesselate && (!mpComputeTesselatorPass || mDirty)) {
+
+        bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeTesselatorFile).csEntry("tesselate").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;
         defines.add(mpScene->getSceneDefines());    
-        defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
+        defines.add("COMPUTE_DEPTH_OF_FIELD", computeDOF ? "1" : "0");
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
         
@@ -251,7 +262,13 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpScene->getSceneDefines());
         if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
         
-        defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
+        bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+        bool computeMotionBlur = mUseMotionBlur;
+
+        LLOG_WRN << "COMPUTE_MOTION_BLUR " << computeMotionBlur ? "YES" : "NO";
+
+        defines.add("COMPUTE_DEPTH_OF_FIELD", computeDOF ? "1" : "0");
+        defines.add("COMPUTE_MOTION_BLUR", computeMotionBlur ? "1" : "0");
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
 
@@ -317,6 +334,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
         var["gVBufferSW"]["dispatchX"] = groupsX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
+        var["gVBufferSW"]["rnd"] = rnd;
         
         var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
@@ -467,9 +485,15 @@ void VBufferSW::preProcessMeshlets() {
 }
 
 void VBufferSW::createJitterTexture() {
-    if(mpJitterTexture) return;
+    if(mpJitterTexture && !mDirty) return;
 
-    mpJitterTexture = Texture::create2D(mpDevice, 128, 128, ResourceFormat::RG16Float, 1, 1, nullptr, Texture::BindFlags::ShaderResource | Texture::BindFlags::UnorderedAccess);
+    ResourceFormat format = ResourceFormat::RG16Float;
+    if(mUseDOF || mUseMotionBlur) {
+        // 4 component jitter needed to decorrelate mblur/dof from anti-aliasing.
+        format = ResourceFormat::RGBA16Float;
+    }
+
+    mpJitterTexture = Texture::create2D(mpDevice, 128, 128, format, 1, 1, nullptr, Texture::BindFlags::ShaderResource | Texture::BindFlags::UnorderedAccess);
 }
 
 void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -512,6 +536,12 @@ void VBufferSW::setPerPixelJitterRaster(bool value) {
 void VBufferSW::enableDepthOfField(bool value) {
     if(mUseDOF == value) return;
     mUseDOF = value;
+    mDirty = true;
+}
+
+void VBufferSW::enableMotionBlur(bool value) {
+    if(mUseMotionBlur == value) return;
+    mUseMotionBlur = value;
     mDirty = true;
 }
 

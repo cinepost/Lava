@@ -1168,17 +1168,17 @@
 	hidewhen	"{ lv_tile_render == 0 }"
     }
     parm {
-	SOHO_TOGGLE(allowmotionblur, "Allow Motion Blur", RENDERING_MAIN_LABEL, 0)
+	SOHO_TOGGLE(lv_allowmotionblur, "Allow Motion Blur", RENDERING_MAIN_LABEL, 0)
     }
     parm {
 	SOHO_FLOAT(shutter, "Shutter Time", "Sampling", 0.5)
 	range	{ 0 1 }
-	disablewhen	"{ allowmotionblur == 0 }"
+	disablewhen	"{ lv_allowmotionblur == 0 }"
     }
     parm {
 	SOHO_FLOAT(shutteroffset, "Shutter Offset", RENDERING_MAIN_LABEL, 1.0)
 	range	{ -1 1 }
-	hidewhen	"{ allowmotionblur == 0 }"
+	hidewhen	"{ lv_allowmotionblur == 0 }"
     }
     parm {
 	name	motionstyle
@@ -1191,17 +1191,17 @@
 	    "centered"	"Frame Centered Blur"
 	    "trailing"	"Trailing Blur"
 	}
-	disablewhen	"{ allowmotionblur == 0 }"
+	disablewhen	"{ lv_allowmotionblur == 0 }"
     }
     parm {
 	SOHO_INT(xform_motionsamples, "Xform Time Samples", RENDERING_MAIN_LABEL, 2)
 	range	{ 1 10 }
-	hidewhen	"{ allowmotionblur == 0 }"
+	hidewhen	"{ lv_allowmotionblur == 0 }"
     }
     parm {
 	SOHO_INT(geo_motionsamples, "Geo Time Samples", RENDERING_MAIN_LABEL, 1)
 	range	{ 1 10 }
-	hidewhen	"{ allowmotionblur == 0 }"
+	hidewhen	"{ lv_allowmotionblur == 0 }"
     }
     collection {
 	name	velocityblur
@@ -1216,7 +1216,7 @@
 		"on"		"Velocity Blur"
 		"accelblur"	"Acceleration Blur"
 	    }
-	    disablewhen	"{ allowmotionblur == 0 }"
+	    disablewhen	"{ lv_allowmotionblur == 0 }"
 	}
 	parm {
 	    SOHO_STRING(geo_accelattribute, "Acceleration Attribute",
@@ -1231,7 +1231,7 @@
     	type	ramp_flt
     	default	{ "2" }
     	parmtag { rampfloatdefault "1pos 0 1value 1 1interp catmull-rom 2pos 1 2value 1 2interp catmull-rom" }
-	disablewhen	"{ allowmotionblur == 0 } { lv_renderengine == micropoly } { lv_renderengine == pbrmicropoly }"
+	disablewhen	"{ lv_allowmotionblur == 0 } { lv_renderengine == micropoly } { lv_renderengine == pbrmicropoly }"
 	LAVA_PROP("camera", "shuttershape")
     }
     parm {
@@ -1412,7 +1412,7 @@
     }
     parm {
 	SOHO_TOGGLE(lv_decorrelatedof, "Decorrelate Depth of Field from Motion Blur Samples", RENDERING_SAMPLING_LABEL, 0)
-	disablewhen "{ lv_dof == 0 } { allowmotionblur == 0 }"
+	disablewhen "{ lv_dof == 0 } { lv_allowmotionblur == 0 }"
 	LAVA_PROP("image", "decorrelatedof")
     }
     parm {
@@ -1948,7 +1948,7 @@
     }
     parm {
 	SOHO_FLOAT(lv_velocityquality,	"Volume Velocity Quality", "Sampling", 0.1)
-	disablewhen	"{ allowmotionblur == 0 }"
+	disablewhen	"{ lv_allowmotionblur == 0 }"
 	LAVA_PROP("object", "velocityquality")
     }
     parm {
@@ -2184,7 +2184,7 @@
     parm {
 	SOHO_FLOAT(lv_motionfactor, "Motion Factor", RENDERING_DICING_LABEL, 0)
 	range	{ 0 1 }
-	disablewhen	"{ allowmotionblur == 0 lv_dof == 0 }"
+	disablewhen	"{ lv_allowmotionblur == 0 lv_dof == 0 }"
 	LAVA_PROP("object", "motionfactor")
     }
     parm {
@@ -2617,12 +2617,12 @@
     }
     parm {
 	SOHO_TOGGLE(lv_traceblur, "Raytrace Motion Blur", RENDERING_MAIN_LABEL, 0)
-	hidewhen	"{ allowmotionblur == 0 } { lv_renderengine != micropoly lv_renderengine != pbrmicropoly }"
+	hidewhen	"{ lv_allowmotionblur == 0 } { lv_renderengine != micropoly lv_renderengine != pbrmicropoly }"
 	LAVA_PROP("object", "traceblur")
     }
     parm {
 	SOHO_TOGGLE(lv_imageblur, "Allow Image Motion Blur", RENDERING_SAMPLING_LABEL, 1)
-	disablewhen	"{ allowmotionblur == 0 }"
+	disablewhen	"{ lv_allowmotionblur == 0 }"
 	LAVA_PROP("renderer", "imageblur")
     }
     parm {
@@ -3177,7 +3177,7 @@
 	parmtag	{ spare_parmlist	R"(
 	    lv_renderengine
 	    lv_dof
-	    allowmotionblur
+	    lv_allowmotionblur
 	    xform_motionsamples
 	    geo_motionsamples
 	    shutteroffset
@@ -3484,7 +3484,7 @@
 
 	    lv_samples
 	    lv_dof
-	    allowmotionblur
+	    lv_allowmotionblur
 	    xform_motionsamples
 	    geo_motionsamples
 	    lv_motionfactor

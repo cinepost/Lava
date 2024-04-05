@@ -80,11 +80,10 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
 }
 
 void AnimationController::createBuffers(size_t matrixCount) {
-    if(matrixCount == 0) return;
+    assert(matrixCount > 0);
     assert(matrixCount * 4 <= std::numeric_limits<uint32_t>::max());
+    if(matrixCount == 0) return;
     uint32_t float4Count = (uint32_t)matrixCount * 4;
-
-    if (float4Count = 0) return;
 
     if(!mpWorldMatricesBuffer || mpWorldMatricesBuffer->getElementCount() != matrixCount) {
         mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
@@ -275,10 +274,16 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime) {
 void AnimationController::updateLocalMatrices(double time) {
     for (auto& pAnimation : mAnimations) {
         uint32_t nodeID = pAnimation->getNodeID();
-        assert(nodeID < mLocalMatrices.size());
+        assert(nodeID < mLocalMatrixLists.size());
         mLocalMatrixLists[nodeID] = {pAnimation->animate(time)};
         mMatricesChanged[nodeID] = true;
     }
+}
+
+size_t AnimationController::getGlobalMatricesCount() const {
+    size_t count = 0;
+    for(auto const& list: mGlobalMatrixLists) count += list.size();
+    return count;
 }
 
 void AnimationController::updateWorldMatrices(bool updateAll) {
@@ -300,8 +305,8 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
             }
         }
 
-        assert(mInvTransposeGlobalMatrixLists[i].size() == mGlobalMatrixLists[i].size());
         for(size_t ii = 0; ii < mGlobalMatrixLists[i].size(); ++ii){
+            mInvTransposeGlobalMatrixLists[i].resize(mGlobalMatrixLists[i].size());
             mInvTransposeGlobalMatrixLists[i][ii] = transpose(inverse(mGlobalMatrixLists[i][ii]));
         }
 

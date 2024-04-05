@@ -96,12 +96,12 @@ struct VBufferRT {
 
         if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid) {
             // Compute depth similar to raster (NDC).
-            float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.getViewProjMatNoJitter());
+            float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.getViewProjMat());
             depth = curPosH.z / curPosH.w;
 
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
-            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMatNoJitter());
+            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMat());
             motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         }
 

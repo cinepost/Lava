@@ -1,10 +1,18 @@
 // Transform world position to clip space
 float4 transformPointToClip(const float3 p) {
-    return mul(float4(p, 1.f), gScene.camera.getViewProjMatNoJitter());
+    return mul(float4(p, 1.f), gScene.camera.getViewProjMat());
+}
+
+float4 transformPointToClip(const float3 p, float t) {
+    return mul(float4(p, 1.f), gScene.camera.getViewProjMat(t));
 }
 
 double4 transformPointToClipDouble(const double3 p) {
-    return mul(double4(p, 1.0), gScene.camera.getViewProjMatNoJitter());
+    return mul(double4(p, 1.0), gScene.camera.getViewProjMat());
+}
+
+double4 transformPointToClipDouble(const double3 p, float t) {
+    return mul(double4(p, 1.0), gScene.camera.getViewProjMat(t));
 }
 
 // Transform world position to sceen space
@@ -16,8 +24,24 @@ float4 transformPointToScreen(const float3 p) {
     return pS;
 }
 
+float4 transformPointToScreen(const float3 p, float t) {
+    const float4 pV = transformPointToClip(p, t);
+    float4 pS = float4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * float2(.5f, -.5f) + float2(0.5f);
+    pS.xy = pS.xy * float2(gVBufferSW.frameDim) - float2(0.5f);
+    return pS;
+}
+
 double4 transformPointToScreenDouble(const double3 p) {
     const double4 pV = transformPointToClipDouble(p);
+    double4 pS = double4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * double2(.5, -.5) + double2(0.5);
+    pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
+    return pS;
+}
+
+double4 transformPointToScreenDouble(const double3 p, float t) {
+    const double4 pV = transformPointToClipDouble(p, t);
     double4 pS = double4(pV.xyz / pV.w, pV.w);
     pS.xy = pS.xy * double2(.5, -.5) + double2(0.5);
     pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);

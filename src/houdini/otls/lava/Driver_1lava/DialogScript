@@ -1559,7 +1559,7 @@
             parmtag { "script_callback_language" "python" }
         }
         parm {
-            name    "allowmotionblur"
+            name    "lv_allowmotionblur"
             label   "Allow Motion Blur"
             type    toggle
             default { "0" }

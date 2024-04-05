@@ -41,6 +41,7 @@ namespace po = boost::program_options;
 #include "lava_lib/reader_lsd/reader_lsd.h"
 
 #include "lava_utils_lib/logging.h"
+#include "lava_utils_lib/ut_system.h"
 
 #define PRE_RELEASE_TRACEBACK_HANDLER
 
@@ -281,12 +282,15 @@ int main(int argc, char** argv){
     // Early termination ...
 
     // ---------------------
+    std::cout << "\n============================\n";
+    std::cout << "Lava version: " << lava::versionString() << "\n";
 
-    std::cout << "Lava version " << lava::versionString() << "\n";
-    LLOG_INF << "Lava mode: " << (isDevelopmentMode() ? "development" : "production");
+    // Output CPU and RAM info...
+    lava::ut::log::flush();
+    std::cout << "CPU model: " << lava::ut::system::getCPUName() << std::endl;
+    std::cout << "Total system memory: " << (lava::ut::system::getTotalSystemMemoryBytes() >> 30) << " GB" << std::endl;
     
     const bool enableValidationLayer = vkValidationFilename.empty() ? false : true;
-
 
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(
@@ -308,16 +312,25 @@ int main(int argc, char** argv){
       Device::SharedPtr pDevice;
       LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
       pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
-      LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
+      
+      if(!pDevice) {
+        LLOG_FTL << "Unable to initialize GPU !!!";
+        exit(EXIT_FAILURE);
+      }
 
+      // Output basic GPU information...
       {
+        lava::ut::log::flush();
         const auto& deviceInfos = pDeviceManager->deviceInfos();
         auto it = deviceInfos.find(gpuID);
 
         if (it != deviceInfos.end()) {
-          std::cout << "Rendering using device [" << static_cast<unsigned int>(gpuID) << "]: " << it->second.deviceName << std::endl;
+          std::cout << "Rendering device [" << static_cast<unsigned int>(gpuID) << "]: " << it->second.deviceName << std::endl;
         }
       }
+      std::cout << "============================\n";
+
+      LLOG_INF << "Lava mode: " << (isDevelopmentMode() ? "development" : "production");
 
       // Start scripting system
       Falcor::Scripting::start();

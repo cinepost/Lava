@@ -82,6 +82,7 @@ struct VBufferSW {
     uint sampleNumber;
     uint dispatchX;
     uint meshletDrawsCount;
+    float2 rnd;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)

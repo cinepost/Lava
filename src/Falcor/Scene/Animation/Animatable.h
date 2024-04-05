@@ -73,6 +73,8 @@ public:
     */
     virtual void updateFromAnimation(const glm::mat4& transform) = 0;
 
+    virtual void updateFromAnimation(const std::vector<glm::mat4>& transformList) = 0;
+
 protected:
     bool mHasAnimation = false;
     bool mIsAnimated = true;
