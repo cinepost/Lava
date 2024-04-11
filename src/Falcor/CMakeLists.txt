@@ -20,7 +20,7 @@ file( GLOB SOURCES
     ./RenderGraph/*.cpp
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
-    ./Rendering/RTXDI/*.cpp
+    #./Rendering/RTXDI/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
     ./Scene/Geometry.cpp

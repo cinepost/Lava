@@ -25,7 +25,7 @@
 #include "RenderPasses/DepthPass/DepthPass.h"
 #include "RenderPasses/EnvironmentPass/EnvPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
-#include "RenderPasses/RTXDIPass/RTXDIPass.h"
+//#include "RenderPasses/RTXDIPass/RTXDIPass.h"
 
 #include "aov.h"
 #include "scene_builder.h"

@@ -122,8 +122,9 @@ makeRenderPassLib(NAME "CryptomattePass")
 makeRenderPassLib(NAME "EdgeDetectPass")
 makeRenderPassLib(NAME "ImageLoaderPass")
 makeRenderPassLib(NAME "EnvironmentPass")
-makeRenderPassLib(NAME "RTXDIPass")
-makeRenderPassLib(NAME "PathTracer")
+
+#makeRenderPassLib(NAME "PathTracer")
+#makeRenderPassLib(NAME "RTXDIPass")
 
 
 #makeRenderPassLib(NAME "DeferredLightingCachedPass")

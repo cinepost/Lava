@@ -87,7 +87,7 @@ else()
     GIT_REPOSITORY https://github.com/madler/zlib.git
     GIT_TAG v${EXTERNAL_ZLIB_VERSION}
     UPDATE_DISCONNECTED true
-    
+
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D SKIP_INSTALL_LIBRARIES:BOOL=OFF
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
@@ -133,12 +133,12 @@ else()
     GIT_TAG v${EXTERNAL_TBB_VERSION}
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
-    
+
     CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
     CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
-    
+
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     INSTALL_COMMAND cmake --install . --config ${DEPS_BUILD_TYPE}
@@ -153,7 +153,7 @@ else()
     GIT_TAG v${EXTERNAL_TBB_VERSION}
     UPDATE_DISCONNECTED true
     BUILD_IN_SOURCE 1
-    
+
     CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
     CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
     CMAKE_ARGS -D TBB_TEST:BOOL=OFF
@@ -191,7 +191,7 @@ else()
     GIT_REPOSITORY https://github.com/pytorch/cpuinfo.git
     GIT_TAG "main"
     UPDATE_DISCONNECTED true
-    
+
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D CPUINFO_LIBRARY_TYPE:STRING=shared
     CMAKE_ARGS -D CPUINFO_RUNTIME_TYPE:STRING=shared
@@ -290,7 +290,7 @@ if(Boost_FOUND)
   add_custom_target( Boost COMMAND echo "Boost ${EXTERNAL_BOOST_VERSION} build exists, skipping rebuild ...")
 
 else()
-  
+
   message("Boost version ${EXTERNAL_BOOST_VERSION} not found! Running external build ...")
   set(BOOST_PREFIX boost)
 
@@ -1247,18 +1247,46 @@ ExternalProject_Add ( VMA
 # RTXGI
 #######################
 
-if( NOT EXTERNAL_RTXGI_VERSION )
-  set(EXTERNAL_RTXGI_VERSION 1.2.11)
+#if( NOT EXTERNAL_RTXGI_VERSION )
+#  set(EXTERNAL_RTXGI_VERSION 1.2.11)
+#endif()
+
+#set(RTXGI_PREFIX RTXGI)
+
+#ExternalProject_Add ( RTXGI
+#  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXGI_PREFIX}
+#  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXGI.git
+#  GIT_TAG ${EXTERNAL_RTXGI_VERSION}
+#  UPDATE_DISCONNECTED true
+
+#  CONFIGURE_COMMAND ""
+
+#  BUILD_COMMAND ""
+
+#  INSTALL_COMMAND
+#    ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxgi-sdk ${EXTERNALS_INSTALL_DIR}/rtxgi-sdk
+
+#  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXGI_PREFIX}
+#  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXGI_PREFIX}
+#  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXGI_PREFIX}
+#)
+
+#######################
+# RTXGI_DDGI
+#######################
+
+if( NOT EXTERNAL_RTXGI_DDGI_VERSION )
+  set(EXTERNAL_RTXGI_DDGI_VERSION 1.2.11)
 endif()
 
-set(RTXGI_PREFIX RTXGI)
+set(RTXGI_DDGI_PREFIX RTXGI_DDGI)
 
-ExternalProject_Add ( RTXGI
-  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXGI_PREFIX}
-  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXGI.git
-  GIT_TAG v${EXTERNAL_RTXGI_VERSION}
+ExternalProject_Add ( RTXGI_DDGI
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXGI_DDGI_PREFIX}
+  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXGI-DDGI.git
+  GIT_TAG v${EXTERNAL_RTXGI_DDGI_VERSION}
   UPDATE_DISCONNECTED true
-  
+
   CONFIGURE_COMMAND ""
 
   BUILD_COMMAND ""
@@ -1266,42 +1294,41 @@ ExternalProject_Add ( RTXGI
   INSTALL_COMMAND
     ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxgi-sdk ${EXTERNALS_INSTALL_DIR}/rtxgi-sdk
 
-  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXGI_PREFIX}
-  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXGI_PREFIX}
-  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXGI_PREFIX}
+  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXGI_DDGI_PREFIX}
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXGI_DDGI_PREFIX}
+  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXGI_DDGI_PREFIX}
 )
 
 #######################
 # RTXDI
 #######################
 
-if( NOT EXTERNAL_RTXDI_VERSION)
-  set(EXTERNAL_RTXDI_VERSION 1.3.0)
-endif()
+#if( NOT EXTERNAL_RTXDI_VERSION)
+#  set(EXTERNAL_RTXDI_VERSION 1.3.0)
+#endif()
 
-set(RTXDI_PREFIX RTXDI)
+#set(RTXDI_PREFIX RTXDI)
 
-ExternalProject_Add ( RTXDI
-  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXDI_PREFIX}
-  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXDI.git
-  GIT_TAG v${EXTERNAL_RTXDI_VERSION}
-  UPDATE_DISCONNECTED true
+#ExternalProject_Add ( RTXDI
+#  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXDI_PREFIX}
+#  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXDI.git
+#  GIT_TAG v${EXTERNAL_RTXDI_VERSION}
+#  UPDATE_DISCONNECTED true
   
-  CONFIGURE_COMMAND ""
+#  CONFIGURE_COMMAND ""
 
-  BUILD_COMMAND ""
+#  BUILD_COMMAND ""
 
-  INSTALL_COMMAND
-    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
-    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
+#  INSTALL_COMMAND
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
 
-  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXDI_PREFIX}
-  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXDI_PREFIX}
-  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXDI_PREFIX}
-)
+#  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXDI_PREFIX}
+#  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXDI_PREFIX}
+#  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXDI_PREFIX}
+#)
 
-ExternalProject_Add_StepDependencies(RTXDI configure RTXGI)
-
+#ExternalProject_Add_StepDependencies(RTXDI configure RTXGI_DDGI)
 
 
 #######################
@@ -1496,7 +1523,7 @@ ExternalProject_Add( Slang
       -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
     COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
-  
+
   BUILD_COMMAND 
     COMMAND
       msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
@@ -1533,7 +1560,7 @@ ExternalProject_Add( Slang
       -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
-  
+
   BUILD_COMMAND 
     COMMAND
       ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
@@ -1555,7 +1582,7 @@ endif()
 #######################
 
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
-add_dependencies( dummy_target 
+add_dependencies( dummy_target
   zlib
   Tbb
   CpuInfo
@@ -1568,8 +1595,6 @@ add_dependencies( dummy_target
   ispc
   OpenImageDenoise
   OpenImageIO
-  RTXDI
-  RTXGI
   VMA
   Slang
   Glfw

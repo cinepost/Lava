@@ -25,7 +25,7 @@
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
 #include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
 #include "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.h"
-#include "RenderPasses/PathTracer/PathTracer.h"
+//#include "RenderPasses/PathTracer/PathTracer.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferSW.h"
@@ -278,9 +278,9 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	if (shadingPassType == std::string("pathtracer")) {
 
-		auto pPathTracerPass = PathTracer::create(pRenderContext, {});
+		//auto pPathTracerPass = PathTracer::create(pRenderContext, {});
 		//pPathTracerPass->setScene(pRenderContext, pScene);
-		mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
+		//mpRenderGraph->addPass(pPathTracerPass, "ShadingPass");
 
   } else if (shadingPassType == std::string("deferred")) {
 

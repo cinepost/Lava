@@ -55,13 +55,12 @@ target_link_libraries(
     DepthPass
     DebugShadingPass
     DeferredLightingPass
-    PathTracer
+#    PathTracer
     CryptomattePass
     ToneMapperPass
     OpenDenoisePass
     ImageLoaderPass
     EnvironmentPass
-    RTXDIPass
     GBuffer
 )
 
