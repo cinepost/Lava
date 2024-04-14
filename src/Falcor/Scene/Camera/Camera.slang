@@ -52,6 +52,7 @@ struct Camera {
     float4x4 getViewProjMat() { return xform.viewProjMat; }
     
     float4x4 getViewProjMatJittered() {
+        return xform.viewProjMat;
         float4x4 jitterMat = { 
             float4(1.0f, 0.0f, 0.0f, 0.0f),
             float4(0.0f, 1.0f, 0.0f, 0.0f),
