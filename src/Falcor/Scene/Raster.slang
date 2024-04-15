@@ -84,6 +84,7 @@ VSOut defaultVS(VSIn vIn) {
 
     vOut.texC = float2(vIn.texU, vIn.texV);
     vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+
     float4 tangent = vIn.unpack().tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 

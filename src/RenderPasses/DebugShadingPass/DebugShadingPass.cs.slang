@@ -38,6 +38,8 @@ RWTexture2D<uint>   gTime; // Timing debug buffer
 RWTexture2D<float2> gUV;
 
 // Extra output channels
+RWTexture2D<float4> gOutNormals;
+RWTexture2D<float4> gOutTangentNormals;
 RWTexture2D<float>  gPrimID;
 RWTexture2D<float>  gOpID;
 RWTexture2D<float4> gMeshletColor;
@@ -72,8 +74,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     gInOutColor[pixelPos] = float4(barycentrics, 1.f);
 
+    VertexData v = gScene.getVertexData(triangleHit);
+
+#if is_valid(gOutNormals)
+    gOutNormals[pixelPos] = float4(v.normalW.xyz, 0.f);
+#endif  // gOutNormals
+
+#if is_valid(gOutTangentNormals)
+    gOutTangentNormals[pixelPos] = float4(v.tangentW.xyz, 0.f);
+#endif  // gOutTangentNormals
+
 #if is_valid(gUV)
-    gUV[pixelPos] = gScene.getVertexData(triangleHit).texC;
+    gUV[pixelPos] = v.texC;
 #endif  // gUV
 
 #if is_valid(gMeshletColor) && is_valid(gMeshletID)

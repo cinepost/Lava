@@ -320,6 +320,8 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
 void AnimationController::uploadWorldMatrices(bool uploadAll) {
     if (mGlobalMatrixLists.empty()) return;
 
+    updateWorldMatrices(true);
+
     assert(mGlobalMatrixLists.size() == mInvTransposeGlobalMatrixLists.size());
 
     size_t totalMatricesCount = 0;
@@ -337,8 +339,12 @@ void AnimationController::uploadWorldMatrices(bool uploadAll) {
         std::vector<float4x4> globalMatrices;
         std::vector<float4x4> invTransposeGlobalMatrices;
         for(size_t i = 0; i < mGlobalMatrixLists.size(); ++i) {
-            for(auto& m: mGlobalMatrixLists[i]) globalMatrices.push_back(m);
-            for(auto& m: mInvTransposeGlobalMatrixLists[i]) invTransposeGlobalMatrices.push_back(m);
+            for(auto& m: mGlobalMatrixLists[i]) {
+                globalMatrices.push_back(m);
+            }
+            for(auto& m: mInvTransposeGlobalMatrixLists[i])  {
+                invTransposeGlobalMatrices.push_back(m);
+            }
         }
         mpWorldMatricesBuffer->setBlob(globalMatrices.data(), 0, mpWorldMatricesBuffer->getSize());
         mpInvTransposeWorldMatricesBuffer->setBlob(invTransposeGlobalMatrices.data(), 0, mpInvTransposeWorldMatricesBuffer->getSize());
@@ -351,8 +357,12 @@ void AnimationController::uploadWorldMatrices(bool uploadAll) {
                 std::vector<float4x4> globalMatrices;
                 std::vector<float4x4> invTransposeGlobalMatrices;
                 for(size_t ii = i; ii < mGlobalMatrixLists.size(); ++ii) {
-                    for(auto& m: mGlobalMatrixLists[ii]) globalMatrices.push_back(m);
-                    for(auto& m: mInvTransposeGlobalMatrixLists[ii]) invTransposeGlobalMatrices.push_back(m);
+                    for(auto& m: mGlobalMatrixLists[ii]) {
+                        globalMatrices.push_back(m);
+                    }
+                    for(auto& m: mInvTransposeGlobalMatrixLists[ii]) { 
+                        invTransposeGlobalMatrices.push_back(m);
+                    }
                 }
 
                 mpWorldMatricesBuffer->setBlob(globalMatrices.data(), offset * sizeof(float4x4), globalMatrices.size() * sizeof(float4x4));

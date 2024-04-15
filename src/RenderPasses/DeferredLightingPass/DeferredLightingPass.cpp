@@ -165,6 +165,10 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
 
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
+        throw std::runtime_error("DeferredLightingPass: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     mUseVariance = false;
 
     createBuffers(pContext, renderData);

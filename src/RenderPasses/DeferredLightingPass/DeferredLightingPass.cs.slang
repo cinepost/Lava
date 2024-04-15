@@ -499,7 +499,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                         if(!light.isDeltaLight()) {
                             AnalyticLightSample ls;
                             if (intersectLight(sd.posW, rayData.dir, light, ls)) {
-                                surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier );
+                                //surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier );
                             }
                         }
                     }
@@ -577,8 +577,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
 #ifdef _SHADING_RATE
-    //[loop]
-    [unroll]
+    [loop]
+    //[unroll]
     for(int shadingIter = 0; shadingIter < _SHADING_RATE; shadingIter++) {
 #else
     const int shadingIter = 0;

@@ -131,10 +131,10 @@ struct StandardMaterial : MaterialBase, IMaterial {
             }
         }
         
-        flipShadingNormal(sd, sf);
+        //flipShadingNormal(sd, sf);
 
         if (isAdjustShadingNormalEnabled(hints)) {
-            adjustShadingNormal(sd, sf);
+            //adjustShadingNormal(sd, sf);
         }
 
         // Sample the emissive texture.

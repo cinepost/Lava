@@ -113,15 +113,19 @@ void rasterizeMicroTriangle(float3 pt0, float3 pt1, float3 pt2, float2 min_p, fl
 
 void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
 #if COMPUTE_MOTION_BLUR
+
+    gScene.getWorldMatrix(instanceID, )
     float4 pt0 = transformPointToScreen(mul(float4(vertex_data[pi0].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
     float4 pt1 = transformPointToScreen(mul(float4(vertex_data[pi1].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
     float4 pt2 = transformPointToScreen(mul(float4(vertex_data[pi2].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
-
+    
 #else
     float4 pt0 = positions[pi0], pt1 = positions[pi1], pt2 = positions[pi2];
+
+    // near-far planes rejection
+    [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
 #endif
 
-    [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
 
     float4 pt10 = pt1 - pt0;
     float4 pt20 = pt2 - pt0;

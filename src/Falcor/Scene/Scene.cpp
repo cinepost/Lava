@@ -1552,6 +1552,7 @@ bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& 
 }
 
 Scene::UpdateFlags Scene::updateSelectedCamera(bool forceUpdate) {
+    return UpdateFlags::None;
     auto camera = mCameras[mSelectedCamera];
 
     if (forceUpdate || (camera->hasAnimation() && camera->isAnimated())) {
@@ -2991,7 +2992,8 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                     // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
                     // Just pick the matrix from the first mesh.
                     const uint32_t nodeId = mGeometryInstanceData[desc.instanceID].nodeID;
-                    transform4x4 = transpose(mpAnimationController->getGlobalMatrixLists()[nodeId][0]);
+                    const auto& list = mpAnimationController->getGlobalMatrixLists()[nodeId];
+                    if(!list.empty()) transform4x4 = transpose(list[0]);
 
                     // Verify that all meshes have matching tranforms.
                     for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {

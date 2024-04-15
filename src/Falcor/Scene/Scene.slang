@@ -689,8 +689,10 @@ struct Scene
         const uint3 vtxIndices = getIndices(hit.instanceID, hit.primitiveIndex);
         const StaticVertexData vertices[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
         const float3 barycentrics = hit.getBarycentricWeights();
+        
         const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
         const float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(hit.instanceID);
+        
         const bool isFrontFaceCW = isObjectFrontFaceCW(hit.instanceID);
         VertexData v = computeVertexData(vertices, worldMat, worldInvTransposeMat, isFrontFaceCW, barycentrics);
 

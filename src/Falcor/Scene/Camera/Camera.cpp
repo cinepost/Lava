@@ -232,17 +232,9 @@ void Camera::calculateCameraParameters() const {
 			LLOG_WRN << "Camera persistent view matrix";
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
-			xform.cameraV = glm::normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
-			xform.cameraU = glm::normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
-			-xform.cameraW = glm::normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
-
-			//xform.cameraU = glm::normalize(float3(xform.viewMat[0]));
-			//xform.cameraV = glm::normalize(float3(xform.viewMat[1]));
-			//xform.cameraW = glm::normalize(float3(xform.viewMat[2]));
-
-			//xform.cameraV = glm::normalize(float3(xform.viewMat[0][0], xform.viewMat[0][1], xform.viewMat[0][2])); // up
-			//xform.cameraU = glm::normalize(float3(xform.viewMat[1][0], xform.viewMat[1][1], xform.viewMat[1][2])); // right
-			//xform.cameraW = glm::normalize(float3(xform.viewMat[2][0], xform.viewMat[2][1], xform.viewMat[2][2])); // dir
+			xform.cameraU = glm::normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
+			xform.cameraV = glm::normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
+			xform.cameraW = -glm::normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
 		} else {
 			LLOG_WRN << "Camera view matrix from pos, up, target";
 			xform.viewMat = glm::lookAt(mPosW, mTarget, mUp);
@@ -416,10 +408,10 @@ void Camera::setShaderData(const ShaderVar& var) const {
 	assert(!mXformList.empty());
 
 	calculateCameraParameters();
+	if(!mpDevice || mXformList.empty()) return;
+
 	var["data"].setBlob(mData);
 	var["xform"].setBlob(mXformList[0]);
-
-	if(!mpDevice || mXformList.empty()) return;
 
 	if(!mpXformListBuffer || (mpXformListBuffer->getElementCount() != mXformList.size())) {
 		mpXformListBuffer = Buffer::createStructured(mpDevice, sizeof(CameraXformData), (uint32_t)mXformList.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
