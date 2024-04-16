@@ -13,10 +13,6 @@
 #define USE_PP_JITTER true
 #endif
 
-#ifndef USE_D64
-#define USE_D64 true
-#endif
-
 #ifndef COMPUTE_DEPTH_OF_FIELD
 #define COMPUTE_DEPTH_OF_FIELD false
 #endif

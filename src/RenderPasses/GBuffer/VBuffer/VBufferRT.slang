@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Scene.Shading;
-__exported import Utils.Timing.GpuTimer;
+//__exported import Utils.Timing.GpuTimer;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
@@ -51,10 +51,15 @@ RWTexture2D<uint> gTime;
 #define USE_AA true
 #endif
 
+#if !defined(USE_MBLUR)
+#define USE_MBLUR false
+#endif
+
 struct VBufferRT {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUsePerPixelJitter = USE_PP_JITTER;
     static const bool kUseAA = USE_AA;
+    static const bool kComputeMotionBlur = USE_MBLUR;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
 
@@ -140,11 +145,11 @@ struct VBufferRT {
         if (is_valid(gViewW)) gViewW[pixel] = float4(-ray.dir, 0.f);
     }
 
-    void beginTime(inout GpuTimer timer) {
-        if (is_valid(gTime)) timer.start();
-    }
+    //void beginTime(inout GpuTimer timer) {
+    //    if (is_valid(gTime)) timer.start();
+    //}
 
-    void endTime(uint2 pixel, inout GpuTimer timer) {
-        if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
-    }
+    //void endTime(uint2 pixel, inout GpuTimer timer) {
+    //    if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
+    //}
 };

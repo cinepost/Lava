@@ -134,7 +134,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
         else if (key == kUseSubdivisions) enableSubdivisions(static_cast<bool>(value));
         else if (key == kUseDisplacement) enableDisplacement(static_cast<bool>(value));
-        else if (key == kUseD64) mUseD64 = static_cast<bool>(value);
+        else if (key == kUseD64) setHighpDepth(static_cast<bool>(value));
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
@@ -210,12 +210,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     createMeshletDrawList();
 
     pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
-    pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
+    //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     if(!mpMeshletDrawListBuffer) return;
 
     // Random numbers [0, 1]
-    float2 rnd =  mpRandomSampleGenerator ? (mpRandomSampleGenerator->next() + float2(.5f)) : float2(.0f);
+    float2 rnd = mpRandomSampleGenerator ? (mpRandomSampleGenerator->next() + float2(.5f)) : float2(.0f);
 
     const bool doTesselate = mUseDisplacement || mUseSubdivisions;
 
@@ -228,7 +228,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
     }
 
-    // Create rasterization pass.
+    // Create tesselation pass.
     if (doTesselate && (!mpComputeTesselatorPass || mDirty)) {
 
         bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
@@ -265,14 +265,17 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
         bool computeMotionBlur = mUseMotionBlur;
 
-        LLOG_WRN << "COMPUTE_MOTION_BLUR " << computeMotionBlur ? "YES" : "NO";
-
         defines.add("COMPUTE_DEPTH_OF_FIELD", computeDOF ? "1" : "0");
         defines.add("COMPUTE_MOTION_BLUR", computeMotionBlur ? "1" : "0");
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
 
-        defines.add("USE_D64", mUseD64 ? "1" : "0");
+        if(mUseD64) {
+            defines.add("USE_HIGHP_DEPTH", mUseD64 ? "1" : "0");
+        } else {
+            defines.remove("USE_HIGHP_DEPTH");
+        }
+
         defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");
         defines.add("CULL_MODE", to_define_string(mCullMode));
 
@@ -548,6 +551,12 @@ void VBufferSW::enableMotionBlur(bool value) {
 void VBufferSW::setCullMode(RasterizerState::CullMode mode) {
     if(mCullMode == mode) return;
     GBufferBase::setCullMode(mode);
+    mDirty = true;
+}
+
+void VBufferSW::setHighpDepth(bool state) {
+    if(mUseD64 == state) return;
+    mUseD64 = state;
     mDirty = true;
 }
 

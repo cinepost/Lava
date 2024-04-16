@@ -1515,7 +1515,7 @@
         }
         parm {
             name    "lv_primary_raygen_better_aa"
-            label   "Better Anti-Aliasing"
+            label   "Per-Pixel Anti-Aliasing"
             type    toggle
             default { "0" }
             hidewhen "{ lv_primary_raygen_type != hwraster || lv_primary_raygen_type != swraster }"

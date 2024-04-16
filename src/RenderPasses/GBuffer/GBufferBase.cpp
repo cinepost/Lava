@@ -171,6 +171,8 @@ void GBufferBase::updateFrameDim(const uint2 frameDim) {
 
     // Update sample generator for camera jitter.
     //if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+
+    mDirty = true;
 }
 
 void GBufferBase::updateSamplePattern() {

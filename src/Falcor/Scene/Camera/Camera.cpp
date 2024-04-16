@@ -229,14 +229,14 @@ void Camera::calculateCameraParameters() const {
 		auto& xform = mXformList[i];
 
 		if (mEnablePersistentViewMat) {
-			LLOG_WRN << "Camera persistent view matrix";
+			LLOG_TRC << "Camera persistent view matrix";
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
 			xform.cameraU = glm::normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
 			xform.cameraV = glm::normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
 			xform.cameraW = -glm::normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
 		} else {
-			LLOG_WRN << "Camera view matrix from pos, up, target";
+			LLOG_TRC << "Camera view matrix from pos, up, target";
 			xform.viewMat = glm::lookAt(mPosW, mTarget, mUp);
 			// Ray tracing related vectors
 			xform.cameraW = glm::normalize(mTarget - mPosW); // dir

@@ -35,8 +35,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     uint2 pixel = dispatchThreadId.xy;
     if (any(pixel >= gVBufferRT.frameDim)) return;
 
-    GpuTimer timer;
-    gVBufferRT.beginTime(timer);
+    //GpuTimer timer;
+    //gVBufferRT.beginTime(timer);
 
     const Ray ray = gVBufferRT.generateRay(pixel);
 
@@ -51,5 +51,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     gVBufferRT.writeAux(pixel, ray);
 
-    gVBufferRT.endTime(pixel, timer);
+    //gVBufferRT.endTime(pixel, timer);
 }

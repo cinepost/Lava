@@ -64,6 +64,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		virtual void setCullMode(RasterizerState::CullMode mode) override;
 		void setCullMode(const std::string& mode_str);
 		void setPerPixelJitter(bool value);
+		
+		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
 		void enableDepthOfField(bool value);
@@ -91,10 +93,10 @@ class PASS_API VBufferSW : public GBufferBase {
 		uint32_t mSampleNumber = 0;
 
 		bool mUsePerPixelJitter = true;
-		bool mUseD64 = true;
+		bool mUseD64 = false;
 		bool mUseCompute = true;
 		bool mUseDOF = true;                						///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
-		bool mUseMotionBlur = true;
+		bool mUseMotionBlur = false;
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 

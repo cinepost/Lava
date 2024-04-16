@@ -172,8 +172,6 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 		*/
 		DefineList& add(const std::string& name, const std::string& val = "") { (*this)[name] = val; return *this; }
 
-		DefineList& add(const std::string& name, bool var) { (*this)[name] = var ? "1" : "0"; return *this; }
-
 		/** Removes a macro definition. If the macro doesn't exist, the call will be silently ignored.
 			\param[in] name The name of macro.
 			\return The updated list of macro definitions.

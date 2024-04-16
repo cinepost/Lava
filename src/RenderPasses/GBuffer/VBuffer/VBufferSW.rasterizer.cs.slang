@@ -69,8 +69,8 @@ groupshared StaticVertexData    vertex_data[MESHLET_MAX_VERTICES_COUNT];
 
 groupshared float4              pp_positions[PP_AXIS_SIZE * PP_AXIS_SIZE][MESHLET_MAX_VERTICES_COUNT];
 
-#if USE_D64
-groupshared double      z64pos[MESHLET_MAX_VERTICES_COUNT];
+#if defined(USE_HIGHP_DEPTH)
+groupshared double              z64pos[MESHLET_MAX_VERTICES_COUNT];
 #endif
 
 RWStructuredBuffer<uint32_t>    gIndicesBuffer;
@@ -112,20 +112,10 @@ void rasterizeMicroTriangle(float3 pt0, float3 pt1, float3 pt2, float2 min_p, fl
 }
 
 void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
-#if COMPUTE_MOTION_BLUR
-
-    gScene.getWorldMatrix(instanceID, )
-    float4 pt0 = transformPointToScreen(mul(float4(vertex_data[pi0].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
-    float4 pt1 = transformPointToScreen(mul(float4(vertex_data[pi1].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
-    float4 pt2 = transformPointToScreen(mul(float4(vertex_data[pi2].position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
-    
-#else
     float4 pt0 = positions[pi0], pt1 = positions[pi1], pt2 = positions[pi2];
 
     // near-far planes rejection
     [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
-#endif
-
 
     float4 pt10 = pt1 - pt0;
     float4 pt20 = pt2 - pt0;
@@ -151,7 +141,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
     int2 bb_min = int2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
     int2 bb_max = int2(ceil(max(max(pt0.x + c0, pt1.x + c1), pt2.x + c2) + jitterBound.x), ceil(max(max(pt0.y + c0, pt1.y + c1), pt2.y + c2) + jitterBound.y));
 
-    if((bb_max.x < 0) || (bb_max.y < 0) || (bb_min.x > (gVBufferSW.frameDim.x-2)) || (bb_min.y > (gVBufferSW.frameDim.y-2))) return;
+    //if((bb_max.x < 0) || (bb_max.y < 0) || (bb_min.x > (gVBufferSW.frameDim.x-2)) || (bb_min.y > (gVBufferSW.frameDim.y-2))) return;
 
     uint2 bb_min_u = uint2(clamp(bb_min, int2(0), int2(gVBufferSW.frameDim - int2(1))));
     uint2 bb_max_u = uint2(clamp(bb_max, int2(0), int2(gVBufferSW.frameDim - int2(1))));
@@ -187,7 +177,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
             
             if( uv.x < 0.) continue;
 
-#if USE_D64
+#if defined(USE_HIGHP_DEPTH)
             double z0 = z64pos[pi0], z1 = z64pos[pi1], z2 = z64pos[pi2];
             double z = (z1 - z0) * uv.x + (z2 - z0) * uv.y + z0;
 #else
@@ -195,7 +185,8 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
 #endif
             if(z < 0.0f || z > 1.0) continue;
 
-#if USE_D64
+#if defined(USE_HIGHP_DEPTH)
+
             const uint64_t depth_value = z * UINT64_MAX;
             const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;       
             [[branch]] if ( depth_value < gLocalDepthBuffer.InterlockedMinU64(idx, depth_value)) {
@@ -279,15 +270,12 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
         StaticVertexData v = gScene.getVertex(vertexOffset);
         vertex_data[vi0] = v;
-#if USE_D64
+#if defined(USE_HIGHP_DEPTH)
         double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
         z64pos[vi0] = pS.z;
-#else
-#if COMPUTE_MOTION_BLUR
-        //float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
+        positions[vi0] = float4(pS);
 #else
         positions[vi0] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
 #endif
     }
 
@@ -297,15 +285,12 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
         StaticVertexData v = gScene.getVertex(vertexOffset);
         vertex_data[vi1] = v;
-#if USE_D64
+#if defined(USE_HIGHP_DEPTH)
         double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
         z64pos[vi1] = pS.z;
-#else
-#if COMPUTE_MOTION_BLUR
-        //float4 pS = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz, gVBufferSW.rnd.x);
+        positions[vi1] = float4(pS);
 #else
         positions[vi1] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
 #endif
         
     }

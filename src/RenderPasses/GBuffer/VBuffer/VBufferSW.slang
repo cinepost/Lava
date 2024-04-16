@@ -67,7 +67,7 @@ RWTexture2D<uint>       gTime;      // Timing debug buffer
 #define USE_ALPHA_TEST false
 #endif
 
-#if !defined(USE_SUBDIVISIONS) && !is_valid(gNormals)
+#if !defined(USE_SUBDIVISIONS)
 #define USE_SUBDIVISIONS false
 #endif
 
@@ -108,7 +108,7 @@ struct VBufferSW {
     }
 
     void writeMiss(uint2 pixelPos) {
-        gVBuffer[pixelPos] = uint4(0);
+        gVBuffer[pixelPos] = {};
 
 #if is_valid(gDepth)          
         gDepth[pixelPos] = 1.f;

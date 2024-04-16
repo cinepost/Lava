@@ -149,7 +149,7 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     const float2 gradX = ddx_fine(vsOut.texC); ///< Gradient of texture coordinate in the screen-space X direction
     const float2 gradY = ddy_fine(vsOut.texC); ///< Gradient of texture coordiante in teh screen-space Y direction
 
-    const uint materialID = vsOut.materialID;
+    uint materialID = vsOut.materialID;
 
     TriangleHit triangleHit;
     triangleHit.instanceID = vsOut.instanceID;

@@ -129,7 +129,7 @@ void VBufferRT::parseDictionary(const Dictionary& dict) {
         if (key == kUseCompute) mUseCompute = value;
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
-        else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value))
+        else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -231,7 +231,6 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     ShaderVar var = mpComputePass->getRootVar();
     setShaderData(var, renderData);
 
-    LLOG_WRN << "Execute VBufferRT compute pass";
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 
     mDirty = false;
