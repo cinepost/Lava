@@ -40,7 +40,9 @@ namespace
     const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.cs.slang";
 
     // Scripting options.
+    const char kPerPixelJitterRaster[] = "per_pixel_jitter";
     const char kUseCompute[] = "useCompute";
+    const char kUseMotionBlur[] = "useMotionBlur";
     const char kUseDOF[] = "useDOF";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
@@ -114,8 +116,22 @@ Dictionary VBufferRT::getScriptingDictionary() {
     Dictionary dict = GBufferBase::getScriptingDictionary();
     dict[kUseCompute] = mUseCompute;
     dict[kUseDOF] = mUseDOF;
+    dict[kPerPixelJitterRaster] = mUsePerPixelJitter;
+    dict[kUseMotionBlur] = mUseMotionBlur;
 
     return dict;
+}
+
+void VBufferRT::parseDictionary(const Dictionary& dict) {
+    GBufferBase::parseDictionary(dict);
+
+    for (const auto& [key, value] : dict) {
+        if (key == kUseCompute) mUseCompute = value;
+        else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
+        else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
+        else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value))
+        // TODO: Check for unparsed fields, including those parsed in base classes.
+    }
 }
 
 void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -191,7 +207,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     // Create compute pass.
-    if (!mpComputePass) {
+    if (!mpComputePass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -217,12 +233,16 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     LLOG_WRN << "Execute VBufferRT compute pass";
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
+
+    mDirty = false;
 }
 
 Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const {
     Program::DefineList defines;
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+    defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");
+    defines.add("USE_MBLUR", mUseMotionBlur ? "1" : "0");
 
     // Setup ray flags.
     RayFlags rayFlags = RayFlags::None;
@@ -258,12 +278,20 @@ VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 }
 
-void VBufferRT::parseDictionary(const Dictionary& dict) {
-    GBufferBase::parseDictionary(dict);
+void VBufferRT::setPerPixelJitter(bool value) {
+    if (mUsePerPixelJitter == value) return;
+    mUsePerPixelJitter = value;
+    mDirty = true;
+}
 
-    for (const auto& [key, value] : dict) {
-        if (key == kUseCompute) mUseCompute = value;
-        else if (key == kUseDOF) mUseDOF = value;
-        // TODO: Check for unparsed fields, including those parsed in base classes.
-    }
+void VBufferRT::enableDepthOfField(bool value) {
+    if(mUseDOF == value) return;
+    mUseDOF = value;
+    mDirty = true;
+}
+
+void VBufferRT::enableMotionBlur(bool value) {
+    if(mUseMotionBlur == value) return;
+    mUseMotionBlur = value;
+    mDirty = true;
 }

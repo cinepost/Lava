@@ -43,8 +43,18 @@ RWTexture2D<uint> gTime;
 #error "Not all defines are set!"
 #endif
 
+#if !defined(USE_PP_JITTER)
+#define USE_PP_JITTER false
+#endif
+
+#if !defined(USE_AA)
+#define USE_AA true
+#endif
+
 struct VBufferRT {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
+    static const bool kUsePerPixelJitter = USE_PP_JITTER;
+    static const bool kUseAA = USE_AA;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
 
@@ -52,11 +62,20 @@ struct VBufferRT {
     uint frameCount;
 
     Ray generateRay(uint2 pixel) {
+        SampleGenerator sg = SampleGenerator(pixel, frameCount);
+
         if (kComputeDepthOfField) {
-            SampleGenerator sg = SampleGenerator(pixel, frameCount);
-            return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg));
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg));
+            } else {
+                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), kUseAA);
+            }
         } else {
-            return gScene.camera.computeRayPinhole(pixel, frameDim);
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayPinhole(pixel, frameDim, sampleNext2D(sg));
+            } else {
+                return gScene.camera.computeRayPinhole(pixel, frameDim, kUseAA);
+            }
         }
     }
 

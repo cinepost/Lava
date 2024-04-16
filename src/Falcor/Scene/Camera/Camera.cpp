@@ -260,7 +260,7 @@ void Camera::calculateCameraParameters() const {
 	glm::mat4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
+		mData.jitterX, mData.jitterY, 0.0f, 1.0f);
 
 	// DOF matrix
 	/*

@@ -320,8 +320,6 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
 void AnimationController::uploadWorldMatrices(bool uploadAll) {
     if (mGlobalMatrixLists.empty()) return;
 
-    updateWorldMatrices(true);
-
     assert(mGlobalMatrixLists.size() == mInvTransposeGlobalMatrixLists.size());
 
     size_t totalMatricesCount = 0;

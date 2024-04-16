@@ -63,7 +63,7 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		virtual void setCullMode(RasterizerState::CullMode mode) override;
 		void setCullMode(const std::string& mode_str);
-		void setPerPixelJitterRaster(bool value);
+		void setPerPixelJitter(bool value);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
 		void enableDepthOfField(bool value);

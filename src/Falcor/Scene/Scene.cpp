@@ -1552,7 +1552,6 @@ bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& 
 }
 
 Scene::UpdateFlags Scene::updateSelectedCamera(bool forceUpdate) {
-    return UpdateFlags::None;
     auto camera = mCameras[mSelectedCamera];
 
     if (forceUpdate || (camera->hasAnimation() && camera->isAnimated())) {
@@ -2331,10 +2330,11 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 
                         assert(nodeID < globalMatrixLists.size());
                         static const std::vector<glm::mat4> defaultList = {glm::identity<glm::mat4>()};
-                        if (globalMatrixLists[nodeID] != defaultList) {
+                        const auto& transformList = globalMatrixLists[nodeID];
+                        if (transformList != defaultList) {
                             // Get the GPU address of the transform in row-major format.
                             desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + inst.globalMatrixOffset * 64ull;
-                            if (glm::determinant(globalMatrixLists[nodeID][0]) < 0.f) frontFaceCW = !frontFaceCW;
+                            if (glm::determinant(transformList[0]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }
                     triangleWindings |= frontFaceCW ? 1 : 2;

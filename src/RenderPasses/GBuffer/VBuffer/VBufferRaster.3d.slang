@@ -86,7 +86,10 @@ VBufferVSOut vsMain(VSIn vsIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
-    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)gScene.camera.getViewProjMatJittered());
+    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)gScene.camera.getViewProjMat());
+
+    vsOut.posH.x += 2.f * gScene.camera.data.jitterX * vsOut.posH.w;
+    vsOut.posH.y += 2.f * gScene.camera.data.jitterY * vsOut.posH.w;
     
     const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);

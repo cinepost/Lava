@@ -135,7 +135,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseSubdivisions) enableSubdivisions(static_cast<bool>(value));
         else if (key == kUseDisplacement) enableDisplacement(static_cast<bool>(value));
         else if (key == kUseD64) mUseD64 = static_cast<bool>(value);
-        else if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
+        else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
@@ -527,7 +527,7 @@ void VBufferSW::enableDisplacement(bool value) {
     mDirty = true;
 }
 
-void VBufferSW::setPerPixelJitterRaster(bool value) {
+void VBufferSW::setPerPixelJitter(bool value) {
     if (mUsePerPixelJitter == value) return;
     mUsePerPixelJitter = value;
     mDirty = true;

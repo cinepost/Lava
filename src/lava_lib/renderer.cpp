@@ -310,6 +310,9 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	if( primaryRaygenType == std::string("compute")) {
 
+		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+
 		// Compute raytraced (rayquery) vbuffer generator
 		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
