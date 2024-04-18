@@ -94,7 +94,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Check for scene changes.
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged) || mDirty)
     {
         recreatePrograms();
     }
@@ -241,7 +241,12 @@ Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) co
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
     defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");
-    defines.add("USE_MBLUR", mUseMotionBlur ? "1" : "0");
+    
+    if(mUseMotionBlur) {
+        defines.add("COMPUTE_MOTION_BLUR", "1");
+    } else {
+        defines.remove("COMPUTE_MOTION_BLUR");
+    }
 
     // Setup ray flags.
     RayFlags rayFlags = RayFlags::None;

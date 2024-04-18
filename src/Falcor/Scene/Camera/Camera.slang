@@ -31,10 +31,15 @@ import Utils.Math.MathHelpers;
 
 
 CameraXformData lerp(CameraXformData lhs, CameraXformData rhs, float c) {
-    float _c = saturate(c);
+    const float k = clamp(c, 0.f, 1.f);
+    const float ik = 1.f - k;
     CameraXformData result;
 
-    result.viewProjMat = lhs.viewProjMat * c + rhs.viewProjMat * (1.0 - c);
+    result.viewInvMat = lhs.viewInvMat * k + rhs.viewInvMat * ik;
+    result.viewProjMat = lhs.viewProjMat * k + rhs.viewProjMat * ik;
+    result.cameraU = lhs.cameraU * k + rhs.cameraU * ik;
+    result.cameraV = lhs.cameraV * k + rhs.cameraV * ik;
+    result.cameraW = lhs.cameraW * k + rhs.cameraW * ik;
 
     return result;
 }
@@ -57,21 +62,22 @@ struct Camera {
 
     // Time dependent functions
 
-    CameraXformData getXformData(float t) {
-        if(xformListBufferSize == 0) return xform;
-        
-        float _t = saturate(t);
-        float fidx = _t * (xformListBufferSize - 1);
+    CameraXformData getXformData(float tj) {
+        float k = clamp(tj, 0.f, 1.f);
+
+        if(xformListBufferSize == 0 || k == 0.f) return xform;
+
+        float fidx = k * (xformListBufferSize - 1);
         uint idx_l = floor(fidx);
         uint idx_h = ceil(fidx);
-        return lerp(xformListBuffer[idx_l], xformListBuffer[idx_h], _t);
+        return lerp(xformListBuffer[idx_l], xformListBuffer[idx_h], k);
     }
 
-    float3 getPosW(float t) { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
+    //float3 getPosW(float t) { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
     
-    float4x4 getViewProjMat(float t) { return getXformData(t).viewProjMat; }
+    //float4x4 getViewProjMat(float t) { return getXformData(t).viewProjMat; }
     
-    float4x4 getViewProjMatNoJitter(float t) { return getXformData(t).viewProjMat; }
+    //float4x4 getViewProjMatNoJitter(float t) { return getXformData(t).viewProjMat; }
 
     float4 getBackgroundColor() { return data.backgroundColor; }
 
@@ -83,17 +89,8 @@ struct Camera {
         \return Returns the camera ray.
     */
     Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true) {
-        Ray ray;
-
-        // Compute the normalized ray direction assuming a pinhole camera.
-        ray.origin = getPosW();
-        ray.dir = normalize(computeNonNormalizedRayDirPinhole(pixel, frameDim, applyJitter));
-
-        float invCos = 1.f / dot(normalize(xform.cameraW), ray.dir);
-        ray.tMin = data.nearZ * invCos;
-        ray.tMax = data.farZ * invCos;
-
-        return ray;
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeRayPinhole(pixel, frameDim, rnd);
     }
 
     Ray computeRayPinhole(uint2 pixel, uint2 frameDim, float2 rnd) {
@@ -118,26 +115,19 @@ struct Camera {
         \return Returns the non-normalized ray direction
     */
     float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true) {
-        // Compute sample position in screen space in [0,1] with origin at the top-left corner.
-        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim;
-        if (applyJitter) p += float2(-data.jitterX, data.jitterY);
-        float2 ndc = float2(2, -2) * p + float2(-1, 1);
-
-        // Compute the non-normalized ray direction assuming a pinhole camera.
-        return ndc.x * xform.cameraU + ndc.y * xform.cameraV + xform.cameraW;
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeNonNormalizedRayDirPinhole(pixel, frameDim, rnd);
     }
 
     float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim, float2 rnd) {
         // Compute sample position in screen space in [0,1] with origin at the top-left corner.
-        // Variable rnd offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + rnd) / frameDim;
+        // Variable rnd [0,1] offsets the sample by +-0.5 pixels from the pixel center.
+        float2 p = (float2(pixel) + rnd) / frameDim;
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
         // Compute the non-normalized ray direction assuming a pinhole camera.
         return ndc.x * xform.cameraU + ndc.y * xform.cameraV + xform.cameraW;
     }
-
 
     /** Computes a camera ray for a given pixel assuming a thin-lens camera model.
         The camera jitter is taken into account to compute the sample position on the image plane.
@@ -147,12 +137,16 @@ struct Camera {
         \return Returns the camera ray.
     */
     Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u, bool applyJitter = true) {
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeRayThinlens(pixel, frameDim, u, rnd);
+    }
+
+    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u, float2 rnd) {
         Ray ray;
 
         // Sample position in screen space in [0,1] with origin at the top-left corner.
-        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim;
-        if (applyJitter) p += float2(-data.jitterX, data.jitterY);
+        // Variable rnd [0,1] offsets the sample by +-0.5 pixels from the pixel center.
+        float2 p = (float2(pixel) + rnd) / frameDim;
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
         // Compute the normalized ray direction assuming a thin-lens camera.
@@ -170,23 +164,73 @@ struct Camera {
         return ray;
     }
 
-    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u, float2 rnd) {
+    // Time jittered versions
+
+    Ray computeRayPinholeMB(uint2 pixel, uint2 frameDim, float tj, bool applyJitter = true) {
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeRayPinholeMB(pixel, frameDim, rnd, tj);
+    }
+
+    Ray computeRayPinholeMB(uint2 pixel, uint2 frameDim, float2 rnd, float tj) {
+        Ray ray;
+
+        CameraXformData xform_tj = getXformData(tj);
+
+        // Compute the normalized ray direction assuming a pinhole camera.
+        ray.origin = xform_tj.getPosW();
+
+        float2 p = (float2(pixel) + rnd) / frameDim;
+        float2 ndc = float2(2, -2) * p + float2(-1, 1);
+        ray.dir = ndc.x * xform_tj.cameraU + ndc.y * xform_tj.cameraV + xform_tj.cameraW;
+
+        float invCos = 1.f / dot(normalize(xform_tj.cameraW), ray.dir);
+        ray.tMin = data.nearZ * invCos;
+        ray.tMax = data.farZ * invCos;
+
+        return ray;
+    }
+
+    float3 computeNonNormalizedRayDirPinholeMB(uint2 pixel, uint2 frameDim, float tj, bool applyJitter = true) {
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeNonNormalizedRayDirPinholeMB(pixel, frameDim, rnd, tj);
+    }
+
+    float3 computeNonNormalizedRayDirPinholeMB(uint2 pixel, uint2 frameDim, float2 rnd, float tj) {
+        // Compute sample position in screen space in [0,1] with origin at the top-left corner.
+        // Variable rnd [0,1] offsets the sample by +-0.5 pixels from the pixel center.
+        float2 p = (float2(pixel) + rnd) / frameDim;
+        float2 ndc = float2(2, -2) * p + float2(-1, 1);
+
+        CameraXformData xform_tj = getXformData(tj);
+
+        // Compute the non-normalized ray direction assuming a pinhole camera.
+        return ndc.x * xform_tj.cameraU + ndc.y * xform_tj.cameraV + xform_tj.cameraW;
+    }
+
+    Ray computeRayThinlensMB(uint2 pixel, uint2 frameDim, float2 u, float tj, bool applyJitter = true) {
+        const float2 rnd = applyJitter ? (float2(frameDim) * (float2(-data.jitterX, data.jitterY)) + float2(0.5)) : float2(0.5f, 0.5f);
+        return computeRayThinlensMB(pixel, frameDim, u, rnd, tj);
+    }
+
+    Ray computeRayThinlensMB(uint2 pixel, uint2 frameDim, float2 u, float2 rnd, float tj) {
         Ray ray;
 
         // Sample position in screen space in [0,1] with origin at the top-left corner.
-        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + rnd) / frameDim;
+        // Variable rnd [0,1] offsets the sample by +-0.5 pixels from the pixel center.
+        float2 p = (float2(pixel) + rnd) / frameDim;
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
+        CameraXformData xform_tj = getXformData(tj);
+
         // Compute the normalized ray direction assuming a thin-lens camera.
-        ray.origin = getPosW();
-        ray.dir = ndc.x * xform.cameraU + ndc.y * xform.cameraV + xform.cameraW;
+        ray.origin = xform_tj.getPosW();
+        ray.dir = ndc.x * xform_tj.cameraU + ndc.y * xform_tj.cameraV + xform_tj.cameraW;
         float2 apertureSample = sample_disk(u); // Sample lies in the unit disk [-1,1]^2
         float3 rayTarget = ray.origin + ray.dir;
-        ray.origin += data.apertureRadius * (apertureSample.x * normalize(xform.cameraU) + apertureSample.y * normalize(xform.cameraV));
+        ray.origin += data.apertureRadius * (apertureSample.x * normalize(xform_tj.cameraU) + apertureSample.y * normalize(xform_tj.cameraV));
         ray.dir = normalize(rayTarget - ray.origin);
 
-        float invCos = 1.f / dot(normalize(xform.cameraW), ray.dir);
+        float invCos = 1.f / dot(normalize(xform_tj.cameraW), ray.dir);
         ray.tMin = data.nearZ * invCos;
         ray.tMax = data.farZ * invCos;
 

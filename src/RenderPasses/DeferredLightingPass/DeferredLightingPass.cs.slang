@@ -212,7 +212,6 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
     #endif
 }
 
-//float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, TriangleHit triangleHit, ShadingData sd, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, const uint maxRayLevel){
 
 float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData rayData, TriangleHit triangleHit, ShadingData sd, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, const uint maxRayLevel){
 
@@ -230,9 +229,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     float3 rayOrigin = sd.posW;
     float3 rayShadowOrigin = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
-
-    // Face forwad interpolated normal
-    //sd.frame.N = faceforward(sd.frame.N, rayData.dir, geometryFaceNormalW);
 
     [[branch ]] 
     if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
@@ -499,7 +495,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                         if(!light.isDeltaLight()) {
                             AnalyticLightSample ls;
                             if (intersectLight(sd.posW, rayData.dir, light, ls)) {
-                                //surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier );
+                                surfaceColor += rayData.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier );
                             }
                         }
                     }

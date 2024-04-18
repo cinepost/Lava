@@ -59,10 +59,6 @@ RWTexture2D<float4>     gAUX;       // Just a four channel auxiliary debug buffe
 RWTexture2D<uint>       gTime;      // Timing debug buffer
 
 
-#if !defined(COMPUTE_DEPTH_OF_FIELD) 
-#define COMPUTE_DEPTH_OF_FIELD false
-#endif
-
 #if !defined(USE_ALPHA_TEST)
 #define USE_ALPHA_TEST false
 #endif
@@ -72,7 +68,6 @@ RWTexture2D<uint>       gTime;      // Timing debug buffer
 #endif
 
 struct VBufferSW {
-    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
 

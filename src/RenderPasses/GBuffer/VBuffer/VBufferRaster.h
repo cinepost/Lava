@@ -50,8 +50,9 @@ class PASS_API VBufferRaster : public GBufferBase {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
-    VBufferRaster& setHighpDepth(bool state);
-    VBufferRaster& setPerPixelJitterRaster(bool state);
+    void setHighpDepth(bool state);
+    void setPerPixelJitterRaster(bool state);
+    void enableMotionBlur(bool value);
 
   private:
     struct SubPass {
@@ -77,6 +78,9 @@ class PASS_API VBufferRaster : public GBufferBase {
     Texture::SharedPtr            mpTestTexture;
 
     bool mHighpDepthEnabled       = false;
+    bool mUseMotionBlur           = false;
+
+    uint32_t mSampleNumber        = 0;
 
     // Quad view rendering (fake per-pixel jitter)
     bool mPerPixelJitterRaster    = false;

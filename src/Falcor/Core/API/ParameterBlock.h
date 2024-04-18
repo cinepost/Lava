@@ -63,35 +63,35 @@ public:
 
     /** Get a shader variable that points to the root/contents of the parameter block.
     */
-    inline ShaderVar getRootVar() const {
+    ShaderVar getRootVar() const {
         return std::shared_ptr<T>::get()->getRootVar();
     }
 
     /** Get a shader variable that points at the field with the given `name`.
         This is an alias for `getRootVar()[name]`.
     */
-    inline ShaderVar operator[](const std::string& name) const {
+    ShaderVar operator[](const std::string& name) const {
         return getRootVar()[name];
     }
 
     /** Get a shader variable that points at the field with the given `name`.
         This is an alias for `getRootVar()[name]`.
     */
-    inline ShaderVar operator[](const char* name) const {
+    ShaderVar operator[](const char* name) const {
         return getRootVar()[name];
     }
 
     /** Get a shader variable that points at the field/element with the given `index`.
         This is an alias for `getRootVar()[index]`.
     */
-    inline ShaderVar operator[](size_t index) const {
+    ShaderVar operator[](size_t index) const {
         return getRootVar()[index];
     }
 
     /** Get a shader variable that points at the field/element with the given `offset`.
         This is an alias for `getRootVar()[offset]`.
     */
-    inline ShaderVar operator[](UniformShaderVarOffset offset) const {
+    ShaderVar operator[](UniformShaderVarOffset offset) const {
         return getRootVar()[offset];
     }
 };

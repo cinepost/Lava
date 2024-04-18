@@ -51,24 +51,17 @@ RWTexture2D<uint> gTime;
 #define USE_AA true
 #endif
 
-#if !defined(USE_MBLUR)
-#define USE_MBLUR false
-#endif
-
 struct VBufferRT {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUsePerPixelJitter = USE_PP_JITTER;
     static const bool kUseAA = USE_AA;
-    static const bool kComputeMotionBlur = USE_MBLUR;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
 
     uint2 frameDim;
     uint frameCount;
 
-    Ray generateRay(uint2 pixel) {
-        SampleGenerator sg = SampleGenerator(pixel, frameCount);
-
+    Ray generateRay<S : ISampleGenerator>(uint2 pixel, inout S sg) {
         if (kComputeDepthOfField) {
             if(kUsePerPixelJitter && kUseAA) {
                 return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg));
@@ -80,6 +73,24 @@ struct VBufferRT {
                 return gScene.camera.computeRayPinhole(pixel, frameDim, sampleNext2D(sg));
             } else {
                 return gScene.camera.computeRayPinhole(pixel, frameDim, kUseAA);
+            }
+        }
+    }
+
+    Ray generateRayMB<S : ISampleGenerator>(uint2 pixel, inout S sg) {
+        const float tj = sampleNext1D(sg);  
+
+        if (kComputeDepthOfField) {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg), tj);
+            } else {
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), tj, kUseAA);
+            }
+        } else {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, sampleNext2D(sg), tj);
+            } else {
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, tj, kUseAA);
             }
         }
     }

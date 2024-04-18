@@ -116,10 +116,8 @@ ShadingFrame computeShadingFrameFromBumpMap(const ShadingData sd, const float3 s
     \param[in] sd Shading data.
     \param[in,out] sf Shading frame that will be modified.
 */
-void flipShadingNormal(const ShadingData sd, inout ShadingFrame sf)
-{
-    if (!sd.frontFacing && sd.mtl.isDoubleSided())
-    {
+void flipShadingNormal(const ShadingData sd, inout ShadingFrame sf) {
+    if (!sd.frontFacing && sd.mtl.isDoubleSided()) {
         sf.N = -sf.N;
     }
 }
@@ -129,8 +127,7 @@ void flipShadingNormal(const ShadingData sd, inout ShadingFrame sf)
     \param[in] sd Shading data.
     \param[in,out] sf Shading frame that will be adjusted.
 */
-void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf)
-{
+void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf) {
     // Note: sd.V and Ng below always lie on the same side (as the front-facing flag is computed based on sd.V).
     // The shading normal sf.N may lie on either side depending on whether we're shading the front or back.
     // We orient Ns to lie on the same side as sd.V and Ng for the computations below.
@@ -160,8 +157,7 @@ void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf)
     \param[in] wo Outgoing direction in world space.
     \return True if wi/wo represent valid vectors for reflection.
 */
-bool isValidHemisphereReflection(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo)
-{
+bool isValidHemisphereReflection(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo) {
     // Check that wi/wo are in the upper hemisphere around the shading normal.
     if (min(wiLocal.z, woLocal.z) < kMinCosTheta) return false;
 
@@ -189,8 +185,7 @@ bool isValidHemisphereReflection(const ShadingData sd, const ShadingFrame sf, co
     \param[in] wo Outgoing direction in world space.
     \return True if wi/wo represent valid vectors for transmission.
 */
-bool isValidHemisphereTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo)
-{
+bool isValidHemisphereTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo) {
     // Check that wi/wo are in the upper/lower hemisphere around the shading normal.
     if (min(wiLocal.z, -woLocal.z) < kMinCosTheta) return false;
 

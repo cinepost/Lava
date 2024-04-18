@@ -413,13 +413,15 @@ void Camera::setShaderData(const ShaderVar& var) const {
 	var["data"].setBlob(mData);
 	var["xform"].setBlob(mXformList[0]);
 
+	bool reUploadBufferData = mDirty;
+
 	if(!mpXformListBuffer || (mpXformListBuffer->getElementCount() != mXformList.size())) {
+		reUploadBufferData = true;
 		mpXformListBuffer = Buffer::createStructured(mpDevice, sizeof(CameraXformData), (uint32_t)mXformList.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	}
 
 	var["xformListBufferSize"] = mpXformListBuffer ? mpXformListBuffer->getElementCount() : 0;
-
-	mpXformListBuffer->setBlob(mXformList.data(), 0, sizeof(CameraXformData) * mXformList.size());
+	if(reUploadBufferData) mpXformListBuffer->setBlob(mXformList.data(), 0, sizeof(CameraXformData) * mXformList.size());
   var["xformListBuffer"].setBuffer(mpXformListBuffer);
 }
 

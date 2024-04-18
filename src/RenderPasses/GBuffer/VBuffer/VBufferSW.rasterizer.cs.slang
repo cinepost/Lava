@@ -1,32 +1,7 @@
-/***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
- #
- # Redistribution and use in source and binary forms, with or without
- # modification, are permitted provided that the following conditions
- # are met:
- #  * Redistributions of source code must retain the above copyright
- #    notice, this list of conditions and the following disclaimer.
- #  * Redistributions in binary form must reproduce the above copyright
- #    notice, this list of conditions and the following disclaimer in the
- #    documentation and/or other materials provided with the distribution.
- #  * Neither the name of NVIDIA CORPORATION nor the names of its
- #    contributors may be used to endorse or promote products derived
- #    from this software without specific prior written permission.
- #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
- # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- **************************************************************************/
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
+
+import Scene.Camera.CameraData;
 
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
@@ -62,7 +37,7 @@ groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
 groupshared MeshletData meshlet;
 
-groupshared uint32_t            indices[MESHLET_MAX_PRIM_COUNT * 4];
+groupshared uint32_t            meshlet_indices[MESHLET_MAX_PRIM_COUNT * 4];
 groupshared uint                prim_ids[MESHLET_MAX_PRIM_COUNT];
 groupshared float4              positions[MESHLET_MAX_VERTICES_COUNT];
 groupshared StaticVertexData    vertex_data[MESHLET_MAX_VERTICES_COUNT];
@@ -80,39 +55,25 @@ RWStructuredBuffer<float>       gCocsBuffer;
 
 static const float2 jitterBound = float2(0.5f);
 
-void writeMicropolyPixel(uint3 pos, float2 texcoord, uint geometryInstanceIndex, uint primitiveIndex, uint meshletID) {
-    const uint64_t z64 = uint64_t(asuint(pos.z)) << 32;
-
-    const uint idx = (gVBufferSW.frameDim.x * pos.y + pos.x) << 3;
-    const uint64_t prim_value = z64 | primitiveIndex;
-    const uint tx = asuint(f32tof16(texcoord.x));
-    const uint ty = asuint(f32tof16(texcoord.y));
-    const uint64_t parm_value = (z64 | (tx << 16)) | ty;
-    const uint64_t inst_value = z64 | geometryInstanceIndex;
-
-    const uint64_t v = gLocalDepthBuffer.InterlockedMinU64(idx, prim_value);
-    
-    if ( prim_value < v) {
-        gVBufferSW.writeMeshletID(pos.xy, meshletID);
-        gVBufferSW.writeMicroPolyID(pos.xy, primitiveIndex);
-    }
-}
-
-
-void rasterizeMicroTriangle(float3 pt0, float3 pt1, float3 pt2, float2 min_p, float2 max_p) {
-    for(float y = min_p.y; y <= max_p.y; y += 1.0f) {
-        for(float x = min_p.x; x <= max_p.x; x += 1.0f) {
-            TriangleHit triangleHit = {};
-            //GeometryInstanceID instanceID;
-            triangleHit.primitiveIndex = 1;
-            triangleHit.barycentrics = float2(0.5f);
-            gVBufferSW.writeHit(uint2(x, y), HitInfo(triangleHit.pack()));
-        }
-    }
-}
-
 void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
-    float4 pt0 = positions[pi0], pt1 = positions[pi1], pt2 = positions[pi2];
+    // bound triangle
+    float4 pt0, pt1, pt2;
+
+#if defined(USE_HIGHP_DEPTH)
+    double4 pd0 = transformPointToScreenDouble(mul(double4(vertex_data[pi0].position, 1.0), worldMat).xyz);
+    double4 pd1 = transformPointToScreenDouble(mul(double4(vertex_data[pi1].position, 1.0), worldMat).xyz);
+    double4 pd2 = transformPointToScreenDouble(mul(double4(vertex_data[pi2].position, 1.0), worldMat).xyz);
+    z64pos[pi0] = pd0.z;
+    z64pos[pi1] = pd1.z;
+    z64pos[pi2] = pd2.z;
+    pt0 = float4(pd0);
+    pt1 = float4(pd1);
+    pt2 = float4(pd2);
+#else
+    pt0 = transformPointToScreen(mul(float4(vertex_data[pi0].position, 1.f), worldMat).xyz);
+    pt1 = transformPointToScreen(mul(float4(vertex_data[pi1].position, 1.f), worldMat).xyz);
+    pt2 = transformPointToScreen(mul(float4(vertex_data[pi2].position, 1.f), worldMat).xyz);
+#endif
 
     // near-far planes rejection
     [[branch]] if((pt0.z < 0.0f && pt1.z < 0.0f && pt2.z < 0.0f) || (pt0.z > 1.0f && pt1.z > 1.0f && pt2.z > 1.0f)) return;
@@ -120,7 +81,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
     float4 pt10 = pt1 - pt0;
     float4 pt20 = pt2 - pt0;
 
-#if !COMPUTE_DEPTH_OF_FIELD
+#if !defined(COMPUTE_DEPTH_OF_FIELD)
     float det = pt20.x * pt10.y - pt20.y * pt10.x;
     // CCW culling
     #if CULL_MODE == CULL_BACK
@@ -130,7 +91,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
     #endif
 #endif
 
-#if COMPUTE_DEPTH_OF_FIELD
+#if defined(COMPUTE_DEPTH_OF_FIELD)
     float c0 = abs(1.0f - gScene.camera.data.focalDistance / pt0.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
     float c1 = abs(1.0f - gScene.camera.data.focalDistance / pt1.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
     float c2 = abs(1.0f - gScene.camera.data.focalDistance / pt2.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
@@ -141,10 +102,12 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
     int2 bb_min = int2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
     int2 bb_max = int2(ceil(max(max(pt0.x + c0, pt1.x + c1), pt2.x + c2) + jitterBound.x), ceil(max(max(pt0.y + c0, pt1.y + c1), pt2.y + c2) + jitterBound.y));
 
-    //if((bb_max.x < 0) || (bb_max.y < 0) || (bb_min.x > (gVBufferSW.frameDim.x-2)) || (bb_min.y > (gVBufferSW.frameDim.y-2))) return;
+    if ((bb_max.x < 0 && bb_min.x < 0) || (bb_max.y < 0 && bb_min.y < 0) ||
+        (bb_max.x >= (gVBufferSW.frameDim.x) && bb_min.x >= (gVBufferSW.frameDim.x)) ||
+        (bb_max.y >= (gVBufferSW.frameDim.y) && bb_min.y >= (gVBufferSW.frameDim.y))) return;
 
-    uint2 bb_min_u = uint2(clamp(bb_min, int2(0), int2(gVBufferSW.frameDim - int2(1))));
-    uint2 bb_max_u = uint2(clamp(bb_max, int2(0), int2(gVBufferSW.frameDim - int2(1))));
+    uint2 bb_min_u = uint2(clamp(bb_min, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
+    uint2 bb_max_u = uint2(clamp(bb_max, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
 
     SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
 
@@ -158,7 +121,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
             float2 aaj = jitter.xy - float2(0.5);
             float3 pj0 = pt0.xyz + float3(aaj, .0), pj1 = pt1.xyz + float3(aaj, .0), pj2 = pt2.xyz + float3(aaj, .0);
 
-#if COMPUTE_DEPTH_OF_FIELD
+#if defined(COMPUTE_DEPTH_OF_FIELD)
             float2 coc_sample = sample_disk(jitter.zw); // range [-1, 1]
             
             pj0.xy += coc_sample * c0; 
@@ -260,43 +223,21 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     [[branch]] if(draw.drawCount == 0u) return;
 
-    /// Fetch and transform stage
+    /// Fetch stage
 
-    // Transform vertices
+    // Fetch vertex data
     const uint vi0 = thread_id;
     const uint vi1 = thread_id + THREADS_COUNT;
     if(vi0 < meshlet.vertexCount) {
-        uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi0];
-
-        StaticVertexData v = gScene.getVertex(vertexOffset);
-        vertex_data[vi0] = v;
-#if defined(USE_HIGHP_DEPTH)
-        double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
-        z64pos[vi0] = pS.z;
-        positions[vi0] = float4(pS);
-#else
-        positions[vi0] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
+        vertex_data[vi0] = gScene.getVertex(meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi0]);
     }
 
-    // Transform more vertices if needed
+    // Fetch more vertex data if needed
     if(vi1 < meshlet.vertexCount) {
-        uint vertexOffset = meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi1];
-
-        StaticVertexData v = gScene.getVertex(vertexOffset);
-        vertex_data[vi1] = v;
-#if defined(USE_HIGHP_DEPTH)
-        double4 pS = transformPointToScreenDouble(mul(double4(v.position, 1.0), worldMat).xyz);
-        z64pos[vi1] = pS.z;
-        positions[vi1] = float4(pS);
-#else
-        positions[vi1] = transformPointToScreen(mul(float4(v.position, 1.f), worldMat).xyz);
-#endif
-        
+        vertex_data[vi1] = gScene.getVertex(meshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + vi1]);        
     }
 
     GroupMemoryBarrierWithGroupSync();
-
 
     /// Rasterizing stage
     [[branch]]if(thread_id >= primCount) return;

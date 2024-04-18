@@ -29,6 +29,8 @@
 
 import Scene.Raster;
 import Utils.Math.MathHelpers;
+import Scene.Camera.CameraData;
+import Utils.Sampling.SampleGenerator;
 
 RasterizerOrderedTexture2D<float> gHighpDepth;
 
@@ -41,6 +43,7 @@ RasterizerOrderedTexture2D<PackedHitInfo> gVBuffer;
 
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    uint  sampleNumber;
 };
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -78,6 +81,14 @@ struct VBufferVSOut {
 #endif
 };
 
+int xorshift(int value) {
+    // Xorshift*32
+    // Based on George Marsaglia's work: http://www.jstatsoft.org/v08/i14/paper
+    value ^= value << 13;
+    value ^= value >> 17;
+    value ^= value << 5;
+    return value;
+}
 
 VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
@@ -86,12 +97,24 @@ VBufferVSOut vsMain(VSIn vsIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
-    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)gScene.camera.getViewProjMat());
+
+#if defined(COMPUTE_MOTION_BLUR)
+    const float tj = abs(frac(float(xorshift(sampleNumber)) / 3141.592653));
+    const CameraXformData xform = gScene.camera.getXformData(tj);
+    const float4x4 viewProjMat = xform.viewProjMat;
+#else
+    const float4x4 viewProjMat = gScene.camera.getViewProjMat();
+    
+#endif
+    
+    const float4x4 invProjMat = gScene.camera.data.invProjMat;
+
+    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)viewProjMat);
 
     vsOut.posH.x += 2.f * gScene.camera.data.jitterX * vsOut.posH.w;
     vsOut.posH.y += 2.f * gScene.camera.data.jitterY * vsOut.posH.w;
     
-    const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
+    const double4 viewP = mul(vsOut.posH, (double4x4)invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);

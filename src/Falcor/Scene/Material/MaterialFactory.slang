@@ -87,7 +87,7 @@ extension MaterialSystem
 
         sd.posW = v.posW;
         sd.uv = v.texC;
-        sd.V = viewDir;
+        sd.V = normalize(viewDir);
 
         // Compute shading frame based on the interpolated normal and given tangent (xyz) and sign (w).
         // We keep around the original tangent for later orthogonalization operations if valid, otherwise the invented tangent.

@@ -49,6 +49,7 @@ namespace {
     // Scripting options.
     const char kPerPixelJitterRaster[] = "per_pixel_jitter";
     const char kHighPrecisionDeph[] = "highp_depth";
+    const char kUseMotionBlur[] = "useMotionBlur";
 
     // Extra output channels.
     const ChannelList kVBufferExtraOutputChannels = {
@@ -62,7 +63,8 @@ void VBufferRaster::parseDictionary(const Dictionary& dict) {
 
     for (const auto& [key, value] : dict) {
         if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
-        if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
+        else if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
+        else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
     }
 }
 
@@ -225,6 +227,12 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         mRaster.pProgram->addDefine("is_valid_gHighpDepth", mpHighpDepth != nullptr ? "1" : "0");
         mRaster.pProgram->addDefine("is_valid_gTestTexture", mpTestTexture != nullptr ? "1" : "0");
 
+        if(mUseMotionBlur) {
+            mRaster.pProgram->addDefine("COMPUTE_MOTION_BLUR", "1");
+        } else {
+            mRaster.pProgram->removeDefine("COMPUTE_MOTION_BLUR");
+        }
+
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
         mRaster.pProgram->addDefines(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
@@ -253,6 +261,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             subPass.pFbo->attachDepthStencilTarget(subPass.pDepth);
             mRaster.pState->setFbo(subPass.pFbo);
             mRaster.pVars["PerFrameCB"]["gFrameDim"] = mQuarterFrameDim;
+            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
 
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
@@ -313,10 +322,6 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             mpFbo->attachDepthStencilTarget(pDepthInternal);
         
             mRaster.pState->setFbo(mpFbo); // Sets the viewport
-            mRaster.pVars["gVBuffer"] = pOutput;
-            mRaster.pVars["gHighpDepth"] = mpHighpDepth;
-            mRaster.pVars["gTestTexture"] = mpTestTexture;
-            mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
 
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
@@ -324,6 +329,12 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
                 mRaster.pVars[channel.texname] = pTex;
             }
         }
+
+        mRaster.pVars["gVBuffer"] = pOutput;
+        mRaster.pVars["gHighpDepth"] = mpHighpDepth;
+        mRaster.pVars["gTestTexture"] = mpTestTexture;
+        mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
+        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
 
         // Rasterize the scene.
         mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), mForceCullMode ? mCullMode : kDefaultCullMode);
@@ -392,18 +403,20 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
     }
 }
 
-VBufferRaster& VBufferRaster::setPerPixelJitterRaster(bool state) {
-    if(mPerPixelJitterRaster != state) {
-        mPerPixelJitterRaster = state;
-        mDirty = true;
-    }
-    return *this;
+void VBufferRaster::setPerPixelJitterRaster(bool state) {
+    if(mPerPixelJitterRaster == state) return;
+    mPerPixelJitterRaster = state;
+    mDirty = true;
 }
 
-VBufferRaster& VBufferRaster::setHighpDepth(bool state) {
-    if(mHighpDepthEnabled != state) {
-        mHighpDepthEnabled = state;
-        mDirty = true;
-    }
-    return *this;
+void VBufferRaster::setHighpDepth(bool state) {
+    if(mHighpDepthEnabled == state) return;
+    mHighpDepthEnabled = state;
+    mDirty = true;
+}
+
+void VBufferRaster::enableMotionBlur(bool value) {
+    if(mUseMotionBlur == value) return;
+    mUseMotionBlur = value;
+    mDirty = true;
 }

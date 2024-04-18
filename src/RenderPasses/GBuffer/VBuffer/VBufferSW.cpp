@@ -265,18 +265,32 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
         bool computeMotionBlur = mUseMotionBlur;
 
-        defines.add("COMPUTE_DEPTH_OF_FIELD", computeDOF ? "1" : "0");
-        defines.add("COMPUTE_MOTION_BLUR", computeMotionBlur ? "1" : "0");
-        defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-        defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
+        if(computeDOF) {
+            defines.add("COMPUTE_DEPTH_OF_FIELD", "1");
+        } else {
+            defines.remove("COMPUTE_DEPTH_OF_FIELD");
+        }
+
+        if(computeMotionBlur) {
+            defines.add("COMPUTE_MOTION_BLUR", "1");
+        } else {
+            defines.remove("COMPUTE_MOTION_BLUR");
+        }
 
         if(mUseD64) {
-            defines.add("USE_HIGHP_DEPTH", mUseD64 ? "1" : "0");
+            defines.add("USE_HIGHP_DEPTH", "1");
         } else {
             defines.remove("USE_HIGHP_DEPTH");
         }
 
-        defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");
+        if(mUsePerPixelJitter) {
+            defines.add("USE_PP_JITTER", "1");
+        } else {
+            defines.remove("USE_PP_JITTER");
+        }
+
+        defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+        defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
         defines.add("CULL_MODE", to_define_string(mCullMode));
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.

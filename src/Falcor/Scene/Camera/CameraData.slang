@@ -48,6 +48,10 @@ struct CameraXformData {
 
     float3   cameraW                = float3(1, 0, 0);      ///< Camera base vector W. Normalized it indicates the forward direction. The length is the camera focal distance.
     float    _pad2;
+
+    float3 getPosW() { 
+        return {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]}; 
+    }
 };
 
 struct CameraData {

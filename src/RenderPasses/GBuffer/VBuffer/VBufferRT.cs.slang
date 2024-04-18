@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Sampling.SampleGenerator;
 import Scene.RaytracingInline;
 import VBufferRT;
 
@@ -38,7 +39,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     //GpuTimer timer;
     //gVBufferRT.beginTime(timer);
 
-    const Ray ray = gVBufferRT.generateRay(pixel);
+    SampleGenerator sg = SampleGenerator(pixel, gVBufferRT.frameCount);
+
+#if defined(COMPUTE_MOTION_BLUR)
+    const Ray ray = gVBufferRT.generateRayMB(pixel, sg);
+#else
+    const Ray ray = gVBufferRT.generateRay(pixel, sg);
+#endif
 
     SceneRayQuery<VBufferRT::kUseAlphaTest> sceneRayQuery;
     HitInfo hit;
