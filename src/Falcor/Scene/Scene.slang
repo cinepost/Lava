@@ -211,6 +211,22 @@ struct Scene
         return loadWorldMatrix(matrixOffset);
     }
 
+    float4x4 getWorldMatrix(const GeometryInstanceID instanceID, float tj) {
+        const float k = clamp(tj, 0.f, 1.f);
+
+        const GeometryInstanceData instance = geometryInstances[instanceID.index];
+
+        if(instance.matrixCount < 2 || k == 0.f) return loadWorldMatrix(instance.globalMatrixOffset);
+
+        const float fidx = k * (instance.matrixCount - 1);
+        uint idx_l = floor(fidx);
+        uint idx_h = idx_l + 1;
+
+        float c = fidx - float(idx_l);
+
+        return loadWorldMatrix(instance.globalMatrixOffset + idx_l) * c + loadWorldMatrix(instance.globalMatrixOffset + idx_h) * (1.f - c);
+    }
+
     float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID) {
         uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
         return loadPrevWorldMatrix(matrixOffset);

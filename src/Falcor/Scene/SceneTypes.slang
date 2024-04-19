@@ -233,6 +233,10 @@ struct GeometryInstanceData {
     bool hasMultipleMaterials() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::HasMultipleMaterials) != 0;
     }
+
+    bool hasMultipleMatrices() CONST_FUNCTION {
+        return matrixCount > 1;
+    }
 };
 
 struct StaticVertexData {

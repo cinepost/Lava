@@ -94,12 +94,17 @@ VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
     const GeometryInstanceID instanceID = { vsIn.instanceID };
 
+    const float tj = abs(frac(float(xorshift(sampleNumber)) / 3141.592653));
+
+#if defined(COMPUTE_MOTION_BLUR)
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID, tj);
+#else
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-    
+#endif
+
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
 
 #if defined(COMPUTE_MOTION_BLUR)
-    const float tj = abs(frac(float(xorshift(sampleNumber)) / 3141.592653));
     const CameraXformData xform = gScene.camera.getXformData(tj);
     const float4x4 viewProjMat = xform.viewProjMat;
 #else
@@ -107,14 +112,12 @@ VBufferVSOut vsMain(VSIn vsIn) {
     
 #endif
     
-    const float4x4 invProjMat = gScene.camera.data.invProjMat;
-
     vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)viewProjMat);
 
     vsOut.posH.x += 2.f * gScene.camera.data.jitterX * vsOut.posH.w;
     vsOut.posH.y += 2.f * gScene.camera.data.jitterY * vsOut.posH.w;
     
-    const double4 viewP = mul(vsOut.posH, (double4x4)invProjMat);
+    const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);

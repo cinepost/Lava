@@ -423,8 +423,6 @@ void Camera::setShaderData(const ShaderVar& var) const {
 	var["xformListBufferSize"] = mpXformListBuffer ? mpXformListBuffer->getElementCount() : 0;
 	if(reUploadBufferData) mpXformListBuffer->setBlob(mXformList.data(), 0, sizeof(CameraXformData) * mXformList.size());
 
-	LLOG_WRN << "Camera mpXformListBuffer size " << mpXformListBuffer->getElementCount();
-
   var["xformListBuffer"].setBuffer(mpXformListBuffer);
 }
 

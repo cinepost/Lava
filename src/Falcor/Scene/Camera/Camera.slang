@@ -65,7 +65,7 @@ struct Camera {
     CameraXformData getXformData(float tj) {
         const float k = clamp(tj, 0.f, 1.f);
 
-        if(xformListBufferSize == 0 || k == 0.f) return xform;
+        if(xformListBufferSize < 2 || k == 0.f) return xform;
 
         const float fidx = k * (xformListBufferSize - 1);
         uint idx_l = floor(fidx);
