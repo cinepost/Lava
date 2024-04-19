@@ -90,6 +90,7 @@ class PASS_API VBufferRaster : public GBufferBase {
     ComputeVars::SharedPtr        mpCombineQuadsVars;
     ComputeState::SharedPtr       mpCombineQuadsState;
     CPUSampleGenerator::SharedPtr mpSampleGenerator;
+    CPUSampleGenerator::SharedPtr mpTJSampleGenerator;
 
     struct {
       GraphicsState::SharedPtr pState;

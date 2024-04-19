@@ -104,6 +104,7 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
     parseDictionary(dict);
 
     mpSampleGenerator = StratifiedSamplePattern::create(1024);
+    mpTJSampleGenerator = StratifiedSamplePattern::create(1024);
 
     // Create raster program
     Program::Desc desc;
@@ -261,7 +262,8 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             subPass.pFbo->attachDepthStencilTarget(subPass.pDepth);
             mRaster.pState->setFbo(subPass.pFbo);
             mRaster.pVars["PerFrameCB"]["gFrameDim"] = mQuarterFrameDim;
-            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
+            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+            mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
@@ -334,14 +336,16 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         mRaster.pVars["gHighpDepth"] = mpHighpDepth;
         mRaster.pVars["gTestTexture"] = mpTestTexture;
         mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
-        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
+        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+        mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
         // Rasterize the scene.
         mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), mForceCullMode ? mCullMode : kDefaultCullMode);
     }
 
     //mpTestTexture->captureToFile(0, 0, "/home/max/ztest.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
-
+    
+    mSampleNumber++;
     mDirty = false;
 }
 
