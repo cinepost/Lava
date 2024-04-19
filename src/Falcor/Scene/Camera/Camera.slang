@@ -63,14 +63,17 @@ struct Camera {
     // Time dependent functions
 
     CameraXformData getXformData(float tj) {
-        float k = clamp(tj, 0.f, 1.f);
+        const float k = clamp(tj, 0.f, 1.f);
 
         if(xformListBufferSize == 0 || k == 0.f) return xform;
 
-        float fidx = k * (xformListBufferSize - 1);
+        const float fidx = k * (xformListBufferSize - 1);
         uint idx_l = floor(fidx);
         uint idx_h = ceil(fidx);
-        return lerp(xformListBuffer[idx_l], xformListBuffer[idx_h], k);
+
+        float c = fidx - float(idx_l);
+
+        return lerp(xformListBuffer[idx_l], xformListBuffer[idx_h], c);
     }
 
     //float3 getPosW(float t) { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
