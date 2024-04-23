@@ -50,7 +50,8 @@ namespace {
     const char kPerPixelJitterRaster[] = "per_pixel_jitter";
     const char kHighPrecisionDeph[] = "highp_depth";
     const char kUseMotionBlur[] = "useMotionBlur";
-
+    const char kCullMode[] = "cullMode";
+    
     // Extra output channels.
     const ChannelList kVBufferExtraOutputChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
@@ -65,6 +66,7 @@ void VBufferRaster::parseDictionary(const Dictionary& dict) {
         if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
         else if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
+        else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
     }
 }
 
@@ -227,6 +229,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         mRaster.pProgram->addDefine("is_valid_gHighpDepth", mpHighpDepth != nullptr ? "1" : "0");
         mRaster.pProgram->addDefine("is_valid_gTestTexture", mpTestTexture != nullptr ? "1" : "0");
+        mRaster.pProgram->addDefine("CULL_MODE", GBufferBase::to_define_string(mCullMode));
 
         if(mUseMotionBlur) {
             mRaster.pProgram->addDefine("COMPUTE_MOTION_BLUR", "1");
@@ -423,4 +426,22 @@ void VBufferRaster::enableMotionBlur(bool value) {
     if(mUseMotionBlur == value) return;
     mUseMotionBlur = value;
     mDirty = true;
+}
+
+void VBufferRaster::setCullMode(RasterizerState::CullMode mode) {
+    if(mCullMode == mode) return;
+    GBufferBase::setCullMode(mode);
+    mDirty = true;
+}
+
+void VBufferRaster::setCullMode(const std::string& mode_str) {
+    RasterizerState::CullMode mode = RasterizerState::CullMode::Back;
+    if(mode_str == "back") {
+        mode = RasterizerState::CullMode::Back;
+    } else if(mode_str == "front") {  
+        mode = RasterizerState::CullMode::Front;
+    } else {
+        mode = RasterizerState::CullMode::None;
+    }
+    setCullMode(mode);
 }

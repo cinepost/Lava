@@ -50,6 +50,8 @@ class PASS_API VBufferRaster : public GBufferBase {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
+    virtual void setCullMode(RasterizerState::CullMode mode) override;
+    void setCullMode(const std::string& mode_str);
     void setHighpDepth(bool state);
     void setPerPixelJitterRaster(bool state);
     void enableMotionBlur(bool value);

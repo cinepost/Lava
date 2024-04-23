@@ -91,21 +91,6 @@ namespace {
     };
 };
 
-static inline const std::string& to_define_string(RasterizerState::CullMode mode) {
-    static const std::string kCullNone = "CULL_NONE";
-    static const std::string kCullFront = "CULL_FRONT";
-    static const std::string kCullBack = "CULL_BACK";
-
-    switch(mode) {
-        case RasterizerState::CullMode::Front:
-            return kCullFront;
-        case RasterizerState::CullMode::Back:
-            return kCullBack;
-        default:
-            return kCullNone;
-    }
-}
-
 VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferSW(pRenderContext->device(), dict));
 }
@@ -291,7 +276,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
-        defines.add("CULL_MODE", to_define_string(mCullMode));
+        defines.add("CULL_MODE", GBufferBase::to_define_string(mCullMode));
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.

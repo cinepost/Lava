@@ -19,6 +19,10 @@ import VBufferSW;
 #define MICROPOLY_MAX_BB_SIZE 8.f // 4x4 pixel micropoly
 #endif
 
+#ifndef MAX_LOD
+#define MAX_LOD 5
+#endif
+
 #define PP_AXIS_SIZE 2
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -55,7 +59,22 @@ RWStructuredBuffer<float>       gCocsBuffer;
 
 static const float2 jitterBound = float2(0.5f);
 
-void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool cullCCW) {
+static MicroTriangle micro_triangles[MAX_LOD * MAX_LOD];
+static uint prim_id;
+static uint micro_triangles_count = 0;
+
+void subdivideNaive(uint triangle_id, uint lod) {
+    MicroTriangle tri;
+
+    micro_triangles[0] = tri;
+    micro_triangles[1] = tri;
+    micro_triangles[2] = tri;
+    micro_triangles[3] = tri;
+
+    micro_triangles_count = 4;
+}
+
+void rasterizeTriangle(uint pi0, uint pi1, uint pi2, bool cullCCW) {
     // bound triangle
     float4 pt0, pt1, pt2;
 
@@ -162,7 +181,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
 #endif
                 TriangleHit triangleHit = {};
                 triangleHit.instanceID.index = instanceID.index;
-                triangleHit.primitiveIndex = primitiveIndex;
+                triangleHit.primitiveIndex = prim_id;
                 triangleHit.barycentrics = uv;   
 
                 uint2 pixelPos = uint2(x, y);
@@ -183,7 +202,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, uint primitiveIndex, bool c
 #endif
 
                 gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
-                gVBufferSW.writeMicroPolyID(pixelPos, primitiveIndex);
+                gVBufferSW.writeMicroPolyID(pixelPos, prim_id);
 
 #if is_valid(gDrawCount)
                 InterlockedAdd(gDrawCount[pixelPos], 1);
@@ -225,6 +244,8 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     /// Fetch stage
 
+    prim_id = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
+
     // Fetch vertex data
     const uint vi0 = thread_id;
     const uint vi1 = thread_id + THREADS_COUNT;
@@ -239,12 +260,19 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    /// Micro triangles generation
+
+    const uint lod = 2;
+    subdivideNaive(thread_id, lod);
+
+
+    GroupMemoryBarrierWithGroupSync();
+
     /// Rasterizing stage
     [[branch]]if(thread_id >= primCount) return;
 
     const bool cullCCW = true;
-    const uint prim_id = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + thread_id * 3u);
 
-    rasterizeTriangle(indices[0], indices[1], indices[2], prim_id, cullCCW);
+    rasterizeTriangle(indices[0], indices[1], indices[2], cullCCW);
 }
