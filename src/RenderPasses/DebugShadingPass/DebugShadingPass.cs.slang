@@ -73,7 +73,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     gInOutColor[pixelPos] = float4(barycentrics, 1.f);
-
+    
     VertexData v = gScene.getVertexData(triangleHit);
 
 #if is_valid(gOutNormals)
@@ -94,7 +94,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 
 #if is_valid(gMicroPolyColor) && is_valid(gMicroPolyID)
-    gMicroPolyColor[pixelPos] = float4(gFalseColorGenerator.getColor(gMicroPolyID[pixelPos]).rgb, 1.0f);
+    uint microPolyID = gMicroPolyID[pixelPos];
+    gMicroPolyColor[pixelPos] = float4(gFalseColorGenerator.getColor(microPolyID).rgb, float(microPolyID + 1));
 #endif  // gMicroPolyColor
 
 #if is_valid(gPrimID)

@@ -3,6 +3,7 @@
 
 import Scene.Camera.CameraData;
 
+#include "VBufferSW.MicroTriangle.slangh"
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
 
@@ -19,8 +20,12 @@ import VBufferSW;
 #define MICROPOLY_MAX_BB_SIZE 8.f // 4x4 pixel micropoly
 #endif
 
+#ifndef MAX_MICRO_TRIANGLES
+#define MAX_MICRO_TRIANGLES 256
+#endif
+
 #ifndef MAX_LOD
-#define MAX_LOD 5
+#define MAX_LOD 3
 #endif
 
 #define PP_AXIS_SIZE 2
@@ -32,7 +37,7 @@ ConstantBuffer<VBufferSW> gVBufferSW;
 Texture2D<float4> gJitterTexture;
 SamplerState gJitterSampler;
 
-groupshared uint primCount;
+groupshared uint gsPrimCount;
 
 groupshared float4x4 worldMat;
 groupshared GeometryInstanceID instanceID;
@@ -41,57 +46,122 @@ groupshared MeshDesc meshDesc;
 groupshared MeshletDraw draw;
 groupshared MeshletData meshlet;
 
-groupshared uint32_t            meshlet_indices[MESHLET_MAX_PRIM_COUNT * 4];
-groupshared uint                prim_ids[MESHLET_MAX_PRIM_COUNT];
-groupshared float4              positions[MESHLET_MAX_VERTICES_COUNT];
 groupshared StaticVertexData    vertex_data[MESHLET_MAX_VERTICES_COUNT];
+groupshared bool                gsSubdivide;
+groupshared uint                gsGroupID;
 
-groupshared float4              pp_positions[PP_AXIS_SIZE * PP_AXIS_SIZE][MESHLET_MAX_VERTICES_COUNT];
-
-#if defined(USE_HIGHP_DEPTH)
-groupshared double              z64pos[MESHLET_MAX_VERTICES_COUNT];
-#endif
-
-RWStructuredBuffer<uint32_t>    gIndicesBuffer;
-RWStructuredBuffer<uint32_t>    gPrimIndicesBuffer; 
-RWStructuredBuffer<float3>      gPositionsBuffer;
-RWStructuredBuffer<float>       gCocsBuffer;
+RWStructuredBuffer<MicroTriangle> gMicroTrianglesBuffer;
 
 static const float2 jitterBound = float2(0.5f);
 
-static MicroTriangle micro_triangles[MAX_LOD * MAX_LOD];
-static uint prim_id;
+static MicroTriangle micro_triangles[MAX_MICRO_TRIANGLES];
+static uint gsPrimID;
 static uint micro_triangles_count = 0;
 
-void subdivideNaive(uint triangle_id, uint lod) {
-    MicroTriangle tri;
 
-    micro_triangles[0] = tri;
-    micro_triangles[1] = tri;
-    micro_triangles[2] = tri;
-    micro_triangles[3] = tri;
+void nullSubdivideTriangle(uint triangle_id) {
+    if(triangle_id >= gsPrimCount) return;
 
-    micro_triangles_count = 4;
+    const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
+    const uint idx = micro_triangles_count;
+
+    micro_triangles[idx].pw0 = mul(float4(vertex_data[uint(indices[0])].position, 1.f), worldMat).xyz;
+    micro_triangles[idx].pw1 = mul(float4(vertex_data[uint(indices[1])].position, 1.f), worldMat).xyz;
+    micro_triangles[idx].pw2 = mul(float4(vertex_data[uint(indices[2])].position, 1.f), worldMat).xyz;
+    micro_triangles[idx].b0 = float2(0.f);
+    micro_triangles[idx].b1 = float2(1.f, 0.f);
+    micro_triangles[idx].b2 = float2(0.f, 1.f);
+    
+    micro_triangles_count = 1;
 }
 
-void rasterizeTriangle(uint pi0, uint pi1, uint pi2, bool cullCCW) {
+void subdivideTriangle(uint triangle_id, uint lod) {
+    if(triangle_id >= micro_triangles_count) return;
+    if((micro_triangles_count + 4) > MAX_MICRO_TRIANGLES) return;
+
+    const MicroTriangle src = micro_triangles[triangle_id];
+
+    const float3 pw0 = src.pw0;
+    const float3 pw1 = src.pw1;
+    const float3 pw2 = src.pw2;
+
+    const float3 pw01 = (pw0 + pw1) * .5f;
+    const float3 pw02 = (pw0 + pw2) * .5f;
+    const float3 pw12 = (pw1 + pw2) * .5f;
+
+    const float2 b0 = src.b0;
+    const float2 b1 = src.b1;
+    const float2 b2 = src.b2;
+
+    const float2 b01 = (b0 + b1) * .5f;
+    const float2 b02 = (b0 + b2) * .5f;
+    const float2 b12 = (b1 + b2) * .5f;
+
+    // replace original triangle with subdivided part
+    
+    micro_triangles[triangle_id].pw0 = pw0;
+    micro_triangles[triangle_id].pw1 = pw01;
+    micro_triangles[triangle_id].pw2 = pw02;
+    micro_triangles[triangle_id].b0 = b0;
+    micro_triangles[triangle_id].b1 = b01;
+    micro_triangles[triangle_id].b2 = b02;
+
+    // add other three subdivided triangle parts
+    
+    const uint idx = micro_triangles_count;
+
+    micro_triangles[idx+0].pw0 = pw02;
+    micro_triangles[idx+0].pw1 = pw01;
+    micro_triangles[idx+0].pw2 = pw12;
+    micro_triangles[idx+0].b0 = b02;
+    micro_triangles[idx+0].b1 = b01;
+    micro_triangles[idx+0].b2 = b12;
+    
+    micro_triangles[idx+1].pw0 = pw01;
+    micro_triangles[idx+1].pw1 = pw1;
+    micro_triangles[idx+1].pw2 = pw12;
+    micro_triangles[idx+1].b0 = b01;
+    micro_triangles[idx+1].b1 = b1;
+    micro_triangles[idx+1].b2 = b12;
+    
+    micro_triangles[idx+2].pw0 = pw12;
+    micro_triangles[idx+2].pw1 = pw2;
+    micro_triangles[idx+2].pw2 = pw02;
+    micro_triangles[idx+2].b0 = b12;
+    micro_triangles[idx+2].b1 = b2;
+    micro_triangles[idx+2].b2 = b02;
+    
+    micro_triangles_count += 3;
+}
+
+void rasterizeTriangle(uint triangle_id, bool cullCCW) {
+    if(triangle_id >= micro_triangles_count) return;
+    
     // bound triangle
     float4 pt0, pt1, pt2;
 
+    const MicroTriangle tri = micro_triangles[triangle_id];
+
+    float3 pw0 = tri.pw0;
+    float3 pw1 = tri.pw1;
+    float3 pw2 = tri.pw2;
+
 #if defined(USE_HIGHP_DEPTH)
-    double4 pd0 = transformPointToScreenDouble(mul(double4(vertex_data[pi0].position, 1.0), worldMat).xyz);
-    double4 pd1 = transformPointToScreenDouble(mul(double4(vertex_data[pi1].position, 1.0), worldMat).xyz);
-    double4 pd2 = transformPointToScreenDouble(mul(double4(vertex_data[pi2].position, 1.0), worldMat).xyz);
-    z64pos[pi0] = pd0.z;
-    z64pos[pi1] = pd1.z;
-    z64pos[pi2] = pd2.z;
+    double4 pd0 = transformPointToScreenDouble(pw0);
+    double4 pd1 = transformPointToScreenDouble(pw1);
+    double4 pd2 = transformPointToScreenDouble(pw2);
+    
+    double dz0 = pd0.z;
+    double dz1 = pd1.z;
+    double dz2 = pd2.z;
+
     pt0 = float4(pd0);
     pt1 = float4(pd1);
     pt2 = float4(pd2);
 #else
-    pt0 = transformPointToScreen(mul(float4(vertex_data[pi0].position, 1.f), worldMat).xyz);
-    pt1 = transformPointToScreen(mul(float4(vertex_data[pi1].position, 1.f), worldMat).xyz);
-    pt2 = transformPointToScreen(mul(float4(vertex_data[pi2].position, 1.f), worldMat).xyz);
+    pt0 = transformPointToScreen(pw0);
+    pt1 = transformPointToScreen(pw1);
+    pt2 = transformPointToScreen(pw2);
 #endif
 
     // near-far planes rejection
@@ -160,8 +230,7 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, bool cullCCW) {
             if( uv.x < 0.) continue;
 
 #if defined(USE_HIGHP_DEPTH)
-            double z0 = z64pos[pi0], z1 = z64pos[pi1], z2 = z64pos[pi2];
-            double z = (z1 - z0) * uv.x + (z2 - z0) * uv.y + z0;
+            double z = (dz1 - dz0) * uv.x + (dz2 - dz0) * uv.y + dz0;
 #else
             float z = pt10.z * uv.x + pt20.z * uv.y + pt0.z;
 #endif
@@ -181,28 +250,31 @@ void rasterizeTriangle(uint pi0, uint pi1, uint pi2, bool cullCCW) {
 #endif
                 TriangleHit triangleHit = {};
                 triangleHit.instanceID.index = instanceID.index;
-                triangleHit.primitiveIndex = prim_id;
-                triangleHit.barycentrics = uv;   
+                triangleHit.primitiveIndex = gsPrimID;
+                triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
 
                 uint2 pixelPos = uint2(x, y);
 
                 gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
 
 #if is_valid(gTextureGrads)
-                float2 tcrd0 = vertex_data[pi0].texCrd, tcrd1 = vertex_data[pi1].texCrd, tcrd2 = vertex_data[pi2].texCrd;
+                //float2 tcrd0 = vertex_data[pi0].texCrd, tcrd1 = vertex_data[pi1].texCrd, tcrd2 = vertex_data[pi2].texCrd;
+                
+                // TODO: fetch appropriate texture coordinates
+                float2 tcrd0 = 0, tcrd1 = 0, tcrd2 = 0;
 
-                float4 pndc0 = mul( float4(mul( float4(vertex_data[pi0].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
-                float4 pndc1 = mul( float4(mul( float4(vertex_data[pi1].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
-                float4 pndc2 = mul( float4(mul( float4(vertex_data[pi2].position, 1.0), worldMat).xyz, 1.f), gScene.camera.getViewProjMat());
-
+                float4 pndc0 = mul( float4(pw0, 1.f), gScene.camera.getViewProjMat());
+                float4 pndc1 = mul( float4(pw1, 1.f), gScene.camera.getViewProjMat());
+                float4 pndc2 = mul( float4(pw2, 1.f), gScene.camera.getViewProjMat());
                 BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
                 GradientInterpolationResults g = interpolate2DWithDeriv(deriv, tcrd0, tcrd1, tcrd2);
 
                 gVBufferSW.writeTexGrads(pixelPos, float4(clamp(g.dx, float2(-1.0f), float2(1.0f)), clamp(g.dy, float2(-1.0f), float2(1.0f))));
+                gVBufferSW.writeTexGrads(pixelPos, float4(gsGroupID));
 #endif
 
                 gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
-                gVBufferSW.writeMicroPolyID(pixelPos, prim_id);
+                gVBufferSW.writeMicroPolyID(pixelPos, gsPrimID + triangle_id);
 
 #if is_valid(gDrawCount)
                 InterlockedAdd(gDrawCount[pixelPos], 1);
@@ -220,10 +292,14 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     const uint thread_id = groupIdx;                                          // Local thread index in group (range 0..THREADS_COUNT-1).
     const uint global_id = group_id * THREADS_COUNT + thread_id;              // Global element index
 
+    gsGroupID = groupID.x;
+
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;
 
     /// Group shared data stage
+
+    micro_triangles_count = 0;
 
     // meshlet parameters
     [[branch]] if(thread_id == 0u) {
@@ -234,7 +310,8 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             meshDesc = gScene.getMeshDesc(instanceID);
             worldMat = gScene.getWorldMatrix(instanceID);
             meshlet = gScene.meshlets[draw.meshletID].unpack();
-            primCount = meshlet.primCount;
+            gsPrimCount = meshlet.primCount;
+            gsSubdivide = instance.isSubdividable() && (MAX_LOD > 0);
         }  
     }
 
@@ -244,7 +321,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     /// Fetch stage
 
-    prim_id = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
+    gsPrimID = gScene.meshletPrimIndices[meshlet.primIndexOffset + thread_id];
 
     // Fetch vertex data
     const uint vi0 = thread_id;
@@ -260,19 +337,31 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    /// Tesselation and rasterization stages
+
     /// Micro triangles generation
 
-    const uint lod = 2;
-    subdivideNaive(thread_id, lod);
-
+    nullSubdivideTriangle(thread_id);
+    [[branch]] if(gsSubdivide) {
+        for(uint lod = 0; lod <= (MAX_LOD - 1); ++lod) {
+            for(uint lod_iter = 0; lod_iter < pow(2, lod*2); ++lod_iter) {
+                subdivideTriangle(lod_iter, lod);
+            }
+        }
+    }
 
     GroupMemoryBarrierWithGroupSync();
 
     /// Rasterizing stage
-    [[branch]]if(thread_id >= primCount) return;
 
     const bool cullCCW = true;
-    const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + thread_id * 3u);
 
-    rasterizeTriangle(indices[0], indices[1], indices[2], cullCCW);
+    [[branch]]
+    if(gsSubdivide) {
+        for(uint i = 0; i < micro_triangles_count; ++i) {
+            rasterizeTriangle(i, cullCCW);
+        }
+    } else {
+        rasterizeTriangle(0, cullCCW);
+    }
 }

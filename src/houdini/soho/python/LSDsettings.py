@@ -287,6 +287,7 @@ objXtraParms = {
     'lv_measure'      : SohoParm('lv_measure',    'string', ['nonraster'],False),
     'lv_numuserattrib': SohoParm('lv_numuserattrib', 'int', [0], True),
     'lv_phantom'      : SohoParm('lv_phantom', 'bool',      [0], True),
+    'lv_rendersubd'   : SohoParm('lv_rendersubd', 'bool',      [0], True),
 }
 
 stylesheetParms = {

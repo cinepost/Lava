@@ -64,7 +64,9 @@ class PASS_API VBufferSW : public GBufferBase {
 		virtual void setCullMode(RasterizerState::CullMode mode) override;
 		void setCullMode(const std::string& mode_str);
 		void setPerPixelJitter(bool value);
-		
+		void setMaxSubdivLevel(uint level);
+		void setMinScreenEdgeLen(float len);
+
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
@@ -100,6 +102,10 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 
+		float mMinScreenEdgeLen = 4.0f;
+
+		uint mMaxLOD = 3;
+
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr 	mpComputeTesselatorPass;
@@ -110,6 +116,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		// Local buffers
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
 		Buffer::SharedPtr      	mpHiZBuffer;
+		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;

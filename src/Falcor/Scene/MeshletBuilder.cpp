@@ -417,8 +417,7 @@ MeshletBuilder::UniquePtr MeshletBuilder::create() {
 }
 
 void MeshletBuilder::generateMeshlets(SceneBuilder::MeshSpec& mesh, BuildMode mode) {
-  LLOG_WRN << "Mesh vertex count " << mesh.vertexCount;
-  LLOG_WRN << "Mesh index count " << mesh.indexCount;
+  LLOG_DBG << "Generating meshlets for mesh \" " << mesh.name << " \" with " << mesh.vertexCount << " vertices and " << mesh.indexCount << " indices";
 
   const std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
   switch(mode) {

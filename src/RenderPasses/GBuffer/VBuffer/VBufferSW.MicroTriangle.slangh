@@ -1,0 +1,24 @@
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+// 96 bytes :((
+struct MicroTriangle {
+    // corner world positions
+    float3 pw0;
+    float3 pw1;
+    float3 pw2;
+    
+    // corner world normals
+    float3 nw0;
+    float3 nw1;
+    float3 nw2;
+    
+    // corner points barycentrics
+    float2 b0;
+    float2 b1;
+    float2 b2;
+};
+
+END_NAMESPACE_FALCOR

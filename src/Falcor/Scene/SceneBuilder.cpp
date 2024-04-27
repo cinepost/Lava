@@ -203,31 +203,40 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 
 
 uint32_t SceneBuilder::MeshID::_get() const {
-	try {
-		const uint32_t meshID = std::get<uint32_t>(v);
-		return meshID;	
-	} catch (const std::bad_variant_access&) {
-		auto& f = std::get<std::shared_future<uint32_t>>(v);
-		try {
-			const uint32_t meshID = f.get();
-			v = meshID;
-			return meshID;
-		} catch(const std::exception& e) {
-     		LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
-     		return SceneBuilder::kInvalidMeshID;
-    	}
-	} catch (...) {
-		LLOG_ERR << "Some fkn error";
-		return SceneBuilder::kInvalidMeshID;
+	std::scoped_lock lock(mMutex);
+	switch(mType) {
+		case IDType::INTEGER:
+			return mIntID;
+		case IDType::FUTURE:
+			try {
+				LLOG_WRN << "Getting future";
+				mIntID = mFutureID.get();
+				mType = IDType::INTEGER;
+				LLOG_WRN << "Getting future done";
+				return mIntID;
+			} catch(const std::exception& e) {
+     			LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();
+     		} catch (...) {
+     			LLOG_ERR << "Error getting async meshID !!! Unknown...";
+     		}
+     		mType = IDType::NONE;
+     		break;
+     	default:
+     		break;
 	}
+	return SceneBuilder::kInvalidMeshID;
 }
 
 void SceneBuilder::MeshID::operator=(uint32_t id) { 
-	v = id; 
+	std::scoped_lock lock(mMutex);
+	mIntID = id;
+	mType = IDType::INTEGER; 
 }
 
-void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t> f) { 
-	v = f;
+void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t>& f) { 
+	std::scoped_lock lock(mMutex);
+	mFutureID = f;
+	mType = IDType::FUTURE; 
 }
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
@@ -294,7 +303,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 	}
 
 	mAddGeoTasks.wait();
-
+	
 	// Finish loading textures. This blocks until all textures are loaded and assigned.
 	mpMaterialTextureLoader.reset();
 
@@ -786,7 +795,7 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
         if(mpScene) {
             mReBuildMeshGroups = true;
-            resetScene(true);
+            //resetScene(true);
         }
 
 		if (mMeshes.size() >= std::numeric_limits<uint32_t>::max()) {
@@ -795,7 +804,6 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
 		mMeshes.push_back(spec);
 		meshID = (uint32_t)(mMeshes.size() - 1);
-		mMeshMap[mesh.name] = meshID;
 	}
 
 	{ // Meshlets part
@@ -3047,6 +3055,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 				geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
 				geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
 				geomInstance.flags |= instance.shading.doubleSided ? (uint32_t)GeometryInstanceFlags::DoubleSided : 0;
+				geomInstance.flags |= instance.shading.subdivide ? (uint32_t)GeometryInstanceFlags::Subdivide : 0;
 				
 				// Geometry instance visibility flags
 				geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;

@@ -34,11 +34,14 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Scene/SceneDefines.slangh"
 
+#include "VBufferSW.MicroTriangle.slangh"
+
 #include <limits>
 
 const RenderPass::Info VBufferSW::kInfo { "VBufferSW", "Software rasterizer V-buffer generation pass." };
 const size_t VBufferSW::kMaxGroupThreads = 128;
 const size_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
+static const uint32_t kMaxLOD = 3;
 
 #ifndef UINT32_MAX
 #define UINT32_MAX (0xffffffff)
@@ -60,6 +63,8 @@ namespace {
     const char kUseMotionBlur[] = "useMotionBlur";
     const char kUseSubdivisions[] = "useSubdivisions";
     const char kUseDisplacement[] = "useDisplacement";
+    const char kMaxSubdivLevel[] = "maxSubdivLevel";
+    const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
@@ -108,6 +113,11 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         .setUnnormalizedCoordinates(true);
     mpJitterSampler = Sampler::create(pDevice, samplerDesc);
 
+    static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2, kMaxLOD * 2);
+    LLOG_WRN << "Size of MicroTriangle struct is " << sizeof(MicroTriangle) << " bytes";
+    LLOG_WRN << "kMaxMicroTriangles " << kMaxMicroTriangles;
+    mpMicroTrianglesBuffer = Buffer::createStructured(pDevice, sizeof(MicroTriangle), kMaxMicroTriangles, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+
     mDirty = true;
 }
 
@@ -123,6 +133,8 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
+        else if (key == kMaxSubdivLevel) setMaxSubdivLevel(static_cast<uint>(value));
+        else if (key == kMinScreenEdgeLen) setMinScreenEdgeLen(static_cast<float>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -202,8 +214,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Random numbers [0, 1]
     float2 rnd = mpRandomSampleGenerator ? (mpRandomSampleGenerator->next() + float2(.5f)) : float2(.0f);
 
-    const bool doTesselate = mUseDisplacement || mUseSubdivisions;
-
     if( !mpComputeJitterPass || mDirty) {
         Program::Desc desc;
         desc.addShaderLibrary(kProgramComputeJitterGenFile).csEntry("build").setShaderModel("6_5");
@@ -211,30 +221,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         Program::DefineList defines;
         
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
-    }
-
-    // Create tesselation pass.
-    if (doTesselate && (!mpComputeTesselatorPass || mDirty)) {
-
-        bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
-
-        Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeTesselatorFile).csEntry("tesselate").setShaderModel("6_5");
-        desc.addTypeConformances(mpScene->getTypeConformances());
-
-        Program::DefineList defines;
-        defines.add(mpScene->getSceneDefines());    
-        defines.add("COMPUTE_DEPTH_OF_FIELD", computeDOF ? "1" : "0");
-        defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-        defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
-        
-        defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
-
-        mpComputeTesselatorPass = ComputePass::create(mpDevice, desc, defines, true);
-
-        // Bind static resources
-        ShaderVar var = mpComputeTesselatorPass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
     }
 
     // Create rasterization pass.
@@ -274,9 +260,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             defines.remove("USE_PP_JITTER");
         }
 
+        const uint max_lod = ( mUseDisplacement || mUseSubdivisions) ? mMaxLOD : 0;
+
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
         defines.add("CULL_MODE", GBufferBase::to_define_string(mCullMode));
+        defines.add("MAX_LOD", std::to_string(max_lod));
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
@@ -293,40 +282,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
     }
-/*
-    if(!mpComputeReconstructPass || mDirty) {
-        Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeReconstructFile).csEntry("reconstruct").setShaderModel("6_5");
-        desc.addTypeConformances(mpScene->getTypeConformances());
 
-        Program::DefineList defines;
-        defines.add(mpScene->getSceneDefines());
-        defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
-
-        mpComputeReconstructPass = ComputePass::create(mpDevice, desc, defines, true);
-    }
-*/
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    const uint32_t groupsX = meshletDrawsCount * kMaxGroupThreads;
-
-    if(doTesselate && mpComputeTesselatorPass) {
-        ShaderVar var = mpComputeTesselatorPass->getRootVar();
-        var["gVBufferSW"]["frameDim"] = mFrameDim;
-        var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
-        var["gVBufferSW"]["dispatchX"] = groupsX;
-        var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
-
-        var["PerFrameCB"]["gMaxEdgeLength"] = 2;
-        var["PerFrameCB"]["gMaxEdgeDivs"] = 2;
-
-        var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
-        
-        // Bind resources.
-        var["gIndicesBuffer"] = mpIndicesBuffer;
-        var["gPrimIndicesBuffer"] = mpPrimIndicesBuffer;
-        var["gPositionsBuffer"] = mpPositionsBuffer;
-        var["gCocsBuffer"] = mpCocsBuffer;
-    }
+    //const uint32_t threadsX = meshletDrawsCount * kMaxGroupThreads;
+    const uint32_t threadsX = meshletDrawsCount * kMaxGroupThreads;
+    const uint32_t dispatchX = kMaxGroupThreads;
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
@@ -334,23 +294,18 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
         var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
         var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
-        var["gVBufferSW"]["dispatchX"] = groupsX;
+        var["gVBufferSW"]["dispatchX"] = dispatchX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
+        var["gVBufferSW"]["minScreenEdgeLen"] = mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
         
         var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
-
+        var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
         var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
         
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
-
-        // Bind resources.
-        var["gIndicesBuffer"]       = mpIndicesBuffer;
-        var["gPrimIndicesBuffer"]   = mpPrimIndicesBuffer;
-        var["gPositionsBuffer"]     = mpPositionsBuffer;
-        var["gCocsBuffer"]          = mpCocsBuffer;
 
         var["gVBuffer"] = getOutput(renderData, kVBufferName);
 
@@ -365,26 +320,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             bind(channel);
         }
     }
-/*
-    {
-        ShaderVar var = mpComputeReconstructPass->getRootVar();
-        var["gVBufferSW"]["frameDim"] = mFrameDim;
 
-        // Bind resources.
-        var["gVBuffer"] = getOutput(renderData, kVBufferName);
-        
-        var["gHiZBuffer"] = mpHiZBuffer;
-        var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
-        
-        // Bind output channels as UAV buffers.
-        auto bind = [&](const ChannelDesc& channel) {
-            Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-            var[channel.texname] = pTex;
-        };
-
-        for (const auto& channel : kVBufferExtraChannels) bind(channel);
-    }
-*/
     {
         ShaderVar var = mpComputeJitterPass->getRootVar();
         var["PerFrameCB"]["gJitterTextureDim"] = mFrameDim;
@@ -402,18 +338,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     // Frustum culling pass
 
-    // Tesselator pass
-    if(doTesselate && mpComputeTesselatorPass) {
-        LLOG_DBG << "Software rasterizer tesselator pass with " << std::to_string(groupsX) << " threads.";
-        mpComputeTesselatorPass->execute(pRenderContext, uint3(groupsX, 1, 1));
-    }
-
     // Meshlets rasterization pass
-    LLOG_DBG << "Software rasterizer executing compute pass with " << std::to_string(groupsX) << " threads.";
-    mpComputeRasterizerPass->execute(pRenderContext, uint3(groupsX, 1, 1));
-
-    // Image reconstruction pass
-    //mpComputeReconstructPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+    LLOG_DBG << "Software rasterizer executing compute pass with " << std::to_string(threadsX) << " threads.";
+    mpComputeRasterizerPass->execute(pRenderContext, uint3(threadsX, 1, 1));
 
     mSampleNumber++;
 }
@@ -427,20 +354,6 @@ void VBufferSW::createBuffers() {
         mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     } else {
         mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
-    }
-
-    if(mUseSubdivisions || mUseDisplacement) {
-        static const uint32_t kMaxEdgeSubdivisions = 3;
-        static constexpr uint32_t kMaxPolygonsCount = MESHLET_MAX_PRIM_COUNT * kMaxEdgeSubdivisions * kMaxEdgeSubdivisions;
-        static constexpr uint32_t kMaxIndices       = kMaxPolygonsCount * 3;
-        static constexpr uint32_t kMaxPrimIndices   = kMaxPolygonsCount;
-        static constexpr uint32_t kMaxPositions     = kMaxIndices;
-        static constexpr uint32_t kMaxCocs          = kMaxPositions; 
-
-        mpIndicesBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)kMaxIndices, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpPrimIndicesBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)kMaxPrimIndices, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false); 
-        mpPositionsBuffer = Buffer::createStructured(mpDevice, sizeof(float3), (uint32_t)kMaxPositions, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpCocsBuffer = Buffer::createStructured(mpDevice, sizeof(float), (uint32_t)kMaxCocs, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     }
 }
 
@@ -556,6 +469,22 @@ void VBufferSW::setCullMode(RasterizerState::CullMode mode) {
 void VBufferSW::setHighpDepth(bool state) {
     if(mUseD64 == state) return;
     mUseD64 = state;
+    mDirty = true;
+}
+
+void VBufferSW::setMaxSubdivLevel(uint level) {
+    if(mMaxLOD == level) return;
+    static const uint kLowerSubdLevel = 0u;
+    static const uint kUpperSubdLevel = 5u;
+    mMaxLOD = std::max(kLowerSubdLevel, std::min(kUpperSubdLevel, level));
+    mDirty = true;
+}
+
+void VBufferSW::setMinScreenEdgeLen(float len) {
+    if(mMinScreenEdgeLen == len) return;
+    static const float kLowerScreenLen = 2.0f;
+    static const float kUpperScreenLen = 100.0f;
+    mMinScreenEdgeLen = std::max(kLowerScreenLen, std::min(len, kUpperScreenLen));
     mDirty = true;
 }
 

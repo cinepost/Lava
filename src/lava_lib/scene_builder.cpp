@@ -372,12 +372,12 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     return meshID;
 }
 
-const std::shared_future<uint32_t>& SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
+void SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
     assert(pGeo);
 
     // Pass the task to thread pool to run asynchronously
     ThreadPool& pool = ThreadPool::instance();
-    mAddGeoTasks.push_back(pool.submit([this, pGeo, &name]
+    mAddGeoTasks.push_back(std::move(pool.submit([this, pGeo, &name]
     {
         uint32_t result = std::numeric_limits<uint32_t>::max();
         ika::bgeo::Bgeo::SharedPtr pBgeo = ika::bgeo::Bgeo::create();
@@ -402,16 +402,12 @@ const std::shared_future<uint32_t>& SceneBuilder::addGeometryAsync(lsd::scope::G
         result = this->addGeometry(pBgeo, name);
         
         return result;
-    }));
+    })));
 
-    const std::shared_future<uint32_t>& meshID = mAddGeoTasks.back();
-    
     { // thread safety
         std::scoped_lock lock(mMeshesMutex);
-        mMeshMap[name] = meshID;
+        mMeshMap[name] = mAddGeoTasks.back();
     }
-
-    return meshID;
 }
 
 void SceneBuilder::finalize() {

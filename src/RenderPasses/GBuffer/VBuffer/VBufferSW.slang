@@ -67,24 +67,6 @@ RWTexture2D<uint>       gTime;      // Timing debug buffer
 #define USE_SUBDIVISIONS false
 #endif
 
-// 64 bytes :((
-struct MicroTriangle {
-    // corner world positions
-    float3 p0;
-    float3 p1;
-    float3 p2;
-
-    // corner world normals
-    float3 n0;
-    float3 n1;
-    float3 n2;
-
-    // corner points barycentrics
-    float2 b1;
-    float2 b2;
-    float2 b3;
-};
-
 struct VBufferSW {
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
@@ -95,6 +77,7 @@ struct VBufferSW {
     uint sampleNumber;
     uint dispatchX;
     uint meshletDrawsCount;
+    float minScreenEdgeLen;
     float2 rnd;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {

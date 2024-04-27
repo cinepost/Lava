@@ -337,7 +337,6 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
         mRaster.pVars["gVBuffer"] = pOutput;
         mRaster.pVars["gHighpDepth"] = mpHighpDepth;
-        mRaster.pVars["gTestTexture"] = mpTestTexture;
         mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
         mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
         mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;

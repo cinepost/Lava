@@ -32,6 +32,7 @@
 #include <bitset>
 #include <string>
 #include <unordered_map>
+#include <atomic>
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
@@ -73,21 +74,30 @@ class dlldecl SceneBuilder {
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
 
     class MeshID {
+        enum class IDType: uint8_t {
+            NONE,
+            INTEGER,
+            FUTURE,
+        };
         public:
-            MeshID(): v(kInvalidMeshID) {};
-            MeshID(uint32_t id): v(id) {};
-            MeshID(std::shared_future<uint32_t> f): v(f) {};
+            MeshID(): mIntID(kInvalidMeshID), mType(IDType::NONE) {};
+            MeshID(uint32_t id): mIntID(id), mType(IDType::INTEGER) {};
+            MeshID(std::shared_future<uint32_t>& f): mFutureID(f), mType(IDType::FUTURE) {};
         
             uint32_t _get() const;
 
         private:
-            mutable std::variant<uint32_t, std::shared_future<uint32_t>> v;
+            mutable uint32_t mIntID;
+            mutable std::shared_future<uint32_t> mFutureID;
+            mutable IDType mType;
+
+            mutable std::mutex mMutex;
 
         public:
             operator uint32_t () const { return _get(); };
 
             void operator=(uint32_t id);
-            void operator=(std::shared_future<uint32_t> f);
+            void operator=(std::shared_future<uint32_t>& f);
     };
     
     enum class UpdateMode: uint8_t {
@@ -657,7 +667,7 @@ protected:
     bool mUpdateSceneMaterials = false;
     bool mUpdateSceneNodes = false;
     bool mUpdateSceneInstances = false;
-    bool mReBuildMeshGroups = true;
+    std::atomic<bool> mReBuildMeshGroups = true;
 
     friend class SceneCache;
     friend class MeshletBuilder;

@@ -285,6 +285,9 @@ bool Session::cmdRaytrace() {
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 
+	passDict["maxSubdivLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "maxsubdlevel", int(2));
+	passDict["minScreenEdgeLen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "minscreenedgelen", float(2.f));
+
 	passDict["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));
 
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
@@ -1529,6 +1532,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
   shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
   shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
   shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
+  shadingSpec.subdivide = pObj->getPropertyValue(ast::Style::OBJECT, "rendersubd", false);
 
   // Instance visibility spec
   SceneBuilder::InstanceVisibilitySpec visibilitySpec;

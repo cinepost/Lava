@@ -26,6 +26,7 @@ struct InstanceShadingSpec {
     bool        fixShadowTerminator = true;
     bool        biasAlongNormal = false;
     bool        doubleSided = true;
+    bool        subdivide = false;
 };
 
 struct InstanceVisibilitySpec {

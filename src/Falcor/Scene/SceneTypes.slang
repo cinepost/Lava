@@ -155,24 +155,25 @@ enum class GeometryInstanceFlags : uint32_t {
     None = 0x0,
 
     // Mesh flags.
-    Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
-    IsDynamic = 0x2,            ///< Mesh is dynamic, either through skinning or vertex animations.
-    TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
-    IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
-    IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
+    Use16BitIndices         = 0x1,   ///< Indices are in 16-bit format. The default is 32-bit.
+    IsDynamic               = 0x2,   ///< Mesh is dynamic, either through skinning or vertex animations.
+    TransformFlipped        = 0x4,   ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
+    IsObjectFrontFaceCW     = 0x8,   ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+    IsWorldFrontFaceCW      = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
 
-    MatteShading = 0x20,
-    FixShadowTerminator = 0x40,
-    BiasAlongNormal = 0x80,
+    MatteShading            = 0x20,
+    FixShadowTerminator     = 0x40,
+    BiasAlongNormal         = 0x80,
 
-    VisibleToPrimaryRays = 0x100,
-    VisibleToShadowRays = 0x200,   
-    VisibleToDiffuseRays = 0x400,
-    ReceiveShadows = 0x800,
-    ReceiveSelfShadows = 0x1000,
-    DoubleSided = 0x2000,
-    HasMultipleMaterials = 0x4000,
-    HasMUltipleMatrices  = 0x8000,
+    VisibleToPrimaryRays    = 0x100,
+    VisibleToShadowRays     = 0x200,   
+    VisibleToDiffuseRays    = 0x400,
+    ReceiveShadows          = 0x800,
+    ReceiveSelfShadows      = 0x1000,
+    DoubleSided             = 0x2000,
+    HasMultipleMaterials    = 0x4000,
+    HasMUltipleMatrices     = 0x8000,
+    Subdivide               = 0x10000, ///< Indcates that this instance geometry polygons could be subdivided.
 };
 
 struct GeometryInstanceData {
@@ -232,6 +233,10 @@ struct GeometryInstanceData {
 
     bool hasMultipleMaterials() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::HasMultipleMaterials) != 0;
+    }
+
+    bool isSubdividable() CONST_FUNCTION {
+        return (flags & (uint)GeometryInstanceFlags::Subdivide) != 0;
     }
 
     bool hasMultipleMatrices() CONST_FUNCTION {
