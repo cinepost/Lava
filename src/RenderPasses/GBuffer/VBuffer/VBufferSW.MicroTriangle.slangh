@@ -3,6 +3,11 @@
 
 BEGIN_NAMESPACE_FALCOR
 
+enum class MicroTriangleFlags : uint8_t {
+    None = 0x0,
+    Subdividable = 0x1,
+};
+
 // 96 bytes :((
 struct MicroTriangle {
     // corner world positions
@@ -16,9 +21,24 @@ struct MicroTriangle {
     float3 nw2;
     
     // corner points barycentrics
-    float2 b0;
-    float2 b1;
-    float2 b2;
+    float16_t2 b0;
+    float16_t2 b1;
+    float16_t2 b2;
+
+    uint8_t lod;
+    uint8_t flags;
+
+#ifndef HOST_CODE
+    __init() {
+        this.lod = 0;
+        this.flags = 0;
+    }
+#endif
+
+    bool isSubdividable() CONST_FUNCTION {
+        return ((uint)flags & (uint)MicroTriangleFlags::Subdividable) != 0;
+    }
+
 };
 
 END_NAMESPACE_FALCOR

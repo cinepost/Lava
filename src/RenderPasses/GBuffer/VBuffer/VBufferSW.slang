@@ -67,9 +67,14 @@ RWTexture2D<uint>       gTime;      // Timing debug buffer
 #define USE_SUBDIVISIONS false
 #endif
 
+#if !defined(MAX_LOD)
+#define MAX_LOD 3
+#endif
+
 struct VBufferSW {
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
+    static const uint kMaxLOD = MAX_LOD;
 
     uint2 frameDim;
     float2 frameDimInv;

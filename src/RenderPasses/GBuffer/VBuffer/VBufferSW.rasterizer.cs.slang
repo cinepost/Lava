@@ -59,7 +59,7 @@ static uint gsPrimID;
 static uint micro_triangles_count = 0;
 
 
-void nullSubdivideTriangle(uint triangle_id) {
+void nullSubdivideTriangle(uint triangle_id, MicroTriangleFlags flags) {
     if(triangle_id >= gsPrimCount) return;
 
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
@@ -71,15 +71,19 @@ void nullSubdivideTriangle(uint triangle_id) {
     micro_triangles[idx].b0 = float2(0.f);
     micro_triangles[idx].b1 = float2(1.f, 0.f);
     micro_triangles[idx].b2 = float2(0.f, 1.f);
-    
+    micro_triangles[idx].lod = 0;
+    micro_triangles[idx].flags = (uint8_t)((uint)flags);
+
     micro_triangles_count = 1;
 }
 
-void subdivideTriangle(uint triangle_id, uint lod) {
+void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     if(triangle_id >= micro_triangles_count) return;
     if((micro_triangles_count + 4) > MAX_MICRO_TRIANGLES) return;
 
     const MicroTriangle src = micro_triangles[triangle_id];
+    
+    if(!src.isSubdividable() || src.lod == gVBufferSW.kMaxLOD || src.lod == lod) return;
 
     const float3 pw0 = src.pw0;
     const float3 pw1 = src.pw1;
@@ -105,6 +109,7 @@ void subdivideTriangle(uint triangle_id, uint lod) {
     micro_triangles[triangle_id].b0 = b0;
     micro_triangles[triangle_id].b1 = b01;
     micro_triangles[triangle_id].b2 = b02;
+    micro_triangles[triangle_id].lod = lod;
 
     // add other three subdivided triangle parts
     
@@ -116,6 +121,7 @@ void subdivideTriangle(uint triangle_id, uint lod) {
     micro_triangles[idx+0].b0 = b02;
     micro_triangles[idx+0].b1 = b01;
     micro_triangles[idx+0].b2 = b12;
+    micro_triangles[idx+0].lod = lod;
     
     micro_triangles[idx+1].pw0 = pw01;
     micro_triangles[idx+1].pw1 = pw1;
@@ -123,14 +129,16 @@ void subdivideTriangle(uint triangle_id, uint lod) {
     micro_triangles[idx+1].b0 = b01;
     micro_triangles[idx+1].b1 = b1;
     micro_triangles[idx+1].b2 = b12;
-    
+    micro_triangles[idx+1].lod = lod;
+
     micro_triangles[idx+2].pw0 = pw12;
     micro_triangles[idx+2].pw1 = pw2;
     micro_triangles[idx+2].pw2 = pw02;
     micro_triangles[idx+2].b0 = b12;
     micro_triangles[idx+2].b1 = b2;
     micro_triangles[idx+2].b2 = b02;
-    
+    micro_triangles[idx+2].lod = lod;
+
     micro_triangles_count += 3;
 }
 
@@ -337,15 +345,20 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    /// Tesselation and rasterization stages
+    /// Work balance stage
+
+    //TODO: brick triangles if there are less primitives than threads available
 
     /// Micro triangles generation
 
-    nullSubdivideTriangle(thread_id);
+    const MicroTriangleFlags flags = gsSubdivide ? MicroTriangleFlags::Subdividable : MicroTriangleFlags::None;
+    nullSubdivideTriangle(thread_id, flags);
+
+    /// Micro triangles subdivision
     [[branch]] if(gsSubdivide) {
         for(uint lod = 0; lod <= (MAX_LOD - 1); ++lod) {
             for(uint lod_iter = 0; lod_iter < pow(2, lod*2); ++lod_iter) {
-                subdivideTriangle(lod_iter, lod);
+                subdivideTriangleUniform(lod_iter, lod);
             }
         }
     }
