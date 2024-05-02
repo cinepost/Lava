@@ -83,6 +83,7 @@ struct VBufferSW {
     uint dispatchX;
     uint meshletDrawsCount;
     float minScreenEdgeLen;
+    float minScreenEdgeLenSquared;
     float2 rnd;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {

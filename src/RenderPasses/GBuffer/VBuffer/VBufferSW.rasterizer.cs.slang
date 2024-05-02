@@ -59,7 +59,23 @@ static uint gsPrimID;
 static uint micro_triangles_count = 0;
 
 
-void nullSubdivideTriangle(uint triangle_id, MicroTriangleFlags flags) {
+bool edgesCanFit(float16_t3 esl) {
+   return esl[0] >= gVBufferSW.minScreenEdgeLenSquared || esl[1] >= gVBufferSW.minScreenEdgeLenSquared || esl[2] >= gVBufferSW.minScreenEdgeLenSquared; 
+}
+
+float16_t3 microTriangleEdgesLengthsSquared(float3 pw0, float3 pw1, float3 pw2) {
+    float2 p0 = transformPointToScreen(pw0).xy;
+    float2 p1 = transformPointToScreen(pw1).xy;
+    float2 p2 = transformPointToScreen(pw2).xy;
+
+    return {
+        (p0.y-p1.y)*(p0.y-p1.y) + (p0.x-p1.x)*(p0.x-p1.x),
+        (p1.y-p2.y)*(p1.y-p2.y) + (p1.x-p2.x)*(p1.x-p2.x),
+        (p2.y-p0.y)*(p2.y-p0.y) + (p2.x-p0.x)*(p2.x-p0.x)
+    };
+}
+
+void nullSubdivideTriangle(uint triangle_id) {
     if(triangle_id >= gsPrimCount) return;
 
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
@@ -72,7 +88,10 @@ void nullSubdivideTriangle(uint triangle_id, MicroTriangleFlags flags) {
     micro_triangles[idx].b1 = float2(1.f, 0.f);
     micro_triangles[idx].b2 = float2(0.f, 1.f);
     micro_triangles[idx].lod = 0;
-    micro_triangles[idx].flags = (uint8_t)((uint)flags);
+
+    const float16_t3 esl = microTriangleEdgesLengthsSquared(micro_triangles[idx].pw0, micro_triangles[idx].pw1, micro_triangles[idx].pw2);
+    micro_triangles[idx].esl = esl;
+    micro_triangles[idx].flags = (uint8_t)((uint)(gsSubdivide ? MicroTriangleFlags::Subdividable : MicroTriangleFlags::None));
 
     micro_triangles_count = 1;
 }
@@ -84,7 +103,7 @@ void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     const MicroTriangle src = micro_triangles[triangle_id];
     
     if(!src.isSubdividable() || src.lod == gVBufferSW.kMaxLOD || src.lod == lod) return;
-
+    
     const float3 pw0 = src.pw0;
     const float3 pw1 = src.pw1;
     const float3 pw2 = src.pw2;
@@ -92,6 +111,12 @@ void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     const float3 pw01 = (pw0 + pw1) * .5f;
     const float3 pw02 = (pw0 + pw2) * .5f;
     const float3 pw12 = (pw1 + pw2) * .5f;
+
+    float16_t3 esl_a = microTriangleEdgesLengthsSquared(pw0, pw01, pw02);
+    float16_t3 esl_b = microTriangleEdgesLengthsSquared(pw01, pw1, pw12);
+    float16_t3 esl_c = microTriangleEdgesLengthsSquared(pw12, pw2, pw02);
+
+    if(!edgesCanFit(esl_a) || !edgesCanFit(esl_b) || !edgesCanFit(esl_c)) return;
 
     const float2 b0 = src.b0;
     const float2 b1 = src.b1;
@@ -101,6 +126,8 @@ void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     const float2 b02 = (b0 + b2) * .5f;
     const float2 b12 = (b1 + b2) * .5f;
 
+    const uint8_t _lod = src.lod + 1;
+
     // replace original triangle with subdivided part
     
     micro_triangles[triangle_id].pw0 = pw0;
@@ -109,36 +136,46 @@ void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     micro_triangles[triangle_id].b0 = b0;
     micro_triangles[triangle_id].b1 = b01;
     micro_triangles[triangle_id].b2 = b02;
-    micro_triangles[triangle_id].lod = lod;
+    micro_triangles[triangle_id].lod = _lod;
+    micro_triangles[triangle_id].flags = src.flags;
+    micro_triangles[triangle_id].esl = esl_a;
 
     // add other three subdivided triangle parts
     
     const uint idx = micro_triangles_count;
 
-    micro_triangles[idx+0].pw0 = pw02;
-    micro_triangles[idx+0].pw1 = pw01;
+    micro_triangles[idx+0].pw0 = pw01;
+    micro_triangles[idx+0].pw1 = pw1;
     micro_triangles[idx+0].pw2 = pw12;
-    micro_triangles[idx+0].b0 = b02;
-    micro_triangles[idx+0].b1 = b01;
+    micro_triangles[idx+0].b0 = b01;
+    micro_triangles[idx+0].b1 = b1;
     micro_triangles[idx+0].b2 = b12;
-    micro_triangles[idx+0].lod = lod;
+    micro_triangles[idx+0].lod = _lod;
+    micro_triangles[idx+0].flags = src.flags;
+    micro_triangles[idx+0].esl = esl_b;
+
+    micro_triangles[idx+1].pw0 = pw12;
+    micro_triangles[idx+1].pw1 = pw2;
+    micro_triangles[idx+1].pw2 = pw02;
+    micro_triangles[idx+1].b0 = b12;
+    micro_triangles[idx+1].b1 = b2;
+    micro_triangles[idx+1].b2 = b02;
+    micro_triangles[idx+1].lod = _lod;
+    micro_triangles[idx+1].flags = src.flags;
+    micro_triangles[idx+1].esl = esl_c;
+
+    // last central triangle
+
+    micro_triangles[idx+2].pw0 = pw02;
+    micro_triangles[idx+2].pw1 = pw01;
+    micro_triangles[idx+2].pw2 = pw12;
+    micro_triangles[idx+2].b0 = b02;
+    micro_triangles[idx+2].b1 = b01;
+    micro_triangles[idx+2].b2 = b12;
+    micro_triangles[idx+2].flags = src.flags;
+    micro_triangles[idx+2].lod = _lod;
+    micro_triangles[idx+1].esl = {esl_a[1], esl_b[2], esl_c[2]};
     
-    micro_triangles[idx+1].pw0 = pw01;
-    micro_triangles[idx+1].pw1 = pw1;
-    micro_triangles[idx+1].pw2 = pw12;
-    micro_triangles[idx+1].b0 = b01;
-    micro_triangles[idx+1].b1 = b1;
-    micro_triangles[idx+1].b2 = b12;
-    micro_triangles[idx+1].lod = lod;
-
-    micro_triangles[idx+2].pw0 = pw12;
-    micro_triangles[idx+2].pw1 = pw2;
-    micro_triangles[idx+2].pw2 = pw02;
-    micro_triangles[idx+2].b0 = b12;
-    micro_triangles[idx+2].b1 = b2;
-    micro_triangles[idx+2].b2 = b02;
-    micro_triangles[idx+2].lod = lod;
-
     micro_triangles_count += 3;
 }
 
@@ -351,8 +388,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     /// Micro triangles generation
 
-    const MicroTriangleFlags flags = gsSubdivide ? MicroTriangleFlags::Subdividable : MicroTriangleFlags::None;
-    nullSubdivideTriangle(thread_id, flags);
+    nullSubdivideTriangle(thread_id);
 
     /// Micro triangles subdivision
     [[branch]] if(gsSubdivide) {

@@ -25,6 +25,10 @@ struct MicroTriangle {
     float16_t2 b1;
     float16_t2 b2;
 
+    // edges info
+    float16_t3 esl; // edges squared length in pixel size
+
+    // misc
     uint8_t lod;
     uint8_t flags;
 
@@ -32,6 +36,7 @@ struct MicroTriangle {
     __init() {
         this.lod = 0;
         this.flags = 0;
+        this.esl = {0., 0., 0.};
     }
 #endif
 

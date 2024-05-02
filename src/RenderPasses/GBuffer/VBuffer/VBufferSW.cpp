@@ -297,6 +297,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["dispatchX"] = dispatchX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
         var["gVBufferSW"]["minScreenEdgeLen"] = mMinScreenEdgeLen;
+        var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
         
         var["gHiZBuffer"] = mpHiZBuffer;
