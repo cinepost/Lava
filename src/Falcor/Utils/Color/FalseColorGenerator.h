@@ -13,12 +13,12 @@ public:
     using SharedPtr = std::shared_ptr<FalseColorGenerator>;
     using SharedConstPtr = std::shared_ptr<const FalseColorGenerator>;
 
-    static SharedPtr create(Device::SharedPtr pDevice, uint32_t numColors);
+    static SharedPtr create(Device::SharedPtr pDevice, uint32_t numColors, const uint32_t* pSeed = nullptr);
 
     void setShaderData(ShaderVar const& var) const;
 
 protected:
-    FalseColorGenerator(Device::SharedPtr pDevice, uint32_t numColors);
+    FalseColorGenerator(Device::SharedPtr pDevice, uint32_t numColors, const uint32_t* pSeed = nullptr);
 
 private:
     uint32_t mNumColors = 0;

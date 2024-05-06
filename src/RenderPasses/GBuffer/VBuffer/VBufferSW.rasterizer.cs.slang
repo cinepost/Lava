@@ -21,11 +21,11 @@ import VBufferSW;
 #endif
 
 #ifndef MAX_MICRO_TRIANGLES
-#define MAX_MICRO_TRIANGLES 256
+#define MAX_MICRO_TRIANGLES 256   // Max lod is 4
 #endif
 
 #ifndef MAX_LOD
-#define MAX_LOD 3
+#define MAX_LOD 4
 #endif
 
 #define PP_AXIS_SIZE 2
@@ -60,7 +60,7 @@ static uint micro_triangles_count = 0;
 
 
 bool edgesCanFit(float16_t3 esl) {
-   return esl[0] >= gVBufferSW.minScreenEdgeLenSquared || esl[1] >= gVBufferSW.minScreenEdgeLenSquared || esl[2] >= gVBufferSW.minScreenEdgeLenSquared; 
+    return esl[0] >= gVBufferSW.minScreenEdgeLenSquared || esl[1] >= gVBufferSW.minScreenEdgeLenSquared || esl[2] >= gVBufferSW.minScreenEdgeLenSquared; 
 }
 
 float16_t3 microTriangleEdgesLengthsSquared(float3 pw0, float3 pw1, float3 pw2) {
@@ -392,8 +392,8 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     /// Micro triangles subdivision
     [[branch]] if(gsSubdivide) {
-        for(uint lod = 0; lod <= (MAX_LOD - 1); ++lod) {
-            for(uint lod_iter = 0; lod_iter < pow(2, lod*2); ++lod_iter) {
+        for(uint lod = 1; lod <= MAX_LOD; ++lod) {
+            for(uint lod_iter = 0; lod_iter < pow(2, (lod-1)*2); ++lod_iter) {
                 subdivideTriangleUniform(lod_iter, lod);
             }
         }

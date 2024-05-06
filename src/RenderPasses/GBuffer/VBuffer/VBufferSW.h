@@ -82,6 +82,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void createJitterTexture();
 		void createPrograms();
 		void createMeshletDrawList();
+		void createMicroTrianglesBuffer();
 
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;

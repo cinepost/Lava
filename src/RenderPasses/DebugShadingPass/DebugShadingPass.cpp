@@ -183,7 +183,8 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
                 (renderData[kInputOuputMicroPoly]->asTexture() && renderData[kOutputMicroPolyColor]->asTexture())
             )
         ) {
-            mpFalseColorGenerator = FalseColorGenerator::create(mpDevice,meshletColorCycleSize);
+            static const uint32_t seed = 23456u;
+            mpFalseColorGenerator = FalseColorGenerator::create(mpDevice, meshletColorCycleSize, &seed);
         }
 
         if (!mpHeatMapColorGenerator && (renderData[kOutputMeshletDrawColor]->asTexture() && renderData[kInputDrawCount]->asTexture())) {

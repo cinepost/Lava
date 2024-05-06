@@ -76,15 +76,15 @@ struct VBufferSW {
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
     static const uint kMaxLOD = MAX_LOD;
 
-    uint2 frameDim;
-    float2 frameDimInv;
-    float2 frameDimInv2;
-    uint sampleNumber;
-    uint dispatchX;
-    uint meshletDrawsCount;
-    float minScreenEdgeLen;
-    float minScreenEdgeLenSquared;
-    float2 rnd;
+    uint2   frameDim;
+    float2  frameDimInv;
+    float2  frameDimInv2;
+    uint    sampleNumber;
+    uint    dispatchX;
+    uint    meshletDrawsCount;
+    float   minScreenEdgeLen;
+    float   minScreenEdgeLenSquared;
+    float2  rnd;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)

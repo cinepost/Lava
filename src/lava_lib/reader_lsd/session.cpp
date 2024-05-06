@@ -285,7 +285,7 @@ bool Session::cmdRaytrace() {
 	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 
-	passDict["maxSubdivLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "maxsubdlevel", int(2));
+	passDict["maxSubdivLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "maxsubdlevel", int(3));
 	passDict["minScreenEdgeLen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "minscreenedgelen", float(2.f));
 
 	passDict["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));

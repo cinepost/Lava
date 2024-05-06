@@ -41,7 +41,7 @@
 const RenderPass::Info VBufferSW::kInfo { "VBufferSW", "Software rasterizer V-buffer generation pass." };
 const size_t VBufferSW::kMaxGroupThreads = 128;
 const size_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
-static const uint32_t kMaxLOD = 3;
+static const uint32_t kMaxLOD = 4u;
 
 #ifndef UINT32_MAX
 #define UINT32_MAX (0xffffffff)
@@ -112,11 +112,21 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
         .setUnnormalizedCoordinates(true);
     mpJitterSampler = Sampler::create(pDevice, samplerDesc);
+    mDirty = true;
+}
 
-    static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2, kMaxLOD * 2);
+void VBufferSW::createMicroTrianglesBuffer() {
+    static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
+
+    const uint32_t maxMicroTrianglesCountPerThread = static_cast<uint32_t>(pow(2u,  std::min(mMaxLOD, kMaxLOD) * 2u));
+    const uint32_t maxMicroTrianglesCount = maxMicroTrianglesCountPerThread * kMaxGroupThreads;
+
+    if(mpMicroTrianglesBuffer && (mpMicroTrianglesBuffer->getElementCount() == maxMicroTrianglesCount)) return;
+
     LLOG_WRN << "Size of MicroTriangle struct is " << sizeof(MicroTriangle) << " bytes";
-    LLOG_WRN << "kMaxMicroTriangles " << kMaxMicroTriangles;
-    mpMicroTrianglesBuffer = Buffer::createStructured(pDevice, sizeof(MicroTriangle), kMaxMicroTriangles, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+    LLOG_WRN << "Max MicroTriangles count per thread " << maxMicroTrianglesCountPerThread;
+    LLOG_WRN << "Max MicroTriangles buffer size is " << maxMicroTrianglesCount;
+    mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 
     mDirty = true;
 }
@@ -261,6 +271,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
 
         const uint max_lod = ( mUseDisplacement || mUseSubdivisions) ? mMaxLOD : 0;
+        if(max_lod > 0) {
+            createMicroTrianglesBuffer();
+            defines.add("USE_SUBDIVISIONS", "1");
+        } else {
+            defines.remove("USE_SUBDIVISIONS");
+        }
 
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
@@ -476,7 +492,7 @@ void VBufferSW::setHighpDepth(bool state) {
 void VBufferSW::setMaxSubdivLevel(uint level) {
     if(mMaxLOD == level) return;
     static const uint kLowerSubdLevel = 0u;
-    static const uint kUpperSubdLevel = 5u;
+    static const uint kUpperSubdLevel = kMaxLOD;
     mMaxLOD = std::max(kLowerSubdLevel, std::min(kUpperSubdLevel, level));
     mDirty = true;
 }

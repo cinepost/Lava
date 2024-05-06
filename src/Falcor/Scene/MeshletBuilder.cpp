@@ -128,12 +128,10 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   }
 }
 
-static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* meshlet_cone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {
+static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* meshlet_cone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {
   uint32_t best_prim = ~0u;
   uint32_t best_extra = 5;
   float best_score = FLT_MAX;
-
-  const auto& adjacency = mesh.adjacency;
 
   for (size_t i = 0; i < meshletSpec.vertexCount(); ++i) {
     uint32_t vtx = mesh.getIndex(meshletSpec.vertices[i]);
@@ -527,12 +525,12 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
 
   LLOG_WRN << "Mesh adjacency counts size " << mesh.adjacency.counts.size();
   LLOG_WRN << "Mesh adjacency offsets size " << mesh.adjacency.offsets.size();
-  //auto& adj_data = mesh.adjacency.data;
+  auto adjacency = mesh.adjacency; // Work on adjacency data copy. we may need original data for later use
 
-  assert(static_cast<size_t>(vertex_count) == mesh.adjacency.counts.size());
+  assert(static_cast<size_t>(vertex_count) == adjacency.counts.size());
   
   std::vector<uint32_t> live_primitives(vertex_count);
-  memcpy(live_primitives.data(), mesh.adjacency.counts.data(), vertex_count * sizeof(uint32_t));
+  memcpy(live_primitives.data(), adjacency.counts.data(), vertex_count * sizeof(uint32_t));
 
   size_t prim_count = mesh.getPrimitivesCount();
 
@@ -576,11 +574,11 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     Cone meshlet_cone = getMeshletCone(meshlet_cone_acc, meshlet_spec.primitiveCount());
 
     uint32_t best_extra = 0;
-    uint32_t best_prim = getNeighborTriangle(mesh, meshlet_spec, &meshlet_cone, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, cone_weight, &best_extra);
+    uint32_t best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, &meshlet_cone, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, cone_weight, &best_extra);
 
     // if the best triangle doesn't fit into current meshlet, the spatial scoring we've used is not very meaningful, so we re-select using topological scoring
     if (best_prim != ~0u && (meshlet_spec.vertexCount() + best_extra > kMaximumMeshletVertices || meshlet_spec.primitiveCount() >= kMaximumMeshletPrims)) {
-      best_prim = getNeighborTriangle(mesh, meshlet_spec, NULL, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, 0.f, NULL);
+      best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, NULL, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, 0.f, NULL);
     }
 
     // when we run out of neighboring triangles we need to switch to spatial search; we currently just pick the closest triangle irrespective of connectivity
@@ -594,7 +592,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     }
 
     if (best_prim == ~0u) {
-      LLOG_WRN << "Breaking...";
+      LLOG_TRC << "Breaking...";
       break;
     }
 
@@ -609,14 +607,6 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
       memset(&meshlet_cone_acc, 0, sizeof(meshlet_cone_acc));
-      /*
-      if(mesh.meshletSpecs.size() == 30000) {
-        for(const auto& meshlet_spec: mesh.meshletSpecs) {
-          LLOG_WRN << "Meshlet prim_count " << meshlet_spec.primitiveCount();
-        }
-        break;
-      }
-      */
     }
 
     live_primitives[a]--;
@@ -629,15 +619,15 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     for (uint32_t k = 0; k < 3; ++k) {
       uint32_t index = mesh.getIndex(best_prim * 3 + k);
 
-      uint32_t* neighbors = mesh.adjacency.data.data() + mesh.adjacency.offsets[index];
-      size_t neighbors_size = mesh.adjacency.counts[index];
+      uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[index];
+      size_t neighbors_size = adjacency.counts[index];
 
       for (size_t i = 0; i < neighbors_size; ++i) {
         uint32_t prim = neighbors[i];
 
         if (prim == best_prim) {
           neighbors[i] = neighbors[neighbors_size - 1];
-          mesh.adjacency.counts[index]--;
+          adjacency.counts[index]--;
           break;
         }
       }

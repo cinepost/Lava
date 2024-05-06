@@ -1867,8 +1867,8 @@
                     name    "lv_max_subd_level"
                     label   "Max Subdivisions Level"
                     type    integer
-                    default { "4" }
-                    range   { 0! 5! }
+                    default { "3" }
+                    range   { 0! 4! }
                     parmtag { "script_callback_language" "python" }
                 }
 
