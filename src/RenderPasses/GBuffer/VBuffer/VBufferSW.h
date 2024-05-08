@@ -105,7 +105,9 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		float mMinScreenEdgeLen = 4.0f;
 
-		uint mMaxLOD = 3;
+		uint mSubgroupSize;
+		uint mMaxLOD = 0;
+		uint mMaxMicroTrianglesPerThread = 1;
 
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
@@ -118,6 +120,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
 		Buffer::SharedPtr      	mpHiZBuffer;
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
+		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;

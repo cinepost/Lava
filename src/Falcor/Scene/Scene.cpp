@@ -3239,6 +3239,41 @@ void Scene::initRayTracing() {
     mRayTraceInitialized = true;
 }
 
+void Scene::setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
+    if(!mpNullTlasObject) {
+        Device::SharedPtr pDevice = pContext->device();
+
+        RtAccelerationStructureBuildInputs inputs = {};
+        inputs.kind = RtAccelerationStructureKind::TopLevel;
+        inputs.descCount = 0;
+        inputs.flags = RtAccelerationStructureBuildFlags::None;
+
+        RtAccelerationStructurePrebuildInfo prebuildInfo = RtAccelerationStructure::getPrebuildInfo(pDevice, inputs);
+
+        auto pScratch = Buffer::create(pDevice, prebuildInfo.scratchDataSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        auto pTlasBuffer = Buffer::create(pDevice, prebuildInfo.resultDataMaxSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+
+        RtAccelerationStructure::Desc createDesc = {};
+        createDesc.setKind(RtAccelerationStructureKind::TopLevel);
+        createDesc.setBuffer(pTlasBuffer, 0, prebuildInfo.resultDataMaxSize);
+        mpNullTlasObject = RtAccelerationStructure::create(pDevice, createDesc);
+
+        RtAccelerationStructure::BuildDesc asDesc = {};
+        asDesc.inputs = inputs;
+        asDesc.scratchData = pScratch->getGpuAddress();
+        asDesc.dest = mpNullTlasObject.get();
+
+        pContext->buildAccelerationStructure(asDesc, 0, nullptr);
+        pContext->uavBarrier(pTlasBuffer.get());
+    }
+
+    mpSceneBlock["rtAccel"].setAccelerationStructure(mpNullTlasObject);
+
+    // Bind Scene parameter block.
+    getCamera()->setShaderData(mpSceneBlock[kCamera]); // TODO REMOVE: Shouldn't be needed anymore?
+    var[kParameterBlockName] = mpSceneBlock;
+}
+
 void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {

@@ -40,6 +40,9 @@
 #define FALCOR_NVAPI_AVAILABLE 0
 #endif
 
+#include "gfx_lib/vulkan/vk-api.h"
+#include "gfx_lib/renderer-shared.h"
+#include "gfx_lib/vulkan/vk-device.h"
 
 using namespace gfx;
 
@@ -528,6 +531,13 @@ namespace Falcor {
 
 	bool Device::isWindowOccluded() const {
 		return mCurrentBackBufferIndex == -1;
+	}
+
+	uint32_t Device::subgroupSize() const {
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+		auto& vk_api = pDevice->vkAPI();
+		return vk_api.m_deviceSubgroupProperties.subgroupSize;
 	}
 
 	Device::~Device() {

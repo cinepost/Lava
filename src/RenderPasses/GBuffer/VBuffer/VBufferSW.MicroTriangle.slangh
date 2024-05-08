@@ -32,6 +32,11 @@ struct MicroTriangle {
     uint8_t lod;
     uint8_t flags;
 
+    //uint4  _pad0;
+    //uint4  _pad1;
+    //uint   _pad2;
+
+
 #ifndef HOST_CODE
     __init() {
         this.lod = 0;

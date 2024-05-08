@@ -119,7 +119,7 @@ static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions,
     return mesh_face_count;
 }
 
-uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
     assert(pBgeo);
 
     const auto pDetail = pBgeo->getDetail();
@@ -366,10 +366,16 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
     mUniqueTrianglesCount += mesh_face_count;
 
-    //const uint32_t meshID = Falcor::SceneBuilder::addMesh(mesh);
-    const uint32_t meshID = addProcessedMesh(processMesh(mesh));
+    return addProcessedMesh(processMesh(mesh));
+}
 
-    return meshID;
+uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+    const uint32_t id = _addGeometry(pBgeo, name);
+    {
+        std::scoped_lock lock(mMeshesMutex);
+        mMeshMap[name] = id;
+    }
+    return id;
 }
 
 void SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
@@ -399,7 +405,7 @@ void SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const 
             return result;
         }
 
-        result = this->addGeometry(pBgeo, name);
+        result = this->_addGeometry(pBgeo, name);
         
         return result;
     })));

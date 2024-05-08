@@ -209,10 +209,8 @@ uint32_t SceneBuilder::MeshID::_get() const {
 			return mIntID;
 		case IDType::FUTURE:
 			try {
-				LLOG_WRN << "Getting future";
 				mIntID = mFutureID.get();
 				mType = IDType::INTEGER;
-				LLOG_WRN << "Getting future done";
 				return mIntID;
 			} catch(const std::exception& e) {
      			LLOG_ERR << "Error getting async meshID !!! Exception from the thread: " << e.what();

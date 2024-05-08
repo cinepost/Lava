@@ -950,6 +950,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
 
+    void setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
+
     /** Get the name of the mesh with the given ID.
     */
     std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
@@ -1432,6 +1434,9 @@ public:
 
         Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
     };
+
+    // NULL Tlas
+    RtAccelerationStructure::SharedPtr mpNullTlasObject;
 
     // BLAS Data is ordered as all mesh BLAS's first, followed by one BLAS containing all AABBs.
     std::vector<RtAccelerationStructure::SharedPtr> mBlasObjects; ///< BLAS API objects.

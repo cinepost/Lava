@@ -40,6 +40,7 @@ class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 
 	private:
 		SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags = Flags::Default);
+		uint32_t _addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name = "");
 
 	private:
 		StandardMaterial::SharedPtr mpDefaultMaterial = nullptr;

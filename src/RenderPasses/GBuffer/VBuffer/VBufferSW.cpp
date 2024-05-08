@@ -101,6 +101,10 @@ VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dict
 }
 
 VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
+    LLOG_WRN << "subgroupSize " << mpDevice->subgroupSize();
+    mSubgroupSize = std::max(32u, std::min(mpDevice->subgroupSize(), 64u));
+    setMaxSubdivLevel(3u);
+
     parseDictionary(dict);
 
     // Create sample generator
@@ -112,22 +116,55 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
         .setUnnormalizedCoordinates(true);
     mpJitterSampler = Sampler::create(pDevice, samplerDesc);
+
     mDirty = true;
 }
 
 void VBufferSW::createMicroTrianglesBuffer() {
     static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
-
-    const uint32_t maxMicroTrianglesCountPerThread = static_cast<uint32_t>(pow(2u,  std::min(mMaxLOD, kMaxLOD) * 2u));
-    const uint32_t maxMicroTrianglesCount = maxMicroTrianglesCountPerThread * kMaxGroupThreads;
+    const uint32_t maxMicroTrianglesCount = mMaxMicroTrianglesPerThread * kMaxGroupThreads;
 
     if(mpMicroTrianglesBuffer && (mpMicroTrianglesBuffer->getElementCount() == maxMicroTrianglesCount)) return;
 
     LLOG_WRN << "Size of MicroTriangle struct is " << sizeof(MicroTriangle) << " bytes";
-    LLOG_WRN << "Max MicroTriangles count per thread " << maxMicroTrianglesCountPerThread;
+    LLOG_WRN << "Max MicroTriangles count per thread " << mMaxMicroTrianglesPerThread;
     LLOG_WRN << "Max MicroTriangles buffer size is " << maxMicroTrianglesCount;
-    mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+    
+    size_t total_buffers_size_bytes = 0;
 
+    static bool createCounter = true;
+
+    static const Resource::BindFlags flags = Resource::BindFlags::None;
+
+    mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, flags, Buffer::CpuAccess::None, nullptr, createCounter);
+
+    total_buffers_size_bytes += maxMicroTrianglesCount * sizeof(MicroTriangle);
+
+    mMicroTriangleBuffers.resize(128);
+    for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
+        mMicroTriangleBuffers[i] = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), mMaxMicroTrianglesPerThread, flags, Buffer::CpuAccess::None, nullptr, false);
+        total_buffers_size_bytes += mMaxMicroTrianglesPerThread * sizeof(MicroTriangle);
+    }
+
+    LLOG_WRN << "Total MicroTriangle buffers size bytes is " << total_buffers_size_bytes;
+    LLOG_WRN << "Total MicroTriangle buffers size megabytes is " << (total_buffers_size_bytes / 1024) / 1024;
+/*
+ None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
+        Vertex = 0x1,           ///< The resource will be bound as a vertex-buffer
+        Index = 0x2,            ///< The resource will be bound as a index-buffer
+        Constant = 0x4,         ///< The resource will be bound as a constant-buffer
+        StreamOutput = 0x8,     ///< The resource will be bound to the stream-output stage as an output buffer
+        ShaderResource = 0x10,  ///< The resource will be bound as a shader-resource
+        UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
+        RenderTarget = 0x40,    ///< The resource will be bound as a render-target
+        DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
+        IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
+        Shared      = 0x200,    ///< The resource will be shared with a different adapter. Mostly useful for sharing resoures with CUDA
+        //AccelerationStructureBuild = 0x400,
+        //AccelerationStructureInput = 0x800,
+        //AccelerationStructureScratch = 0x1000,
+        AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
+*/
     mDirty = true;
 }
 
@@ -271,7 +308,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
 
         const uint max_lod = ( mUseDisplacement || mUseSubdivisions) ? mMaxLOD : 0;
-        if(max_lod > 0) {
+        if( mUseDisplacement || mUseSubdivisions) {
             createMicroTrianglesBuffer();
             defines.add("USE_SUBDIVISIONS", "1");
         } else {
@@ -282,6 +319,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
         defines.add("CULL_MODE", GBufferBase::to_define_string(mCullMode));
         defines.add("MAX_LOD", std::to_string(max_lod));
+        defines.add("MAX_MT_PER_THREAD", std::to_string(mMaxMicroTrianglesPerThread));
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
@@ -296,11 +334,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind static resources
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        //mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpScene->setNullRaytracingShaderData(pRenderContext, var);
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    //const uint32_t threadsX = meshletDrawsCount * kMaxGroupThreads;
     const uint32_t threadsX = meshletDrawsCount * kMaxGroupThreads;
     const uint32_t dispatchX = kMaxGroupThreads;
 
@@ -318,8 +356,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         
         var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
-        var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
         var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
+
+        var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
+        for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
+            var["gMicroTriangleBuffers"][i] = mMicroTriangleBuffers[i];
+        }
         
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
@@ -357,7 +399,13 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     // Meshlets rasterization pass
     LLOG_DBG << "Software rasterizer executing compute pass with " << std::to_string(threadsX) << " threads.";
+    
     mpComputeRasterizerPass->execute(pRenderContext, uint3(threadsX, 1, 1));
+    //for(uint i = 0; i < meshletDrawsCount; ++i) {
+    //    ShaderVar var = mpComputeRasterizerPass->getRootVar();
+    //    var["gVBufferSW"]["drawableIndex"] = i;
+    //    mpComputeRasterizerPass->execute(pRenderContext, uint3(128, 1, 1));
+    //}
 
     mSampleNumber++;
 }
@@ -494,6 +542,7 @@ void VBufferSW::setMaxSubdivLevel(uint level) {
     static const uint kLowerSubdLevel = 0u;
     static const uint kUpperSubdLevel = kMaxLOD;
     mMaxLOD = std::max(kLowerSubdLevel, std::min(kUpperSubdLevel, level));
+    mMaxMicroTrianglesPerThread = std::max(1u, static_cast<uint32_t>(pow(2u,  std::min(mMaxLOD, kMaxLOD) * 2u)));
     mDirty = true;
 }
 

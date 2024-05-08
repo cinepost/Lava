@@ -623,11 +623,15 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		sampleLocationsProps.sampleLocationSubPixelBits = 4;
 		sampleLocationsProps.variableSampleLocations = VK_TRUE;
 
-		rtProps.pNext = &sampleLocationsProps;
+		VkPhysicalDeviceSubgroupProperties subgroupProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
+		subgroupProps.pNext = &sampleLocationsProps;
+
+		rtProps.pNext = &subgroupProps;
 		extendedProps.pNext = &rtProps;
 
 		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &extendedProps);
 		m_api.m_rtProperties = rtProps;
+		m_api.m_deviceSubgroupProperties = subgroupProps;
 
 		uint32_t extensionCount = 0;
 		m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, NULL);

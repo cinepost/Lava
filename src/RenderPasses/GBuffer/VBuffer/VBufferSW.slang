@@ -32,6 +32,7 @@ import Utils.Sampling.SampleGenerator;
 
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.Meshlet.slangh"
+//#include "VBufferSW.MicroTriangle.slangh"
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -85,6 +86,7 @@ struct VBufferSW {
     float   minScreenEdgeLen;
     float   minScreenEdgeLenSquared;
     float2  rnd;
+    uint    drawableIndex;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)
