@@ -4,6 +4,7 @@
 import Scene.Camera.CameraData;
 
 #include "VBufferSW.MicroTriangle.slangh"
+#include "VBufferSW.SubdivData.slangh"
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
 
@@ -62,9 +63,10 @@ groupshared uint              gsTest;
 static uint3                  gDispatchThreadID;
 static uint2                  gGroupThreadID;
 
-StructuredBuffer<uint32_t>    gAdjacencyDataBuffer;
-StructuredBuffer<uint32_t>    gAdjacencyCountsBuffer; 
-StructuredBuffer<uint32_t>    gAdjacencyOffsetsBuffer;
+StructuredBuffer<MeshSubdivData>    gMeshSubdivDataBuffer;
+StructuredBuffer<EvenVertexData>    gEvenVertexValenceBuffer;
+StructuredBuffer<uint32_t>          gOddVeticesIndexVBuffer;
+StructuredBuffer<uint32_t>          gEvenVerticesNeighboursIndexBuffer; 
 
 RWStructuredBuffer<MicroTriangle> gMicroTrianglesBuffer;
 RWStructuredBuffer<MicroTriangle> gMicroTriangleBuffers[128];

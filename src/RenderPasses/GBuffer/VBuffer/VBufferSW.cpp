@@ -41,6 +41,7 @@
 const RenderPass::Info VBufferSW::kInfo { "VBufferSW", "Software rasterizer V-buffer generation pass." };
 const size_t VBufferSW::kMaxGroupThreads = 128;
 const size_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
+static const uint32_t kInvalidIndex = 0xffffffff;
 static const uint32_t kMaxLOD = 4u;
 
 #ifndef UINT32_MAX
@@ -48,6 +49,7 @@ static const uint32_t kMaxLOD = 4u;
 #endif 
 
 namespace {
+    const std::string kProgramComputeSubdivDataBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.SubdivDataBuilder.cs.slang";
     const std::string kProgramComputeJitterGenFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.jittergen.cs.slang";
     const std::string kProgramComputeRasterizerFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.rasterizer.cs.slang";
     const std::string kProgramComputeTesselatorFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.tesselator.cs.slang";
@@ -148,23 +150,7 @@ void VBufferSW::createMicroTrianglesBuffer() {
 
     LLOG_WRN << "Total MicroTriangle buffers size bytes is " << total_buffers_size_bytes;
     LLOG_WRN << "Total MicroTriangle buffers size megabytes is " << (total_buffers_size_bytes / 1024) / 1024;
-/*
- None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
-        Vertex = 0x1,           ///< The resource will be bound as a vertex-buffer
-        Index = 0x2,            ///< The resource will be bound as a index-buffer
-        Constant = 0x4,         ///< The resource will be bound as a constant-buffer
-        StreamOutput = 0x8,     ///< The resource will be bound to the stream-output stage as an output buffer
-        ShaderResource = 0x10,  ///< The resource will be bound as a shader-resource
-        UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
-        RenderTarget = 0x40,    ///< The resource will be bound as a render-target
-        DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
-        IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
-        Shared      = 0x200,    ///< The resource will be shared with a different adapter. Mostly useful for sharing resoures with CUDA
-        //AccelerationStructureBuild = 0x400,
-        //AccelerationStructureInput = 0x800,
-        //AccelerationStructureScratch = 0x1000,
-        AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
-*/
+
     mDirty = true;
 }
 
@@ -268,6 +254,17 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         Program::DefineList defines;
         
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
+    }
+
+    if((!mpComputeSubdivDataBuilderPass && mSubdivDataReady) || mDirty) {
+        Program::Desc desc;
+        desc.addShaderLibrary(kProgramComputeSubdivDataBuilderFile).csEntry("build").setShaderModel("6_5");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+
+        mSubdivDataReady = true;
     }
 
     // Create rasterization pass.
@@ -380,19 +377,27 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
     }
 
-    {
+    // Jitter generation pass
+    if(mpComputeJitterPass && mpJitterTexture) {
         ShaderVar var = mpComputeJitterPass->getRootVar();
         var["PerFrameCB"]["gJitterTextureDim"] = mFrameDim;
         var["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
 
         // Bind resources.
         var["gJitterTexture"] = mpJitterTexture;
-    }
 
-    // Jitter generation pass
-    if(mpJitterTexture) {
         const uint2 jitterTexDim = {mpJitterTexture->getWidth(0), mpJitterTexture->getHeight(0)};
         mpComputeJitterPass->execute(pRenderContext, jitterTexDim.x, jitterTexDim.y);
+    }
+
+    // Subdiv data building pass
+    if(mpComputeSubdivDataBuilderPass) {
+
+        ShaderVar var = mpComputeSubdivDataBuilderPass->getRootVar();
+        var["PerFrameCB"]["gSubdivMeshesCount"] = 0;
+
+        uint32_t threadsCount = 128;
+        mpComputeSubdivDataBuilderPass->execute(pRenderContext, uint3(threadsCount, 1, 1));
     }
 
     // Frustum culling pass
@@ -458,6 +463,43 @@ void VBufferSW::createMeshletDrawList() {
     } else {
         mpMeshletDrawListBuffer = nullptr;
     }
+}
+
+void VBufferSW::createMeshSubdivDataBuffer() {
+    if(mpMeshSubdivDataBuffer && !mDirty) return;
+
+    std::vector<MeshSubdivData> meshSubdivDataList(mpScene->getMeshCount());
+    uint32_t evenVerticesNeighboursCount = 0;
+    uint32_t oddVerticesCount = 0;    
+    uint32_t verticesCount = 0;
+
+    for(uint32_t instanceID = 0; instanceID < mpScene->getGeometryInstanceCount(); ++instanceID) {
+        const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
+        const uint32_t meshID = instanceData.geometryID;
+        if(meshID == kInvalidIndex) continue;
+        if(meshSubdivDataList.size() <= meshID) { meshSubdivDataList.resize(meshID + 1); }
+
+        if(instanceData.getType() == GeometryType::TriangleMesh && instanceData.isSubdividable()) {
+            meshSubdivDataList[meshID].flags |= (uint8_t)MeshSubdivDataFlags::Subdividable;
+        } else {
+            meshSubdivDataList[meshID].flags = 0;
+        }
+    }
+
+    if(!mpEvenVerticesValenceBuffer || mpEvenVerticesValenceBuffer->getElementCount() != verticesCount) {
+        mpEvenVerticesValenceBuffer = Buffer::createStructured(mpDevice, sizeof(EvenVertexData), verticesCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+    }
+
+    if(!mpEvenVerticesIndexBuffer || (mpEvenVerticesIndexBuffer->getElementCount() != evenVerticesNeighboursCount)) {
+        mpEvenVerticesIndexBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), evenVerticesNeighboursCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+            
+    }
+
+    if(!mpOddVeticesIndexVBuffer || (mpOddVeticesIndexVBuffer->getElementCount() != oddVerticesCount)) {
+        mpOddVeticesIndexVBuffer = Buffer::createTyped<uint32_t>(mpDevice, oddVerticesCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+    }
+    
+
 }
 
 void VBufferSW::preProcessMeshlets() {

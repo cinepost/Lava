@@ -84,9 +84,9 @@ struct PrimitiveAdjacency {
     std::vector<uint32_t> offsets;
     std::vector<uint32_t> data;
 
-    bool valid;
+    bool _valid; // Set by Adjacency data builder!
     
-    bool isValid() const { return valid && !counts.empty() && !offsets.empty() && !data.empty(); }
+    bool isValid() const { return _valid && !counts.empty() && !offsets.empty() && !data.empty(); }
 };
 
 struct MeshletSpec {

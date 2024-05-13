@@ -32,7 +32,6 @@ import Utils.Sampling.SampleGenerator;
 
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.Meshlet.slangh"
-//#include "VBufferSW.MicroTriangle.slangh"
 
 #define is_valid(name) (is_valid_##name != 0)
 

@@ -126,6 +126,8 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
     assert(adjacency.offsets[i] >= adjacency.counts[i]);
     adjacency.offsets[i] -= adjacency.counts[i];
   }
+
+  adjacency._valid = true;
 }
 
 static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* meshlet_cone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {

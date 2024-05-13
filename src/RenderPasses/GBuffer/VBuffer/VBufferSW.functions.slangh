@@ -49,3 +49,17 @@ double4 transformPointToScreenDouble(const double3 p, float t) {
     pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
     return pS;
 }
+
+// QAS
+
+float3 edgeCP (float3 e, float3 p0, float3 p1) {
+    return (e * 4.0 - p0 - p1) * 0.5;
+}
+
+float3 Q (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 e0, float3 e1, float3 e2) {
+    float3 n200 = p0, n020 = p1, n002 = p2;
+    float3 n110 = edgeCP (e0, p0, p1);
+    float3 n101 = edgeCP (e2, p0, p2);
+    float3 n011 = edgeCP (e1, p1, p2);
+    return w * (n200*w + n110*2*u) + u * (n020*u + n011*2*v) + v * (n002*v + n101*2*w);
+}

@@ -80,6 +80,7 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		void createBuffers();
 		void createJitterTexture();
+		void createMeshSubdivDataBuffer();
 		void createPrograms();
 		void createMeshletDrawList();
 		void createMicroTrianglesBuffer();
@@ -103,12 +104,15 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 
+		bool mSubdivDataReady = false;
+
 		float mMinScreenEdgeLen = 4.0f;
 
 		uint mSubgroupSize;
 		uint mMaxLOD = 0;
 		uint mMaxMicroTrianglesPerThread = 1;
 
+		ComputePass::SharedPtr 	mpComputeSubdivDataBuilderPass;
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr 	mpComputeTesselatorPass;
@@ -121,6 +125,12 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      	mpHiZBuffer;
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
+
+		// Subdiv data buffers
+		Buffer::SharedPtr       mpMeshSubdivDataBuffer;
+		Buffer::SharedPtr       mpOddVeticesIndexVBuffer;
+		Buffer::SharedPtr       mpEvenVerticesIndexBuffer;
+		Buffer::SharedPtr       mpEvenVerticesValenceBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;
