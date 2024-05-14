@@ -72,7 +72,7 @@ class dlldecl SceneBuilder {
     using MeshletSpec = Geometry::MeshletSpec;
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
 
-    class MeshID {
+    class dlldecl MeshID {
         public:
             MeshID(): v(kInvalidMeshID) {};
             MeshID(uint32_t id): v(id) {};

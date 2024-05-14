@@ -205,7 +205,7 @@ int IMG_LavaLTX::readScanline(int y, void *buf) {
 	int	nbytes;
 
 	//test
-	for(size_t i = 0; i < 128; i++) *(char *)(buf + i) = 0;
+	for(size_t i = 0; i < 128; i++) *((char*)buf + i) = 0;
 
 	if (y >= myStat.getYres()) return 0;
 

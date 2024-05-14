@@ -4,7 +4,7 @@ add_subdirectory( imgLava )
 
 if(WIN32)
     set(HYTHON_VERSION_MAJOR "3")
-    set(HYTHON_VERSION_MINOR "7")
+    set(HYTHON_VERSION_MINOR "9")
     set(HYTHON_VERSION "${HYTHON_VERSION_MAJOR}.${HYTHON_VERSION_MINOR}")
     message(STATUS "Using python version " ${HYTHON_VERSION} " for Houdini-Lava integration.")
 elseif(NOT HOUDINI_ROOT)

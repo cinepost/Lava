@@ -61,6 +61,9 @@ namespace {
 
 static std::chrono::high_resolution_clock::time_point gExecTimeStart;
 
+#ifdef _WIN32
+// traceback not implemented
+#else
 void signalHandler( int signum ){
   // ok, lock-free atomics
   do_shutdown = 1;
@@ -71,9 +74,6 @@ void signalHandler( int signum ){
   write(STDERR_FILENO, str, sizeof(str) - 1);
 }
 
-#ifdef _WIN32
-  // traceback not implemented
-#else
 void signalTraceHandler( int signum ){
   lava::ut::log::shutdown_log();
 #ifdef PRE_RELEASE_TRACEBACK_HANDLER

@@ -73,7 +73,7 @@ Camera::SharedPtr Camera::create(const Device::SharedPtr& pDevice) {
 	return SharedPtr(pCamera);
 }
 
-static Camera::Changes calcCameraDataChanges(Camera::Changes& changes, const CameraData& data, const CameraData& prevData) {
+void calcCameraDataChanges(Camera::Changes& changes, const CameraData& data, const CameraData& prevData) {
 	using Changes = Camera::Changes;
 
 	if (prevData.focalDistance != data.focalDistance) changes    |= Changes::FocalDistance;
@@ -95,7 +95,7 @@ static Camera::Changes calcCameraDataChanges(Camera::Changes& changes, const Cam
 	if (prevData.jitterY != data.jitterY) changes |= Changes::Jitter;
 }
 
-static Camera::Changes calcCameraXformChanges(Camera::Changes& changes, const CameraXformData& data, const CameraXformData& prevData) {
+void calcCameraXformChanges(Camera::Changes& changes, const CameraXformData& data, const CameraXformData& prevData) {
 	using Changes = Camera::Changes;
 
 	if (prevData.cameraU != data.cameraU) changes |= Changes::Movement;

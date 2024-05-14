@@ -137,7 +137,11 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseD64) setHighpDepth(static_cast<bool>(value));
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
+        #ifdef _WIN32
+        else if (key == kCullMode) setCullMode(value.operator std::string());
+        #else
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
+        #endif
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }

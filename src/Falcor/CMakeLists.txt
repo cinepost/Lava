@@ -361,13 +361,22 @@ file(
     DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
-if(UNIX OR WIN32)
+if(UNIX)
     install( 
         TARGETS falcor_lib
         DESTINATION lib 
         RUNTIME_DEPENDENCY_SET falcor_deps
     )
+elseif(WIN32)
+    install(
+        TARGETS falcor_lib
+        DESTINATION lib
+        # RUNTIME DESTINATION lib
+        # RUNTIME_DEPENDENCY_SET falcor_deps
+    )
+endif()
 
+if(UNIX OR WIN32)
     # Install all needed shaders
     install(
         DIRECTORY Core Experimental Raytracing RenderGraph Rendering RenderPasses Scene Testing Utils
