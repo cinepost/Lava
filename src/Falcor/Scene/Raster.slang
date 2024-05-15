@@ -31,23 +31,22 @@ __exported import Scene.Shading;
 
 struct VSIn {
     // Packed vertex attributes, see PackedStaticVertexData
-    float3 pos                      : POSITION;
-    float  texU                     : TEXCOORD_U;
     float3 packedNormalTangentCurveRadius   : PACKED_NORMAL_TANGENT_CURVE_RADIUS;
-    float  texV                     : TEXCOORD_V;
-
+    uint   pointIndex                       : POINT_INDEX;
+    float2 uv                               : TEXCOORD_UV;
+    uint2  _pad                              : PAD;
+    
     // Other vertex attributes
-    uint instanceID                 : DRAW_ID;
+    uint instanceID                         : DRAW_ID;
 
     // System values
-    uint vertexID                   : SV_VertexID;
+    uint vertexID                           : SV_VertexID;
 
     StaticVertexData unpack() {
         PackedStaticVertexData v;
-        v.position = pos;
+        v.pointIndex = pointIndex;
         v.packedNormalTangentCurveRadius = packedNormalTangentCurveRadius;
-        v.texU = texU;
-        v.texV = texV;
+        v.uv = uv;
         return v.unpack();
     }
 };
@@ -73,24 +72,27 @@ struct VSOut {
 VSOut defaultVS(VSIn vIn) {
     VSOut vOut;
     const GeometryInstanceID instanceID = { vIn.instanceID };
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-    float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
+
+    float3 ptPos = gScene.getPointPosition(vIn.pointIndex);
+    float3 posW = mul(float4(ptPos, 1.f), worldMat).xyz;
+
     vOut.posW = posW;
     vOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProjMat());
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
 
-    vOut.texC = float2(vIn.texU, vIn.texV);
+    vOut.texC = vIn.uv;
     vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
 
     float4 tangent = vIn.unpack().tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 
     // Compute the vertex position in the previous frame.
-    float3 prevPos = vIn.pos;
-    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    float3 prevPos = ptPos;
     
     if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;

@@ -30,22 +30,22 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-#define VERTEX_POSITION_LOC                 0
-#define VERTEX_TEXCOORD_U_LOC               1
-#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC    2
-#define VERTEX_TEXCOORD_V_LOC               3
-#define INSTANCE_DRAW_ID_LOC                4
+#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC 0
+#define VERTEX_POINT_INDEX_LOC                        1
+#define VERTEX_TEXCOORD_UV_LOC                        2
+#define VERTEX_PAD_LOC                                3
+#define INSTANCE_DRAW_ID_LOC                          4
 
-#define VERTEX_LOCATION_COUNT               5
+#define VERTEX_LOCATION_COUNT                         5
 
-#define VERTEX_USER_ELEM_COUNT              4
-#define VERTEX_USER0_LOC                    (VERTEX_LOCATION_COUNT)
+#define VERTEX_USER_ELEM_COUNT                        4
+#define VERTEX_USER0_LOC                              (VERTEX_LOCATION_COUNT)
 
-#define VERTEX_POSITION_NAME                "POSITION"
-#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME   "PACKED_NORMAL_TANGENT_CURVE_RADIUS"
-#define VERTEX_TEXCOORD_U_NAME              "TEXCOORD_U"
-#define VERTEX_TEXCOORD_V_NAME              "TEXCOORD_V"
-#define INSTANCE_DRAW_ID_NAME               "DRAW_ID"
+#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME  "PACKED_NORMAL_TANGENT_CURVE_RADIUS"
+#define VERTEX_POINT_INDEX_NAME                         "POINT_INDEX"
+#define VERTEX_TEXCOORD_UV_NAME                         "TEXCOORD_UV"
+#define VERTEX_PAD_NAME                                 "PAD"
+#define INSTANCE_DRAW_ID_NAME                           "DRAW_ID"
 
 #define CURVE_VERTEX_POSITION_LOC           0
 #define CURVE_VERTEX_RADIUS_LOC             1

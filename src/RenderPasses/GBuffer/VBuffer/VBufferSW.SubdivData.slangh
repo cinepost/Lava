@@ -19,9 +19,6 @@ struct MeshSubdivData {
     uint32_t adjacencyCountsBufferOffset;
     uint32_t evenOddVertexIndicesBufferOffset;
 
-    //uint32_t oddVertexIndicesBufferOffset;
-    //uint32_t evenVertexValenceBufferOffset;
-
     uint8_t flags;
 
     bool isSubdividable() CONST_FUNCTION {

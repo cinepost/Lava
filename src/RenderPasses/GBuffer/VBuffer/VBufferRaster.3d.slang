@@ -100,7 +100,9 @@ VBufferVSOut vsMain(VSIn vsIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
 #endif
 
-    vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
+    const float3 ptPos = gScene.getPointPosition(vsIn.pointIndex);
+
+    vsOut.posW = mul(float4(ptPos, 1.f), worldMat).xyz;
 
 #if defined(COMPUTE_MOTION_BLUR)
     const CameraXformData xform = gScene.camera.getXformData(tj);
@@ -118,7 +120,7 @@ VBufferVSOut vsMain(VSIn vsIn) {
     const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);
 
-    vsOut.texC = float2(vsIn.texU, vsIn.texV);
+    vsOut.texC = vsIn.uv;
     vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
 
     vsOut.instanceID = instanceID;
@@ -128,7 +130,7 @@ VBufferVSOut vsMain(VSIn vsIn) {
 
 #if is_valid(gMotionVector)
     // Compute the vertex position in the previous frame.
-    float3 prevPos = vsIn.pos;
+    float3 prevPos = ptPos;
     
     if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vsIn.vertexID;

@@ -57,14 +57,14 @@ struct DisplacedTriangleMeshIntersector
         const uint materialID = gScene.getMaterialID(instanceID);
         const uint3 indices = gScene.getIndices(instanceID, primitiveIndex);
         const StaticVertexData vertices[3] = { gScene.getVertex(indices[0]), gScene.getVertex(indices[1]), gScene.getVertex(indices[2]) };
+        const float3 points[3] = {gScene.getPointPosition(vertices[0].pointIndex), gScene.getPointPosition(vertices[1].pointIndex), gScene.getPointPosition(vertices[2].pointIndex) };
         const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
 
         DisplacementData displacementData;
         gScene.materials.loadDisplacementData(materialID, displacementData);
 
         DisplacementIntersection result;
-        if (intersectDisplacedTriangle(ray, vertices, worldMat, displacementData, result))
-        {
+        if (intersectDisplacedTriangle(ray, points, vertices, worldMat, displacementData, result)) {
             attribs.barycentrics = result.barycentrics;
             attribs.displacement = result.displacement;
             t = result.t;

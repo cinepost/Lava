@@ -44,7 +44,7 @@ namespace {
     const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
 }
 
-AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
+AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevPointsCount, const std::vector<Animation::SharedPtr>& animations)
     : mpScene(pScene)
     , mAnimations(animations)
     , mNodesEdited(pScene->mSceneGraph.size())
@@ -61,13 +61,13 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
     //
     // Initialize the previous positions for skinned vertices. AnimatedVertexCache will initialize the remaining data if necessary
     // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
-    if (prevVertexCount > 0) {
-        std::vector<PrevVertexData> prevVertexData(prevVertexCount);
+    if (prevPointsCount > 0) {
+        std::vector<PrevVertexData> prevVertexData(prevPointsCount);
         for (size_t i = 0; i < skinningVertexData.size(); i++) {
             uint32_t staticIndex = skinningVertexData[i].staticIndex;
-            prevVertexData[i].position = staticVertexData[staticIndex].position;
+            prevVertexData[i].position = pScene->getPointPosition(staticVertexData[staticIndex].pointIndex);
         }
-        mpPrevVertexData = Buffer::createStructured(mpDevice, sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
+        mpPrevVertexData = Buffer::createStructured(mpDevice, sizeof(PrevVertexData), prevPointsCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
         mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
     }
 
@@ -108,27 +108,27 @@ AnimationController::UniquePtr AnimationController::create(Scene* pScene, const 
 }
 
 void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData) {
-    size_t totalAnimatedMeshVertexCount = 0;
+    size_t totalAnimatedMeshPointsCount = 0;
 
     for (auto& cache : cachedMeshes) {
-        totalAnimatedMeshVertexCount += mpScene->getMesh(cache.meshID).vertexCount;
+        totalAnimatedMeshPointsCount += mpScene->getMesh(cache.meshID).pointCount;
     }
 
     for (auto& cache : cachedCurves) {
         if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere) {
-            totalAnimatedMeshVertexCount += mpScene->getMesh(cache.geometryID).vertexCount;
+            totalAnimatedMeshPointsCount += mpScene->getMesh(cache.geometryID).pointCount;
         }
     }
 
-    if (totalAnimatedMeshVertexCount > 0) {
+    if (totalAnimatedMeshPointsCount > 0) {
         // Initialize remaining previous position data
         std::vector<PrevVertexData> prevVertexData;
-        prevVertexData.reserve(totalAnimatedMeshVertexCount);
+        prevVertexData.reserve(totalAnimatedMeshPointsCount);
 
         for (auto& cache : cachedMeshes) {
             uint32_t offset = mpScene->getMesh(cache.meshID).vbOffset;
             for (size_t i = 0; i < cache.vertexData.front().size(); i++) {
-                prevVertexData.push_back({ staticVertexData[offset + i].position });
+                prevVertexData.push_back({ mpScene->getPointPosition(staticVertexData[offset + i].pointIndex) });
             }
         }
 
@@ -137,7 +137,7 @@ void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cac
                 uint32_t offset = mpScene->getMesh(cache.geometryID).vbOffset;
                 uint32_t vertexCount = mpScene->getMesh(cache.geometryID).vertexCount;
                 for (size_t i = 0; i < vertexCount; i++) {
-                    prevVertexData.push_back({ staticVertexData[offset + i].position });
+                    prevVertexData.push_back({ mpScene->getPointPosition(staticVertexData[offset + i].pointIndex) });
                 }
             }
         }

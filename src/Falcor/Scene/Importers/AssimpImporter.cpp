@@ -477,10 +477,10 @@ namespace {
 
 		// Reserve memory for the vertex and index data.
 		std::vector<uint32_t> indexList;
-		std::vector<float2> texCrds;
+		std::vector<float2> uvs;
 		std::vector<float4> tangents;
 		indexList.reserve(largestIndexCount);
-		texCrds.reserve(largestVertexCount);
+		uvs.reserve(largestVertexCount);
 		if (loadTangents) tangents.reserve(largestVertexCount);
 
 		// Add all the meshes.
@@ -501,18 +501,21 @@ namespace {
 			// Vertices
 			assert(pAiMesh->mVertices);
 			mesh.vertexCount = pAiMesh->mNumVertices;
-			static_assert(sizeof(pAiMesh->mVertices[0]) == sizeof(mesh.positions.pData[0]));
+			static_assert(sizeof(pAiMesh->mVertices[0]) == sizeof(mesh.getPosition(0)));
 			static_assert(sizeof(pAiMesh->mNormals[0]) == sizeof(mesh.normals.pData[0]));
-			mesh.positions.pData = reinterpret_cast<float3*>(pAiMesh->mVertices);
-			mesh.positions.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+			
+			LLOG_WRN << "!!! TODO Assimp mesh positions import !!!";
+			//mesh.positions.pData = reinterpret_cast<float3*>(pAiMesh->mVertices);
+			//mesh.positions.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+			
 			mesh.normals.pData = reinterpret_cast<float3*>(pAiMesh->mNormals);
 			mesh.normals.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
 
 			if (pAiMesh->HasTextureCoords(0)) {
-				createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices, texCrds);
-				assert(!texCrds.empty());
-				mesh.texCrds.pData = texCrds.data();
-				mesh.texCrds.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+				createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices, uvs);
+				assert(!uvs.empty());
+				mesh.uvs.pData = uvs.data();
+				mesh.uvs.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
 			}
 
 			if (loadTangents && pAiMesh->HasTangentsAndBitangents())

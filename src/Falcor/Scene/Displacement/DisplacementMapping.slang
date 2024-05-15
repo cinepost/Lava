@@ -465,20 +465,20 @@ bool traceHeightMapEstimated(const DisplacementData displacementData, float3 sta
     return false;
 }
 
-bool calcDisplacementIntersection(const Ray ray, const StaticVertexData vertices[3], const DisplacementData displacementData, out DisplacementIntersection result)
+bool calcDisplacementIntersection(const Ray ray, const float3 points[3], const StaticVertexData vertices[3], const DisplacementData displacementData, out DisplacementIntersection result)
 {
     result = {};
 
-    const float2 shellMinMax = displacementData.getShellMinMax(vertices[0].texCrd, vertices[1].texCrd, vertices[2].texCrd);
+    const float2 shellMinMax = displacementData.getShellMinMax(vertices[0].uv, vertices[1].uv, vertices[2].uv);
     const float minHeight = shellMinMax.x;
     const float maxHeight = shellMinMax.y;
 
-    float3 extrudedP0 = vertices[0].position + vertices[0].normal * maxHeight;
-    float3 extrudedP1 = vertices[1].position + vertices[1].normal * maxHeight;
-    float3 extrudedP2 = vertices[2].position + vertices[2].normal * maxHeight;
-    float3 intrudedP0 = vertices[0].position + vertices[0].normal * minHeight;
-    float3 intrudedP1 = vertices[1].position + vertices[1].normal * minHeight;
-    float3 intrudedP2 = vertices[2].position + vertices[2].normal * minHeight;
+    float3 extrudedP0 = points[0] + vertices[0].normal * maxHeight;
+    float3 extrudedP1 = points[1] + vertices[1].normal * maxHeight;
+    float3 extrudedP2 = points[2] + vertices[2].normal * maxHeight;
+    float3 intrudedP0 = points[0] + vertices[0].normal * minHeight;
+    float3 intrudedP1 = points[1] + vertices[1].normal * minHeight;
+    float3 intrudedP2 = points[2] + vertices[2].normal * minHeight;
 
     // 1. ray "prism" intersection to grab valid start/end t for the valid segment along ray direction
     float tStart = ray.tMin;
@@ -529,8 +529,8 @@ bool calcDisplacementIntersection(const Ray ray, const StaticVertexData vertices
     }
 
     // 2. convert intersection data from object space to trace space
-    float2 minIntersectionUV = minIntersection.barycentric[0] * vertices[0].texCrd.xy + minIntersection.barycentric[1] * vertices[1].texCrd.xy + minIntersection.barycentric[2] * vertices[2].texCrd.xy;
-    float2 maxIntersectionUV = maxIntersection.barycentric[0] * vertices[0].texCrd.xy + maxIntersection.barycentric[1] * vertices[1].texCrd.xy + maxIntersection.barycentric[2] * vertices[2].texCrd.xy;
+    float2 minIntersectionUV = minIntersection.barycentric[0] * vertices[0].uv.xy + minIntersection.barycentric[1] * vertices[1].uv.xy + minIntersection.barycentric[2] * vertices[2].uv.xy;
+    float2 maxIntersectionUV = maxIntersection.barycentric[0] * vertices[0].uv.xy + maxIntersection.barycentric[1] * vertices[1].uv.xy + maxIntersection.barycentric[2] * vertices[2].uv.xy;
 
     // start/end point texture space point
     float3 minIntersectionTexSpaceCoord = float3(minIntersectionUV * displacementData.size, minIntersection.textureSpaceHeight);
@@ -583,23 +583,22 @@ bool calcDisplacementIntersection(const Ray ray, const StaticVertexData vertices
     \param[out] result Intersection result (only valid if triangle is intersected).
     \return Returns true if displaced triangle is intersected.
 */
-bool intersectDisplacedTriangle(const Ray ray, StaticVertexData vertices[3], const float4x4 worldMat, const DisplacementData displacementData, out DisplacementIntersection result)
+bool intersectDisplacedTriangle(const Ray ray, const float3 points[3], StaticVertexData vertices[3], const float4x4 worldMat, const DisplacementData displacementData, out DisplacementIntersection result)
 {
     result = {};
 
     float3 vertPosTr[3];
-    vertPosTr[0] = mul(float4(vertices[0].position, 1.f), worldMat).xyz;
-    vertPosTr[1] = mul(float4(vertices[1].position, 1.f), worldMat).xyz;
-    vertPosTr[2] = mul(float4(vertices[2].position, 1.f), worldMat).xyz;
+    vertPosTr[0] = mul(float4(points[0], 1.f), worldMat).xyz;
+    vertPosTr[1] = mul(float4(points[1], 1.f), worldMat).xyz;
+    vertPosTr[2] = mul(float4(points[2], 1.f), worldMat).xyz;
+    
     // Compute real-length normals.
-    vertices[0].normal = mul(float4(vertices[0].position + vertices[0].normal, 1.f), worldMat).xyz - vertPosTr[0];
-    vertices[1].normal = mul(float4(vertices[1].position + vertices[1].normal, 1.f), worldMat).xyz - vertPosTr[1];
-    vertices[2].normal = mul(float4(vertices[2].position + vertices[2].normal, 1.f), worldMat).xyz - vertPosTr[2];
-    vertices[0].position = vertPosTr[0];
-    vertices[1].position = vertPosTr[1];
-    vertices[2].position = vertPosTr[2];
+    vertices[0].normal = mul(float4(points[0] + vertices[0].normal, 1.f), worldMat).xyz - vertPosTr[0];
+    vertices[1].normal = mul(float4(points[1] + vertices[1].normal, 1.f), worldMat).xyz - vertPosTr[1];
+    vertices[2].normal = mul(float4(points[2] + vertices[2].normal, 1.f), worldMat).xyz - vertPosTr[2];
+
 #if DISPLACEMENT_DISABLED == 0
-    bool valid = calcDisplacementIntersection(ray, vertices, displacementData, result);
+    bool valid = calcDisplacementIntersection(ray, vertPosTr, vertices, displacementData, result);
     // Transform displacement into WS distance.
     if (!kDisplacementScalingUsePreciseLength)
     {
@@ -613,8 +612,7 @@ bool intersectDisplacedTriangle(const Ray ray, StaticVertexData vertices[3], con
         result.displacement *= length(interpNormal);
     }
 #else
-    float3 positions[3] = { vertices[0].position, vertices[1].position, vertices[2].position };
-    bool valid = calcDebugTriangleIntersection(ray, positions, result);
+    bool valid = calcDebugTriangleIntersection(ray, vertPosTr, result);
 #endif
 
     return valid;
@@ -627,14 +625,14 @@ struct TriangleVertex
 {
     float3 position;
     float3 normal;
-    float2 texCrd;
+    float2 uv;
 
     static TriangleVertex interpolate(const TriangleVertex vertices[3], const float3 barycentrics, const bool normalizeNormal = true)
     {
         TriangleVertex res = {
             barycentrics[0] * vertices[0].position + barycentrics[1] * vertices[1].position + barycentrics[2] * vertices[2].position,
             barycentrics[0] * vertices[0].normal + barycentrics[1] * vertices[1].normal + barycentrics[2] * vertices[2].normal,
-            barycentrics[0] * vertices[0].texCrd + barycentrics[1] * vertices[1].texCrd + barycentrics[2] * vertices[2].texCrd
+            barycentrics[0] * vertices[0].uv + barycentrics[1] * vertices[1].uv + barycentrics[2] * vertices[2].uv
         };
 
         if (normalizeNormal)
@@ -653,36 +651,36 @@ struct TriangleVertex
     \param[in] displacementData Displacement data.
     \return Returns the displaced normal in world space.
 */
-float3 computeDisplacedTriangleNormal(const float3 barycentrics, const StaticVertexData vertices[3], const float4x4 worldMat, const float3x3 worldInvTransposeMat, const DisplacementData displacementData)
+float3 computeDisplacedTriangleNormal(const float3 barycentrics, const float3 points[3], const StaticVertexData vertices[3], const float4x4 worldMat, const float3x3 worldInvTransposeMat, const DisplacementData displacementData)
 {
     // Transform vertices to world space.
     const TriangleVertex verticesW[3] = {
-        mul(float4(vertices[0].position, 1.f), worldMat).xyz, mul(float4(vertices[0].position + vertices[0].normal, 1.f), worldMat).xyz - mul(float4(vertices[0].position, 1.f), worldMat).xyz, vertices[0].texCrd,
-        mul(float4(vertices[1].position, 1.f), worldMat).xyz, mul(float4(vertices[1].position + vertices[1].normal, 1.f), worldMat).xyz - mul(float4(vertices[1].position, 1.f), worldMat).xyz, vertices[1].texCrd,
-        mul(float4(vertices[2].position, 1.f), worldMat).xyz, mul(float4(vertices[2].position + vertices[2].normal, 1.f), worldMat).xyz - mul(float4(vertices[2].position, 1.f), worldMat).xyz, vertices[2].texCrd
+        mul(float4(points[0], 1.f), worldMat).xyz, mul(float4(points[0] + vertices[0].normal, 1.f), worldMat).xyz - mul(float4(points[0], 1.f), worldMat).xyz, vertices[0].uv,
+        mul(float4(points[1], 1.f), worldMat).xyz, mul(float4(points[1] + vertices[1].normal, 1.f), worldMat).xyz - mul(float4(points[1], 1.f), worldMat).xyz, vertices[1].uv,
+        mul(float4(points[2], 1.f), worldMat).xyz, mul(float4(points[2] + vertices[2].normal, 1.f), worldMat).xyz - mul(float4(points[2], 1.f), worldMat).xyz, vertices[2].uv
     };
 
-    float2 baryDelta = float2(1.0) / float2(length((vertices[1].texCrd - (vertices[0].texCrd + vertices[2].texCrd) * 0.5) * displacementData.size), length((vertices[2].texCrd - (vertices[0].texCrd + vertices[1].texCrd) * 0.5) * displacementData.size));
+    float2 baryDelta = float2(1.0) / float2(length((vertices[1].uv - (vertices[0].uv + vertices[2].uv) * 0.5) * displacementData.size), length((vertices[2].uv - (vertices[0].uv + vertices[1].uv) * 0.5) * displacementData.size));
 
     const float sampleLOD = 0.5;
 
     const float3 ptDuBary = barycentrics + float3(baryDelta.x, 0.0, -baryDelta.x);
     TriangleVertex vPtDu = TriangleVertex::interpolate(verticesW, ptDuBary, false);
-    vPtDu.position = vPtDu.position + vPtDu.normal * displacementData.readValue(vPtDu.texCrd * displacementData.size, sampleLOD);
+    vPtDu.position = vPtDu.position + vPtDu.normal * displacementData.readValue(vPtDu.uv * displacementData.size, sampleLOD);
 
     const float3 ptDvBary = barycentrics + float3(0.0, baryDelta.y, -baryDelta.y);
     TriangleVertex vPtDv = TriangleVertex::interpolate(verticesW, ptDvBary, false);
-    vPtDv.position = vPtDv.position + vPtDv.normal * displacementData.readValue(vPtDv.texCrd * displacementData.size, sampleLOD);
+    vPtDv.position = vPtDv.position + vPtDv.normal * displacementData.readValue(vPtDv.uv * displacementData.size, sampleLOD);
 
     if (kHitFaceNormalUseCentralGrad)
     {
         const float3 ptDuBaryN = barycentrics + float3(-baryDelta.x, 0.0, baryDelta.x);
         TriangleVertex vPtDuN = TriangleVertex::interpolate(verticesW, ptDuBaryN, false);
-        vPtDuN.position = vPtDuN.position + vPtDuN.normal * displacementData.readValue(vPtDuN.texCrd * displacementData.size, sampleLOD);
+        vPtDuN.position = vPtDuN.position + vPtDuN.normal * displacementData.readValue(vPtDuN.uv * displacementData.size, sampleLOD);
 
         const float3 ptDvBaryN = barycentrics + float3(0.0, -baryDelta.y, baryDelta.y);
         TriangleVertex vPtDvN = TriangleVertex::interpolate(verticesW, ptDvBaryN, false);
-        vPtDvN.position = vPtDvN.position + vPtDvN.normal * displacementData.readValue(vPtDvN.texCrd * displacementData.size, sampleLOD);
+        vPtDvN.position = vPtDvN.position + vPtDvN.normal * displacementData.readValue(vPtDvN.uv * displacementData.size, sampleLOD);
 
         const float3 posVecDu = (vPtDu.position - vPtDuN.position);
         const float3 posVecDv = (vPtDv.position - vPtDvN.position);
@@ -692,7 +690,7 @@ float3 computeDisplacedTriangleNormal(const float3 barycentrics, const StaticVer
     else
     {
         TriangleVertex vPt = TriangleVertex::interpolate(verticesW, barycentrics, false);
-        vPt.position = vPt.position + vPt.normal * displacementData.readValue(vPt.texCrd * displacementData.size, sampleLOD);
+        vPt.position = vPt.position + vPt.normal * displacementData.readValue(vPt.uv * displacementData.size, sampleLOD);
 
         return normalize(cross(vPtDu.position - vPt.position, vPtDv.position - vPt.position));
     }

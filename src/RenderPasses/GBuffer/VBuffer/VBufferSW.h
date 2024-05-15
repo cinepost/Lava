@@ -33,6 +33,7 @@
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/SceneTypes.slang"
 
+#include "VBufferSW.SubdivData.slangh"
 #include "VBufferSW.Meshlet.slangh"
 
 

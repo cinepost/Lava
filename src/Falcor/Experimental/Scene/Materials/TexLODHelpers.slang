@@ -173,18 +173,14 @@ float computeRayConeTriangleLODValue(float3 vertices[3], float2 txcoords[3], flo
     \param[in] worldMat World matrix.
     \return Triangle LOD value for ray cone.
 */
-float computeRayConeTriangleLODValue(const StaticVertexData triangleVertices[3], const float3x3 worldMat)
+float computeRayConeTriangleLODValue(const float3 points[3], const StaticVertexData triangleVertices[3], const float3x3 worldMat)
 {
     float2 txcoords[3];
-    float3 positions[3];
-    txcoords[0] = triangleVertices[0].texCrd;
-    txcoords[1] = triangleVertices[1].texCrd;
-    txcoords[2] = triangleVertices[2].texCrd;
-    positions[0] = triangleVertices[0].position;
-    positions[1] = triangleVertices[1].position;
-    positions[2] = triangleVertices[2].position;
+    txcoords[0] = triangleVertices[0].uv;
+    txcoords[1] = triangleVertices[1].uv;
+    txcoords[2] = triangleVertices[2].uv;
 
-    return computeRayConeTriangleLODValue(positions, txcoords, worldMat);
+    return computeRayConeTriangleLODValue(points, txcoords, worldMat);
 }
 
 /** Compute screen space spread angle at the first hit point based on ddx and ddy of normal and position.
@@ -742,13 +738,13 @@ void computeRayDifferentialRefraction(inout RayDiff rayDiff, float3 rayDir, floa
     \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
     \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
 */
-void refractRayDiffUsingVertexData(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float3 refractedDir, float eta, float4x4 worldMat, float3x3 worldInvTransposeMat,
+void refractRayDiffUsingVertexData(VertexData v, const float3 points[3], StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float3 refractedDir, float eta, float4x4 worldMat, float3x3 worldInvTransposeMat,
     inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
 {
     float3 unnormalizedN;   // Non-normalized interpolated normal for ray differential scatter.
     float3 normals[3];      // Non-normalized normals for ray differential scatter.
     float2 dBarydx, dBarydy;
-    prepareRayDiffAtHitPoint(v, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
+    prepareRayDiffAtHitPoint(v, points, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
     computeRayDifferentialRefraction(rayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals, eta, refractedDir);
 }
 
@@ -797,12 +793,13 @@ bool refractRayDifferential(inout RayDiff rayDiff, float3 rayDir, float3 nonNorm
     \param[out] unnormalizedN Interpolated, unnormalized normal.
     \param[out] txcoords Texture coordinates.
 */
-void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], float4x4 worldMat, float3x3 worldInvTransposeMat, float3 barycentrics,
+void prepareVerticesForRayDiffs(float3 rayDir, const float3 points[3], StaticVertexData vertices[3], float4x4 worldMat, float3x3 worldInvTransposeMat, float3 barycentrics,
     out float3 edge01, out float3 edge02, out float3 normals[3], out float3 unnormalizedN, out float2 txcoords[3])
 {
     // Transform relevant data to world space.
-    edge01 = mul(vertices[1].position - vertices[0].position, (float3x3)worldMat);
-    edge02 = mul(vertices[2].position - vertices[0].position, (float3x3)worldMat);
+    edge01 = mul(points[1] - points[0], (float3x3)worldMat);
+    edge02 = mul(points[2] - points[0], (float3x3)worldMat);
+
     normals[0] = mul(vertices[0].normal, worldInvTransposeMat).xyz;
     normals[1] = mul(vertices[1].normal, worldInvTransposeMat).xyz;
     normals[2] = mul(vertices[2].normal, worldInvTransposeMat).xyz;
@@ -821,9 +818,9 @@ void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], flo
         normals[1] = -normals[1];
         normals[2] = -normals[2];
     }
-    txcoords[0] = vertices[0].texCrd;
-    txcoords[1] = vertices[1].texCrd;
-    txcoords[2] = vertices[2].texCrd;
+    txcoords[0] = vertices[0].uv;
+    txcoords[1] = vertices[1].uv;
+    txcoords[2] = vertices[2].uv;
 }
 
 /** Computes ray differentials parameters (dUVdx, dUVdy) at surface hit point.
@@ -841,12 +838,12 @@ void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], flo
      \param[out] dUVdx Differential texture coordinates wrt x.
      \param[out] dUVdy Differential texture coordinates wrt y.
 */
-void prepareRayDiffAtHitPoint(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
+void prepareRayDiffAtHitPoint(VertexData v, const float3 points[3], StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
     RayDiff rayDiff, out float3 unnormalizedN, out float3 normals[3], out float2 dBarydx, out float2 dBarydy, out float2 dUVdx, out float2 dUVdy)
 {
     float3 edge01, edge02;
     float2 txcoords[3];
-    prepareVerticesForRayDiffs(rayDir, triangleVertices, worldMat, worldInvTransposeMat, barycentrics, edge01, edge02, normals, unnormalizedN, txcoords);
+    prepareVerticesForRayDiffs(rayDir, points, triangleVertices, worldMat, worldInvTransposeMat, barycentrics, edge01, edge02, normals, unnormalizedN, txcoords);
     computeBarycentricDifferentials(rayDiff, rayDir, edge01, edge02, v.faceNormalW, dBarydx, dBarydy);
     interpolateDifferentials(dBarydx, dBarydy, txcoords, dUVdx, dUVdy);
 }
@@ -862,13 +859,13 @@ void prepareRayDiffAtHitPoint(VertexData v, StaticVertexData triangleVertices[3]
     \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
     \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
 */
-void reflectRayDiffUsingVertexData(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
+void reflectRayDiffUsingVertexData(VertexData v, const float3 points[3], StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
     inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
 {
     float3 unnormalizedN;   // Non-normalized interpolated normal for ray differential scatter.
     float3 normals[3];      // Non-normalized normals for ray differential scatter.
     float2 dBarydx, dBarydy;
-    prepareRayDiffAtHitPoint(v, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
+    prepareRayDiffAtHitPoint(v, points, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
     reflectRayDifferential(rayDiff, rayDir, unnormalizedN, v.normalW, dBarydx, dBarydy, normals);
 }
 

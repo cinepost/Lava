@@ -86,15 +86,15 @@ class MikkTSpaceWrapper {
 			LLOG_WRN << "Can't generate tangent space on non-indexed meshes.";
 			tangents = {};
 		}
-		if (!mesh.positions.pData) {
-			LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have positions !!!";
+		if (!mesh.pointPositions || (mesh.pointCount == 0)) {
+			LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have point positions !!!";
 			tangents = {};
 		}
 		if (!mesh.normals.pData) {
 			LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have normals !!!";
 			tangents = {};
 		}
-		if (!mesh.texCrds.pData) {
+		if (!mesh.uvs.pData) {
 			LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
 			tangents = {};
 		}
@@ -111,7 +111,7 @@ class MikkTSpaceWrapper {
 		mikktspace.m_getNumVerticesOfFace = [](const SMikkTSpaceContext* pContext, int32_t face) { return 3; };
 		mikktspace.m_getPosition = [](const SMikkTSpaceContext* pContext, float position[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getPosition(position, face, vert); };
 		mikktspace.m_getNormal = [](const SMikkTSpaceContext* pContext, float normal[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getNormal(normal, face, vert); };
-		mikktspace.m_getTexCoord = [](const SMikkTSpaceContext* pContext, float texCrd[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getTexCrd(texCrd, face, vert); };
+		mikktspace.m_getTexCoord = [](const SMikkTSpaceContext* pContext, float uv[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getUVCoord(uv, face, vert); };
 		mikktspace.m_setTSpaceBasic = [](const SMikkTSpaceContext* pContext, const float tangent[], float sign, int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->setTangent(tangent, sign, face, vert); };
 
 		const size_t tangentsArraySize = static_cast<size_t>(mesh.indexCount); 
@@ -146,7 +146,7 @@ class MikkTSpaceWrapper {
 	int32_t getFaceCount() const { return (int32_t)mMesh.faceCount; }
 	void getPosition(float position[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(position) = mMesh.getPosition(face, vert); }
 	void getNormal(float normal[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(normal) = mMesh.getNormal(face, vert); }
-	void getTexCrd(float texCrd[], int32_t face, int32_t vert) { *reinterpret_cast<float2*>(texCrd) = mMesh.getTexCrd(face, vert); }
+	void getUVCoord(float uv[], int32_t face, int32_t vert) { *reinterpret_cast<float2*>(uv) = mMesh.getUVCoord(face, vert); }
 
 	void setTangent(const float tangent[], float sign, int32_t face, int32_t vert) {
 		float3 T = *reinterpret_cast<const float3*>(tangent);
@@ -162,7 +162,7 @@ void validateVertex(const SceneBuilder::Mesh::Vertex& v, size_t& invalidCount, s
 		return glm::length(x) < 1e-6f;
 	};
 
-	if (isInvalid(v.position) || isInvalid(v.normal) || isInvalid(v.tangent) || isInvalid(v.texCrd) || isInvalid(v.boneWeights)) invalidCount++;
+	if (isInvalid(v.position) || isInvalid(v.normal) || isInvalid(v.tangent) || isInvalid(v.uv) || isInvalid(v.boneWeights)) invalidCount++;
 	if (isZero(v.normal) || isZero(v.tangent.xyz())) zeroCount++;
 }
 
@@ -173,7 +173,7 @@ bool compareVertices(const SceneBuilder::Mesh::Vertex& lhs, const SceneBuilder::
 	if (lhs.boneIDs != rhs.boneIDs) return false;
 	if (any(greaterThan(abs(lhs.normal - rhs.normal), float3(threshold)))) return false;
 	if (any(greaterThan(abs(lhs.tangent.xyz - rhs.tangent.xyz), float3(threshold)))) return false;
-	if (any(greaterThan(abs(lhs.texCrd - rhs.texCrd), float2(threshold)))) return false;
+	if (any(greaterThan(abs(lhs.uv - rhs.uv), float2(threshold)))) return false;
 	if (any(greaterThan(abs(lhs.boneWeights - rhs.boneWeights), float4(threshold)))) return false;
 	return true;
 }
@@ -432,7 +432,7 @@ bool  SceneBuilder::meshExist(const std::string& name) {
 }
 
 uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial) {
-	Mesh mesh;
+/*	Mesh mesh;
 
 	const auto& indices = pTriangleMesh->getIndices();
 	const auto& vertices = pTriangleMesh->getVertices();
@@ -454,9 +454,12 @@ uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleM
 
 	mesh.positions = { positions.data(), SceneBuilder::Mesh::AttributeFrequency::Vertex };
 	mesh.normals = { normals.data(), SceneBuilder::Mesh::AttributeFrequency::Vertex };
-	mesh.texCrds = { texCoords.data(), SceneBuilder::Mesh::AttributeFrequency::Vertex };
+	mesh.uvs = { texCoords.data(), SceneBuilder::Mesh::AttributeFrequency::Vertex };
 
 	return addMesh(mesh);
+*/
+	LLOG_WRN << "SceneBuilder::addTriangleMesh() not implemented !!!";
+	return kInvalidNodeID;
 }
 
 SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAttributeIndices* pAttributeIndices) const {
@@ -497,14 +500,19 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
 	if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
 
-	if (mesh.positions.pData == nullptr) throw_on_missing_element("positions");
+	if (mesh.pointCount == 0) throw_on_missing_element("pointPositions");
+	if (mesh.pointPositions == nullptr) throw_on_missing_element("pointPositions");
 	if (mesh.normals.pData == nullptr) missing_element_warning("normals");
-	if (mesh.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
+	if (mesh.uvs.pData == nullptr) missing_element_warning("texture coordinates");
 
 	if (mesh.hasBones()) {
 		if (mesh.boneIDs.pData == nullptr) throw_on_missing_element("bone IDs");
 		if (mesh.boneWeights.pData == nullptr) throw_on_missing_element("bone weights");
 	}
+
+	// Fill points data
+	processedMesh.pointPositionsData.resize(mesh.pointCount);
+	memcpy(processedMesh.pointPositionsData.data(), mesh.pointPositions, sizeof(float3) * mesh.pointCount);
 
 	// Generate tangent space if that's required.
 	std::vector<float4> tangents;
@@ -516,11 +524,11 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	// Pretransform the texture coordinates, rather than transforming them at runtime.
 	std::vector<float2> transformedTexCoords;
 
-	if (mesh.texCrds.pData != nullptr) {
+	if (mesh.uvs.pData != nullptr) {
 		LLOG_DBG << "pretransforming texture coordinates for mesh " << mesh_.name; 
 		const glm::mat4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
 		if (xform != glm::identity<glm::mat4>()) {
-			size_t texCoordCount = mesh.getAttributeCount(mesh.texCrds);
+			size_t texCoordCount = mesh.getAttributeCount(mesh.uvs);
 			transformedTexCoords.resize(texCoordCount);
 			// The given matrix transforms the texture (e.g., scaling > 1 enlarges the texture).
 			// Because we're transforming the input coordinates, apply the inverse.
@@ -532,9 +540,9 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 			coordTransform[2] = invXform[3].xy;
 
 			for (size_t i = 0; i < texCoordCount; ++i) {
-				transformedTexCoords[i] = coordTransform * float3(mesh.texCrds.pData[i], 1.f);
+				transformedTexCoords[i] = coordTransform * float3(mesh.uvs.pData[i], 1.f);
 			}
-			mesh.texCrds.pData = transformedTexCoords.data();
+			mesh.uvs.pData = transformedTexCoords.data();
 		}
 	}
 
@@ -597,18 +605,19 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 				indices[face * 3 + vert] = index;
 			}
 		}
-	}
-	else
-	{
+	} else {
+		// No vetex merging
 		vertices = { mesh.vertexCount, std::make_pair(Mesh::Vertex{}, invalidIndex) };
 
-		for (uint32_t face = 0; face < mesh.faceCount; face++) {
-			for (uint32_t vert = 0; vert < 3; vert++) {
+		size_t i = 0;
+		for (uint32_t face = 0; face < mesh.faceCount; ++face) {
+			for (uint32_t vert = 0; vert < 3; ++vert) {
 				const Mesh::Vertex v = mesh.getVertex(face, vert);
-				const uint32_t index = mesh.getAttributeIndex(mesh.positions, face, vert);
+				//const uint32_t index = mesh.getAttributeIndex(mesh.positions, face, vert);
 
-				assert(index < vertices.size());
-				vertices[index].first = v;
+				//assert(index < vertices.size());
+				//vertices[index].first = v;
+				vertices[i++].first = v;
 
 				if (pAttributeIndices) {
 					pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
@@ -661,9 +670,9 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 		const Mesh::Vertex& v = vertices[index].first;
 
 		StaticVertexData s;
-		s.position = v.position;
+		s.pointIndex = v.pointIndex;
 		s.normal = v.normal;
-		s.texCrd = v.texCrd;
+		s.uv = v.uv;
 		s.tangent = v.tangent;
 		s.curveRadius = v.curveRadius;
 		processedMesh.staticData.push_back(s);
@@ -759,7 +768,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	spec.staticVertexCount = (uint32_t)mesh.staticData.size();
 	spec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
 	spec.perPrimMaterialIndicesCount = (uint32_t)mesh.perPrimitiveMaterialIDsData.size();
-		
+	
+	spec.pointPositionsData = std::move(mesh.pointPositionsData);
+
 	spec.indexData = std::move(mesh.indexData);
 	spec.staticData = std::move(mesh.staticData);
 	spec.skinningData = std::move(mesh.skinningData);
@@ -889,7 +900,7 @@ SceneBuilder::ProcessedCurve SceneBuilder::processCurve(const Curve& curve) cons
 
 	if (curve.positions.pData == nullptr) throw_on_missing_element("positions");
 	if (curve.radius.pData == nullptr) throw_on_missing_element("radius");
-	if (curve.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
+	if (curve.uvs.pData == nullptr) missing_element_warning("texture coordinates");
 
 	// Copy indices and vertices into processed curve.
 	processedCurve.indexData.assign(curve.pIndices, curve.pIndices + curve.indexCount);
@@ -900,10 +911,10 @@ SceneBuilder::ProcessedCurve SceneBuilder::processCurve(const Curve& curve) cons
 		s.position = curve.positions.pData[i];
 		s.radius = curve.radius.pData[i];
 
-		if (curve.texCrds.pData != nullptr) {
-			s.texCrd = curve.texCrds.pData[i];
+		if (curve.uvs.pData != nullptr) {
+			s.uv = curve.uvs.pData[i];
 		} else {
-			s.texCrd = float2(0.f);
+			s.uv = float2(0.f);
 		}
 
 		processedCurve.staticData.push_back(s);
@@ -1942,9 +1953,11 @@ void SceneBuilder::pretransformStaticMeshes() {
 			glm::mat3 invTranspose3x3 = (glm::mat3)glm::transpose(glm::inverse(transform));
 			glm::mat3 transform3x3 = (glm::mat3)transform;
 
-			for (auto& v : mesh.staticData) {
-				float4 p = transform * float4(v.position, 1.f);
-				v.position = p.xyz;
+			for (auto& p: mesh.pointPositionsData) {
+				p = float4(transform * float4(p, 1.f)).xyz;
+			}
+
+			for (auto& v: mesh.staticData) {
 				v.normal = glm::normalize(invTranspose3x3 * v.normal);
 				v.tangent.xyz = glm::normalize(transform3x3 * v.tangent.xyz);
 				// TODO: We should flip the sign of v.tangent.w if flippedWinding is true.
@@ -2030,12 +2043,11 @@ void SceneBuilder::unifyTriangleWinding() {
 
 void SceneBuilder::calculateMeshBoundingBoxes() {
 	for (auto& mesh : mMeshes) {
-		assert(!mesh.staticData.empty());
-		assert((size_t)mesh.vertexCount == mesh.staticData.size());
+		assert(!mesh.pointPositionsData.empty());
 
 		AABB meshBB;
-		for (auto& v : mesh.staticData) {
-			meshBB.include(v.position);
+		for (auto&  p: mesh.pointPositionsData) {
+			meshBB.include(p);
 		}
 
 		mesh.boundingBox = meshBB;
@@ -2315,7 +2327,7 @@ void SceneBuilder::splitIndexedMesh(const MeshSpec& mesh, MeshSpec& leftMesh, Me
 		// Compute the centroid and add the triangle to the left or right side.
 		float centroid = 0.f;
 		for (size_t j = 0; j < 3; j++) {
-			centroid += mesh.staticData[indices[j]].position[axis];
+			centroid += mesh.pointPositionsData[mesh.staticData[indices[j]].pointIndex][axis];
 		};
 		centroid /= 3.f;
 
@@ -2332,7 +2344,7 @@ void SceneBuilder::splitIndexedMesh(const MeshSpec& mesh, MeshSpec& leftMesh, Me
 		if (m.use16BitIndices) m.indexData = compact16BitIndices(m.indexData);
 
 		m.boundingBox = AABB();
-		for (auto& v : m.staticData) m.boundingBox.include(v.position);
+		for (auto& p : m.pointPositionsData) m.boundingBox.include(p);
 	};
 
 	finalizeMesh(leftMesh);
@@ -2579,11 +2591,13 @@ void SceneBuilder::sortMeshes() {
 }
 
 void SceneBuilder::createGlobalBuffers() {
+	assert(mSceneData.pointsData.empty());
 	assert(mSceneData.meshIndexData.empty());
 	assert(mSceneData.meshStaticData.empty());
 	assert(mSceneData.meshSkinningData.empty());
 	assert(mSceneData.perPrimitiveMaterialIDsData.empty());
 
+	mSceneData.pointsData.clear();
     mSceneData.meshIndexData.clear();
     mSceneData.meshStaticData.clear();
     mSceneData.meshSkinningData.clear();
@@ -2592,12 +2606,14 @@ void SceneBuilder::createGlobalBuffers() {
 	const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
 	// Count total number of vertex and index data elements.
+	size_t totalPointsCount = 0;
 	size_t totalIndexDataCount = 0;
 	size_t totalStaticVertexCount = 0;
 	size_t totalSkinningVertexCount = 0;
 	size_t totalPerPrimitiveMaterialIDsCount = 0;
 
 	for (const auto& mesh : mMeshes) {
+		totalPointsCount += mesh.pointPositionsData.size();
 		totalIndexDataCount += mesh.indexData.size();
 		totalStaticVertexCount += mesh.staticData.size();
 		totalSkinningVertexCount += mesh.skinningData.size();
@@ -2606,13 +2622,15 @@ void SceneBuilder::createGlobalBuffers() {
 	}
 
 	// Check the range. We currently use 32-bit offsets.
-	if (totalIndexDataCount > std::numeric_limits<uint32_t>::max() ||
+	if (totalPointsCount > std::numeric_limits<uint32_t>::max() ||
+		totalIndexDataCount > std::numeric_limits<uint32_t>::max() ||
 		totalStaticVertexCount > std::numeric_limits<uint32_t>::max() ||
 		totalSkinningVertexCount > std::numeric_limits<uint32_t>::max())
 	{
 		throw std::runtime_error("Trying to build a scene that exceeds supported mesh data size.");
 	}
 
+	mSceneData.pointsData.reserve(totalPointsCount);
 	mSceneData.meshIndexData.reserve(totalIndexDataCount);
 	mSceneData.meshStaticData.reserve(totalStaticVertexCount);
 	mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
@@ -2620,19 +2638,29 @@ void SceneBuilder::createGlobalBuffers() {
 
 	// Copy all vertex and index data into the global buffers.
 	for (auto& mesh : mMeshes) {
+		mesh.pointOffset = (uint32_t)mSceneData.pointsData.size();
 		mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
 		mesh.skinningVertexOffset = (uint32_t)mSceneData.meshSkinningData.size();
 		mesh.prevVertexOffset = mesh.skinningVertexOffset;
 
 		if(mesh.perPrimMaterialIndicesCount > 0) {
 			mesh.perPrimMaterialIndicesOffset = (uint32_t)mSceneData.perPrimitiveMaterialIDsData.size();
-			mSceneData.perPrimitiveMaterialIDsData.insert(mSceneData.perPrimitiveMaterialIDsData.end(), 
-				mesh.perPrimitiveMaterialIDsData.begin(), mesh.perPrimitiveMaterialIDsData.end());
+			mSceneData.perPrimitiveMaterialIDsData.insert(mSceneData.perPrimitiveMaterialIDsData.end(), mesh.perPrimitiveMaterialIDsData.begin(), mesh.perPrimitiveMaterialIDsData.end());
 		}
+
+		// Insert mesh point positions in the global array.
+		const uint32_t ptIndexOffset = static_cast<uint32_t>(mSceneData.pointsData.size());
+		mSceneData.pointsData.insert(mSceneData.pointsData.end(), mesh.pointPositionsData.begin(), mesh.pointPositionsData.end());
 
 		// Insert the static vertex data in the global array.
 		// The vertices are automatically converted to their packed format in this step.
+		const size_t staticDataOffset = mSceneData.meshStaticData.size();
 		mSceneData.meshStaticData.insert(mSceneData.meshStaticData.end(), mesh.staticData.begin(), mesh.staticData.end());
+		
+		// Make point indices to point into global buffer
+		for(size_t i = staticDataOffset; i < (staticDataOffset + mesh.staticData.size()); ++i) {
+			mSceneData.meshStaticData[i].pointIndex += ptIndexOffset;
+		}
 
 		if (isIndexed) {
 			mesh.indexOffset = (uint32_t)mSceneData.meshIndexData.size();
@@ -2774,13 +2802,12 @@ void SceneBuilder::quantizeTexCoords() {
 
 			for (uint32_t i = 0; i < mesh.staticVertexCount; ++i) {
 				auto& v = mSceneData.meshStaticData[mesh.staticVertexOffset + i];
-				float2 texCrd = {v.texU, v.texV};
-				minTexCrd = min(minTexCrd, texCrd);
-				maxTexCrd = max(maxTexCrd, texCrd);
-				const auto t = f16tof32(f32tof16(texCrd));
-				v.texU = t[0];
-				v.texV = t[1];
-				maxError = max(maxError, abs(float2({v.texU, v.texV}) - texCrd));
+				float2 uv = v.uv;
+				minTexCrd = min(minTexCrd, uv);
+				maxTexCrd = max(maxTexCrd, uv);
+				const auto t = f16tof32(f32tof16(uv));
+				v.uv = t;
+				maxError = max(maxError, abs(v.uv - uv));
 			}
 
 			// Issue warning if quantization errors are too large.
@@ -2860,6 +2887,7 @@ void SceneBuilder::createMeshData() {
 	for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++) {
 		const auto& mesh = mMeshes[meshID];
 		meshData[meshID].materialID = mesh.materialId;
+		meshData[meshID].pbOffset = mesh.pointOffset;
 		meshData[meshID].vbOffset = mesh.staticVertexOffset;
 		meshData[meshID].ibOffset = mesh.indexOffset;
 		meshData[meshID].mbOffset = mesh.perPrimMaterialIndicesOffset;

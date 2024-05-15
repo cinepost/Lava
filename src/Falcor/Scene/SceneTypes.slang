@@ -101,18 +101,20 @@ enum class MeshFlags : uint32_t {
 /** Mesh data stored in 64B.
 */
 struct MeshDesc {
+    uint pbOffset;          ///< Offset into global points buffer.
     uint vbOffset;          ///< Offset into global vertex buffer.
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
     uint mbOffset; 
+
+    uint pointCount;        ///< Mesh points (positions) count;
     uint vertexCount;       ///< Vertex count.    
-    
     uint indexCount;        ///< Index count, or zero if non-indexed.
     uint skinningVbOffset;  ///< Offset into skinning data buffer, or zero if no skinning data.
+
     uint prevVbOffset;      ///< Offset into previous vertex data buffer, or zero if neither skinned or animated.
     uint materialID;        ///< Material ID.
-
     uint flags;             ///< See MeshFlags.
-    uint3 _pad;
+    uint _pad1;
 
     uint getTriangleCount() CONST_FUNCTION {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;
@@ -245,29 +247,28 @@ struct GeometryInstanceData {
 };
 
 struct StaticVertexData {
-    float3 position;    ///< Position.
-    float3 normal;      ///< Shading normal.
-    float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
-    float2 texCrd;      ///< Texture coordinates.
-    float curveRadius;  ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
+    uint   pointIndex;
+    float3 normal;       ///< Shading normal.
+    float4 tangent;      ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
+    float2 uv;           ///< Texture coordinates.
+    float  curveRadius;  ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 };
 
 /** Vertex data packed into 32B for aligned access.
 */
 struct PackedStaticVertexData {
-    float3 position;
-    float  texU;
     float3 packedNormalTangentCurveRadius;
-    float  texV;
+    uint   pointIndex;
+    float2 uv;
+    float2 _pad;
 
 #ifdef HOST_CODE
     PackedStaticVertexData() = default;
     PackedStaticVertexData(const StaticVertexData& v) { pack(v); }
     void pack(const StaticVertexData& v) {
-        position = v.position;
-        texU = v.texCrd[0];
-        texV = v.texCrd[1];
-
+        pointIndex = v.pointIndex;
+        uv = v.uv;
+        
         float packedTangentSignCurveRadius = v.tangent.w;
 
         if (v.curveRadius > 0.f) {
@@ -283,9 +284,8 @@ struct PackedStaticVertexData {
 
 #else // !HOST_CODE
     [mutating] void pack(const StaticVertexData v) {
-        position = v.position;
-        texU = v.texCrd[0];
-        texV = v.texCrd[1];
+        pointIndex = v.pointIndex;
+        uv = v.uv;
         
         uint3 n = f32tof16(v.normal);
 
@@ -301,8 +301,8 @@ struct PackedStaticVertexData {
 
     StaticVertexData unpack() {
         StaticVertexData v;
-        v.position = position;
-        v.texCrd = float2(texU, texV);
+        v.pointIndex = pointIndex;
+        v.uv = uv;
         
         v.normal.x = f16tof32(asuint(packedNormalTangentCurveRadius.x) & 0xffff);
         v.normal.y = f16tof32(asuint(packedNormalTangentCurveRadius.x) >> 16);
@@ -325,11 +325,11 @@ struct PrevVertexData {
 };
 
 struct SkinningVertexData {
-    uint4 boneID;
+    uint4  boneID;
     float4 boneWeight;
-    uint staticIndex;       ///< The index in the static vertex buffer.
-    uint bindMatrixID;
-    uint skeletonMatrixID;
+    uint   staticIndex;       ///< The index in the static vertex buffer.
+    uint   bindMatrixID;
+    uint   skeletonMatrixID;
 };
 
 /** Struct representing interpolated vertex attributes in world space.
@@ -362,8 +362,8 @@ struct CurveDesc {
 
 struct StaticCurveVertexData {
     float3 position;    ///< Position.
-    float radius;       ///< Radius of the sphere at curve ends.
-    float2 texCrd;      ///< Texture coordinates.
+    float  radius;      ///< Radius of the sphere at curve ends.
+    float2 uv;          ///< Texture coordinates.
 };
 
 

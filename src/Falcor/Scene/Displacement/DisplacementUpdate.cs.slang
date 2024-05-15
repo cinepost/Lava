@@ -32,8 +32,7 @@ import DisplacementUpdateTask;
 
 static const bool kUsePreciseShellBounds = true;
 
-cbuffer CB
-{
+cbuffer CB {
     uint gTaskCount;
 
     StructuredBuffer<DisplacementUpdateTask> gTasks;
@@ -47,8 +46,7 @@ cbuffer CB
     processing triangles in a fixed stride of kThreadCount.
 */
 [numthreads(256, 1, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
-{
+void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const uint threadIndex = dispatchThreadId.x;
     const uint taskIndex = dispatchThreadId.y;
 
@@ -64,8 +62,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float globalExpansion = displacementData.getConservativeGlobalExpansion();
     const uint iterationCount = (task.count + DisplacementUpdateTask::kThreadCount - 1) / DisplacementUpdateTask::kThreadCount;
 
-    for (uint iteration = 0; iteration < iterationCount; ++iteration)
-    {
+    for (uint iteration = 0; iteration < iterationCount; ++iteration) {
         const uint index = iteration * DisplacementUpdateTask::kThreadCount + threadIndex;
         if (index >= task.count) return;
 
@@ -78,21 +75,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         AABB aabb;
         aabb.invalidate();
 
-        if (!kUsePreciseShellBounds)
-        {
-            for (uint i = 0; i < 3; ++i) aabb.include(vertices[i].position);
+        if (!kUsePreciseShellBounds) {
+            for (uint i = 0; i < 3; ++i) aabb.include(gScene.getPointPosition(vertices[i].pointIndex));
 
             aabb.minPoint -= globalExpansion;
             aabb.maxPoint += globalExpansion;
-        }
-        else
-        {
+        } else {
             const float2 shellMinMax = displacementData.getShellMinMax(vertices[0].texCrd, vertices[1].texCrd, vertices[2].texCrd);
 
-            for (uint i = 0; i < 3; ++i)
-            {
-                aabb.include(vertices[i].position + (vertices[i].normal) * shellMinMax.x);
-                aabb.include(vertices[i].position + (vertices[i].normal) * shellMinMax.y);
+            for (uint i = 0; i < 3; ++i) {
+                aabb.include(gScene.getPointPosition(vertices[i].pointIndex) + (vertices[i].normal) * shellMinMax.x);
+                aabb.include(gScene.getPointPosition(vertices[i].pointIndex) + (vertices[i].normal) * shellMinMax.y);
 
             }
         }

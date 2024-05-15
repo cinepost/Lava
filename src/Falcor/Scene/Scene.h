@@ -981,6 +981,11 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     std::string getScript(const std::string& sceneVar);
 
+    const float3& getPointPosition(uint32_t pointIndex) const { 
+        static const float3 test = float3(0.f);
+        return test;
+    }
+
   private:
     /** Represents a group of meshes.
         The meshes are geometries in the same ray tracing bottom-level acceleration structure (BLAS).
@@ -1012,6 +1017,9 @@ public:
         std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
+
+        // Point positions data
+        std::vector<float3>             pointsData;             ///< Global scene points data.
 
         // Lights
         std::vector<Light::SharedPtr>   lights;                 ///< List of light sources.
@@ -1246,6 +1254,8 @@ public:
     bool mHas16BitIndices = false;                              ///< True if any meshes use 16-bit indices.
     bool mHas32BitIndices = false;                              ///< True if any meshes use 32-bit indices.
 
+    std::vector<float3> mPointsData;                            ///< Global scene point positions data.
+
     Vao::SharedPtr mpMeshVao;                                   ///< Vertex array object for the global mesh vertex/index buffers.
     Vao::SharedPtr mpMeshVao16Bit;                              ///< VAO for drawing meshes with 16-bit vertex indices.
     Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
@@ -1339,6 +1349,7 @@ public:
     UpdateCallback mUpdateCallback;                             ///< Scene update callback.
 
     // Scene block resources
+    Buffer::SharedPtr mpPointsDataBuffer;
     Buffer::SharedPtr mpGeometryInstancesBuffer;
     Buffer::SharedPtr mpMeshesBuffer;
     Buffer::SharedPtr mpMeshletGroupsBuffer;

@@ -100,11 +100,10 @@ void nullSubdivideTriangle(uint triangle_id) {
 
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
 
-
     MicroTriangle mt;
-    mt.pw0 = mul(float4(vertex_data[uint(indices[0])].position, 1.f), worldMat).xyz;
-    mt.pw1 = mul(float4(vertex_data[uint(indices[1])].position, 1.f), worldMat).xyz;
-    mt.pw2 = mul(float4(vertex_data[uint(indices[2])].position, 1.f), worldMat).xyz;
+    mt.pw0 = mul(float4( gScene.getPointPosition(vertex_data[uint(indices[0])].pointIndex), 1.f), worldMat).xyz;
+    mt.pw1 = mul(float4( gScene.getPointPosition(vertex_data[uint(indices[1])].pointIndex), 1.f), worldMat).xyz;
+    mt.pw2 = mul(float4( gScene.getPointPosition(vertex_data[uint(indices[2])].pointIndex), 1.f), worldMat).xyz;
     mt.b0 = float2(0.f);
     mt.b1 = float2(1.f, 0.f);
     mt.b2 = float2(0.f, 1.f);
@@ -394,7 +393,7 @@ void rasterizeTriangle(uint triangle_id, bool cullCCW) {
                 gVBufferSW.writeMicroPolyID(pixelPos, gPrimID + triangle_id);
 
                 //gVBufferSW.writeAUX(pixelPos, float4(gThreadID, gLaneID, gsLaneCount, 0));
-                gVBufferSW.writeAUX(pixelPos, float4(gsGroupID.x, gsGroupID.y, gsTest, gThreadID));
+                //gVBufferSW.writeAUX(pixelPos, float4(gsGroupID.x, gsGroupID.y, gsTest, gThreadID));
                 //gVBufferSW.writeAUX(pixelPos, float4(gDispatchThreadID.x, gDispatchThreadID.y, gDispatchThreadID.z, gThreadID));
                 //gVBufferSW.writeAUX(pixelPos, float4(gGroupThreadID.x, gGroupThreadID.y, 0, gThreadID));
 

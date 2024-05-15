@@ -30,6 +30,8 @@ MeshSpec::MeshSpec(const MeshSpec& spec) {
     boundingBox = spec.boundingBox;
     instances = spec.instances;
 
+    pointPositionsData = spec.pointPositionsData;
+
     indexData = spec.indexData;
     staticData = spec.staticData;
     skinningData = spec.skinningData;
@@ -69,6 +71,8 @@ MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
         isAnimated = o.isAnimated;
         boundingBox = o.boundingBox;
         instances = o.instances;
+
+        pointPositionsData = o.pointPositionsData;
 
         indexData = o.indexData;
         staticData = o.staticData;

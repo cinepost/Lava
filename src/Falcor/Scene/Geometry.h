@@ -121,15 +121,16 @@ struct MeshSpec {
     std::string name;
     Vao::Topology topology = Vao::Topology::Undefined;
     uint32_t materialId = 0;                    ///< Global material ID.
-    uint32_t staticVertexOffset = 0;            ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
+    uint32_t staticVertexOffset = 0;            ///< Offset into the shared 'staticData' array. This is calculated in SceneBuilder::createGlobalBuffers().
     uint32_t staticVertexCount = 0;             ///< Number of static vertices.
     uint32_t perPrimMaterialIndicesOffset = 0;  ///< Offest into per-primitive material indices array. 
     uint32_t perPrimMaterialIndicesCount  = 0;  ///< Number of per-primitive materials. 
-    uint32_t skinningVertexOffset = 0;          ///< Offset into the shared 'skinningData' array. This is calculated in createGlobalBuffers().
+    uint32_t skinningVertexOffset = 0;          ///< Offset into the shared 'skinningData' array. This is calculated in SceneBuilder::createGlobalBuffers().
     uint32_t skinningVertexCount = 0;           ///< Number of skinned vertices.
-    uint32_t prevVertexOffset = 0;              ///< Offset into the shared `prevVertices` array. This is calculated in createGlobalBuffers().
+    uint32_t prevVertexOffset = 0;              ///< Offset into the shared `prevVertices` array. This is calculated in SceneBuilder::createGlobalBuffers().
     uint32_t prevVertexCount = 0;               ///< Number of previous vertices stored. This can be the static or skinned vertex count depending on animation type.
-    uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
+    uint32_t pointOffset = 0;                   ///< Offset into the shared 'points' array. This is calculated in SceneBuilder::createGlobalBuffers().
+    uint32_t indexOffset = 0;                   ///< Offset into the shared 'indexData' array. This is calculated in SceneBuilder::createGlobalBuffers().
     uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
     uint32_t vertexCount = 0;                   ///< Number of vertices.
     uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
@@ -143,7 +144,9 @@ struct MeshSpec {
     std::vector<MeshInstanceSpec> instances;    ///< All instances of this mesh.
 
     // Pre-processed vertex data.
-    std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+    std::vector<float3> pointPositionsData;
+
+    std::vector<uint32_t> indexData;            ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
     std::vector<StaticVertexData> staticData;
     std::vector<SkinningVertexData> skinningData;
     std::vector<int32_t> perPrimitiveMaterialIDsData;
@@ -185,6 +188,15 @@ struct MeshSpec {
             default:
                 return 0;
         }
+    }
+
+    const float3& getVertexPosition(const size_t vertexIndex) const { 
+        return pointPositionsData[getIndex(vertexIndex)]; 
+    }
+
+    const float3& getPointPosition(const size_t pointIndex) const { 
+        assert(pointIndex < pointPositionsData.size());
+        return pointPositionsData[pointIndex]; 
     }
 
     uint32_t getIndex(const size_t i) const {
@@ -231,6 +243,7 @@ struct Mesh {
     };
 
     std::string name;                           ///< The mesh's name.
+    uint32_t pointCount = 0;                    ///< The number of points the mesh has.
     uint32_t faceCount = 0;                     ///< The number of primitives the mesh has.
     uint32_t vertexCount = 0;                   ///< The number of vertices the mesh has.
     uint32_t indexCount = 0;                    ///< The number of indices the mesh has.
@@ -238,13 +251,15 @@ struct Mesh {
     Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
     Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
 
-    Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
-    Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
-    Attribute<float4> tangents;                 ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.
-    Attribute<float> curveRadii;                ///< Array of vertex curve radii. This field is optional.
-    Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
-    Attribute<uint4> boneIDs;                   ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
-    Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
+    const float3* pointPositions = nullptr;     ///< Array of point positions. This field is required.
+    
+    Attribute<uint>    pointIndices;            ///< Array of point indices. This field is required.
+    Attribute<float3>  normals;                 ///< Array of vertex normals. This field is required.
+    Attribute<float4>  tangents;                ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.
+    Attribute<float>   curveRadii;              ///< Array of vertex curve radii. This field is optional.
+    Attribute<float2>  uvs;                     ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
+    Attribute<uint4>   boneIDs;                 ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
+    Attribute<float4>  boneWeights;             ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
     Attribute<int32_t> materialIDs;
 
     AttributesStrings attributesStrings;
@@ -326,40 +341,48 @@ struct Mesh {
         return 0;
     }
 
+    const float3& getPosition(uint32_t pointIndex) const { 
+        return pointPositions[pointIndex]; 
+    }
 
-    float3 getPosition(uint32_t face, uint32_t vert) const { return get(positions, face, vert); }
+    const float3& getPosition(uint32_t face, uint32_t vert) const { 
+        return pointPositions[getPointIndex(face, vert)]; 
+    }
+
+    uint   getPointIndex(uint32_t face, uint32_t vert) const { return get(pointIndices, face, vert); }
     float3 getNormal(uint32_t face, uint32_t vert) const { return get(normals, face, vert); }
     float4 getTangent(uint32_t face, uint32_t vert) const { return get(tangents, face, vert); }
-    float2 getTexCrd(uint32_t face, uint32_t vert) const { return get(texCrds, face, vert); }
+    float2 getUVCoord(uint32_t face, uint32_t vert) const { return get(uvs, face, vert); }
     float getCurveRadii(uint32_t face, uint32_t vert) const { return get(curveRadii, face, vert); }
 
     struct Vertex {
+        uint32_t pointIndex;
         float3 position;
         float3 normal;
         float4 tangent;
-        float2 texCrd;
+        float2 uv;
         float curveRadius;
         uint4 boneIDs;
         float4 boneWeights;
     };
 
     struct VertexAttributeIndices {
-        uint32_t positionIdx;
+        uint32_t pointIndexIdx;
         uint32_t normalIdx;
         uint32_t tangentIdx;
-        uint32_t texCrdIdx;
+        uint32_t uvIdx;
         uint32_t curveRadiusIdx;
         uint32_t boneIDsIdx;
         uint32_t boneWeightsIdx;
     };
 
-
     Vertex getVertex(uint32_t face, uint32_t vert) const {
         Vertex v = {};
-        v.position = get(positions, face, vert);
+        v.pointIndex = get(pointIndices, face, vert);
+        v.position = getPosition(v.pointIndex);
         v.normal = get(normals, face, vert);
         v.tangent = get(tangents, face, vert);
-        v.texCrd = get(texCrds, face, vert);
+        v.uv = get(uvs, face, vert);
         v.curveRadius = get(curveRadii, face, vert);
         v.boneIDs = get(boneIDs, face, vert);
         v.boneWeights = get(boneWeights, face, vert);
@@ -368,10 +391,11 @@ struct Mesh {
 
     Vertex getVertex(const VertexAttributeIndices& attributeIndices) {
         Vertex v = {};
-        v.position = get(positions, attributeIndices.positionIdx);
+        v.pointIndex = get(pointIndices, attributeIndices.pointIndexIdx);
+        v.position = getPosition(v.pointIndex);
         v.normal = get(normals, attributeIndices.normalIdx);
         v.tangent = get(tangents, attributeIndices.tangentIdx);
-        v.texCrd = get(texCrds, attributeIndices.texCrdIdx);
+        v.uv = get(uvs, attributeIndices.uvIdx);
         v.curveRadius = get(curveRadii, attributeIndices.curveRadiusIdx);
         v.boneIDs = get(boneIDs, attributeIndices.boneIDsIdx);
         v.boneWeights = get(boneWeights, attributeIndices.boneWeightsIdx);
@@ -380,10 +404,10 @@ struct Mesh {
 
     VertexAttributeIndices getAttributeIndices(uint32_t face, uint32_t vert) {
         VertexAttributeIndices v = {};
-        v.positionIdx = getAttributeIndex(positions, face, vert);
+        v.pointIndexIdx = getAttributeIndex(pointIndices, face, vert);
         v.normalIdx = getAttributeIndex(normals, face, vert);
         v.tangentIdx = getAttributeIndex(tangents, face, vert);
-        v.texCrdIdx = getAttributeIndex(texCrds, face, vert);
+        v.uvIdx = getAttributeIndex(uvs, face, vert);
         v.curveRadiusIdx = getAttributeIndex(curveRadii, face, vert);
         v.boneIDsIdx = getAttributeIndex(boneIDs, face, vert);
         v.boneWeightsIdx = getAttributeIndex(boneWeights, face, vert);

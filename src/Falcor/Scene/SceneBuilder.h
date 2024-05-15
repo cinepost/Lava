@@ -156,6 +156,9 @@ class dlldecl SceneBuilder {
         uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
         bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
         bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
+        
+        std::vector<float3> pointPositionsData;
+
         std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
@@ -180,8 +183,8 @@ class dlldecl SceneBuilder {
         Material::SharedPtr pMaterial;              ///< The curve's material. Can't be nullptr.
 
         Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
-        Attribute<float> radius;                    ///< Array of sphere radius. This field is required.
-        Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
+        Attribute<float>  radius;                   ///< Array of sphere radius. This field is required.
+        Attribute<float2> uvs;                      ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
     };
 
     /** Pre-processed curve data.

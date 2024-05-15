@@ -81,6 +81,7 @@ namespace {
     const std::string kMeshletPrimIndicesBufferName = "meshletPrimIndices";
     const std::string kMeshletsBufferName = "meshlets";
     const std::string kIndexBufferName = "indexData";
+    const std::string kPointsDataBufferName = "points";
     const std::string kVertexBufferName = "vertices";
     const std::string kPrevVertexBufferName = "prevVertices";
     const std::string kProceduralPrimAABBBufferName = "proceduralPrimitiveAABBs";
@@ -175,6 +176,8 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
         for(auto& instance: mGeometryInstanceData) instance.internalID = internalID++;
     }
 
+    mPointsData = std::move(sceneData.pointsData);
+
     mMeshDesc = std::move(sceneData.meshDesc);
     mMeshNames = std::move(sceneData.meshNames);
     mMeshBBs = std::move(sceneData.meshBBs);
@@ -232,15 +235,13 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     for (const auto &mesh : sceneData.cachedMeshes) {
         if (!mMeshDesc[mesh.meshID].isAnimated()) throw std::runtime_error("Cached Mesh Animation: Referenced mesh ID is not dynamic");
         if (mesh.timeSamples.size() != mesh.vertexData.size()) throw std::runtime_error("Cached Mesh Animation: Time sample count mismatch.");
-        for (const auto &vertices : mesh.vertexData)
-        {
+        for (const auto &vertices : mesh.vertexData) {
             if (vertices.size() != mMeshDesc[mesh.meshID].vertexCount) throw std::runtime_error("Cached Mesh Animation: Vertex count mismatch.");
         }
     }
     
     for (const auto& cache : sceneData.cachedCurves) {
-        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
-        {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere) {
             if (!mMeshDesc[cache.geometryID].isAnimated()) throw std::runtime_error("Cached Curve Animation: Referenced mesh ID is not dynamic");
         }
     }
@@ -592,10 +593,11 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
 
     // Add the packed static vertex data layout.
     VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
-    pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-    pStaticLayout->addElement(VERTEX_TEXCOORD_U_NAME, offsetof(PackedStaticVertexData, texU), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_U_LOC);
     pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME, offsetof(PackedStaticVertexData, packedNormalTangentCurveRadius), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC);
-    pStaticLayout->addElement(VERTEX_TEXCOORD_V_NAME, offsetof(PackedStaticVertexData, texV), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_V_LOC);
+    pStaticLayout->addElement(VERTEX_POINT_INDEX_NAME, offsetof(PackedStaticVertexData, pointIndex), ResourceFormat::R32Uint, 1, VERTEX_POINT_INDEX_LOC);
+    pStaticLayout->addElement(VERTEX_TEXCOORD_UV_NAME, offsetof(PackedStaticVertexData, uv), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_UV_LOC);
+    pStaticLayout->addElement(VERTEX_PAD_NAME, offsetof(PackedStaticVertexData, _pad), ResourceFormat::RG32Uint, 1, VERTEX_PAD_LOC);
+
     pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
 
     // Add the draw ID layout.
@@ -649,7 +651,7 @@ void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::ve
     VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
     pStaticLayout->addElement(CURVE_VERTEX_POSITION_NAME, offsetof(StaticCurveVertexData, position), ResourceFormat::RGB32Float, 1, CURVE_VERTEX_POSITION_LOC);
     pStaticLayout->addElement(CURVE_VERTEX_RADIUS_NAME, offsetof(StaticCurveVertexData, radius), ResourceFormat::R32Float, 1, CURVE_VERTEX_RADIUS_LOC);
-    pStaticLayout->addElement(CURVE_VERTEX_TEXCOORD_NAME, offsetof(StaticCurveVertexData, texCrd), ResourceFormat::RG32Float, 1, CURVE_VERTEX_TEXCOORD_LOC);
+    pStaticLayout->addElement(CURVE_VERTEX_TEXCOORD_NAME, offsetof(StaticCurveVertexData, uv), ResourceFormat::RG32Float, 1, CURVE_VERTEX_TEXCOORD_LOC);
     pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
 
     // Create the VAO objects.
@@ -738,6 +740,11 @@ void Scene::initResources() {
 
     mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);
     
+    if(!mPointsData.empty()) {
+        mpPointsDataBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kPointsDataBufferName], (uint32_t)mPointsData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPointsDataBuffer->setName("Scene::mpGeometryInstancesBuffer");
+    }
+
     if (!mGeometryInstanceData.empty()) {
         mpGeometryInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kGeometryInstanceBufferName], (uint32_t)mGeometryInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpGeometryInstancesBuffer->setName("Scene::mpGeometryInstancesBuffer");
@@ -800,6 +807,8 @@ void Scene::uploadResources() {
 
     // Upload geometry.
 
+    if(!mPointsData.empty()) mpPointsDataBuffer->setBlob(mPointsData.data(), 0, sizeof(float3) * mPointsData.size());
+
     // Meshes.
     if (!mMeshDesc.empty()) mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
 
@@ -815,6 +824,8 @@ void Scene::uploadResources() {
 
     // Curves
     if (!mCurveDesc.empty()) mpCurvesBuffer->setBlob(mCurveDesc.data(), 0, sizeof(CurveDesc) * mCurveDesc.size());
+
+    mpSceneBlock->setBuffer(kPointsDataBufferName, mpPointsDataBuffer);
 
     mpSceneBlock->setBuffer(kGeometryInstanceBufferName, mpGeometryInstancesBuffer);
     mpSceneBlock->setBuffer(kMeshBufferName, mpMeshesBuffer);
@@ -993,7 +1004,7 @@ void Scene::updateGeometryInstances(bool forceUpdate) {
             uint32_t prevMatrixOffset = inst.globalMatrixOffset;
             uint8_t  prevMatrixCount = inst.matrixCount;
 
-            assert(inst.nodeID < globalMatrixLists.size());
+            assert(inst.nodeID < globalMatrixLists.size() && "Instance nodeID is equal or larger than globalMatrixLists size");
             assert(inst.nodeID < matrixListsOffsetsAndCounts.size());
 
             const auto& transformList = globalMatrixLists[inst.nodeID];
@@ -2436,8 +2447,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
     }
 
     if (!mSDFGrids.empty()) {
-        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid ||
-            mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid || mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
         {
             // All ND SDF Grid instances share the same BLAS and AABB buffer.
             const SDFGrid::SharedPtr& pSDFGrid = mSDFGrids.back();
@@ -2455,8 +2465,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 
             blasDataIndex++;
         }
-        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet ||
-                 mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
+        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet || mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
         {
             for (uint32_t s = 0; s < mSDFGrids.size(); s++) {
                 const SDFGrid::SharedPtr& pSDFGrid = mSDFGrids[s];
@@ -2647,13 +2656,11 @@ void Scene::buildBlas(RenderContext* pContext) {
     }
 
     if (!mSDFGrids.empty()) {
-        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid ||
-            mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid || mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
         {
             pContext->resourceBarrier(mSDFGrids.back()->getAABBBuffer().get(), Resource::State::NonPixelShader);
         }
-        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet ||
-                 mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
+        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet || mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
         {
             for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids) {
                 pContext->resourceBarrier(pSDFGrid->getAABBBuffer().get(), Resource::State::NonPixelShader);

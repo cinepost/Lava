@@ -38,9 +38,9 @@ static float computePrimitiveCones(std::vector<Cone>& prim_cones, const SceneBui
     const uint32_t a = mesh.getIndex(i * 3 + 0), b = mesh.getIndex(i * 3 + 1), c = mesh.getIndex(i * 3 + 2);
     assert(a < vertex_count && b < vertex_count && c < vertex_count);
 
-    const float3& p0 = mesh.staticData[a].position;
-    const float3& p1 = mesh.staticData[b].position;
-    const float3& p2 = mesh.staticData[c].position;
+    const float3& p0 = mesh.getVertexPosition(a);
+    const float3& p1 = mesh.getVertexPosition(b);
+    const float3& p2 = mesh.getVertexPosition(c);
 
     float p10[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
     float p20[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
@@ -128,6 +128,14 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   }
 
   adjacency._valid = true;
+
+
+  printf("Counts %zu: ", adjacency.counts.size());
+  for(auto &count: adjacency.counts) {
+    printf("%u", count);
+  }
+  printf("\n");
+
 }
 
 static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* meshlet_cone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {
