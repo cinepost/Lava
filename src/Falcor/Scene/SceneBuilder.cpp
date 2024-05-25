@@ -332,7 +332,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 	prepareSceneGraph();
 	prepareMeshes();
 	removeUnusedMeshes();
-	flattenStaticMeshInstances();
+	//flattenStaticMeshInstances();
 	pretransformStaticMeshes();
 	unifyTriangleWinding();
 	optimizeSceneGraph();
@@ -355,6 +355,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 	// Prepare scene resources.
 	createSceneGraph();
+	createMeshSubdivData();
 	createMeshData();
 	createMeshletsData();
 	createMeshBoundingBoxes();
@@ -642,6 +643,17 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 	const uint32_t vertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
+	// Copy point indices into processed mesh (if present).
+	if (mesh.pointIndices.pData) {
+		if(isIndexed) {
+			processedMesh.pointIndexData.resize(vertexCount);
+			for(size_t i = 0; i < vertexCount; ++i) {
+				uint32_t index = isIndexed ? i : indices[i];
+				processedMesh.pointIndexData[index] = static_cast<const uint32_t*>(mesh.pointIndices.pData)[index];
+			}
+		}
+	}
+
 	// Copy indices into processed mesh.
 	if (isIndexed) {
 		processedMesh.indexCount = indices.size();
@@ -655,7 +667,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	processedMesh.staticData.reserve(vertexCount);
 	if (mesh.hasBones()) processedMesh.skinningData.reserve(vertexCount);
 
-	for (uint32_t i = 0; i < vertexCount; i++) {
+	for (uint32_t i = 0; i < vertexCount; ++i) {
 		uint32_t index = isIndexed ? i : indices[i];
 		assert(index < vertices.size());
 		const Mesh::Vertex& v = vertices[index].first;
@@ -763,7 +775,10 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	spec.indexData = std::move(mesh.indexData);
 	spec.staticData = std::move(mesh.staticData);
 	spec.skinningData = std::move(mesh.skinningData);
-
+	
+	spec.pointIndexData = std::move(mesh.pointIndexData);
+	spec.subdivDataOffset = kInvalidID;
+	
 	if(mesh.hasMultipleMaterials()) {
 		spec.perPrimitiveMaterialIDsData = std::move(mesh.perPrimitiveMaterialIDsData);
 	}
@@ -829,9 +844,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 				}
 				
 				// Pad data structures by 64 bits
-				while(mMeshletIndices.size() % 16 != 0) mMeshletIndices.push_back(0);
-				while(mMeshletVertices.size() % 4 != 0) mMeshletVertices.push_back(0);
-				while(mMeshletPrimIndices.size() % 4 != 0) mMeshletPrimIndices.push_back(0);
+				//while(mMeshletIndices.size() % 16 != 0) mMeshletIndices.push_back(0);
+				//while(mMeshletVertices.size() % 4 != 0) mMeshletVertices.push_back(0);
+				//while(mMeshletPrimIndices.size() % 4 != 0) mMeshletPrimIndices.push_back(0);
 
 				meshlets.push_back(std::move(meshlet));
 			}
@@ -1145,8 +1160,9 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 
 		if(pExportedDataSpec) mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
 
-		mMeshes[meshID].instances.push_back({});
-		pInstance = &mMeshes[meshID].instances.back();
+		auto& mesh = mMeshes[meshID];
+		mesh.instances.push_back({});
+		pInstance = &mesh.instances.back();
 
 		// We might move for lazy LightLinker creation in the future... So we do this here.
 		if(!pCreationSpec->isolatedLightNames.empty()) {
@@ -1898,7 +1914,6 @@ void SceneBuilder::optimizeSceneGraph() {
 }
 
 void SceneBuilder::pretransformStaticMeshes() {
-	return;
 	// This function transforms all static, non-instanced meshes to world space.
 	// A new identity transform node is inserted in the scene graph, linking all transformed meshes.
 	// This step is a prerequisite for the ray tracing optimizations we do later.
@@ -2224,6 +2239,9 @@ std::pair<std::optional<uint32_t>, std::optional<uint32_t>> SceneBuilder::splitM
 	const auto& mesh = mMeshes[meshID];
 
 	// Check if mesh is supported.
+	if (mesh.hasSubdivInstances()) {
+		throw std::runtime_error(("Cannot split mesh '" + mesh.name + "', only non-subdiv meshes supported").c_str());
+	}
 	if (mesh.isDynamic()) {
 		throw std::runtime_error(("Cannot split mesh '" + mesh.name + "', only non-dynamic meshes supported").c_str());
 	}
@@ -2827,7 +2845,7 @@ void SceneBuilder::removeDuplicateSDFGrids() {
 	std::vector<SDFGrid::SharedPtr> uniqueSDFGrids;
 	std::unordered_set<uint32_t> removedIDs;
 
-	for (uint32_t i = 0; i < mSceneData.sdfGrids.size(); i++) {
+	for (uint32_t i = 0; i < mSceneData.sdfGrids.size(); ++i) {
 		if (removedIDs.count(i) > 0)
 			continue;
 
@@ -2837,7 +2855,7 @@ void SceneBuilder::removeDuplicateSDFGrids() {
 		if (removedIDs.size() > 0)
 			updateSDFGridID(i, i - (uint32_t)removedIDs.size());
 
-		for (uint32_t j = i + 1; j < mSceneData.sdfGrids.size(); j++) {
+		for (uint32_t j = i + 1; j < mSceneData.sdfGrids.size(); ++j) {
 			const SDFGrid::SharedPtr& pSDFGridB = mSceneData.sdfGrids[j];
 
 			if (pSDFGridA == pSDFGridB) {
@@ -2850,6 +2868,140 @@ void SceneBuilder::removeDuplicateSDFGrids() {
 	mSceneData.sdfGrids = std::move(uniqueSDFGrids);
 }
 
+void SceneBuilder::createMeshSubdivData() {
+	if(mMeshes.empty()) return;
+
+	const std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+
+	auto& neighborVertices = mSceneData.meshNeighborVertices;
+
+    memset(mSceneData.meshNeighborVerticesMap.data(), 0, sizeof(uint2) * mSceneData.meshNeighborVerticesMap.size());
+
+	for (auto& mesh: mMeshes) {
+		if(!mesh.hasSubdivInstances()) continue;
+		if(!mesh.adjacencyData.isValid() || mesh.adjacencyData.pointToVerticesMap.empty()) {
+			LLOG_WRN << "Unable to build subdiv data for mesh " << mesh.name << " ! Missing adjacency data.";
+			continue;
+		}
+		if(mesh.pointIndexData.empty()) {// || (mesh.pointIndexData.size() != mesh.indexCount)) {
+			LLOG_WRN << "Unable to build subdiv data for mesh " << mesh.name << " ! Missing or malformed point index data.";
+			continue;
+		}
+
+		LLOG_DBG << "Building subdiv data for mesh " << mesh.name;
+
+		mesh.subdivDataOffset = static_cast<uint32_t>(mSceneData.meshNeighborVerticesMap.size());
+
+		LLOG_WRN << "Mesh " << mesh.name << " subdivDataOffset " << mesh.subdivDataOffset;
+
+		auto const& adjacency = mesh.adjacencyData;
+		uint32_t prim_count = mesh.getPrimitivesCount();
+
+		std::vector<uint8_t> localPointUsed(adjacency.pointToVerticesMap.size());
+		memset(localPointUsed.data(), 0, localPointUsed.size());
+
+		std::vector<uint2> pairOffsetCountMap(mesh.indexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
+		memset(pairOffsetCountMap.data(), 0, sizeof(uint2) * pairOffsetCountMap.size());
+
+		// iterate over mesh prims (triangles)
+		for (size_t prim = 0; prim < prim_count; ++prim) {
+    		uint32_t index[4] = {mesh.getIndex(prim * 3), mesh.getIndex(prim * 3 + 1), mesh.getIndex(prim * 3 + 2), 0}; index[3] = index[0];
+    		uint32_t p[4] = {mesh.pointIndexData[index[0]], mesh.pointIndexData[index[1]], mesh.pointIndexData[index[2]], 0}; p[3] = p[0];
+    		
+    		for(size_t k = 0; k < 3; ++k) {
+    			uint32_t edge_v0 = index[k];
+    			uint edge_p0 = p[k];
+
+    			uint32_t edge_v1 = index[k+1];
+    			uint32_t edge_p1 = p[k+1];
+    			uint32_t d_index = kInvalidID;
+    			uint32_t neighborVerticesOffset = neighborVertices.size();
+
+    			const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[edge_v0];
+    			size_t neighbors_count = adjacency.counts[edge_v0];
+
+    			//if(neighbors_count <= 1) continue; // skip isolated triangles
+
+    			bool d_index_found = false;
+
+    			for (size_t j = 0; j < neighbors_count; ++j) {
+      				uint32_t neighbor_prim = neighbors[j];
+      				
+      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
+      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+
+      				if(p_a != edge_p0) {
+      					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
+      						d_index = a;
+      						d_index_found = true;
+      						localPointUsed[p_a] = 1;
+      					} else if (!localPointUsed[p_a]){
+      						neighborVertices.push_back(a);
+      						localPointUsed[p_a] = 1;
+      					}
+      				}
+
+      				if(p_b != edge_p0) {
+      					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
+      						d_index = b;
+      						d_index_found = true;
+      						localPointUsed[p_b] = 1;
+      					} else if (!localPointUsed[p_b]){
+      						neighborVertices.push_back(b);
+      						localPointUsed[p_b] = 1;
+      					}
+      				}
+
+      				if(p_c != edge_p0) {
+      					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
+      						d_index = c;
+      						d_index_found = true;
+      						localPointUsed[p_c] = 1;
+      					} else if (!localPointUsed[p_c]){
+      						neighborVertices.push_back(c);
+      						localPointUsed[p_c] = 1;
+      					}
+      				}
+    			}
+
+    			//LLOG_WRN << "Neighbor count " << neighbors_count << " d vertex found " << (d_index_found ? "YES" : "NO");
+
+    			// place d vertex index first
+    			neighborVertices.push_back(neighborVertices[neighborVerticesOffset]);
+    			neighborVertices[neighborVerticesOffset] = d_index;
+    			
+    			// remove used flags
+    			for (size_t j = 0; j < neighbors_count; ++j) {
+    				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 0)]] = 0;
+    				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 1)]] = 0;
+    				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 2)]] = 0;
+    			}
+
+    			pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+    		}
+  		}
+
+  		mSceneData.meshNeighborVerticesMap.insert(mSceneData.meshNeighborVerticesMap.end(), pairOffsetCountMap.begin(), pairOffsetCountMap.end());
+  	/*	
+  		lava::ut::log::flush();
+  		printf("\nPair offset-count map (%zu):\n", pairOffsetCountMap.size());
+  		for(uint2 e: pairOffsetCountMap) printf("[%u,%u] ", e[0], e[1]);
+  		printf("\nNeighbor vertices (%zu):\n", neighborVertices.size());
+  		for(uint2 e: pairOffsetCountMap) {
+  			printf("[ ");
+  			for(uint32_t i = e[0]; i < (e[0] + e[1]); ++i) printf("%u ", neighborVertices[i]);
+  			printf(" ]");
+  		}
+		printf("\n");
+	*/
+	}
+
+	auto totalSubdivDataBuildDuration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - start_time);
+
+	LLOG_INF << "\tTotal subdiv data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalSubdivDataBuildDuration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalSubdivDataBuildDuration).count() << " ms )";
+};
+
 void SceneBuilder::createMeshData() {
 	assert(mSceneData.meshDesc.empty());
 
@@ -2857,12 +3009,13 @@ void SceneBuilder::createMeshData() {
 	meshData.resize(mMeshes.size());
 
 	// Setup all mesh data.
-	for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++) {
+	for (uint32_t meshID = 0; meshID < mMeshes.size(); ++meshID) {
 		const auto& mesh = mMeshes[meshID];
 		meshData[meshID].materialID = mesh.materialId;
 		meshData[meshID].vbOffset = mesh.staticVertexOffset;
 		meshData[meshID].ibOffset = mesh.indexOffset;
 		meshData[meshID].mbOffset = mesh.perPrimMaterialIndicesOffset;
+		meshData[meshID].subdivDataOffset = mesh.subdivDataOffset;
 		meshData[meshID].vertexCount = mesh.vertexCount;
 		meshData[meshID].indexCount = mesh.indexCount;
 		meshData[meshID].skinningVbOffset = mesh.hasSkinningData ? mesh.skinningVertexOffset : 0;
@@ -2888,7 +3041,7 @@ void SceneBuilder::createMeshData() {
 			// Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
 			assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNodeID);
 
-			for (uint32_t i = 0; i < mesh.vertexCount; i++) {
+			for (uint32_t i = 0; i < mesh.vertexCount; ++i) {
 				SkinningVertexData& s = mSceneData.meshSkinningData[mesh.skinningVertexOffset + i];
 
 				// The bind matrix is per mesh, so just take it from the first instance
@@ -3013,7 +3166,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 			size_t instanceCount = mesh.instances.size();
 
 			assert(instanceCount > 0);
-			for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
+			for (size_t instanceIdx = 0; instanceIdx < instanceCount; ++instanceIdx) {
 				uint32_t blasGeometryIndex = 0;
 
 				// Figure out node ID to use for the current mesh instance.
@@ -3080,7 +3233,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 
 	// Create mapping of mesh IDs to their instance IDs.
 	mSceneData.meshIdToInstanceIds.resize(mMeshes.size());
-	for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++) {
+	for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); ++instanceID) {
 		const auto& instance = instanceData[instanceID];
 		mSceneData.meshIdToInstanceIds[instance.geometryID].push_back(instanceID);
 	}
@@ -3096,7 +3249,7 @@ void SceneBuilder::createCurveData() {
 	auto& curveData = mSceneData.curveDesc;
 	curveData.resize(mCurves.size());
 
-	for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++) {
+	for (uint32_t curveID = 0; curveID < mCurves.size(); ++curveID) {
 		// Curve data.
 		const auto& curve = mCurves[curveID];
 		curveData[curveID].materialID = curve.materialId;

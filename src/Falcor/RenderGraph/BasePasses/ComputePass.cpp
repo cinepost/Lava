@@ -28,6 +28,8 @@
 #include "Falcor/stdafx.h"
 #include "ComputePass.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
 
 ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {

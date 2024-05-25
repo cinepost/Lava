@@ -1058,6 +1058,10 @@ public:
         std::vector<SkinningVertexData> meshSkinningData;       ///< Additional vertex attributes for skinned meshes.
         std::vector<int32_t> perPrimitiveMaterialIDsData;
 
+        // Subdiv surfaces data
+        std::vector<uint2>      meshNeighborVerticesMap;        ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
+        std::vector<uint32_t>   meshNeighborVertices;           ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
+
         // Curve data
         std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
         std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
@@ -1269,6 +1273,11 @@ public:
     std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
     std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
 
+    // Subdivs
+
+    std::vector<uint2>      mMeshNeighborVerticesMap;           ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
+    std::vector<uint32_t>   mMeshNeighborVertices;              ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
+
      // Displacement mapping.
     struct {
         bool needsUpdate = true;                                ///< True if displacement data has changed and a AABB update is required.
@@ -1351,6 +1360,8 @@ public:
     Buffer::SharedPtr mpLightsBuffer;
     Buffer::SharedPtr mpGridVolumesBuffer;
     Buffer::SharedPtr mpPerPrimMaterialIDsBuffer;
+    Buffer::SharedPtr mpMeshNeighborVerticesMapBuffer;
+    Buffer::SharedPtr mpMeshNeighborVerticesBuffer;
     ParameterBlock::SharedPtr mpSceneBlock;
 
     // Camera

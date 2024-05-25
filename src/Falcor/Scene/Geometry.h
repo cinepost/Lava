@@ -80,13 +80,23 @@ struct MeshInstanceSpec {
 };
 
 struct PrimitiveAdjacency {
-    std::vector<uint32_t> counts;
-    std::vector<uint32_t> offsets;
-    std::vector<uint32_t> data;
+    std::vector<uint32_t> counts;   // per vertex neighbors counts
+    std::vector<uint32_t> offsets;  // per vertex neighbor offsets in data array
+    std::vector<uint32_t> data;     // prim indices
+    
+    std::vector<std::vector<uint32_t>> pointToVerticesMap; // point index to vertices map
 
     bool _valid; // Set by Adjacency data builder!
     
     bool isValid() const { return _valid && !counts.empty() && !offsets.empty() && !data.empty(); }
+
+    void clear() {
+        counts.clear();
+        offsets.clear();
+        data.clear();
+        pointToVerticesMap.clear();
+        _valid = false;
+    }
 };
 
 struct MeshletSpec {
@@ -102,6 +112,7 @@ struct MeshletSpec {
         vertices.clear();
         indices.clear();
         primitiveIndices.clear();
+        aabbLocal.invalidate();
     }
 
     uint32_t primitiveCount() const {
@@ -133,17 +144,20 @@ struct MeshSpec {
     uint32_t indexCount = 0;                    ///< Number of indices, or zero if non-indexed.
     uint32_t vertexCount = 0;                   ///< Number of vertices.
     uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+    uint32_t subdivDataOffset = kInvalidNodeID; ///< Offset into shared 'subdivData' array. This is calculated in createMeshSubdivData().
     bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
     bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
     bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).
     bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
     bool isDisplaced = false;                   ///< True if mesh has displacement map.
     bool isAnimated = false;                    ///< True if mesh has vertex animations.
+
     AABB boundingBox;                           ///< Mesh bounding-box in object space.
     std::vector<MeshInstanceSpec> instances;    ///< All instances of this mesh.
 
     // Pre-processed vertex data.
-    std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+    std::vector<uint32_t> pointIndexData;       ///< Optional per vertex point index data.
+    std::vector<uint32_t> indexData;            ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
     std::vector<StaticVertexData> staticData;
     std::vector<SkinningVertexData> skinningData;
     std::vector<int32_t> perPrimitiveMaterialIDsData;
@@ -152,7 +166,7 @@ struct MeshSpec {
     std::vector<MeshletSpec> meshletSpecs;
 
     // Primitives adjacency data.
-    PrimitiveAdjacency adjacency;
+    PrimitiveAdjacency adjacencyData;
 
     // Thread sync.
     mutable std::mutex mMutex;
@@ -173,15 +187,15 @@ struct MeshSpec {
 
     uint32_t getTriangleCount() const {
         assert(topology == Vao::Topology::TriangleList);
-        return (indexCount > 0 ? indexCount : vertexCount) / 3;
+        return (indexCount == 0 ? vertexCount : indexCount) / 3;
     }
 
     uint32_t getPrimitivesCount() const {
         switch(topology) {
             case Vao::Topology::TriangleList:
-                return (indexCount > 0 ? indexCount : vertexCount) / 3;
+                return (indexCount == 0 ? vertexCount : indexCount) / 3;
             case Vao::Topology::QuadList:
-                return (indexCount > 0 ? indexCount : vertexCount) / 4;
+                return (indexCount == 0 ? vertexCount : indexCount) / 4;
             default:
                 return 0;
         }
@@ -206,6 +220,14 @@ struct MeshSpec {
 
     bool hasMeshlets() const {
         return !meshletSpecs.empty();
+    }
+
+    ///< True if mesh has any subdivided instnces.
+    bool hasSubdivInstances() const {            
+        for(const auto& instace: instances) {
+            if(instace.shading.subdivide) return true;
+        }
+        return false;
     }
 };
 
@@ -238,6 +260,7 @@ struct Mesh {
     Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
     Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
 
+    Attribute<uint32_t> pointIndices;           ///< Array of per vertex point indices. This field is optional.
     Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
     Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
     Attribute<float4> tangents;                 ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.

@@ -624,6 +624,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		sampleLocationsProps.variableSampleLocations = VK_TRUE;
 
 		VkPhysicalDeviceSubgroupProperties subgroupProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
+		subgroupProps.subgroupSize = 128;
 		subgroupProps.pNext = &sampleLocationsProps;
 
 		rtProps.pNext = &subgroupProps;

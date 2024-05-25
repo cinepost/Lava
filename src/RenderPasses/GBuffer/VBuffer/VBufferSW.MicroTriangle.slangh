@@ -16,9 +16,9 @@ struct MicroTriangle {
     float3 pw2;
     
     // corner world normals
-    float3 nw0;
-    float3 nw1;
-    float3 nw2;
+    float16_t3 nw0;
+    float16_t3 nw1;
+    float16_t3 nw2;
     
     // corner points barycentrics
     float16_t2 b0;
@@ -29,13 +29,11 @@ struct MicroTriangle {
     float16_t3 esl; // edges squared length in pixel size
 
     // misc
+    uint32_t srcPrimID;
     uint8_t lod;
     uint8_t flags;
 
-    //uint4  _pad0;
-    //uint4  _pad1;
-    //uint   _pad2;
-
+    //uint3 _pad000;
 
 #ifndef HOST_CODE
     __init() {
@@ -49,6 +47,55 @@ struct MicroTriangle {
         return ((uint)flags & (uint)MicroTriangleFlags::Subdividable) != 0;
     }
 
+};
+
+// QAS
+
+#ifndef HOST_CODE
+float3 edgeCP (float3 e, float3 p0, float3 p1) {
+    return ((e * 4.0f) - p0 - p1) * 0.5f;
+}
+
+float3 Q (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 e0, float3 e1, float3 e2) {
+    float3 n200 = p0, n020 = p1, n002 = p2;
+    float3 n110 = edgeCP (e0, p0, p1);
+    float3 n101 = edgeCP (e2, p0, p2);
+    float3 n011 = edgeCP (e1, p1, p2);
+    return w * (n200*w + n110*2*u) + u * (n020*u + n011*2*v) + v * (n002*v + n101*2*w);
+}
+#endif
+
+struct MicroPatch3 {
+    float3 pv0;
+    float3 pv1;
+    float3 pv2;
+
+    float3 pe0;
+    float3 pe1;
+    float3 pe2;
+
+    float16_t3 nv0;
+    float16_t3 nv1;
+    float16_t3 nv2;
+
+    float16_t3 ne0;
+    float16_t3 ne1;
+    float16_t3 ne2;
+
+#ifndef HOST_CODE
+    __init() {
+        this.pv0 = this.pv1 = this.pv2 = this.pe0 = this.pe1 = this.pe2 = {0., 0., 0.};
+        this.nv0 = this.nv1 = this.nv2 = this.ne0 = this.ne1 = this.ne2 = {0., 0., 0.};
+    }
+
+    float3 P (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 pe0, float3 pe1, float3 pe2) {
+        return Q (u, v, w, p0, p1, p2, pe0, pe1, pe2);
+    }
+
+    float3 N (float u, float v, float w, float3 n0, float3 n1, float3 n2, float3 ne0, float3 ne1, float3 ne2) {
+        return Q (u, v, w, n0, n1, n2, ne0, ne1, ne2);
+    }
+#endif
 };
 
 END_NAMESPACE_FALCOR

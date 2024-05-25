@@ -85,10 +85,105 @@ static Cone getMeshletCone(const Cone& acc, uint32_t prim_count) {
   return result;
 }
 
-void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
-  size_t prim_count = mesh.getPrimitivesCount();
+static uint32_t getPrimIndex(uint32_t vertexIndex) {
+  return (vertexIndex - (vertexIndex % 3)) / 3;
+}
+
+void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpec& mesh) {
+  if(mesh.pointIndexData.empty()) return buildPrimitiveAdjacencyNoPoints(mesh);
+
+  auto& adjacency = mesh.adjacencyData;
+
+  uint32_t prim_count = mesh.getPrimitivesCount();
+  size_t   max_pt_index = 0;
+  for(size_t p_i: mesh.pointIndexData) max_pt_index = std::max(max_pt_index, p_i);
+
+  adjacency.pointToVerticesMap.resize(max_pt_index + 1);
+
+  for(size_t i = 0; i < mesh.pointIndexData.size(); ++i) {
+    adjacency.pointToVerticesMap[mesh.pointIndexData[i]].push_back(i);
+  }
+
+  adjacency.counts.resize(mesh.vertexCount);
+  adjacency.offsets.resize(mesh.vertexCount);
+
+  // fill prim counts
+  memset(adjacency.counts.data(), 0, mesh.vertexCount * sizeof(uint32_t));
+
+  std::vector<std::vector<uint32_t>> pointToPrimsMap(adjacency.pointToVerticesMap.size());
   
-  auto& adjacency = mesh.adjacency;
+  for (size_t prim = 0; prim < prim_count; ++prim) {
+    uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
+    pointToPrimsMap[mesh.pointIndexData[a]].push_back(prim);
+    pointToPrimsMap[mesh.pointIndexData[b]].push_back(prim);
+    pointToPrimsMap[mesh.pointIndexData[c]].push_back(prim);
+  }
+
+  for (size_t i = 0; i < prim_count; ++i) {
+    uint32_t a = mesh.getIndex(i * 3 + 0), b = mesh.getIndex(i * 3 + 1), c = mesh.getIndex(i * 3 + 2);
+    adjacency.counts[a] = pointToPrimsMap[mesh.pointIndexData[a]].size();
+    adjacency.counts[b] = pointToPrimsMap[mesh.pointIndexData[b]].size();
+    adjacency.counts[c] = pointToPrimsMap[mesh.pointIndexData[c]].size();
+    //adjacency.counts[a] = adjacency.pointToVerticesMap[mesh.pointIndexData[a]].size();
+    //adjacency.counts[b] = adjacency.pointToVerticesMap[mesh.pointIndexData[b]].size();
+    //adjacency.counts[c] = adjacency.pointToVerticesMap[mesh.pointIndexData[c]].size();
+  }
+
+  // fill offset table
+  uint32_t dataSize = 0;
+
+  for (size_t i = 0; i < static_cast<size_t>(mesh.vertexCount); ++i) {
+    adjacency.offsets[i] = dataSize;
+    dataSize += adjacency.counts[i];
+  }
+
+  adjacency.data.resize(dataSize);
+
+  // fill triangle data
+  for (size_t i = 0; i < prim_count; ++i) {
+    uint32_t a = mesh.getIndex(i * 3 + 0), b = mesh.getIndex(i * 3 + 1), c = mesh.getIndex(i * 3 + 2);
+    uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+
+    for(uint32_t i_a: adjacency.pointToVerticesMap[p_a]) {
+      adjacency.data[adjacency.offsets[i_a]++] = i;
+    }
+
+    for(uint32_t i_b: adjacency.pointToVerticesMap[p_b]) {
+      adjacency.data[adjacency.offsets[i_b]++] = i;
+    }
+
+    for(uint32_t i_c: adjacency.pointToVerticesMap[p_c]) {
+      adjacency.data[adjacency.offsets[i_c]++] = i;
+    }
+  }
+
+  // re-fill offset table
+  dataSize = 0;
+
+  for (size_t i = 0; i < static_cast<size_t>(mesh.vertexCount); ++i) {
+    adjacency.offsets[i] = dataSize;
+    dataSize += adjacency.counts[i];
+  }
+
+  adjacency._valid = true;
+
+  //lava::ut::log::flush();
+  //printf("Adjacency:");
+  //printf("\ncounts: ");
+  //for(auto c: adjacency.counts) printf("%u ", c);
+  //printf("\noffsets: ");
+  //for(auto c: adjacency.offsets) printf("%u ", c);
+  //printf("\n");
+
+  LLOG_DBG << "Adjacency data build done for mesh " << mesh.name;
+}
+
+void MeshletBuilder::buildPrimitiveAdjacencyNoPoints(SceneBuilder::MeshSpec& mesh) {
+  auto& adjacency = mesh.adjacencyData;
+
+  adjacency._valid = false;
+
+  size_t prim_count = mesh.getPrimitivesCount();
 
   adjacency.counts.resize(mesh.vertexCount);
   adjacency.offsets.resize(mesh.vertexCount);
@@ -130,18 +225,39 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   adjacency._valid = true;
 }
 
-static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* meshlet_cone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {
+void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
+  if(mesh.pointIndexData.empty()) {
+    buildPrimitiveAdjacencyNoPoints(mesh);
+  } else {
+    buildPrimitiveAdjacencyByPointIndices(mesh);
+  }
+
+  if(!mesh.adjacencyData.isValid()) return;
+
+  const auto& adjacency = mesh.adjacencyData;
+
+  LLOG_WRN << "Mesh " << mesh.name <<" adjacency counts size " << adjacency.counts.size();
+  LLOG_WRN << "Mesh " << mesh.name<< " adjacency offsets size " << adjacency.offsets.size();
+}
+
+static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* pMeshletCone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, const uint8_t* usedPrims, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {
   uint32_t best_prim = ~0u;
   uint32_t best_extra = 5;
   float best_score = FLT_MAX;
 
+  if(!adjacency.isValid()) {
+    return best_prim;
+  }
+
   for (size_t i = 0; i < meshletSpec.vertexCount(); ++i) {
-    uint32_t vtx = mesh.getIndex(meshletSpec.vertices[i]);
+    //uint32_t vtx = mesh.getIndex(meshletSpec.vertices[i]);
+    uint32_t vtx = meshletSpec.vertices[i];
 
     const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[vtx];
-    size_t neighbors_size = adjacency.counts[vtx];
+    size_t neighbors_count = adjacency.counts[vtx];
+    
 
-    for (size_t j = 0; j < neighbors_size; ++j) {
+    for (size_t j = 0; j < neighbors_count; ++j) {
       uint32_t prim = neighbors[j];
       uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
       uint32_t extra = uint32_t(used[a] == 0xff) + uint32_t(used[b] == 0xff) + uint32_t(used[c] == 0xff);
@@ -164,14 +280,14 @@ static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, cons
       float score = 0;
 
       // caller selects one of two scoring functions: geometrical (based on meshletSpec cone) or topological (based on remaining triangles)
-      if (meshlet_cone) {
+      if (pMeshletCone) {
         const Cone& tri_cone = prim_cones[prim];
 
-        float distance2 = (tri_cone.px - meshlet_cone->px) * (tri_cone.px - meshlet_cone->px) +
-            (tri_cone.py - meshlet_cone->py) * (tri_cone.py - meshlet_cone->py) +
-            (tri_cone.pz - meshlet_cone->pz) * (tri_cone.pz - meshlet_cone->pz);
+        float distance2 = (tri_cone.px - pMeshletCone->px) * (tri_cone.px - pMeshletCone->px) +
+            (tri_cone.py - pMeshletCone->py) * (tri_cone.py - pMeshletCone->py) +
+            (tri_cone.pz - pMeshletCone->pz) * (tri_cone.pz - pMeshletCone->pz);
 
-        float spread = tri_cone.nx * meshlet_cone->nx + tri_cone.ny * meshlet_cone->ny + tri_cone.nz * meshlet_cone->nz;
+        float spread = tri_cone.nx * pMeshletCone->nx + tri_cone.ny * pMeshletCone->ny + tri_cone.nz * pMeshletCone->nz;
 
         score = getMeshletScore(distance2, spread, cone_weight, meshlet_expected_radius);
       } else {
@@ -384,6 +500,7 @@ static bool appendMeshlet(const SceneBuilder::MeshSpec& mesh, SceneBuilder::Mesh
 MeshletBuilder::Stats::Stats() {
   mTotalMeshletsBuildCount = 0;
   mTotalMeshletsBuildDuration = std::chrono::milliseconds::zero();
+  mTotalAdjacencyDataBuildDuration = std::chrono::milliseconds::zero();
 }
 
 void MeshletBuilder::Stats::appendTotalMeshletsBuildCount(const std::vector<SceneBuilder::MeshletSpec>& meshletSpecs) { 
@@ -396,11 +513,23 @@ void MeshletBuilder::Stats::appendTotalMeshletsBuildDuration(const std::chrono::
   mTotalMeshletsBuildDuration += duration; 
 }
 
+void MeshletBuilder::Stats::appendTotalAdjacencyDataBuildDuration(const std::chrono::duration<double>& duration) { 
+  std::scoped_lock lock(mMutex);
+  mTotalAdjacencyDataBuildDuration += duration; 
+}
+
 void MeshletBuilder::printStats() const {
+
+  auto totalMeshletsBuildCount = mStats.totalMeshletsBuildCount();
+  auto totalMeshletsBuildDuration = mStats.totalMeshletsBuildDuration();
+  auto totalAdjacencyDataBuildDuration = mStats.totalAdjacencyDataBuildDuration();
+
   LLOG_INF << "MeshletBuilder stats:";
-  LLOG_INF << "\tTotal meshlets count: " << std::to_string(mStats.totalMeshletsBuildCount());
-  LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(mStats.totalMeshletsBuildDuration()).count() << " s"
-           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(mStats.totalMeshletsBuildDuration()).count() << " ms )";
+  LLOG_INF << "\tTotal meshlets count: " << std::to_string(totalMeshletsBuildCount);
+  LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalMeshletsBuildDuration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalMeshletsBuildDuration).count() << " ms )";
+  LLOG_INF << "\tTotal adjacency data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalAdjacencyDataBuildDuration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalAdjacencyDataBuildDuration).count() << " ms )";
   LLOG_INF << std::endl;
 }
 
@@ -419,7 +548,13 @@ MeshletBuilder::UniquePtr MeshletBuilder::create() {
 void MeshletBuilder::generateMeshlets(SceneBuilder::MeshSpec& mesh, BuildMode mode) {
   LLOG_DBG << "Generating meshlets for mesh \" " << mesh.name << " \" with " << mesh.vertexCount << " vertices and " << mesh.indexCount << " indices";
 
-  const std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+  const std::chrono::high_resolution_clock::time_point adj_data_start_time = std::chrono::high_resolution_clock::now();
+
+  buildPrimitiveAdjacency(mesh);
+  mStats.appendTotalAdjacencyDataBuildDuration(std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - adj_data_start_time ));
+
+  const std::chrono::high_resolution_clock::time_point meshlets_build_start_time = std::chrono::high_resolution_clock::now();
+
   switch(mode) {
     case BuildMode::MESHOPT: 
       generateMeshletsMeshopt(mesh);
@@ -430,7 +565,7 @@ void MeshletBuilder::generateMeshlets(SceneBuilder::MeshSpec& mesh, BuildMode mo
   }
   
   mStats.appendTotalMeshletsBuildCount(mesh.meshletSpecs);
-  mStats.appendTotalMeshletsBuildDuration(std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - start_time ));
+  mStats.appendTotalMeshletsBuildDuration(std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - meshlets_build_start_time ));
 }
 
 void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
@@ -506,7 +641,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
     meshletSpec.vertices = std::move(meshletVertices);
     meshletSpec.indices = std::move(meshletIndices);
     meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
-    LLOG_DBG << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+    LLOG_TRC << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
     meshletSpecs.push_back(std::move(meshletSpec));
@@ -516,25 +651,30 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 }
 
 void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
-  static const float    cone_weight = .5f;
+  static const float cone_weight = .5f;
 
   assert(cone_weight >= 0.0f && cone_weight <= 1.0f);
 
   const uint32_t vertex_count = mesh.vertexCount;
   if(vertex_count == 0) return;
-  
-  buildPrimitiveAdjacency(mesh);
 
-  LLOG_WRN << "Mesh adjacency counts size " << mesh.adjacency.counts.size();
-  LLOG_WRN << "Mesh adjacency offsets size " << mesh.adjacency.offsets.size();
-  auto adjacency = mesh.adjacency; // Work on adjacency data copy. we may need original data for later use
+  if(mesh.adjacencyData.pointToVerticesMap.empty()) {
+    LLOG_WRN << "Adjacency point-to-vertices map for mesh " << mesh.name << " is empty! Falling back to \"scan\" meshlet generation!";
+    return generateMeshletsScan(mesh);
+  }
+
+  auto adjacency = mesh.adjacencyData; // Work on adjacency data copy. we may need original data for later use
 
   assert(static_cast<size_t>(vertex_count) == adjacency.counts.size());
+
+  LLOG_ERR << "Vertex count " << vertex_count;
   
   std::vector<uint32_t> live_primitives(vertex_count);
   memcpy(live_primitives.data(), adjacency.counts.data(), vertex_count * sizeof(uint32_t));
 
-  size_t prim_count = mesh.getPrimitivesCount();
+  uint32_t prim_count = mesh.getPrimitivesCount();
+
+  LLOG_ERR << "Prim count " << prim_count;
 
   std::vector<uint8_t> emitted_flags(prim_count);
   memset(emitted_flags.data(), 0, prim_count);
@@ -565,22 +705,42 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   std::vector<uint8_t> used(vertex_count);
   memset(used.data(), -1, vertex_count);
 
+  std::vector<uint8_t> usedPrims(prim_count);
+  memset(usedPrims.data(), 0, prim_count);
+
   SceneBuilder::MeshletSpec meshlet_spec = {};
   meshlet_spec.primitiveIndices.reserve(MESHLET_MAX_PRIM_COUNT);
   meshlet_spec.indices.reserve(MESHLET_MAX_PRIM_COUNT * 4u);
   meshlet_spec.vertices.reserve(MESHLET_MAX_VERTICES_COUNT);
-
+  
   Cone meshlet_cone_acc = {};
+
+  size_t f1_found_prims = 0, f2_found_prims = 0, fk_found_prims = 0;
+  std::chrono::duration<double> f1_total_duration, f2_total_duration, fk_total_duration;
 
   for (;;) {
     Cone meshlet_cone = getMeshletCone(meshlet_cone_acc, meshlet_spec.primitiveCount());
 
     uint32_t best_extra = 0;
-    uint32_t best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, &meshlet_cone, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, cone_weight, &best_extra);
+
+    std::chrono::high_resolution_clock::time_point f1_start_time = std::chrono::high_resolution_clock::now();
+
+    uint32_t best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, &meshlet_cone, prim_cones.data(), live_primitives.data(), used.data(), usedPrims.data(), meshlet_expected_radius, cone_weight, &best_extra);
+    if(best_prim != ~0u) f1_found_prims+=1;
+
+    f1_total_duration += std::chrono::high_resolution_clock::now() - f1_start_time;
+
 
     // if the best triangle doesn't fit into current meshlet, the spatial scoring we've used is not very meaningful, so we re-select using topological scoring
+
     if (best_prim != ~0u && (meshlet_spec.vertexCount() + best_extra > kMaximumMeshletVertices || meshlet_spec.primitiveCount() >= kMaximumMeshletPrims)) {
-      best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, NULL, prim_cones.data(), live_primitives.data(), used.data(), meshlet_expected_radius, 0.f, NULL);
+      
+      std::chrono::high_resolution_clock::time_point f2_start_time = std::chrono::high_resolution_clock::now();
+
+      best_prim = getNeighborTriangle(mesh, adjacency, meshlet_spec, NULL, prim_cones.data(), live_primitives.data(), used.data(), usedPrims.data(), meshlet_expected_radius, 0.f, NULL);
+      if(best_prim != ~0u) f2_found_prims+=1;
+
+      f2_total_duration += std::chrono::high_resolution_clock::now() - f2_start_time;
     }
 
     // when we run out of neighboring triangles we need to switch to spatial search; we currently just pick the closest triangle irrespective of connectivity
@@ -589,7 +749,12 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
       uint32_t index = ~0u;
       float limit = FLT_MAX;
 
+      std::chrono::high_resolution_clock::time_point fk_start_time = std::chrono::high_resolution_clock::now();
+
       kdtreeNearest(nodes, 0, &prim_cones[0].px, sizeof(Cone) / sizeof(float), emitted_flags.data(), position, index, limit);
+      if(index != ~0u) fk_found_prims+=1;
+
+      fk_total_duration += std::chrono::high_resolution_clock::now() - fk_start_time;
       best_prim = index;
     }
 
@@ -602,10 +767,11 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     assert(a < vertex_count && b < vertex_count && c < vertex_count);
 
     // add meshletSpec to the output; when the current meshletSpec is full we reset the accumulated bounds
+    usedPrims[best_prim] = 1;
     if (appendMeshlet(mesh, meshlet_spec, best_prim, a, b, c, used.data(), mesh.meshletSpecs)) {
       const auto& meshletSpec = mesh.meshletSpecs.back();
 
-      LLOG_DBG << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
+      LLOG_TRC << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";
 
       memset(&meshlet_cone_acc, 0, sizeof(meshlet_cone_acc));
@@ -619,22 +785,22 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     // this makes sure that we spend less time traversing these lists on subsequent iterations
 
     for (uint32_t k = 0; k < 3; ++k) {
-      uint32_t index = mesh.getIndex(best_prim * 3 + k);
+      for(uint32_t v_index: adjacency.pointToVerticesMap[ mesh.pointIndexData[mesh.getIndex(best_prim * 3 + k)]]) {
 
-      uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[index];
-      size_t neighbors_size = adjacency.counts[index];
+        uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[v_index];
+        size_t neighbors_size = adjacency.counts[v_index];
 
-      for (size_t i = 0; i < neighbors_size; ++i) {
-        uint32_t prim = neighbors[i];
+        for (size_t i = 0; i < neighbors_size; ++i) {
+          uint32_t prim = neighbors[i];
 
-        if (prim == best_prim) {
-          neighbors[i] = neighbors[neighbors_size - 1];
-          adjacency.counts[index]--;
-          break;
+          if (prim == best_prim) {
+            neighbors[i] = neighbors[neighbors_size - 1];
+            adjacency.counts[v_index]--;
+            break;
+          }
         }
       }
-    }
-
+    }    
 
     // update aggregated meshletSpec cone data for scoring subsequent prim_cones
     meshlet_cone_acc.px += prim_cones[best_prim].px;
@@ -648,9 +814,20 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
   }
 
   if (meshlet_spec.primitiveCount()) {
-    LLOG_WRN << "Added last meshlet";
     mesh.meshletSpecs.push_back(meshlet_spec);
   }
+
+  LLOG_DBG << "\tF1 found prims " << f1_found_prims;
+  LLOG_DBG << "\tF1 total duration: " << std::chrono::duration_cast<std::chrono::seconds>(f1_total_duration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(f1_total_duration).count() << " ms )";
+
+  LLOG_DBG << "\tF2 found prims " << f2_found_prims;
+  LLOG_DBG << "\tF2 total duration: " << std::chrono::duration_cast<std::chrono::seconds>(f2_total_duration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(f2_total_duration).count() << " ms )";
+
+  LLOG_DBG << "\tFK found prims " << fk_found_prims;
+  LLOG_DBG << "\tFK total duration: " << std::chrono::duration_cast<std::chrono::seconds>(fk_total_duration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(fk_total_duration).count() << " ms )";
 
   //assert(meshlet_offset <= meshopt_buildMeshletsBound(index_count, max_vertices, max_triangles));
 }

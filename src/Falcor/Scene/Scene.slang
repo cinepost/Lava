@@ -97,6 +97,10 @@ struct Scene
     [root] ByteAddressBuffer indexData;                             ///< Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
 #endif
 
+    // Subdiv data
+    StructuredBuffer<uint2>  meshNeighborVerticesMap;               ///< Per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
+    StructuredBuffer<uint>  meshNeighborVertices;
+
     // Curves
     StructuredBuffer<CurveDesc> curves;
 

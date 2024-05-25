@@ -54,9 +54,9 @@ RWTexture2D<uint>   gMeshletID;
 RWTexture2D<uint>   gMicroPolyID;
 
 // Optional debug buffers
-RWTexture2D<uint>       gDrawCount; // Number of writes into visibility buffer
-RWTexture2D<float4>     gAUX;       // Just a four channel auxiliary debug buffer for whatever
-RWTexture2D<uint>       gTime;      // Timing debug buffer
+RWTexture2D<uint>   gDrawCount; // Number of writes into visibility buffer
+RWTexture2D<float4> gAUX;       // Just a four channel auxiliary debug buffer for whatever
+RWTexture2D<uint>   gTime;      // Timing debug buffer
 
 
 #if !defined(USE_ALPHA_TEST)
@@ -108,6 +108,13 @@ struct VBufferSW {
     void writeHit(uint2 pixelPos, const HitInfo hit) {
         //GroupMemoryBarrierWithGroupSync();
         gVBuffer[pixelPos] = hit.getData();
+    }
+
+void writeDepth(uint2 pixelPos, float depth) {
+        
+#if is_valid(gDepth)          
+        gDepth[pixelPos] = depth;
+#endif
     }
 
     void writeMiss(uint2 pixelPos) {

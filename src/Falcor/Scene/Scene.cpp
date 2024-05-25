@@ -95,6 +95,9 @@ namespace {
     const std::string kLightsBufferName = "lights";
     const std::string kGridVolumesBufferName = "gridVolumes";
 
+    const std::string kMeshNeighborVerticesMapBufferName = "meshNeighborVerticesMap";
+    const std::string kMeshNeighborVerticesBufferName = "meshNeighborVertices";
+
     const std::string kStats = "stats";
     const std::string kBounds = "bounds";
     const std::string kAnimations = "animations";
@@ -192,6 +195,9 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mMeshletVertices = std::move(sceneData.meshletVertices);
     mMeshletIndices = std::move(sceneData.meshletIndices);
     mMeshletPrimIndices = std::move(sceneData.meshletPrimIndices);
+
+    mMeshNeighborVerticesMap = std::move(sceneData.meshNeighborVerticesMap);
+    mMeshNeighborVertices = std::move(sceneData.meshNeighborVertices); 
 
     mCurveDesc = std::move(sceneData.curveDesc);
     mCurveBBs = std::move(sceneData.curveBBs);
@@ -793,6 +799,16 @@ void Scene::initResources() {
         mpPerPrimMaterialIDsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kPerPrimMaterialIDsBufferName], (int32_t)mPerPrimMaterialIDs.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpPerPrimMaterialIDsBuffer->setName("Scene::mpPerPrimMaterialIDsBuffer");
     }
+
+    if (!mMeshNeighborVerticesMap.empty()) {
+        mpMeshNeighborVerticesMapBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshNeighborVerticesMapBufferName], (int32_t)mMeshNeighborVerticesMap.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshNeighborVerticesMapBuffer->setName("Scene::mpMeshNeighborVerticesMapBuffer");
+    }
+
+    if (!mMeshNeighborVertices.empty()) {
+        mpMeshNeighborVerticesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshNeighborVerticesBufferName], (int32_t)mMeshNeighborVertices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshNeighborVerticesBuffer->setName("Scene::mpMeshNeighborVerticesBuffer");
+    }
 }
 
 void Scene::uploadResources() {
@@ -810,6 +826,10 @@ void Scene::uploadResources() {
     if (!mMeshletIndices.empty()) mpMeshletIndicesBuffer->setBlob(mMeshletIndices.data(), 0, sizeof(uint8_t) * mMeshletIndices.size());
     if (!mMeshletPrimIndices.empty()) mpMeshletPrimIndicesBuffer->setBlob(mMeshletPrimIndices.data(), 0, sizeof(uint32_t) * mMeshletPrimIndices.size());
     
+    // Subdiv data.
+    if (!mMeshNeighborVerticesMap.empty()) mpMeshNeighborVerticesMapBuffer->setBlob(mMeshNeighborVerticesMap.data(), 0, sizeof(uint2) * mMeshNeighborVerticesMap.size());
+    if (!mMeshNeighborVertices.empty()) mpMeshNeighborVerticesBuffer->setBlob(mMeshNeighborVertices.data(), 0, sizeof(uint32_t) * mMeshNeighborVertices.size());
+
     // Per prim material ids.
     if (!mPerPrimMaterialIDs.empty()) mpPerPrimMaterialIDsBuffer->setBlob(mPerPrimMaterialIDs.data(), 0, sizeof(int32_t) * mPerPrimMaterialIDs.size());
 
@@ -826,6 +846,9 @@ void Scene::uploadResources() {
     mpSceneBlock->setBuffer(kMeshletPrimIndicesBufferName, mpMeshletPrimIndicesBuffer);
 
     mpSceneBlock->setBuffer(kPerPrimMaterialIDsBufferName, mpPerPrimMaterialIDsBuffer);
+
+    mpSceneBlock->setBuffer(kMeshNeighborVerticesMapBufferName, mpMeshNeighborVerticesMapBuffer);
+    mpSceneBlock->setBuffer(kMeshNeighborVerticesBufferName, mpMeshNeighborVerticesBuffer);
 
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
 

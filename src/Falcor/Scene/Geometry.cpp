@@ -29,7 +29,8 @@ MeshSpec::MeshSpec(const MeshSpec& spec) {
     isAnimated = spec.isAnimated;
     boundingBox = spec.boundingBox;
     instances = spec.instances;
-
+    subdivDataOffset = spec.subdivDataOffset;
+    pointIndexData = spec.pointIndexData;
     indexData = spec.indexData;
     staticData = spec.staticData;
     skinningData = spec.skinningData;
@@ -37,7 +38,7 @@ MeshSpec::MeshSpec(const MeshSpec& spec) {
 
     meshletSpecs = spec.meshletSpecs;
 
-    adjacency = spec.adjacency;
+    adjacencyData = spec.adjacencyData;
 }
 
 MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
@@ -70,6 +71,9 @@ MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
         boundingBox = o.boundingBox;
         instances = o.instances;
 
+        subdivDataOffset = o.subdivDataOffset;
+        pointIndexData = o.pointIndexData;
+
         indexData = o.indexData;
         staticData = o.staticData;
         skinningData = o.skinningData;
@@ -77,7 +81,7 @@ MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
 
         meshletSpecs = o.meshletSpecs;
 
-        adjacency = o.adjacency;
+        adjacencyData = o.adjacencyData;
     }
     return *this;
 }

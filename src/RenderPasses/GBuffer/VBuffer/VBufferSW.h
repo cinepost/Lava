@@ -35,7 +35,6 @@
 
 #include "VBufferSW.Meshlet.slangh"
 
-
 using namespace Falcor;
 
 
@@ -49,9 +48,9 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		static const Info kInfo;
 
-		static const size_t kMaxGroupThreads;
-		static const size_t kMeshletMaxVertices;
-		static const size_t kMeshletMaxTriangles;
+		static const uint32_t kMaxGroupThreads;
+		static const uint32_t kMeshletMaxVertices;
+		static const uint32_t kMeshletMaxTriangles;
 
 		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
@@ -80,7 +79,6 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		void createBuffers();
 		void createJitterTexture();
-		void createMeshSubdivDataBuffer();
 		void createPrograms();
 		void createMeshletDrawList();
 		void createMicroTrianglesBuffer();
@@ -112,7 +110,6 @@ class PASS_API VBufferSW : public GBufferBase {
 		uint mMaxLOD = 0;
 		uint mMaxMicroTrianglesPerThread = 1;
 
-		ComputePass::SharedPtr 	mpComputeSubdivDataBuilderPass;
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr 	mpComputeTesselatorPass;
@@ -125,12 +122,6 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      	mpHiZBuffer;
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
-
-		// Subdiv data buffers
-		Buffer::SharedPtr       mpMeshSubdivDataBuffer;
-		Buffer::SharedPtr       mpOddVeticesIndexVBuffer;
-		Buffer::SharedPtr       mpEvenVerticesIndexBuffer;
-		Buffer::SharedPtr       mpEvenVerticesValenceBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;

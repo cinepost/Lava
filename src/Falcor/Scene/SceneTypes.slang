@@ -112,7 +112,9 @@ struct MeshDesc {
     uint materialID;        ///< Material ID.
 
     uint flags;             ///< See MeshFlags.
-    uint3 _pad;
+    uint subdivDataOffset;  ///< Offset into global subdiv data buffer.
+
+    uint2 _pad;
 
     uint getTriangleCount() CONST_FUNCTION {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;
