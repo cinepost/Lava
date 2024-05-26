@@ -524,13 +524,13 @@ void MeshletBuilder::printStats() const {
   auto totalMeshletsBuildDuration = mStats.totalMeshletsBuildDuration();
   auto totalAdjacencyDataBuildDuration = mStats.totalAdjacencyDataBuildDuration();
 
-  LLOG_INF << "MeshletBuilder stats:";
-  LLOG_INF << "\tTotal meshlets count: " << std::to_string(totalMeshletsBuildCount);
-  LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalMeshletsBuildDuration).count() << " s"
-           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalMeshletsBuildDuration).count() << " ms )";
-  LLOG_INF << "\tTotal adjacency data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalAdjacencyDataBuildDuration).count() << " s"
-           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalAdjacencyDataBuildDuration).count() << " ms )";
-  LLOG_INF << std::endl;
+  //LLOG_INF << "MeshletBuilder stats:";
+  //LLOG_INF << "\tTotal meshlets count: " << std::to_string(totalMeshletsBuildCount);
+  //LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalMeshletsBuildDuration).count() << " s"
+  //         << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalMeshletsBuildDuration).count() << " ms )";
+  //LLOG_INF << "\tTotal adjacency data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalAdjacencyDataBuildDuration).count() << " s"
+  //         << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalAdjacencyDataBuildDuration).count() << " ms )";
+  //LLOG_INF << std::endl;
 }
 
 MeshletBuilder::MeshletBuilder() {
@@ -667,14 +667,14 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
 
   assert(static_cast<size_t>(vertex_count) == adjacency.counts.size());
 
-  LLOG_ERR << "Vertex count " << vertex_count;
+  //LLOG_ERR << "Vertex count " << vertex_count;
   
   std::vector<uint32_t> live_primitives(vertex_count);
   memcpy(live_primitives.data(), adjacency.counts.data(), vertex_count * sizeof(uint32_t));
 
   uint32_t prim_count = mesh.getPrimitivesCount();
 
-  LLOG_ERR << "Prim count " << prim_count;
+  //LLOG_ERR << "Prim count " << prim_count;
 
   std::vector<uint8_t> emitted_flags(prim_count);
   memset(emitted_flags.data(), 0, prim_count);

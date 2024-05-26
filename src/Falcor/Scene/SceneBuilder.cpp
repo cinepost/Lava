@@ -2982,18 +2982,18 @@ void SceneBuilder::createMeshSubdivData() {
   		}
 
   		mSceneData.meshNeighborVerticesMap.insert(mSceneData.meshNeighborVerticesMap.end(), pairOffsetCountMap.begin(), pairOffsetCountMap.end());
-  	/*	
+  		
   		lava::ut::log::flush();
-  		printf("\nPair offset-count map (%zu):\n", pairOffsetCountMap.size());
+  		printf("\nPair count-offset map (%zu):\n", pairOffsetCountMap.size());
   		for(uint2 e: pairOffsetCountMap) printf("[%u,%u] ", e[0], e[1]);
   		printf("\nNeighbor vertices (%zu):\n", neighborVertices.size());
   		for(uint2 e: pairOffsetCountMap) {
   			printf("[ ");
-  			for(uint32_t i = e[0]; i < (e[0] + e[1]); ++i) printf("%u ", neighborVertices[i]);
+  			for(uint32_t i = e[1]; i < (e[0] + e[1]); ++i) printf("%u ", neighborVertices[i]);
   			printf(" ]");
   		}
 		printf("\n");
-	*/
+	
 	}
 
 	auto totalSubdivDataBuildDuration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - start_time);

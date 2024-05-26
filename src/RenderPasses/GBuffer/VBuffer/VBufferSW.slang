@@ -48,6 +48,7 @@ RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+RWTexture2D<float3> gNormW;
 RWTexture2D<float4> gTextureGrads;
 
 RWTexture2D<uint>   gMeshletID;
