@@ -38,7 +38,7 @@ namespace {
     const std::string kInputTexGrads        = "texGrads";
     const std::string kInputMVectors        = "mvec";
     const std::string kInputDrawCount       = "drawCount";
-
+    const std::string kInputNormalW         = "normW";
 
     const std::string kInputOuputMeshlet        = "meshlet_id";
     const std::string kInputOuputMicroPoly      = "micropoly_id";
@@ -53,31 +53,32 @@ namespace {
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,              "gDepth",           "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
-        { kInputTexGrads,           "gTextureGrads",    "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
-        { kInputMVectors,           "gMotionVector",    "Motion vector buffer (float format)",      true /* optional */                                 },
-        { kInputDrawCount,          "gDrawCount",       "Draw count debug buffer",                  true /* optional */, ResourceFormat::R32Uint        },
+        { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
+        { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
+        { kInputMVectors,           "gMotionVector",        "Motion vector buffer (float format)",      true /* optional */                                 },
+        { kInputDrawCount,          "gDrawCount",           "Draw count debug buffer",                  true /* optional */, ResourceFormat::R32Uint        },
+        { kInputNormalW,            "gNormW",               "Shading normal in world space",            true /* optional */, ResourceFormat::RGBA16Float    },
     };
 
     const ChannelList kExtraInputOutputChannels = {
-        { kInputOuputMeshlet,       "gMeshletID",       "Meshlet ID",                               true /* optional */, ResourceFormat::R32Uint        },
-        { kInputOuputMicroPoly,     "gMicroPolyID",     "Micro-polygon ID",                         true /* optional */, ResourceFormat::R32Uint        },
-        { kInputOuputAUX,           "gAUX",             "Auxiliary debug buffer",                   true /* optional */, ResourceFormat::RGBA32Float    },
-        { kInputOuputTime,          "gTime",            "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint        },
-        { "uv",                     "gUV",              "Texture coordinates buffer",               true /* optional */, ResourceFormat::RG16Float      },
-
+        { kInputOuputMeshlet,       "gMeshletID",           "Meshlet ID",                               true /* optional */, ResourceFormat::R32Uint        },
+        { kInputOuputMicroPoly,     "gMicroPolyID",         "Micro-polygon ID",                         true /* optional */, ResourceFormat::R32Uint        },
+        { kInputOuputAUX,           "gAUX",                 "Auxiliary debug buffer",                   true /* optional */, ResourceFormat::RGBA32Float    },
+        { kInputOuputTime,          "gTime",                "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint        },
+        { "uv",                     "gUV",                  "Texture coordinates buffer",               true /* optional */, ResourceFormat::RG16Float      },
+        
     };
 
     const ChannelList kExtraOutputChannels = {
         // Service outputs
-        { "normals",                "gOutNormals",          "Normals buffer",                       true /* optional */, ResourceFormat::RGBA16Float    },
-        { "tangent_normals",        "gOutTangentNormals",   "Tangent space normals buffer",         true /* optional */, ResourceFormat::RGBA16Float    },
-        { "prim_id",                "gPrimID",              "Primitive id buffer",                  true /* optional */, ResourceFormat::R32Float       },
-        { "op_id",                  "gOpID",                "Operator id buffer",                   true /* optional */, ResourceFormat::R32Float       },
-        { kOutputMeshletColor,      "gMeshletColor",        "Meshlet false-color buffer",           true /* optional */, ResourceFormat::RGBA16Float    },
-        { kOutputMicroPolyColor,    "gMicroPolyColor",      "MicroPolygon false-color buffer",      true /* optional */, ResourceFormat::RGBA16Float    },
-        { kOutputTimeFalseColor,    "gTimeFalseColor",      "GPU time false-color buffer",          true /* optional */, ResourceFormat::RGBA16Float    },
-        { kOutputMeshletDrawColor,  "gMeshletDrawHeatMap",  "Meshlet draw heat map",                true /* optional */, ResourceFormat::RGBA16Float    },
+        { "normals",                "gOutNormals",          "Normals buffer",                           true /* optional */, ResourceFormat::RGBA16Float    },
+        { "tangent_normals",        "gOutTangentNormals",   "Tangent space normals buffer",             true /* optional */, ResourceFormat::RGBA16Float    },
+        { "prim_id",                "gPrimID",              "Primitive id buffer",                      true /* optional */, ResourceFormat::R32Float       },
+        { "op_id",                  "gOpID",                "Operator id buffer",                       true /* optional */, ResourceFormat::R32Float       },
+        { kOutputMeshletColor,      "gMeshletColor",        "Meshlet false-color buffer",               true /* optional */, ResourceFormat::RGBA16Float    },
+        { kOutputMicroPolyColor,    "gMicroPolyColor",      "MicroPolygon false-color buffer",          true /* optional */, ResourceFormat::RGBA16Float    },
+        { kOutputTimeFalseColor,    "gTimeFalseColor",      "GPU time false-color buffer",              true /* optional */, ResourceFormat::RGBA16Float    },
+        { kOutputMeshletDrawColor,  "gMeshletDrawHeatMap",  "Meshlet draw heat map",                    true /* optional */, ResourceFormat::RGBA16Float    },
     };
 }
 

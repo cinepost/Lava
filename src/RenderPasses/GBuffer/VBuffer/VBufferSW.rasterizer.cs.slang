@@ -60,11 +60,7 @@ groupshared MicroTriangle     gsMTArray[MAX_MICRO_TRIANGLES];
 groupshared uint              gsMicroTrianglesCount;
 groupshared bool              gsSubdivide;
 groupshared bool              gsCullCCW;
-
-StructuredBuffer<MeshSubdivData>    gMeshSubdivDataBuffer;
-StructuredBuffer<EvenVertexData>    gEvenVertexValenceBuffer;
-StructuredBuffer<uint32_t>          gOddVeticesIndexVBuffer;
-StructuredBuffer<uint32_t>          gEvenVerticesNeighboursIndexBuffer;
+groupshared bool              gsUse16BitIndices;
 
 RWStructuredBuffer<MicroTriangle>   gMicroTrianglesBuffer;
 RWStructuredBuffer<MicroTriangle>   gMicroTriangleBuffers[1024]; 
@@ -96,16 +92,79 @@ float16_t3 microTriangleEdgesLengthsSquared(float3 pw0, float3 pw1, float3 pw2) 
     };
 }
 
+uint getLocalIndix(const uint ibOffset, const uint index) {
+#if SCENE_HAS_INDEXED_VERTICES
+    // Determine what format of the indices.
+    // It's only if the scene has mixed formats that we incur the cost of checking the flag bit.
+#if SCENE_HAS_16BIT_INDICES && SCENE_HAS_32BIT_INDICES
+    bool read16Bit = gsUse16BitIndices;
+#elif SCENE_HAS_16BIT_INDICES
+    bool read16Bit = true;
+#else
+    bool read16Bit = false;
+#endif
+    // Load the vertex indices.
+    uint baseIndex = ibOffset * 4;
+    uint vtxIndex;
+    if (read16Bit) {
+        baseIndex += index * 2;
+        vtxIndex = (uint)gScene.indexData.Load<uint16_t>(baseIndex);
+    } else {
+        baseIndex += index * 4;
+        vtxIndex = gScene.indexData.Load<uint>(baseIndex);
+    }
+#else // !SCENE_HAS_INDEXED_VERTICES
+    vtxIndex = index;
+#endif
+    return vtxIndex;
+}
+
+void aux33(float2 uv, float4 o) {
+    int2 px = uv;
+    gVBufferSW.writeAUX(px + int2(-1, -1), o);
+    gVBufferSW.writeAUX(px + int2(-1, 0), o);
+    gVBufferSW.writeAUX(px + int2(0, -1), o);
+    gVBufferSW.writeAUX(px, o);
+    gVBufferSW.writeAUX(px + int2(1, 1), o);
+    gVBufferSW.writeAUX(px + int2(0, 1), o);
+    gVBufferSW.writeAUX(px + int2(1, 0), o);
+    gVBufferSW.writeAUX(px + int2(-1, 1), o);
+    gVBufferSW.writeAUX(px + int2(1, -1), o);
+}
+
+void rasterizeTriangleIndicesAUX(uint triangle_id) {
+    if(triangle_id >= gsMicroTrianglesCount) return;
+    const MicroTriangle mt = gsMTArray[triangle_id];
+
+    float2 p0 = transformPointToScreen(mt.pw0).xy;
+    float2 p1 = transformPointToScreen(mt.pw1).xy;
+    float2 p2 = transformPointToScreen(mt.pw2).xy;
+
+    float2 d0 = normalize((p1 + p2) * .5f - p0) * 6;
+    float2 d1 = normalize((p0 + p2) * .5f - p1) * 6;
+    float2 d2 = normalize((p0 + p1) * .5f - p2) * 6;
+
+    uint i0 = gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 0];
+    uint i1 = gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 1];
+    uint i2 = gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 2];
+
+    uint v0 = getLocalIndix(gsMeshDesc.ibOffset, i0);
+    uint v1 = getLocalIndix(gsMeshDesc.ibOffset, i1);
+    uint v2 = getLocalIndix(gsMeshDesc.ibOffset, i2);
+
+    aux33(p0 + d0, float4(v0, mt.srcPrimID * 3 + 0, 1, 1));
+    aux33(p1 + d1, float4(v1, mt.srcPrimID * 3 + 1, 1, 1));
+    aux33(p2 + d2, float4(v2, mt.srcPrimID * 3 + 2, 1, 1));
+}
+
 MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     MicroPatch3 patch;
     MicroTriangle mt = gsMTArray[tri_buff_id];
 
     float3 src_pv[3] = {mt.pw0, mt.pw1, mt.pw2};
-    float3 src_pe[3] = {(src_pv[0] + src_pv[1]) * .5f, (src_pv[1] + src_pv[2]) * .5f, (src_pv[2] + src_pv[0]) * .5f};
     
     patch.pv = src_pv;
-    patch.pe = src_pe;
-
+    
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
 
     float3 src_nv[3] = {
@@ -114,9 +173,9 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         normalize(mul(vertex_data[uint(indices[2])].normal, worldInvTransposeMat))
     };
 
-    uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 0]];
+    uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 2]];
     uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 1]];
-    uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 2]];
+    uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 0]];
     
     uint count0  = pair0[0];
     uint offset0 = pair0[1];
@@ -136,47 +195,37 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     float3 pv_sum[3] = {float3(0.f), float3(0.f), float3(0.f)};
 
     if(d_idx0 != 4294967295u) {
-        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + d_idx0]);
+        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx0);
         pv_sum[0] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe0 = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[0]) * k18;
-        patch.ne[0] = normalize(patch.pe[0] - pe0);
-        patch.pe[0] = pe0;
+        float3 pe = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[0]) * k18;
+        patch.ne[2] = normalize(patch.pe[2] - pe);
+        patch.pe[2] = pe;
     } else {
-        // No d vertex
-        patch.ne[0] = normalize((src_nv[0] + src_nv[1]) * .5f);
+        patch.ne[2] = normalize((src_nv[2] + src_nv[0]) * .5f);
         valence[0]--;
     }
 
     if(d_idx1 != 4294967295u) {
-        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + d_idx1]);
+        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx1);
         pv_sum[1] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe1 = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[1]) * k18;
-        patch.ne[1] = normalize(patch.pe[1] - pe1);
-        patch.pe[1] = pe1;
+        float3 pe = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[1]) * k18;
+        patch.ne[0] = normalize(patch.pe[0] - pe);
+        patch.pe[0] = pe;
     } else {
-        // No d vertex
-        patch.ne[1] = normalize((src_nv[1] + src_nv[2]) * .5f);
+        patch.ne[0] = normalize((src_nv[0] + src_nv[1]) * .5f);
         valence[1]--;
     }
 
     if(d_idx2 != 4294967295u) {
-        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + d_idx2]);
+        StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx2);
         pv_sum[2] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe2 = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[2]) * k18;
-        patch.ne[2] = normalize(patch.pe[2] - pe2);
-        patch.pe[2] = pe2;
+        float3 pe = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[2]) * k18;
+        patch.ne[1] = normalize(patch.pe[1] - pe);
+        patch.pe[1] = pe;
     } else {
-        // No d vertex
-        patch.ne[2] = normalize((src_nv[2] + src_nv[0]) * .5f);
+        patch.ne[1] = normalize((src_nv[1] + src_nv[2]) * .5f);
         valence[2]--;
     }
-
-    // test
-    //patch.pv = src_pv;
-    //patch.pe = src_pe;
-    //patch.nv = { float3(src_nv[0]), float3(src_nv[1]), float3(src_nv[2]) };
-    //return patch;
-
 
     float kB[3] = {
         valence[0] > 3 ? (k38 / float(valence[0])) : k316,
@@ -188,37 +237,34 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     pv_sum[1] *= kB[1];
     pv_sum[2] *= kB[2];
 
-
     for(uint c = 1; c < count0; ++c) {
         uint idx = gScene.meshNeighborVertices[offset0 + c];
-        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + idx]);
+        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + idx);
         pv_sum[0] += mul(float4(vtx.position, 1.f), worldMat).xyz * kB[0];
     }
 
-    //pv_sum[0] += src_pv[0] * (1.f - float(valence[0]) * kB[0]);
+    pv_sum[0] += src_pv[0] * (1.f - float(valence[0]) * kB[0]);
 
     for(uint c = 1; c < count1; ++c) {
         uint idx = gScene.meshNeighborVertices[offset1 + c];
-        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + idx]);
+        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + idx);
         pv_sum[1] += mul(float4(vtx.position, 1.f), worldMat).xyz * kB[1];
     }
 
-    //pv_sum[1] += src_pv[1] * (1.f - float(valence[1]) * kB[1]);
+    pv_sum[1] += src_pv[1] * (1.f - float(valence[1]) * kB[1]);
 
     for(uint c = 1; c < count2; ++c) {
         uint idx = gScene.meshNeighborVertices[offset2 + c];
-        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + gScene.meshletVertices[meshlet.vertexOffset + idx]);
+        StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + idx);
         pv_sum[2] += mul(float4(vtx.position, 1.f), worldMat).xyz * kB[2];
     }
 
-    //pv_sum[2] += src_pv[2] * (1.f - float(valence[2]) * kB[2]);
+    pv_sum[2] += src_pv[2] * (1.f - float(valence[2]) * kB[2]);
 
     patch.nv[0] = normalize(src_pv[0] - pv_sum[0]);
     patch.nv[1] = normalize(src_pv[1] - pv_sum[1]);
     patch.nv[2] = normalize(src_pv[2] - pv_sum[2]);
     patch.pv = pv_sum;
-
-    //patch.pe = src_pe;
 
     return patch;
 }
@@ -226,7 +272,7 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
 uint nullSubdivideTriangle(uint triangle_id) {
     if(triangle_id >= gsPrimCount) return 0;
 
-    const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
+    uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
     
     MicroTriangle mt;
     mt.pw0 = mul(float4(vertex_data[uint(indices[0])].position, 1.f), worldMat).xyz;
@@ -464,6 +510,12 @@ void rasterizeTriangle(uint micro_triangle_id, bool cullCCW) {
                 gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
                 gVBufferSW.writeDepth(pixelPos, z);
 
+#if is_valid(gNormW)
+                if(gsSubdivide) {
+                    gVBufferSW.writeNormal(pixelPos, tri.getNormal(uv));
+                }
+#endif
+
 #if is_valid(gTextureGrads)
                 //float2 tcrd0 = vertex_data[pi0].texCrd, tcrd1 = vertex_data[pi1].texCrd, tcrd2 = vertex_data[pi2].texCrd;
                 
@@ -482,7 +534,7 @@ void rasterizeTriangle(uint micro_triangle_id, bool cullCCW) {
                 gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                 gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
 
-                gVBufferSW.writeAUX(pixelPos, float4(gsMicroTrianglesCount, micro_triangle_id, gsPrimCount, 1.f));
+                //gVBufferSW.writeAUX(pixelPos, float4(1.f * tri.srcPrimID, 0, 0, 1.f));
 
 #if is_valid(gDrawCount)
                 InterlockedAdd(gDrawCount[pixelPos], 1);
@@ -512,6 +564,7 @@ void rasterize_no_subdiv() {
     nullSubdivideTriangle(gThreadID);
     GroupMemoryBarrierWithGroupSync();
     rasterizeTriangle(gThreadID, gsCullCCW);
+    //rasterizeTriangleIndicesAUX(gThreadID);
 }
 
 [numthreads(THREADS_COUNT, 1, 1)]
@@ -541,6 +594,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
             meshlet = gScene.meshlets[draw.meshletID].unpack();
             gsPrimCount = meshlet.primCount;
+            gsUse16BitIndices = gsMeshDesc.flags & uint(MeshFlags::Use16BitIndices);
             gsSubdivide = instance.isSubdividable() && (MAX_LOD > 0);
         }  
     }
@@ -585,13 +639,17 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
                 //test
                 for(uint i = 0; i < gsMicroTrianglesCount; ++i) {
-                    //gsMTArray[i].pw0 = patch.P(float2(gsMTArray[i].b0));
-                    //gsMTArray[i].pw1 = patch.P(float2(gsMTArray[i].b1));
-                    //gsMTArray[i].pw2 = patch.P(float2(gsMTArray[i].b2));
+                    gsMTArray[i].pw0 = patch.P(float2(gsMTArray[i].b0));
+                    gsMTArray[i].pw1 = patch.P(float2(gsMTArray[i].b1));
+                    gsMTArray[i].pw2 = patch.P(float2(gsMTArray[i].b2));
 
-                    gsMTArray[i].pw0 = patch.pe[0];
-                    gsMTArray[i].pw1 = patch.pe[1];
-                    gsMTArray[i].pw2 = patch.pe[2];
+                    gsMTArray[i].nw0 = patch.N(float2(gsMTArray[i].b0));
+                    gsMTArray[i].nw1 = patch.N(float2(gsMTArray[i].b1));
+                    gsMTArray[i].nw2 = patch.N(float2(gsMTArray[i].b2));
+
+                    //gsMTArray[i].pw0 = patch.pe[0];
+                    //gsMTArray[i].pw1 = patch.pe[1];
+                    //gsMTArray[i].pw2 = patch.pe[2];
                 }
             }
             

@@ -47,15 +47,16 @@ static const bool kAdjustShadingNormals = true;
 Texture2D<float> gDepth;
 Texture2D<PackedHitInfo> gVbuffer;
 Texture2D<float4> gTextureGrads;
+Texture2D<float4> gNormW;
 
 // Extra UAV output channels
+RWTexture2D<float4>                gOutNormals;
 RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutEmission;
 RasterizerOrderedTexture2D<float>  gOutRoughness;
 RasterizerOrderedTexture2D<float4> gOutShadows;
-RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float4> gOutTangentNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 RasterizerOrderedTexture2D<float>  gOutOcclusion;

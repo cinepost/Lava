@@ -47,6 +47,13 @@ struct MicroTriangle {
         return ((uint)flags & (uint)MicroTriangleFlags::Subdividable) != 0;
     }
 
+#ifndef HOST_CODE
+    float16_t3 getNormal(float2 barycentrics) {
+        //return (nw0 + nw1 + nw2) * 0.33333;
+        return (nw1 * barycentrics.x) + ( nw2 * barycentrics.y ) + (nw0 * (1.f - barycentrics.x - barycentrics.y));
+    }
+#endif
+
 };
 
 // QAS
@@ -85,12 +92,15 @@ struct MicroPatch3 {
     }
 
     float3 P (float2 barycentrics) {
-        float u = barycentrics.x, v = barycentrics.y, w = 1.f - barycentrics.x - barycentrics.y;
-        return P(u, v, w);
+        return P(barycentrics.x, barycentrics.y, 1.f - barycentrics.x - barycentrics.y);
     }
 
     float3 N (float u, float v, float w) {
         return Q (u, v, w, nv[0], nv[1], nv[2], ne[0], ne[1], ne[2]);
+    }
+
+    float3 N (float2 barycentrics) {
+        return N(barycentrics.x, barycentrics.y, 1.f - barycentrics.x - barycentrics.y);
     }
 #endif
 };

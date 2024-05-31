@@ -332,9 +332,12 @@ Scene::SharedPtr SceneBuilder::getScene() {
 	prepareSceneGraph();
 	prepareMeshes();
 	removeUnusedMeshes();
+	
 	//flattenStaticMeshInstances();
-	pretransformStaticMeshes();
-	unifyTriangleWinding();
+	
+	//pretransformStaticMeshes();
+	//unifyTriangleWinding();
+	
 	optimizeSceneGraph();
 	calculateMeshBoundingBoxes();
 	createMeshGroups();
@@ -2890,9 +2893,20 @@ void SceneBuilder::createMeshSubdivData() {
 
 		LLOG_DBG << "Building subdiv data for mesh " << mesh.name;
 
+		bool cw = mesh.isFrontFaceCW;
+
+		LLOG_WRN << "Mesh " << mesh.name << "is isFrontFaceCW " << (mesh.isFrontFaceCW ? "YES" : "NO"); 
+
 		mesh.subdivDataOffset = static_cast<uint32_t>(mSceneData.meshNeighborVerticesMap.size());
 
 		LLOG_WRN << "Mesh " << mesh.name << " subdivDataOffset " << mesh.subdivDataOffset;
+
+		LLOG_WRN << "Mesh " << mesh.name << " indices:";
+		lava::ut::log::flush();
+		for(uint32_t  i = 0; i < mesh.indexCount; ++i) {
+			printf("%u ", mesh.getIndex(i));
+		}
+		printf("\n");
 
 		auto const& adjacency = mesh.adjacencyData;
 		uint32_t prim_count = mesh.getPrimitivesCount();
@@ -2905,15 +2919,25 @@ void SceneBuilder::createMeshSubdivData() {
 
 		// iterate over mesh prims (triangles)
 		for (size_t prim = 0; prim < prim_count; ++prim) {
-    		uint32_t index[4] = {mesh.getIndex(prim * 3), mesh.getIndex(prim * 3 + 1), mesh.getIndex(prim * 3 + 2), 0}; index[3] = index[0];
+    		uint32_t index[4] = {mesh.getIndex(prim * 3 + 0), mesh.getIndex(prim * 3 + 1), mesh.getIndex(prim * 3 + 2), 0}; 
+    		//if(!cw) std::swap(index[0], index[1]);
+    		//index[3] = index[0];
     		uint32_t p[4] = {mesh.pointIndexData[index[0]], mesh.pointIndexData[index[1]], mesh.pointIndexData[index[2]], 0}; p[3] = p[0];
     		
+    		//if(!cw) std::swap(index[0], index[1]);
+    		index[3] = index[0];
+
+    		LLOG_WRN << "----- Prim " << prim << " -----";
+
     		for(size_t k = 0; k < 3; ++k) {
     			uint32_t edge_v0 = index[k];
-    			uint edge_p0 = p[k];
-
     			uint32_t edge_v1 = index[k+1];
+
+    			uint32_t edge_p0 = p[k];
     			uint32_t edge_p1 = p[k+1];
+
+    			LLOG_WRN << "Testing pts " << edge_p0 << " -> " << edge_p1;
+    			
     			uint32_t d_index = kInvalidID;
     			uint32_t neighborVerticesOffset = neighborVertices.size();
 
@@ -2922,21 +2946,25 @@ void SceneBuilder::createMeshSubdivData() {
 
     			//if(neighbors_count <= 1) continue; // skip isolated triangles
 
-    			bool d_index_found = false;
-
+				// Find d indices first
     			for (size_t j = 0; j < neighbors_count; ++j) {
-      				uint32_t neighbor_prim = neighbors[j];
-      				
-      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+    				uint32_t neighbor_prim = neighbors[j];
+    				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
+      				uint32_t p_a, p_b, p_c;
+      				if(!cw) {
+      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+      				} else {
+      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+      				}
 
       				if(p_a != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
       						d_index = a;
-      						d_index_found = true;
-      						localPointUsed[p_a] = 1;
-      					} else if (!localPointUsed[p_a]){
-      						neighborVertices.push_back(a);
+      						LLOG_WRN << "d_index at p_a " << p_a << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
+      						//LLOG_WRN << "pt " << p_a << " vetices:";
+      						//for(auto v: adjacency.pointToVerticesMap[p_a]) {
+      						//	LLOG_WRN << "v " << v;
+      						//}
       						localPointUsed[p_a] = 1;
       					}
       				}
@@ -2944,10 +2972,11 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_b != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
       						d_index = b;
-      						d_index_found = true;
-      						localPointUsed[p_b] = 1;
-      					} else if (!localPointUsed[p_b]){
-      						neighborVertices.push_back(b);
+      						LLOG_WRN << "d_index at p_b " << p_b << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
+      						//LLOG_WRN << "pt " << p_b << " vetices:";
+      						//for(auto v: adjacency.pointToVerticesMap[p_b]) {
+      						//	LLOG_WRN << "v " << v;
+      						//}
       						localPointUsed[p_b] = 1;
       					}
       				}
@@ -2955,20 +2984,52 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_c != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
       						d_index = c;
-      						d_index_found = true;
-      						localPointUsed[p_c] = 1;
-      					} else if (!localPointUsed[p_c]){
-      						neighborVertices.push_back(c);
+      						LLOG_WRN << "d_index at p_c " << p_c << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
+      						//LLOG_WRN << "pt " << p_c << " vetices:";
+      						//for(auto v: adjacency.pointToVerticesMap[p_c]) {
+      						//	LLOG_WRN << "v " << v;
+      						//}
       						localPointUsed[p_c] = 1;
       					}
+      				}
+      			}
+
+      			neighborVertices.push_back(d_index);
+
+    			for (size_t j = 0; j < neighbors_count; ++j) {
+      				uint32_t neighbor_prim = neighbors[j];
+
+      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
+      				uint32_t p_a, p_b, p_c;
+      				if(!cw) {
+      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+      				} else {
+      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+      				}
+	
+      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
+      					neighborVertices.push_back(a);
+      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_a][0]);
+      					localPointUsed[p_a] = 1;
+      					LLOG_WRN << "pv " << a << " at p_a " << p_a;
+      				}
+
+      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
+      					neighborVertices.push_back(b);
+      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_b][0]);
+      					localPointUsed[p_b] = 1;
+      					LLOG_WRN << "pv " << b << " at p_b " << p_b;
+      				}
+
+      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
+      					neighborVertices.push_back(c);
+      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_c][0]);
+      					localPointUsed[p_c] = 1;
+      					LLOG_WRN << "pv " << c << " at p_c " << p_c;
       				}
     			}
 
     			//LLOG_WRN << "Neighbor count " << neighbors_count << " d vertex found " << (d_index_found ? "YES" : "NO");
-
-    			// place d vertex index first
-    			neighborVertices.push_back(neighborVertices[neighborVerticesOffset]);
-    			neighborVertices[neighborVerticesOffset] = d_index;
     			
     			// remove used flags
     			for (size_t j = 0; j < neighbors_count; ++j) {

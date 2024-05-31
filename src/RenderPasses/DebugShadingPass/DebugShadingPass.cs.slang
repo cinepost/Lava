@@ -21,8 +21,9 @@ Texture2D<float>    gDepth;
 Texture2D<float4>   gTextureGrads;
 Texture2D<float2>   gMotionVector;
 
-// Extra input buffers
-RWTexture2D<uint>   gDrawCount;
+// Extra input channels
+Texture2D<uint>     gDrawCount;
+Texture2D<float4>   gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
@@ -77,7 +78,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     VertexData v = gScene.getVertexData(triangleHit);
 
 #if is_valid(gOutNormals)
+#if is_valid(gNormW)
+    gOutNormals[pixelPos] = float4(gNormW[pixelPos].xyz, 0.f);
+#else
     gOutNormals[pixelPos] = float4(v.normalW.xyz, 0.f);
+#endif
 #endif  // gOutNormals
 
 #if is_valid(gOutTangentNormals)
