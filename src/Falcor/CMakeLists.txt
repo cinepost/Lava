@@ -308,6 +308,12 @@ else()
                 "comsuppw.lib"
                 "Shcore.lib"
         )
+        # add_library(oidn SHARED IMPORTED)
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_LOCATION "${DEPS_DIR}/bin/OpenImageDenoise.dll")
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_IMPLIB "${DEPS_DIR}/lib/OpenImageDenoise.lib")
+        # target_link_libraries(falcor_lib PRIVATE oidn)
     else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
     target_link_libraries(
