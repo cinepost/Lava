@@ -2895,18 +2895,7 @@ void SceneBuilder::createMeshSubdivData() {
 
 		bool cw = mesh.isFrontFaceCW;
 
-		LLOG_WRN << "Mesh " << mesh.name << "is isFrontFaceCW " << (mesh.isFrontFaceCW ? "YES" : "NO"); 
-
 		mesh.subdivDataOffset = static_cast<uint32_t>(mSceneData.meshNeighborVerticesMap.size());
-
-		LLOG_WRN << "Mesh " << mesh.name << " subdivDataOffset " << mesh.subdivDataOffset;
-
-		LLOG_WRN << "Mesh " << mesh.name << " indices:";
-		lava::ut::log::flush();
-		for(uint32_t  i = 0; i < mesh.indexCount; ++i) {
-			printf("%u ", mesh.getIndex(i));
-		}
-		printf("\n");
 
 		auto const& adjacency = mesh.adjacencyData;
 		uint32_t prim_count = mesh.getPrimitivesCount();
@@ -2927,8 +2916,6 @@ void SceneBuilder::createMeshSubdivData() {
     		//if(!cw) std::swap(index[0], index[1]);
     		index[3] = index[0];
 
-    		LLOG_WRN << "----- Prim " << prim << " -----";
-
     		for(size_t k = 0; k < 3; ++k) {
     			uint32_t edge_v0 = index[k];
     			uint32_t edge_v1 = index[k+1];
@@ -2936,8 +2923,6 @@ void SceneBuilder::createMeshSubdivData() {
     			uint32_t edge_p0 = p[k];
     			uint32_t edge_p1 = p[k+1];
 
-    			LLOG_WRN << "Testing pts " << edge_p0 << " -> " << edge_p1;
-    			
     			uint32_t d_index = kInvalidID;
     			uint32_t neighborVerticesOffset = neighborVertices.size();
 
@@ -2960,11 +2945,6 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_a != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
       						d_index = a;
-      						LLOG_WRN << "d_index at p_a " << p_a << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
-      						//LLOG_WRN << "pt " << p_a << " vetices:";
-      						//for(auto v: adjacency.pointToVerticesMap[p_a]) {
-      						//	LLOG_WRN << "v " << v;
-      						//}
       						localPointUsed[p_a] = 1;
       					}
       				}
@@ -2972,11 +2952,6 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_b != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
       						d_index = b;
-      						LLOG_WRN << "d_index at p_b " << p_b << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
-      						//LLOG_WRN << "pt " << p_b << " vetices:";
-      						//for(auto v: adjacency.pointToVerticesMap[p_b]) {
-      						//	LLOG_WRN << "v " << v;
-      						//}
       						localPointUsed[p_b] = 1;
       					}
       				}
@@ -2984,11 +2959,6 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_c != edge_p0) {
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
       						d_index = c;
-      						LLOG_WRN << "d_index at p_c " << p_c << " vtx idx " << d_index << " neighbor_prim " << neighbor_prim;
-      						//LLOG_WRN << "pt " << p_c << " vetices:";
-      						//for(auto v: adjacency.pointToVerticesMap[p_c]) {
-      						//	LLOG_WRN << "v " << v;
-      						//}
       						localPointUsed[p_c] = 1;
       					}
       				}
@@ -3009,23 +2979,17 @@ void SceneBuilder::createMeshSubdivData() {
 	
       				if(p_a != edge_p0 && !localPointUsed[p_a]) {
       					neighborVertices.push_back(a);
-      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_a][0]);
       					localPointUsed[p_a] = 1;
-      					LLOG_WRN << "pv " << a << " at p_a " << p_a;
       				}
 
       				if(p_b != edge_p0 && !localPointUsed[p_b]) {
       					neighborVertices.push_back(b);
-      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_b][0]);
       					localPointUsed[p_b] = 1;
-      					LLOG_WRN << "pv " << b << " at p_b " << p_b;
       				}
 
       				if(p_c != edge_p0 && !localPointUsed[p_c]) {
       					neighborVertices.push_back(c);
-      					//neighborVertices.push_back(adjacency.pointToVerticesMap[p_c][0]);
       					localPointUsed[p_c] = 1;
-      					LLOG_WRN << "pv " << c << " at p_c " << p_c;
       				}
     			}
 
@@ -3043,7 +3007,11 @@ void SceneBuilder::createMeshSubdivData() {
   		}
 
   		mSceneData.meshNeighborVerticesMap.insert(mSceneData.meshNeighborVerticesMap.end(), pairOffsetCountMap.begin(), pairOffsetCountMap.end());
-  		
+  	
+  		LLOG_WRN << "Mesh " << mesh.name << " subdiv data size " << mSceneData.meshNeighborVertices.size() * sizeof(uint32_t) + mSceneData.meshNeighborVerticesMap.size() * sizeof(uint2);
+  		LLOG_WRN << "Mesh " << mesh.name << " geom data size " << mesh.getGeoHostMemUsage();
+      				
+  		/*
   		lava::ut::log::flush();
   		printf("\nPair count-offset map (%zu):\n", pairOffsetCountMap.size());
   		for(uint2 e: pairOffsetCountMap) printf("[%u,%u] ", e[0], e[1]);
@@ -3054,7 +3022,7 @@ void SceneBuilder::createMeshSubdivData() {
   			printf(" ]");
   		}
 		printf("\n");
-	
+		*/
 	}
 
 	auto totalSubdivDataBuildDuration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - start_time);

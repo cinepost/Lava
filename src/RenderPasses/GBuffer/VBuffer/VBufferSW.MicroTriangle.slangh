@@ -74,18 +74,15 @@ float3 Q (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 e0,
 
 struct MicroPatch3 {
     float3 pv[3];
-    
     float3 pe[3];
-    
     float16_t3 nv[3];
-    
     float16_t3 ne[3];
     
 #ifndef HOST_CODE
-    __init() {
-        this.pv[0] = this.pv[1] = this.pv[2] = this.pe[0] = this.pe[1] = this.pe[2] = {0., 0., 0.};
-        this.nv[0] = this.nv[1] = this.nv[2] = this.ne[0] = this.ne[1] = this.ne[2] = {0., 0., 0.};
-    }
+    //__init() {
+    //    this.pv[0] = this.pv[1] = this.pv[2] = this.pe[0] = this.pe[1] = this.pe[2] = {0., 0., 0.};
+    //    this.nv[0] = this.nv[1] = this.nv[2] = this.ne[0] = this.ne[1] = this.ne[2] = {0., 0., 0.};
+    //}
 
     float3 P (float u, float v, float w) {
         return Q (u, v, w, pv[0], pv[1], pv[2], pe[0], pe[1], pe[2]);

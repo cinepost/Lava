@@ -177,12 +177,17 @@ struct MeshSpec {
 
     MeshSpec& operator=(const MeshSpec& o);
 
-    size_t   getHostMemUsage() const {
-        return  instances.size() * sizeof(MeshInstanceSpec) + 
+    size_t   getGeoHostMemUsage() const {
+        return  pointIndexData.size() * sizeof(uint32_t) + 
                 indexData.size() * sizeof(uint32_t) +
                 staticData.size() * sizeof(StaticVertexData) +
                 skinningData.size() * sizeof(SkinningVertexData) +
                 perPrimitiveMaterialIDsData.size() * sizeof(int32_t);
+    }
+
+    size_t   getHostMemUsage() const {
+        return  instances.size() * sizeof(MeshInstanceSpec) + 
+                getGeoHostMemUsage();
     }
 
     uint32_t getTriangleCount() const {

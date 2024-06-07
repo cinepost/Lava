@@ -208,6 +208,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     createJitterTexture();
     createMeshletDrawList();
 
+    if(!mpOffsetXBuffer || (mpOffsetXBuffer->getElementCount() != mFrameDim.y)) {
+        mpOffsetXBuffer = Buffer::create(mpDevice, mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    }
+    pRenderContext->clearUAV(mpOffsetXBuffer->getUAV().get(), uint4(0));
+
     pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
     //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
@@ -238,10 +243,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
         bool computeMotionBlur = mUseMotionBlur;
 
+        defines.remove("COMPUTE_DEPTH_OF_FIELD");
         if(computeDOF) {
             defines.add("COMPUTE_DEPTH_OF_FIELD", "1");
         } else {
-            defines.remove("COMPUTE_DEPTH_OF_FIELD");
+            defines.add("COMPUTE_DEPTH_OF_FIELD", "0");
         }
 
         if(computeMotionBlur) {
@@ -312,6 +318,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
         var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
+        var["gOffsetXBuffer"] = mpOffsetXBuffer;
         
         var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
         for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {

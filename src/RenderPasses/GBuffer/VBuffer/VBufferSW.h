@@ -122,6 +122,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      	mpHiZBuffer;
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
+		Buffer::SharedPtr       mpOffsetXBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;
