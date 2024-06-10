@@ -43,9 +43,9 @@ import VBufferSW;
 
 ConstantBuffer<VBufferSW> gVBufferSW;
 
-RWStructuredBuffer<uint32_t> gOffsetXBuffer;
-Texture2D<float4> gJitterTexture;
-SamplerState gJitterSampler;
+RWByteAddressBuffer gThreadLockBuffer;
+Texture2D<float4>   gJitterTexture;
+SamplerState        gJitterSampler;
 
 groupshared uint gsPrimCount;
 groupshared float4x4 worldMat;
@@ -73,7 +73,7 @@ static constexpr float k38 = 3.f / 8.f;
 static constexpr float k58 = 5.f / 8.f;
 static constexpr float k316 = 3.f / 16.f;
 
-static const float2 jitterBound = float2(0.5f);
+static const float2 jitterBound = float2(1.0f);
 
 static MicroTriangle micro_triangles[MAX_MICRO_TRIANGLES];
 static uint gThreadID;
@@ -451,13 +451,33 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
         for(uint y = y_start; y < gVBufferSW.frameDim.y; y += y_d) {
             if(y < bb_min_u.y || y > bb_max_u.y) continue;
 
+            uint lock_idx = y << 2;
+            
+            /*
+            uint s=0;
+            while (true && (s < 10)) {
+                uint memLockValue;
+
+                gThreadLockBuffer.InterlockedCompareExchange(lock_idx, 0, 4294967295u, memLockValue);
+        
+                if (memLockValue == 0) {
+                    break;
+                }
+                s++;
+            }
+            */
+
+            // TODO: check bounds !!!
+            bb_min_u.x -= 1;
+            bb_max_u.x += 1;
+
             for(uint x = bb_min_u.x; x < bb_max_u.x; ++x) {
 
                 // Jitter (noise) [0, 1] range
-                float4 jitter = gJitterTexture[uint2(x - 128 * floor( x / 128.0), y - 128 * floor(y / 128.0))];
+                float4 jitter = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
                 
                 // Anti aliasing jitter [-0.5, 0.5] range 
-                float2 aaj = 0;//jitter.xy - float2(0.5);
+                float2 aaj = (jitter.xy - float2(0.5f, 0.5f)) * 0.75f;
                 float3 pj0 = pt0.xyz + float3(aaj, .0), pj1 = pt1.xyz + float3(aaj, .0), pj2 = pt2.xyz + float3(aaj, .0);
 
                 float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
@@ -470,6 +490,8 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 #endif
                 if(z < 0.f || z > 1.f) continue;
 
+                uint2 pixelPos = uint2(x, y);
+
     #if defined(USE_HIGHP_DEPTH)
                 const uint64_t depth_value = z * UINT64_MAX;
                 const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;       
@@ -481,25 +503,30 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value);
                 if ( depth_value < out_value) {
     #endif
+
                     TriangleHit triangleHit = {};
                     triangleHit.instanceID.index = instanceID.index;
                     triangleHit.primitiveIndex = tri.srcPrimID;
                     triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
-
-                    uint2 pixelPos = uint2(x, y);
 
                     gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
                     
-                    gVBufferSW.writeAUX(pixelPos, float4(thread_id, y, z*100.f, 1.f));
+                    //gVBufferSW.writeAUX(pixelPos, float4(thread_id, y, z*100.f, 1.f));
+                    //gVBufferSW.writeAUX(pixelPos, jitter);
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
                 #endif
                 }
             }
+            /*
+            gThreadLockBuffer.Store(lock_idx, 0);
+            //uint memLockValue;
+            //gThreadLockBuffer.InterlockedCompareExchange(lock_idx, 4294967295u, 0, memLockValue);
+            */
         }
     }
 }

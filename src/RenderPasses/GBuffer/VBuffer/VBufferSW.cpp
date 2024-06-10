@@ -208,15 +208,17 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     createJitterTexture();
     createMeshletDrawList();
 
-    if(!mpOffsetXBuffer || (mpOffsetXBuffer->getElementCount() != mFrameDim.y)) {
-        mpOffsetXBuffer = Buffer::create(mpDevice, mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
-    }
-    pRenderContext->clearUAV(mpOffsetXBuffer->getUAV().get(), uint4(0));
+    if(!mpMeshletDrawListBuffer) return;
 
-    pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
+    if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
+        mpThreadLockBuffer = Buffer::create(pRenderContext->device(), mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    }
+
+    if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
+    if(mpLocalDepthBuffer) pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
     //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
-    if(!mpMeshletDrawListBuffer) return;
+    uint2 jitterTexDim = mpJitterTexture ? uint2(mpJitterTexture->getWidth(0), mpJitterTexture->getHeight(0)) : uint2(0, 0);
 
     // Random numbers [0, 1]
     float2 rnd = mpRandomSampleGenerator ? (mpRandomSampleGenerator->next() + float2(.5f)) : float2(.0f);
@@ -314,11 +316,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["minScreenEdgeLen"] = mMinScreenEdgeLen;
         var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
+        var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
         
-        var["gHiZBuffer"] = mpHiZBuffer;
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
         var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
-        var["gOffsetXBuffer"] = mpOffsetXBuffer;
+        var["gThreadLockBuffer"] = mpThreadLockBuffer;
         
         var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
         for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
@@ -345,13 +347,13 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Jitter generation pass
     if(mpComputeJitterPass && mpJitterTexture) {
         ShaderVar var = mpComputeJitterPass->getRootVar();
-        var["PerFrameCB"]["gJitterTextureDim"] = mFrameDim;
+
+        var["PerFrameCB"]["gJitterTextureDim"] = jitterTexDim;
         var["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
 
         // Bind resources.
         var["gJitterTexture"] = mpJitterTexture;
 
-        const uint2 jitterTexDim = {mpJitterTexture->getWidth(0), mpJitterTexture->getHeight(0)};
         mpComputeJitterPass->execute(pRenderContext, jitterTexDim.x, jitterTexDim.y);
     }
 
@@ -369,8 +371,6 @@ void VBufferSW::createBuffers() {
     if(!mDirty) return;
 
     createMicroTrianglesBuffer();
-    
-    mpHiZBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     
     if(mUseD64) {
         mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
@@ -458,13 +458,13 @@ void VBufferSW::preProcessMeshlets() {
 void VBufferSW::createJitterTexture() {
     if(mpJitterTexture && !mDirty) return;
 
-    ResourceFormat format = ResourceFormat::RG16Float;
+    ResourceFormat format = ResourceFormat::RG32Float;
     if(mUseDOF || mUseMotionBlur) {
         // 4 component jitter needed to decorrelate mblur/dof from anti-aliasing.
-        format = ResourceFormat::RGBA16Float;
+        format = ResourceFormat::RGBA32Float;
     }
 
-    mpJitterTexture = Texture::create2D(mpDevice, 128, 128, format, 1, 1, nullptr, Texture::BindFlags::ShaderResource | Texture::BindFlags::UnorderedAccess);
+    mpJitterTexture = Texture::create2D(mpDevice, 256, 256, format, 1, 1, nullptr, Texture::BindFlags::ShaderResource | Texture::BindFlags::UnorderedAccess);
 }
 
 void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

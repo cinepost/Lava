@@ -37,7 +37,6 @@ import Utils.Sampling.SampleGenerator;
 
 RWTexture2D<PackedHitInfo> gVBuffer;
 
-RWByteAddressBuffer gHiZBuffer;
 RWByteAddressBuffer gLocalDepthBuffer;
 
 // Meshlets related buffers
@@ -86,6 +85,7 @@ struct VBufferSW {
     float   minScreenEdgeLenSquared;
     float2  rnd;
     uint    drawableIndex;
+    uint2   jitterTextureDim;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)

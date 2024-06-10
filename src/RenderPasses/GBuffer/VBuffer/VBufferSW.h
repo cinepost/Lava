@@ -119,10 +119,9 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		// Local buffers
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
-		Buffer::SharedPtr      	mpHiZBuffer;
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
-		Buffer::SharedPtr       mpOffsetXBuffer;
+		Buffer::SharedPtr      	mpThreadLockBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;
