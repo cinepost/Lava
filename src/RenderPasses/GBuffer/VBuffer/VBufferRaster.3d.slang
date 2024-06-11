@@ -92,8 +92,6 @@ VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
     const GeometryInstanceID instanceID = { vsIn.instanceID };
 
-    //const float tj = abs(frac(float(xorshift(sampleNumber)) / 3141.592653));
-
 #if defined(COMPUTE_MOTION_BLUR)
     float4x4 worldMat = gScene.getWorldMatrix(instanceID, tj);
 #else

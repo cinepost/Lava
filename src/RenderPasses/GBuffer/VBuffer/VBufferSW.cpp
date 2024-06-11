@@ -104,7 +104,7 @@ VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dict
 }
 
 VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
-    LLOG_WRN << "subgroupSize " << mpDevice->subgroupSize();
+    LLOG_DBG << "subgroupSize " << mpDevice->subgroupSize();
     mSubgroupSize = std::max(32u, std::min(mpDevice->subgroupSize(), 64u));
     setMaxSubdivLevel(3u);
 
@@ -252,10 +252,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             defines.add("COMPUTE_DEPTH_OF_FIELD", "0");
         }
 
+        defines.remove("COMPUTE_MOTION_BLUR");
         if(computeMotionBlur) {
             defines.add("COMPUTE_MOTION_BLUR", "1");
         } else {
-            defines.remove("COMPUTE_MOTION_BLUR");
+            defines.add("COMPUTE_MOTION_BLUR", "0");
         }
 
         if(mUseD64) {
@@ -387,9 +388,9 @@ void VBufferSW::createMicroTrianglesBuffer() {
 
     if(mpMicroTrianglesBuffer && (mpMicroTrianglesBuffer->getElementCount() == maxMicroTrianglesCount)) return;
 
-    LLOG_WRN << "Size of MicroTriangle struct is " << sizeof(MicroTriangle) << " bytes";
-    LLOG_WRN << "Max MicroTriangles count per thread " << mMaxMicroTrianglesPerThread;
-    LLOG_WRN << "Max MicroTriangles buffer size is " << maxMicroTrianglesCount;
+    LLOG_DBG << "Size of MicroTriangle struct is " << sizeof(MicroTriangle) << " bytes";
+    LLOG_DBG << "Max MicroTriangles count per thread " << mMaxMicroTrianglesPerThread;
+    LLOG_DBG << "Max MicroTriangles buffer size is " << maxMicroTrianglesCount;
     
     size_t total_buffers_size_bytes = 0;
 
@@ -407,8 +408,8 @@ void VBufferSW::createMicroTrianglesBuffer() {
         total_buffers_size_bytes += mMaxMicroTrianglesPerThread * sizeof(MicroTriangle);
     }
 
-    LLOG_WRN << "Total MicroTriangle buffers size bytes is " << total_buffers_size_bytes;
-    LLOG_WRN << "Total MicroTriangle buffers size megabytes is " << (total_buffers_size_bytes / 1024) / 1024;
+    LLOG_DBG << "Total MicroTriangle buffers size bytes is " << total_buffers_size_bytes;
+    LLOG_DBG << "Total MicroTriangle buffers size megabytes is " << (total_buffers_size_bytes / 1024) / 1024;
 
     mDirty = true;
 }

@@ -75,8 +75,8 @@ float3 Q (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 e0,
 struct MicroPatch3 {
     float3 pv[3];
     float3 pe[3];
-    float16_t3 nv[3];
-    float16_t3 ne[3];
+    float3 nv[3];
+    float3 ne[3];
     
 #ifndef HOST_CODE
     //__init() {

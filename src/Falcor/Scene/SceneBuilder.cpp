@@ -3008,8 +3008,8 @@ void SceneBuilder::createMeshSubdivData() {
 
   		mSceneData.meshNeighborVerticesMap.insert(mSceneData.meshNeighborVerticesMap.end(), pairOffsetCountMap.begin(), pairOffsetCountMap.end());
   	
-  		LLOG_WRN << "Mesh " << mesh.name << " subdiv data size " << mSceneData.meshNeighborVertices.size() * sizeof(uint32_t) + mSceneData.meshNeighborVerticesMap.size() * sizeof(uint2);
-  		LLOG_WRN << "Mesh " << mesh.name << " geom data size " << mesh.getGeoHostMemUsage();
+  		LLOG_DBG << "Mesh " << mesh.name << " subdiv data size " << mSceneData.meshNeighborVertices.size() * sizeof(uint32_t) + mSceneData.meshNeighborVerticesMap.size() * sizeof(uint2);
+  		LLOG_DBG << "Mesh " << mesh.name << " geom data size " << mesh.getGeoHostMemUsage();
       				
   		/*
   		lava::ut::log::flush();
@@ -3086,7 +3086,6 @@ void SceneBuilder::createMeshData() {
 void SceneBuilder::createMeshletsData() {
 	if(!is_set(mFlags, SceneBuilder::Flags::GenerateMeshlets)) return;
 
-	LLOG_WRN << "SceneBuilder::createMeshletsData()";
 	uint32_t globalMeshletOffset = 0;
 
 	mSceneData.meshletsData.clear();
@@ -3098,7 +3097,7 @@ void SceneBuilder::createMeshletsData() {
 	for(uint32_t meshID = 0; meshID < mMeshletLists.size(); ++meshID) {
 		const auto& meshletList = mMeshletLists[meshID];
 
-		LLOG_WRN << "SceneBuilder::createMeshletsData() meshID " << meshID << " meshletList size " << meshletList.size();
+		LLOG_DBG << "SceneBuilder::createMeshletsData() meshID " << meshID << " meshletList size " << meshletList.size();
 
 		MeshletGroup meshletGroup = {};
 		meshletGroup.meshlet_offset = kInvalidMeshletID;

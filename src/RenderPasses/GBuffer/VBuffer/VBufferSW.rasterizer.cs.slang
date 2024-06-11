@@ -73,11 +73,10 @@ static constexpr float k38 = 3.f / 8.f;
 static constexpr float k58 = 5.f / 8.f;
 static constexpr float k316 = 3.f / 16.f;
 
-static const float2 jitterBound = float2(1.0f);
+static const float2 jitterBound = float2(.5f, .5f);
 
-static MicroTriangle micro_triangles[MAX_MICRO_TRIANGLES];
+//static MicroTriangle micro_triangles[MAX_MICRO_TRIANGLES];
 static uint gThreadID;
-static uint gMicroTrianglesCount;
 
 bool edgesCanFit(float16_t3 esl) {
     return esl[0] >= gVBufferSW.minScreenEdgeLenSquared || esl[1] >= gVBufferSW.minScreenEdgeLenSquared || esl[2] >= gVBufferSW.minScreenEdgeLenSquared; 
@@ -201,33 +200,24 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     if(d_idx0 != 4294967295u) {
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx0);
         pv_sum[0] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[0]) * k18;
-        patch.ne[2] = normalize(patch.pe[2] - pe);
-        patch.pe[2] = pe;
+        patch.pe[2] = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[0]) * k18;
     } else {
-        patch.ne[2] = normalize((src_nv[2] + src_nv[0]) * .5f);
         valence[0]--;
     }
 
     if(d_idx1 != 4294967295u) {
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx1);
         pv_sum[1] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[1]) * k18;
-        patch.ne[0] = normalize(patch.pe[0] - pe);
-        patch.pe[0] = pe;
+        patch.pe[0] = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[1]) * k18;
     } else {
-        patch.ne[0] = normalize((src_nv[0] + src_nv[1]) * .5f);
         valence[1]--;
     }
 
     if(d_idx2 != 4294967295u) {
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx2);
         pv_sum[2] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        float3 pe = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[2]) * k18;
-        patch.ne[1] = normalize(patch.pe[1] - pe);
-        patch.pe[1] = pe;
+        patch.pe[1] = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[2]) * k18;
     } else {
-        patch.ne[1] = normalize((src_nv[1] + src_nv[2]) * .5f);
         valence[2]--;
     }
 
@@ -270,6 +260,10 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     patch.nv[2] = normalize(src_pv[2] - pv_sum[2]);
     patch.pv = pv_sum;
 
+    patch.ne[0] = normalize((patch.nv[0] + patch.nv[1]) * .5f);
+    patch.ne[1] = normalize((patch.nv[1] + patch.nv[2]) * .5f);
+    patch.ne[2] = normalize((patch.nv[2] + patch.nv[0]) * .5f);
+    
     return patch;
 }
 
@@ -390,7 +384,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
     SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
 
-    for(uint micro_triangle_id = 0; micro_triangle_id < gMicroTrianglesCount; ++micro_triangle_id) {
+    for(uint micro_triangle_id = 0; micro_triangle_id < gsMicroTrianglesCount; ++micro_triangle_id) {
 
         MicroTriangle tri = gsMTArray[micro_triangle_id];
 
@@ -429,12 +423,12 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 #endif
 #endif
 
-        #if defined(COMPUTE_DEPTH_OF_FIELD)
+        #if (COMPUTE_DEPTH_OF_FIELD == 0)
+            float c0 = .0f, c1 = .0f, c2 = .0f;
+        #else
             float c0 = abs(1.0f - gScene.camera.data.focalDistance / pt0.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
             float c1 = abs(1.0f - gScene.camera.data.focalDistance / pt1.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
             float c2 = abs(1.0f - gScene.camera.data.focalDistance / pt2.w) * gScene.camera.data.apertureRadius * gScene.camera.data.focalLength;
-        #else
-            float c0 = .0f, c1 = .0f, c2 = .0f;
         #endif
 
         int2 bb_min = int2(floor(min(min(pt0.x - c0, pt1.x - c1), pt2.x - c2) - jitterBound.x), floor(min(min(pt0.y - c0, pt1.y - c1), pt2.y - c2) - jitterBound.y));
@@ -447,6 +441,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
         uint2 bb_min_u = uint2(clamp(bb_min, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
         uint2 bb_max_u = uint2(clamp(bb_max, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
+
+        //bb_min_u.y -= 1;
+        //bb_max_u.y += 1;
 
         for(uint y = y_start; y < gVBufferSW.frameDim.y; y += y_d) {
             if(y < bb_min_u.y || y > bb_max_u.y) continue;
@@ -467,22 +464,33 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
             }
             */
 
-            // TODO: check bounds !!!
-            bb_min_u.x -= 1;
-            bb_max_u.x += 1;
-
-            for(uint x = bb_min_u.x; x < bb_max_u.x; ++x) {
+            for(uint x = bb_min_u.x; x <= bb_max_u.x; ++x) {
 
                 // Jitter (noise) [0, 1] range
                 float4 jitter = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
                 
                 // Anti aliasing jitter [-0.5, 0.5] range 
-                float2 aaj = (jitter.xy - float2(0.5f, 0.5f)) * 0.75f;
+                float2 aaj = jitter.xy - float2(0.5f, 0.5f);
                 float3 pj0 = pt0.xyz + float3(aaj, .0), pj1 = pt1.xyz + float3(aaj, .0), pj2 = pt2.xyz + float3(aaj, .0);
+
+        #if (COMPUTE_DEPTH_OF_FIELD == 1)
+            float2 coc_sample = sample_disk(jitter.zw); // range [-1, 1]
+            
+            pj0.xy += coc_sample * c0; 
+            pj1.xy += coc_sample * c1; 
+            pj2.xy += coc_sample * c2;
+            
+            // CCW culling
+            #if CULL_MODE == CULL_BACK
+            if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
+            #elif CULL_MODE == CULL_FRONT
+            if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z < 0.0f) continue;
+            #endif
+        #endif
 
                 float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
                 if( uv.x < 0.f) continue;  
-
+                
                 #if defined(USE_HIGHP_DEPTH)
                     double z = (dz1 - dz0) * uv.x + (dz2 - dz0) * uv.y + dz0;
                 #else
@@ -510,12 +518,15 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
 
                     gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
+                    gVBufferSW.writeDepth(pixelPos, z);
+
+                #if is_valid(gNormW)
+                    if(gsSubdivide) gVBufferSW.writeNormal(pixelPos, tri.getNormal(uv));
+                #endif
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
                     
-                    //gVBufferSW.writeAUX(pixelPos, float4(thread_id, y, z*100.f, 1.f));
-                    //gVBufferSW.writeAUX(pixelPos, jitter);
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
@@ -539,7 +550,6 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     // Thread global data
     gThreadID = thread_id;
-    gMicroTrianglesCount = 0;
 
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;
@@ -591,8 +601,6 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     [[branch]] if(gsSubdivide) {
         for(uint t = 0; t < gsPrimCount; ++t) {
-            gMicroTrianglesCount = 0;
-
             if(thread_id == 0u) {
                 gsMicroTrianglesCount = 0;
                 nullSubdivideTriangle(t);
@@ -639,15 +647,6 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
                 gsMTArray[vi1].nw2 = gsPatch.N(b2);
             }
 
-            gMicroTrianglesCount = gsMicroTrianglesCount;
-
-            GroupMemoryBarrierWithGroupSync();
-            
-            // make local copy
-            for(uint i = 0; i < gMicroTrianglesCount; ++i) {
-                micro_triangles[i] = gsMTArray[i];
-            }
-
             GroupMemoryBarrierWithGroupSync();
             rasterizeScanLines(thread_id, gsCullCCW);
             GroupMemoryBarrierWithGroupSync();
@@ -658,8 +657,9 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
         nullSubdivideTriangle(thread_id);
         GroupMemoryBarrierWithGroupSync();
         rasterizeScanLines(thread_id, gsCullCCW);
+        GroupMemoryBarrierWithGroupSync();
     }
 
-    gVBufferSW.writeAUX({0, 0}, float4(WaveGetLaneCount(), 0, 0, 1.f));
-    gVBufferSW.writeAUX({10, group_id}, float4(group_id, 0, 0, 1.f));
+    //gVBufferSW.writeAUX({0, 0}, float4(WaveGetLaneCount(), 0, 0, 1.f));
+    //gVBufferSW.writeAUX({10, group_id}, float4(group_id, 0, 0, 1.f));
 }
