@@ -314,6 +314,17 @@ else()
         # set_property(TARGET oidn PROPERTY
         #             IMPORTED_IMPLIB "${DEPS_DIR}/lib/OpenImageDenoise.lib")
         # target_link_libraries(falcor_lib PRIVATE oidn)
+        # add_library(oidn_core STATIC IMPORTED)
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_IMPLIB "${DEPS_DIR}/lib/OpenImageDenoise.lib")
+        # target_link_libraries(falcor_lib PUBLIC oidn)
+        target_link_libraries(
+            falcor_lib
+            PUBLIC
+                ${DEPS_DIR}/lib/OpenImageDenoise_core.lib
+                ${DEPS_DIR}/lib/OpenImageDenoise_device_cpu.lib
+                ${DEPS_DIR}/lib/dnnl.lib
+        )
     else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
     target_link_libraries(
