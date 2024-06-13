@@ -221,7 +221,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Check if vertical sync is enabled
     */
-    inline bool isVsyncEnabled() const { return mDesc.enableVsync; }
+    bool isVsyncEnabled() const { return mDesc.enableVsync; }
 
     /** Resize the swap-chain
         \return A new FBO object
@@ -230,11 +230,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get the desc
     */
-    inline const Desc& getDesc() const { return mDesc; }
+    const Desc& getDesc() const { return mDesc; }
 
     /** Get default sampler object
     */
-    inline std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
+    std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
 
     /** Create a new query heap.
         \param[in] type Type of queries.
@@ -251,6 +251,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Check if features are supported by the device
     */
     bool isFeatureSupported(SupportedFeatures flags) const;
+
+    uint32_t subgroupSize() const;
 
     void releaseResource(ApiObjectHandle pResource);
 

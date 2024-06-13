@@ -35,7 +35,6 @@
 
 #include "VBufferSW.Meshlet.slangh"
 
-
 using namespace Falcor;
 
 
@@ -49,9 +48,9 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		static const Info kInfo;
 
-		static const size_t kMaxGroupThreads;
-		static const size_t kMeshletMaxVertices;
-		static const size_t kMeshletMaxTriangles;
+		static const uint32_t kMaxGroupThreads;
+		static const uint32_t kMeshletMaxVertices;
+		static const uint32_t kMeshletMaxTriangles;
 
 		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
@@ -64,7 +63,9 @@ class PASS_API VBufferSW : public GBufferBase {
 		virtual void setCullMode(RasterizerState::CullMode mode) override;
 		void setCullMode(const std::string& mode_str);
 		void setPerPixelJitter(bool value);
-		
+		void setMaxSubdivLevel(uint level);
+		void setMinScreenEdgeLen(float len);
+
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
 		void enableDisplacement(bool value);
@@ -80,6 +81,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void createJitterTexture();
 		void createPrograms();
 		void createMeshletDrawList();
+		void createMicroTrianglesBuffer();
 
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
@@ -100,6 +102,14 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 
+		bool mSubdivDataReady = false;
+
+		float mMinScreenEdgeLen = 4.0f;
+
+		uint mSubgroupSize;
+		uint mMaxLOD = 0;
+		uint mMaxMicroTrianglesPerThread = 1;
+
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr 	mpComputeTesselatorPass;
@@ -109,7 +119,9 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		// Local buffers
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
-		Buffer::SharedPtr      	mpHiZBuffer;
+		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
+		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
+		Buffer::SharedPtr      	mpThreadLockBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;

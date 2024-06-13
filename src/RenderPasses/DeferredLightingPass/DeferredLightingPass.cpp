@@ -37,24 +37,30 @@ namespace {
     const std::string kInputVBuffer = "vbuffer";
     const std::string kInputDepth = "depth";
     const std::string kInputTexGrads = "texGrads";
+    const std::string kInputNormalW = "normW";
+
     const std::string kInputMotionVectors = "mvec";
     const std::string kUseDOF = "useDOF";
 
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,              "gDepth",                   "Depth buffer",      true /* optional */, ResourceFormat::Unknown },
-        { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */, ResourceFormat::Unknown },
-        //{ kInputMotionVectors,      "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
+        { kInputDepth,            "gDepth",         "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
+        { kInputTexGrads,         "gTextureGrads",  "Texture gradients",             true /* optional */, ResourceFormat::Unknown },
+        { kInputNormalW,          "gNormW",         "Shading normal in world space", true /* optional */, ResourceFormat::Unknown },
+        //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
+    };
+
+    const ChannelList kExtraInputOutputChannels = {
     };
 
     const ChannelList kExtraOutputChannels = {
+        { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
         { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
         { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
         { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
-        { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
         { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
@@ -141,6 +147,7 @@ RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileDat
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
     
     addRenderPassInputs(reflector, kExtraInputChannels);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
 
     return reflector;
@@ -184,6 +191,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraInputChannels, renderData));
+        defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         
         // AOV channels processing

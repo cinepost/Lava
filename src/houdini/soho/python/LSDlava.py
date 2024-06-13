@@ -160,7 +160,11 @@ def initializeFeatures(settings):
     Image("image", "cullmode", "string", "lv_cull_mode", skipdefault=False)
     Image("image", "usedof", "bool", "lv_dof", skipdefault=False)
     Image("image", "usemblur", "bool", "lv_allowmotionblur", skipdefault=False)
+    
     Image("image", "usesubdivs", "bool", "lv_subd", skipdefault=False)
+    Image("image", "maxsubdlevel", "int", "lv_max_subd_level")
+    Image("image", "minscreenedgelen", "float", "lv_min_screen_edge_len")
+
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
@@ -279,8 +283,10 @@ def initializeFeatures(settings):
     Object("renderable", "bool", "lv_renderable")
     Object("renderpoints", "int", "lv_renderpoints")
     Object("renderpointsas", "int", "lv_renderpointsas")
+
     Object("rendersubd", "bool", "lv_rendersubd")
     Object("rendersubdcurves", "bool", "lv_rendersubdcurves")
+    
     Object("rendervisibility", "string", "vm_rendervisibility", skipdefault=True)
 
     Object("biasnormal", "bool", "lv_biasnormal", skipdefault=True)

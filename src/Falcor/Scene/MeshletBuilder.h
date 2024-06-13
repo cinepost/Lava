@@ -25,15 +25,18 @@ class dlldecl MeshletBuilder {
 
 				void appendTotalMeshletsBuildCount(const std::vector<SceneBuilder::MeshletSpec>& meshletSpecs);
 				void appendTotalMeshletsBuildDuration(const std::chrono::duration<double>& duration);
+				void appendTotalAdjacencyDataBuildDuration(const std::chrono::duration<double>& duration);
 
-				size_t totalMeshletsBuildCount() const { return mTotalMeshletsBuildCount; }
-				const std::chrono::duration<double>& totalMeshletsBuildDuration() const { return mTotalMeshletsBuildDuration; }
+				size_t totalMeshletsBuildCount() const { std::scoped_lock lock(mMutex); return mTotalMeshletsBuildCount; }
+				std::chrono::duration<double> totalMeshletsBuildDuration() const { std::scoped_lock lock(mMutex); return mTotalMeshletsBuildDuration; }
+				std::chrono::duration<double> totalAdjacencyDataBuildDuration() const { std::scoped_lock lock(mMutex); return mTotalAdjacencyDataBuildDuration; }
 
 			private:
 				size_t mTotalMeshletsBuildCount;
 				std::chrono::duration<double> mTotalMeshletsBuildDuration;
+				std::chrono::duration<double> mTotalAdjacencyDataBuildDuration;
 
-  	    std::mutex mMutex;
+  	    mutable std::mutex mMutex;
 		};
 
 		using UniquePtr = std::unique_ptr<MeshletBuilder>;
@@ -52,6 +55,9 @@ class dlldecl MeshletBuilder {
 		void generateMeshletsScan(SceneBuilder::MeshSpec& mesh);
 		void generateMeshletsGreedy(SceneBuilder::MeshSpec& mesh);
 		void generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh);
+
+		void buildPrimitiveAdjacencyNoPoints(SceneBuilder::MeshSpec& mesh);
+		void buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpec& mesh);
 
 		Stats mStats;
 		BS::multi_future<uint32_t> mTasks;

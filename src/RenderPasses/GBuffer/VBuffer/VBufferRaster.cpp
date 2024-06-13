@@ -50,7 +50,8 @@ namespace {
     const char kPerPixelJitterRaster[] = "per_pixel_jitter";
     const char kHighPrecisionDeph[] = "highp_depth";
     const char kUseMotionBlur[] = "useMotionBlur";
-
+    const char kCullMode[] = "cullMode";
+    
     // Extra output channels.
     const ChannelList kVBufferExtraOutputChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
@@ -65,6 +66,7 @@ void VBufferRaster::parseDictionary(const Dictionary& dict) {
         if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
         else if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
+        else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
     }
 }
 
@@ -104,6 +106,7 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
     parseDictionary(dict);
 
     mpSampleGenerator = StratifiedSamplePattern::create(1024);
+    mpTJSampleGenerator = StratifiedSamplePattern::create(1024);
 
     // Create raster program
     Program::Desc desc;
@@ -226,6 +229,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         mRaster.pProgram->addDefine("is_valid_gHighpDepth", mpHighpDepth != nullptr ? "1" : "0");
         mRaster.pProgram->addDefine("is_valid_gTestTexture", mpTestTexture != nullptr ? "1" : "0");
+        mRaster.pProgram->addDefine("CULL_MODE", GBufferBase::to_define_string(mCullMode));
 
         if(mUseMotionBlur) {
             mRaster.pProgram->addDefine("COMPUTE_MOTION_BLUR", "1");
@@ -261,7 +265,8 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             subPass.pFbo->attachDepthStencilTarget(subPass.pDepth);
             mRaster.pState->setFbo(subPass.pFbo);
             mRaster.pVars["PerFrameCB"]["gFrameDim"] = mQuarterFrameDim;
-            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
+            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+            mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
@@ -332,16 +337,17 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
         mRaster.pVars["gVBuffer"] = pOutput;
         mRaster.pVars["gHighpDepth"] = mpHighpDepth;
-        mRaster.pVars["gTestTexture"] = mpTestTexture;
         mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
-        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber++;
+        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+        mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
         // Rasterize the scene.
         mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), mForceCullMode ? mCullMode : kDefaultCullMode);
     }
 
     //mpTestTexture->captureToFile(0, 0, "/home/max/ztest.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
-
+    
+    mSampleNumber++;
     mDirty = false;
 }
 
@@ -419,4 +425,22 @@ void VBufferRaster::enableMotionBlur(bool value) {
     if(mUseMotionBlur == value) return;
     mUseMotionBlur = value;
     mDirty = true;
+}
+
+void VBufferRaster::setCullMode(RasterizerState::CullMode mode) {
+    if(mCullMode == mode) return;
+    GBufferBase::setCullMode(mode);
+    mDirty = true;
+}
+
+void VBufferRaster::setCullMode(const std::string& mode_str) {
+    RasterizerState::CullMode mode = RasterizerState::CullMode::Back;
+    if(mode_str == "back") {
+        mode = RasterizerState::CullMode::Back;
+    } else if(mode_str == "front") {  
+        mode = RasterizerState::CullMode::Front;
+    } else {
+        mode = RasterizerState::CullMode::None;
+    }
+    setCullMode(mode);
 }

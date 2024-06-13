@@ -195,7 +195,7 @@ Buffer::~Buffer() {
 	} else {
 		mpDevice->releaseResource(mApiHandle);
 	}
-	LLOG_TRC << ++gDeletedBuffersCount << " buffers deleted out of " << gTotalBuffersCount;
+	//LLOG_TRC << ++gDeletedBuffersCount << " buffers deleted out of " << gTotalBuffersCount;
 }
 
 template<typename ViewClass>

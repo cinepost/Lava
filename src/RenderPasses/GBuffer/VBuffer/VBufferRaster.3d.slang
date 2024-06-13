@@ -33,9 +33,6 @@ import Scene.Camera.CameraData;
 import Utils.Sampling.SampleGenerator;
 
 RasterizerOrderedTexture2D<float> gHighpDepth;
-
-RasterizerOrderedTexture2D<float4> gTestTexture;
-
 RasterizerOrderedTexture2D<float2> gMotionVector;
 RasterizerOrderedTexture2D<float4> gTextureGrads;
 
@@ -44,6 +41,7 @@ RasterizerOrderedTexture2D<PackedHitInfo> gVBuffer;
 cbuffer PerFrameCB {
     uint2 gFrameDim;
     uint  sampleNumber;
+    float tj;
 };
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -93,8 +91,6 @@ int xorshift(int value) {
 VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
     const GeometryInstanceID instanceID = { vsIn.instanceID };
-
-    const float tj = abs(frac(float(xorshift(sampleNumber)) / 3141.592653));
 
 #if defined(COMPUTE_MOTION_BLUR)
     float4x4 worldMat = gScene.getWorldMatrix(instanceID, tj);
@@ -198,7 +194,7 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     v.texC = vsOut.texC;
     float lod = 0.f;
 
-    //if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
+    if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 #endif
 
     // Note on barycentrics:
@@ -213,15 +209,6 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     // Store screen space texture gradients
     {
         gTextureGrads[ipos] = float4(gradX, gradY);
-    }
-#endif
-
-#if is_valid(gTestTexture)
-    {
-        //float a = vsOut.camZ * 0.0001f; //ff(88.0l, 94.0l, vsOut.camZ);
-        float a = ff(gScene.camera.data.nearZ, gScene.camera.data.farZ, vsOut.camZ);
-        gTestTexture[ipos] = float4(a, 0.0, 0.0, 0.0);
-        //gTestTexture[ipos] = gTestTexture[ipos] + float4(0.25f, 0.0, 0.0, 0.0);
     }
 #endif
 

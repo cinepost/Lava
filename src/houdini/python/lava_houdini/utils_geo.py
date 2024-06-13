@@ -11,11 +11,13 @@ def add_geometry_lava_parameters(node, rebuild=True):
 	old_lava_folder = group.findFolder('Lava') or group.find('folder_lava')
 	lava_folder = hou.FolderParmTemplate('folder_lava', "Lava", tags={'lava_name':'root'})
 
-	# Lava shading
-	shading_folder = hou.FolderParmTemplate('folder_lava_shading', "Shading", tags={'lava_name':'shading'})
+	addParmTemplate(node, lava_folder, hou.ToggleParmTemplate('lv_rendersubd', 'Render Polygons As Subdivision', False))
 
 	#addParmTemplate(node, shading_folder, hou.StringParmTemplate('lv_materialpath', 'Material', 1, 
 	#	string_type=hou.stringParmType.NodeReference, tags={'opfilter':'!!CUSTOM/MATERIAL!!', 'oprelative':'.'}))
+
+	# Lava shading
+	shading_folder = hou.FolderParmTemplate('folder_lava_shading', "Shading", tags={'lava_name':'shading'})
 
 	addParmTemplate(node, shading_folder, hou.ToggleParmTemplate('lv_biasnormal','Bias Along Normal', False))
 	addParmTemplate(node, shading_folder, hou.ToggleParmTemplate('lv_double_sided','Double Sided', True))

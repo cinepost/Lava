@@ -206,3 +206,18 @@ void GBufferBase::setCullMode(RasterizerState::CullMode mode) {
     mCullMode = mode; 
     mDirty = true;
 }
+
+const std::string& GBufferBase::to_define_string(RasterizerState::CullMode mode) {
+    static const std::string kCullNone = "CULL_NONE";
+    static const std::string kCullFront = "CULL_FRONT";
+    static const std::string kCullBack = "CULL_BACK";
+
+    switch(mode) {
+        case RasterizerState::CullMode::Front:
+            return kCullFront;
+        case RasterizerState::CullMode::Back:
+            return kCullBack;
+        default:
+            return kCullNone;
+    }
+}

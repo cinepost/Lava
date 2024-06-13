@@ -1,0 +1,105 @@
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+enum class MicroTriangleFlags : uint8_t {
+    None = 0x0,
+    Subdividable = 0x1,
+};
+
+// 96 bytes :((
+struct MicroTriangle {
+    // corner world positions
+    float3 pw0;
+    float3 pw1;
+    float3 pw2;
+    
+    // corner world normals
+    float16_t3 nw0;
+    float16_t3 nw1;
+    float16_t3 nw2;
+    
+    // corner points barycentrics
+    float16_t2 b0;
+    float16_t2 b1;
+    float16_t2 b2;
+
+    // edges info
+    float16_t3 esl; // edges squared length in pixel size
+
+    // misc
+    uint32_t srcPrimID;
+    uint8_t lod;
+    uint8_t flags;
+
+    //uint3 _pad000;
+
+#ifndef HOST_CODE
+    __init() {
+        this.lod = 0;
+        this.flags = 0;
+        this.esl = {0., 0., 0.};
+    }
+#endif
+
+    bool isSubdividable() CONST_FUNCTION {
+        return ((uint)flags & (uint)MicroTriangleFlags::Subdividable) != 0;
+    }
+
+#ifndef HOST_CODE
+    float16_t3 getNormal(float2 barycentrics) {
+        //return (nw0 + nw1 + nw2) * 0.33333;
+        return (nw1 * barycentrics.x) + ( nw2 * barycentrics.y ) + (nw0 * (1.f - barycentrics.x - barycentrics.y));
+    }
+#endif
+
+};
+
+// QAS
+
+#ifndef HOST_CODE
+float3 edgeCP (float3 e, float3 p0, float3 p1) {
+    return ((e * 4.0f) - p0 - p1) * 0.5f;
+}
+
+float3 Q (float u, float v, float w, float3 p0, float3 p1, float3 p2, float3 e0, float3 e1, float3 e2) {
+    float3 n200 = p0, n020 = p1, n002 = p2;
+    float3 n110 = edgeCP (e0, p0, p1);
+    float3 n101 = edgeCP (e2, p0, p2);
+    float3 n011 = edgeCP (e1, p1, p2);
+    return w * (n200*w + n110*2*u) + u * (n020*u + n011*2*v) + v * (n002*v + n101*2*w);
+}
+#endif
+
+struct MicroPatch3 {
+    float3 pv[3];
+    float3 pe[3];
+    float3 nv[3];
+    float3 ne[3];
+    
+#ifndef HOST_CODE
+    //__init() {
+    //    this.pv[0] = this.pv[1] = this.pv[2] = this.pe[0] = this.pe[1] = this.pe[2] = {0., 0., 0.};
+    //    this.nv[0] = this.nv[1] = this.nv[2] = this.ne[0] = this.ne[1] = this.ne[2] = {0., 0., 0.};
+    //}
+
+    float3 P (float u, float v, float w) {
+        return Q (u, v, w, pv[0], pv[1], pv[2], pe[0], pe[1], pe[2]);
+    }
+
+    float3 P (float2 barycentrics) {
+        return P(barycentrics.x, barycentrics.y, 1.f - barycentrics.x - barycentrics.y);
+    }
+
+    float3 N (float u, float v, float w) {
+        return Q (u, v, w, nv[0], nv[1], nv[2], ne[0], ne[1], ne[2]);
+    }
+
+    float3 N (float2 barycentrics) {
+        return N(barycentrics.x, barycentrics.y, 1.f - barycentrics.x - barycentrics.y);
+    }
+#endif
+};
+
+END_NAMESPACE_FALCOR

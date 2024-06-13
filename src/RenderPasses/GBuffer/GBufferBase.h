@@ -67,6 +67,8 @@ class PASS_API GBufferBase : public RenderPass {
     virtual void setCullMode(RasterizerState::CullMode mode);
     
     GBufferBase& setDepthBufferFormat(ResourceFormat format);
+
+    static const std::string& to_define_string(RasterizerState::CullMode mode);
     
  protected:
     GBufferBase(Device::SharedPtr pDevice, Info info);

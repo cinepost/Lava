@@ -7,7 +7,7 @@ import Utils.Sampling.SampleGenerator;
 #define JITTER_TYPE_BLUE   3
 
 #ifndef JITTER_TYPE
-#define JITTER_TYPE JITTER_TYPE_R1
+#define JITTER_TYPE JITTER_TYPE_SIMPLE
 #endif
 
 cbuffer PerFrameCB {

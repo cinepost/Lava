@@ -1521,6 +1521,7 @@
             hidewhen "{ lv_primary_raygen_type != hwraster || lv_primary_raygen_type != swraster }"
             parmtag { "script_callback_language" "python" }
         }
+
         //---------------------------------------------------
 
         parm {
@@ -1830,27 +1831,55 @@
                 parmtag { "script_callback_language" "python" }
             }
 
-            parm {
-                name    "lv_generate_meshlets"
-                label   "Genetate Meshlets"
-                type    toggle
-                default { "strmatch(chs(\"lv_primary_raygen_type\"),\"swraster\")" }
-                help    "Genertate meshlets data for software primary ray generation."
-                parmtag { "script_callback_language" "python" }
+            group {
+                name    "images_4_1_4_1"
+                label   "Meshlets"
+
+                parm {
+                    name    "lv_generate_meshlets"
+                    label   "Genetate Meshlets"
+                    type    toggle
+                    default { "strmatch(chs(\"lv_primary_raygen_type\"),\"swraster\")" }
+                    help    "Genertate meshlets data for software primary ray generation."
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_meshlet_generator"
+                    label   "Meshlets Generator"
+                    type    string
+                    default { "scan" }
+                    disablewhen "{ lv_generate_meshlets != 1 }"
+                    menu {
+                        "scan" "Scan"
+                        "optimal"  "Optimized"
+                    }
+                    parmtag { "editor" "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
             }
 
-            parm {
-                name    "lv_meshlet_generator"
-                label   "Meshlets Generator"
-                type    string
-                default { "scan" }
-                disablewhen "{ lv_generate_meshlets != 1 }"
-                menu {
-                    "scan" "Scan"
-                    "optimal"  "Optimized"
+            group {
+                name    "images_4_1_4_2"
+                label   "Subdivisions"
+
+                parm {
+                    name    "lv_max_subd_level"
+                    label   "Max Subdivisions Level"
+                    type    integer
+                    default { "3" }
+                    range   { 0! 4! }
+                    parmtag { "script_callback_language" "python" }
                 }
-                parmtag { "editor" "0" }
-                parmtag { "script_callback_language" "python" }
+
+                parm {
+                    name    "lv_min_screen_edge_len"
+                    label   "Min Screen Edge Length"
+                    type    float
+                    default { "2" }
+                    range   { 2! 200! }
+                    parmtag { "script_callback_language" "python" }
+                }
             }
         }
 
@@ -1890,6 +1919,7 @@
                 }
                 parmtag { "script_callback_language" "python" }
             }
+            
             parm {
                 name    "lv_vtex_tlc"
                 label   "TLC Compression"
@@ -1907,6 +1937,7 @@
                 }
                 parmtag { "script_callback_language" "python" }
             }
+
             parm {
                 name    "lv_vtex_tlc_level"
                 label   "TLC Level"
@@ -1916,6 +1947,7 @@
                 range   { 0! 9! }
                 parmtag { "script_callback_language" "python" }
             }
+            
             parm {
                 name    "lv_fconv"
                 label   "Force Textures Conversion"

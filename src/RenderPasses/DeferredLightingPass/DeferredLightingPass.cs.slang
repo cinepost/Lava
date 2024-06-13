@@ -47,15 +47,16 @@ static const bool kAdjustShadingNormals = true;
 Texture2D<float> gDepth;
 Texture2D<PackedHitInfo> gVbuffer;
 Texture2D<float4> gTextureGrads;
+Texture2D<float4> gNormW;
 
 // Extra UAV output channels
+RWTexture2D<float4>                gOutNormals;
 RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutEmission;
 RasterizerOrderedTexture2D<float>  gOutRoughness;
 RasterizerOrderedTexture2D<float4> gOutShadows;
-RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float4> gOutTangentNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 RasterizerOrderedTexture2D<float>  gOutOcclusion;
@@ -250,7 +251,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod, hints);
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
-    const float3 N = bsdfProperties.guideNormal;
+    //const float3 N = bsdfProperties.guideNormal;
+    const float3 N = sd.frame.N;
 
     uint shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission;
     
@@ -523,7 +525,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     AOVData aov_data = AOVData.create();
     
-    [[branch]] if (!hit.isValid() || hit.getType() != HitType::Triangle) {
+    if (!hit.isValid() || hit.getType() != HitType::Triangle) {
         writeAOV(ipos, aov_data);   
         return;
     }
@@ -544,9 +546,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // Primary ray surface data
     TriangleHit primaryTriangleHit;
     ShadingData primaryShadingData;
-    [[branch]] if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) {
-        return;
+    if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) return;
+
+#if is_valid(gNormW)
+    if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
+        primaryShadingData.frame = ShadingFrame(gNormW[ipos].xyz, primaryShadingData.tangentW);
     }
+#endif
 
     float2 screenUV = float2(ipos) / float2(gFrameDim); 
 

@@ -32,6 +32,7 @@
 #include <bitset>
 #include <string>
 #include <unordered_map>
+#include <atomic>
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
@@ -58,7 +59,8 @@ class dlldecl SceneBuilder {
  public:
     using SharedPtr = std::shared_ptr<SceneBuilder>;
 
-    static constexpr uint32_t kInvalidNodeID = Animatable::kInvalidNode;
+    static constexpr uint32_t kInvalidID = Animatable::kInvalidNode;            ///< Largest uint32 value (-1)
+    static constexpr uint32_t kInvalidNodeID = Animatable::kInvalidNode;        ///< Largest uint32 value (-1)
     static constexpr uint32_t kInvalidMeshletID = Animatable::kInvalidNode;     ///< Largest uint32 value (-1)
     static constexpr uint32_t kInvalidMeshID = Animatable::kInvalidNode;        ///< Largest uint32 value (-1)
 
@@ -73,21 +75,30 @@ class dlldecl SceneBuilder {
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
 
     class dlldecl MeshID {
+        enum class IDTy pe: uint8_t {
+            NONE,
+            INTEGER,
+            FUTURE,
+        };
         public:
-            MeshID(): v(kInvalidMeshID) {};
-            MeshID(uint32_t id): v(id) {};
-            MeshID(std::shared_future<uint32_t> f): v(f) {};
+            MeshID(): mIntID(kInvalidMeshID), mType(IDType::NONE) {};
+            MeshID(uint32_t id): mIntID(id), mType(IDType::INTEGER) {};
+            MeshID(std::shared_future<uint32_t>& f): mFutureID(f), mType(IDType::FUTURE) {};
         
             uint32_t _get() const;
 
         private:
-            mutable std::variant<uint32_t, std::shared_future<uint32_t>> v;
+            mutable uint32_t mIntID;
+            mutable std::shared_future<uint32_t> mFutureID;
+            mutable IDType mType;
+
+            mutable std::mutex mMutex;
 
         public:
             operator uint32_t () const { return _get(); };
 
             void operator=(uint32_t id);
-            void operator=(std::shared_future<uint32_t> f);
+            void operator=(std::shared_future<uint32_t>& f);
     };
     
     enum class UpdateMode: uint8_t {
@@ -143,10 +154,11 @@ class dlldecl SceneBuilder {
         Material::SharedPtr pMaterial;
         uint32_t skeletonNodeId = kInvalidNodeID; ///< Forwarded from Mesh struct.
 
-        uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
-        bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
-        bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
-        std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+        uint64_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
+        bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
+        bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
+        std::vector<uint32_t> pointIndexData;   ///< Optional per vertex point index data.
+        std::vector<uint32_t> indexData;        ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
         std::vector<StaticVertexData> staticData;
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
@@ -635,6 +647,7 @@ protected:
 
     // Scene setup
     void createMeshData();
+    void createMeshSubdivData();
     void createMeshletsData();
     void createMeshInstanceData(uint32_t& tlasInstanceIndex);
     void createCurveData();
@@ -657,7 +670,7 @@ protected:
     bool mUpdateSceneMaterials = false;
     bool mUpdateSceneNodes = false;
     bool mUpdateSceneInstances = false;
-    bool mReBuildMeshGroups = true;
+    std::atomic<bool> mReBuildMeshGroups = true;
 
     friend class SceneCache;
     friend class MeshletBuilder;

@@ -352,6 +352,7 @@ struct VulkanApi
 
     VkPhysicalDeviceProperties                              m_deviceProperties;
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR         m_rtProperties;
+    VkPhysicalDeviceSubgroupProperties                      m_deviceSubgroupProperties;
     VkPhysicalDeviceFeatures                                m_deviceFeatures;
     VkPhysicalDeviceMemoryProperties                        m_deviceMemoryProperties;
     VulkanExtendedFeatureProperties                         m_extendedFeatures;

@@ -37,26 +37,25 @@ import Utils.Sampling.SampleGenerator;
 
 RWTexture2D<PackedHitInfo> gVBuffer;
 
-RWByteAddressBuffer gHiZBuffer;
 RWByteAddressBuffer gLocalDepthBuffer;
 
 // Meshlets related buffers
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
 
 // Optional buffers
-RWTexture2D<float2> gNormals;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
+RWTexture2D<float4> gNormW;
 RWTexture2D<float4> gTextureGrads;
 
 RWTexture2D<uint>   gMeshletID;
 RWTexture2D<uint>   gMicroPolyID;
 
 // Optional debug buffers
-RWTexture2D<uint>       gDrawCount; // Number of writes into visibility buffer
-RWTexture2D<float4>     gAUX;       // Just a four channel auxiliary debug buffer for whatever
-RWTexture2D<uint>       gTime;      // Timing debug buffer
+RWTexture2D<uint>   gDrawCount; // Number of writes into visibility buffer
+RWTexture2D<float4> gAUX;       // Just a four channel auxiliary debug buffer for whatever
+RWTexture2D<uint>   gTime;      // Timing debug buffer
 
 
 #if !defined(USE_ALPHA_TEST)
@@ -67,17 +66,26 @@ RWTexture2D<uint>       gTime;      // Timing debug buffer
 #define USE_SUBDIVISIONS false
 #endif
 
+#if !defined(MAX_LOD)
+#define MAX_LOD 3
+#endif
+
 struct VBufferSW {
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
+    static const uint kMaxLOD = MAX_LOD;
 
-    uint2 frameDim;
-    float2 frameDimInv;
-    float2 frameDimInv2;
-    uint sampleNumber;
-    uint dispatchX;
-    uint meshletDrawsCount;
-    float2 rnd;
+    uint2   frameDim;
+    float2  frameDimInv;
+    float2  frameDimInv2;
+    uint    sampleNumber;
+    uint    dispatchX;
+    uint    meshletDrawsCount;
+    float   minScreenEdgeLen;
+    float   minScreenEdgeLenSquared;
+    float2  rnd;
+    uint    drawableIndex;
+    uint2   jitterTextureDim;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)
@@ -102,6 +110,13 @@ struct VBufferSW {
         gVBuffer[pixelPos] = hit.getData();
     }
 
+void writeDepth(uint2 pixelPos, float depth) {
+        
+#if is_valid(gDepth)          
+        gDepth[pixelPos] = depth;
+#endif
+    }
+
     void writeMiss(uint2 pixelPos) {
         gVBuffer[pixelPos] = {};
 
@@ -112,6 +127,10 @@ struct VBufferSW {
 #if is_valid(gMotionVector)
         gMotionVector[pixelPos] = {};
 #endif
+    }
+
+    void writeNormal(uint2 pixelPos, float16_t3 n) {
+        gNormW[pixelPos] = float4(n, 1);
     }
 
     void writeAUX(uint2 pixelPos, float4 data) {

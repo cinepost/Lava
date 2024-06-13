@@ -950,6 +950,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
 
+    void setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
+
     /** Get the name of the mesh with the given ID.
     */
     std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
@@ -1055,6 +1057,10 @@ public:
         std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
         std::vector<SkinningVertexData> meshSkinningData;       ///< Additional vertex attributes for skinned meshes.
         std::vector<int32_t> perPrimitiveMaterialIDsData;
+
+        // Subdiv surfaces data
+        std::vector<uint2>      meshNeighborVerticesMap;        ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
+        std::vector<uint32_t>   meshNeighborVertices;           ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
 
         // Curve data
         std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
@@ -1267,6 +1273,11 @@ public:
     std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
     std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
 
+    // Subdivs
+
+    std::vector<uint2>      mMeshNeighborVerticesMap;           ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
+    std::vector<uint32_t>   mMeshNeighborVertices;              ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
+
      // Displacement mapping.
     struct {
         bool needsUpdate = true;                                ///< True if displacement data has changed and a AABB update is required.
@@ -1349,6 +1360,8 @@ public:
     Buffer::SharedPtr mpLightsBuffer;
     Buffer::SharedPtr mpGridVolumesBuffer;
     Buffer::SharedPtr mpPerPrimMaterialIDsBuffer;
+    Buffer::SharedPtr mpMeshNeighborVerticesMapBuffer;
+    Buffer::SharedPtr mpMeshNeighborVerticesBuffer;
     ParameterBlock::SharedPtr mpSceneBlock;
 
     // Camera
@@ -1432,6 +1445,9 @@ public:
 
         Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
     };
+
+    // NULL Tlas
+    RtAccelerationStructure::SharedPtr mpNullTlasObject;
 
     // BLAS Data is ordered as all mesh BLAS's first, followed by one BLAS containing all AABBs.
     std::vector<RtAccelerationStructure::SharedPtr> mBlasObjects; ///< BLAS API objects.
