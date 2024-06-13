@@ -269,6 +269,7 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 if(WIN32)
     add_definitions(-DUNICODE)
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()
 
 if(USE_MEGALIB)
