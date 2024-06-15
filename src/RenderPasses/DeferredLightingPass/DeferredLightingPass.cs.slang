@@ -5,6 +5,8 @@ import Scene.Shading;
 import Scene.RaytracingInline;
 
 import Utils.Math.MathHelpers;
+import Utils.Math.PackedFormats;
+import Utils.Math.FormatConversion;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
@@ -44,10 +46,10 @@ static const bool kAdjustShadingNormals = true;
 
 
 // Extra input channels
-Texture2D<float> gDepth;
-Texture2D<PackedHitInfo> gVbuffer;
-Texture2D<float4> gTextureGrads;
-Texture2D<float4> gNormW;
+Texture2D<float>            gDepth;
+Texture2D<PackedHitInfo>    gVbuffer;
+Texture2D<float4>           gTextureGrads;
+Texture2D<uint4>            gNormW;
 
 // Extra UAV output channels
 RWTexture2D<float4>                gOutNormals;
@@ -251,8 +253,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod, hints);
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
-    //const float3 N = bsdfProperties.guideNormal;
-    const float3 N = sd.frame.N;
+    const float3 N = bsdfProperties.guideNormal;
+    //const float3 N = sd.frame.N;
 
     uint shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission;
     
@@ -293,7 +295,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
     // Process lights
     [loop]
-    for (int lightIndex = 0; lightIndex < lightCount; lightIndex++) {
+    for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
 
         LightData light = gScene.getLight(lightSetIndex, lightIndex);
         float3 shadowFactor = float3(1.0f);
@@ -544,14 +546,36 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
-    TriangleHit primaryTriangleHit;
+    TriangleHit primaryTriangleHit = hit.getTriangleHit();
     ShadingData primaryShadingData;
-    if(!calcShadingData(rayDir, hit, primaryLod, primaryShadingData, primaryTriangleHit)) return;
 
+    if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
+    
 #if is_valid(gNormW)
     if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
-        primaryShadingData.frame = ShadingFrame(gNormW[ipos].xyz, primaryShadingData.tangentW);
+        VertexData v = gScene.getVertexData(primaryTriangleHit);
+
+        uint3 packedNormal = gNormW[ipos].xyz;
+
+        v.normalW = {
+            unpackSnorm16(packedNormal.x >> 16),
+            unpackSnorm16(packedNormal.y >> 16),
+            unpackSnorm16(packedNormal.z >> 16)
+        };
+
+        v.faceNormalW = {
+            unpackSnorm16(packedNormal.x & 0x0000ffff),
+            unpackSnorm16(packedNormal.y & 0x0000ffff),
+            unpackSnorm16(packedNormal.z & 0x0000ffff)
+        };
+
+        const uint materialID = gScene.getMaterialID(primaryTriangleHit);
+        primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
+    } else {
+        calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
     }
+#else
+    calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
 #endif
 
     float2 screenUV = float2(ipos) / float2(gFrameDim); 

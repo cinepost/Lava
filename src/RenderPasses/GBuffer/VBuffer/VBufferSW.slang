@@ -46,7 +46,7 @@ StructuredBuffer<MeshletDraw> gMeshletDrawList;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
-RWTexture2D<float4> gNormW;
+RWTexture2D<uint4>  gNormW;
 RWTexture2D<float4> gTextureGrads;
 
 RWTexture2D<uint>   gMeshletID;
@@ -129,8 +129,8 @@ void writeDepth(uint2 pixelPos, float depth) {
 #endif
     }
 
-    void writeNormal(uint2 pixelPos, float16_t3 n) {
-        gNormW[pixelPos] = float4(n, 1);
+    void writeNormal(uint2 pixelPos, uint3 n) {
+        gNormW[pixelPos] = uint4(n, 1);
     }
 
     void writeAUX(uint2 pixelPos, float4 data) {

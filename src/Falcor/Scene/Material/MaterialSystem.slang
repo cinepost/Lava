@@ -84,38 +84,33 @@ struct MaterialSystem
 
     /** Get the total number of materials.
     */
-    uint getMaterialCount()
-    {
+    uint getMaterialCount() {
         return materialCount;
     }
 
     /** Get the type of the given material.
     */
-    MaterialType getMaterialType(const uint materialID)
-    {
+    MaterialType getMaterialType(const uint materialID) {
         return materialData[materialID].header.getMaterialType();
     }
 
     /** Get the material header for the given material.
     */
-    MaterialHeader getMaterialHeader(const uint materialID)
-    {
+    MaterialHeader getMaterialHeader(const uint materialID) {
         return materialData[materialID].header;
     }
 
     /** Get the material data blob for the given material.
         The format of the data blob depends on the material type.
     */
-    MaterialDataBlob getMaterialDataBlob(const uint materialID)
-    {
+    MaterialDataBlob getMaterialDataBlob(const uint materialID) {
         return materialData[materialID];
     }
 
     /** Returns true if the given material is a basic material.
         This function is currently used by legacy code that doesn't all material types, but may be removed in the future.
     */
-    bool isBasicMaterial(const uint materialID)
-    {
+    bool isBasicMaterial(const uint materialID) {
         return materialData[materialID].header.isBasicMaterial();
     }
 
@@ -123,8 +118,7 @@ struct MaterialSystem
         Note that no type checking is done. The caller is responsible for ensuring that the given material is a basic material.
         This function is currently used by legacy code that doesn't all material types, but may be removed in the future.
     */
-    BasicMaterialData getBasicMaterialData(const uint materialID)
-    {
+    BasicMaterialData getBasicMaterialData(const uint materialID) {
         return reinterpret<BasicMaterialData, MaterialPayload>(materialData[materialID].payload);
     }
 
@@ -136,8 +130,7 @@ struct MaterialSystem
 #ifdef FALCOR_VK
     [__unsafeForceInlineEarly]
 #endif
-    SamplerState getTextureSampler(const uint samplerID)
-    {
+    SamplerState getTextureSampler(const uint samplerID) {
         return materialSamplers[samplerID];
     }
 
@@ -149,16 +142,14 @@ struct MaterialSystem
 #ifdef FALCOR_VK
     [__unsafeForceInlineEarly]
 #endif
-    SamplerState getDefaultTextureSampler(const uint materialID)
-    {
+    SamplerState getDefaultTextureSampler(const uint materialID) {
         uint samplerID = getMaterialHeader(materialID).getDefaultTextureSamplerID();
         return getTextureSampler(samplerID);
     }
 
     /** Get a buffer by ID.
     */
-    ByteAddressBuffer getBuffer(const uint bufferID)
-    {
+    ByteAddressBuffer getBuffer(const uint bufferID) {
         return materialBuffers[bufferID];
     }
 
@@ -166,12 +157,10 @@ struct MaterialSystem
         \param[in] materialID Material ID
         \return Returns true if material has emissive texture.
     */
-    bool isEmissiveTextured(const uint materialID)
-    {
+    bool isEmissiveTextured(const uint materialID) {
         // This function only handle basic materials for now. Other material types return false.
         // TODO: Generalize to support arbitrary materials (#1314).
-        if (isBasicMaterial(materialID))
-        {
+        if (isBasicMaterial(materialID)) {
             BasicMaterialData md = getBasicMaterialData(materialID);
             return md.texEmissive.getMode() == TextureHandle::Mode::Texture;
         }
@@ -185,12 +174,10 @@ struct MaterialSystem
         \param[in] uv Texture coordinates
         \return Evaluated outgoing radiance on the front-facing side.
     */
-    float3 evalEmissive(const uint materialID, const float2 uv)
-    {
+    float3 evalEmissive(const uint materialID, const float2 uv) {
         // This function only handle basic materials for now. Other material types return zero.
         // TODO: Generalize to support arbitrary materials (#1314).
-        if (isBasicMaterial(materialID))
-        {
+        if (isBasicMaterial(materialID)) {
             BasicMaterialData md = getBasicMaterialData(materialID);
             SamplerState s = getDefaultTextureSampler(materialID);
             ExplicitLodTextureSampler lod = { 0.f };
@@ -203,11 +190,9 @@ struct MaterialSystem
         \param[in] materialID Material ID
         \return Index of refraction.
     */
-    float evalIoR(const uint materialID)
-    {
+    float evalIoR(const uint materialID) {
         // TODO: Move IoR field into MaterialHeader so it's available for all material types.
-        if (isBasicMaterial(materialID))
-        {
+        if (isBasicMaterial(materialID)) {
             BasicMaterialData md = getBasicMaterialData(materialID);
             return md.IoR;
         }
@@ -218,15 +203,13 @@ struct MaterialSystem
         \param[in] handle Texture handle.
         \return Texture info or zero initialized struct if no texture.
     */
-    TextureInfo getTextureInfo(const TextureHandle handle)
-    {
+    TextureInfo getTextureInfo(const TextureHandle handle) {
         TextureInfo info = {};
-        switch (handle.getMode())
-        {
-        case TextureHandle::Mode::Texture:
-            materialTextures[handle.getTextureID()].GetDimensions(0, info.width, info.height, info.mipLevels);
-            info.depth = 1;
-        default:
+        switch (handle.getMode()) {
+            case TextureHandle::Mode::Texture:
+                materialTextures[handle.getTextureID()].GetDimensions(0, info.width, info.height, info.mipLevels);
+                info.depth = 1;
+            default:
         }
         return info;
     }
@@ -239,8 +222,7 @@ struct MaterialSystem
         \param[in] lod Fixed texture level-of-detail.
         \return Sampled color.
     */
-    float4 sampleTexture(const TextureHandle handle, SamplerState s, const float2 uv, const float lod)
-    {
+    float4 sampleTexture(const TextureHandle handle, SamplerState s, const float2 uv, const float lod) {
         ExplicitLodTextureSampler explicitLOD = { lod };
         return sampleTexture(handle, s, uv, float4(0.f), explicitLOD);
     }
@@ -300,8 +282,7 @@ struct MaterialSystem
 
     /** Load displacement mapping data for the given material.
     */
-    void loadDisplacementData(const uint materialID, out DisplacementData displacementData)
-    {
+    void loadDisplacementData(const uint materialID, out DisplacementData displacementData) {
         // Note we can't zero initialize struct containing resources.
         displacementData.scale = 0.f;
         displacementData.bias = 0.f;
@@ -314,15 +295,13 @@ struct MaterialSystem
 
         // Cast the material data to a BasicMaterialData struct.
         // TODO: This is a workaround until all materials support displacement (#1310).
-        if (isBasicMaterial(materialID))
-        {
+        if (isBasicMaterial(materialID)) {
             BasicMaterialData md = getBasicMaterialData(materialID);
 
             displacementData.scale = md.displacementScale;
             displacementData.bias = md.displacementOffset;
 
-            if (md.texDisplacementMap.getMode() == TextureHandle::Mode::Texture)
-            {
+            if (md.texDisplacementMap.getMode() == TextureHandle::Mode::Texture) {
                 textureID = md.texDisplacementMap.getTextureID();
                 samplerID = getMaterialHeader(materialID).getDefaultTextureSamplerID();
                 displacementMinSamplerID = md.getDisplacementMinSamplerID();

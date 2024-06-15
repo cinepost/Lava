@@ -48,10 +48,14 @@ struct MicroTriangle {
     }
 
 #ifndef HOST_CODE
-    float16_t3 getNormal(float2 barycentrics) {
-        //return (nw0 + nw1 + nw2) * 0.33333;
+    float16_t3 getNormalW(float2 barycentrics) {
         return (nw1 * barycentrics.x) + ( nw2 * barycentrics.y ) + (nw0 * (1.f - barycentrics.x - barycentrics.y));
     }
+
+    float3 getFaceNormalW() {
+        return normalize(cross(pw0 - pw1, pw0 - pw2));
+    }
+
 #endif
 
 };

@@ -2909,13 +2909,10 @@ void SceneBuilder::createMeshSubdivData() {
 		// iterate over mesh prims (triangles)
 		for (size_t prim = 0; prim < prim_count; ++prim) {
     		uint32_t index[4] = {mesh.getIndex(prim * 3 + 0), mesh.getIndex(prim * 3 + 1), mesh.getIndex(prim * 3 + 2), 0}; 
-    		//if(!cw) std::swap(index[0], index[1]);
-    		//index[3] = index[0];
     		uint32_t p[4] = {mesh.pointIndexData[index[0]], mesh.pointIndexData[index[1]], mesh.pointIndexData[index[2]], 0}; p[3] = p[0];
-    		
-    		//if(!cw) std::swap(index[0], index[1]);
     		index[3] = index[0];
 
+    		// process prim
     		for(size_t k = 0; k < 3; ++k) {
     			uint32_t edge_v0 = index[k];
     			uint32_t edge_v1 = index[k+1];
@@ -2929,7 +2926,13 @@ void SceneBuilder::createMeshSubdivData() {
     			const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[edge_v0];
     			size_t neighbors_count = adjacency.counts[edge_v0];
 
-    			//if(neighbors_count <= 1) continue; // skip isolated triangles
+    			// skip isolated triangles
+    			if(neighbors_count <= 1) {
+    				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+    				continue;
+    			}
+
+    			std::unordered_set<uint> neighbor_points;
 
 				// Find d indices first
     			for (size_t j = 0; j < neighbors_count; ++j) {
@@ -2943,6 +2946,7 @@ void SceneBuilder::createMeshSubdivData() {
       				}
 
       				if(p_a != edge_p0) {
+      					neighbor_points.insert(p_a);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
       						d_index = a;
       						localPointUsed[p_a] = 1;
@@ -2950,6 +2954,7 @@ void SceneBuilder::createMeshSubdivData() {
       				}
 
       				if(p_b != edge_p0) {
+      					neighbor_points.insert(p_b);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
       						d_index = b;
       						localPointUsed[p_b] = 1;
@@ -2957,6 +2962,7 @@ void SceneBuilder::createMeshSubdivData() {
       				}
 
       				if(p_c != edge_p0) {
+      					neighbor_points.insert(p_c);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
       						d_index = c;
       						localPointUsed[p_c] = 1;
@@ -2964,34 +2970,108 @@ void SceneBuilder::createMeshSubdivData() {
       				}
       			}
 
+      			if(d_index == kInvalidID && (neighbor_points.size() > (neighbors_count + 1))) {
+					LLOG_WRN << "Invalid pt";
+					// Discontinuities in neighbours
+					// No d_index found but more than one neighbor. degraded vertex
+					pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+					continue;
+      			}	
+      			
       			neighborVertices.push_back(d_index);
+      			
+      			bool isEdgePoint = neighbor_points.size() == (neighbors_count + 1);
 
-    			for (size_t j = 0; j < neighbors_count; ++j) {
-      				uint32_t neighbor_prim = neighbors[j];
+      			if(!isEdgePoint) {
+					LLOG_WRN << "Norm pt";
+					// point surrounded by neighbors
+	    			for (size_t j = 0; j < neighbors_count; ++j) {
+	      				uint32_t neighbor_prim = neighbors[j];
 
-      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-      				uint32_t p_a, p_b, p_c;
-      				if(!cw) {
-      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-      				} else {
-      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-      				}
-	
-      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
-      					neighborVertices.push_back(a);
-      					localPointUsed[p_a] = 1;
-      				}
+	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
+	      				uint32_t p_a, p_b, p_c;
+	      				if(!cw) {
+	      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+	      				} else {
+	      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				}
+		
+	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
+	      					neighborVertices.push_back(a);
+	      					localPointUsed[p_a] = 1;
+	      				}
 
-      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
-      					neighborVertices.push_back(b);
-      					localPointUsed[p_b] = 1;
-      				}
+	      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
+	      					neighborVertices.push_back(b);
+	      					localPointUsed[p_b] = 1;
+	      				}
 
-      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
-      					neighborVertices.push_back(c);
-      					localPointUsed[p_c] = 1;
-      				}
-    			}
+	      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
+	      					neighborVertices.push_back(c);
+	      					localPointUsed[p_c] = 1;
+	      				}
+	    			}
+
+	    			if(pairOffsetCountMap[edge_v0].x != 2) {
+    					pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+    				}
+
+	    		} else {
+	    			// edge point
+	    			
+	    			std::unordered_set<uint> open_ring_points;
+
+	    			for (size_t j = 0; j < neighbors_count; ++j) {
+	      				uint32_t neighbor_prim = neighbors[j];
+
+	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
+	      				uint32_t p_a, p_b, p_c;
+	      				if(!cw) {
+	      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+	      				} else {
+	      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				}
+
+	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
+	      					auto it = open_ring_points.find(p_a);
+	      					if(it != open_ring_points.end()) {
+	      						open_ring_points.erase(it);
+	      					} else {
+	      						open_ring_points.insert(p_a);
+	      					}
+	      				}
+	      				
+	      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
+	      					auto it = open_ring_points.find(p_b);
+	      					if(it != open_ring_points.end()) {
+	      						open_ring_points.erase(it);
+	      					} else {
+	      						open_ring_points.insert(p_b);
+	      					}
+	      				}
+	      				
+	      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
+	      					auto it = open_ring_points.find(p_c);
+	      					if(it != open_ring_points.end()) {
+	      						open_ring_points.erase(it);
+	      					} else {
+	      						open_ring_points.insert(p_c);
+	      					}
+	      				}
+	      			}
+
+	      			LLOG_WRN << "Edge pt open points " << open_ring_points.size();
+
+	      			if(open_ring_points.size() != 2) {
+	      				LLOG_ERR << "Sudbiv data build integrity failed. Mesh " << mesh.name << " edge vertex " << edge_v0 << " has more than 2 edge neighbors !!!";
+	      				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+	      			} else {
+	      				for ( auto it = open_ring_points.cbegin(); it != open_ring_points.cend(); ++it ) {
+	      					neighborVertices.push_back(adjacency.pointToVerticesMap[*it][0]);
+	      				}
+	      				pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+	      			}		
+	    		}
 
     			//LLOG_WRN << "Neighbor count " << neighbors_count << " d vertex found " << (d_index_found ? "YES" : "NO");
     			
@@ -3002,7 +3082,9 @@ void SceneBuilder::createMeshSubdivData() {
     				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 2)]] = 0;
     			}
 
-    			pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+    			//if(pairOffsetCountMap[edge_v0].c != 2) {
+    			//	pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+    			//}
     		}
   		}
 

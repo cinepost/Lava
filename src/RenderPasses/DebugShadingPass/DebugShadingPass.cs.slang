@@ -4,6 +4,8 @@ import Scene.Raster;
 import Scene.Shading;
 
 import Utils.Math.MathHelpers;
+import Utils.Math.PackedFormats;
+import Utils.Math.FormatConversion;
 import Utils.Color.FalseColorGenerator;
 import Utils.Color.HeatMapColorGenerator;
 
@@ -23,7 +25,7 @@ Texture2D<float2>   gMotionVector;
 
 // Extra input channels
 Texture2D<uint>     gDrawCount;
-Texture2D<float4>   gNormW;
+Texture2D<uint4>    gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
@@ -79,7 +81,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if is_valid(gOutNormals)
 #if is_valid(gNormW)
-    gOutNormals[pixelPos] = float4(gNormW[pixelPos].xyz, 0.f);
+        uint3 packedNormal = gNormW[pixelPos].xyz;
+
+        float3 normalW = {
+            unpackSnorm16(packedNormal.x >> 16),
+            unpackSnorm16(packedNormal.y >> 16),
+            unpackSnorm16(packedNormal.z >> 16)
+        };
+
+        float3 faceNormalW = {
+            unpackSnorm16(packedNormal.x & 0x0000ffff),
+            unpackSnorm16(packedNormal.y & 0x0000ffff),
+            unpackSnorm16(packedNormal.z & 0x0000ffff)
+        };
+
+    gOutNormals[pixelPos] = float4(normalW, 0.f);
 #else
     gOutNormals[pixelPos] = float4(v.normalW.xyz, 0.f);
 #endif

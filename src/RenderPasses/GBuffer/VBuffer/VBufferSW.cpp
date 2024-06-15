@@ -83,7 +83,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
-        { "normW",          "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA16Float },
+        { "normW",          "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
         { "depth",          "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",           "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",          "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
