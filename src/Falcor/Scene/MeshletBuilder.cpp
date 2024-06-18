@@ -90,17 +90,22 @@ static uint32_t getPrimIndex(uint32_t vertexIndex) {
 }
 
 void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpec& mesh) {
-  if(mesh.pointIndexData.empty()) return buildPrimitiveAdjacencyNoPoints(mesh);
+  if(mesh.pointIndexData.empty()) {
+    return buildPrimitiveAdjacencyNoPoints(mesh);
+  }
 
+  LLOG_DBG << "MeshletBuilder::buildPrimitiveAdjacencyByPointIndices";
+  
   auto& adjacency = mesh.adjacencyData;
 
   uint32_t prim_count = mesh.getPrimitivesCount();
-  size_t   max_pt_index = 0;
-  for(size_t p_i: mesh.pointIndexData) max_pt_index = std::max(max_pt_index, p_i);
+  uint32_t   max_pt_index = 0;
+  for(uint32_t p_i: mesh.pointIndexData) max_pt_index = std::max(max_pt_index, p_i);
 
   adjacency.pointToVerticesMap.resize(max_pt_index + 1);
+  LLOG_WRN << "adjacency.pointToVerticesMap size" << adjacency.pointToVerticesMap.size();
 
-  for(size_t i = 0; i < mesh.pointIndexData.size(); ++i) {
+  for(uint32_t i = 0; i < static_cast<uint32_t>(mesh.pointIndexData.size()); ++i) {
     adjacency.pointToVerticesMap[mesh.pointIndexData[i]].push_back(i);
   }
 
@@ -111,11 +116,44 @@ void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpe
   memset(adjacency.counts.data(), 0, mesh.vertexCount * sizeof(uint32_t));
 
   std::vector<std::vector<uint32_t>> pointToPrimsMap(adjacency.pointToVerticesMap.size());
+  LLOG_WRN << "pointToPrimsMap size" << pointToPrimsMap.size();
   
   for (size_t prim = 0; prim < prim_count; ++prim) {
     uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
+    
+    uint32_t aa = mesh.pointIndexData[a];
+    //printf("a %u aa %u\n", a, aa);
+    
+    uint32_t bb = mesh.pointIndexData[b];
+    //printf("b %u bb %u\n", b, bb);
+    
+    uint32_t cc = mesh.pointIndexData[c];
+    //printf("c %u cc %u\n", c, cc);
+  }
+
+  LLOG_WRN << "mesh.pointIndexData size " << mesh.pointIndexData.size();
+  LLOG_WRN << "mesh.vertexCount  " << mesh.vertexCount;
+  LLOG_WRN << "mesh.indexCount  " << mesh.indexCount;
+
+  for (size_t prim = 0; prim < prim_count; ++prim) {
+    uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
+    
+    uint32_t aa = mesh.pointIndexData[a];
+    //LLOG_WRN << "aa " << aa << " pointToPrimsMap size " << pointToPrimsMap.size();
+    //printf("aa %u\n", aa);
+    assert(aa < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[a]].push_back(prim);
+    
+    uint32_t bb = mesh.pointIndexData[b];
+    //LLOG_WRN << "bb " << bb << " pointToPrimsMap size " << pointToPrimsMap.size();
+    //printf("bb %u\n", bb);
+    assert(bb < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[b]].push_back(prim);
+    
+    uint32_t cc = mesh.pointIndexData[c];
+    //LLOG_WRN << "cc " << cc << " pointToPrimsMap size " << pointToPrimsMap.size();
+    //printf("cc %u\n", cc);
+    assert(cc < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[c]].push_back(prim);
   }
 
@@ -124,9 +162,6 @@ void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpe
     adjacency.counts[a] = pointToPrimsMap[mesh.pointIndexData[a]].size();
     adjacency.counts[b] = pointToPrimsMap[mesh.pointIndexData[b]].size();
     adjacency.counts[c] = pointToPrimsMap[mesh.pointIndexData[c]].size();
-    //adjacency.counts[a] = adjacency.pointToVerticesMap[mesh.pointIndexData[a]].size();
-    //adjacency.counts[b] = adjacency.pointToVerticesMap[mesh.pointIndexData[b]].size();
-    //adjacency.counts[c] = adjacency.pointToVerticesMap[mesh.pointIndexData[c]].size();
   }
 
   // fill offset table
@@ -179,6 +214,7 @@ void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpe
 }
 
 void MeshletBuilder::buildPrimitiveAdjacencyNoPoints(SceneBuilder::MeshSpec& mesh) {
+  LLOG_DBG << "MeshletBuilder::buildPrimitiveAdjacencyNoPoints";
   auto& adjacency = mesh.adjacencyData;
 
   adjacency._valid = false;
@@ -231,7 +267,7 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   } else {
     buildPrimitiveAdjacencyByPointIndices(mesh);
   }
-
+  
   if(!mesh.adjacencyData.isValid()) return;
 
   const auto& adjacency = mesh.adjacencyData;

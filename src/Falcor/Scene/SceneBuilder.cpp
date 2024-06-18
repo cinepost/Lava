@@ -559,8 +559,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 		pAttributeIndices->reserve(mesh.vertexCount);
 	}
 
-	if (mesh.mergeDuplicateVertices) {
-		LLOG_DBG << "merging duplicate vertices for mesh " << mesh_.name;
+	if (1==2 && mesh.mergeDuplicateVertices) {
+		LLOG_ERR << "merging duplicate vertices for mesh " << mesh_.name;
 		vertices.reserve(mesh.vertexCount);
 
 		std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
@@ -601,9 +601,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 				indices[face * 3 + vert] = index;
 			}
 		}
-	}
-	else
-	{
+	} else {
 		vertices = { mesh.vertexCount, std::make_pair(Mesh::Vertex{}, invalidIndex) };
 
 		for (uint32_t face = 0; face < mesh.faceCount; face++) {
@@ -647,15 +645,14 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	const uint32_t vertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
 	// Copy point indices into processed mesh (if present).
-	if (mesh.pointIndices.pData) {
-		if(isIndexed) {
-			processedMesh.pointIndexData.resize(vertexCount);
-			for(size_t i = 0; i < vertexCount; ++i) {
-				uint32_t index = isIndexed ? i : indices[i];
-				processedMesh.pointIndexData[index] = static_cast<const uint32_t*>(mesh.pointIndices.pData)[index];
-			}
-		}
-	}
+	//if (mesh.pointIndices.pData) {
+	//	processedMesh.pointIndexData.resize(vertexCount);
+	//	for(size_t i = 0; i < vertexCount; ++i) {
+	//		uint32_t index = isIndexed ? i : indices[i];
+	//		processedMesh.pointIndexData[index] = static_cast<const uint32_t*>(mesh.pointIndices.pData)[index];
+			//LLOG_WRN << "Pt idx " << processedMesh.pointIndexData[index];
+	//	}
+	//}
 
 	// Copy indices into processed mesh.
 	if (isIndexed) {
@@ -664,6 +661,17 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
 		if (!processedMesh.use16BitIndices) processedMesh.indexData = std::move(indices);
 		else processedMesh.indexData = compact16BitIndices(indices);
+	}
+
+	// Copy point indices into processed mesh (if present).
+	if (mesh.pointIndices.pData) {
+		if(isIndexed) {
+			processedMesh.pointIndexData.resize(mesh.vertexCount);
+			for(size_t i = 0; i < mesh.vertexCount; ++i) {
+				processedMesh.pointIndexData[i] = static_cast<const uint32_t*>(mesh.pointIndices.pData)[i];
+				//printf("pt idx %u\n", processedMesh.pointIndexData[i]);
+			}
+		}
 	}
 
 	// Copy vertices into processed mesh.
@@ -704,6 +712,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 			processedMesh.perPrimitiveMaterialIDsData.clear();
 		}
 	}
+
+	LLOG_WRN << "processedMesh.staticData.size " << processedMesh.staticData.size();
 
 	return processedMesh;
 }
@@ -3012,7 +3022,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      				}
 	    			}
 
-	    			if(pairOffsetCountMap[edge_v0].x != 2) {
+	    			if(pairOffsetCountMap[edge_v0].x != 3) {
     					pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
     				}
 
@@ -3032,7 +3042,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
 	      				}
 
-	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
+	      				if(p_a != edge_p0) {
 	      					auto it = open_ring_points.find(p_a);
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
@@ -3041,7 +3051,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      					}
 	      				}
 	      				
-	      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
+	      				if(p_b != edge_p0) {
 	      					auto it = open_ring_points.find(p_b);
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
@@ -3050,7 +3060,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      					}
 	      				}
 	      				
-	      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
+	      				if(p_c != edge_p0) {
 	      					auto it = open_ring_points.find(p_c);
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
@@ -3060,16 +3070,20 @@ void SceneBuilder::createMeshSubdivData() {
 	      				}
 	      			}
 
-	      			LLOG_WRN << "Edge pt open points " << open_ring_points.size();
-
 	      			if(open_ring_points.size() != 2) {
-	      				LLOG_ERR << "Sudbiv data build integrity failed. Mesh " << mesh.name << " edge vertex " << edge_v0 << " has more than 2 edge neighbors !!!";
+	      				LLOG_ERR << "Sudbiv data build integrity failed. Mesh " << mesh.name << " edge vertex " << edge_v0 << " has more than 2 edge neighbors !!! " << open_ring_points.size();
 	      				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
 	      			} else {
-	      				for ( auto it = open_ring_points.cbegin(); it != open_ring_points.cend(); ++it ) {
-	      					neighborVertices.push_back(adjacency.pointToVerticesMap[*it][0]);
+	      				for(auto p: open_ring_points) {
+	      					neighborVertices.push_back(adjacency.pointToVerticesMap[p].back());
 	      				}
+	      				//for ( auto it = open_ring_points.begin(); it != open_ring_points.end(); ++it ) {
+	      					//neighborVertices.push_back(adjacency.pointToVerticesMap[*it][0]);
+	      				//	neighborVertices.push_back(adjacency.pointToVerticesMap[*it].back());
+	      				//}
 	      				pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+	      				LLOG_WRN << "Edge pt neighbor points " << neighbor_points.size();
+	      				LLOG_WRN << "Edge pt open points " << open_ring_points.size() << " size " << (neighborVertices.size() - neighborVerticesOffset);
 	      			}		
 	    		}
 

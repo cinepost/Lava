@@ -269,6 +269,9 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
                             vIndices.push_back(csi+2);
                             vIndices.push_back(csi+1);
                             vIndices.push_back(csi);
+                            //vtxPtIndices.push_back(pointIndices[csi+2]);
+                            //vtxPtIndices.push_back(pointIndices[csi+2]);
+                            //vtxPtIndices.push_back(pointIndices[csi+2]);
                             face_count = 1;
                             break;
                         default:

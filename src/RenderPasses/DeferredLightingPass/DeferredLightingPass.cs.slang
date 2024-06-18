@@ -604,7 +604,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #ifdef _SHADING_RATE
     [loop]
-    //[unroll]
     for(int shadingIter = 0; shadingIter < _SHADING_RATE; shadingIter++) {
 #else
     const int shadingIter = 0;

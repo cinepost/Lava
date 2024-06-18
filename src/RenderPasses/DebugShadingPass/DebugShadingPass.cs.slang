@@ -75,30 +75,37 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();
-    gInOutColor[pixelPos] = float4(barycentrics, 1.f);
-    
+    float3 outColor = barycentrics;
+
     VertexData v = gScene.getVertexData(triangleHit);
+    float3 normalW = float3(0.f);
+    float3 faceNormalW = float3(0.f);
+
+#if is_valid(gNormW)
+    uint3 packedNormal = gNormW[pixelPos].xyz;
+    
+    normalW = {
+        unpackSnorm16(packedNormal.x >> 16),
+        unpackSnorm16(packedNormal.y >> 16),
+        unpackSnorm16(packedNormal.z >> 16)
+    };
+
+    faceNormalW = {
+        unpackSnorm16(packedNormal.x & 0x0000ffff),
+        unpackSnorm16(packedNormal.y & 0x0000ffff),
+        unpackSnorm16(packedNormal.z & 0x0000ffff)
+    };
+
+#else
+    normalW = v.normalW.xyz;
+    faceNormalW = v.faceNormalW.xyz;
+#endif
+
+    gInOutColor[pixelPos] = float4(outColor, 1.f);
+    
 
 #if is_valid(gOutNormals)
-#if is_valid(gNormW)
-        uint3 packedNormal = gNormW[pixelPos].xyz;
-
-        float3 normalW = {
-            unpackSnorm16(packedNormal.x >> 16),
-            unpackSnorm16(packedNormal.y >> 16),
-            unpackSnorm16(packedNormal.z >> 16)
-        };
-
-        float3 faceNormalW = {
-            unpackSnorm16(packedNormal.x & 0x0000ffff),
-            unpackSnorm16(packedNormal.y & 0x0000ffff),
-            unpackSnorm16(packedNormal.z & 0x0000ffff)
-        };
-
     gOutNormals[pixelPos] = float4(normalW, 0.f);
-#else
-    gOutNormals[pixelPos] = float4(v.normalW.xyz, 0.f);
-#endif
 #endif  // gOutNormals
 
 #if is_valid(gOutTangentNormals)
