@@ -137,23 +137,8 @@ void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpe
 
   for (size_t prim = 0; prim < prim_count; ++prim) {
     uint32_t a = mesh.getIndex(prim * 3 + 0), b = mesh.getIndex(prim * 3 + 1), c = mesh.getIndex(prim * 3 + 2);
-    
-    uint32_t aa = mesh.pointIndexData[a];
-    //LLOG_WRN << "aa " << aa << " pointToPrimsMap size " << pointToPrimsMap.size();
-    //printf("aa %u\n", aa);
-    assert(aa < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[a]].push_back(prim);
-    
-    uint32_t bb = mesh.pointIndexData[b];
-    //LLOG_WRN << "bb " << bb << " pointToPrimsMap size " << pointToPrimsMap.size();
-    //printf("bb %u\n", bb);
-    assert(bb < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[b]].push_back(prim);
-    
-    uint32_t cc = mesh.pointIndexData[c];
-    //LLOG_WRN << "cc " << cc << " pointToPrimsMap size " << pointToPrimsMap.size();
-    //printf("cc %u\n", cc);
-    assert(cc < pointToPrimsMap.size());
     pointToPrimsMap[mesh.pointIndexData[c]].push_back(prim);
   }
 
@@ -582,7 +567,7 @@ MeshletBuilder::UniquePtr MeshletBuilder::create() {
 }
 
 void MeshletBuilder::generateMeshlets(SceneBuilder::MeshSpec& mesh, BuildMode mode) {
-  LLOG_DBG << "Generating meshlets for mesh \" " << mesh.name << " \" with " << mesh.vertexCount << " vertices and " << mesh.indexCount << " indices";
+  LLOG_WRN << "Generating meshlets for " << (mesh.isFrontFaceCW ? " CW" : " CCW") << " mesh \" " << mesh.name << " \" with " << mesh.vertexCount << " vertices and " << mesh.indexCount << " indices";
 
   const std::chrono::high_resolution_clock::time_point adj_data_start_time = std::chrono::high_resolution_clock::now();
 
@@ -618,7 +603,6 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
   uint32_t mesh_start_index = 0;
 
   while(mesh_start_index < mesh.indexCount) {
-    std::vector<uint32_t> meshletVertices;
     std::vector<uint32_t> meshletPrimIndices;
     std::vector<uint8_t>  meshletIndices;
 
@@ -641,7 +625,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
       }
 
       const uint32_t mIdx0 = mesh.getIndex(i), mIdx1 = mesh.getIndex(i+1), mIdx2 = mesh.getIndex(i+2);
-
+    
       const bool newV0 = vertices.find(mIdx0) == vertices.end();
       const bool newV1 = vertices.find(mIdx1) == vertices.end();
       const bool newV2 = vertices.find(mIdx2) == vertices.end();
@@ -656,7 +640,7 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
       }
 
       triangles.push_back({mIdx0, mIdx1, mIdx2});
-
+      
       if(newV0) vertices.insert(mIdx0);
       if(newV1) vertices.insert(mIdx1);
       if(newV2) vertices.insert(mIdx2);
@@ -666,16 +650,16 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
     }
 
     // These are per meshlet local indices. Guaranteed not to exceed value of 255 (by default we use max 128 elements)
+    meshletSpec.indices.clear();
     for(const auto& triangle: triangles) {
-      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[0])));
-      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[1])));
-      meshletIndices.push_back(std::distance(vertices.begin(), vertices.find(triangle[2])));
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[0])));
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[1])));
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[2])));
     }
 
-    for(auto pi : vertices) meshletVertices.push_back(pi);
+    meshletSpec.vertices.resize(vertices.size());
+    std::copy(vertices.begin(), vertices.end(), meshletSpec.vertices.begin());
 
-    meshletSpec.vertices = std::move(meshletVertices);
-    meshletSpec.indices = std::move(meshletIndices);
     meshletSpec.primitiveIndices = std::move(meshletPrimIndices);
     LLOG_TRC << "Generated meshlet spec " << meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       " vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";

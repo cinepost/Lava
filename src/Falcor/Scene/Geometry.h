@@ -97,6 +97,22 @@ struct PrimitiveAdjacency {
         pointToVerticesMap.clear();
         _valid = false;
     }
+
+    size_t hash() const {
+        size_t cnts = 0;
+        for(size_t i = 0; i < counts.size(); ++i) cnts += counts[i]*i;
+        cnts += counts.size();
+
+        size_t offs = 0;
+        for(size_t i = 0; i < offsets.size(); ++i) offs += offsets[i]*i;
+        offs += offsets.size();
+
+        size_t dats = 0;
+        for(size_t i = 0; i < data.size(); ++i) dats += data[i]*i;
+        dats += data.size();
+
+        return cnts + offs + dats;
+    }
 };
 
 struct MeshletSpec {

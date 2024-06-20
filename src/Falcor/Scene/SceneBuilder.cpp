@@ -2908,6 +2908,9 @@ void SceneBuilder::createMeshSubdivData() {
 		mesh.subdivDataOffset = static_cast<uint32_t>(mSceneData.meshNeighborVerticesMap.size());
 
 		auto const& adjacency = mesh.adjacencyData;
+
+		LLOG_WRN << "Mesh " << mesh.name << " adjacency data hash " << adjacency.hash();
+
 		uint32_t prim_count = mesh.getPrimitivesCount();
 
 		std::vector<uint8_t> localPointUsed(adjacency.pointToVerticesMap.size());
@@ -2948,12 +2951,12 @@ void SceneBuilder::createMeshSubdivData() {
     			for (size_t j = 0; j < neighbors_count; ++j) {
     				uint32_t neighbor_prim = neighbors[j];
     				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-      				uint32_t p_a, p_b, p_c;
-      				if(!cw) {
-      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-      				} else {
-      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-      				}
+      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+      				//if(!cw) {
+      				//	p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+      				//} else {
+      				//	p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+      				//}
 
       				if(p_a != edge_p0) {
       					neighbor_points.insert(p_a);
@@ -2981,7 +2984,7 @@ void SceneBuilder::createMeshSubdivData() {
       			}
 
       			if(d_index == kInvalidID && (neighbor_points.size() > (neighbors_count + 1))) {
-					LLOG_WRN << "Invalid pt";
+					//LLOG_WRN << "Invalid pt";
 					// Discontinuities in neighbours
 					// No d_index found but more than one neighbor. degraded vertex
 					pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
@@ -2993,18 +2996,18 @@ void SceneBuilder::createMeshSubdivData() {
       			bool isEdgePoint = neighbor_points.size() == (neighbors_count + 1);
 
       			if(!isEdgePoint) {
-					LLOG_WRN << "Norm pt";
+					//LLOG_WRN << "Norm pt";
 					// point surrounded by neighbors
 	    			for (size_t j = 0; j < neighbors_count; ++j) {
 	      				uint32_t neighbor_prim = neighbors[j];
 
 	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-	      				uint32_t p_a, p_b, p_c;
-	      				if(!cw) {
-	      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-	      				} else {
-	      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-	      				}
+	      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				//if(!cw) {
+	      				//	p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
+	      				//} else {
+	      				//	p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				//}
 		
 	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
 	      					neighborVertices.push_back(a);
@@ -3077,13 +3080,9 @@ void SceneBuilder::createMeshSubdivData() {
 	      				for(auto p: open_ring_points) {
 	      					neighborVertices.push_back(adjacency.pointToVerticesMap[p].back());
 	      				}
-	      				//for ( auto it = open_ring_points.begin(); it != open_ring_points.end(); ++it ) {
-	      					//neighborVertices.push_back(adjacency.pointToVerticesMap[*it][0]);
-	      				//	neighborVertices.push_back(adjacency.pointToVerticesMap[*it].back());
-	      				//}
 	      				pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
-	      				LLOG_WRN << "Edge pt neighbor points " << neighbor_points.size();
-	      				LLOG_WRN << "Edge pt open points " << open_ring_points.size() << " size " << (neighborVertices.size() - neighborVerticesOffset);
+	      				//LLOG_WRN << "Edge pt neighbor points " << neighbor_points.size();
+	      				//LLOG_WRN << "Edge pt open points " << open_ring_points.size() << " size " << (neighborVertices.size() - neighborVerticesOffset);
 	      			}		
 	    		}
 
