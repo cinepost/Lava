@@ -214,8 +214,6 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
 
     float3 pv_sum[3] = {float3(0.f), float3(0.f), float3(0.f)};
 
-    
-
     if(count0 > 2 && d_idx0 != kInvalid) {
         auxW(src_pv[0], float4(d_idx0));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx0);
@@ -262,11 +260,9 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         for(uint c = 1; c < count0; ++c) {
             uint idx = gScene.meshNeighborVertices[offset0 + c];
             StaticVertexData vtx = gScene.getVertex(gsMeshDesc.vbOffset + idx);
-            //StaticVertexData vtxn = gScene.getVertex(gsMeshDesc.vbOffset + (idx + 1));
             pv_sum[0] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;
         }
         patch.pv[0] = pv_sum[0] + (src_pv[0] * (1.f - kb * valence[0]));
-        //patch.pv[0] = src_pv[0];
     }
 
     if(count1 < 3) {
@@ -289,7 +285,6 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
             pv_sum[1] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;
         }
         patch.pv[1] = pv_sum[1] + (src_pv[1] * (1.f - kb * valence[1]));
-        //patch.pv[1] = src_pv[1];
     }
 
     if(count2 < 3) {
@@ -312,7 +307,6 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
             pv_sum[2] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;
         }
         patch.pv[2] = pv_sum[2] + (src_pv[2] * (1.f - kb * valence[2]));
-        //patch.pv[2] = src_pv[2];
     }
 
     //patch.pv = src_pv;
@@ -596,7 +590,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
                     
-                    gVBufferSW.writeAUX(pixelPos, float4(tri.getAUX(uv),0));
+                    //gVBufferSW.writeAUX(pixelPos, float4(tri.getAUX(uv),0));
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);

@@ -2890,13 +2890,15 @@ void SceneBuilder::createMeshSubdivData() {
 
     memset(mSceneData.meshNeighborVerticesMap.data(), 0, sizeof(uint2) * mSceneData.meshNeighborVerticesMap.size());
 
+    uint32_t dbg_max_d_index = 0;
+
 	for (auto& mesh: mMeshes) {
 		if(!mesh.hasSubdivInstances()) continue;
 		if(!mesh.adjacencyData.isValid() || mesh.adjacencyData.pointToVerticesMap.empty()) {
 			LLOG_WRN << "Unable to build subdiv data for mesh " << mesh.name << " ! Missing adjacency data.";
 			continue;
 		}
-		if(mesh.pointIndexData.empty()) {// || (mesh.pointIndexData.size() != mesh.indexCount)) {
+		if(mesh.pointIndexData.empty() || (mesh.pointIndexData.size() != mesh.vertexCount)) {
 			LLOG_WRN << "Unable to build subdiv data for mesh " << mesh.name << " ! Missing or malformed point index data.";
 			continue;
 		}
@@ -2916,7 +2918,7 @@ void SceneBuilder::createMeshSubdivData() {
 		std::vector<uint8_t> localPointUsed(adjacency.pointToVerticesMap.size());
 		memset(localPointUsed.data(), 0, localPointUsed.size());
 
-		std::vector<uint2> pairOffsetCountMap(mesh.indexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
+		std::vector<uint2> pairOffsetCountMap(mesh.vertexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
 		memset(pairOffsetCountMap.data(), 0, sizeof(uint2) * pairOffsetCountMap.size());
 
 		// iterate over mesh prims (triangles)
@@ -2938,7 +2940,7 @@ void SceneBuilder::createMeshSubdivData() {
 
     			const uint32_t* neighbors = adjacency.data.data() + adjacency.offsets[edge_v0];
     			size_t neighbors_count = adjacency.counts[edge_v0];
-
+    			
     			// skip isolated triangles
     			if(neighbors_count <= 1) {
     				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
@@ -2962,6 +2964,7 @@ void SceneBuilder::createMeshSubdivData() {
       					neighbor_points.insert(p_a);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
       						d_index = a;
+      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
       						localPointUsed[p_a] = 1;
       					}
       				}
@@ -2970,6 +2973,7 @@ void SceneBuilder::createMeshSubdivData() {
       					neighbor_points.insert(p_b);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
       						d_index = b;
+      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
       						localPointUsed[p_b] = 1;
       					}
       				}
@@ -2978,6 +2982,7 @@ void SceneBuilder::createMeshSubdivData() {
       					neighbor_points.insert(p_c);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
       						d_index = c;
+      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
       						localPointUsed[p_c] = 1;
       					}
       				}
@@ -3105,6 +3110,10 @@ void SceneBuilder::createMeshSubdivData() {
   	
   		LLOG_DBG << "Mesh " << mesh.name << " subdiv data size " << mSceneData.meshNeighborVertices.size() * sizeof(uint32_t) + mSceneData.meshNeighborVerticesMap.size() * sizeof(uint2);
   		LLOG_DBG << "Mesh " << mesh.name << " geom data size " << mesh.getGeoHostMemUsage();
+  		
+  		LLOG_WRN << "Mesh " << mesh.name << " vertexCount" << mesh.vertexCount;
+  		LLOG_WRN << "Mesh " << mesh.name << " indexCount" << mesh.indexCount;
+  		LLOG_WRN << "Mesh " << mesh.name << " max d_index " << dbg_max_d_index;
       				
   		/*
   		lava::ut::log::flush();
