@@ -193,10 +193,6 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         normalize(mul(vertex_data[uint(indices[2])].normal, worldInvTransposeMat))
     };
 
-    //uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[0]]];
-    //uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[1]]];
-    //uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[2]]];
-
     uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 0];
     uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 1];
     uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 2];
@@ -219,34 +215,25 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     float3 pv_sum[3] = {float3(0.f), float3(0.f), float3(0.f)};
 
     if(count0 > 2 && d_idx0 != kInvalid) {
-        //auxW(src_pv[0], float4(d_idx0));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx0);
         pv_sum[0] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        auxW(pv_sum[0], float4(d_idx1));
         patch.pe[0] = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[0]) * k18;
-        auxW(patch.pe[0], float4(0, 0, 1, 0));
     } else {
         valence[0]--;
     }
 
     if(count1 > 2 && d_idx1 != kInvalid) {
-        //auxW(src_pv[1], float4(d_idx1));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx1);
         pv_sum[1] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        auxW(pv_sum[1], float4(d_idx1));
         patch.pe[1] = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[1]) * k18;
-        auxW(patch.pe[1], float4(0, 0, 1, 0));
     } else {
         valence[1]--;
     }
 
     if(count2 > 2 && d_idx2 != kInvalid) {
-        //auxW(src_pv[2], float4(d_idx2));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx2);
         pv_sum[2] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
-        auxW(pv_sum[2], float4(d_idx1));
         patch.pe[2] = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[2]) * k18;
-        auxW(patch.pe[2], float4(0, 0, 1, 0));
     } else {
         valence[2]--;
     }
@@ -503,11 +490,8 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
         uint2 bb_min_u = uint2(clamp(bb_min, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
         uint2 bb_max_u = uint2(clamp(bb_max, int2(0, 0), int2(gVBufferSW.frameDim - int2(1, 1))));
 
-        //bb_min_u.y -= 1;
-        //bb_max_u.y += 1;
-
         for(uint y = y_start; y < gVBufferSW.frameDim.y; y += y_d) {
-            //if(y < bb_min_u.y || y > bb_max_u.y) continue;
+            if(y < bb_min_u.y || y > bb_max_u.y) continue;
 
             uint lock_idx = y << 2;
             

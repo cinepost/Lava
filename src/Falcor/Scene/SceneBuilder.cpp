@@ -2954,12 +2954,7 @@ void SceneBuilder::createMeshSubdivData() {
     				uint32_t neighbor_prim = neighbors[j];
     				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
       				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-      				//if(!cw) {
-      				//	p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-      				//} else {
-      				//	p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-      				//}
-
+      				
       				if(p_a != edge_p0) {
       					neighbor_points.insert(p_a);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
@@ -2988,8 +2983,6 @@ void SceneBuilder::createMeshSubdivData() {
       				}
       			}
 
-      			LLOG_WRN << "D index " << d_index;
-
       			if(d_index == kInvalidID && (neighbor_points.size() > (neighbors_count + 1))) {
 					//LLOG_WRN << "Invalid pt";
 					// Discontinuities in neighbours
@@ -3003,19 +2996,13 @@ void SceneBuilder::createMeshSubdivData() {
       			bool isEdgePoint = neighbor_points.size() == (neighbors_count + 1);
 
       			if(!isEdgePoint) {
-					//LLOG_WRN << "Norm pt";
 					// point surrounded by neighbors
 	    			for (size_t j = 0; j < neighbors_count; ++j) {
 	      				uint32_t neighbor_prim = neighbors[j];
 
 	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
 	      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-	      				//if(!cw) {
-	      				//	p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-	      				//} else {
-	      				//	p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-	      				//}
-		
+	      				
 	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
 	      					neighborVertices.push_back(a);
 	      					localPointUsed[p_a] = 1;
@@ -3045,12 +3032,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      				uint32_t neighbor_prim = neighbors[j];
 
 	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-	      				uint32_t p_a, p_b, p_c;
-	      				if(!cw) {
-	      					p_a = mesh.pointIndexData[c], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[a];
-	      				} else {
-	      					p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-	      				}
+	      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
 
 	      				if(p_a != edge_p0) {
 	      					auto it = open_ring_points.find(p_a);
@@ -3088,23 +3070,15 @@ void SceneBuilder::createMeshSubdivData() {
 	      					neighborVertices.push_back(adjacency.pointToVerticesMap[p].back());
 	      				}
 	      				pairOffsetCountMap[index_0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
-	      				//LLOG_WRN << "Edge pt neighbor points " << neighbor_points.size();
-	      				//LLOG_WRN << "Edge pt open points " << open_ring_points.size() << " size " << (neighborVertices.size() - neighborVerticesOffset);
 	      			}		
 	    		}
 
-    			//LLOG_WRN << "Neighbor count " << neighbors_count << " d vertex found " << (d_index_found ? "YES" : "NO");
-    			
     			// remove used flags
     			for (size_t j = 0; j < neighbors_count; ++j) {
     				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 0)]] = 0;
     				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 1)]] = 0;
     				localPointUsed[mesh.pointIndexData[mesh.getIndex(neighbors[j] * 3 + 2)]] = 0;
     			}
-
-    			//if(pairOffsetCountMap[edge_v0].c != 2) {
-    			//	pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
-    			//}
     		}
   		}
 
@@ -3112,23 +3086,6 @@ void SceneBuilder::createMeshSubdivData() {
   	
   		LLOG_DBG << "Mesh " << mesh.name << " subdiv data size " << mSceneData.meshNeighborVertices.size() * sizeof(uint32_t) + mSceneData.meshNeighborVerticesMap.size() * sizeof(uint2);
   		LLOG_DBG << "Mesh " << mesh.name << " geom data size " << mesh.getGeoHostMemUsage();
-  		
-  		LLOG_WRN << "Mesh " << mesh.name << " vertexCount" << mesh.vertexCount;
-  		LLOG_WRN << "Mesh " << mesh.name << " indexCount" << mesh.indexCount;
-  		LLOG_WRN << "Mesh " << mesh.name << " max d_index " << dbg_max_d_index;
-      				
-  		/*
-  		lava::ut::log::flush();
-  		printf("\nPair count-offset map (%zu):\n", pairOffsetCountMap.size());
-  		for(uint2 e: pairOffsetCountMap) printf("[%u,%u] ", e[0], e[1]);
-  		printf("\nNeighbor vertices (%zu):\n", neighborVertices.size());
-  		for(uint2 e: pairOffsetCountMap) {
-  			printf("[ ");
-  			for(uint32_t i = e[1]; i < (e[0] + e[1]); ++i) printf("%u ", neighborVertices[i]);
-  			printf(" ]");
-  		}
-		printf("\n");
-		*/
 	}
 
 	auto totalSubdivDataBuildDuration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - start_time);
