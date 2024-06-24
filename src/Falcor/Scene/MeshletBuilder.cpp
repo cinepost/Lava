@@ -712,9 +712,9 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
 
       const uint32_t mIdx0 = mesh.getIndex(prim * 3 + 0), mIdx1 = mesh.getIndex(prim * 3 + 1), mIdx2 = mesh.getIndex(prim * 3 + 2);
     
-      const bool newV0 = true;// vertices.find(mIdx0) == vertices.end();
-      const bool newV1 = true;// vertices.find(mIdx1) == vertices.end();
-      const bool newV2 = true;// vertices.find(mIdx2) == vertices.end();
+      const bool newV0 = vertices.find(mIdx0) == vertices.end();
+      const bool newV1 = vertices.find(mIdx1) == vertices.end();
+      const bool newV2 = vertices.find(mIdx2) == vertices.end();
 
       const size_t new_vertices_count = 3;//(newV0 ? 1 : 0) + (newV1 ? 1 : 0) + (newV2 ? 1 : 0);
 
@@ -739,12 +739,12 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
     meshletSpec.indices.clear();
   
     for(const auto& triangle: triangles) {
-      //meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[0])));
-      //meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[1])));
-      //meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[2])));
-      meshletSpec.indices.push_back(idx++);
-      meshletSpec.indices.push_back(idx++);
-      meshletSpec.indices.push_back(idx++);
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[0])));
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[1])));
+      meshletSpec.indices.push_back(std::distance(vertices.begin(), vertices.find(triangle[2])));
+      //meshletSpec.indices.push_back(idx++);
+      //meshletSpec.indices.push_back(idx++);
+      //meshletSpec.indices.push_back(idx++);
     }
 
     meshletSpec.vertices.resize(vertices.size());

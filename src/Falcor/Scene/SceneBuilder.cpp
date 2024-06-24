@@ -2918,7 +2918,7 @@ void SceneBuilder::createMeshSubdivData() {
 		std::vector<uint8_t> localPointUsed(adjacency.pointToVerticesMap.size());
 		memset(localPointUsed.data(), 0, localPointUsed.size());
 
-		std::vector<uint2> pairOffsetCountMap(mesh.vertexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
+		std::vector<uint2> pairOffsetCountMap(mesh.indexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
 		memset(pairOffsetCountMap.data(), 0, sizeof(uint2) * pairOffsetCountMap.size());
 
 		// iterate over mesh prims (triangles)
@@ -2929,8 +2929,8 @@ void SceneBuilder::createMeshSubdivData() {
 
     		// process prim
     		for(size_t k = 0; k < 3; ++k) {
+    			uint32_t index_0 = prim * 3 + k;
     			uint32_t edge_v0 = index[k];
-    			uint32_t edge_v1 = index[k+1];
 
     			uint32_t edge_p0 = p[k];
     			uint32_t edge_p1 = p[k+1];
@@ -2943,7 +2943,7 @@ void SceneBuilder::createMeshSubdivData() {
     			
     			// skip isolated triangles
     			if(neighbors_count <= 1) {
-    				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+    				pairOffsetCountMap[index_0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
     				continue;
     			}
 
@@ -2988,11 +2988,13 @@ void SceneBuilder::createMeshSubdivData() {
       				}
       			}
 
+      			LLOG_WRN << "D index " << d_index;
+
       			if(d_index == kInvalidID && (neighbor_points.size() > (neighbors_count + 1))) {
 					//LLOG_WRN << "Invalid pt";
 					// Discontinuities in neighbours
 					// No d_index found but more than one neighbor. degraded vertex
-					pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+					pairOffsetCountMap[index_0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
 					continue;
       			}	
       			
@@ -3030,8 +3032,8 @@ void SceneBuilder::createMeshSubdivData() {
 	      				}
 	    			}
 
-	    			if(pairOffsetCountMap[edge_v0].x != 3) {
-    					pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+	    			if(pairOffsetCountMap[index_0].x != 3) {
+    					pairOffsetCountMap[index_0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
     				}
 
 	    		} else {
@@ -3080,12 +3082,12 @@ void SceneBuilder::createMeshSubdivData() {
 
 	      			if(open_ring_points.size() != 2) {
 	      				LLOG_ERR << "Sudbiv data build integrity failed. Mesh " << mesh.name << " edge vertex " << edge_v0 << " has more than 2 edge neighbors !!! " << open_ring_points.size();
-	      				pairOffsetCountMap[edge_v0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
+	      				pairOffsetCountMap[index_0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
 	      			} else {
 	      				for(auto p: open_ring_points) {
 	      					neighborVertices.push_back(adjacency.pointToVerticesMap[p].back());
 	      				}
-	      				pairOffsetCountMap[edge_v0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
+	      				pairOffsetCountMap[index_0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
 	      				//LLOG_WRN << "Edge pt neighbor points " << neighbor_points.size();
 	      				//LLOG_WRN << "Edge pt open points " << open_ring_points.size() << " size " << (neighborVertices.size() - neighborVerticesOffset);
 	      			}		

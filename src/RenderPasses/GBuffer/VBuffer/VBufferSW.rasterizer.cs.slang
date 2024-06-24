@@ -193,9 +193,13 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         normalize(mul(vertex_data[uint(indices[2])].normal, worldInvTransposeMat))
     };
 
-    uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 0]];
-    uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 1]];
-    uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + triangle_id * 3 + 2]];
+    //uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[0]]];
+    //uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[1]]];
+    //uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + gScene.meshletVertices[meshlet.vertexOffset + indices[2]]];
+
+    uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 0];
+    uint2 pair1 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 1];
+    uint2 pair2 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 2];
     
     uint count0  = pair0[0];
     uint offset0 = pair0[1];
@@ -215,28 +219,34 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     float3 pv_sum[3] = {float3(0.f), float3(0.f), float3(0.f)};
 
     if(count0 > 2 && d_idx0 != kInvalid) {
-        auxW(src_pv[0], float4(d_idx0));
+        //auxW(src_pv[0], float4(d_idx0));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx0);
         pv_sum[0] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
+        auxW(pv_sum[0], float4(d_idx1));
         patch.pe[0] = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[0]) * k18;
+        auxW(patch.pe[0], float4(0, 0, 1, 0));
     } else {
         valence[0]--;
     }
 
     if(count1 > 2 && d_idx1 != kInvalid) {
-        auxW(src_pv[1], float4(d_idx1));
+        //auxW(src_pv[1], float4(d_idx1));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx1);
         pv_sum[1] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
+        auxW(pv_sum[1], float4(d_idx1));
         patch.pe[1] = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[1]) * k18;
+        auxW(patch.pe[1], float4(0, 0, 1, 0));
     } else {
         valence[1]--;
     }
 
     if(count2 > 2 && d_idx2 != kInvalid) {
-        auxW(src_pv[2], float4(d_idx2));
+        //auxW(src_pv[2], float4(d_idx2));
         StaticVertexData vtx_d = gScene.getVertex(gsMeshDesc.vbOffset + d_idx2);
         pv_sum[2] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
+        auxW(pv_sum[2], float4(d_idx1));
         patch.pe[2] = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[2]) * k18;
+        auxW(patch.pe[2], float4(0, 0, 1, 0));
     } else {
         valence[2]--;
     }
@@ -308,8 +318,6 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         }
         patch.pv[2] = pv_sum[2] + (src_pv[2] * (1.f - kb * valence[2]));
     }
-
-    //patch.pv = src_pv;
 
     patch.nv = nv;
 
@@ -523,7 +531,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 float4 jitter = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
                 
                 // Anti aliasing jitter [-0.5, 0.5] range 
-                float2 aaj = 0.f; //jitter.xy - float2(0.5f, 0.5f);
+                float2 aaj = jitter.xy - float2(0.49f, 0.49f);
                 float3 pj0 = pt0.xyz + float3(aaj, .0), pj1 = pt1.xyz + float3(aaj, .0), pj2 = pt2.xyz + float3(aaj, .0);
 
         #if (COMPUTE_DEPTH_OF_FIELD == 1)
