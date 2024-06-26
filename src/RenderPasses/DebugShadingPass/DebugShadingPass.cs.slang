@@ -82,19 +82,24 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 faceNormalW = float3(0.f);
 
 #if is_valid(gNormW)
-    uint3 packedNormal = gNormW[pixelPos].xyz;
-    
-    normalW = {
-        unpackSnorm16(packedNormal.x >> 16),
-        unpackSnorm16(packedNormal.y >> 16),
-        unpackSnorm16(packedNormal.z >> 16)
-    };
+    if( gScene.isObjectSubdividable(triangleHit.instanceID) ) {
+        uint3 packedNormal = gNormW[pixelPos].xyz;
+        
+        normalW = {
+            unpackSnorm16(packedNormal.x >> 16),
+            unpackSnorm16(packedNormal.y >> 16),
+            unpackSnorm16(packedNormal.z >> 16)
+        };
 
-    faceNormalW = {
-        unpackSnorm16(packedNormal.x & 0x0000ffff),
-        unpackSnorm16(packedNormal.y & 0x0000ffff),
-        unpackSnorm16(packedNormal.z & 0x0000ffff)
-    };
+        faceNormalW = {
+            unpackSnorm16(packedNormal.x & 0x0000ffff),
+            unpackSnorm16(packedNormal.y & 0x0000ffff),
+            unpackSnorm16(packedNormal.z & 0x0000ffff)
+        };
+    } else {
+        normalW = v.normalW.xyz;
+        faceNormalW = v.faceNormalW.xyz;
+    }
 
 #else
     normalW = v.normalW.xyz;
@@ -105,7 +110,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     
 
 #if is_valid(gOutNormals)
-    gOutNormals[pixelPos] = float4(normalW, 0.f);
+    gOutNormals[pixelPos] = float4(faceNormalW, 0.f);
 #endif  // gOutNormals
 
 #if is_valid(gOutTangentNormals)

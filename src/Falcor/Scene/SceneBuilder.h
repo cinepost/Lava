@@ -259,13 +259,6 @@ class dlldecl SceneBuilder {
 
     bool meshExist(const std::string& name);
 
-    /** Add a triangle mesh.
-        \param The triangle mesh to add.
-        \param pMaterial The material to use for the mesh.
-        \return The ID of the mesh in the scene.
-    */
-    uint32_t addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial);
-
     /** Pre-process a mesh into the data format that is used in the global scene buffers.
         Throws an exception if something went wrong.
         \param mesh The mesh to pre-process.
@@ -508,6 +501,13 @@ class dlldecl SceneBuilder {
     ~SceneBuilder();
 
 private:
+    /** Add a triangle mesh.
+        \param The triangle mesh to add.
+        \param pMaterial The material to use for the mesh.
+        \return The ID of the mesh in the scene.
+    */
+    uint32_t addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial);
+
     void resetScene(bool reuseExisting = false);
 
 public:
