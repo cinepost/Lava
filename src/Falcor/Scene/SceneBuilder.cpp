@@ -2890,9 +2890,7 @@ void SceneBuilder::createMeshSubdivData() {
 
     memset(mSceneData.meshNeighborVerticesMap.data(), 0, sizeof(uint2) * mSceneData.meshNeighborVerticesMap.size());
 
-    uint32_t dbg_max_d_index = 0;
-
-	for (auto& mesh: mMeshes) {
+    for (auto& mesh: mMeshes) {
 		if(!mesh.hasSubdivInstances()) continue;
 		if(!mesh.adjacencyData.isValid() || mesh.adjacencyData.pointToVerticesMap.empty()) {
 			LLOG_WRN << "Unable to build subdiv data for mesh " << mesh.name << " ! Missing adjacency data.";
@@ -2911,13 +2909,27 @@ void SceneBuilder::createMeshSubdivData() {
 
 		auto const& adjacency = mesh.adjacencyData;
 
-		LLOG_WRN << "Mesh " << mesh.name << " adjacency data hash " << adjacency.hash();
+		mesh.adjacencyDataOffset = kInvalidID;
+		if(adjacency.isValid()) {
+			assert(adjacency.counts.size() == adjacency.offsets.size());
+
+			// Copy adjacency data first
+			uint32_t prev_scene_adjacency_data_size = mSceneData.meshAdjacencyData.size();
+			mesh.adjacencyDataOffset = static_cast<uint32_t>(mSceneData.meshAdjacencyOffsets.size());
+			for(size_t i = 0; i < adjacency.counts.size(); ++i) {
+				mSceneData.meshAdjacencyOffsets.push_back(adjacency.offsets[i] + prev_scene_adjacency_data_size);
+			}
+			mSceneData.meshAdjacencyCounts.insert(mSceneData.meshAdjacencyCounts.end(), adjacency.counts.begin(), adjacency.counts.end());
+			mSceneData.meshAdjacencyData.insert(mSceneData.meshAdjacencyData.end(), adjacency.data.begin(), adjacency.data.end());
+
+			LLOG_WRN << "Mesh " << mesh.name << " adjacency data hash " << adjacency.hash();
+		} 
 
 		uint32_t prim_count = mesh.getPrimitivesCount();
 
 		std::vector<uint8_t> localPointUsed(adjacency.pointToVerticesMap.size());
 		memset(localPointUsed.data(), 0, localPointUsed.size());
-
+		
 		std::vector<uint2> pairOffsetCountMap(mesh.indexCount); // per vertex offset-count (offset to count of neighbor merged vertices(points))
 		memset(pairOffsetCountMap.data(), 0, sizeof(uint2) * pairOffsetCountMap.size());
 
@@ -2952,14 +2964,14 @@ void SceneBuilder::createMeshSubdivData() {
 				// Find d indices first
     			for (size_t j = 0; j < neighbors_count; ++j) {
     				uint32_t neighbor_prim = neighbors[j];
-    				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
-      				
+
+    				uint32_t ia = neighbor_prim * 3 + 0, ib = ia + 1, ic = ib + 1;
+    				uint32_t p_a = mesh.pointIndexData[mesh.getIndex(ia)], p_b = mesh.pointIndexData[mesh.getIndex(ib)], p_c = mesh.pointIndexData[mesh.getIndex(ic)];
+
       				if(p_a != edge_p0) {
       					neighbor_points.insert(p_a);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_c == edge_p1) || (p_b == edge_p1 && p_c == edge_p0))) {
-      						d_index = a;
-      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
+      						d_index = ia;
       						localPointUsed[p_a] = 1;
       					}
       				}
@@ -2967,8 +2979,7 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_b != edge_p0) {
       					neighbor_points.insert(p_b);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_a == edge_p0 && p_c == edge_p1) || (p_a == edge_p1 && p_c == edge_p0))) {
-      						d_index = b;
-      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
+      						d_index = ib;
       						localPointUsed[p_b] = 1;
       					}
       				}
@@ -2976,8 +2987,7 @@ void SceneBuilder::createMeshSubdivData() {
       				if(p_c != edge_p0) {
       					neighbor_points.insert(p_c);
       					if((d_index == kInvalidID) && (prim != neighbor_prim) && ((p_b == edge_p0 && p_a == edge_p1) || (p_b == edge_p1 && p_a == edge_p0))) {
-      						d_index = c;
-      						dbg_max_d_index = std::max(dbg_max_d_index, d_index);
+      						d_index = ic;
       						localPointUsed[p_c] = 1;
       					}
       				}
@@ -3000,21 +3010,21 @@ void SceneBuilder::createMeshSubdivData() {
 	    			for (size_t j = 0; j < neighbors_count; ++j) {
 	      				uint32_t neighbor_prim = neighbors[j];
 
-	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-	      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				uint32_t ia = neighbor_prim * 3 + 0, ib = ia + 1, ic = ib + 1;
+    					uint32_t p_a = mesh.pointIndexData[mesh.getIndex(ia)], p_b = mesh.pointIndexData[mesh.getIndex(ib)], p_c = mesh.pointIndexData[mesh.getIndex(ic)];
 	      				
 	      				if(p_a != edge_p0 && !localPointUsed[p_a]) {
-	      					neighborVertices.push_back(a);
+	      					neighborVertices.push_back(ia);
 	      					localPointUsed[p_a] = 1;
 	      				}
 
 	      				if(p_b != edge_p0 && !localPointUsed[p_b]) {
-	      					neighborVertices.push_back(b);
+	      					neighborVertices.push_back(ib);
 	      					localPointUsed[p_b] = 1;
 	      				}
 
 	      				if(p_c != edge_p0 && !localPointUsed[p_c]) {
-	      					neighborVertices.push_back(c);
+	      					neighborVertices.push_back(ic);
 	      					localPointUsed[p_c] = 1;
 	      				}
 	    			}
@@ -3025,21 +3035,20 @@ void SceneBuilder::createMeshSubdivData() {
 
 	    		} else {
 	    			// edge point
-	    			
-	    			std::unordered_set<uint> open_ring_points;
+	    			std::unordered_map<uint32_t, uint32_t> open_ring_points;
 
 	    			for (size_t j = 0; j < neighbors_count; ++j) {
 	      				uint32_t neighbor_prim = neighbors[j];
 
-	      				uint32_t a = mesh.getIndex(neighbor_prim * 3 + 0), b = mesh.getIndex(neighbor_prim * 3 + 1), c = mesh.getIndex(neighbor_prim * 3 + 2);
-	      				uint32_t p_a = mesh.pointIndexData[a], p_b = mesh.pointIndexData[b], p_c = mesh.pointIndexData[c];
+	      				uint32_t ia = neighbor_prim * 3 + 0, ib = ia + 1, ic = ib + 1;
+    					uint32_t p_a = mesh.pointIndexData[mesh.getIndex(ia)], p_b = mesh.pointIndexData[mesh.getIndex(ib)], p_c = mesh.pointIndexData[mesh.getIndex(ic)];
 
 	      				if(p_a != edge_p0) {
 	      					auto it = open_ring_points.find(p_a);
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
 	      					} else {
-	      						open_ring_points.insert(p_a);
+	      						open_ring_points.insert({p_a, ia});
 	      					}
 	      				}
 	      				
@@ -3048,7 +3057,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
 	      					} else {
-	      						open_ring_points.insert(p_b);
+	      						open_ring_points.insert({p_b, ib});
 	      					}
 	      				}
 	      				
@@ -3057,7 +3066,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      					if(it != open_ring_points.end()) {
 	      						open_ring_points.erase(it);
 	      					} else {
-	      						open_ring_points.insert(p_c);
+	      						open_ring_points.insert({p_c, ic});
 	      					}
 	      				}
 	      			}
@@ -3067,7 +3076,7 @@ void SceneBuilder::createMeshSubdivData() {
 	      				pairOffsetCountMap[index_0] = {/* counts */ 0, /* offset */ neighborVerticesOffset};
 	      			} else {
 	      				for(auto p: open_ring_points) {
-	      					neighborVertices.push_back(adjacency.pointToVerticesMap[p].back());
+	      					neighborVertices.push_back(p.second);
 	      				}
 	      				pairOffsetCountMap[index_0] = {/* counts */ neighborVertices.size() - neighborVerticesOffset, /* offset */ neighborVerticesOffset};
 	      			}		
@@ -3108,6 +3117,7 @@ void SceneBuilder::createMeshData() {
 		meshData[meshID].ibOffset = mesh.indexOffset;
 		meshData[meshID].mbOffset = mesh.perPrimMaterialIndicesOffset;
 		meshData[meshID].subdivDataOffset = mesh.subdivDataOffset;
+		meshData[meshID].adjacencyDataOffset = mesh.adjacencyDataOffset;
 		meshData[meshID].vertexCount = mesh.vertexCount;
 		meshData[meshID].indexCount = mesh.indexCount;
 		meshData[meshID].skinningVbOffset = mesh.hasSkinningData ? mesh.skinningVertexOffset : 0;

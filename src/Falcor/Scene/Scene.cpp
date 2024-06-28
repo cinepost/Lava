@@ -98,6 +98,10 @@ namespace {
     const std::string kMeshNeighborVerticesMapBufferName = "meshNeighborVerticesMap";
     const std::string kMeshNeighborVerticesBufferName = "meshNeighborVertices";
 
+    const std::string kMeshAdjacencyCountsBufferName = "meshAdjacencyCounts";
+    const std::string kMeshAdjacencyOffsetsBufferName = "meshAdjacencyOffsets";
+    const std::string kMeshAdjacencyDataBufferName = "meshAdjacencyData";
+
     const std::string kStats = "stats";
     const std::string kBounds = "bounds";
     const std::string kAnimations = "animations";
@@ -198,6 +202,10 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 
     mMeshNeighborVerticesMap = std::move(sceneData.meshNeighborVerticesMap);
     mMeshNeighborVertices = std::move(sceneData.meshNeighborVertices); 
+
+    mMeshAdjacencyCounts = std::move(sceneData.meshAdjacencyCounts);
+    mMeshAdjacencyOffsets = std::move(sceneData.meshAdjacencyOffsets);
+    mMeshAdjacencyData = std::move(sceneData.meshAdjacencyData);
 
     mCurveDesc = std::move(sceneData.curveDesc);
     mCurveBBs = std::move(sceneData.curveBBs);
@@ -809,6 +817,21 @@ void Scene::initResources() {
         mpMeshNeighborVerticesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshNeighborVerticesBufferName], (int32_t)mMeshNeighborVertices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMeshNeighborVerticesBuffer->setName("Scene::mpMeshNeighborVerticesBuffer");
     }
+
+    if (!mMeshAdjacencyCounts.empty()) {
+        mpMeshAdjacencyCountsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshAdjacencyCountsBufferName], (int32_t)mMeshAdjacencyCounts.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshAdjacencyCountsBuffer->setName("Scene::mpMeshAdjacencyCountsBuffer");
+    }
+
+    if (!mMeshAdjacencyOffsets.empty()) {
+        mpMeshAdjacencyOffsetsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshAdjacencyOffsetsBufferName], (int32_t)mMeshAdjacencyOffsets.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshAdjacencyOffsetsBuffer->setName("Scene::mpMeshAdjacencyOffsetsBuffer");
+    }
+    
+    if (!mMeshAdjacencyData.empty()) {
+        mpMeshAdjacencyDataBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshAdjacencyDataBufferName], (int32_t)mMeshAdjacencyData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshAdjacencyDataBuffer->setName("Scene::mpMeshAdjacencyDataBuffer");
+    }
 }
 
 void Scene::uploadResources() {
@@ -830,6 +853,11 @@ void Scene::uploadResources() {
     if (!mMeshNeighborVerticesMap.empty()) mpMeshNeighborVerticesMapBuffer->setBlob(mMeshNeighborVerticesMap.data(), 0, sizeof(uint2) * mMeshNeighborVerticesMap.size());
     if (!mMeshNeighborVertices.empty()) mpMeshNeighborVerticesBuffer->setBlob(mMeshNeighborVertices.data(), 0, sizeof(uint32_t) * mMeshNeighborVertices.size());
 
+    // Adjacency data.
+    if (!mMeshAdjacencyCounts.empty()) mpMeshAdjacencyCountsBuffer->setBlob(mMeshAdjacencyCounts.data(), 0, sizeof(uint) * mMeshAdjacencyCounts.size());
+    if (!mMeshAdjacencyOffsets.empty()) mpMeshAdjacencyOffsetsBuffer->setBlob(mMeshAdjacencyOffsets.data(), 0, sizeof(uint) * mMeshAdjacencyOffsets.size());
+    if (!mMeshAdjacencyData.empty()) mpMeshAdjacencyDataBuffer->setBlob(mMeshAdjacencyData.data(), 0, sizeof(uint) * mMeshAdjacencyData.size());
+
     // Per prim material ids.
     if (!mPerPrimMaterialIDs.empty()) mpPerPrimMaterialIDsBuffer->setBlob(mPerPrimMaterialIDs.data(), 0, sizeof(int32_t) * mPerPrimMaterialIDs.size());
 
@@ -849,6 +877,10 @@ void Scene::uploadResources() {
 
     mpSceneBlock->setBuffer(kMeshNeighborVerticesMapBufferName, mpMeshNeighborVerticesMapBuffer);
     mpSceneBlock->setBuffer(kMeshNeighborVerticesBufferName, mpMeshNeighborVerticesBuffer);
+
+    mpSceneBlock->setBuffer(kMeshAdjacencyCountsBufferName, mpMeshAdjacencyCountsBuffer);
+    mpSceneBlock->setBuffer(kMeshAdjacencyOffsetsBufferName, mpMeshAdjacencyOffsetsBuffer);
+    mpSceneBlock->setBuffer(kMeshAdjacencyDataBufferName, mpMeshAdjacencyDataBuffer);
 
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
 

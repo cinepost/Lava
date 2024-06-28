@@ -110,7 +110,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     
 
 #if is_valid(gOutNormals)
-    gOutNormals[pixelPos] = float4(faceNormalW, 0.f);
+    gOutNormals[pixelPos] = float4(normalW, 0.f);
 #endif  // gOutNormals
 
 #if is_valid(gOutTangentNormals)

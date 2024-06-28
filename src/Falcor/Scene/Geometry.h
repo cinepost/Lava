@@ -161,6 +161,7 @@ struct MeshSpec {
     uint32_t vertexCount = 0;                   ///< Number of vertices.
     uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
     uint32_t subdivDataOffset = kInvalidNodeID; ///< Offset into shared 'subdivData' array. This is calculated in createMeshSubdivData().
+    uint32_t adjacencyDataOffset = kInvalidNodeID;
     bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
     bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
     bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).

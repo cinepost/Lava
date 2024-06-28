@@ -30,6 +30,7 @@ MeshSpec::MeshSpec(const MeshSpec& spec) {
     boundingBox = spec.boundingBox;
     instances = spec.instances;
     subdivDataOffset = spec.subdivDataOffset;
+    adjacencyDataOffset = spec.adjacencyDataOffset;
     pointIndexData = spec.pointIndexData;
     indexData = spec.indexData;
     staticData = spec.staticData;
@@ -72,6 +73,7 @@ MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
         instances = o.instances;
 
         subdivDataOffset = o.subdivDataOffset;
+        adjacencyDataOffset = o.adjacencyDataOffset;
         pointIndexData = o.pointIndexData;
 
         indexData = o.indexData;
