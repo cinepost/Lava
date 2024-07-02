@@ -99,7 +99,12 @@ struct Scene
 
     // Subdiv data
     StructuredBuffer<uint2>  meshNeighborVerticesMap;               ///< Per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
-    StructuredBuffer<uint>  meshNeighborVertices;
+    StructuredBuffer<uint>   meshNeighborVertices;
+
+    // Adjacency data
+    StructuredBuffer<uint>   meshAdjacencyCounts;
+    StructuredBuffer<uint>   meshAdjacencyOffsets;
+    StructuredBuffer<uint>   meshAdjacencyData;
 
     // Curves
     StructuredBuffer<CurveDesc> curves;
@@ -385,14 +390,45 @@ struct Scene
 
     // Geometry access
 
+    /** Returns the local vertex index.
+        \param[in] ibOffset Offset into the index buffer.
+        \param[in] index Index of the triangle.
+        \param[in] use16Bit Flag indicating that the indices are stored in 16-bit format.
+        \return Vertex indices local to the current mesh.
+    */
+    uint getLocalIndex(const uint ibOffset, const uint index, const bool use16Bit) {
+#if SCENE_HAS_INDEXED_VERTICES
+        // Determine what format of the indices.
+        // It's only if the scene has mixed formats that we incur the cost of checking the flag bit.
+#if SCENE_HAS_16BIT_INDICES && SCENE_HAS_32BIT_INDICES
+        bool read16Bit = use16Bit;
+#elif SCENE_HAS_16BIT_INDICES
+        bool read16Bit = true;
+#else
+        bool read16Bit = false;
+#endif
+        uint vtxIndex;
+        uint baseIndex = ibOffset * 4;
+        if (read16Bit) {
+            baseIndex += index * 2;
+            vtxIndex = (uint)indexData.Load<uint16_t>(baseIndex);
+        } else {
+            baseIndex += index * 4;
+            vtxIndex = indexData.Load(baseIndex);
+        }
+#else // !SCENE_HAS_INDEXED_VERTICES
+        uint vtxIndex = index;
+#endif
+        return vtxIndex;
+    }
+
     /** Returns the local vertex indices for a given triangle.
         \param[in] ibOffset Offset into the index buffer.
         \param[in] triangleIndex Index of the triangle.
         \param[in] use16Bit Flag indicating that the indices are stored in 16-bit format.
         \return Vertex indices local to the current mesh.
     */
-    uint3 getLocalIndices(const uint ibOffset, const uint triangleIndex, const bool use16Bit)
-    {
+    uint3 getLocalIndices(const uint ibOffset, const uint triangleIndex, const bool use16Bit) {
 #if SCENE_HAS_INDEXED_VERTICES
         // Determine what format of the indices.
         // It's only if the scene has mixed formats that we incur the cost of checking the flag bit.
@@ -406,13 +442,10 @@ struct Scene
         // Load the vertex indices.
         uint baseIndex = ibOffset * 4;
         uint3 vtxIndices;
-        if (read16Bit)
-        {
+        if (read16Bit) {
             baseIndex += triangleIndex * 6;
             vtxIndices = (uint3)indexData.Load<uint16_t3>(baseIndex);
-        }
-        else
-        {
+        } else {
             baseIndex += triangleIndex * 12;
             vtxIndices = indexData.Load3(baseIndex);
         }
@@ -423,17 +456,23 @@ struct Scene
         return vtxIndices;
     }
 
+    /** Returns the local vertex index.
+        \param[in] meshID Mesh ID.
+        \param[in] index Index in the given mesh.
+        \return Local mesh vertex index.
+    */
+    uint getLocalIndex(const MeshDesc mesh, const uint index) {
+        return getLocalIndex(mesh.ibOffset, index, mesh.flags & uint(MeshFlags::Use16BitIndices));
+    }
+
     /** Returns the global vertex indices for a given triangle.
         \param[in] meshID Mesh ID.
-        \param[in] triangleIndex Index of the triangle in the given mesh.
-        \return Vertex indices into the global vertex buffer.
+        \param[in] index Index in the given mesh.
+        \return Vertex index into the global vertex buffer.
     */
-    uint3 getIndices(const uint meshID, const uint triangleIndex)
-    {
-        const MeshDesc mesh = meshes[meshID];
-        uint3 vtxIndices = getLocalIndices(mesh.ibOffset, triangleIndex, mesh.flags & uint(MeshFlags::Use16BitIndices));
-        vtxIndices += mesh.vbOffset;
-        return vtxIndices;
+    uint getIndex(const MeshDesc mesh, const uint index) {
+        //const MeshDesc mesh = meshes[meshID];
+        return getLocalIndex(mesh, index) + mesh.vbOffset;
     }
 
     /** Returns the global vertex indices for a given triangle.
@@ -441,8 +480,7 @@ struct Scene
         \param[in] triangleIndex Index of the triangle in the given mesh.
         \return Vertex indices into the global vertex buffer.
     */
-    uint3 getIndices(const GeometryInstanceID instanceID, const uint triangleIndex)
-    {
+    uint3 getIndices(const GeometryInstanceID instanceID, const uint triangleIndex) {
         const GeometryInstanceData instance = getGeometryInstance(instanceID);
         uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
         vtxIndices += instance.vbOffset;
@@ -453,8 +491,7 @@ struct Scene
         \param[in] index Global vertex index.
         \return Vertex data.
     */
-    StaticVertexData getVertex(const uint index)
-    {
+    StaticVertexData getVertex(const uint index) {
         return vertices[index].unpack();
     }
 

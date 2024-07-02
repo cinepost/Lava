@@ -57,7 +57,7 @@ namespace {
         { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         { kInputMVectors,           "gMotionVector",        "Motion vector buffer (float format)",      true /* optional */                                 },
         { kInputDrawCount,          "gDrawCount",           "Draw count debug buffer",                  true /* optional */, ResourceFormat::R32Uint        },
-        { kInputNormalW,            "gNormW",               "Shading normal in world space",            true /* optional */, ResourceFormat::RGBA16Float    },
+        { kInputNormalW,            "gNormW",               "Shading normal in world space",            true /* optional */, ResourceFormat::RGBA32Uint     },
     };
 
     const ChannelList kExtraInputOutputChannels = {

@@ -97,6 +97,22 @@ struct PrimitiveAdjacency {
         pointToVerticesMap.clear();
         _valid = false;
     }
+
+    size_t hash() const {
+        size_t cnts = 0;
+        for(size_t i = 0; i < counts.size(); ++i) cnts += counts[i]*i;
+        cnts += counts.size();
+
+        size_t offs = 0;
+        for(size_t i = 0; i < offsets.size(); ++i) offs += offsets[i]*i;
+        offs += offsets.size();
+
+        size_t dats = 0;
+        for(size_t i = 0; i < data.size(); ++i) dats += data[i]*i;
+        dats += data.size();
+
+        return cnts + offs + dats;
+    }
 };
 
 struct MeshletSpec {
@@ -145,6 +161,7 @@ struct MeshSpec {
     uint32_t vertexCount = 0;                   ///< Number of vertices.
     uint32_t skeletonNodeID = kInvalidNodeID;   ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
     uint32_t subdivDataOffset = kInvalidNodeID; ///< Offset into shared 'subdivData' array. This is calculated in createMeshSubdivData().
+    uint32_t adjacencyDataOffset = kInvalidNodeID;
     bool use16BitIndices = false;               ///< True if the indices are in 16-bit format.
     bool hasSkinningData = false;               ///< True if mesh has dynamic vertices.
     bool isStatic = false;                      ///< True if mesh is non-instanced and static (not dynamic or animated).

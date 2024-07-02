@@ -111,10 +111,10 @@ struct MeshDesc {
     uint prevVbOffset;      ///< Offset into previous vertex data buffer, or zero if neither skinned or animated.
     uint materialID;        ///< Material ID.
 
-    uint flags;             ///< See MeshFlags.
-    uint subdivDataOffset;  ///< Offset into global subdiv data buffer.
-
-    uint2 _pad;
+    uint flags;                 ///< See MeshFlags.
+    uint subdivDataOffset;      ///< Offset into global subdiv data buffer.
+    uint adjacencyDataOffset;   ///< Offset into global adjacency data buffer.
+    uint _pad;
 
     uint getTriangleCount() CONST_FUNCTION {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;

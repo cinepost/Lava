@@ -83,7 +83,6 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
-        { "normW",          "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA16Float },
         { "depth",          "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",           "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",          "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
@@ -96,6 +95,11 @@ namespace {
         { kOuputAUX,        "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
         { kOuputTime,       "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
         { kOutputDrawCount, "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
+    };
+
+    // Additional output channels.
+    const ChannelList kVBufferExtraSubdChannels = {
+        { "normW",          "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
     };
 };
 
@@ -153,6 +157,11 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     // Add all the other outputs.
     addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
 
+    // Add subd outputs.
+    if(mUseSubdivisions) {
+        addRenderPassOutputs(reflector, kVBufferExtraSubdChannels, ResourceBindFlags::UnorderedAccess);
+    }
+
     return reflector;
 }
 
@@ -177,6 +186,10 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
     clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
+    
+    if(mUseSubdivisions) {
+        clearRenderPassChannels(pRenderContext, kVBufferExtraSubdChannels, renderData);
+    }
         
     // If there is no scene, clear the output and return.
     if (!mpScene) return;
@@ -292,6 +305,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
         defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
+        defines.add(getValidResourceDefines(kVBufferExtraSubdChannels, renderData));
         
         defines.add("is_valid_gIndicesBuffer", mpIndicesBuffer != nullptr ? "1" : "0");
         defines.add("is_valid_gPrimIndicesBuffer", mpPrimIndicesBuffer != nullptr ? "1" : "0");
@@ -345,6 +359,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind extra output channels
         for (const auto& channel : kVBufferExtraChannels) {
+            bind(channel);
+        }
+
+        // Bind extra subd output channels
+        for (const auto& channel : kVBufferExtraSubdChannels) {
             bind(channel);
         }
     }
@@ -494,6 +513,7 @@ void VBufferSW::createPrograms() {
 void VBufferSW::enableSubdivisions(bool value) {
     if (mUseSubdivisions == value) return;
     mUseSubdivisions = value;
+    requestRecompile();
     mDirty = true;
 }
 

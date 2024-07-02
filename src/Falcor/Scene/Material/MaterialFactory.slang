@@ -43,16 +43,14 @@ import Experimental.Scene.Materials.ClothMaterial;
     explicit gradients. Refer to the TextureSampler module for more choices.
     For HW computed texture gradients, pass in `ImplicitLodTextureSampler`.
 */
-extension MaterialSystem
-{
+extension MaterialSystem {
     /** Create an `IMaterial` instance for the given material.
         Note the type conformances must have been set on the host-side for any
         program that calls this function. See MaterialSystem::getTypeConformances().
         \param[in] materialID The material ID.
         \return A material instance representing the material.
     */
-    IMaterial getMaterial(const uint materialID)
-    {
+    IMaterial getMaterial(const uint materialID) {
         MaterialType type = getMaterialType(materialID);
         return createDynamicObject<IMaterial, MaterialDataBlob>(int(type), materialData[materialID]);
     }
@@ -67,8 +65,7 @@ extension MaterialSystem
         \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
         \return A material instance.
     */
-    IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None)
-    {        
+    IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None) {        
         let material = getMaterial(sd.materialID);
         return material.setupMaterialInstance(this, sd, lod, hints);
     }
@@ -81,8 +78,7 @@ extension MaterialSystem
         \param[in] modifyNormal Flag to specify if normal can be modified, for example by normal mapping.
         \return Shading data struct.
     */
-    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod)
-    {
+    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod) {
         ShadingData sd = {};
 
         sd.posW = v.posW;
@@ -125,8 +121,7 @@ extension MaterialSystem
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \return True if hit should be ignored/discarded.
     */
-    bool alphaTest<L:ITextureSampler>(const VertexData v, const uint materialID, L lod)
-    {
+    bool alphaTest<L:ITextureSampler>(const VertexData v, const uint materialID, L lod) {
         // Load the material header first and early out if alpha test not supported.
         const MaterialHeader header = materialData[materialID].header;
 
@@ -148,8 +143,7 @@ extension MaterialSystem
         \param[in] lod Fixed texture level of detail.
         \return True if hit should be ignored/discarded.
     */
-    bool alphaTest(const VertexData v, const uint materialID, const float lod)
-    {
+    bool alphaTest(const VertexData v, const uint materialID, const float lod) {
         ExplicitLodTextureSampler explicitLOD = { lod };
         return alphaTest(v, materialID, explicitLOD);
     }

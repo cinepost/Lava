@@ -1062,6 +1062,16 @@ public:
         std::vector<uint2>      meshNeighborVerticesMap;        ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
         std::vector<uint32_t>   meshNeighborVertices;           ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
 
+        // Mesh adjacency data
+        std::vector<uint32_t>   mMeshAdjacencyCounts;
+        std::vector<uint32_t>   mMeshAdjacencyOffsets;
+        std::vector<uint32_t>   mMeshAdjacencyData;
+
+        // Index to prims mesh adjacency data
+        std::vector<uint32_t>   meshAdjacencyCounts;            ///< per vertex neighbors counts
+        std::vector<uint32_t>   meshAdjacencyOffsets;           ///< per vertex neighbor offsets in data array
+        std::vector<uint32_t>   meshAdjacencyData;              ///< prim indices
+
         // Curve data
         std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
         std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
@@ -1274,9 +1284,13 @@ public:
     std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
 
     // Subdivs
-
     std::vector<uint2>      mMeshNeighborVerticesMap;           ///< List of per vertex uint2(count, offset) pairs into meshNeighborVertices shared buffer.
     std::vector<uint32_t>   mMeshNeighborVertices;              ///< List of neighbor verices mapped by meshNeighborVerticesMap. Each neighbors list starts with 'd' vertex or invalid index; 
+
+    // Mesh Adjacency
+    std::vector<uint32_t>   mMeshAdjacencyCounts; 
+    std::vector<uint32_t>   mMeshAdjacencyOffsets; 
+    std::vector<uint32_t>   mMeshAdjacencyData; 
 
      // Displacement mapping.
     struct {
@@ -1360,8 +1374,14 @@ public:
     Buffer::SharedPtr mpLightsBuffer;
     Buffer::SharedPtr mpGridVolumesBuffer;
     Buffer::SharedPtr mpPerPrimMaterialIDsBuffer;
+
     Buffer::SharedPtr mpMeshNeighborVerticesMapBuffer;
     Buffer::SharedPtr mpMeshNeighborVerticesBuffer;
+    
+    Buffer::SharedPtr mpMeshAdjacencyCountsBuffer;
+    Buffer::SharedPtr mpMeshAdjacencyOffsetsBuffer;
+    Buffer::SharedPtr mpMeshAdjacencyDataBuffer;
+
     ParameterBlock::SharedPtr mpSceneBlock;
 
     // Camera
