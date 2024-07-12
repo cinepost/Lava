@@ -33,10 +33,8 @@ struct MicroTriangle {
     uint8_t lod;
     uint8_t flags;
 
-    //uint3 _pad000;
-    float16_t3 aux0;
-    float16_t3 aux1;
-    float16_t3 aux2;
+    uint32_t meshletPrimID; 
+    float16_t3 aux;
 
 #ifndef HOST_CODE
     __init() {
@@ -53,10 +51,6 @@ struct MicroTriangle {
 #ifndef HOST_CODE
     float16_t3 getNormalW(float2 barycentrics) {
         return (nw1 * barycentrics.x) + ( nw2 * barycentrics.y ) + (nw0 * (1.f - barycentrics.x - barycentrics.y));
-    }
-
-    float16_t3 getAUX(float2 barycentrics) {
-        return (aux1 * barycentrics.x) + ( aux2 * barycentrics.y ) + (aux0 * (1.f - barycentrics.x - barycentrics.y));
     }
 
     float3 getFaceNormalW() {
@@ -119,6 +113,26 @@ struct MicroPatch3 {
 
     float3 AUX (float2 barycentrics) {
         return AUX(barycentrics.x, barycentrics.y, 1.f - barycentrics.x - barycentrics.y);
+    }
+#endif
+};
+
+struct MicroTriangleIntersection {
+    float3  pos;
+    bool    hit;
+    float3  bary;
+    float   dist;
+    
+#ifndef HOST_CODE
+    __init() {
+        this.hit = false;
+    }
+
+    __init(bool hit, float3 pos, float dist, float3 bary) {
+        this.hit = hit;
+        this.pos = pos;
+        this.dist = dist;
+        this.bary = bary;
     }
 #endif
 };

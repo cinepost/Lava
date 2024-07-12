@@ -27,6 +27,8 @@
  **************************************************************************/
 __exported import Scene.Scene;
 __exported import Scene.Shading;
+__exported import Utils.Math.Ray;
+
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 
@@ -57,6 +59,9 @@ RWTexture2D<uint>   gDrawCount; // Number of writes into visibility buffer
 RWTexture2D<float4> gAUX;       // Just a four channel auxiliary debug buffer for whatever
 RWTexture2D<uint>   gTime;      // Timing debug buffer
 
+#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST)
+#error "Not all defines are set!"
+#endif
 
 #if !defined(USE_ALPHA_TEST)
 #define USE_ALPHA_TEST false
@@ -70,10 +75,21 @@ RWTexture2D<uint>   gTime;      // Timing debug buffer
 #define MAX_LOD 3
 #endif
 
+#if !defined(USE_PP_JITTER)
+#define USE_PP_JITTER false
+#endif
+
+#if !defined(USE_AA)
+#define USE_AA false
+#endif
+
 struct VBufferSW {
+    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
     static const uint kMaxLOD = MAX_LOD;
+    static const bool kUseAA = USE_AA;
+    static const bool kUsePerPixelJitter = USE_PP_JITTER;
 
     uint2   frameDim;
     float2  frameDimInv;
@@ -137,5 +153,39 @@ void writeDepth(uint2 pixelPos, float depth) {
 #if is_valid(gAUX)
         gAUX[pixelPos] = data;
 #endif
+    }
+
+    Ray generateRay<S : ISampleGenerator>(uint2 pixel, inout S sg) {
+        if (kComputeDepthOfField) {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg));
+            } else {
+                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), kUseAA);
+            }
+        } else {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayPinhole(pixel, frameDim, sampleNext2D(sg));
+            } else {
+                return gScene.camera.computeRayPinhole(pixel, frameDim, kUseAA);
+            }
+        }
+    }
+
+    Ray generateRayMB<S : ISampleGenerator>(uint2 pixel, inout S sg) {
+        const float tj = sampleNext1D(sg);  
+
+        if (kComputeDepthOfField) {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg), tj);
+            } else {
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), tj, kUseAA);
+            }
+        } else {
+            if(kUsePerPixelJitter && kUseAA) {
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, sampleNext2D(sg), tj);
+            } else {
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, tj, kUseAA);
+            }
+        }
     }
 };
