@@ -79,16 +79,11 @@ RWTexture2D<uint>   gTime;      // Timing debug buffer
 #define USE_PP_JITTER false
 #endif
 
-#if !defined(USE_AA)
-#define USE_AA false
-#endif
-
 struct VBufferSW {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
     static const uint kMaxLOD = MAX_LOD;
-    static const bool kUseAA = USE_AA;
     static const bool kUsePerPixelJitter = USE_PP_JITTER;
 
     uint2   frameDim;
@@ -155,36 +150,36 @@ void writeDepth(uint2 pixelPos, float depth) {
 #endif
     }
 
-    Ray generateRay<S : ISampleGenerator>(uint2 pixel, inout S sg) {
+    Ray generateRay(uint2 pixel, float4 rnd) {
         if (kComputeDepthOfField) {
-            if(kUsePerPixelJitter && kUseAA) {
-                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg));
+            if(kUsePerPixelJitter) {
+                return gScene.camera.computeRayThinlens(pixel, frameDim, rnd.xy, rnd.zw);
             } else {
-                return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg), kUseAA);
+                return gScene.camera.computeRayThinlens(pixel, frameDim, rnd.xy, false);
             }
         } else {
-            if(kUsePerPixelJitter && kUseAA) {
-                return gScene.camera.computeRayPinhole(pixel, frameDim, sampleNext2D(sg));
+            if(kUsePerPixelJitter) {
+                return gScene.camera.computeRayPinhole(pixel, frameDim, rnd.xy);
             } else {
-                return gScene.camera.computeRayPinhole(pixel, frameDim, kUseAA);
+                return gScene.camera.computeRayPinhole(pixel, frameDim, false);
             }
         }
     }
 
-    Ray generateRayMB<S : ISampleGenerator>(uint2 pixel, inout S sg) {
-        const float tj = sampleNext1D(sg);  
+    Ray generateRayMB(uint2 pixel, float4 rnd) {
+        const float tj = 0.0f;  
 
         if (kComputeDepthOfField) {
-            if(kUsePerPixelJitter && kUseAA) {
-                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), sampleNext2D(sg), tj);
+            if(kUsePerPixelJitter) {
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, rnd.xy, rnd.zw, tj);
             } else {
-                return gScene.camera.computeRayThinlensMB(pixel, frameDim, sampleNext2D(sg), tj, kUseAA);
+                return gScene.camera.computeRayThinlensMB(pixel, frameDim, rnd.xy, tj, false);
             }
         } else {
-            if(kUsePerPixelJitter && kUseAA) {
-                return gScene.camera.computeRayPinholeMB(pixel, frameDim, sampleNext2D(sg), tj);
+            if(kUsePerPixelJitter) {
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, rnd.xy, tj);
             } else {
-                return gScene.camera.computeRayPinholeMB(pixel, frameDim, tj, kUseAA);
+                return gScene.camera.computeRayPinholeMB(pixel, frameDim, tj, false);
             }
         }
     }

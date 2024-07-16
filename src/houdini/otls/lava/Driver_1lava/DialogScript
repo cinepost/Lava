@@ -1008,6 +1008,27 @@
                 }
 
                 parm {
+                    name    "lv_quickplane_ng"
+                    label   "Face Normal (Ng)"
+                    type    toggle
+                    joinnext
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+                parm {
+                    name    "lv_quantize_ng"
+                    label   "Quantize"
+                    type    string
+                    default { "float16" }
+                    hidewhen "{ lv_quickplane_ng == 0 }"
+                    menu {
+                        [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                        language python
+                    }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_quickplane_nt"
                     label   "Tangent-Space Normal (Nt)"
                     type    toggle

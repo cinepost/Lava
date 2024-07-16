@@ -1367,7 +1367,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
   	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
-  	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
+  	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", true);
   } else {
   	LLOG_ERR << "No surface property set for materialname " << material_name;
   }
@@ -1389,7 +1389,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
     pMaterial->setAODistance(ao_distance);
-    pMaterial->setDoubleSided(!front_face);
+    pMaterial->setDoubleSided(front_face);
 
     pMaterial->setNormalMapFlipX(!basenormal_flip_x);
     pMaterial->setNormalMapFlipY(basenormal_flip_y);

@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Utils/Math/MathConstants.slangh"
 #include "VBufferSW.MicroTriangle.slangh"
 
 // Transform world position to clip space
@@ -66,30 +68,6 @@ double4 transformClipToScreenDouble(const double4 pV) {
     pS.xy = pS.xy * double2(.5, -.5) + double2(0.5);
     pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
     return pS;
-}
-
-// Ray-MicroTriangle intersection
-MicroTriangleIntersection intersect(in float3 ro, in float3 rd, in float3 a, in float3 b, in float3 c) {
-    ro -= a; b -= a; c -= a; a = float3(0.0);
-    float3 ba = b - a, cb = c - b, ac = a - c;
-
-    float3 n = cross(ba, -ac);
-    float denom = dot(rd, n);
-    if (denom != 0.0) {
-        float t = -dot(ro, n) / denom;
-
-        float3 p = ro + rd * t;
-        float3 pa = p - a, pb = p - b, pc = p - c;
-
-        float abc = length(n);
-        float u = length(cross(cb, pb)) / abc;
-        float v = length(cross(ac, pc)) / abc;
-        float w = length(cross(ba, pa)) / abc;
-
-        return MicroTriangleIntersection(abs(u + v + w - 1.0) < 0.001, p, t, float3(u, v, w));
-    }
-
-    return MicroTriangleIntersection(false, float3(0.0), 0.0, float3(0.0));
 }
 
 /*
