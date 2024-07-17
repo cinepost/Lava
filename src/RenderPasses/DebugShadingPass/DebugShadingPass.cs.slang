@@ -42,6 +42,7 @@ RWTexture2D<float2> gUV;
 
 // Extra output channels
 RWTexture2D<float4> gOutNormals;
+RWTexture2D<float4> gOutFaceNormals;
 RWTexture2D<float4> gOutTangentNormals;
 RWTexture2D<float>  gPrimID;
 RWTexture2D<float>  gOpID;
@@ -110,8 +111,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     
 
 #if is_valid(gOutNormals)
-    gOutNormals[pixelPos] = float4(normalW, 0.f);
+    gOutNormals[pixelPos] = float4(normalW.xyz, 0.f);
 #endif  // gOutNormals
+
+#if is_valid(gOutFaceNormals)
+    gOutFaceNormals[pixelPos] = float4(faceNormalW.xyz, 0.f);
+#endif  // gOutFaceNormals
 
 #if is_valid(gOutTangentNormals)
     gOutTangentNormals[pixelPos] = float4(v.tangentW.xyz, 0.f);

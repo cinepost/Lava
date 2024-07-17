@@ -31,6 +31,7 @@ enum class AOVBuiltinName: uint8_t {
   POSITION,
   DEPTH,
   NORMAL,
+  FACE_NORMAL,
   TANGENT_NORMAL,
   ALBEDO,
   SHADOW,
@@ -68,6 +69,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(POSITION);
     type_2_string(DEPTH);
     type_2_string(NORMAL);
+    type_2_string(FACE_NORMAL);
     type_2_string(TANGENT_NORMAL);
     type_2_string(ALBEDO);
     type_2_string(SHADOW);

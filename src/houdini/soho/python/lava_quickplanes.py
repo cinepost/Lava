@@ -14,9 +14,11 @@ __quickplanes = {
     
     "depth":            QuickPlane("DEPTH",                    "float",         "float32",    False,      {'pfilter':['min']}),
     
-    "normals":          QuickPlane("NORMAL",                   "vector3",       "float32",    False,      {'pfilter':['closest']}),
+    "normals":          QuickPlane("NORMAL",                   "vector3",       "float16",    False,      {'pfilter':['closest']}),
 
-    "tangent_normals":  QuickPlane("TANGENT_NORMAL",           "vector3",       "float32",    False,      {'pfilter':['closest']}),
+    "face_normals":     QuickPlane("FACE_NORMAL",              "vector3",       "float16",    False,      {'pfilter':['closest']}),
+
+    "tangent_normals":  QuickPlane("TANGENT_NORMAL",           "vector3",       "float16",    False,      {'pfilter':['closest']}),
 
     "albedo":           QuickPlane("ALBEDO",                   "vector3",       "float16",    False,      {}),
 
@@ -52,6 +54,7 @@ __toggleplanedict = {
     'lv_quickplane_p':                      ['position'],
     'lv_quickplane_z':                      ['depth'],
     'lv_quickplane_n':                      ['normals'],
+    'lv_quickplane_ng':                     ['face_normals'],
     'lv_quickplane_nt':                     ['tangent_normals'],
     'lv_quickplane_albedo':                 ['albedo'],
     'lv_quickplane_emission':               ['emission'],

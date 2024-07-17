@@ -56,6 +56,7 @@ namespace {
 
     const ChannelList kExtraOutputChannels = {
         { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
+        { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float    },
         { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
         { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },

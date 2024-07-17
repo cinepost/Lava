@@ -1,3 +1,8 @@
+#pragma once
+
+#include "Utils/Math/MathConstants.slangh"
+#include "VBufferSW.MicroTriangle.slangh"
+
 // Transform world position to clip space
 float4 transformPointToClip(const float3 p) {
     return mul(float4(p, 1.f), gScene.camera.getViewProjMat());
@@ -49,3 +54,32 @@ double4 transformPointToScreenDouble(const double3 p, float t) {
     pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
     return pS;
 }
+
+// Transform clip position to screen 
+float4 transformClipToScreen(const float4 pV) {
+    float4 pS = float4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * float2(.5f, -.5f) + float2(0.5f);
+    pS.xy = pS.xy * float2(gVBufferSW.frameDim) - float2(0.5f);
+    return pS;
+}
+
+double4 transformClipToScreenDouble(const double4 pV) {
+    double4 pS = double4(pV.xyz / pV.w, pV.w);
+    pS.xy = pS.xy * double2(.5, -.5) + double2(0.5);
+    pS.xy = pS.xy * double2(gVBufferSW.frameDim) - double2(0.5);
+    return pS;
+}
+
+/*
+float3 barycentric(in float2 p, in float2 a, in float2 b, in float2 c) {
+    float2 pa = p - a, pb = p - b, pc = p - c;
+    float2 ba = b - a, cb = c - b, ac = a - c;
+
+    float abc = abs(ba.y * ac.x - ba.x * ac.y);
+    float abp = abs(ba.x * pa.y - ba.y * pa.x);
+    float bcp = abs(cb.x * pb.y - cb.y * pb.x);
+    float cap = abs(ac.x * pc.y - ac.y * pc.x);
+
+    return float3(bcp, cap, abp) / abc;
+}
+*/

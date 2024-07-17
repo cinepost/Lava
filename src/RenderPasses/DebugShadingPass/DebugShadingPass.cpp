@@ -64,14 +64,13 @@ namespace {
         { kInputOuputMeshlet,       "gMeshletID",           "Meshlet ID",                               true /* optional */, ResourceFormat::R32Uint        },
         { kInputOuputMicroPoly,     "gMicroPolyID",         "Micro-polygon ID",                         true /* optional */, ResourceFormat::R32Uint        },
         { kInputOuputAUX,           "gAUX",                 "Auxiliary debug buffer",                   true /* optional */, ResourceFormat::RGBA32Float    },
-        { kInputOuputTime,          "gTime",                "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint        },
-        { "uv",                     "gUV",                  "Texture coordinates buffer",               true /* optional */, ResourceFormat::RG16Float      },
-        
+        { kInputOuputTime,          "gTime",                "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint        },        
     };
 
     const ChannelList kExtraOutputChannels = {
         // Service outputs
         { "normals",                "gOutNormals",          "Normals buffer",                           true /* optional */, ResourceFormat::RGBA16Float    },
+        { "face_normals",           "gOutFaceNormals",      "Face Normals buffer",                      true /* optional */, ResourceFormat::RGBA16Float    },
         { "tangent_normals",        "gOutTangentNormals",   "Tangent space normals buffer",             true /* optional */, ResourceFormat::RGBA16Float    },
         { "prim_id",                "gPrimID",              "Primitive id buffer",                      true /* optional */, ResourceFormat::R32Float       },
         { "op_id",                  "gOpID",                "Operator id buffer",                       true /* optional */, ResourceFormat::R32Float       },
@@ -79,6 +78,7 @@ namespace {
         { kOutputMicroPolyColor,    "gMicroPolyColor",      "MicroPolygon false-color buffer",          true /* optional */, ResourceFormat::RGBA16Float    },
         { kOutputTimeFalseColor,    "gTimeFalseColor",      "GPU time false-color buffer",              true /* optional */, ResourceFormat::RGBA16Float    },
         { kOutputMeshletDrawColor,  "gMeshletDrawHeatMap",  "Meshlet draw heat map",                    true /* optional */, ResourceFormat::RGBA16Float    },
+        { "uv",                     "gUV",                  "Texture coordinates buffer",               true /* optional */, ResourceFormat::RG16Float      },
     };
 }
 

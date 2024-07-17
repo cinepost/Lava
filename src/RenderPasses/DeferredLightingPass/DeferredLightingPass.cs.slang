@@ -52,7 +52,8 @@ Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
 
 // Extra UAV output channels
-RWTexture2D<float4>                gOutNormals;
+RasterizerOrderedTexture2D<float4> gOutNormals;
+RasterizerOrderedTexture2D<float4> gOutFaceNormals;
 RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
@@ -120,6 +121,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOutNormals)
     gOutNormals[ipos] = float4(d.normal, .0f);
 #endif  // gOutNormals
+
+#if is_valid(gOutFaceNormals)
+    gOutFaceNormals[ipos] = float4(d.face_normal, .0f);
+#endif  // gOutFaceNormals
 
 #if is_valid(gOutTangentNormals)
     gOutTangentNormals[ipos] = float4(d.tangent_normal, .0f);
@@ -551,9 +556,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
     
+    VertexData v = gScene.getVertexData(primaryTriangleHit);
+
 #if is_valid(gNormW)
     if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
-        VertexData v = gScene.getVertexData(primaryTriangleHit);
 
         uint3 packedNormal = gNormW[ipos].xyz;
 
@@ -577,6 +583,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #else
     calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
 #endif
+
+    aov_data.face_normal = v.faceNormalW;
 
     float2 screenUV = float2(ipos) / float2(gFrameDim); 
 
