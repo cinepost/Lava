@@ -4,7 +4,7 @@
 import Scene.Camera.CameraData;
 
 #include "VBufferSW.MicroTriangle.slangh"
-#include "VBufferSW.SubdivData.slangh"
+//#include "VBufferSW.SubdivData.slangh"
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
 
