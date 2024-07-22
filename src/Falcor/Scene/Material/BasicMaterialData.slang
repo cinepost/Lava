@@ -67,8 +67,11 @@ struct BasicMaterialData
     float16_t   roughness               = float16_t(0.f);
     float16_t   metallic                = float16_t(0.f);
 
-    float       displacementScale       = 0.f;              ///< Displacement scale value.
-    float       displacementOffset      = 0.f;              ///< Displacement offset value.
+    float16_t   displacementScale       = 0.f;              ///< Displacement scale value.
+    float16_t   displacementOffset      = 0.f;              ///< Displacement offset value.
+
+    float16_t   opacityScale            = float16_t(1.f);
+    float16_t   _pad1;
 
     // Texture handles (4B each).
     TextureHandle texBaseColor;
@@ -78,6 +81,7 @@ struct BasicMaterialData
     TextureHandle texNormalMap;
     TextureHandle texTransmission;
     TextureHandle texDisplacementMap;
+    TextureHandle texOpacity;
 
     static const uint kShadingModelBits = 1;
     static const uint kNormalMapTypeBits = 2;

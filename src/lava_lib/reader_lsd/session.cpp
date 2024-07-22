@@ -1329,6 +1329,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   std::string     basenormal_mode = "normal";
 
   float           ao_distance = 1.0f;
+  float           opacity_scale = 1.0f;
 
   if(pShaderProp) {
   	auto pShaderProps = pShaderProp->subContainer();
@@ -1366,6 +1367,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
 
   	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
+  	opacity_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "opac", 1.0f);
 
   	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", true);
   } else {
@@ -1396,6 +1398,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
     pMaterial->setTransmissionColor(trans_color);
     pMaterial->setSpecularTransmission(transmission);
+    pMaterial->setOpacityScale(opacity_scale);
 
     if(surface_use_basenormal_texture) {
     	pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );

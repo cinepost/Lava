@@ -194,7 +194,7 @@ class dlldecl BasicMaterial : public Material {
 
 		/** Get the displacement scale.
 		*/
-		float getDisplacementScale() const { return mData.displacementScale; }
+		float getDisplacementScale() const { return static_cast<float>(mData.displacementScale); }
 
 		/** Set the displacement offset.
 		*/
@@ -202,7 +202,7 @@ class dlldecl BasicMaterial : public Material {
 
 		/** Get the displacement offset.
 		*/
-		float getDisplacementOffset() const { return mData.displacementOffset; }
+		float getDisplacementOffset() const { return static_cast<float>(mData.displacementOffset); }
 
 		/** Set the base color.
 		*/
@@ -287,6 +287,16 @@ class dlldecl BasicMaterial : public Material {
 		/** Get the ambient occlusion query distance.
 		*/
 		float getAODistance() const { return 1.0f; /*(float)mData.ao_distance;*/ }
+
+		/** Set the opacity multyplier.
+		*/
+		void setOpacityScale(float opacityScale);
+
+		/** Get the ambient occlusion query distance.
+		*/
+		float getOpacityScale() const { return static_cast<float>(mData.opacityScale); }
+
+		virtual bool isOpaque() const override;
 
 		/** Returns the material data struct.
 		*/

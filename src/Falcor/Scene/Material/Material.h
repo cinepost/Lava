@@ -71,6 +71,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			Normal,
 			Transmission,
 			Displacement,
+			Opacity,
 
 			Count // Must be last
 		};

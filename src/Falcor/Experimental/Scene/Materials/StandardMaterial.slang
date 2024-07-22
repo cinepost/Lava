@@ -150,8 +150,9 @@ struct StandardMaterial : MaterialBase, IMaterial {
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) {
         // TODO: handle dedicated opacity texture;
-        return 1.0f;
-        //SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        //return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).r;
+        
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        float alpha = ms.sampleTexture(data.texBaseColor, s, v.texC, float4(1.f), lod).a;
+        return alpha * ms.sampleTexture(data.texOpacity, s, v.texC, float4(1.f), lod).r * data.opacityScale;
     }
 };

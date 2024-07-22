@@ -4,7 +4,7 @@
 import Scene.Camera.CameraData;
 
 #include "VBufferSW.MicroTriangle.slangh"
-#include "VBufferSW.SubdivData.slangh"
+//#include "VBufferSW.SubdivData.slangh"
 #include "VBufferSW.common.slangh"
 #include "VBufferSW.functions.slangh"
 
@@ -706,6 +706,49 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 
                 if(z < 0.f || z > 1.f) continue;
 
+                TriangleHit triangleHit = {};
+                triangleHit.instanceID.index = instanceID.index;
+                triangleHit.primitiveIndex = tri.srcPrimID;
+
+                #if (USE_SRT == 1)
+                    triangleHit.barycentrics = tri.b0 * mti.bary.x + tri.b1 * mti.bary.y + tri.b2 * mti.bary.z;
+                #else
+                    triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
+                #endif
+
+                uint materialID = gScene.getMaterialID(triangleHit);
+                bool isOpaque = gScene.materials.isOpaque(materialID);
+                float2 texC, gradX, gradY;
+
+                if(!isOpaque || is_valid(gTextureGrads)) {
+                    BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
+
+                    float2 tx0 = tri.lod == 0 ? tcrd0 : tcrd0 * (1. - tri.b0.x - tri.b0.y) + tcrd1 * tri.b0.x + tcrd2 * tri.b0.y; 
+                    float2 tx1 = tri.lod == 0 ? tcrd1 : tcrd0 * (1. - tri.b1.x - tri.b1.y) + tcrd1 * tri.b1.x + tcrd2 * tri.b1.y; 
+                    float2 tx2 = tri.lod == 0 ? tcrd2 : tcrd0 * (1. - tri.b2.x - tri.b2.y) + tcrd1 * tri.b2.x + tcrd2 * tri.b2.y;
+                    GradientInterpolationResults g = interpolate2DWithDeriv(deriv, tx0, tx1, tx2);
+                    gradX = clamp(g.dx, float2(-1.0f), float2(1.0f));
+                    gradY = clamp(g.dy, float2(-1.0f), float2(1.0f));
+
+                    #if (USE_SRT == 1)
+                        texC = tx0 * mti.bary.x + tx1 * mti.bary.y + tx2 * mti.bary.z;
+                    #else
+                        texC = tx1 * uv.x + tx2 * uv.y + tx0 * (1.f - uv.x - uv.y);
+                    #endif
+                }
+
+                if(!isOpaque) {
+                    VertexData v = gScene.getVertexData(instanceID, triangleHit.primitiveIndex, triangleHit.getBarycentricWeights());
+                    v.texC = texC;
+
+                    float opacity = gScene.materials.evalOpacity(v, materialID, gradX, gradY);
+
+                    //gVBufferSW.writeAUX(pixelPos, float4(opacity, 0, 0, 1));
+
+                    // skip fully transparent sample
+                    if((rnd.x + opacity) < 1.f) continue;
+                }
+
     #if defined(USE_HIGHP_DEPTH)
                 const uint64_t depth_value = z * UINT64_MAX;
                 const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;       
@@ -717,40 +760,12 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value);
                 if ( depth_value < out_value) {
     #endif
-                    TriangleHit triangleHit = {};
-                    triangleHit.instanceID.index = instanceID.index;
-                    triangleHit.primitiveIndex = tri.srcPrimID;
-
-                #if (USE_SRT == 1)
-                    triangleHit.barycentrics = tri.b0 * mti.bary.x + tri.b1 * mti.bary.y + tri.b2 * mti.bary.z;
-                #else
-                    triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
-                #endif
-
-                    uint materialID = gScene.getMaterialID(triangleHit);
-                    let material = gScene.materials.getMaterial(materialID);
-
-                    VertexData v = {};
-                    //v.texC = vsOut.texC;
-                    float lod = 0.f;
-
-                    //if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 
                     gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
                     gVBufferSW.writeDepth(pixelPos, z);
 
                 #if is_valid(gTextureGrads)
-                    BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
-                    //GradientInterpolationResults g = interpolate2DWithDeriv(deriv, tcrd0, tcrd1, tcrd2);
-
-                    GradientInterpolationResults g = interpolate2DWithDeriv(
-                        deriv, 
-                        tcrd0 * tri.b0.x + tcrd1 * tri.b0.y + tcrd2 * (1. - tri.b0.x - tri.b0.y), 
-                        tcrd0 * tri.b1.x + tcrd1 * tri.b1.y + tcrd2 * (1. - tri.b1.x - tri.b1.y), 
-                        tcrd0 * tri.b2.x + tcrd1 * tri.b2.y + tcrd2 * (1. - tri.b2.x - tri.b2.y)
-                    );
-
-                    gVBufferSW.writeTexGrads(pixelPos, float4(clamp(g.dx, float2(-1.0f), float2(1.0f)), clamp(g.dy, float2(-1.0f), float2(1.0f))));
+                    gVBufferSW.writeTexGrads(pixelPos, float4(gradX, gradY));
                 #endif
 
                 #if is_valid(gNormW)
@@ -775,6 +790,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
                 #endif
+
                 }
             }
 
