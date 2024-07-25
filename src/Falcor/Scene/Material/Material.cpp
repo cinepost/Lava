@@ -296,6 +296,7 @@ SCRIPT_BINDING(Material) {
     textureSlot.value("Roughness", Material::TextureSlot::Roughness);
     textureSlot.value("Transmission", Material::TextureSlot::Transmission);
     textureSlot.value("Displacement", Material::TextureSlot::Displacement);
+    textureSlot.value("Opacity", Material::TextureSlot::Opacity);
 
     // Register Material base class as IMaterial in python to allow deprecated script syntax.
     // TODO: Remove workaround when all scripts have been updated to create derived Material classes.

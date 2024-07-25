@@ -87,6 +87,7 @@ struct BasicMaterialData
     static const uint kNormalMapTypeBits = 2;
     static const uint kFlipNormalBits = 1;
     static const uint kNormalMapModeBits = 1;
+    static const uint kUseBaseColorAlphaBits = 1;
 
     static const uint kShadingModelOffset = 0;
     static const uint kNormalMapTypeOffset = kShadingModelOffset + kShadingModelBits;
@@ -97,8 +98,9 @@ struct BasicMaterialData
     static const uint kFlipNormalYOffset = kFlipNormalXOffset + kFlipNormalBits;
 
     static const uint kNormalMapModeOffset = kFlipNormalYOffset + kFlipNormalBits;
+    static const uint kUseBaseColorAlphaOffset = kNormalMapModeOffset + kUseBaseColorAlphaBits;
 
-    static const uint kTotalFlagsBits = kNormalMapModeOffset + kNormalMapModeBits;
+    static const uint kTotalFlagsBits = kUseBaseColorAlphaOffset + kUseBaseColorAlphaBits;
 
     /** Set shading model. This is only used for the standard material.
     */
@@ -125,6 +127,11 @@ struct BasicMaterialData
     */
     SETTER_DECL void setNormalMapYFlip(bool flip) { flags = PACK_BITS(kFlipNormalBits, kFlipNormalYOffset, flags, flip ? (uint)1 : (uint)0 ); }
     bool isNormalMapYFlipped() CONST_FUNCTION { return EXTRACT_BITS(kFlipNormalBits, kFlipNormalYOffset, flags); }
+
+    /** Set/get color alpha usage.
+    */
+    SETTER_DECL void useBaseColorAlpha(bool state) { flags = PACK_BITS(kUseBaseColorAlphaBits, kUseBaseColorAlphaOffset, flags, state ? (uint)1 : (uint)0 ); }
+    bool isBaseColorAlphaUsed() CONST_FUNCTION { return EXTRACT_BITS(kUseBaseColorAlphaBits, kUseBaseColorAlphaOffset, flags); }
 
     /** Set/get normal map mode Normal or Bump.
     */

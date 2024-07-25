@@ -356,6 +356,7 @@ inline std::string to_string(Material::TextureSlot slot) {
 		tostr(Roughness);
 		tostr(Transmission);
 		tostr(Displacement);
+		tostr(Opacity);
 #undef tostr
 	default:
 		throw std::runtime_error("Invalid texture slot");

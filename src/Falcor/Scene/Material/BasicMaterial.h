@@ -292,7 +292,15 @@ class dlldecl BasicMaterial : public Material {
 		*/
 		void setOpacityScale(float opacityScale);
 
-		/** Get the ambient occlusion query distance.
+		/**
+		*/
+		void useBaseColorAlpha(bool mode) { mData.useBaseColorAlpha(mode); }
+
+		/**
+		*/
+		bool isBaseColorAlphaUsed() const { return mData.isBaseColorAlphaUsed(); }
+
+		/** Get the opacity scale multiplier.
 		*/
 		float getOpacityScale() const { return static_cast<float>(mData.opacityScale); }
 

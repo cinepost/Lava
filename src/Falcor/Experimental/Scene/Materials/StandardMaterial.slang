@@ -152,7 +152,7 @@ struct StandardMaterial : MaterialBase, IMaterial {
         // TODO: handle dedicated opacity texture;
         
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        float alpha = ms.sampleTexture(data.texBaseColor, s, v.texC, float4(1.f), lod).a;
-        return alpha * ms.sampleTexture(data.texOpacity, s, v.texC, float4(1.f), lod).r * data.opacityScale;
+        float alpha = data.isBaseColorAlphaUsed() ? ms.sampleTexture(data.texBaseColor, s, v.texC, float4(1.f), lod).a : 1.f;
+        return alpha * saturate(ms.sampleTexture(data.texOpacity, s, v.texC, float4(1.f), lod).r) * data.opacityScale;
     }
 };

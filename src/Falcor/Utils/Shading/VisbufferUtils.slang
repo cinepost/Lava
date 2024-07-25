@@ -42,6 +42,48 @@ struct BarycentricDeriv {
 	float3 m_ddy;
 };
 
+// Calculates the local (barycentric coordinates) position of a ray hitting a triangle (Muller-Trumbore algorithm)
+// Parameters: p0,p1,p2 -> World space coordinates of triangle
+// o -> Origin of ray in world space (Mainly view camera here)
+// d-> Unit vector direction of ray from origin
+float3 __rayTriangleIntersection(float3 p0, float3 p1, float3 p2, float3 o, float3 d) {
+	float3 v0v1 = p1-p0;
+	float3 v0v2 = p2-p0;
+	float3 pvec = cross(d,v0v2);
+	float det = dot(v0v1,pvec);
+	float invDet = 1/det;
+	float3 tvec = o - p0;
+	float u = dot(tvec,pvec) * invDet;
+	float3 qvec = cross(tvec,v0v1);
+	float v = dot(d,qvec) *invDet;
+	float w = 1.0f - v - u;
+	return float3(w,u,v);
+}
+
+// Calculate ray differentials for a point in world-space
+// Parameters: pt0,pt1,pt2 -> world space coordinates of the triangle currently visible on the pixel
+// position -> world-space calculated position of the current pixel by reconstructing Z value
+// positionDX,positionDY -> world-space positions a pixel footprint right and down of the calculated position w.r.t traingle
+BarycentricDeriv calcRayBary(float3 pt0, float3 pt1, float3 pt2, float3 position, float3 positionDX, float3 positionDY, float3 camPos) {
+	BarycentricDeriv ret;
+
+	// Calculating unit vector directions of all 3 rays
+	float3 curRay = position - camPos;
+	float3 rayDX = positionDX - camPos;
+	float3 rayDY = positionDY - camPos;
+	
+	// Calculating barycentric coordinates of each rays hitting the triangle
+	float3 H = __rayTriangleIntersection(pt0, pt1, pt2, camPos, normalize(curRay));
+	float3 Hx = __rayTriangleIntersection(pt0, pt1, pt2, camPos, normalize(rayDX));
+	float3 Hy = __rayTriangleIntersection(pt0, pt1, pt2, camPos, normalize(rayDY));
+	ret.m_lambda = H;
+	
+	// Ray coordinates differential
+	ret.m_ddx = Hx-H;
+	ret.m_ddy = Hy-H;
+	return ret;
+}
+
 
 // Computes the partial derivatives of a triangle from the homogeneous clip space vertices
 BarycentricDeriv calcFullBary(float4 pt0, float4 pt1, float4 pt2, float2 pixelNdc, float2 two_over_windowsize) {

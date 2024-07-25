@@ -118,6 +118,7 @@ void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
     setNormalMapFlipX(pBasicMaterial->getNormalMapFlipX());
     setNormalMapFlipY(pBasicMaterial->getNormalMapFlipY());
     setOpacityScale(pBasicMaterial->getOpacityScale());
+    useBaseColorAlpha(pBasicMaterial->isBaseColorAlphaUsed());
 }
 
 const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
@@ -136,6 +137,8 @@ const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) con
             return mData.texNormalMap;
         case TextureSlot::Displacement:
             return mData.texDisplacementMap;
+        case TextureSlot::Opacity:
+            return mData.texOpacity;
         default:
             LLOG_ERR << "Error getting handle for slot " << to_string(slot);
             should_not_get_here();
@@ -156,6 +159,7 @@ bool BasicMaterial::hasUDIMTextures() const {
     if(mData.texTransmission.isUDIMTexture()) return true;
     if(mData.texNormalMap.isUDIMTexture()) return true;
     if(mData.texDisplacementMap.isUDIMTexture()) return true;
+    if(mData.texOpacity.isUDIMTexture()) return true;
 
     return false;
 }
@@ -166,6 +170,7 @@ void BasicMaterial::setAlphaMode(AlphaMode alphaMode) {
         LLOG_DBG << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
         return;
     }
+    
     if (mHeader.getAlphaMode() != alphaMode) {
         mHeader.setAlphaMode(alphaMode);
         markUpdates(UpdateFlags::DataChanged);
@@ -218,6 +223,9 @@ bool BasicMaterial::setTexture(const TextureSlot slot, const Texture::SharedPtr&
                 mAlphaRange = float2(0.f, 1.f);
                 mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
             }
+            updateAlphaMode();
+            break;
+        case TextureSlot::Opacity:
             updateAlphaMode();
             break;
         case TextureSlot::Normal:
@@ -338,7 +346,7 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
 
 bool BasicMaterial::isAlphaSupported() const {
     //return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
-    bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat());
+    bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat()) && mData.isBaseColorAlphaUsed();
     return hasAlpha || hasTextureSlot(TextureSlot::Opacity) || static_cast<float>(mData.opacityScale) <= kOpacityThreshold;
 }
 
