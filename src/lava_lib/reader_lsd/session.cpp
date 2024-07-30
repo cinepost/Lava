@@ -1300,12 +1300,16 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   std::string 	surface_metallic_texture_path    = "";
   std::string 	surface_roughness_texture_path   = "";
   std::string		surface_emission_texture_path    = "";
+  std::string		surface_opacity_texture_path     = "";
+
+  bool      use_base_color_alpha = false;
 
   bool 			surface_use_basecolor_texture  = false;
   bool 			surface_use_roughness_texture  = false;
   bool 			surface_use_metallic_texture   = false;
   bool 			surface_use_basenormal_texture = false;
   bool 			surface_use_emission_texture   = false;
+  bool      surface_use_opacity_texture    = false;
 
   bool      front_face = false;
 
@@ -1329,6 +1333,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   std::string     basenormal_mode = "normal";
 
   float           ao_distance = 1.0f;
+  float           opacity_scale = 1.0f;
 
   if(pShaderProp) {
   	auto pShaderProps = pShaderProp->subContainer();
@@ -1339,11 +1344,13 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
   	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
   	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
+  	surface_opacity_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "opaccolor_texture", std::string());
 
   	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
   	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
   	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
   	surface_use_emission_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_useTexture", false);
+  	surface_use_opacity_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "opaccolor_useTexture", false);
   	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
 
   	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
@@ -1366,8 +1373,10 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   	basenormal_mode = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_type", std::string("normal"));
 
   	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
+  	opacity_scale = pShaderProps->getPropertyValue(ast::Style::OBJECT, "opac", 1.0f);
 
   	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", true);
+  	use_base_color_alpha = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTextureAlpha", false);
   } else {
   	LLOG_ERR << "No surface property set for materialname " << material_name;
   }
@@ -1396,6 +1405,8 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
     pMaterial->setTransmissionColor(trans_color);
     pMaterial->setSpecularTransmission(transmission);
+    pMaterial->setOpacityScale(opacity_scale);
+    pMaterial->useBaseColorAlpha(use_base_color_alpha && surface_use_basecolor_texture ? true : false);
 
     if(surface_use_basenormal_texture) {
     	pMaterial->setNormalMapMode(basenormal_mode == "bump" ? Falcor::NormalMapMode::Bump : Falcor::NormalMapMode::Normal );
@@ -1423,6 +1434,12 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
 
     if(surface_use_emission_texture) { 
     	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse)) {
+    		return nullptr;
+    	}
+    }
+
+    if(surface_use_opacity_texture) { 
+    	if(!pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Opacity, surface_opacity_texture_path, loadTexturesAsSparse)) {
     		return nullptr;
     	}
     }

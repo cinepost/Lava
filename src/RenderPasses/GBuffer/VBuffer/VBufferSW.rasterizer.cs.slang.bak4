@@ -705,8 +705,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 float2 texC, gradX, gradY;
 
                 if(!isOpaque || is_valid(gTextureGrads)) {
-                    float2 screen_pos = float2(2.f, -2.f) * float2(x, y)/float2(gVBufferSW.frameDim) - float2(1.f, -1.f);
-                    BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, screen_pos, gVBufferSW.frameDimInv2);
+                    BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, float2(x, y)/float2(gVBufferSW.frameDim), gVBufferSW.frameDimInv2);
 
                     float2 tx0 = tri.lod == 0 ? tcrd0 : tcrd0 * (1. - tri.b0.x - tri.b0.y) + tcrd1 * tri.b0.x + tcrd2 * tri.b0.y; 
                     float2 tx1 = tri.lod == 0 ? tcrd1 : tcrd0 * (1. - tri.b1.x - tri.b1.y) + tcrd1 * tri.b1.x + tcrd2 * tri.b1.y; 

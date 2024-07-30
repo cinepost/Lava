@@ -411,7 +411,6 @@ uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
 
 uint32_t SceneBuilder::getMeshID(const std::string& name) {
 	MeshID* pMeshID = nullptr;
-
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);	
         auto it = mMeshMap.find(name);

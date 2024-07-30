@@ -47,6 +47,7 @@ namespace {
 
     // Constants.
     const float kMaxVolumeAnisotropy = 0.99f;
+    const float kOpacityThreshold = 0.999f;
 }
 
 BasicMaterial::BasicMaterial(Device::SharedPtr pDevice, const std::string& name, MaterialType type): Material(pDevice, name, type) {
@@ -82,6 +83,7 @@ Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
         updateTextureHandle(pOwner, TextureSlot::Transmission, mData.texTransmission);
         updateTextureHandle(pOwner, TextureSlot::Normal, mData.texNormalMap);
         updateTextureHandle(pOwner, TextureSlot::Displacement, mData.texDisplacementMap);
+        updateTextureHandle(pOwner, TextureSlot::Opacity, mData.texOpacity);
 
         // Update default sampler.
         updateDefaultTextureSamplerID(pOwner, mpDefaultSampler);
@@ -115,6 +117,8 @@ void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
     setNormalMapMode(pBasicMaterial->getNormalMapMode());
     setNormalMapFlipX(pBasicMaterial->getNormalMapFlipX());
     setNormalMapFlipY(pBasicMaterial->getNormalMapFlipY());
+    setOpacityScale(pBasicMaterial->getOpacityScale());
+    useBaseColorAlpha(pBasicMaterial->isBaseColorAlphaUsed());
 }
 
 const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
@@ -133,6 +137,8 @@ const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) con
             return mData.texNormalMap;
         case TextureSlot::Displacement:
             return mData.texDisplacementMap;
+        case TextureSlot::Opacity:
+            return mData.texOpacity;
         default:
             LLOG_ERR << "Error getting handle for slot " << to_string(slot);
             should_not_get_here();
@@ -153,6 +159,7 @@ bool BasicMaterial::hasUDIMTextures() const {
     if(mData.texTransmission.isUDIMTexture()) return true;
     if(mData.texNormalMap.isUDIMTexture()) return true;
     if(mData.texDisplacementMap.isUDIMTexture()) return true;
+    if(mData.texOpacity.isUDIMTexture()) return true;
 
     return false;
 }
@@ -163,6 +170,7 @@ void BasicMaterial::setAlphaMode(AlphaMode alphaMode) {
         LLOG_DBG << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
         return;
     }
+    
     if (mHeader.getAlphaMode() != alphaMode) {
         mHeader.setAlphaMode(alphaMode);
         markUpdates(UpdateFlags::DataChanged);
@@ -215,6 +223,9 @@ bool BasicMaterial::setTexture(const TextureSlot slot, const Texture::SharedPtr&
                 mAlphaRange = float2(0.f, 1.f);
                 mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
             }
+            updateAlphaMode();
+            break;
+        case TextureSlot::Opacity:
             updateAlphaMode();
             break;
         case TextureSlot::Normal:
@@ -334,7 +345,9 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
 }
 
 bool BasicMaterial::isAlphaSupported() const {
-    return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
+    //return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
+    bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat()) && mData.isBaseColorAlphaUsed();
+    return hasAlpha || hasTextureSlot(TextureSlot::Opacity) || static_cast<float>(mData.opacityScale) <= kOpacityThreshold;
 }
 
 void BasicMaterial::prepareDisplacementMapForRendering() {
@@ -370,14 +383,16 @@ void BasicMaterial::prepareDisplacementMapForRendering() {
 }
 
 void BasicMaterial::setDisplacementScale(float scale) {
-    if (mData.displacementScale == scale) return;
-    mData.displacementScale = scale;
+    float16_t _scale = static_cast<float16_t>(scale);
+    if (mData.displacementScale == _scale) return;
+    mData.displacementScale = _scale;
     markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
 }
 
 void BasicMaterial::setDisplacementOffset(float offset) {
-    if (mData.displacementOffset != offset) {
-        mData.displacementOffset = offset;
+    float16_t _offset = static_cast<float16_t>(offset);
+    if (mData.displacementOffset != _offset) {
+        mData.displacementOffset = _offset;
         markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
     }
 }
@@ -395,6 +410,18 @@ void BasicMaterial::setBaseColor(const float3& color) {
         markUpdates(UpdateFlags::DataChanged);
         updateAlphaMode();
     }
+}
+
+void BasicMaterial::setOpacityScale(float opacityScale) {
+    const float16_t _opacityScale = static_cast<float16_t>(opacityScale);
+    if (mData.opacityScale == _opacityScale) return;
+    mData.opacityScale = _opacityScale;
+    markUpdates(UpdateFlags::DataChanged);
+    updateAlphaMode();
+}
+
+bool BasicMaterial::isOpaque() const {
+    return Material::isOpaque() && !isAlphaSupported();
 }
 
 void BasicMaterial::setReflectivity(const float& reflectivity) {
@@ -500,6 +527,8 @@ bool BasicMaterial::operator==(const BasicMaterial& other) const {
     compare_field(volumeAbsorption);
     compare_field(volumeAnisotropy);
     compare_field(volumeScattering);
+    compare_field(volumeScattering);
+    compare_field(opacityScale);
 #undef compare_field
 
     // Compare the sampler descs directly to identify functional differences.
@@ -511,25 +540,7 @@ bool BasicMaterial::operator==(const BasicMaterial& other) const {
 }
 
 void BasicMaterial::updateAlphaMode() {
-    if (!isAlphaSupported()) {
-        assert(getAlphaMode() == AlphaMode::Opaque);
-        return;
-    }
-
-    // Set alpha range to the constant alpha value if non-textured.
-    bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat());
-    float alpha = 1.0f; //((float4)mData.baseColor).a;
-    if (!hasAlpha) mAlphaRange = float2(alpha);
-
-    // Decide if we need to run the alpha test.
-    // This is derived from the current alpha threshold and conservative alpha range.
-    // If the test will never fail we disable it. This optimization assumes basic alpha thresholding.
-    // We could also optimize for the case of the test always failing by adding a 'Transparent' mode.
-    // This is however expected to be rare and probably not worth the runtime cost of an extra branch.
-    // TODO: Check if optimizing for always-fail is worth it.
-    // TODO: Update the logic if other alpha modes are added.
-    bool useAlpha = mAlphaRange.x < getAlphaThreshold();
-    setAlphaMode(useAlpha ? AlphaMode::Mask : AlphaMode::Opaque);
+    setAlphaMode(isAlphaSupported() ? AlphaMode::Mask : AlphaMode::Opaque);
 }
 
 void BasicMaterial::updateNormalMapType() {

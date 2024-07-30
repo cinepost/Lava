@@ -147,4 +147,26 @@ extension MaterialSystem {
         ExplicitLodTextureSampler explicitLOD = { lod };
         return alphaTest(v, materialID, explicitLOD);
     }
+
+    bool isOpaque(const uint materialID) {
+        const MaterialHeader header = materialData[materialID].header;
+        return header.getAlphaMode() == AlphaMode::Opaque;
+    }
+
+    float evalOpacity<L:ITextureSampler>(const VertexData v, const uint materialID, L lod) {
+        const MaterialHeader header = materialData[materialID].header;
+
+        // Create IMaterial instance in order to evaluate opacity.
+        let material = getMaterial(materialID);
+
+        return material.evalOpacity(this, v, lod);
+    }
+
+    float evalOpacity(const VertexData v, const uint materialID, const float lod) {
+        return evalOpacity(v, materialID, ExplicitLodTextureSampler(lod));
+    }
+
+    float evalOpacity(const VertexData v, const uint materialID, const float2 gradX, const float2 gradY) {
+        return evalOpacity(v, materialID, ExplicitGradientTextureSampler(gradX, gradY));
+    }
 }

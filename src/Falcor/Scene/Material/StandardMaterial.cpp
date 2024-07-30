@@ -47,6 +47,7 @@ StandardMaterial::StandardMaterial(Device::SharedPtr pDevice, const std::string&
 	mTextureSlotInfo[(uint32_t)TextureSlot::Emissive] = { "emissive", TextureChannelFlags::RGB, true };
 	mTextureSlotInfo[(uint32_t)TextureSlot::Roughness] = { "roughness", TextureChannelFlags::Red, false };
 	mTextureSlotInfo[(uint32_t)TextureSlot::Transmission] = { "transmission", TextureChannelFlags::RGB, true };
+	mTextureSlotInfo[(uint32_t)TextureSlot::Opacity] = { "opacity", TextureChannelFlags::RGB, false };
 }
 
 void StandardMaterial::update(const Material::SharedPtr& pMaterial) {

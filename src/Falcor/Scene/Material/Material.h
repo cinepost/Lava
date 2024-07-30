@@ -71,6 +71,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			Normal,
 			Transmission,
 			Displacement,
+			Opacity,
 
 			Count // Must be last
 		};
@@ -355,6 +356,7 @@ inline std::string to_string(Material::TextureSlot slot) {
 		tostr(Roughness);
 		tostr(Transmission);
 		tostr(Displacement);
+		tostr(Opacity);
 #undef tostr
 	default:
 		throw std::runtime_error("Invalid texture slot");
