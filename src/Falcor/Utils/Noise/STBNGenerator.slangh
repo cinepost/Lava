@@ -1,0 +1,8 @@
+#pragma once
+
+#include "Utils/HostDeviceShared.slangh"
+
+#define STBN_GENERATOR_SCALAR   0
+#define STBN_GENERATOR_VECTOR   1
+
+#define STBN_GENERATOR_DEFAULT  STBN_GENERATOR_SCALAR

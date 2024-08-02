@@ -491,8 +491,8 @@ bool Session::cmdRaytrace() {
 ///////
 	if( 1 == 2 ) {
 		// Simple performace test by sending zero image a bunch of times
-    	for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
-    	initDisplayTimeReport.measure("Display initial zero data sent 100 times in");
+    for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
+    initDisplayTimeReport.measure("Display initial zero data sent 100 times in");
 	}
 ///////
 

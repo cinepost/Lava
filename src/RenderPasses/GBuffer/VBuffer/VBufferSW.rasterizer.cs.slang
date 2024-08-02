@@ -9,6 +9,7 @@ import Scene.Camera.CameraData;
 #include "VBufferSW.functions.slangh"
 
 import Utils.Sampling.SampleGenerator;
+import Utils.Noise.STBNGenerator;
 import Utils.Math.MathHelpers;
 import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
@@ -54,6 +55,7 @@ import VBufferSW;
 ConstantBuffer<VBufferSW> gVBufferSW;
 
 RWByteAddressBuffer gThreadLockBuffer;
+RWByteAddressBuffer gOpacityShiftsBuffer;
 Texture2D<float4>   gJitterTexture;
 SamplerState        gJitterSampler;
 
@@ -75,6 +77,8 @@ groupshared bool              gsCullCCW;
 groupshared bool              gsUse16BitIndices;
 groupshared bool              gsHidden;
 groupshared uint              gsOffsetY;
+
+uniform STBNGenerator         gNoiseGenerator;
 
 RWStructuredBuffer<MicroTriangle>   gMicroTrianglesBuffer;
 RWStructuredBuffer<MicroTriangle>   gMicroTriangleBuffers[1024]; 
@@ -627,7 +631,10 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
             for(uint x = bb_min_u.x; x <= bb_max_u.x; ++x) {
 
+                uint2 pixelPos = uint2(x, y);
+
                 // Jitter (noise) [0, 1] range
+                //float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber));
                 float4 rnd = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
                 //rnd = float4(0.f);
 
@@ -653,8 +660,6 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z < 0.0f) continue;
                 #endif
             #endif
-
-                uint2 pixelPos = uint2(x, y);
 
             #if (USE_SRT == 1)
                 #if defined(COMPUTE_MOTION_BLUR)
@@ -723,10 +728,21 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
                     float opacity = gScene.materials.evalOpacity(v, materialID, gradX, gradY);
 
-                    //gVBufferSW.writeAUX(pixelPos, float4(opacity, 0, 0, 1));
+                    uint pixelIndex = x + y * gVBufferSW.frameDim.x;
+                    uint pixelPosInUint = pixelIndex % 4;
+                    uint addr = pixelIndex - pixelPosInUint;
+                    
+                    uint originalValue;
+                    gOpacityShiftsBuffer.InterlockedAdd(addr, (uint)1 << (8 * pixelPosInUint), originalValue);
+                    originalValue = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
+
+                    float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + originalValue ));
 
                     // skip fully transparent sample
-                    if((rnd.x + opacity) < 1.f) continue;
+                    if((stbn.x + opacity) < 1.f) {
+                        continue;
+                    }
+
                 }
 
     #if defined(USE_HIGHP_DEPTH)
@@ -766,7 +782,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
 
-                    //gVBufferSW.writeAUX(pixelPos, float4(0, 0, 0, 1));
+                    //gVBufferSW.writeAUX(pixelPos, stbn);
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
