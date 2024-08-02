@@ -44,6 +44,7 @@ const uint32_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
 const uint32_t VBufferSW::kMeshletMaxVertices = VBufferSW::kMaxGroupThreads * 2;
 static const uint32_t kInvalidIndex = 0xffffffff;
 static const uint32_t kMaxLOD = 4u;
+static const size_t   kSTBNOffsetsCount = 64;
 
 #ifndef UINT32_MAX
 #define UINT32_MAX (0xffffffff)
@@ -122,7 +123,18 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
         .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
         .setUnnormalizedCoordinates(true);
+
     mpJitterSampler = Sampler::create(pDevice, samplerDesc);
+    mpSTBNGenerator = STBNGenerator::create(pDevice, uint3(32, 32, 16), STBNGenerator::Type::Scalar, ResourceFormat::R32Float, true /* async */);
+
+    mpSTBNOffsetGenerator = StratifiedSamplePattern::create(kSTBNOffsetsCount);
+    mSTBNOffsets.resize(kSTBNOffsetsCount);
+    uint3 stbn_dims = mpSTBNGenerator->getDims();
+    for(uint32_t i = 0; i < kSTBNOffsetsCount; ++i) {
+        float2 rnd = mpSTBNOffsetGenerator->next();
+        mSTBNOffsets[i][0] = static_cast<uint>(rnd[0] * stbn_dims[0]);
+        mSTBNOffsets[i][1] = static_cast<uint>(rnd[1] * stbn_dims[1]);
+    }   
 
     mDirty = true;
 }
@@ -229,6 +241,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
     if(mpLocalDepthBuffer) pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
+    if(mpOpacityShiftsBuffer) pRenderContext->clearUAV(mpOpacityShiftsBuffer->getUAV().get(), uint4(0));
     //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     uint2 jitterTexDim = mpJitterTexture ? uint2(mpJitterTexture->getWidth(0), mpJitterTexture->getHeight(0)) : uint2(0, 0);
@@ -322,6 +335,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
+
+        mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
+
         var["gVBufferSW"]["frameDim"] = mFrameDim;
         var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
         var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
@@ -333,9 +349,19 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["rnd"] = rnd;
         var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
         
+        // Stbn XY offset to get more values along Z axis
+        if(!mpSTBNGenerator) {
+            var["gVBufferSW"]["stbnOffset"] = uint2(0, 0);
+        } else {
+            uint3 stbn_dims = mpSTBNGenerator->getDims();
+            uint wrap_iter = mSampleNumber / stbn_dims[2];
+            var["gVBufferSW"]["stbnOffset"] = mSTBNOffsets[wrap_iter % mSTBNOffsets.size()];
+        }
+
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
         var["gMeshletDrawList"] = mpMeshletDrawListBuffer;
         var["gThreadLockBuffer"] = mpThreadLockBuffer;
+        var["gOpacityShiftsBuffer"] = mpOpacityShiftsBuffer;
         
         var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
         for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
@@ -396,6 +422,12 @@ void VBufferSW::createBuffers() {
         mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     } else {
         mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    }
+
+    // Opacity shifts buffer
+    if(mpScene && mpScene->materialSystem()->hasTransparentMaterials()) {
+        size_t opacityShiftsBufferSize = ((mFrameDim.x * mFrameDim.y * sizeof(uint8_t)) << 2) >> 2;
+        mpOpacityShiftsBuffer = Buffer::create(mpDevice, opacityShiftsBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
 }
 

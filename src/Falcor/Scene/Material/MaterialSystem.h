@@ -178,6 +178,10 @@ class dlldecl MaterialSystem {
 		*/
 		bool getMaterialIDByName(const std::string& name, uint32_t& materialID) const;
 
+		/** 
+		*/
+		bool hasTransparentMaterials() const;
+
 		/** Remove all duplicate materials.
 			\param[in] idMap Vector that holds for each material the ID of the material that replaces it.
 			\return The number of materials removed.

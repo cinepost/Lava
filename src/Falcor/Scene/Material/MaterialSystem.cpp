@@ -262,6 +262,13 @@ bool MaterialSystem::hasSparseTextures() const {
 	return textureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
 }
 
+bool MaterialSystem::hasTransparentMaterials() const {
+	for (const auto& pMaterial : mMaterials) {
+		if(pMaterial && !pMaterial->isOpaque()) return true;
+	}
+	return false;
+}
+
 void MaterialSystem::optimizeMaterials() {
 	// Gather a list of all textures to analyze.
 	std::vector<std::pair<Material::SharedPtr, Material::TextureSlot>> materialSlots;

@@ -110,8 +110,7 @@ bool Renderer::init(const Config& config) {
 }
 
 Renderer::~Renderer() {
-	if(!mInited)
-		return;
+	if(!mInited) return;
 
 	mpRenderGraph = nullptr;
 

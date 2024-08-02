@@ -30,8 +30,10 @@
 
 #include "../GBufferBase.h"
 #include "Falcor/Core/API/RasterizerState.h"
-#include "Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Scene/SceneTypes.slang"
+#include "Falcor/Utils/Noise/STBNGenerator.h"
 
 #include "VBufferSW.Meshlet.slangh"
 
@@ -122,6 +124,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		Buffer::SharedPtr      	mpMicroTrianglesBuffer;
 		std::vector<Buffer::SharedPtr> mMicroTriangleBuffers;
 		Buffer::SharedPtr      	mpThreadLockBuffer;
+		Buffer::SharedPtr       mpOpacityShiftsBuffer;
 
 		// Tesselator buffers
 		Buffer::SharedPtr    		mpIndicesBuffer;
@@ -132,6 +135,11 @@ class PASS_API VBufferSW : public GBufferBase {
 		// Local textures
 		Texture::SharedPtr     	mpJitterTexture;
 		Sampler::SharedPtr     	mpJitterSampler;
+
+		// Misc
+		STBNGenerator::SharedPtr mpSTBNGenerator;
+		StratifiedSamplePattern::SharedPtr mpSTBNOffsetGenerator;
+		std::vector<uint2>      mSTBNOffsets;
 
 		// Meshlets part
 		Buffer::SharedPtr      	mpMeshletDrawListBuffer;

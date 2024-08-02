@@ -624,6 +624,23 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
         for(uint y = y_start; y < gVBufferSW.frameDim.y; y += y_d) {
             if(y < bb_min_u.y || y > bb_max_u.y) continue;
+            
+            /*
+            uint lock_idx = y << 2;
+
+            uint s=0;
+            
+            while (true && (s < 10)) {
+                uint memLockValue;
+
+                gThreadLockBuffer.InterlockedCompareExchange(lock_idx, 0, 4294967295u, memLockValue);
+        
+                if (memLockValue == 0) {
+                    break;
+                }
+                s++;
+            }
+            */
 
             for(uint x = bb_min_u.x; x <= bb_max_u.x; ++x) {
 
@@ -773,6 +790,12 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
                 }
             }
+
+            /*
+            gThreadLockBuffer.Store(lock_idx, 0);
+            //uint memLockValue;
+            //gThreadLockBuffer.InterlockedCompareExchange(lock_idx, kInvalid, 0, memLockValue);
+            */
         }
     }
 }

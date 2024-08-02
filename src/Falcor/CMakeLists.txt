@@ -43,6 +43,9 @@ file( GLOB SOURCES
     ./Utils/Textures/*.cpp
     ./Utils/Textures/FilterKernelsLUT.cpp
     ./Utils/Perception/*.cpp
+    ./Utils/Noise/pcg_basic.c
+    ./Utils/Noise/STBN.cpp
+    ./Utils/Noise/STBNGenerator.cpp
     
     # CPU sample generators
     ./Utils/SampleGenerators/DxSamplePattern.cpp

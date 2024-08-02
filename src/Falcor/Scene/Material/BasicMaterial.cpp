@@ -345,9 +345,10 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
 }
 
 bool BasicMaterial::isAlphaSupported() const {
-    //return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
-    bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat()) && mData.isBaseColorAlphaUsed();
-    return hasAlpha || hasTextureSlot(TextureSlot::Opacity) || static_cast<float>(mData.opacityScale) <= kOpacityThreshold;
+    bool enabledAlphaChannel = getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
+    bool hasAlphaMap = enabledAlphaChannel && getTexture(TextureSlot::BaseColor) && doesFormatHasAlpha(getBaseColorTexture()->getFormat()) && mData.isBaseColorAlphaUsed();
+    bool hasOpacityMap = hasTextureSlot(TextureSlot::Opacity) && getTexture(TextureSlot::Opacity);
+    return hasAlphaMap || hasOpacityMap || (static_cast<float>(mData.opacityScale) <= kOpacityThreshold);
 }
 
 void BasicMaterial::prepareDisplacementMapForRendering() {

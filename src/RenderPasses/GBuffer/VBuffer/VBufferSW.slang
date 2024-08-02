@@ -95,6 +95,7 @@ struct VBufferSW {
     float   minScreenEdgeLen;
     float   minScreenEdgeLenSquared;
     float2  rnd;
+    uint2   stbnOffset;
     uint    drawableIndex;
     uint2   jitterTextureDim;
 
