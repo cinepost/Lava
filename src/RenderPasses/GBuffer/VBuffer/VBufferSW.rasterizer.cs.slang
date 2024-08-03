@@ -708,6 +708,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 uint materialID = gScene.getMaterialID(triangleHit);
                 bool isOpaque = gScene.materials.isOpaque(materialID);
                 float2 texC, gradX, gradY;
+                uint originalValue = 0;
 
                 if(!isOpaque || is_valid(gTextureGrads)) {
                     float2 screen_pos = float2(2.f, -2.f) * float2(x, y)/float2(gVBufferSW.frameDim) - float2(1.f, -1.f);
@@ -732,7 +733,6 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     uint pixelPosInUint = pixelIndex % 4;
                     uint addr = pixelIndex - pixelPosInUint;
                     
-                    uint originalValue;
                     gOpacityShiftsBuffer.InterlockedAdd(addr, (uint)1 << (8 * pixelPosInUint), originalValue);
                     originalValue = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
 
@@ -782,7 +782,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
 
-                    //gVBufferSW.writeAUX(pixelPos, stbn);
+                    gVBufferSW.writeAUX(pixelPos, float4(originalValue));
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
