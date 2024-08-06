@@ -330,7 +330,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    const uint32_t threadsX = meshletDrawsCount * kMaxGroupThreads;
+    const uint32_t threadsX = meshletDrawsCount;// * kMaxGroupThreads;
     const uint32_t dispatchX = kMaxGroupThreads;
 
     {
@@ -348,6 +348,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
         var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
+        var["gVBufferSW"]["drawableIndex"] = kInvalidIndex;
         
         // Stbn XY offset to get more values along Z axis
         if(!mpSTBNGenerator) {
@@ -408,8 +409,17 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Meshlets rasterization pass
     LLOG_TRC << "Software rasterizer dispatchX size " << std::to_string(dispatchX);
     LLOG_TRC << "Software rasterizer threads count " << std::to_string(threadsX);
-    
-    mpComputeRasterizerPass->execute(pRenderContext, uint3(threadsX, 1, 1));
+
+    if(1 == 1) {    
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(1, threadsX, 1));
+    } else {
+        ShaderVar var = mpComputeRasterizerPass->getRootVar();
+        for(uint i = 0; i < meshletDrawsCount; ++i) {
+            var["gVBufferSW"]["drawableIndex"] = i;
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
+        }
+    }
+
     mSampleNumber++;
 }
 
