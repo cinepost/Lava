@@ -632,9 +632,15 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
             uint lockValue = 0;
             
+            //GpuTimer timer;
+            //gVBufferSW.beginTime(timer);
+
             while(lockValue != 0) {
                 gThreadLockBuffer.InterlockedAdd(y << 2, 1, lockValue);
             }
+
+            //gVBufferSW.endTime(uint2(0, y), timer);
+
             //gThreadLockBuffer.InterlockedAdd(y << 2, 1, lockValue);
             //if(lockValue != 0) continue;
 

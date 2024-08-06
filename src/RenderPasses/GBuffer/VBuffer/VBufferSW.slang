@@ -28,6 +28,7 @@
 __exported import Scene.Scene;
 __exported import Scene.Shading;
 __exported import Utils.Math.Ray;
+__exported import Utils.Timing.GpuTimer;
 
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
@@ -183,5 +184,13 @@ void writeDepth(uint2 pixelPos, float depth) {
                 return gScene.camera.computeRayPinholeMB(pixel, frameDim, tj, false);
             }
         }
+    }
+
+    void beginTime(inout GpuTimer timer) {
+        if (is_valid(gTime)) timer.start();
+    }
+
+    void endTime(uint2 pixel, inout GpuTimer timer) {
+        if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
     }
 };
