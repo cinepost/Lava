@@ -77,6 +77,7 @@ groupshared bool              gsCullCCW;
 groupshared bool              gsUse16BitIndices;
 groupshared bool              gsHidden;
 groupshared uint              gsOffsetY;
+groupshared uint              gsDrawableIndex;
 
 uniform STBNGenerator         gNoiseGenerator;
 
@@ -629,6 +630,20 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
         for(uint y = y_start; y < gVBufferSW.frameDim.y; y += y_d) {
             if(y < bb_min_u.y || y > bb_max_u.y) continue;
 
+            uint lockValue = 0;
+            
+            //GpuTimer timer;
+            //gVBufferSW.beginTime(timer);
+
+            while(lockValue != 0) {
+                gThreadLockBuffer.InterlockedAdd(y << 2, 1, lockValue);
+            }
+
+            //gVBufferSW.endTime(uint2(0, y), timer);
+
+            //gThreadLockBuffer.InterlockedAdd(y << 2, 1, lockValue);
+            //if(lockValue != 0) continue;
+
             for(uint x = bb_min_u.x; x <= bb_max_u.x; ++x) {
 
                 uint2 pixelPos = uint2(x, y);
@@ -709,6 +724,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 bool isOpaque = gScene.materials.isOpaque(materialID);
                 float2 texC, gradX, gradY;
                 uint originalValue = 0;
+                uint opacityShift = 0;
 
                 if(!isOpaque || is_valid(gTextureGrads)) {
                     float2 screen_pos = float2(2.f, -2.f) * float2(x, y)/float2(gVBufferSW.frameDim) - float2(1.f, -1.f);
@@ -734,10 +750,10 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     uint addr = pixelIndex - pixelPosInUint;
                     
                     gOpacityShiftsBuffer.InterlockedAdd(addr, (uint)1 << (8 * pixelPosInUint), originalValue);
-                    originalValue = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
+                    opacityShift = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
 
-                    float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + originalValue ));
-
+                    float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + opacityShift ));
+                    
                     // skip fully transparent sample
                     if((stbn.x + opacity) < 1.f) {
                         continue;
@@ -782,26 +798,37 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
 
-                    gVBufferSW.writeAUX(pixelPos, float4(originalValue));
+                    gVBufferSW.writeAUX(pixelPos, float4(opacityShift));
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);
                 #endif
 
+                } else if(!isOpaque) {
+                    //uint pixelIndex = x + y * gVBufferSW.frameDim.x;
+                    //uint pixelPosInUint = pixelIndex % 4;
+                    //uint addr = pixelIndex - pixelPosInUint;
+                    //gOpacityShiftsBuffer.InterlockedMin(addr, originalValue);
                 }
             }
-        }
+        
+        //gThreadLockBuffer.InterlockedAdd(y << 2, uint(-1));
+        uint tmp;
+        gThreadLockBuffer.InterlockedExchange(y << 2, 0, tmp);
+        } // y-cycle
     }
 }
 
 [numthreads(THREADS_COUNT, 1, 1)]
 void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
-    const uint group_id = groupID.y * gVBufferSW.dispatchX + groupID.x;       // Sequential group index.
-    const uint thread_id = groupIdx;                                          // Local thread index in group (range 0..THREADS_COUNT-1).
-    const uint global_id = group_id * THREADS_COUNT + thread_id;              // Global element index
+    const uint group_id = groupID.y + groupID.x;                    // Sequential group index.
+    const uint thread_id = groupIdx;                                // Local thread index in group (range 0..THREADS_COUNT-1).
+    const uint global_id = group_id * THREADS_COUNT + thread_id;    // Global element index
 
     // Thread global data
     gThreadID = thread_id;
+
+    gsDrawableIndex = gVBufferSW.drawableIndex == kInvalid ? group_id : gVBufferSW.drawableIndex;
 
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;
@@ -814,7 +841,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
 
     // meshlet parameters
     if(thread_id == 0u) {
-        draw = gMeshletDrawList[group_id];
+        draw = gMeshletDrawList[gsDrawableIndex];
         if(draw.drawCount > 0u) {
             instanceID.index = draw.instanceID;
             instance = gScene.getGeometryInstance(instanceID);
