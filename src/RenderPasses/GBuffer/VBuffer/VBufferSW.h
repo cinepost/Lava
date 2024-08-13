@@ -67,6 +67,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void setPerPixelJitter(bool value);
 		void setMaxSubdivLevel(uint level);
 		void setMinScreenEdgeLen(float len);
+		void setIOTSamplesCount(uint count);
 
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
@@ -103,6 +104,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseMotionBlur = false;
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
+
+		uint mIOTSamplesCount = 1;
 
 		bool mSubdivDataReady = false;
 

@@ -1632,6 +1632,16 @@
             }
 
             parm {
+                name    "lv_transparentsamples"
+                label   "Stochastic Samples"
+                type    integer
+                default { "1" }
+                help    "The number of transparent samples to shade. "
+                range   { 1 16 }
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
                 name    "lv_stbn_sampling"
                 label   "STBN Sampling"
                 type    toggle

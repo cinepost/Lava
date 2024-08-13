@@ -51,6 +51,7 @@ RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint4>  gNormW;
 RWTexture2D<float4> gTextureGrads;
+RWTexture2D<uint>   gOITStartOffset;
 
 RWTexture2D<uint>   gMeshletID;
 RWTexture2D<uint>   gMicroPolyID;
@@ -99,6 +100,7 @@ struct VBufferSW {
     uint2   stbnOffset;
     uint    drawableIndex;
     uint2   jitterTextureDim;
+    uint    ioTSamplesCount;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)

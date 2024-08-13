@@ -50,6 +50,7 @@ Texture2D<float>            gDepth;
 Texture2D<PackedHitInfo>    gVbuffer;
 Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
+Texture2D<uint>             gOITStartOffset;
 
 // Extra UAV output channels
 RasterizerOrderedTexture2D<float4> gOutNormals;
