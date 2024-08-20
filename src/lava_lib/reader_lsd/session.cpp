@@ -290,6 +290,8 @@ bool Session::cmdRaytrace() {
 
 	passDict["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));
 
+	passDict["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(1));
+
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
 	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));

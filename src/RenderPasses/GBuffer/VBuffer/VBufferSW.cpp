@@ -69,6 +69,7 @@ namespace {
     const char kUseDisplacement[] = "useDisplacement";
     const char kMaxSubdivLevel[] = "maxSubdivLevel";
     const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
+    const char kIOTSamplesCount[] = "iotSamplesCount";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
@@ -78,29 +79,33 @@ namespace {
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
 
+    const std::string kOuputOITStartOffset = "oit_start_offset";
     const std::string kOuputTime       = "time";
     const std::string kOuputAUX        = "aux";
     const std::string kOutputDrawCount = "drawCount";
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
-        { "depth",          "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
-        { "mvec",           "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "viewW",          "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "texGrads",       "gTextureGrads",    "Texture coordinate gradients",    true /* optional */, ResourceFormat::RGBA16Float },
+        { "depth",              "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
+        { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "texGrads",           "gTextureGrads",    "Texture coordinate gradients",    true /* optional */, ResourceFormat::RGBA16Float },
 
-        { "meshlet_id",     "gMeshletID",       "Meshlet id",                      true /* optional */, ResourceFormat::R32Uint     },
-        { "micropoly_id",   "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
+        { "meshlet_id",         "gMeshletID",       "Meshlet id",                      true /* optional */, ResourceFormat::R32Uint     },
+        { "micropoly_id",       "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
+
+        // OIT channels
+        { kOuputOITStartOffset, "gOITStartOffset",  "OIT start offset buffer",         true /* optional */, ResourceFormat::R32Uint     },
 
         // Debug channels
-        { kOuputAUX,        "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
-        { kOuputTime,       "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
-        { kOutputDrawCount, "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
+        { kOuputAUX,            "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
+        { kOuputTime,           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
+        { kOutputDrawCount,     "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
     };
 
     // Additional output channels.
     const ChannelList kVBufferExtraSubdChannels = {
-        { "normW",          "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
+        { "normW",              "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
     };
 };
 
@@ -157,6 +162,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         #endif
         else if (key == kMaxSubdivLevel) setMaxSubdivLevel(static_cast<uint>(value));
         else if (key == kMinScreenEdgeLen) setMinScreenEdgeLen(static_cast<float>(value));
+        else if (key == kIOTSamplesCount) setIOTSamplesCount(static_cast<uint>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -247,6 +253,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if(mpLocalDepthBuffer) pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
     if(mpOpacityShiftsBuffer) pRenderContext->clearUAV(mpOpacityShiftsBuffer->getUAV().get(), uint4(0));
     //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
+
+    auto pStartOffsetBuffer = renderData[kOuputOITStartOffset]->asTexture();
+    if(pStartOffsetBuffer) pRenderContext->clearUAV(pStartOffsetBuffer->getUAV().get(), uint4(kInvalidIndex));
 
     uint2 jitterTexDim = mpJitterTexture ? uint2(mpJitterTexture->getWidth(0), mpJitterTexture->getHeight(0)) : uint2(0, 0);
 
@@ -352,6 +361,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
         var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
+        var["gVBufferSW"]["ioTSamplesCount"] = mIOTSamplesCount;
         var["gVBufferSW"]["drawableIndex"] = kInvalidIndex;
         
         // Stbn XY offset to get more values along Z axis
@@ -443,6 +453,8 @@ void VBufferSW::createBuffers() {
         size_t opacityShiftsBufferSize = ((mFrameDim.x * mFrameDim.y * sizeof(uint8_t)) << 2) >> 2;
         mpOpacityShiftsBuffer = Buffer::create(mpDevice, opacityShiftsBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
+
+    // Opacity transparent visibility samples buffer
 }
 
 void VBufferSW::createMicroTrianglesBuffer() {
@@ -550,6 +562,13 @@ void VBufferSW::createPrograms() {
     mpComputeTesselatorPass = nullptr;
     mpComputeRasterizerPass = nullptr;
     mpComputeFrustumCullingPass = nullptr;
+}
+
+void VBufferSW::setIOTSamplesCount(uint count) {
+    if(mIOTSamplesCount == count) return;
+    mIOTSamplesCount = count;
+    requestRecompile();
+    mDirty = true;
 }
 
 void VBufferSW::enableSubdivisions(bool value) {
