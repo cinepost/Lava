@@ -1,0 +1,60 @@
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+struct TransparentVisibilitySample {
+    uint64_t        depth;
+    float           alpha;
+    uint            nextSampleOffset;
+
+#ifdef HOST_CODE
+    uint4           hitInfo;
+#else // !HOST_CODE
+    PackedHitInfo   hitInfo;
+#endif
+};
+
+/**
+*/
+
+struct OpaqueSampleExtraData {
+    uint2 pos;
+    uint  transparentSampleOffset;
+    uint  transparentSamplesCount;
+};
+
+/** Extra sample data packed into 128B for aligned access.
+*/
+struct PackedOpaqueSampleExtraData {
+    uint packedDataA; // 12 + 12 bit for resolution + 8 bit transparent samples count
+    uint transparentSampleOffset;
+
+#ifdef HOST_CODE
+    PackedOpaqueSampleExtraData() {
+        transparentSampleOffset = 0;
+    }
+
+    PackedOpaqueSampleExtraData(const OpaqueSampleExtraData& o) { pack(o); }
+    void pack(const OpaqueSampleExtraData& o) {
+      
+    }
+
+#else // !HOST_CODE
+    OpaqueSampleExtraData unpack() {
+        OpaqueSampleExtraData o;
+
+        return o;
+    }
+#endif
+
+enum class VisibilitySamplesContainerFlags : uint32_t {
+    None = 0x0,
+
+    OpaqueSamplesSorted          = 0x1,   ///< Indicates that opaque samples are sorted into separate buffer.
+    TransparentSamplesSorted     = 0x2,   ///< Indicates that transparent samples are sorted.
+};
+
+};
+
+END_NAMESPACE_FALCOR
