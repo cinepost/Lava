@@ -44,6 +44,8 @@ namespace {
 
     const std::string kShaderModel = "6_5";
 
+    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
+
     const ChannelList kExtraInputChannels = {
         { kInputDepth,            "gDepth",         "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
         { kInputTexGrads,         "gTextureGrads",  "Texture gradients",             true /* optional */, ResourceFormat::Unknown },
@@ -210,7 +212,12 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         defines.add("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
         defines.add("USE_DEPTH_OF_FIELD", mUseDOF ? "1" : "0");
-        
+
+        if(mpVisibilitySamplesContainer) {
+            defines.add("USE_VISIBILITY_CONTAINER", "1");
+        } else {
+            defines.remove("USE_VISIBILITY_CONTAINER");
+        }
 
         defines.add("is_valid_gLastFrameSum", mpLastFrameSum != nullptr ? "1" : "0");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
@@ -250,6 +257,10 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         }
 
         mpLightingPass["gLastFrameSum"] = mpLastFrameSum;
+
+        if(mpVisibilitySamplesContainer) {
+            mpLightingPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+        }
     }
 
     float2 f = mpNoiseOffsetGenerator->next();
@@ -291,6 +302,12 @@ void DeferredLightingPass::createBuffers(RenderContext* pContext, const RenderDa
     } else {
         mpLastFrameSum = nullptr;
     }
+}
+
+void DeferredLightingPass::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer) {
+    if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
+    mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+    mDirty = true;
 }
 
 DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {

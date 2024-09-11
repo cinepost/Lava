@@ -18,11 +18,12 @@ namespace Falcor {
 class dlldecl VisibilitySamplesContainer {
 	public:
 		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
+		using SharedConstPtr = std::shared_ptr<const VisibilitySamplesContainer>;
 
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint8_t transparentSamplesCount = 4);
+		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint transparentSamplesCount = 4);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -51,27 +52,52 @@ class dlldecl VisibilitySamplesContainer {
 		*/
 		void sort();
 
+		void beginFrame();
+
+		void beginFrame() const;
+
+		void resize(uint width, uint height);
+
+		void resize(uint width, uint height, uint maxTransparentSamplesCount);
+
+		void setMaxTransparencySamplesCount(uint maxTransparentSamplesCount);
+
+		const uint2& resolution() const { return mResolution; }
+
+		uint opaqueSamplesCount() const;
+
+		uint transparentSamplesCount() const;
 
 	private:
-		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint8_t transparentSamplesCount = 4);
+		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCount = 4);
 
 		void createParameterBlock();
 		void uploadMaterial(const uint32_t materialID);
 
 		void createBuffers();
 
+		void readInfoBufferData() const;
+
 		uint2 mResolution;
 		uint 	mMaxTransparentSamplesCount;
 
 		Device::SharedPtr mpDevice = nullptr;
 
+		uint32_t mFlags;
+
 		// GPU resources
 		GpuFence::SharedPtr mpFence;
-		ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all material resources.
+		ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
+		ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
 		Texture::SharedPtr  mpOpaqueSamplesBuffer;
-		Texture::SharedPtr  mpOpaqueSamplesExtraDataBuffer;
+		Texture::SharedPtr  mpOpaqueVisibilitySamplesPositionBuffer;
+		Texture::SharedPtr  mpOpaqueVisibilitySamplesTransparentOffsetBuffer;
+
+		Buffer::SharedPtr   mpInfoBuffer;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
+
+		mutable std::vector<uint32_t> mpInfoBufferData;
 
 		ResourceFormat      mOpaqueSampleDataFormat = HitInfo::kDefaultFormat;
 		ResourceFormat      mOpaqueSampleExtraDataFormat = ResourceFormat::RG32Uint;

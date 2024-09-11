@@ -31,6 +31,7 @@
 #include "../GBufferBase.h"
 #include "Falcor/Core/API/RasterizerState.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Scene/SceneTypes.slang"
 #include "Falcor/Utils/Noise/STBNGenerator.h"
@@ -67,7 +68,10 @@ class PASS_API VBufferSW : public GBufferBase {
 		void setPerPixelJitter(bool value);
 		void setMaxSubdivLevel(uint level);
 		void setMinScreenEdgeLen(float len);
-		void setIOTSamplesCount(uint count);
+		void setTransparencySamplesCount(uint count);
+		void setOpacityLimit(float limit);
+
+		void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer);
 
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
@@ -89,6 +93,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
 
+		// Helper functions
+		bool isOpaqueMaterial(const Material::SharedPtr& pMaterial);
 
 		Camera::SharedPtr mpCamera;
 
@@ -105,7 +111,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 
-		uint mIOTSamplesCount = 1;
+		uint mTransparencySamplesCount = 1;
 
 		bool mSubdivDataReady = false;
 
@@ -115,12 +121,17 @@ class PASS_API VBufferSW : public GBufferBase {
 		uint mMaxLOD = 0;
 		uint mMaxMicroTrianglesPerThread = 1;
 
+		float mOpacityLimit = 0.995f;
+
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
 		ComputePass::SharedPtr 	mpComputeTesselatorPass;
 		ComputePass::SharedPtr 	mpComputeRasterizerPass;
 		ComputePass::SharedPtr 	mpComputeReconstructPass;
 		ComputePass::SharedPtr 	mpComputeJitterPass;
+
+		// Sampling buffer (optional)
+		VisibilitySamplesContainer::SharedPtr mpVisibilitySamplesContainer;
 
 		// Local buffers
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer
@@ -145,7 +156,11 @@ class PASS_API VBufferSW : public GBufferBase {
 		std::vector<uint2>      mSTBNOffsets;
 
 		// Meshlets part
-		Buffer::SharedPtr      	mpMeshletDrawListBuffer;
+		Buffer::SharedPtr      	mpMeshletDrawListBuffer; // Meshlets buffer
+
+		uint32_t                mOpaqueMeshletsCount;
+		uint32_t                mTransparentMeshletsCount;
+		uint32_t                mTransparentMeshletsStartOffset;
 };
 
 #endif   // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERSW_H_

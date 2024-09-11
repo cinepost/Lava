@@ -8,6 +8,8 @@ import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
 import Utils.Color.FalseColorGenerator;
 import Utils.Color.HeatMapColorGenerator;
+import Utils.Sampling.VisibilitySamplesContainer;
+
 
 #ifndef FALSE_COLOR_BUFFER_SIZE
 #define FALSE_COLOR_BUFFER_SIZE 0
@@ -29,6 +31,9 @@ Texture2D<uint4>    gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
+
+// Visibility samples container (optional)
+ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;
@@ -67,7 +72,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // early out
     if (any(pixelPos >= gFrameDim)) return;
 
+#if defined(USE_VISIBILITY_CONTAINER)
+    const HitInfo hit = gVisibilityContainer.readOpaqueHit(pixelPos);
+#else
     const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
+#endif
 
     if (!hit.isValid()) {
         gInOutColor[pixelPos] = float4(0, 0, 0, 0);

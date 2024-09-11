@@ -3295,6 +3295,8 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 				if(instance.hasMultipleMaterials() || mesh.hasMultipleMaterials()) {
 					geomInstance.mbOffset = mesh.perPrimMaterialIndicesOffset;
 					geomInstance.flags |= (uint32_t)GeometryInstanceFlags::HasMultipleMaterials;
+				} else {
+					geomInstance.mbOffset = kInvalidID;
 				}
 
 				// Geometry instance mesh flags

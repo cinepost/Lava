@@ -9,6 +9,7 @@ import Scene.Camera.CameraData;
 #include "VBufferSW.functions.slangh"
 
 import Utils.Sampling.SampleGenerator;
+import Utils.Sampling.VisibilitySamplesContainer;
 import Utils.Noise.STBNGenerator;
 import Utils.Math.MathHelpers;
 import Utils.Math.PackedFormats;
@@ -51,13 +52,14 @@ import VBufferSW;
 
 #define RT_EPS .0000001
 
-
 ConstantBuffer<VBufferSW> gVBufferSW;
 
 RWByteAddressBuffer gThreadLockBuffer;
 RWByteAddressBuffer gOpacityShiftsBuffer;
 Texture2D<float4>   gJitterTexture;
 SamplerState        gJitterSampler;
+
+ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 groupshared uint gsPrimCount;
 groupshared float4x4 worldMat;
@@ -91,7 +93,8 @@ static constexpr float k58 = 5.f / 8.f;
 static constexpr float k316 = 3.f / 16.f;
 
 static const uint   kInvalid = 4294967295u;
-static const float2 jitterBound = float2(.5f, .5f);
+static const float2 jitterBound = float2(.55f, .55f);
+static const float  kMinOpacityThreshold = 0.001f;
 
 static const MicroTriangleIntersection rt_false = MicroTriangleIntersection(false, float3(0.0), 0.0, float3(0.0));
 
@@ -641,9 +644,6 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
             //gVBufferSW.endTime(uint2(0, y), timer);
 
-            //gThreadLockBuffer.InterlockedAdd(y << 2, 1, lockValue);
-            //if(lockValue != 0) continue;
-
             for(uint x = bb_min_u.x; x <= bb_max_u.x; ++x) {
 
                 uint2 pixelPos = uint2(x, y);
@@ -720,6 +720,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
                 #endif
 
+                float opacity = 1.f;
                 uint materialID = gScene.getMaterialID(triangleHit);
                 bool isOpaque = gScene.materials.isOpaque(materialID);
                 float2 texC, gradX, gradY;
@@ -737,14 +738,15 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gradX = clamp(g.dx, float2(-1.0f), float2(1.0f));
                     gradY = clamp(g.dy, float2(-1.0f), float2(1.0f));
                     texC = g.interp;
-                }
 
-                if(!isOpaque) {
                     VertexData v = gScene.getVertexData(instanceID, triangleHit.primitiveIndex, triangleHit.getBarycentricWeights());
                     v.texC = texC;
 
-                    float opacity = gScene.materials.evalOpacity(v, materialID, gradX, gradY);
+                    opacity = gScene.materials.evalOpacity(v, materialID, gradX, gradY);
+                    if(opacity >= gVBufferSW.opacityLimit) isOpaque = true;
+                }
 
+                if(!isOpaque) {
                     uint pixelIndex = x + y * gVBufferSW.frameDim.x;
                     uint pixelPosInUint = pixelIndex % 4;
                     uint addr = pixelIndex - pixelPosInUint;
@@ -753,28 +755,58 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     opacityShift = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
 
                     float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + opacityShift ));
-                    
+                 
+                #if defined(USE_VISIBILITY_CONTAINER)
+                    // skip fully transparent sample
+                    if(opacity < kMinOpacityThreshold) {
+                        continue;
+                    }
+
+                #else    
                     // skip fully transparent sample
                     if((stbn.x + opacity) < 1.f) {
                         continue;
                     }
-
+                #endif
                 }
 
     #if defined(USE_HIGHP_DEPTH)
                 const uint64_t depth_value = z * UINT64_MAX;
-                const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;       
-                if ( depth_value < gLocalDepthBuffer.InterlockedMinU64(idx, depth_value)) {
+                const uint idx = (gVBufferSW.frameDim.x * y + x) << 3;
+
+            #if defined(USE_VISIBILITY_CONTAINER)
+                uint64_t out_value = isOpaque ? gLocalDepthBuffer.InterlockedMinU64(idx, depth_value) : gLocalDepthBuffer.Load<uint64_t>(idx);       
+            #else
+                uint64_t out_value = gLocalDepthBuffer.InterlockedMinU64(idx, depth_value);
+            #endif    
+
+                if ( depth_value < out_value) {
     #else
                 const uint32_t depth_value = z * kInvalid;
                 const uint idx = (gVBufferSW.frameDim.x * y + x) << 2;
                 uint32_t out_value = depth_value;
+
+            #if defined(USE_VISIBILITY_CONTAINER)
+                if(isOpaque) { gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value); }
+                else { out_value = gLocalDepthBuffer.Load<uint32_t>(idx); }
+            #else
                 gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value);
+            #endif
 
                 if ( depth_value < out_value) {
     #endif
-                    gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
+
+    #if defined(USE_VISIBILITY_CONTAINER)
+                if(isOpaque) {
+                    gVisibilityContainer.writeOpaqueHit(pixelPos, HitInfo(triangleHit.pack()));
                     gVBufferSW.writeDepth(pixelPos, z);
+                } else {
+                    gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);
+                }
+    #else
+                gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
+                gVBufferSW.writeDepth(pixelPos, z);
+    #endif
 
                 #if is_valid(gTextureGrads)
                     gVBufferSW.writeTexGrads(pixelPos, float4(gradX, gradY));
@@ -797,7 +829,6 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
-
                     gVBufferSW.writeAUX(pixelPos, float4(opacityShift));
 
                 #if is_valid(gDrawCount)
@@ -810,9 +841,8 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     //uint addr = pixelIndex - pixelPosInUint;
                     //gOpacityShiftsBuffer.InterlockedMin(addr, originalValue);
                 }
-            }
+            } // x-cycle
         
-        //gThreadLockBuffer.InterlockedAdd(y << 2, uint(-1));
         uint tmp;
         gThreadLockBuffer.InterlockedExchange(y << 2, 0, tmp);
         } // y-cycle
@@ -828,7 +858,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
     // Thread global data
     gThreadID = thread_id;
 
-    gsDrawableIndex = gVBufferSW.drawableIndex == kInvalid ? group_id : gVBufferSW.drawableIndex;
+    gsDrawableIndex = gVBufferSW.drawableIndex == kInvalid ? (group_id + gVBufferSW.drawableOffset) : gVBufferSW.drawableIndex;
 
     // Early termination
     [[branch]] if (group_id >= gVBufferSW.meshletDrawsCount) return;

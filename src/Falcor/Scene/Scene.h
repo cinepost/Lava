@@ -968,6 +968,10 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     const std::vector<PackedMeshletData>& meshletsData() const { return mMeshletsData; }
 
+    const PackedMeshletData& getPackedMeshletData(size_t index) const { return mMeshletsData[index]; }
+
+    const std::vector<uint32_t>& getMeshletPrimIndicesList() const { return mMeshletPrimIndices; }
+
     /** Get a list of raytracing BLAS IDs for all meshes. The list is arranged by mesh ID.
     */
     std::vector<uint32_t> getMeshBlasIDs() const;

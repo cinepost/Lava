@@ -32,6 +32,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 namespace {
     const char kShaderFile[] = "RenderPasses/DebugShadingPass/DebugShadingPass.cs.slang";
 
+    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
+
     const std::string kInputColor           = "color";
     const std::string kInputVBuffer         = "vbuffer";
     const std::string kInputDepth           = "depth";
@@ -146,6 +148,12 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         defines.add("FALSE_COLOR_BUFFER_SIZE", mpMeshletColorBuffer ? std::to_string(meshletColorCycleSize) : "0");
 
+        if(mpVisibilitySamplesContainer) {
+            defines.add("USE_VISIBILITY_CONTAINER", "1");
+        } else {
+            defines.remove("USE_VISIBILITY_CONTAINER");
+        }
+
         mpShadingPass = ComputePass::create(mpDevice, desc, defines, true);
 
         mpShadingPass["gScene"] = mpScene->getParameterBlock();
@@ -191,6 +199,10 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         if (!mpHeatMapColorGenerator && (renderData[kOutputMeshletDrawColor]->asTexture() && renderData[kInputDrawCount]->asTexture())) {
             mpHeatMapColorGenerator = HeatMapColorGenerator::create(mpDevice);
         }
+
+        if(mpVisibilitySamplesContainer) {
+            mpShadingPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+        }
     }
 
     if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(mpShadingPass["gFalseColorGenerator"]);
@@ -214,4 +226,10 @@ void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) 
 
 DebugShadingPass& DebugShadingPass::setColorFormat(ResourceFormat format) {
     return *this;
+}
+
+void DebugShadingPass::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer) {
+    if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
+    mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+    mDirty = true;
 }

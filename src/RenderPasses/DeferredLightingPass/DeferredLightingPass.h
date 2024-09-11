@@ -6,6 +6,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/Lights/Light.h"
 
@@ -84,6 +85,8 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		void setRayContribThreshold(float value = 0.1f);
     void setRussRoulleteLevel(uint value = 2u);
 
+    void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
+
 	private:
 		DeferredLightingPass(Device::SharedPtr pDevice);
 		
@@ -112,17 +115,20 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		float 			mRayContribThreshold = 0.1f;
 		uint      	mRussRouletteLevel = 2u;
 
-		Sampler::SharedPtr                  mpNoiseSampler;
-		Texture::SharedPtr                  mpBlueNoiseTexture;
-		CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
-		SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
+		// Sampling buffer (optional)
+		VisibilitySamplesContainer::SharedConstPtr 	mpVisibilitySamplesContainer;
+
+		Sampler::SharedPtr                  				mpNoiseSampler;
+		Texture::SharedPtr                  				mpBlueNoiseTexture;
+		CPUSampleGenerator::SharedPtr       				mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
+		SampleGenerator::SharedPtr          				mpSampleGenerator;           ///< GPU sample generator.
 		
-		EmissiveLightSampler::SharedPtr 		mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
+		EmissiveLightSampler::SharedPtr 						mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
 
-		Texture::SharedPtr                  mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
+		Texture::SharedPtr                  				mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
 
-		EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
-		EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
+		EnvMapLighting::SharedPtr           				mpEnvMapLighting = nullptr;
+		EnvMapSampler::SharedPtr            				mpEnvMapSampler = nullptr;
 
 		bool mEnableSuperSampling = false;
 		bool mUseSimplifiedEnvLighting = false;

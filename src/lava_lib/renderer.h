@@ -15,6 +15,8 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
+#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
+
 #include "Falcor/Core/Renderer.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -222,6 +224,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 
     std::map<std::string, Falcor::MaterialX::SharedPtr> mMaterialXs; ///< Materialx materials map
+
+    VisibilitySamplesContainer::SharedPtr mpVisibilitySamplesContainer;
 
     bool mMainAOVPlaneExist = false;
     bool mInited = false;

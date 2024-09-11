@@ -8,6 +8,7 @@ import Utils.Math.MathHelpers;
 import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
 import Utils.Sampling.SampleGenerator;
+import Utils.Sampling.VisibilitySamplesContainer;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
 import Experimental.Scene.Lights.EmissiveLightSampler;
@@ -51,6 +52,8 @@ Texture2D<PackedHitInfo>    gVbuffer;
 Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
 Texture2D<uint>             gOITStartOffset;
+
+ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 // Extra UAV output channels
 RasterizerOrderedTexture2D<float4> gOutNormals;
@@ -530,7 +533,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         const float4 texGrads = gTextureGrads[ipos];
     #endif
 
+#if defined(USE_VISIBILITY_CONTAINER)
+    const HitInfo hit = gVisibilityContainer.readOpaqueHit(ipos);
+#else
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
+#endif
+
     AOVData aov_data = AOVData.create();
     
     if (!hit.isValid() || hit.getType() != HitType::Triangle) {

@@ -6,6 +6,7 @@
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 #include "Falcor/Utils/Color/FalseColorGenerator.h"
 #include "Falcor/Utils/Color/HeatMapColorGenerator.h"
 
@@ -32,6 +33,8 @@ class PASS_API DebugShadingPass : public RenderPass {
 		*/
 		DebugShadingPass& setColorFormat(ResourceFormat format);
 
+		void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
+
 	private:
 		DebugShadingPass(Device::SharedPtr pDevice);
 
@@ -39,6 +42,9 @@ class PASS_API DebugShadingPass : public RenderPass {
 		
 		Scene::SharedPtr                	mpScene;
 		ComputePass::SharedPtr          	mpShadingPass;
+
+		// Sampling buffer (optional)
+		VisibilitySamplesContainer::SharedConstPtr 	mpVisibilitySamplesContainer;
 
 		ResourceFormat                  	mFalseColorFormat = ResourceFormat::RGBA16Float;
 
