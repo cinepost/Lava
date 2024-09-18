@@ -4,6 +4,7 @@
 
 #define VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION 0
 #define VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION 1
+#define VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION 2
 
 BEGIN_NAMESPACE_FALCOR
 
@@ -23,6 +24,14 @@ struct TransparentVisibilitySample {
         depth = 0;
         alpha = 0.0f;
         nextSampleOffset = 0;
+        hitInfo = uint4(0);
+    }
+#else
+    __init() {
+        depth = 0;
+        alpha = 0.0f;
+        nextSampleOffset = 0;
+        hitInfo = {};
     }
 #endif
 };

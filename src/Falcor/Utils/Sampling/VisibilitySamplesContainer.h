@@ -23,7 +23,7 @@ class dlldecl VisibilitySamplesContainer {
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint transparentSamplesCount = 4);
+		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 4);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -56,20 +56,26 @@ class dlldecl VisibilitySamplesContainer {
 
 		void beginFrame() const;
 
+		void endFrame();
+
+		void endFrame() const;
+
 		void resize(uint width, uint height);
 
-		void resize(uint width, uint height, uint maxTransparentSamplesCount);
+		void resize(uint width, uint height, uint maxTransparentSamplesCountPP);
 
-		void setMaxTransparencySamplesCount(uint maxTransparentSamplesCount);
+		void setMaxTransparencySamplesCountPP(uint maxTransparentSamplesCountPP);
 
 		const uint2& resolution() const { return mResolution; }
 
 		uint opaqueSamplesCount() const;
 
-		uint transparentSamplesCount() const;
+		uint transparentSamplesCountPP() const;
+
+		void trackTransparentSamplesCountPP(bool track);
 
 	private:
-		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCount = 4);
+		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 4);
 
 		void createParameterBlock();
 		void uploadMaterial(const uint32_t materialID);
@@ -79,7 +85,11 @@ class dlldecl VisibilitySamplesContainer {
 		void readInfoBufferData() const;
 
 		uint2 mResolution;
-		uint 	mMaxTransparentSamplesCount;
+		uint 	mMaxTransparentSamplesCountPP;
+
+		float mAlphaThresholdMin;
+    float mAlphaThresholdMax;
+    bool  mTrackTransparentSamplesCountPP = false;
 
 		Device::SharedPtr mpDevice = nullptr;
 
@@ -93,6 +103,7 @@ class dlldecl VisibilitySamplesContainer {
 		Texture::SharedPtr  mpOpaqueSamplesBuffer;
 		Texture::SharedPtr  mpOpaqueVisibilitySamplesPositionBuffer;
 		Texture::SharedPtr  mpOpaqueVisibilitySamplesTransparentOffsetBuffer;
+		Texture::SharedPtr  mpVisibilitySamplesCountBuffer;
 
 		Buffer::SharedPtr   mpInfoBuffer;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;

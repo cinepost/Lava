@@ -102,6 +102,10 @@ SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
 Texture2D gNoiseTex;
 
+#if defined(USE_VISIBILITY_CONTAINER)
+static uint transparentVisibilitySamplesCount = 0;
+static HitInfo transparentVisibilitySamples[VISIBILITY_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT];
+#endif
 
 /** write AOVData
 */

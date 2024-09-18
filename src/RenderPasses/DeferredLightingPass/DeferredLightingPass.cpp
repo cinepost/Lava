@@ -215,6 +215,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         if(mpVisibilitySamplesContainer) {
             defines.add("USE_VISIBILITY_CONTAINER", "1");
+            defines.add(mpVisibilitySamplesContainer->getDefines());
         } else {
             defines.remove("USE_VISIBILITY_CONTAINER");
         }

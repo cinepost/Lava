@@ -802,6 +802,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gVBufferSW.writeDepth(pixelPos, z);
                 } else {
                     gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);
+                    gVBufferSW.writeAUX(pixelPos, float4(0.0, opacity, 0.0, 1.0));
                 }
     #else
                 gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
@@ -829,7 +830,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);
-                    gVBufferSW.writeAUX(pixelPos, float4(opacityShift));
+                    //gVBufferSW.writeAUX(pixelPos, float4(opacityShift));
 
                 #if is_valid(gDrawCount)
                     InterlockedAdd(gDrawCount[pixelPos], 1);

@@ -42,6 +42,7 @@ class PASS_API DebugShadingPass : public RenderPass {
 		
 		Scene::SharedPtr                	mpScene;
 		ComputePass::SharedPtr          	mpShadingPass;
+		ComputePass::SharedPtr          	mpTransparentShadingPass;
 
 		// Sampling buffer (optional)
 		VisibilitySamplesContainer::SharedConstPtr 	mpVisibilitySamplesContainer;
