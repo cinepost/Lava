@@ -70,9 +70,11 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint opaqueSamplesCount() const;
 
-		uint transparentSamplesCountPP() const;
+		uint transparentSamplesCount() const;
 
 		void trackTransparentSamplesCountPP(bool track);
+
+		void printStats() const;
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 4);
@@ -86,10 +88,11 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint2 mResolution;
 		uint 	mMaxTransparentSamplesCountPP;
+		uint 	mMaxTransparentSamplesCount;
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
-    bool  mTrackTransparentSamplesCountPP = false;
+    bool  mTrackTransparentSamplesCountPP = true;
 
 		Device::SharedPtr mpDevice = nullptr;
 
@@ -102,7 +105,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		Texture::SharedPtr  mpOpaqueSamplesBuffer;
 		Texture::SharedPtr  mpOpaqueVisibilitySamplesPositionBuffer;
-		Texture::SharedPtr  mpOpaqueVisibilitySamplesTransparentOffsetBuffer;
+		Texture::SharedPtr  mpRootTransparentSampleOffsetBufferPP;
 		Texture::SharedPtr  mpVisibilitySamplesCountBuffer;
 
 		Buffer::SharedPtr   mpInfoBuffer;

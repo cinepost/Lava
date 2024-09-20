@@ -5,7 +5,7 @@ __exported import Scene.SceneTypes;
 __exported import Scene.HitInfo;
 
 #ifndef VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP
-#define VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP 1
+#define VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP 0
 #endif
 
 /** This struct represents the GPU-side visibility samples container system.
@@ -13,7 +13,6 @@ __exported import Scene.HitInfo;
 struct VisibilitySamplesContainer {
     uint2       resolution;
     uint        maxTransparentSamplesCountPP;    ///< Maximum number of transparent surface per pixel.
-    uint        maxTransparentSamplesCount; 
     float       alphaThresholdMin;
     float       alphaThresholdMax;
 
@@ -21,7 +20,7 @@ struct VisibilitySamplesContainer {
     
     RWTexture2D<PackedHitInfo>                      opaqueVisibilitySamplesBuffer;
     RWTexture2D<uint>                               opaqueVisibilitySamplesPositionBuffer;
-    RWTexture2D<uint>                               rootTransparentSampleOffsetBufferPP;
+    RWTexture2D<uint>                               opaqueVisibilitySamplesTransparentOffsetBuffer;
 
     RWTexture2D<uint>                               transparentVisibilitySamplesCountBuffer;
     RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
@@ -32,13 +31,9 @@ struct VisibilitySamplesContainer {
         return HitInfo(opaqueVisibilitySamplesBuffer[pos]);
     }
 
-    TransparentVisibilitySample readRootTransparentVisibilitySample(uint2 pos) {
-        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pos];
+    TransparentVisibilitySample readFirstTransparentVisibilitySample(uint2 pos) {
+        uint sampleOffset = opaqueVisibilitySamplesTransparentOffsetBuffer[pos];
         if(sampleOffset == UINT32_MAX) return {};
-
-        #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
-            sampleOffset += pos.x + pos.y * resolution.x;
-        #endif
 
         return transparentVisibilitySamplesBuffer[sampleOffset];
     }
@@ -71,32 +66,39 @@ struct VisibilitySamplesContainer {
         transparentSample.depth = depth;
         transparentSample.alpha = alpha;
 
-        uint newSampleOffset;
         uint currSamplesCount = 0;
-        uint currSampleOffset = 0;
-
-        InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION], 1, currSampleOffset);
-
-    #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
-        InterlockedAdd(rootTransparentSampleOffsetBufferPP[pos], 1, currSampleOffset);
-        newSampleOffset = (currSampleOffset == UINT32_MAX ? 0 : (currSampleOffset + 1) % maxTransparentSamplesCountPP) + pos.x + pos.y * resolution.x;
-    #else
-        newSampleOffset = currSampleOffset + 1;
-    #endif
+        uint currSampleOffset = opaqueVisibilitySamplesTransparentOffsetBuffer[pos];
+        uint newSampleOffset;
 
         InterlockedAdd(transparentVisibilitySamplesCountBuffer[pos], 1, currSamplesCount);
 
-        if(currSampleOffset == UINT32_MAX) {
+        if(currSampleOffset == UINT32_MAX || currSamplesCount == 0) {
             // First transparent sample
+            
+            #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
+                newSampleOffset = currSamplesCount % maxTransparentSamplesCountPP + pos.x + pos.y * resolution.x;
+            #else
+                InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION], 1, newSampleOffset);
+            #endif
 
-            transparentSample.nextSampleOffset = 0;
+            opaqueVisibilitySamplesTransparentOffsetBuffer[pos] = newSampleOffset;
+            transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
+
         } else {
             // Next transparent sample
+            
+            #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
+                newSampleOffset = currSamplesCount % maxTransparentSamplesCountPP + pos.x + pos.y * resolution.x;
+            #else
+                InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION], 1, newSampleOffset);
+            #endif
+
+            uint tmp;
+            InterlockedExchange(opaqueVisibilitySamplesTransparentOffsetBuffer[pos], newSampleOffset, tmp);
 
             transparentSample.nextSampleOffset = currSampleOffset;
+            transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
         }
-
-        transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
     }
 
     bool isOpaqueSorted() CONST_FUNCTION {

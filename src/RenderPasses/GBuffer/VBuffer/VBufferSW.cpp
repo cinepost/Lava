@@ -463,7 +463,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     if(mpVisibilitySamplesContainer) {
-        LLOG_WRN << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
+        //LLOG_WRN << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
     }
 
     mSampleNumber++;
@@ -653,10 +653,10 @@ void VBufferSW::setVisibilitySamplesContainer(VisibilitySamplesContainer::Shared
 }
 
 void VBufferSW::setTransparencySamplesCount(uint count) {
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->setMaxTransparencySamplesCountPP(count);
+
     if(mTransparencySamplesCount == count) return;
     mTransparencySamplesCount = count;
-
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->setMaxTransparencySamplesCount(mTransparencySamplesCount);
 
     requestRecompile();
     mDirty = true;
