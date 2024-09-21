@@ -102,11 +102,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         //gInOutColor[pixelPos] = float4(nextSampleOffset, gVisibilityContainer.transparentSamplesCount(pixelPos), 0, 1);
         //return;
 
-        while(nextSampleOffset != 0) {
+        while(nextSampleOffset != 0) {            
             transparentSample = gVisibilityContainer.readTransparentVisibilitySample(nextSampleOffset);
-            transparenHitInfoList[transparentVisibilitySamplesCount] = transparentSample.hitInfo;
+            transparenHitInfoList[transparentVisibilitySamplesCount++] = transparentSample.hitInfo;
             nextSampleOffset = transparentSample.nextSampleOffset;
-            transparentVisibilitySamplesCount++;
+            //transparentVisibilitySamplesCount++;
         }
 
         gInOutColor[pixelPos] = float4(0, gVisibilityContainer.transparentSamplesCount(pixelPos), transparentVisibilitySamplesCount, 1);

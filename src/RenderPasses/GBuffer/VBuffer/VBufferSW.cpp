@@ -649,6 +649,7 @@ void VBufferSW::createPrograms() {
 void VBufferSW::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer) {
     if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
     mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+    setTransparencySamplesCount(mTransparencySamplesCount);
     mDirty = true;
 }
 

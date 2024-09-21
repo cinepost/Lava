@@ -19,10 +19,12 @@ struct VisibilitySamplesContainer {
 
     uint32_t    flags;                      
     
+    // Opaque samples data
     RWTexture2D<PackedHitInfo>                      opaqueVisibilitySamplesBuffer;
     RWTexture2D<uint>                               opaqueVisibilitySamplesPositionBuffer;
-    RWTexture2D<uint>                               rootTransparentSampleOffsetBufferPP;
 
+    // Transparent samples data
+    RWTexture2D<uint>                               rootTransparentSampleOffsetBufferPP;
     RWTexture2D<uint>                               transparentVisibilitySamplesCountBuffer;
     RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
 
@@ -37,7 +39,7 @@ struct VisibilitySamplesContainer {
         if(sampleOffset == UINT32_MAX) return {};
 
         #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
-            sampleOffset += pos.x + pos.y * resolution.x;
+            sampleOffset += __pixelBucketOffset(pos);
         #endif
 
         return transparentVisibilitySamplesBuffer[sampleOffset];
@@ -79,7 +81,7 @@ struct VisibilitySamplesContainer {
 
     #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
         InterlockedAdd(rootTransparentSampleOffsetBufferPP[pos], 1, currSampleOffset);
-        newSampleOffset = (currSampleOffset == UINT32_MAX ? 0 : (currSampleOffset + 1) % maxTransparentSamplesCountPP) + pos.x + pos.y * resolution.x;
+        newSampleOffset = (currSampleOffset == UINT32_MAX ? 0 : (currSampleOffset + 1) % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
     #else
         newSampleOffset = currSampleOffset + 1;
     #endif
@@ -133,6 +135,14 @@ struct VisibilitySamplesContainer {
 
     float getAlphaThresholdMax() CONST_FUNCTION {
         return alphaThresholdMax;
+    }
+
+    uint __pixelBucketOffset(uint2 pos) CONST_FUNCTION {
+#if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
+        return (pos.x + pos.y * resolution.x) * maxTransparentSamplesCountPP;
+#else
+        return 0;
+#endif
     }
 };
 

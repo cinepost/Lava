@@ -118,6 +118,7 @@ void VisibilitySamplesContainer::resize(uint width, uint height) {
 }
 
 void VisibilitySamplesContainer::setMaxTransparencySamplesCountPP(uint maxTransparentSamplesCountPP) {
+	LLOG_WRN << "VisibilitySamplesContainer::setMaxTransparencySamplesCountPP " << maxTransparentSamplesCountPP;
 	resize(mResolution.x, mResolution.y, maxTransparentSamplesCountPP);
 }
 
