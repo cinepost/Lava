@@ -31,7 +31,6 @@
 #include "../GBufferBase.h"
 #include "Falcor/Core/API/RasterizerState.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
-#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Scene/SceneTypes.slang"
 #include "Falcor/Utils/Noise/STBNGenerator.h"
@@ -68,10 +67,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void setPerPixelJitter(bool value);
 		void setMaxSubdivLevel(uint level);
 		void setMinScreenEdgeLen(float len);
-		void setTransparencySamplesCount(uint count);
 		void setOpacityLimit(float limit);
-
-		void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer);
 
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
@@ -110,9 +106,6 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseMotionBlur = false;
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
-
-		uint mTransparencySamplesCount = 1;
-
 		bool mSubdivDataReady = false;
 
 		float mMinScreenEdgeLen = 4.0f;
@@ -129,9 +122,6 @@ class PASS_API VBufferSW : public GBufferBase {
 		ComputePass::SharedPtr 	mpComputeRasterizerPass;
 		ComputePass::SharedPtr 	mpComputeReconstructPass;
 		ComputePass::SharedPtr 	mpComputeJitterPass;
-
-		// Sampling buffer (optional)
-		VisibilitySamplesContainer::SharedPtr mpVisibilitySamplesContainer;
 
 		// Local buffers
 		Buffer::SharedPtr      	mpLocalDepthBuffer;  ///< Local depth-primitiveID buffer

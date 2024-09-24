@@ -4,8 +4,8 @@
 __exported import Scene.SceneTypes;
 __exported import Scene.HitInfo;
 
-#ifndef VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP
-#define VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP 1
+#ifndef VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+#error "VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP not defined!"
 #endif
 
 /** This struct represents the GPU-side visibility samples container system.
@@ -14,6 +14,7 @@ struct VisibilitySamplesContainer {
     uint2       resolution;
     uint        maxTransparentSamplesCountPP;    ///< Maximum number of transparent surface per pixel.
     uint        maxTransparentSamplesCount; 
+    bool        limitTransparentSamplesCountPP;
     float       alphaThresholdMin;
     float       alphaThresholdMax;
 
@@ -38,7 +39,7 @@ struct VisibilitySamplesContainer {
         uint sampleOffset = rootTransparentSampleOffsetBufferPP[pos];
         if(sampleOffset == UINT32_MAX) return {};
 
-        #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
+        #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
             sampleOffset += __pixelBucketOffset(pos);
         #endif
 
@@ -73,29 +74,29 @@ struct VisibilitySamplesContainer {
         transparentSample.depth = depth;
         transparentSample.alpha = alpha;
 
-        uint newSampleOffset;
-        uint currSamplesCount = 0;
-        uint currSampleOffset = 0;
+        uint curSampleOffset, newSampleOffset;
+        uint curSamplesCount = 0;
+        
+        // total transparent samples counter
+        InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION], 1, curSampleOffset);
 
-        InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION], 1, currSampleOffset);
+    #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+    
+        InterlockedAdd(rootTransparentSampleOffsetBufferPP[pos], 1, curSampleOffset);
+        newSampleOffset = ((curSampleOffset + 1) % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
+        if(curSampleOffset != UINT32_MAX) curSampleOffset = (curSampleOffset % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
 
-    #if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
-        InterlockedAdd(rootTransparentSampleOffsetBufferPP[pos], 1, currSampleOffset);
-        newSampleOffset = (currSampleOffset == UINT32_MAX ? 0 : (currSampleOffset + 1) % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
     #else
-        newSampleOffset = currSampleOffset + 1;
+        newSampleOffset = curSampleOffset;
+        
+        InterlockedExchange(rootTransparentSampleOffsetBufferPP[pos], newSampleOffset, curSampleOffset);
+        InterlockedAdd(transparentVisibilitySamplesCountBuffer[pos], 1, curSamplesCount);
+    
     #endif
 
-        InterlockedAdd(transparentVisibilitySamplesCountBuffer[pos], 1, currSamplesCount);
-
-        if(currSampleOffset == UINT32_MAX) {
-            // First transparent sample
-
-            transparentSample.nextSampleOffset = 0;
-        } else {
+        if(curSampleOffset != UINT32_MAX) {
             // Next transparent sample
-
-            transparentSample.nextSampleOffset = currSampleOffset;
+            transparentSample.nextSampleOffset = curSampleOffset;
         }
 
         transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
@@ -122,8 +123,9 @@ struct VisibilitySamplesContainer {
     }
 
     uint transparentSamplesCount(uint2 pos) CONST_FUNCTION {
-#if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
-        return min(transparentVisibilitySamplesCountBuffer[pos], maxTransparentSamplesCountPP);
+#if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+        // When strict samples count pp is enabled we can use offset buffer as simple samples counter
+        return min(rootTransparentSampleOffsetBufferPP[pos] + 1, maxTransparentSamplesCountPP);
 #else
         return transparentVisibilitySamplesCountBuffer[pos];
 #endif
@@ -138,7 +140,7 @@ struct VisibilitySamplesContainer {
     }
 
     uint __pixelBucketOffset(uint2 pos) CONST_FUNCTION {
-#if (VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP == 1)
+#if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
         return (pos.x + pos.y * resolution.x) * maxTransparentSamplesCountPP;
 #else
         return 0;

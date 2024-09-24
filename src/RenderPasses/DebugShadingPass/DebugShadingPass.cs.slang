@@ -64,8 +64,8 @@ uniform FalseColorGenerator gFalseColorGenerator;
 uniform HeatMapColorGenerator gHeatMapColorGenerator;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-static uint transparentVisibilitySamplesCount = 0;
 static PackedHitInfo transparenHitInfoList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+static float16_t transparenSampleAlpha[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 #endif
 
 [numthreads(16, 16, 1)]
@@ -76,7 +76,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // early out
     if (any(pixelPos >= gFrameDim)) return;
 
-    float outAlpha = 1.0f;
+    float sampleAlpha = 1.0f;
     HitInfo hit;
 
 #if defined(USE_VISIBILITY_CONTAINER)
@@ -88,31 +88,31 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         TransparentVisibilitySample transparentSample = gVisibilityContainer.readRootTransparentVisibilitySample(pixelPos);
         transparenHitInfoList[0] = transparentSample.hitInfo;
 
-        hit = HitInfo(transparenHitInfoList[0]);
-        if (!hit.isValid()) {
-            //gInOutColor[pixelPos] = float4(1, gVisibilityContainer.rootTransparentSampleOffsetBufferPP[pixelPos], 0, 1);
+        if (!HitInfo(transparenHitInfoList[0]).isValid()) {
             return;
         }
 
-        transparentVisibilitySamplesCount = 1;
+        transparenSampleAlpha[0] = transparentSample.alpha;
 
         // Fetch remaining transparent samples
         uint nextSampleOffset = transparentSample.nextSampleOffset;
 
-        //gInOutColor[pixelPos] = float4(nextSampleOffset, gVisibilityContainer.transparentSamplesCount(pixelPos), 0, 1);
-        //return;
-
-        while(nextSampleOffset != 0) {            
+        uint transparentVisibilitySamplesCount = 1;
+        while(nextSampleOffset != 0 && transparentVisibilitySamplesCount < gVisibilityContainer.transparentSamplesCount(pixelPos)) {            
             transparentSample = gVisibilityContainer.readTransparentVisibilitySample(nextSampleOffset);
-            transparenHitInfoList[transparentVisibilitySamplesCount++] = transparentSample.hitInfo;
+            transparenHitInfoList[transparentVisibilitySamplesCount] = transparentSample.hitInfo;
+            transparenSampleAlpha[transparentVisibilitySamplesCount++] = transparentSample.alpha;
             nextSampleOffset = transparentSample.nextSampleOffset;
-            //transparentVisibilitySamplesCount++;
         }
 
-        gInOutColor[pixelPos] = float4(0, gVisibilityContainer.transparentSamplesCount(pixelPos), transparentVisibilitySamplesCount, 1);
-        return;
+        //gInOutColor[pixelPos] = float4(0, gVisibilityContainer.transparentSamplesCount(pixelPos), transparentVisibilitySamplesCount, 1);
+        //return;
 
-        outAlpha = transparentSample.alpha;
+        float4 colorAccum = gInOutColor[pixelPos];
+
+        for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
+            hit = HitInfo(transparenHitInfoList[layer]);
+            sampleAlpha = transparenSampleAlpha[layer];
     #else
         hit = gVisibilityContainer.readOpaqueHit(pixelPos);
     #endif
@@ -120,11 +120,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     hit = HitInfo(gVBuffer[pixelPos]);
 #endif
 
+#if !defined(TRANSPARENT_SHADING_PASS)
     if (!hit.isValid()) {
         gInOutColor[pixelPos] = float4(0, 0, 0, 0);
         return;
     }
-
+#endif
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();
@@ -161,7 +162,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 
 #if defined(TRANSPARENT_SHADING_PASS)
-    gInOutColor[pixelPos] = gInOutColor[pixelPos] * (1.f - outAlpha) + float4(outColor, 1.f) * outAlpha;
+    colorAccum = colorAccum * (1.f - sampleAlpha) + float4(outColor, 1.f) * sampleAlpha;
+
+    }
+
+    gInOutColor[pixelPos] = colorAccum;
+    
     return;
 #else
     gInOutColor[pixelPos] = float4(outColor, 1.f);

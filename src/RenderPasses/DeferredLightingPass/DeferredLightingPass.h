@@ -93,7 +93,8 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		void createBuffers(RenderContext* pContext, const RenderData& renderData);
 
 		Scene::SharedPtr                mpScene;
-		ComputePass::SharedPtr          mpLightingPass;
+		ComputePass::SharedPtr          mpShadingPass;
+		ComputePass::SharedPtr          mpTransparentShadingPass;
 
 		uint2 			mFrameDim = { 0, 0 };
 		uint32_t 		mFrameSampleCount = 16;

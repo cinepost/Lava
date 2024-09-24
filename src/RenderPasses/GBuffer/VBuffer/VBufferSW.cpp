@@ -70,7 +70,6 @@ namespace {
     const char kUseDisplacement[] = "useDisplacement";
     const char kMaxSubdivLevel[] = "maxSubdivLevel";
     const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
-    const char kIOTSamplesCount[] = "iotSamplesCount";
     const char kOpacityLimit[] = "opacityLimit";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
@@ -161,7 +160,6 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
         else if (key == kMaxSubdivLevel) setMaxSubdivLevel(static_cast<uint>(value));
         else if (key == kMinScreenEdgeLen) setMinScreenEdgeLen(static_cast<float>(value));
-        else if (key == kIOTSamplesCount) setTransparencySamplesCount(static_cast<uint>(value));
         else if (key == kOpacityLimit) setOpacityLimit(static_cast<float>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
@@ -323,6 +321,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
 
         if(mpVisibilitySamplesContainer) {
+            defines.add(mpVisibilitySamplesContainer->getDefines());
             defines.add("USE_VISIBILITY_CONTAINER", "1");
         } else {
             defines.remove("USE_VISIBILITY_CONTAINER");
@@ -644,23 +643,6 @@ void VBufferSW::createPrograms() {
     mpComputeTesselatorPass = nullptr;
     mpComputeRasterizerPass = nullptr;
     mpComputeFrustumCullingPass = nullptr;
-}
-
-void VBufferSW::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer) {
-    if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
-    mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
-    setTransparencySamplesCount(mTransparencySamplesCount);
-    mDirty = true;
-}
-
-void VBufferSW::setTransparencySamplesCount(uint count) {
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->setMaxTransparencySamplesCountPP(count);
-
-    if(mTransparencySamplesCount == count) return;
-    mTransparencySamplesCount = count;
-
-    requestRecompile();
-    mDirty = true;
 }
 
 void VBufferSW::enableSubdivisions(bool value) {

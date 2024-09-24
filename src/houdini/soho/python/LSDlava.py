@@ -119,6 +119,7 @@ def initializeFeatures(settings):
 
     Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
     Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
+    Renderer("renderer", "visibilitycontainerlimit", "bool", "lv_visibility_container_limit", skipdefault=False)
     Renderer("renderer", "visibilitycontainer", "bool", "lv_visibility_container", skipdefault=False)
 
     # -- Image --

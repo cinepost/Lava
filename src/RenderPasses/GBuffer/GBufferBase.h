@@ -38,6 +38,8 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
+
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
 #include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
@@ -51,55 +53,62 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
 class PASS_API GBufferBase : public RenderPass {
- public:
-    enum class SamplePattern : uint32_t {
-        Center,
-        DirectX,
-        Halton,
-        Stratified,
-    };
+	public:
+		enum class SamplePattern : uint32_t {
+				Center,
+				DirectX,
+				Halton,
+				Stratified,
+		};
 
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual Dictionary getScriptingDictionary() override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void setCullMode(RasterizerState::CullMode mode);
-    
-    GBufferBase& setDepthBufferFormat(ResourceFormat format);
+		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+		virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
+		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+		virtual Dictionary getScriptingDictionary() override;
+		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+		virtual void setCullMode(RasterizerState::CullMode mode);
+		virtual void setTransparencySamplesCount(uint count);
 
-    static const std::string& to_define_string(RasterizerState::CullMode mode);
-    
+		virtual void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer);
+		
+		GBufferBase& setDepthBufferFormat(ResourceFormat format);
+
+		static const std::string& to_define_string(RasterizerState::CullMode mode);
+		
  protected:
-    GBufferBase(Device::SharedPtr pDevice, Info info);
-    virtual void parseDictionary(const Dictionary& dict);
-    void updateFrameDim(const uint2 frameDim);
-    void updateSamplePattern();
-    Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
+		GBufferBase(Device::SharedPtr pDevice, Info info);
+		virtual void parseDictionary(const Dictionary& dict);
+		void updateFrameDim(const uint2 frameDim);
+		void updateSamplePattern();
+		Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
 
-    // Internal state
-    Scene::SharedPtr                mpScene;
-    CPUSampleGenerator::SharedPtr   mpSampleGenerator;
+		// Internal state
+		Scene::SharedPtr                mpScene;
+		CPUSampleGenerator::SharedPtr   mpSampleGenerator;
 
-    uint32_t                        mFrameCount = 0;
-    uint2                           mFrameDim = {};
-    float2                          mInvFrameDim = {};
-    ResourceFormat                  mDepthFormat = ResourceFormat::D32Float;
-    ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
+		// Sampling buffer (optional)
+		VisibilitySamplesContainer::SharedPtr mpVisibilitySamplesContainer;
 
-    // UI variables
-    SamplePattern                   mSamplePattern = SamplePattern::Stratified; ///< Which camera jitter sample pattern to use.
-    uint32_t                        mSampleCount = 1024;                        ///< Sample count for camera jitter.
-    bool                            mUseAlphaTest = true;                           ///< Enable alpha test.
-    bool                            mAdjustShadingNormals = false;                  ///< Adjust shading normals.
-    bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;    ///< Cull mode to use for when mForceCullMode is true.
-    bool                            mOptionsChanged = false;
+		uint32_t                        mFrameCount = 0;
+		uint2                           mFrameDim = {};
+		float2                          mInvFrameDim = {};
+		ResourceFormat                  mDepthFormat = ResourceFormat::D32Float;
+		ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
-    bool                            mDirty = true; ///< Pass parameters/resources changed
+		uint 														mTransparencySamplesCount = 1;
 
-    static void registerBindings(pybind11::module& m);
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
+		SamplePattern                   mSamplePattern = SamplePattern::Stratified; ///< Which camera jitter sample pattern to use.
+		uint32_t                        mSampleCount = 1024;                        ///< Sample count for camera jitter.
+		bool                            mUseAlphaTest = true;                           ///< Enable alpha test.
+		bool                            mAdjustShadingNormals = false;                  ///< Adjust shading normals.
+		bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
+		RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;    ///< Cull mode to use for when mForceCullMode is true.
+		bool                            mOptionsChanged = false;
+
+		bool                            mDirty = true; ///< Pass parameters/resources changed
+
+		static void registerBindings(pybind11::module& m);
+		friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_

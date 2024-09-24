@@ -25,7 +25,7 @@ namespace {
 	const std::string kMaterialUDIMTilesTableBufferName = "udimTextureTilesTableBuffer";
 	const std::string kMaterialBuffersName = "materialBuffers";
 
-	const bool    kDefaultTrackTransparentSamplesCountPP = true;
+	const bool    kDefaultLimitTransparentSamplesCountPP = true;
 	const uint		kDefaultTransparentSamplesCountPP = 4;
 	const uint 		kMaxTransparentSamplesCountPP = 255;
 	const size_t  kInfoBufferSize = 16;
@@ -52,6 +52,7 @@ VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice
 
 	mAlphaThresholdMin = kAlphaThresholdMin;
 	mAlphaThresholdMax = kAlphaThresholdMax;
+	mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
 	mpInfoBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), kInfoBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	mpInfoBuffer->setName("VisibilitySamplesContainer::infoBuffer");
@@ -69,7 +70,7 @@ void VisibilitySamplesContainer::sort() {
 Shader::DefineList VisibilitySamplesContainer::getDefaultDefines() {
 	Shader::DefineList defines;
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", std::to_string(kDefaultTransparentSamplesCountPP));
-	defines.add("VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP", kDefaultTrackTransparentSamplesCountPP ? "1" : "0");
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", kDefaultLimitTransparentSamplesCountPP ? "1" : "0");
 
 	return defines;
 }
@@ -77,7 +78,7 @@ Shader::DefineList VisibilitySamplesContainer::getDefaultDefines() {
 Shader::DefineList VisibilitySamplesContainer::getDefines() const {
 	Shader::DefineList defines;
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", std::to_string(mMaxTransparentSamplesCountPP));
-	defines.add("VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP", mTrackTransparentSamplesCountPP ? "1" : "0");
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? "1" : "0");
 
 	return defines;
 }
@@ -140,8 +141,8 @@ void VisibilitySamplesContainer::createParameterBlock() {
 	// Create parameter block.
 	Program::DefineList defines = getDefines();
 	defines.add("VISIBILITY_CONTAINER_PARAMETER_BLOCK");
-	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", std::to_string(kDefaultTransparentSamplesCountPP));
-	defines.add("VISIBILITY_SAMPLES_CONTAINER_TRACK_TRANSPARENT_SAMPLES_COUNT_PP", mTrackTransparentSamplesCountPP ? "1" : "0");
+	//defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", std::to_string(kDefaultTransparentSamplesCountPP));
+	//defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? "1" : "0");
 
 	auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
 	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gVisibilitySamplesContainer");
@@ -154,6 +155,7 @@ void VisibilitySamplesContainer::createParameterBlock() {
 	mpParameterBlock["resolution"] = mResolution;
 	mpParameterBlock["maxTransparentSamplesCount"] = mMaxTransparentSamplesCount;
 	mpParameterBlock["maxTransparentSamplesCountPP"] = mMaxTransparentSamplesCountPP;
+	mpParameterBlock["limitTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP;
 
 	LLOG_WRN << "Max transparent samples count PP " << mMaxTransparentSamplesCountPP;
 
@@ -207,10 +209,12 @@ void VisibilitySamplesContainer::endFrame() const {
 
 }
 
-void VisibilitySamplesContainer::trackTransparentSamplesCountPP(bool track) {
-	if(mTrackTransparentSamplesCountPP == track) return;
-	mTrackTransparentSamplesCountPP = track;
-	createParameterBlock();
+void VisibilitySamplesContainer::setLimitTransparentSamplesCountPP(bool limit) {
+	if(mLimitTransparentSamplesCountPP == limit) return;
+	mLimitTransparentSamplesCountPP = limit;
+	
+	mpParameterBlock = nullptr;
+	//createParameterBlock();
 }
 
 void VisibilitySamplesContainer::readInfoBufferData() const {

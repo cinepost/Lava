@@ -49,6 +49,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 GBufferBase::GBufferBase(Device::SharedPtr pDevice, Info info): RenderPass(pDevice, info) {
     assert(pDevice);
+    mTransparencySamplesCount = 1;
 }
 
 void GBufferBase::registerBindings(pybind11::module& m) {
@@ -68,6 +69,7 @@ namespace {
     const char kAdjustShadingNormals[] = "adjustShadingNormals";
     const char kForceCullMode[] = "forceCullMode";
     const char kCullMode[] = "cull";
+    const char kIOTSamplesCount[] = "iotSamplesCount";
 }
 
 void GBufferBase::parseDictionary(const Dictionary& dict) {
@@ -77,7 +79,8 @@ void GBufferBase::parseDictionary(const Dictionary& dict) {
         else if (key == kUseAlphaTest) mUseAlphaTest = value;
         else if (key == kAdjustShadingNormals) mAdjustShadingNormals = value;
         else if (key == kForceCullMode) mForceCullMode = value;
-        else if (key == kCullMode) mCullMode = value;
+        else if (key == kCullMode) setCullMode(value);
+        else if (key == kIOTSamplesCount) setTransparencySamplesCount(static_cast<uint>(value));
         // TODO: Check for unparsed fields, including those parsed in derived classes.
     }
 
@@ -204,6 +207,23 @@ Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const st
 void GBufferBase::setCullMode(RasterizerState::CullMode mode) { 
     if(mCullMode == mode) return;
     mCullMode = mode; 
+    mDirty = true;
+}
+
+void GBufferBase::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedPtr pVisibilitySamplesContainer) {
+    if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
+    mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+    setTransparencySamplesCount(mTransparencySamplesCount);
+    mDirty = true;
+}
+
+void GBufferBase::setTransparencySamplesCount(uint count) {
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->setMaxTransparencySamplesCountPP(count);
+
+    if(mTransparencySamplesCount == count) return;
+    mTransparencySamplesCount = count;
+
+    requestRecompile();
     mDirty = true;
 }
 

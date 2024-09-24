@@ -168,7 +168,7 @@ void DeferredLightingPass::compile(RenderContext* pRenderContext, const CompileD
 void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     if(mpScene == pScene) return;
     mpScene = pScene;
-    mpLightingPass = nullptr;
+    mpShadingPass = nullptr;
     mDirty = true;
 }
 
@@ -184,19 +184,15 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     createBuffers(pContext, renderData);
 
     const bool shadingRateInShader = true;
-    
-    // Prepare program and vars. This may trigger shader compilation.
-    // The program should have all necessary defines set at this point.
-    if (!mpLightingPass || mDirty) {
-        Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
-        desc.addTypeConformances(mpScene->getTypeConformances());
+
+    auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
+        if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
 
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraInputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
-        
+
         // AOV channels processing
         Texture::SharedPtr pAovNormalsTex = renderData["normals"]->asTexture();
         if(pAovNormalsTex) {
@@ -207,16 +203,20 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         // Sampling / Shading
         if ((mShadingRate > 1) && shadingRateInShader) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
+
         defines.add("_USE_STBN_SAMPLING", mUseSTBN ? "1" : "0");
         defines.add("_USE_VARIANCE", mUseVariance ? "1" : "0");
         defines.add("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
         defines.add("USE_DEPTH_OF_FIELD", mUseDOF ? "1" : "0");
 
+        // Visibility container
         if(mpVisibilitySamplesContainer) {
+            if(transparentPass) defines.add("TRANSPARENT_SHADING_PASS");
             defines.add("USE_VISIBILITY_CONTAINER", "1");
             defines.add(mpVisibilitySamplesContainer->getDefines());
         } else {
+            defines.remove("TRANSPARENT_SHADING_PASS");
             defines.remove("USE_VISIBILITY_CONTAINER");
         }
 
@@ -234,60 +234,80 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
 
-        mpLightingPass = ComputePass::create(mpDevice, desc, defines, true);
+        ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, desc, defines, true);
 
-        mpLightingPass["gScene"] = mpScene->getParameterBlock();
+        pPass["gScene"] = mpScene->getParameterBlock();
 
-        mpLightingPass["gNoiseSampler"] = mpNoiseSampler;
-        mpLightingPass["gNoiseTex"]     = mpBlueNoiseTexture;
+        pPass["gNoiseSampler"] = mpNoiseSampler;
+        pPass["gNoiseTex"]     = mpBlueNoiseTexture;
 
         // Bind mandatory input channels
-        mpLightingPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        mpLightingPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
-    
+        pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
+        pPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
+        pPass["gLastFrameSum"] = mpLastFrameSum;
+
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            mpLightingPass[channel.texname] = pTex;
+            pPass[channel.texname] = pTex;
         }
 
         // Bind extra output channels as UAV buffers.
         for (const auto& channel : kExtraOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            mpLightingPass[channel.texname] = pTex;
+            pPass[channel.texname] = pTex;
         }
-
-        mpLightingPass["gLastFrameSum"] = mpLastFrameSum;
 
         if(mpVisibilitySamplesContainer) {
-            mpLightingPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+            pPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
+
+        return pPass;
+    };
+    
+    // Prepare program and vars. This may trigger shader compilation.
+    // The program should have all necessary defines set at this point.
+    if (!mpShadingPass || mDirty) {
+        Program::Desc desc;
+        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        mpShadingPass = createShadingPass(desc);
+        mpTransparentShadingPass = createShadingPass(desc, true);
     }
 
     float2 f = mpNoiseOffsetGenerator->next();
     uint2 noiseOffset = {64 * (f[0] + 0.5f), 64 * (f[1] + 0.5f)};
 
-    auto cb_var = mpLightingPass["PerFrameCB"];
+    auto setVar = [this, noiseOffset](ShaderVar var, bool transparentPass = false) {
+        var["gFrameDim"] = mFrameDim;
+        var["gNoiseOffset"] = noiseOffset;
+        var["gSamplesPerFrame"]  = mFrameSampleCount;
+        var["gSampleNumber"] = mSampleNumber++;
+        var["gColorLimit"] = mColorLimit;
+        var["gIndirectColorLimit"] = mIndirectColorLimit;
+        var["gRayDiffuseLimit"] = mRayDiffuseLimit;
+        var["gRayReflectLimit"] = mRayReflectLimit;
+        var["gRayRefractLimit"] = mRayRefractLimit;
+        var["gRayBias"] = mRayBias;
+        var["gRayContribThresh"] = mRayContribThreshold;
+        var["gRussRouletteLevel"] = mRussRouletteLevel;
+    };
 
-    cb_var["gFrameDim"] = mFrameDim;
-    cb_var["gNoiseOffset"] = noiseOffset;
-    cb_var["gSamplesPerFrame"]  = mFrameSampleCount;
-    cb_var["gSampleNumber"] = mSampleNumber++;
-    cb_var["gColorLimit"] = mColorLimit;
-    cb_var["gIndirectColorLimit"] = mIndirectColorLimit;
-    cb_var["gRayDiffuseLimit"] = mRayDiffuseLimit;
-    cb_var["gRayReflectLimit"] = mRayReflectLimit;
-    cb_var["gRayRefractLimit"] = mRayRefractLimit;
-    cb_var["gRayBias"] = mRayBias;
-    cb_var["gRayContribThresh"] = mRayContribThreshold;
-    cb_var["gRussRouletteLevel"] = mRussRouletteLevel;
-    
+    setVar(mpShadingPass["PerFrameCB"]);
+    if(mpTransparentShadingPass) setVar(mpTransparentShadingPass["PerFrameCB"], true);
+
     if(shadingRateInShader) {
-        mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+        mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+        if(mpTransparentShadingPass) mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     } else {
         for(uint32_t i; i < mShadingRate; ++i){
-            mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-            cb_var["gSampleNumber"] = mSampleNumber++;
+            mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+            if(mpTransparentShadingPass) mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+
+            mpShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
+            if(mpTransparentShadingPass) mpTransparentShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
+            mSampleNumber++;
         }
     }
     mDirty = false;

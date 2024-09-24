@@ -651,7 +651,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 // Jitter (noise) [0, 1] range
                 //float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber));
                 float4 rnd = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
-                //rnd = float4(0.f);
+                //rnd = float4(0.5f);
 
                 // Anti aliasing jitter [-0.5, 0.5] range
             #if (USE_SRT == 1)
@@ -779,8 +779,6 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
             #else
                 uint64_t out_value = gLocalDepthBuffer.InterlockedMinU64(idx, depth_value);
             #endif    
-
-                if ( depth_value < out_value) {
     #else
                 const uint32_t depth_value = z * kInvalid;
                 const uint idx = (gVBufferSW.frameDim.x * y + x) << 2;
@@ -792,9 +790,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
             #else
                 gLocalDepthBuffer.InterlockedMin(idx, depth_value, out_value);
             #endif
-
-                if ( depth_value < out_value) {
     #endif
+
+            if ( depth_value < out_value) {
 
     #if defined(USE_VISIBILITY_CONTAINER)
                 if(isOpaque) {

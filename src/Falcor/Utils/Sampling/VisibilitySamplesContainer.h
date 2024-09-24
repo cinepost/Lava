@@ -72,7 +72,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint transparentSamplesCount() const;
 
-		void trackTransparentSamplesCountPP(bool track);
+		void setLimitTransparentSamplesCountPP(bool limit);
 
 		void printStats() const;
 
@@ -92,7 +92,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
-    bool  mTrackTransparentSamplesCountPP = true;
+    bool  mLimitTransparentSamplesCountPP = true;
 
 		Device::SharedPtr mpDevice = nullptr;
 

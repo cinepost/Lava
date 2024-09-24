@@ -1652,6 +1652,16 @@
             }
 
             parm {
+                name    "lv_visibility_container_limit"
+                label   "Limit Per-Pixel Samples Count"
+                type    toggle
+                default { "0" }
+                hidewhen "{ lv_visibility_container == 0 }"
+                help    "Limit number of transparent samples stored per-pixel."
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
                 name    "lv_stbn_sampling"
                 label   "STBN Sampling"
                 type    toggle
