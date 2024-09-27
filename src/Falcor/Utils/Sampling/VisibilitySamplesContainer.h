@@ -12,6 +12,8 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/HitInfo.h"
 
+#include "VisibilitySamplesContainer.slangh"
+
 
 namespace Falcor {
 
@@ -23,7 +25,7 @@ class dlldecl VisibilitySamplesContainer {
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 4);
+		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -46,6 +48,8 @@ class dlldecl VisibilitySamplesContainer {
 		/** 
 		*/
 		bool hasTransparentSamples() const;
+
+		void setDepthBufferTexture(Texture::SharedPtr pTexture);
 
 		/** Optimize samples.
 			This function analyzes samples and sorts them to achieve better shading and cache coherency.
@@ -72,12 +76,16 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint transparentSamplesCount() const;
 
+		uint maxTransparentLayersCount() const;
+
 		void setLimitTransparentSamplesCountPP(bool limit);
 
 		void printStats() const;
 
+		uint reservedTransparentSamplesCount() const { return mMaxTransparentSamplesCount; };
+
 	private:
-		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 4);
+		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
 		void createParameterBlock();
 		void uploadMaterial(const uint32_t materialID);
@@ -86,36 +94,47 @@ class dlldecl VisibilitySamplesContainer {
 
 		void readInfoBufferData() const;
 
+		void sortOpaqueSamples();
+		void sortTransparentSamples();
+
 		uint2 mResolution;
+		uint  mMaxOpaqueSamplesCount;
 		uint 	mMaxTransparentSamplesCountPP;
 		uint 	mMaxTransparentSamplesCount;
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
-    bool  mLimitTransparentSamplesCountPP = true;
+    bool  mLimitTransparentSamplesCountPP = false;
 
 		Device::SharedPtr mpDevice = nullptr;
 
-		uint32_t mFlags;
+		VisibilitySamplesContainerFlags mFlags;
 
 		// GPU resources
 		GpuFence::SharedPtr mpFence;
-		ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
-		ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
+		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
+		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
 		Texture::SharedPtr  mpOpaqueSamplesBuffer;
-		Texture::SharedPtr  mpOpaqueVisibilitySamplesPositionBuffer;
+		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBuffer;
 		Texture::SharedPtr  mpRootTransparentSampleOffsetBufferPP;
 		Texture::SharedPtr  mpVisibilitySamplesCountBuffer;
+
+		Texture::SharedPtr  mpDepthTexture;
 
 		Buffer::SharedPtr   mpInfoBuffer;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 
 		mutable std::vector<uint32_t> mpInfoBufferData;
 
+		ComputePass::SharedPtr 	mpOpaqueSortingPass;
+		ComputePass::SharedPtr 	mpTransparentSortingPass;
+
 		ResourceFormat      mOpaqueSampleDataFormat = HitInfo::kDefaultFormat;
 		ResourceFormat      mOpaqueSampleExtraDataFormat = ResourceFormat::RG32Uint;
 };
+
+enum_class_operators(VisibilitySamplesContainerFlags);
 
 }  // namespace Falcor
 

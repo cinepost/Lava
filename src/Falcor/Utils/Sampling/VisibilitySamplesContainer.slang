@@ -1,11 +1,15 @@
 #include "Utils/Math/MathConstants.slangh"
+#include "Utils/HostDeviceShared.slangh"
 #include "Utils/Sampling/VisibilitySamplesContainer.slangh"
+
+import Utils.Math.FormatConversion;
 
 __exported import Scene.SceneTypes;
 __exported import Scene.HitInfo;
 
+
 #ifndef VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
-#error "VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP not defined!"
+#define VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP 0
 #endif
 
 /** This struct represents the GPU-side visibility samples container system.
@@ -22,48 +26,83 @@ struct VisibilitySamplesContainer {
     
     // Opaque samples data
     RWTexture2D<PackedHitInfo>                      opaqueVisibilitySamplesBuffer;
-    RWTexture2D<uint>                               opaqueVisibilitySamplesPositionBuffer;
+    RWStructuredBuffer<uint>                        opaqueVisibilitySamplesPositionBuffer;
 
     // Transparent samples data
     RWTexture2D<uint>                               rootTransparentSampleOffsetBufferPP;
     RWTexture2D<uint>                               transparentVisibilitySamplesCountBuffer;
     RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
 
+    // Opaque depth buffer data
+    Texture2D<uint>                                 depthBuffer;
+
     RWStructuredBuffer<uint>                        infoBuffer;
 
-    HitInfo readOpaqueHit(uint2 pos) {
-        return HitInfo(opaqueVisibilitySamplesBuffer[pos]);
+    uint fetchSortedTransaprentSamples(uint2 pixelPos, out SortedTransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
+        if(!hasTransparentSamples()) return 0;
+
+        // Fetch first transparent sample
+        TransparentVisibilitySample rootTransparentSample;
+        
+        if(!readRootTransparentVisibilitySample(pixelPos, rootTransparentSample)) return 0;
+        
+        samples[0].hitInfo = rootTransparentSample.hitInfo;
+        samples[0].alpha = rootTransparentSample.alpha;
+
+        // Fetch remaining transparent samples
+        uint nextSampleOffset = rootTransparentSample.nextSampleOffset;
+
+        uint samplesCount = 1;
+        while(nextSampleOffset != UINT32_MAX && samplesCount < transparentSamplesCount(pixelPos)) {            
+            samples[samplesCount].hitInfo = transparentVisibilitySamplesBuffer[nextSampleOffset].hitInfo;
+            samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
+            nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
+        }
+
+        if(!isTransparentSorted()) {
+            // TODO: Sort samples in-place
+        }
+
+        return samplesCount;
     }
 
-    TransparentVisibilitySample readRootTransparentVisibilitySample(uint2 pos) {
-        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pos];
-        if(sampleOffset == UINT32_MAX) return {};
+    HitInfo readOpaqueHit(uint2 pixelPos) {
+        return HitInfo(opaqueVisibilitySamplesBuffer[pixelPos]);
+    }
+
+    bool readRootTransparentVisibilitySample(uint2 pixelPos, inout TransparentVisibilitySample sample) {
+        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pixelPos];
+        if(sampleOffset == UINT32_MAX) return false;
 
         #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
-            sampleOffset += __pixelBucketOffset(pos);
+            sampleOffset += __pixelBucketOffset(pixelPos);
         #endif
 
-        return transparentVisibilitySamplesBuffer[sampleOffset];
+        sample = transparentVisibilitySamplesBuffer[sampleOffset];
+        return true;
     }
 
     TransparentVisibilitySample readTransparentVisibilitySample(uint offset) {
         return transparentVisibilitySamplesBuffer[offset];
     }
 
-    void writeOpaqueHit(uint2 pos, const HitInfo hit) {
+    void writeOpaqueHit(uint2 pixelPos, const HitInfo hit) {
         if(isOpaqueSorted()) return;
 
         InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION], 1);
 
-        opaqueVisibilitySamplesBuffer[pos] = hit.getData();
+        opaqueVisibilitySamplesBuffer[pixelPos] = hit.getData();
+
+        uint tmp;
+        InterlockedExchange(opaqueVisibilitySamplesPositionBuffer[pixelPos.x + pixelPos.y * resolution.y], u2x16to32(uint16_t2(pixelPos)), tmp);
     }
 
-    void writeTransparentHit(uint2 pos, const HitInfo hit, float alpha, uint64_t depth) {
-        if(pos.x >= resolution.x || pos.y >= resolution.y) return;
+    void writeTransparentHit(uint2 pixelPos, const HitInfo hit, float alpha, uint64_t depth) {
+        if(pixelPos.x >= resolution.x || pixelPos.y >= resolution.y) return;
         if(!hit.isValid() || alpha < alphaThresholdMin) return;
 
         if(alpha > alphaThresholdMax) {
-            writeOpaqueHit(pos, hit);
+            writeOpaqueHit(pixelPos, hit);
             return;
         }
 
@@ -82,24 +121,23 @@ struct VisibilitySamplesContainer {
 
     #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
     
-        InterlockedAdd(rootTransparentSampleOffsetBufferPP[pos], 1, curSampleOffset);
-        newSampleOffset = ((curSampleOffset + 1) % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
-        if(curSampleOffset != UINT32_MAX) curSampleOffset = (curSampleOffset % maxTransparentSamplesCountPP) + __pixelBucketOffset(pos);
+        InterlockedAdd(rootTransparentSampleOffsetBufferPP[pixelPos], 1, curSampleOffset);
+        newSampleOffset = ((curSampleOffset + 1) % maxTransparentSamplesCountPP) + __pixelBucketOffset(pixelPos);
+        if(curSampleOffset != UINT32_MAX) curSampleOffset = (curSampleOffset % maxTransparentSamplesCountPP) + __pixelBucketOffset(pixelPos);
 
     #else
+        if(curSampleOffset >= maxTransparentSamplesCount) return;
         newSampleOffset = curSampleOffset;
         
-        InterlockedExchange(rootTransparentSampleOffsetBufferPP[pos], newSampleOffset, curSampleOffset);
-        InterlockedAdd(transparentVisibilitySamplesCountBuffer[pos], 1, curSamplesCount);
+        InterlockedExchange(rootTransparentSampleOffsetBufferPP[pixelPos], newSampleOffset, curSampleOffset);
+        InterlockedAdd(transparentVisibilitySamplesCountBuffer[pixelPos], 1, curSamplesCount);
     
     #endif
 
-        if(curSampleOffset != UINT32_MAX) {
-            // Next transparent sample
-            transparentSample.nextSampleOffset = curSampleOffset;
-        }
-
+        transparentSample.nextSampleOffset = curSampleOffset;
         transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
+
+        InterlockedMax(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT], min((curSamplesCount + 1), maxTransparentSamplesCountPP));
     }
 
     bool isOpaqueSorted() CONST_FUNCTION {
@@ -122,12 +160,16 @@ struct VisibilitySamplesContainer {
         return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION];
     }
 
-    uint transparentSamplesCount(uint2 pos) CONST_FUNCTION {
+    uint maxTranstapertLayersCount() CONST_FUNCTION {
+        return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT];
+    }
+
+    uint transparentSamplesCount(uint2 pixelPos) CONST_FUNCTION {
 #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
         // When strict samples count pp is enabled we can use offset buffer as simple samples counter
-        return min(rootTransparentSampleOffsetBufferPP[pos] + 1, maxTransparentSamplesCountPP);
+        return min(rootTransparentSampleOffsetBufferPP[pixelPos] + 1, maxTransparentSamplesCountPP);
 #else
-        return transparentVisibilitySamplesCountBuffer[pos];
+        return transparentVisibilitySamplesCountBuffer[pixelPos];
 #endif
     }
 
@@ -139,9 +181,9 @@ struct VisibilitySamplesContainer {
         return alphaThresholdMax;
     }
 
-    uint __pixelBucketOffset(uint2 pos) CONST_FUNCTION {
+    uint __pixelBucketOffset(uint2 pixelPos) CONST_FUNCTION {
 #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
-        return (pos.x + pos.y * resolution.x) * maxTransparentSamplesCountPP;
+        return (pixelPos.x + pixelPos.y * resolution.x) * maxTransparentSamplesCountPP;
 #else
         return 0;
 #endif

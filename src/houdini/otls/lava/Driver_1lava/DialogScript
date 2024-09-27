@@ -1644,7 +1644,7 @@
                 name    "lv_transparentsamples"
                 label   "Transparency Samples"
                 type    integer
-                default { "1" }
+                default { "4" }
                 help    "The number of transparent samples to shade. "
                 range   { 1 16 }
                 disablewhen "{ lv_visibility_container == 0 }"

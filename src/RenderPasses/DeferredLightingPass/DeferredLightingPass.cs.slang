@@ -103,8 +103,7 @@ SamplerState gDepthSampler;
 Texture2D gNoiseTex;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-static PackedHitInfo transparenHitInfoList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
-static float16_t transparenSampleAlpha[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 #endif
 
 /** write AOVData
@@ -544,35 +543,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
-        if(!gVisibilityContainer.hasTransparentSamples()) return;
-
-        // Fetch first transparent sample
-        TransparentVisibilitySample transparentSample = gVisibilityContainer.readRootTransparentVisibilitySample(pixelPos);
-        transparenHitInfoList[0] = transparentSample.hitInfo;
-
-        if (!HitInfo(transparenHitInfoList[0]).isValid()) {
-            return;
-        }
-
-        transparenSampleAlpha[0] = transparentSample.alpha;
-
-        // Fetch remaining transparent samples
-        uint nextSampleOffset = transparentSample.nextSampleOffset;
-
-        uint transparentVisibilitySamplesCount = 1;
-        while(nextSampleOffset != 0 && transparentVisibilitySamplesCount < gVisibilityContainer.transparentSamplesCount(pixelPos)) {            
-            transparentSample = gVisibilityContainer.readTransparentVisibilitySample(nextSampleOffset);
-            transparenHitInfoList[transparentVisibilitySamplesCount] = transparentSample.hitInfo;
-            transparenSampleAlpha[transparentVisibilitySamplesCount++] = transparentSample.alpha;
-            nextSampleOffset = transparentSample.nextSampleOffset;
-        }
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamples(pixelPos, transparenSamplesList);
+        if(transparentVisibilitySamplesCount == 0) return;
 
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenHitInfoList[layer]);
-            sampleAlpha = transparenSampleAlpha[layer];
-
+            hit = HitInfo(transparenSamplesList[layer].hitInfo);
+            sampleAlpha = transparenSamplesList[layer].alpha;
     #else
         hit = gVisibilityContainer.readOpaqueHit(pixelPos);
     #endif

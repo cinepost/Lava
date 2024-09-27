@@ -462,7 +462,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     if(mpVisibilitySamplesContainer) {
-        //LLOG_WRN << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
+        mpVisibilitySamplesContainer->endFrame();
+        //LLOG_DBG << "Reserved transparent samples count " << mpVisibilitySamplesContainer->reservedTransparentSamplesCount();
+        //LLOG_DBG << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
     }
 
     mSampleNumber++;
