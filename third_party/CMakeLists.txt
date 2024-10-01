@@ -1515,7 +1515,7 @@ ExternalProject_Add( Slang
   CONFIGURE_COMMAND
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
     COMMAND ${CMAKE_COMMAND}
-      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
+      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/spirv-tools/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
       -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
     COMMAND ${CMAKE_COMMAND}
@@ -1552,7 +1552,7 @@ ExternalProject_Add( Slang
 
   CONFIGURE_COMMAND
     COMMAND ${CMAKE_COMMAND}
-      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/spirv-tools/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
       -D OUTPUT_FILE=<SOURCE_DIR>/premake5
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
     COMMAND ${CMAKE_COMMAND}
