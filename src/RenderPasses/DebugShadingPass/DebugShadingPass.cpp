@@ -1,4 +1,6 @@
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/IndirectCommands.h"
+
 #include "Falcor/Utils/Color/ColorGenerationUtils.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
@@ -31,6 +33,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 namespace {
     const char kShaderFile[] = "RenderPasses/DebugShadingPass/DebugShadingPass.cs.slang";
+
+    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const std::string kInputColor           = "color";
     const std::string kInputVBuffer         = "vbuffer";
@@ -133,12 +137,8 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     generateMeshletColorBuffer(renderData);
 
-    // Prepare program and vars. This may trigger shader compilation.
-    // The program should have all necessary defines set at this point.
-    if (!mpShadingPass || mDirty) {
-        Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
-        desc.addTypeConformances(mpScene->getTypeConformances());
+    auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
+        if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
 
         auto defines = mpScene->getSceneDefines();
         defines.add(getValidResourceDefines(kExtraInputChannels, renderData));
@@ -146,37 +146,44 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         defines.add("FALSE_COLOR_BUFFER_SIZE", mpMeshletColorBuffer ? std::to_string(meshletColorCycleSize) : "0");
 
-        mpShadingPass = ComputePass::create(mpDevice, desc, defines, true);
+        if(mpVisibilitySamplesContainer) {
+            if(transparentPass) defines.add("TRANSPARENT_SHADING_PASS");
+            defines.add("USE_VISIBILITY_CONTAINER", "1");
+            defines.add(mpVisibilitySamplesContainer->getDefines());
+        } else {
+            defines.remove("TRANSPARENT_SHADING_PASS");
+            defines.remove("USE_VISIBILITY_CONTAINER");
+        }
 
-        mpShadingPass["gScene"] = mpScene->getParameterBlock();
-        mpShadingPass["gFalseColorBuffer"] = mpMeshletColorBuffer;
+        ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, desc, defines, true);
+
+        pPass["gScene"] = mpScene->getParameterBlock();
+        pPass["gFalseColorBuffer"] = mpMeshletColorBuffer;
 
         // Bind mandatory input channels
-        mpShadingPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        mpShadingPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
+        pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
+        pPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
 
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            mpShadingPass[channel.texname] = pTex;
+            pPass[channel.texname] = pTex;
         }
 
         // Bind extra input-output channels
         for (const auto& channel : kExtraInputOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            mpShadingPass[channel.texname] = pTex;
+            pPass[channel.texname] = pTex;
         }
 
         // Bind extra output channels as UAV buffers.
         for (const auto& channel : kExtraOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            mpShadingPass[channel.texname] = pTex;
+            pPass[channel.texname] = pTex;
         }
 
         auto pMeshletIDTexture = renderData[kInputOuputMeshlet]->asTexture();
-        if(pMeshletIDTexture) {
-            LLOG_WRN << "Meshlet id texture size " << pMeshletIDTexture->getWidth() << " " << pMeshletIDTexture->getHeight();
-        }
+        
 
         if (!mpFalseColorGenerator && 
             (   
@@ -188,9 +195,21 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
             mpFalseColorGenerator = FalseColorGenerator::create(mpDevice, meshletColorCycleSize, &seed);
         }
 
-        if (!mpHeatMapColorGenerator && (renderData[kOutputMeshletDrawColor]->asTexture() && renderData[kInputDrawCount]->asTexture())) {
-            mpHeatMapColorGenerator = HeatMapColorGenerator::create(mpDevice);
-        }
+        if (!mpHeatMapColorGenerator && (renderData[kOutputMeshletDrawColor]->asTexture() && renderData[kInputDrawCount]->asTexture())) mpHeatMapColorGenerator = HeatMapColorGenerator::create(mpDevice);
+        if (mpVisibilitySamplesContainer) pPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+    
+        return pPass;
+    };
+
+    // Prepare program and vars. This may trigger shader compilation.
+    // The program should have all necessary defines set at this point.
+    if (!mpShadingPass || mDirty) {
+        Program::Desc desc;
+        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        mpShadingPass = createShadingPass(desc);
+        mpTransparentShadingPass = createShadingPass(desc, true);
     }
 
     if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(mpShadingPass["gFalseColorGenerator"]);
@@ -199,7 +218,31 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     auto cb_var = mpShadingPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
 
-    mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
+
+    if(mpVisibilitySamplesContainer) {
+        // Visibility container mode opaque samples shading
+        static const DispatchArguments baseIndirectArgs = { 3200, 1, 1 };
+        if(!mpOpaquePassIndirectionArgsBuffer) {
+            mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
+        }
+
+        //mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+        mpShadingPass->executeIndirect(pContext, mpOpaquePassIndirectionArgsBuffer.get());
+    } else {
+        // Legacy (visibility buffer) mode shading
+        mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    }
+
+    if(mpTransparentShadingPass) {
+        // Visibility container mode transparent samples shading
+        auto cb_var = mpTransparentShadingPass["PerFrameCB"];
+        cb_var["gFrameDim"] = mFrameDim;
+
+        //mpTransparentShadingPass->execute(pContext, mFrameDim.x * mFrameDim.y, 1, 1);
+    }
+
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
 
     mDirty = false;
 }
@@ -214,4 +257,10 @@ void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) 
 
 DebugShadingPass& DebugShadingPass::setColorFormat(ResourceFormat format) {
     return *this;
+}
+
+void DebugShadingPass::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer) {
+    if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
+    mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+    mDirty = true;
 }

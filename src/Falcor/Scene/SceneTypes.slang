@@ -103,7 +103,7 @@ enum class MeshFlags : uint32_t {
 struct MeshDesc {
     uint vbOffset;          ///< Offset into global vertex buffer.
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
-    uint mbOffset; 
+    uint mbOffset;          ///< Offset into global per-primitive material indices buffer.
     uint vertexCount;       ///< Vertex count.    
     
     uint indexCount;        ///< Index count, or zero if non-indexed.
@@ -458,6 +458,10 @@ struct PackedMeshletData {
         packedDataB.x = packUnorm3x8(m.bbox.minPoint) | ((m.primCount - 1) << kPrimCountOffset);
         packedDataB.y = packUnorm3x8(m.bbox.maxPoint) | ((m.vertexCount - 1) << kVertexCountOffset);        
     }
+
+    uint primIndexOffset() CONST_FUNCTION { return packedDataA.z; }
+
+    uint primCount() CONST_FUNCTION { return (packedDataB.x >> kPrimCountOffset) + 1; }
 
 #else // !HOST_CODE
     MeshletData unpack() {

@@ -271,6 +271,8 @@ bool Session::cmdRaytrace() {
 	auto& confDict = mpRenderer->getRendererConfDict();
 	confDict["primaryraygentype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "primaryraygentype", std::string("hwraster"));
 	confDict["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
+	confDict["visibilitycontainer"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainer", bool(false));
+	confDict["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(true));
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
@@ -290,10 +292,12 @@ bool Session::cmdRaytrace() {
 
 	passDict["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));
 
-	passDict["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(1));
+	passDict["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(4));
 
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
+	passDict["opacityLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "opacitylimit", float(0.995f));
+
 	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
 	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
 	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));

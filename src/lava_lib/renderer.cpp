@@ -13,6 +13,7 @@
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
+
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
@@ -272,8 +273,16 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
 
-
 	const std::string shadingPassType = mRendererConfDict.getValue("shadingpasstype", std::string("deferred"));
+	const bool useVisibilitySamplesContainer = mRendererConfDict.getValue("visibilitycontainer", bool(false));
+	const bool visibilitySamplesContainerLimit = mRendererConfDict.getValue("visibilitycontainerlimit", bool(true));
+
+	if(useVisibilitySamplesContainer) {
+		mpVisibilitySamplesContainer = VisibilitySamplesContainer::create(mpDevice, renderRegionDims);
+		mpVisibilitySamplesContainer->setLimitTransparentSamplesCountPP(visibilitySamplesContainerLimit);
+	} else {
+		mpVisibilitySamplesContainer = nullptr;
+	}
 
 	if (shadingPassType == std::string("pathtracer")) {
 
@@ -284,13 +293,13 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
   } else if (shadingPassType == std::string("deferred")) {
 
 		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-		//pDeferredLightingPass->setScene(pRenderContext, pScene);
+		pDeferredLightingPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
 
 	} else if (shadingPassType == std::string("debug")) {
 
 		auto pDebugShadingPass = DebugShadingPass::create(pRenderContext, {});
-		//pDebugShadingPass->setScene(pRenderContext, pScene);
+		pDebugShadingPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
 
 	} else {
@@ -338,6 +347,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
+		pVBufferPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
+
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else {

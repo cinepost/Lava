@@ -119,7 +119,9 @@ def initializeFeatures(settings):
 
     Renderer("renderer", "primaryraygentype", "string", "lv_primary_raygen_type", skipdefault=False)
     Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
-    
+    Renderer("renderer", "visibilitycontainerlimit", "bool", "lv_visibility_container_limit", skipdefault=False)
+    Renderer("renderer", "visibilitycontainer", "bool", "lv_visibility_container", skipdefault=False)
+
     # -- Image --
     Image("image", "background", "string", "lv_background")
     Image("image", "backgroundchannels", "string", "lv_backgroundchannels")
@@ -139,7 +141,10 @@ def initializeFeatures(settings):
     Image("image", "checkpointcachesize", "int", "lv_checkpointcachesize")
     Image("image", "checkpointname", "string", "lv_checkpointname")
     Image("image", "checkpointperiod", "float", "lv_checkpointperiod")
+    
     Image("image", "colorlimit", "float", "lv_colorlimit")
+    Image("image", "opacitylimit", "float", "lv_opacity_limit")
+
     Image("image", "indirectcolorlimit", "float", "lv_indirectcolorlimit")
     Image("image", "colorlimitdecay", "float", "lv_colorlimitdecay")
     Image("image", "colorlimitdepth", "int", "lv_colorlimitdepth")

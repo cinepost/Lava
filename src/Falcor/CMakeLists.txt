@@ -58,6 +58,7 @@ file( GLOB SOURCES
     ./Utils/Color/HeatMapColorGenerator.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Sampling/*.cpp
+    ./Utils/Sampling/VisibilitySamplesContainer.cpp
     ./Utils/Sampling/Pseudorandom/*.cpp
     ./Utils/Shading/*.cpp
     ./Utils/Scripting/*.cpp

@@ -168,6 +168,7 @@ void AccumulatePass::compile(RenderContext* pContext, const CompileData& compile
     if (compileData.defaultTexDims != mFrameDim) {
         mFrameCount = 0;
         mFrameDim = compileData.defaultTexDims;
+        mDirty = true;
     }
 }
 
@@ -423,6 +424,8 @@ void AccumulatePass::onHotReload(HotReloadFlags reloaded) {
 }
 
 void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
+    if(!mDirty) return;
+
     // Allocate/resize/clear buffers for intermedate data. These are different depending on accumulation mode.
     // Buffers that are not used in the current mode are released.
     auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool clearAsDepth = false) {
@@ -435,23 +438,20 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
             pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             assert(pBuf);
-            mFrameCount = 0;
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
-        if (mFrameCount == 0) {
-            if (clearAsDepth) {
-                bool isDepth = isDepthStencilFormat(format);
-                if(mPixelFilterType == PixelFilterType::Closest) {
-                    if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 1.f, 0);
-                    else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f));
-                } else {
-                    if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 0.f, 0);
-                    else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
-                }
+        if (clearAsDepth) {
+            bool isDepth = isDepthStencilFormat(format);
+            if(mPixelFilterType == PixelFilterType::Closest) {
+                if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 1.f, 0);
+                else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f));
             } else {
-                if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
-                else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
+                if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 0.f, 0);
+                else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
             }
+        } else {
+            if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
+            else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
         }
     };
 

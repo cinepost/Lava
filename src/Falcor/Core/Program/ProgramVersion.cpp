@@ -36,8 +36,7 @@
 
 #include <set>
 
-namespace Falcor
-{
+namespace Falcor {
 
     //
     // EntryPointGroupKernels
@@ -55,10 +54,8 @@ namespace Falcor
         , mShaders(shaders)
     {}
 
-    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
-    {
-        for( auto& pShader : mShaders )
-        {
+    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const {
+        for( auto& pShader : mShaders ) {
             if(pShader->getType() == type)
                 return pShader.get();
         }
@@ -126,68 +123,57 @@ namespace Falcor
 
         // Check if we are creating program kernels for ray tracing pipeline.
         bool isRayTracingProgram = false;
-        if (pTypeConformanceSpecializedEntryPoints.size())
-        {
+        if (pTypeConformanceSpecializedEntryPoints.size()) {
             auto stage = pTypeConformanceSpecializedEntryPoints[0]->getLayout()->getEntryPointByIndex(0)->getStage();
-            switch (stage)
-            {
-            case SLANG_STAGE_ANY_HIT:
-            case SLANG_STAGE_RAY_GENERATION:
-            case SLANG_STAGE_CLOSEST_HIT:
-            case SLANG_STAGE_CALLABLE:
-            case SLANG_STAGE_INTERSECTION:
-            case SLANG_STAGE_MISS:
-                isRayTracingProgram = true;
-                break;
-            default:
-                break;
+            switch (stage) {
+                case SLANG_STAGE_ANY_HIT:
+                case SLANG_STAGE_RAY_GENERATION:
+                case SLANG_STAGE_CLOSEST_HIT:
+                case SLANG_STAGE_CALLABLE:
+                case SLANG_STAGE_INTERSECTION:
+                case SLANG_STAGE_MISS:
+                    isRayTracingProgram = true;
+                    break;
+                default:
+                    break;
             }
         }
         // Deduplicate entry points by name for ray tracing program.
         std::vector<slang::IComponentType*> deduplicatedEntryPoints;
-        if (isRayTracingProgram)
-        {
+        if (isRayTracingProgram) {
             std::set<std::string> entryPointNames;
-            for (auto entryPoint : pTypeConformanceSpecializedEntryPoints)
-            {
+            for (auto entryPoint : pTypeConformanceSpecializedEntryPoints) {
                 auto compiledEntryPointName = std::string(entryPoint->getLayout()->getEntryPointByIndex(0)->getNameOverride());
-                if (entryPointNames.find(compiledEntryPointName) == entryPointNames.end())
-                {
+                if (entryPointNames.find(compiledEntryPointName) == entryPointNames.end()) {
                     entryPointNames.insert(compiledEntryPointName);
                     deduplicatedEntryPoints.push_back(entryPoint);
                 }
             }
             programDesc.entryPointCount = (uint32_t)deduplicatedEntryPoints.size();
             programDesc.slangEntryPoints = (slang::IComponentType**)deduplicatedEntryPoints.data();
-        }
-        else
-        {
+        } else {
             programDesc.entryPointCount = (uint32_t)pTypeConformanceSpecializedEntryPoints.size();
             programDesc.slangEntryPoints = (slang::IComponentType**)pTypeConformanceSpecializedEntryPoints.data();
         }
 
         Slang::ComPtr<ISlangBlob> diagnostics;
-        if (SLANG_FAILED(pDevice->getApiHandle()->createProgram(programDesc, pProgram->mApiHandle.writeRef(), diagnostics.writeRef())))
-        {
+        if (SLANG_FAILED(pDevice->getApiHandle()->createProgram(programDesc, pProgram->mApiHandle.writeRef(), diagnostics.writeRef()))) {
             pProgram = nullptr;
         }
-        if (diagnostics)
-        {
+
+        if (diagnostics) {
             log = (const char*)diagnostics->getBufferPointer();
         }
 #endif
         return pProgram;
     }
 
-    ProgramVersion::SharedConstPtr ProgramKernels::getProgramVersion() const
-    {
+    ProgramVersion::SharedConstPtr ProgramKernels::getProgramVersion() const {
         return mpVersion->shared_from_this();
     }
 
-    const Shader* ProgramKernels::getShader(ShaderType type) const
-    {
-        for( auto& pEntryPointGroup : mUniqueEntryPointGroups )
-        {
+    const Shader* ProgramKernels::getShader(ShaderType type) const {
+        for( auto& pEntryPointGroup : mUniqueEntryPointGroups ) {
             if(auto pShader = pEntryPointGroup->getShader(type))
                 return pShader;
         }
@@ -215,13 +201,11 @@ namespace Falcor
         mpSlangEntryPoints = pSlangEntryPoints;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
-    {
+    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
         return SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
     }
 
-    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
-    {
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const {
         // We need are going to look up or create specialized kernels
         // based on how parameters are bound in `pVars`.
         //
@@ -232,45 +216,37 @@ namespace Falcor
         std::string specializationKey;
 
         ParameterBlock::SpecializationArgs specializationArgs;
-        if (pVars)
-        {
+        if (pVars) {
             pVars->collectSpecializationArgs(specializationArgs);
         }
 
         bool first = true;
-        for( auto specializationArg : specializationArgs )
-        {
+        for( auto specializationArg : specializationArgs ) {
             if(!first) specializationKey += ",";
             specializationKey += std::string(specializationArg.type->getName());
             first = false;
         }
 
         auto foundKernels = mpKernels.find(specializationKey);
-        if( foundKernels != mpKernels.end() )
-        {
+        if( foundKernels != mpKernels.end() ) {
             return foundKernels->second;
         }
 
         // Loop so that user can trigger recompilation on error
-        for(;;)
-        {
+        for(;;) {
             std::string log;
             auto pKernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
-            if( pKernels )
-            {
+            if( pKernels ) {
                 // Success
 
-                if (!log.empty())
-                {
-                    std::string warn = "Warnings in program:\n" + getName() + "\n" + log;
+                if (!log.empty()) {
+                    std::string warn = "ProgramVersion::getKernels() Warnings in program:\n" + getName() + "\n" + log;
                     LLOG_WRN << warn;
                 }
 
                 mpKernels[specializationKey] = pKernels;
                 return pKernels;
-            }
-            else
-            {
+            } else {
                 // Failure
 
                 std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
@@ -281,18 +257,15 @@ namespace Falcor
         }
     }
 
-    slang::ISession* ProgramVersion::getSlangSession() const
-    {
+    slang::ISession* ProgramVersion::getSlangSession() const {
         return getSlangGlobalScope()->getSession();
     }
 
-    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const
-    {
+    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const {
         return mpSlangGlobalScope;
     }
 
-    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const
-    {
+    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const {
         return mpSlangEntryPoints[index];
     }
 }

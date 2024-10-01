@@ -1,0 +1,70 @@
+#pragma once
+#include "Utils/Math/MathConstants.slangh"
+#include "Utils/HostDeviceShared.slangh"
+
+#define VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION                          0
+#define VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION           1
+#define VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION      2
+#define VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION        3
+#define VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT_LOCATION   4
+#define VISIBILITY_CONTAINER_INFOBUFFER_COUNT                                   5
+
+#ifndef VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP
+#define VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP 1
+#endif
+
+BEGIN_NAMESPACE_FALCOR
+
+/* TODO: */
+// depth  32 bit
+// offset 24 bit
+// alpha  8 bit
+
+
+struct TransparentVisibilitySample {
+    uint64_t        depth;
+    float           alpha;
+    uint            nextSampleOffset;
+
+#ifdef HOST_CODE
+    uint4           hitInfo;
+#else // !HOST_CODE
+    PackedHitInfo   hitInfo;
+#endif
+
+#ifdef HOST_CODE
+    TransparentVisibilitySample() {
+        depth = 0;
+        alpha = 0.0f;
+        nextSampleOffset = UINT32_MAX;
+        hitInfo = uint4(0);
+    }
+#else
+    __init() {
+        depth = 0;
+        alpha = 0.0f;
+        nextSampleOffset = UINT32_MAX;
+        hitInfo = {};
+    }
+#endif
+};
+
+struct SortedTransparentVisibilitySample {
+    #ifdef HOST_CODE
+        uint4           hitInfo;
+    #else // !HOST_CODE
+        PackedHitInfo   hitInfo;
+    #endif
+
+    float16_t alpha;
+};
+
+END_NAMESPACE_FALCOR
+
+
+enum class VisibilitySamplesContainerFlags : uint32_t {
+    None = 0x0,
+
+    OpaqueSamplesSorted          = 0x1,   ///< Indicates that opaque samples are sorted into separate buffer.
+    TransparentSamplesSorted     = 0x2,   ///< Indicates that transparent samples are sorted.
+};

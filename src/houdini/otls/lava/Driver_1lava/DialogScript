@@ -1632,12 +1632,32 @@
             }
 
             parm {
+                name    "lv_visibility_container"
+                label   "Visibility Container"
+                type    toggle
+                default { "0" }
+                help    "Prefer using visibility container where applicable."
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
                 name    "lv_transparentsamples"
-                label   "Stochastic Samples"
+                label   "Transparency Samples"
                 type    integer
-                default { "1" }
+                default { "4" }
                 help    "The number of transparent samples to shade. "
                 range   { 1 16 }
+                disablewhen "{ lv_visibility_container == 0 }"
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
+                name    "lv_visibility_container_limit"
+                label   "Limit Per-Pixel Samples Count"
+                type    toggle
+                default { "0" }
+                hidewhen "{ lv_visibility_container == 0 }"
+                help    "Limit number of transparent samples stored per-pixel."
                 parmtag { "spare_category" "Sampling" }
             }
 
@@ -1762,6 +1782,15 @@
                     disablewhen "{ lv_enable_rt == 0 }"
                     parmtag { "script_callback_language" "python" }
                 }
+            }
+
+            parm {
+                name    "lv_opacitylimit"
+                label   "Opacity Limit"
+                type    float
+                size    1
+                default { "0.995" }
+                help    ""
             }
 
             parm {

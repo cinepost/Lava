@@ -75,6 +75,7 @@ Display::Display::TypeFormat resolveDisplayTypeFormat(const std::string& fname) 
 	if( fname == "int16") return Display::TypeFormat::UNSIGNED16;
 	if( fname == "float16") return Display::TypeFormat::FLOAT16;	
 	if( fname == "float32") return Display::TypeFormat::FLOAT32;
+	if( fname == "int32") return Display::TypeFormat::UNSIGNED32;
 
 	return Display::TypeFormat::FLOAT32;
 }

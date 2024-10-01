@@ -67,7 +67,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		void setPerPixelJitter(bool value);
 		void setMaxSubdivLevel(uint level);
 		void setMinScreenEdgeLen(float len);
-		void setIOTSamplesCount(uint count);
+		void setOpacityLimit(float limit);
 
 		void setHighpDepth(bool state);
 		void enableSubdivisions(bool value);
@@ -89,6 +89,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
 		void parseDictionary(const Dictionary& dict) override;
 
+		// Helper functions
+		bool isOpaqueMaterial(const Material::SharedPtr& pMaterial);
 
 		Camera::SharedPtr mpCamera;
 
@@ -104,9 +106,6 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseMotionBlur = false;
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
-
-		uint mIOTSamplesCount = 1;
-
 		bool mSubdivDataReady = false;
 
 		float mMinScreenEdgeLen = 4.0f;
@@ -114,6 +113,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		uint mSubgroupSize;
 		uint mMaxLOD = 0;
 		uint mMaxMicroTrianglesPerThread = 1;
+
+		float mOpacityLimit = 0.995f;
 
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;
@@ -145,7 +146,11 @@ class PASS_API VBufferSW : public GBufferBase {
 		std::vector<uint2>      mSTBNOffsets;
 
 		// Meshlets part
-		Buffer::SharedPtr      	mpMeshletDrawListBuffer;
+		Buffer::SharedPtr      	mpMeshletDrawListBuffer; // Meshlets buffer
+
+		uint32_t                mOpaqueMeshletsCount;
+		uint32_t                mTransparentMeshletsCount;
+		uint32_t                mTransparentMeshletsStartOffset;
 };
 
 #endif   // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERSW_H_

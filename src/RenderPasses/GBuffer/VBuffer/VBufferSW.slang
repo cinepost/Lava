@@ -98,9 +98,11 @@ struct VBufferSW {
     float   minScreenEdgeLenSquared;
     float2  rnd;
     uint2   stbnOffset;
-    uint    drawableIndex;
+    uint    drawableIndex; // one drawable for debug
+    uint    drawableOffset;
     uint2   jitterTextureDim;
-    uint    ioTSamplesCount;
+    uint    transparencySamplesCount;
+    float   opacityLimit;
 
     void writeMeshletID(uint2 pixelPos, uint meshletID) {
 #if is_valid(gMeshletID)

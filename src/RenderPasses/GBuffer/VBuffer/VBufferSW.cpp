@@ -32,6 +32,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
+#include "Falcor/Scene/Material/BasicMaterial.h"
 #include "Falcor/Scene/SceneDefines.slangh"
 
 #include "VBufferSW.MicroTriangle.slangh"
@@ -69,7 +70,7 @@ namespace {
     const char kUseDisplacement[] = "useDisplacement";
     const char kMaxSubdivLevel[] = "maxSubdivLevel";
     const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
-    const char kIOTSamplesCount[] = "iotSamplesCount";
+    const char kOpacityLimit[] = "opacityLimit";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
@@ -78,6 +79,7 @@ namespace {
     const std::string kVBufferName = "vbuffer";
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
+    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const std::string kOuputOITStartOffset = "oit_start_offset";
     const std::string kOuputTime       = "time";
@@ -162,7 +164,7 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         #endif
         else if (key == kMaxSubdivLevel) setMaxSubdivLevel(static_cast<uint>(value));
         else if (key == kMinScreenEdgeLen) setMinScreenEdgeLen(static_cast<float>(value));
-        else if (key == kIOTSamplesCount) setIOTSamplesCount(static_cast<uint>(value));
+        else if (key == kOpacityLimit) setOpacityLimit(static_cast<float>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -186,6 +188,7 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
 void VBufferSW::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     GBufferBase::compile(pRenderContext, compileData);
     mpRandomSampleGenerator = StratifiedSamplePattern::create(1024);
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->resize(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
 }
 
 void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderData) {
@@ -239,11 +242,11 @@ Dictionary VBufferSW::getScriptingDictionary() {
 }
 
 void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
+    createMeshletDrawList();
+    if(!mpMeshletDrawListBuffer) return;
+
     createBuffers();
     createJitterTexture();
-    createMeshletDrawList();
-
-    if(!mpMeshletDrawListBuffer) return;
 
     if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
         mpThreadLockBuffer = Buffer::create(pRenderContext->device(), mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
@@ -270,6 +273,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
     }
+
+    // Optional visibility container
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
 
     // Create rasterization pass.
     if (!mpComputeRasterizerPass || mDirty) {
@@ -318,6 +324,13 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             defines.remove("USE_SUBDIVISIONS");
         }
 
+        if(mpVisibilitySamplesContainer) {
+            defines.add(mpVisibilitySamplesContainer->getDefines());
+            defines.add("USE_VISIBILITY_CONTAINER", "1");
+        } else {
+            defines.remove("USE_VISIBILITY_CONTAINER");
+        }
+
         defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         //defines.add("THREADS_COUNT", std::to_string(kMaxGroupThreads));
         defines.add("CULL_MODE", GBufferBase::to_define_string(mCullMode));
@@ -340,6 +353,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
         //mpScene->setNullRaytracingShaderData(pRenderContext, var);
+
+        if(mpVisibilitySamplesContainer) {
+            var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+        }
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
@@ -348,7 +365,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
-
         mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
 
         var["gVBufferSW"]["frameDim"] = mFrameDim;
@@ -361,8 +377,9 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
         var["gVBufferSW"]["rnd"] = rnd;
         var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
-        var["gVBufferSW"]["ioTSamplesCount"] = mIOTSamplesCount;
+        var["gVBufferSW"]["transparencySamplesCount"] = mTransparencySamplesCount;
         var["gVBufferSW"]["drawableIndex"] = kInvalidIndex;
+        var["gVBufferSW"]["opacityLimit"] = mOpacityLimit;
         
         // Stbn XY offset to get more values along Z axis
         if(!mpSTBNGenerator) {
@@ -425,13 +442,34 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     LLOG_TRC << "Software rasterizer threads count " << std::to_string(threadsX);
 
     if(1 == 1) {    
-        mpComputeRasterizerPass->execute(pRenderContext, uint3(1, threadsX, 1));
+        ShaderVar var = mpComputeRasterizerPass->getRootVar();
+        if(mTransparentMeshletsCount == 0) {
+            var["gVBufferSW"]["drawableOffset"] = 0;
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, threadsX, 1));
+        } else {
+            // Rasterize opaque meshlets first
+            var["gVBufferSW"]["drawableOffset"] = 0;
+            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, mOpaqueMeshletsCount, 1));
+
+            // Rasterize potentially transparent meshlets second
+            var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
+            var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, mTransparentMeshletsCount, 1));
+        }
     } else {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         for(uint i = 0; i < meshletDrawsCount; ++i) {
             var["gVBufferSW"]["drawableIndex"] = i;
             mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
         }
+    }
+
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->endFrame();
+        //LLOG_INF << "Reserved transparent samples count " << mpVisibilitySamplesContainer->reservedTransparentSamplesCount();
+        //LLOG_INF << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
+        //LLOG_INF << "Max transparent layers count " << mpVisibilitySamplesContainer->maxTransparentLayersCount();
     }
 
     mSampleNumber++;
@@ -491,10 +529,25 @@ void VBufferSW::createMicroTrianglesBuffer() {
     mDirty = true;
 }
 
+bool VBufferSW::isOpaqueMaterial(const Material::SharedPtr& pMaterial) {
+    if(!pMaterial) return false;
+    auto pBasicMaterial = pMaterial->toBasicMaterial();
+    return pBasicMaterial ? pBasicMaterial->isOpaque() : pMaterial->isOpaque();
+}
+
 void VBufferSW::createMeshletDrawList() {
-    if(!mDirty || mpScene->meshletsData().empty()) return;
+    if(!mDirty || !mpScene || mpScene->meshletsData().empty()) {
+        return;
+    }
+
+    mOpaqueMeshletsCount = 0;
+    mTransparentMeshletsCount = 0;
+    mTransparentMeshletsStartOffset = kInvalidIndex;
 
     std::vector<MeshletDraw> meshletsDrawList;
+    std::vector<MeshletDraw> nonOpaqueMeshletsDrawList;
+
+    const std::vector<uint32_t>& meshletPrimIndicesList = mpScene->getMeshletPrimIndicesList();
     
     for(uint32_t instanceID = 0; instanceID < mpScene->getGeometryInstanceCount(); ++instanceID) {
         const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
@@ -504,21 +557,56 @@ void VBufferSW::createMeshletDrawList() {
         if(mpScene->hasMeshlets(meshID)) {
             const MeshletGroup& meshletGroup = mpScene->meshletGroup(meshID);
             if(meshletGroup.meshlets_count == 0) continue;
+
+            const MeshDesc& mesh = mpScene->getMesh(meshID);
+            
+            bool isOpaqueInstanceMaterial = isOpaqueMaterial(mpScene->getMaterial(instanceData.materialID));
+            bool instanceHasMultipleMaterials = instanceData.hasMultipleMaterials() && (instanceData.mbOffset != kInvalidIndex);
+
             LLOG_TRC << "Mesh " << meshID << " has " << meshletGroup.meshlets_count << " meshlets";
+                
             for(uint32_t i = 0; i < meshletGroup.meshlets_count; ++i) {
                 MeshletDraw draw = {};
                 draw.instanceID = instanceID;
                 draw.meshletID = meshletGroup.meshlet_offset + i;
                 draw.drawCount = 1;
-                meshletsDrawList.push_back(draw);
+
+                bool isOpaqueMehslet = isOpaqueInstanceMaterial;
+
+                if(instanceHasMultipleMaterials) {
+                    const PackedMeshletData& packedMeshletData = mpScene->getPackedMeshletData(draw.meshletID);
+                    //uint meshlet_offset;    ///< Offset into scene meshlets buffer.
+                    //uint meshlets_count;    ///< Number of meshlets within this group.
+
+                    uint primIndexOffset = packedMeshletData.primIndexOffset();
+                    uint primCount = packedMeshletData.primCount();
+                }
+
+                if(isOpaqueMehslet) {
+                    meshletsDrawList.push_back(draw);
+                    mOpaqueMeshletsCount++;
+                } else {
+                    nonOpaqueMeshletsDrawList.push_back(draw);
+                    mTransparentMeshletsCount++;
+                }
             }
+           
         }
     }
 
-    LLOG_DBG << "Meshlets count is " << mpScene->meshletsData().size();
-    LLOG_DBG << "Meshlets draw list size is " << meshletsDrawList.size();
-
     // Create buffers
+    LLOG_DBG << "Meshlets count is " << mpScene->meshletsData().size();
+    
+    if(mTransparentMeshletsCount == 0) {
+        LLOG_DBG << "Meshlets draw list size is " << meshletsDrawList.size();
+        mTransparentMeshletsCount = 0;
+    } else {
+        LLOG_DBG << "Meshlets opaque draw list size is " << meshletsDrawList.size();
+        LLOG_DBG << "Meshlets non-opaque draw list size is " << nonOpaqueMeshletsDrawList.size();
+        mTransparentMeshletsStartOffset = meshletsDrawList.size();
+        meshletsDrawList.insert( meshletsDrawList.end(), nonOpaqueMeshletsDrawList.begin(), nonOpaqueMeshletsDrawList.end() );
+    }
+
     if(!meshletsDrawList.empty()) {
         mpMeshletDrawListBuffer = Buffer::createStructured(
             mpDevice, sizeof(MeshletDraw), meshletsDrawList.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, 
@@ -562,13 +650,6 @@ void VBufferSW::createPrograms() {
     mpComputeTesselatorPass = nullptr;
     mpComputeRasterizerPass = nullptr;
     mpComputeFrustumCullingPass = nullptr;
-}
-
-void VBufferSW::setIOTSamplesCount(uint count) {
-    if(mIOTSamplesCount == count) return;
-    mIOTSamplesCount = count;
-    requestRecompile();
-    mDirty = true;
 }
 
 void VBufferSW::enableSubdivisions(bool value) {
@@ -641,4 +722,11 @@ void VBufferSW::setCullMode(const std::string& mode_str) {
         mode = RasterizerState::CullMode::None;
     }
     setCullMode(mode);
+}
+
+void VBufferSW::setOpacityLimit(float limit) {
+    limit = std::clamp(limit, 0.f, 1.f);
+    if(limit == mOpacityLimit) return;
+    mOpacityLimit = limit;
+    mDirty = true;
 }

@@ -8,6 +8,8 @@ import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
 import Utils.Color.FalseColorGenerator;
 import Utils.Color.HeatMapColorGenerator;
+import Utils.Sampling.VisibilitySamplesContainer;
+
 
 #ifndef FALSE_COLOR_BUFFER_SIZE
 #define FALSE_COLOR_BUFFER_SIZE 0
@@ -29,6 +31,9 @@ Texture2D<uint4>    gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
+
+// Visibility samples container (optional)
+ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;
@@ -52,27 +57,64 @@ RWTexture2D<float4> gTimeFalseColor;
 RWTexture2D<float4> gMeshletDrawHeatMap;
 
 cbuffer PerFrameCB {
-    uint2               gFrameDim;
+    uint2           gFrameDim;
 };
 
 uniform FalseColorGenerator gFalseColorGenerator;
 uniform HeatMapColorGenerator gHeatMapColorGenerator;
 
+#if defined(USE_VISIBILITY_CONTAINER)
+static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+#endif
 
+#if defined(USE_VISIBILITY_CONTAINER)
+[numthreads(256, 1, 1)]
+#else
 [numthreads(16, 16, 1)]
+#endif
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-    // pixel position
-    const uint2 pixelPos = dispatchThreadId.xy;
+    uint2 pixelPos;
 
-    // early out
-    if (any(pixelPos >= gFrameDim)) return;
+    #if !defined(USE_VISIBILITY_CONTAINER)
+        // pixel position
+        pixelPos = dispatchThreadId.xy;
 
-    const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
+        // early out
+        if (any(pixelPos >= gFrameDim)) return;
+    #else
+        // early out
+        if (dispatchThreadId.x >= gVisibilityContainer.)) return;
+    #endif
 
+    float sampleAlpha = 1.0f;
+    HitInfo hit;
+
+#if defined(USE_VISIBILITY_CONTAINER)
+    pixelPos = gVisibilityContainer.pixelPos(dispatchThreadId.x);
+    //gInOutColor[{dispatchThreadId.x % gFrameDim.x, dispatchThreadId.x / gFrameDim.x}] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
+    //return;
+
+    #if defined(TRANSPARENT_SHADING_PASS)
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamples(pixelPos, transparenSamplesList);
+        if(transparentVisibilitySamplesCount == 0) return;
+
+        float4 colorAccum = gInOutColor[pixelPos];
+
+        for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
+            hit = HitInfo(transparenSamplesList[layer].hitInfo);
+            sampleAlpha = transparenSamplesList[layer].alpha;
+    #else
+        hit = gVisibilityContainer.readOpaqueHit(dispatchThreadId.x);
+    #endif
+#else
+    hit = HitInfo(gVBuffer[pixelPos]);
+#endif
+
+#if !defined(TRANSPARENT_SHADING_PASS)
     if (!hit.isValid()) {
-        gInOutColor[pixelPos] = float4(0, 0, 0, 0);
         return;
     }
+#endif
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();
@@ -107,8 +149,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     faceNormalW = v.faceNormalW.xyz;
 #endif
 
+
+#if defined(TRANSPARENT_SHADING_PASS)
+    colorAccum = colorAccum * (1.f - sampleAlpha) + float4(outColor, 1.f) * sampleAlpha;
+
+    }
+
+    gInOutColor[pixelPos] = colorAccum;
+    return;
+#else
     gInOutColor[pixelPos] = float4(outColor, 1.f);
-    
+#endif
 
 #if is_valid(gOutNormals)
     gOutNormals[pixelPos] = float4(normalW.xyz, 0.f);
@@ -149,5 +200,4 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float temp = (draw_count - 1.0f) * 0.25f;
     gMeshletDrawHeatMap[pixelPos] = float4(gHeatMapColorGenerator.getColor(temp).rgb, draw_count);
 #endif
-
 }

@@ -712,8 +712,6 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 		}
 	}
 
-	LLOG_WRN << "processedMesh.staticData.size " << processedMesh.staticData.size();
-
 	return processedMesh;
 }
 
@@ -3295,6 +3293,8 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 				if(instance.hasMultipleMaterials() || mesh.hasMultipleMaterials()) {
 					geomInstance.mbOffset = mesh.perPrimMaterialIndicesOffset;
 					geomInstance.flags |= (uint32_t)GeometryInstanceFlags::HasMultipleMaterials;
+				} else {
+					geomInstance.mbOffset = kInvalidID;
 				}
 
 				// Geometry instance mesh flags

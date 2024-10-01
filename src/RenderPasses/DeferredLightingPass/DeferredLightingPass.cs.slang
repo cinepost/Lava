@@ -8,6 +8,7 @@ import Utils.Math.MathHelpers;
 import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
 import Utils.Sampling.SampleGenerator;
+import Utils.Sampling.VisibilitySamplesContainer;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
 import Experimental.Scene.Lights.EmissiveLightSampler;
@@ -51,6 +52,8 @@ Texture2D<PackedHitInfo>    gVbuffer;
 Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
 Texture2D<uint>             gOITStartOffset;
+
+ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 // Extra UAV output channels
 RasterizerOrderedTexture2D<float4> gOutNormals;
@@ -99,60 +102,63 @@ SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
 Texture2D gNoiseTex;
 
+#if defined(USE_VISIBILITY_CONTAINER)
+static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+#endif
 
 /** write AOVData
 */
-void writeAOV(uint2 ipos, const AOVData d) {
+void writeAOV(uint2 pixelPos, const AOVData d) {
 #if is_valid(gOutPz)
-    gOutPz[ipos] = d.depth;
+    gOutPz[pixelPos] = d.depth;
 #endif  // gOutPz
 
 #if is_valid(gOutAlbedo)
-    gOutAlbedo[ipos] = float4(d.albedo, .0);
+    gOutAlbedo[pixelPos] = float4(d.albedo, .0);
 #endif  // gOutAlbedo
 
 #if is_valid(gOutEmission)
-    gOutEmission[ipos] = float4(d.emission, .0);
+    gOutEmission[pixelPos] = float4(d.emission, .0);
 #endif  // gOutEmission
 
 #if is_valid(gOutRoughness)
-    gOutRoughness[ipos] = d.roughness;
+    gOutRoughness[pixelPos] = d.roughness;
 #endif  // gOutRoughness
 
 #if is_valid(gOutNormals)
-    gOutNormals[ipos] = float4(d.normal, .0f);
+    gOutNormals[pixelPos] = float4(d.normal, .0f);
 #endif  // gOutNormals
 
 #if is_valid(gOutFaceNormals)
-    gOutFaceNormals[ipos] = float4(d.face_normal, .0f);
+    gOutFaceNormals[pixelPos] = float4(d.face_normal, .0f);
 #endif  // gOutFaceNormals
 
 #if is_valid(gOutTangentNormals)
-    gOutTangentNormals[ipos] = float4(d.tangent_normal, .0f);
+    gOutTangentNormals[pixelPos] = float4(d.tangent_normal, .0f);
 #endif  // gOutTangentNormals
 
 #if is_valid(gOutShadows)
-    gOutShadows[ipos] = float4(d.shadow, .0f);
+    gOutShadows[pixelPos] = float4(d.shadow, .0f);
 #endif  // gOutShadows
 
 #if is_valid(gOutPosition)
-    gOutPosition[ipos] = float4(d.position, .0);
+    gOutPosition[pixelPos] = float4(d.position, .0);
 #endif  // gOutPosition
 
 #if is_valid(gOutFresnel)
-    gOutFresnel[ipos] = d.fresnel;
+    gOutFresnel[pixelPos] = d.fresnel;
 #endif  // gOutFresnel
 
 #if is_valid(gPrimID)
-    gPrimID[ipos] = d.primID;
+    gPrimID[pixelPos] = d.primID;
 #endif  // gOutFresnel
 
 #if is_valid(gOpID)
-    gOpID[ipos] = d.opID;
+    gOpID[pixelPos] = d.opID;
 #endif  // gOpID
 
 #if is_valid(gUV)
-    gUV[ipos] = d.uv;
+    gUV[pixelPos] = d.uv;
 #endif  // gUV
 
 }
@@ -521,33 +527,54 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // pixel position
-    const uint2 ipos = dispatchThreadId.xy;
+    const uint2 pixelPos = dispatchThreadId.xy;
 
     // early out
-    if (any(ipos >= gFrameDim)) return;
+    if (any(pixelPos >= gFrameDim)) return;
 
     #if is_valid(gTextureGrads)
-        const float4 texGrads = gTextureGrads[ipos];
+        const float4 texGrads = gTextureGrads[pixelPos];
     #endif
 
-    const HitInfo hit = HitInfo(gVbuffer[ipos]);
+    HitInfo hit;
+    float sampleAlpha = 1.0f;
+
     AOVData aov_data = AOVData.create();
-    
-    if (!hit.isValid() || hit.getType() != HitType::Triangle) {
-        writeAOV(ipos, aov_data);   
-        return;
-    }
 
-    // Sample generator
-    SampleGenerator sg = SampleGenerator(ipos, gSampleNumber);
+#if defined(USE_VISIBILITY_CONTAINER)
+    #if defined(TRANSPARENT_SHADING_PASS)
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamples(pixelPos, transparenSamplesList);
+        if(transparentVisibilitySamplesCount == 0) return;
 
-#if USE_DEPTH_OF_FIELD
-    const float3 rayDir = normalize(gScene.camera.computeRayThinlens(ipos, gFrameDim, sampleNext2D(sg)).dir);
+        float4 colorAccum = gInOutColor[pixelPos];
+
+        for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
+            hit = HitInfo(transparenSamplesList[layer].hitInfo);
+            sampleAlpha = transparenSamplesList[layer].alpha;
+    #else
+        hit = gVisibilityContainer.readOpaqueHit(pixelPos);
+    #endif
 #else
-    const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
+    hit = HitInfo(gVbuffer[pixelPos]);
 #endif
 
-    ITextureSampler primaryLod = createTextureSampler(ipos);
+#if !defined(TRANSPARENT_SHADING_PASS)
+    if (!hit.isValid() || hit.getType() != HitType::Triangle) {
+        writeAOV(pixelPos, aov_data);   
+        return;
+    }
+#endif
+
+    // Sample generator
+    SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber);
+
+#if USE_DEPTH_OF_FIELD
+    const float3 rayDir = normalize(gScene.camera.computeRayThinlens(pixelPos, gFrameDim, sampleNext2D(sg)).dir);
+#else
+    const float3 rayDir = normalize(gScene.camera.computeRayPinhole(pixelPos, gFrameDim).dir);
+#endif
+
+    ITextureSampler primaryLod = createTextureSampler(pixelPos);
     //ITextureSampler primaryLod = TailTextureSampler();
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
@@ -562,7 +589,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #if is_valid(gNormW)
     if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
 
-        uint3 packedNormal = gNormW[ipos].xyz;
+        uint3 packedNormal = gNormW[pixelPos].xyz;
 
         v.normalW = {
             unpackSnorm16(packedNormal.x >> 16),
@@ -587,7 +614,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     aov_data.face_normal = v.faceNormalW;
 
-    float2 screenUV = float2(ipos) / float2(gFrameDim); 
+    float2 screenUV = float2(pixelPos) / float2(gFrameDim); 
 
     // Beauty pass color
     float3 surfaceColor = float3(0.0f);
@@ -596,7 +623,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float16_t variance = 1.f;
 
 #if is_valid(gLastFrameSum) && _USE_VARIANCE
-    const float16_t4 _lastFrameSum = gLastFrameSum[ipos];
+    const float16_t4 _lastFrameSum = gLastFrameSum[pixelPos];
     const float16_t3 lastFrameSum = _lastFrameSum.rgb;
     const float16_t lastVariance = _lastFrameSum.a;
 #else
@@ -606,7 +633,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if _USE_VARIANCE
     if(gSampleNumber > 16 && lastVariance < 0.0005f) {
-        gInOutColor[ipos] = float4(lastFrameSum, 1.f);
+        gInOutColor[pixelPos] = float4(lastFrameSum, 1.f);
         return;
     }
 #endif
@@ -620,7 +647,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     // Spatio temporal blue noise
 #ifdef _USE_STBN_SAMPLING
-    const float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((ipos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
+    const float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((pixelPos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
 #else
     const float4 rnd = float4(sampleNext2D(sg), sampleNext2D(sg));
 #endif
@@ -667,14 +694,24 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
     // Write main channel output color
-    gInOutColor[ipos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
+#if defined(TRANSPARENT_SHADING_PASS)
+    float3 sampleColor = float3(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b));
+    colorAccum = colorAccum * (1.f - sampleAlpha) + float4(sampleColor, 1.f) * sampleAlpha;
+
+    }
+
+    gInOutColor[pixelPos] = colorAccum;
+    return;
+#else
+    gInOutColor[pixelPos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
+#endif
 
     // Calc aov variables
 #if is_valid(gOutPz)
     {
     #if is_valid(gDepth)
         float2 _screenUV = screenUV * 2.0 - float2(1.f);
-        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[ipos], 1.0);
+        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[pixelPos], 1.0);
     #else
         float4 screenP = mul(float4(primaryShadingData.posW, 1.f), gScene.camera.getViewProjMat());
     #endif  // gDepth
@@ -722,17 +759,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
     // Write available AOVs
-    writeAOV(ipos, aov_data);
+    writeAOV(pixelPos, aov_data);
 
 #if is_valid(gLastFrameSum) && _USE_VARIANCE
     {
-        gLastFrameSum[ipos] = float16_t4(lastFrameSum + surfaceColor, variance);
+        gLastFrameSum[pixelPos] = float16_t4(lastFrameSum + surfaceColor, variance);
     }
 #endif
 
 #if is_valid(gVariance) && _USE_VARIANCE
     {
-        gVariance[ipos] = variance;
+        gVariance[pixelPos] = variance;
     }
 #endif
 

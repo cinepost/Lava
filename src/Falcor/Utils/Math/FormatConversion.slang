@@ -341,6 +341,22 @@ float3 unpackR11G11B10(uint packed)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// 32-bit integer format
+///////////////////////////////////////////////////////////////////////////////
+
+/** Encodes the 16-bit unsigned integers of v in a 32-bit unsigned integer.
+    'v.x' will become the low bits of the return value while 'v.y' will become the high bits.
+*/
+uint32_t u2x16to32(uint16_t2 v) {
+    return (uint32_t(v.y) << 16) | uint32_t(v.x);
+}
+
+uint16_t2 u32to2x16(uint32_t v) {
+    return uint16_t2(v & 0x0000ffff, v >> 16);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 //                          64-bit unsigned integer
 ///////////////////////////////////////////////////////////////////////////////
 

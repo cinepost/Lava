@@ -1266,11 +1266,9 @@ Result ComputeCommandEncoder::bindPipelineWithRootObject(
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
-void ComputeCommandEncoder::dispatchCompute(int x, int y, int z)
-{
+void ComputeCommandEncoder::dispatchCompute(int x, int y, int z) {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
-	if (!pipeline)
-	{
+	if (!pipeline) {
 		assert(!"Invalid compute pipeline");
 		return;
 	}
@@ -1280,9 +1278,17 @@ void ComputeCommandEncoder::dispatchCompute(int x, int y, int z)
 	m_api->vkCmdDispatch(m_vkCommandBuffer, x, y, z);
 }
 
-void ComputeCommandEncoder::dispatchComputeIndirect(IBufferResource* argBuffer, Offset offset)
-{
-	SLANG_UNIMPLEMENTED_X("dispatchComputeIndirect");
+void ComputeCommandEncoder::dispatchComputeIndirect(IBufferResource* argBuffer, Offset offset) {
+	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
+	if (!pipeline) {
+		assert(!"Invalid compute pipeline");
+		return;
+	}
+
+	//SLANG_UNIMPLEMENTED_X("dispatchComputeIndirect");
+	bindRenderState(VK_PIPELINE_BIND_POINT_COMPUTE);
+	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
+	m_api->vkCmdDispatchIndirect(m_vkCommandBuffer, argBufferImpl->m_buffer.m_buffer, offset);
 }
 
 void RayTracingCommandEncoder::_memoryBarrier(

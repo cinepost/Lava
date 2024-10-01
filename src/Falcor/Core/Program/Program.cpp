@@ -1032,7 +1032,7 @@ bool Program::link() const {
 			// Continue loop to keep trying...
 		} else {
 			if (!log.empty()) {
-				std::string warn = "Warnings in program \"" + pVersion->getName() + "\":\n" + getProgramDescString() + "\n" + log;
+				std::string warn = "Program::link() Warnings in program \"" + pVersion->getName() + "\":\n" + getProgramDescString() + "\n" + log;
 				LLOG_WRN << warn;
 			}
 
