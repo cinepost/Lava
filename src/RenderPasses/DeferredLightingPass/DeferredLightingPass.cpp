@@ -185,7 +185,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
     const bool shadingRateInShader = true;
 
-    auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
+    auto createShadingPass = [this, renderData, shadingRateInShader](const Program::Desc& desc, bool transparentPass = false) {
         if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
 
         auto defines = mpScene->getSceneDefines();
