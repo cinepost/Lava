@@ -796,7 +796,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
     #if defined(USE_VISIBILITY_CONTAINER)
                 if(isOpaque) {
-                    gVisibilityContainer.writeOpaqueHit(pixelPos, HitInfo(triangleHit.pack()));
+                    gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()));
                     gVBufferSW.writeDepth(pixelPos, z);
                 } else {
                     gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);

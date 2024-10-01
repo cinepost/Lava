@@ -40,6 +40,8 @@ class PASS_API DebugShadingPass : public RenderPass {
 
 		void generateMeshletColorBuffer(const RenderData& renderData);
 		
+		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;
+		
 		Scene::SharedPtr                	mpScene;
 		ComputePass::SharedPtr          	mpShadingPass;
 		ComputePass::SharedPtr          	mpTransparentShadingPass;

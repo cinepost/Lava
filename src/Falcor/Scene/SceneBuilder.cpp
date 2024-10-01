@@ -712,8 +712,6 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 		}
 	}
 
-	LLOG_WRN << "processedMesh.staticData.size " << processedMesh.staticData.size();
-
 	return processedMesh;
 }
 

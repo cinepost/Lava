@@ -10,6 +10,8 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
+
+#include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/HitInfo.h"
 
 #include "VisibilitySamplesContainer.slangh"
@@ -44,6 +46,8 @@ class dlldecl VisibilitySamplesContainer {
 			The update() function must have been called before calling this function.
 		*/
 		inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterBlock; }
+
+		void setScene(const Scene::SharedPtr& pScene);
 
 		/** 
 		*/
@@ -82,7 +86,14 @@ class dlldecl VisibilitySamplesContainer {
 
 		void printStats() const;
 
-		uint reservedTransparentSamplesCount() const { return mMaxTransparentSamplesCount; };
+		uint reservedTransparentSamplesCount() const { return mTransparentSamplesBufferSize; };
+
+		const Buffer::SharedConstPtr& getOpaquePassIndirectionArgsBuffer() const { return mpOpaquePassIndirectionArgsBuffer; };
+
+		const Buffer::SharedConstPtr& getTransparentPassIndirectionArgsBuffer() const { return mpTransparentPassIndirectionArgsBuffer; };
+
+		const uint3& getShadingThreadGroupSize() const { return mShadingThreadGroupSize; }
+
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
@@ -94,19 +105,25 @@ class dlldecl VisibilitySamplesContainer {
 
 		void readInfoBufferData() const;
 
-		void sortOpaqueSamples();
-		void sortTransparentSamples();
+		void sortOpaqueSamples(RenderContext* pRenderContext);
+		void sortTransparentSamples(RenderContext* pRenderContext);
+		void orderTransparentRoots(RenderContext* pRenderContext);
+
+		// Interanl state
 
 		uint2 mResolution;
-		uint  mMaxOpaqueSamplesCount;
 		uint 	mMaxTransparentSamplesCountPP;
-		uint 	mMaxTransparentSamplesCount;
+		uint 	mTransparentSamplesBufferSize;
+		uint  mOpaqueSamplesBufferSize;
+
+		uint3 mShadingThreadGroupSize;
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
     bool  mLimitTransparentSamplesCountPP = false;
 
 		Device::SharedPtr mpDevice = nullptr;
+		Scene::SharedPtr  mpScene;
 
 		VisibilitySamplesContainerFlags mFlags;
 
@@ -115,23 +132,29 @@ class dlldecl VisibilitySamplesContainer {
 		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
 		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
-		Texture::SharedPtr  mpOpaqueSamplesBuffer;
+		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBuffer;
-		Texture::SharedPtr  mpRootTransparentSampleOffsetBufferPP;
-		Texture::SharedPtr  mpVisibilitySamplesCountBuffer;
+		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
+		Buffer::SharedPtr  	mpVisibilitySamplesCountBufferPP;
 
 		Texture::SharedPtr  mpDepthTexture;
 
 		Buffer::SharedPtr   mpInfoBuffer;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 
+		//Scratch data
+		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;
+		Buffer::SharedPtr 	mpTransparentPassIndirectionArgsBuffer;
+		
+		// 
+
 		mutable std::vector<uint32_t> mpInfoBufferData;
 
 		ComputePass::SharedPtr 	mpOpaqueSortingPass;
 		ComputePass::SharedPtr 	mpTransparentSortingPass;
+		ComputePass::SharedPtr 	mpTransparentRootsOrderingPass;
 
-		ResourceFormat      mOpaqueSampleDataFormat = HitInfo::kDefaultFormat;
-		ResourceFormat      mOpaqueSampleExtraDataFormat = ResourceFormat::RG32Uint;
+		ResourceFormat      		mHitInfoFormat = HitInfo::kDefaultFormat;
 };
 
 enum_class_operators(VisibilitySamplesContainerFlags);

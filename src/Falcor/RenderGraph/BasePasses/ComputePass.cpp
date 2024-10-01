@@ -60,7 +60,6 @@ void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t 
 }
 
 void ComputePass::executeIndirect(ComputeContext* pContext, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
-    //LOG_DBG("ComputePass::executeIndirect");
     assert(pContext);
     pContext->dispatchIndirect(mpState.get(), mpVars.get(), pArgBuffer, argBufferOffset);
 }

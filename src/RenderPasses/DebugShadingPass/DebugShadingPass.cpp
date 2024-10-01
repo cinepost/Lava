@@ -1,4 +1,6 @@
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/IndirectCommands.h"
+
 #include "Falcor/Utils/Color/ColorGenerationUtils.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
@@ -135,7 +137,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     generateMeshletColorBuffer(renderData);
 
-    auto createPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
+    auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
         if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
 
         auto defines = mpScene->getSceneDefines();
@@ -206,8 +208,8 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
-        mpShadingPass = createPass(desc);
-        mpTransparentShadingPass = createPass(desc, true);
+        mpShadingPass = createShadingPass(desc);
+        mpTransparentShadingPass = createShadingPass(desc, true);
     }
 
     if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(mpShadingPass["gFalseColorGenerator"]);
@@ -216,16 +218,31 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     auto cb_var = mpShadingPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
 
-    
-    mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-    
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
+
+    if(mpVisibilitySamplesContainer) {
+        // Visibility container mode opaque samples shading
+        static const DispatchArguments baseIndirectArgs = { 3200, 1, 1 };
+        if(!mpOpaquePassIndirectionArgsBuffer) {
+            mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
+        }
+
+        //mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+        mpShadingPass->executeIndirect(pContext, mpOpaquePassIndirectionArgsBuffer.get());
+    } else {
+        // Legacy (visibility buffer) mode shading
+        mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+    }
+
     if(mpTransparentShadingPass) {
+        // Visibility container mode transparent samples shading
         auto cb_var = mpTransparentShadingPass["PerFrameCB"];
         cb_var["gFrameDim"] = mFrameDim;
 
-        LLOG_WRN << "Executing transparent shading pass!!!";
-        mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+        //mpTransparentShadingPass->execute(pContext, mFrameDim.x * mFrameDim.y, 1, 1);
     }
+
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
 
     mDirty = false;
 }

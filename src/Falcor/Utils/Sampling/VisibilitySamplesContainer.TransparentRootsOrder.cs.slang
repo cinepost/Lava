@@ -3,18 +3,17 @@
 import Utils.Math.IntervalArithmetic;
 import Utils.Math.PackedFormats;
 
-static const uint kGroupWidth = CHUNK_WIDTH;
-static const uint kChunkSize = CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_WIDTH;
-static const uint kBrickWidth = BRICK_WIDTH;
 
 cbuffer CB {
     uint        maxOpaqueSamplesCount;
     uint2       resolution;
 };
 
-Texture2D<uint>                                 rootTransparentSampleOffsetBufferPP;
-RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
-StructuredBuffer<uint>                          infoBuffer;
+RWBuffer<uint>                                  gIndirectionBuffer;
+
+Texture2D<uint>                                 gRootTransparentSampleOffsetBufferPP;
+RWStructuredBuffer<TransparentVisibilitySample> gTransparentVisibilitySamplesBuffer;
+StructuredBuffer<uint>                          gInfoBuffer;
 
 [numthreads(256, 1, 1)]
 void main(uint3 groupID : SV_GroupID, uint3 localSubChunkCoords : SV_GroupThreadID, uint subChunkID : SV_GroupIndex) {
