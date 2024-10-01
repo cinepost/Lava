@@ -33,6 +33,7 @@ find_program(MAKE_EXECUTABLE
 
 if(WIN32)
   set(MAKE_EXECUTABLE cmake --build . -j 8 --config ${DEPS_BUILD_TYPE})
+  set(PKG_CONFIG_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../tmp/pkg-config.exe")
 endif()
 
 find_program(CHMOD_EXECUTABLE
