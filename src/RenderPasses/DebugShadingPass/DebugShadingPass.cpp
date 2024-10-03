@@ -8,6 +8,8 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
+
 #include "glm/gtc/random.hpp"
 
 #include "glm/gtx/string_cast.hpp"
@@ -135,6 +137,8 @@ void DebugShadingPass::setScene(RenderContext* pRenderContext, const Scene::Shar
 void DebugShadingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
 
+    SimpleProfiler profile("DebugShadingPass::execute");
+
     generateMeshletColorBuffer(renderData);
 
     auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
@@ -149,6 +153,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         if(mpVisibilitySamplesContainer) {
             if(transparentPass) defines.add("TRANSPARENT_SHADING_PASS");
             defines.add("USE_VISIBILITY_CONTAINER", "1");
+            defines.add("GROUP_SIZE_X", to_string(mpVisibilitySamplesContainer->getShadingThreadGroupSize().x));
             defines.add(mpVisibilitySamplesContainer->getDefines());
         } else {
             defines.remove("TRANSPARENT_SHADING_PASS");
@@ -222,13 +227,14 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     if(mpVisibilitySamplesContainer) {
         // Visibility container mode opaque samples shading
-        static const DispatchArguments baseIndirectArgs = { 3200, 1, 1 };
-        if(!mpOpaquePassIndirectionArgsBuffer) {
-            mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
-        }
+        
+        //static const DispatchArguments baseIndirectArgs = { 3600, 1, 1 };
+        //if(!mpOpaquePassIndirectionArgsBuffer) {
+        //    mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
+        //}
+        //mpShadingPass->executeIndirect(pContext, mpOpaquePassIndirectionArgsBuffer.get());
 
-        //mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
-        mpShadingPass->executeIndirect(pContext, mpOpaquePassIndirectionArgsBuffer.get());
+        mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
     } else {
         // Legacy (visibility buffer) mode shading
         mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);

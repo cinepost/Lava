@@ -7,7 +7,7 @@ import Utils.Sampling.VisibilitySamplesContainer;
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 cbuffer CB {
-    uint3   shadingThreadGroupSize;
+
 };
 
 RWStructuredBuffer<uint> gOpaqueIndirectionBuffer;
@@ -27,9 +27,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if(existingOffset == procPixelOffset) return;
 
     PackedHitInfo existingHit = gVisibilityContainer.opaqueVisibilitySamplesBuffer[existingOffset];
-    if(existingHit[0] != 0) return;
-
-    //AllMemoryBarrierWithGroupSync();
+    if(existingHit[0] != 0) {
+        InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION], 1);
+        return;
+    }
 
     uint procTransparentRootOffset        = gVisibilityContainer.rootTransparentSampleOffsetBufferPP[procPixelOffset];
     uint procPixelPos                     = gVisibilityContainer.opaqueVisibilitySamplesPositionBuffer[procPixelOffset];
@@ -52,11 +53,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     gVisibilityContainer.opaqueVisibilitySamplesPositionBuffer[procPixelOffset] = existingPixelPos;
     gVisibilityContainer.transparentVisibilitySamplesCountBufferPP[procPixelOffset] = existingTransparentSamplesCount;
 
+    InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION], 1);
+
     //AllMemoryBarrierWithGroupSync();
     GroupMemoryBarrierWithGroupSync();
 
     //gVisibilityContainer.invalidateOpaqueSample(pixelOffset);
-
     //gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION] |= (uint)0x1;
-    
 }

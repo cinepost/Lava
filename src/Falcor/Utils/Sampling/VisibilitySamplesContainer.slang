@@ -87,8 +87,6 @@ struct VisibilitySamplesContainer {
     void writeOpaqueHit2D(uint2 pixelPos, const HitInfo hit) {
         if(isOpaqueSorted()) return;
 
-        InterlockedAdd(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION], 1);
-
         uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
         opaqueVisibilitySamplesBuffer[pixelOffset] = hit.getData();
 
@@ -171,7 +169,10 @@ struct VisibilitySamplesContainer {
     }
 
     uint opaqueSamplesCount() CONST_FUNCTION {
-        return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION];
+        if(isOpaqueSorted()) {
+            return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION];
+        }
+        return opaqueSamplesBufferSize;
     }
 
     uint transparentSamplesCount() CONST_FUNCTION {

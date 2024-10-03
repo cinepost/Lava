@@ -68,7 +68,7 @@ static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLE
 #endif
 
 #if defined(USE_VISIBILITY_CONTAINER)
-[numthreads(256, 1, 1)]
+[numthreads(GROUP_SIZE_X, 1, 1)]
 #else
 [numthreads(16, 16, 1)]
 #endif
@@ -83,7 +83,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         if (any(pixelPos >= gFrameDim)) return;
     #else
         // early out
-        if (dispatchThreadId.x >= gVisibilityContainer.)) return;
+        if (dispatchThreadId.x >= gVisibilityContainer.opaqueSamplesCount()) return;
     #endif
 
     float sampleAlpha = 1.0f;
@@ -91,7 +91,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if defined(USE_VISIBILITY_CONTAINER)
     pixelPos = gVisibilityContainer.pixelPos(dispatchThreadId.x);
-    //gInOutColor[{dispatchThreadId.x % gFrameDim.x, dispatchThreadId.x / gFrameDim.x}] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
+    ///gInOutColor[{dispatchThreadId.x % gFrameDim.x, dispatchThreadId.x / gFrameDim.x}] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
     //return;
 
     #if defined(TRANSPARENT_SHADING_PASS)

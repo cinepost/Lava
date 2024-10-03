@@ -63,6 +63,7 @@ file( GLOB SOURCES
     ./Utils/Shading/*.cpp
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
+    ./Utils/Timing/SimpleProfiler.cpp
     ./Experimental/Scene/Lights/*.cpp
     ./Experimental/Scene/Lights/PhysicalSkySampler.cpp
     ./Experimental/Scene/Materials/*.cpp

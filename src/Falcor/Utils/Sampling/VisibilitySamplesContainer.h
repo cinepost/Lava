@@ -88,9 +88,9 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint reservedTransparentSamplesCount() const { return mTransparentSamplesBufferSize; };
 
-		const Buffer::SharedConstPtr& getOpaquePassIndirectionArgsBuffer() const { return mpOpaquePassIndirectionArgsBuffer; };
+		const Buffer::SharedPtr& getOpaquePassIndirectionArgsBuffer() const { return mpOpaquePassIndirectionArgsBuffer; };
 
-		const Buffer::SharedConstPtr& getTransparentPassIndirectionArgsBuffer() const { return mpTransparentPassIndirectionArgsBuffer; };
+		const Buffer::SharedPtr& getTransparentPassIndirectionArgsBuffer() const { return mpTransparentPassIndirectionArgsBuffer; };
 
 		const uint3& getShadingThreadGroupSize() const { return mShadingThreadGroupSize; }
 
@@ -107,7 +107,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		void sortOpaqueSamples(RenderContext* pRenderContext);
 		void sortTransparentSamples(RenderContext* pRenderContext);
-		void orderTransparentRoots(RenderContext* pRenderContext);
+		void sortFinalize(RenderContext* pRenderContext);
 
 		// Interanl state
 
@@ -135,12 +135,13 @@ class dlldecl VisibilitySamplesContainer {
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBuffer;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
-		Buffer::SharedPtr  	mpVisibilitySamplesCountBufferPP;
 
-		Texture::SharedPtr  mpDepthTexture;
-
-		Buffer::SharedPtr   mpInfoBuffer;
+		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
+		Buffer::SharedPtr   mpInfoBuffer;
+
+		//Optioanl data
+		Texture::SharedPtr  mpDepthTexture;
 
 		//Scratch data
 		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;
@@ -152,7 +153,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		ComputePass::SharedPtr 	mpOpaqueSortingPass;
 		ComputePass::SharedPtr 	mpTransparentSortingPass;
-		ComputePass::SharedPtr 	mpTransparentRootsOrderingPass;
+		ComputePass::SharedPtr 	mpFinalizeSortingPass;
 
 		ResourceFormat      		mHitInfoFormat = HitInfo::kDefaultFormat;
 };
