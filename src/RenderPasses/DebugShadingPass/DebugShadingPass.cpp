@@ -227,13 +227,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     if(mpVisibilitySamplesContainer) {
         // Visibility container mode opaque samples shading
-        
-        //static const DispatchArguments baseIndirectArgs = { 3600, 1, 1 };
-        //if(!mpOpaquePassIndirectionArgsBuffer) {
-        //    mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
-        //}
-        //mpShadingPass->executeIndirect(pContext, mpOpaquePassIndirectionArgsBuffer.get());
-
         mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
     } else {
         // Legacy (visibility buffer) mode shading
@@ -245,7 +238,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         auto cb_var = mpTransparentShadingPass["PerFrameCB"];
         cb_var["gFrameDim"] = mFrameDim;
 
-        //mpTransparentShadingPass->execute(pContext, mFrameDim.x * mFrameDim.y, 1, 1);
+        mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
     }
 
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();

@@ -121,6 +121,7 @@ def initializeFeatures(settings):
     Renderer("renderer", "shadingpasstype", "string", "lv_shading_pass_type", skipdefault=False)
     Renderer("renderer", "visibilitycontainerlimit", "bool", "lv_visibility_container_limit", skipdefault=False)
     Renderer("renderer", "visibilitycontainer", "bool", "lv_visibility_container", skipdefault=False)
+    Renderer("renderer", "visibilitycontainersort", "bool", "lv_visibility_container_sort", skipdefault=False)
 
     # -- Image --
     Image("image", "background", "string", "lv_background")

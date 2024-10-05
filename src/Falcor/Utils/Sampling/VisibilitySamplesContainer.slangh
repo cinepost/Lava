@@ -6,8 +6,11 @@
 #define VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION           1
 #define VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION      2
 #define VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION        3
-#define VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT_LOCATION   4
-#define VISIBILITY_CONTAINER_INFOBUFFER_COUNT                                   5
+#define VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_LISTS_COUNT_LOCATION        4
+#define VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT_LOCATION   5
+
+#define VISIBILITY_CONTAINER_INFOBUFFER_SORT_OPAQUE_COUNTER_LOCATION            6
+#define VISIBILITY_CONTAINER_INFOBUFFER_SORT_TRANSP_COUNTER_LOCATION            7
 
 #ifndef VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP
 #define VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP 1
@@ -66,5 +69,6 @@ enum class VisibilitySamplesContainerFlags : uint32_t {
     None = 0x0,
 
     OpaqueSamplesSorted          = 0x1,   ///< Indicates that opaque samples are sorted into separate buffer.
-    TransparentSamplesSorted     = 0x2,   ///< Indicates that transparent samples are sorted.
+    TransparentRootsSorted       = 0x2,   ///< Indicates that transparent roots are sorted.
+    TransparentListsSorted       = 0x3,   ///< Indicates that transparent sample lists are sorted.
 };

@@ -34,6 +34,7 @@ namespace po = boost::program_options;
 #include "Falcor/Core/Platform/OS.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Timing/Profiler.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 #include "lava_lib/version.h"
 #include "lava_lib/renderer.h"
@@ -98,6 +99,9 @@ void atexitHandler()  {
   lava::ut::log::shutdown_log();
 
   auto duration = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - gExecTimeStart ).count();
+
+  SimpleProfiler::printReport();
+
   std::cout << "Scene rendered in: " << duration << " sec.\n";
   std::cout << "Exiting lava. Bye :)\n";
 }

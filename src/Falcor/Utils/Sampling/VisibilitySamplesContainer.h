@@ -79,6 +79,7 @@ class dlldecl VisibilitySamplesContainer {
 		uint opaqueSamplesCount() const;
 
 		uint transparentSamplesCount() const;
+		uint transparentListsCount() const;
 
 		uint maxTransparentLayersCount() const;
 
@@ -94,20 +95,21 @@ class dlldecl VisibilitySamplesContainer {
 
 		const uint3& getShadingThreadGroupSize() const { return mShadingThreadGroupSize; }
 
+		void  enableSorting(bool enabled);
+		void  enableSortingPP(bool enabled);
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
 		void createParameterBlock();
-		void uploadMaterial(const uint32_t materialID);
-
 		void createBuffers();
 
 		void readInfoBufferData() const;
 
 		void sortOpaqueSamples(RenderContext* pRenderContext);
-		void sortTransparentSamples(RenderContext* pRenderContext);
-		void sortFinalize(RenderContext* pRenderContext);
+		void sortTransparentSamplesRoots(RenderContext* pRenderContext);
+		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
+		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
 
 		// Interanl state
 
@@ -115,6 +117,8 @@ class dlldecl VisibilitySamplesContainer {
 		uint 	mMaxTransparentSamplesCountPP;
 		uint 	mTransparentSamplesBufferSize;
 		uint  mOpaqueSamplesBufferSize;
+		bool  mSortingEnabled = false;
+		bool  mSortingEnabledPP = true;
 
 		uint3 mShadingThreadGroupSize;
 
@@ -133,10 +137,11 @@ class dlldecl VisibilitySamplesContainer {
 		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
-		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBuffer;
+		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
 
 		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
+		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
@@ -152,7 +157,8 @@ class dlldecl VisibilitySamplesContainer {
 		mutable std::vector<uint32_t> mpInfoBufferData;
 
 		ComputePass::SharedPtr 	mpOpaqueSortingPass;
-		ComputePass::SharedPtr 	mpTransparentSortingPass;
+		ComputePass::SharedPtr 	mpTransparentRootsSortingPass;
+		ComputePass::SharedPtr 	mpTransparentOrderSortingPass;
 		ComputePass::SharedPtr 	mpFinalizeSortingPass;
 
 		ResourceFormat      		mHitInfoFormat = HitInfo::kDefaultFormat;

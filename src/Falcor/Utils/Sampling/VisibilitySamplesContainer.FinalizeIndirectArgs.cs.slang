@@ -10,14 +10,14 @@ cbuffer CB {
     uint3   shadingThreadGroupSize;
 };
 
-RWStructuredBuffer<uint> gOpaqueIndirectionBuffer;
-RWStructuredBuffer<uint> gTransparentIndirectionBuffer;
+RWStructuredBuffer<uint3> gOpaqueIndirectionBuffer;
+RWStructuredBuffer<uint3> gTransparentIndirectionBuffer;
 
 uint div_round_up(uint a, uint b) { return (a + b - (uint)1) / b; }
 
 [numthreads(16, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-    gOpaqueIndirectionBuffer[0] = div_round_up(gVisibilityContainer.opaqueSamplesCount(), shadingThreadGroupSize.x);
+    gOpaqueIndirectionBuffer[0] = { div_round_up(gVisibilityContainer.opaqueSamplesCount(), shadingThreadGroupSize.x), 1, 1};
 
-    //gTransparentIndirectionBuffer[0] = {0, 1, 1};
+    gTransparentIndirectionBuffer[0] = { div_round_up(gVisibilityContainer.transparentListsCount(), shadingThreadGroupSize.x), 1, 1};
 }

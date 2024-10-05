@@ -34,6 +34,7 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Scene/Material/BasicMaterial.h"
 #include "Falcor/Scene/SceneDefines.slangh"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 #include "VBufferSW.MicroTriangle.slangh"
 
@@ -192,6 +193,8 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         LLOG_FTL << "VBufferSW: Atomic Int64 is not supported by the current device !!!";
         return;
     }
+
+    SimpleProfiler profile("VBufferSW::execute");
 
     GBufferBase::execute(pRenderContext, renderData);
 

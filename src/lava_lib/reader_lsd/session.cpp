@@ -273,6 +273,7 @@ bool Session::cmdRaytrace() {
 	confDict["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
 	confDict["visibilitycontainer"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainer", bool(false));
 	confDict["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(true));
+	confDict["visibilitycontainersort"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersort", bool(true));
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();

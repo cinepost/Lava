@@ -37,17 +37,17 @@ void SimpleProfiler::printReport() {
 	//QueryPerformanceFrequency( (LARGE_INTEGER *)&f );
 
 	printf("%20s Calls\tMean (secs)\tStdDev\n","Scope");
-	for(std::map<std::string, accumulator_set<uint64_t, stats<tag::variance(lazy)>>>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
+	for(std::map<std::string, ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)>>>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
 		//float av = mean(p->second) / f;
 		//float stdev = sqrt( ((double) variance(p->second))  ) / f;
 
-		float av = mean(p->second);
-		float stdev = sqrt((double)(variance(p->second)));
+		float av = ba::mean(p->second);
+		float stdev = sqrt((double)(ba::variance(p->second)));
 
-		printf("%20s %lu\t%f\t%f\n",p->first.c_str(), boost::accumulators::count(p->second), av, stdev);
+		printf("%20s %lu\t%f\t%f\n",p->first.c_str(), ba::count(p->second), av, stdev);
 	}
 }
 
-std::map<std::string, accumulator_set<uint64_t, stats<tag::variance(lazy)> >> SimpleProfiler::mMap;
+std::map<std::string, ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)> >> SimpleProfiler::mMap;
 
 }  // namespace Falcor

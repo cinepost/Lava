@@ -16,7 +16,7 @@
 #include <boost/accumulators/statistics.hpp>
 
 
-using namespace boost::accumulators;
+namespace ba = boost::accumulators;
 
 namespace Falcor {
 
@@ -30,11 +30,11 @@ class SimpleProfiler {
 		~SimpleProfiler();
 
 		// produces report when called without parameters
-		void printReport();
+		static void printReport();
 
 
 	private:
-		typedef accumulator_set<uint64_t, stats<tag::variance(lazy)> > acc_t;
+		typedef ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)> > acc_t;
 		static std::map <std::string, acc_t> mMap;
 		std::string mName;
 		TimePoint mTimeStart;

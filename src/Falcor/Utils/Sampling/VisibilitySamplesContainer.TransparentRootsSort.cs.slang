@@ -14,36 +14,36 @@ cbuffer CB {
 RWStructuredBuffer<uint> gOpaqueIndirectionBuffer;
 RWStructuredBuffer<uint> gTransparentIndirectionBuffer;
 
+
 [numthreads(64, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if(dispatchThreadId.x >= gVisibilityContainer.opaqueSamplesBufferSize) return;
 
     uint procPixelOffset = dispatchThreadId.x;
 
-    PackedHitInfo procHit = gVisibilityContainer.opaqueVisibilitySamplesBuffer[procPixelOffset];
-    if(procHit[0] == 0) return;
-
+    uint procRoot = gVisibilityContainer.rootTransparentSampleOffsetBufferPP[procPixelOffset];
+    if(procRoot == UINT32_MAX) return;
+    
     uint existingOffset;
-    InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_SORT_OPAQUE_COUNTER_LOCATION], 1, existingOffset);
+    InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_SORT_TRANSP_COUNTER_LOCATION], 1, existingOffset);
 
     uint procPixelPos = u2x16to32(uint16_t2(procPixelOffset % gVisibilityContainer.resolution.x, procPixelOffset / gVisibilityContainer.resolution.x));
-    gVisibilityContainer.opaqueVisibilitySamplesPositionBufferPP[existingOffset] = procPixelPos;
-    InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION], 1);
+    gVisibilityContainer.transparentVisibilitySamplesPositionBufferPP[existingOffset] = procPixelPos;
+    InterlockedAdd(gVisibilityContainer.infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_LISTS_COUNT_LOCATION], 1);
 
     if(existingOffset == procPixelOffset) {
         return;
     }
 
-    PackedHitInfo existingHit = gVisibilityContainer.opaqueVisibilitySamplesBuffer[existingOffset];
-    if(existingHit[0] != 0) {
+    uint existingRoot = gVisibilityContainer.rootTransparentSampleOffsetBufferPP[existingOffset];
+    if(existingRoot != UINT32_MAX) {
         return;
     }
 
-    
     GroupMemoryBarrierWithGroupSync();
 
-    gVisibilityContainer.opaqueVisibilitySamplesBuffer[existingOffset] = procHit;
-    gVisibilityContainer.opaqueVisibilitySamplesBuffer[procPixelOffset] = {};
+    gVisibilityContainer.rootTransparentSampleOffsetBufferPP[existingOffset] = procRoot;
+    gVisibilityContainer.rootTransparentSampleOffsetBufferPP[procPixelOffset] = UINT32_MAX;
 
     GroupMemoryBarrierWithGroupSync();
 }

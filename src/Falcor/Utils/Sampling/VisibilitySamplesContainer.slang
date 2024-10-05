@@ -27,10 +27,11 @@ struct VisibilitySamplesContainer {
     
     // Opaque samples data
     RWStructuredBuffer<PackedHitInfo>               opaqueVisibilitySamplesBuffer;
-    RWStructuredBuffer<uint>                        opaqueVisibilitySamplesPositionBuffer;
+    RWStructuredBuffer<uint>                        opaqueVisibilitySamplesPositionBufferPP;
 
     // Transparent samples data
     RWStructuredBuffer<uint>                        rootTransparentSampleOffsetBufferPP;
+    RWStructuredBuffer<uint>                        transparentVisibilitySamplesPositionBufferPP;
     RWStructuredBuffer<uint>                        transparentVisibilitySamplesCountBufferPP;
     RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
 
@@ -39,13 +40,41 @@ struct VisibilitySamplesContainer {
 
     RWStructuredBuffer<uint>                        infoBuffer;
 
-    uint fetchSortedTransaprentSamples(uint2 pixelPos, out SortedTransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
+    uint fetchSortedTransaprentSamplesList(uint pixelOffset, out SortedTransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
         if(!hasTransparentSamples()) return 0;
 
         // Fetch first transparent sample
         TransparentVisibilitySample rootTransparentSample;
         
-        if(!readRootTransparentVisibilitySample(pixelPos, rootTransparentSample)) return 0;
+        if(!readRootTransparentVisibilitySample(pixelOffset, rootTransparentSample)) return 0;
+
+        samples[0].hitInfo = rootTransparentSample.hitInfo;
+        samples[0].alpha = rootTransparentSample.alpha;
+
+        // Fetch remaining transparent samples
+        uint nextSampleOffset = rootTransparentSample.nextSampleOffset;
+
+        uint samplesCount = 1;
+        while(nextSampleOffset != UINT32_MAX && samplesCount < maxTransparentSamplesCountPP) {            
+            samples[samplesCount].hitInfo = transparentVisibilitySamplesBuffer[nextSampleOffset].hitInfo;
+            samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
+            nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
+        }
+
+        if(!isTransparentListsSorted()) {
+            // TODO: Sort samples list in-place
+        }
+
+        return samplesCount;
+    }
+
+    uint fetchSortedTransaprentSamplesList2D(uint2 pixelPos, out SortedTransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
+        if(!hasTransparentSamples()) return 0;
+
+        // Fetch first transparent sample
+        TransparentVisibilitySample rootTransparentSample;
+        
+        if(!readRootTransparentVisibilitySample2D(pixelPos, rootTransparentSample)) return 0;
         
         samples[0].hitInfo = rootTransparentSample.hitInfo;
         samples[0].alpha = rootTransparentSample.alpha;
@@ -54,13 +83,13 @@ struct VisibilitySamplesContainer {
         uint nextSampleOffset = rootTransparentSample.nextSampleOffset;
 
         uint samplesCount = 1;
-        while(nextSampleOffset != UINT32_MAX && samplesCount < transparentSamplesCount(pixelPos)) {            
+        while(nextSampleOffset != UINT32_MAX && samplesCount < maxTransparentSamplesCountPP) {            
             samples[samplesCount].hitInfo = transparentVisibilitySamplesBuffer[nextSampleOffset].hitInfo;
             samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
             nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
         }
 
-        if(!isTransparentSorted()) {
+        if(!isTransparentListsSorted()) {
             // TODO: Sort samples in-place
         }
 
@@ -72,11 +101,9 @@ struct VisibilitySamplesContainer {
     }
 
     HitInfo readOpaqueHit2D(uint2 pixelPos) {
+        if(isOpaqueSorted()) return {};
+
         uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
-        if(isOpaqueSorted()) {
-            uint2 pixelPos = (uint2)u32to2x16(opaqueVisibilitySamplesPositionBuffer[pixelOffset]);
-            pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
-        }
         return readOpaqueHit(pixelOffset);
     }
 
@@ -90,20 +117,29 @@ struct VisibilitySamplesContainer {
         uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
         opaqueVisibilitySamplesBuffer[pixelOffset] = hit.getData();
 
-        uint tmp;
-        InterlockedExchange(opaqueVisibilitySamplesPositionBuffer[pixelOffset], u2x16to32(uint16_t2(pixelPos)), tmp);
+        //uint tmp;
+        //InterlockedExchange(opaqueVisibilitySamplesPositionBufferPP[pixelOffset], u2x16to32(uint16_t2(pixelPos)), tmp);
     }
 
-    bool readRootTransparentVisibilitySample(uint2 pixelPos, inout TransparentVisibilitySample sample) {
-        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pixelPos.x + pixelPos.y * resolution.x];
+    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySample sample) {
+        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pixelOffset];
         if(sampleOffset == UINT32_MAX) return false;
 
         #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
-            sampleOffset += __pixelBucketOffset(pixelPos);
+            sampleOffset += pixelOffset * maxTransparentSamplesCountPP;
         #endif
 
         sample = transparentVisibilitySamplesBuffer[sampleOffset];
         return true;
+    }
+
+    bool readRootTransparentVisibilitySample2D(uint2 pixelPos, inout TransparentVisibilitySample sample) {
+        if(isTransparentRootsSorted()) {
+            return false;
+        }
+
+        uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
+        return readRootTransparentVisibilitySample(pixelOffset, sample);
     }
 
     TransparentVisibilitySample readTransparentVisibilitySample(uint offset) {
@@ -159,9 +195,14 @@ struct VisibilitySamplesContainer {
         //return (infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION] & (uint)VisibilitySamplesContainerFlags::OpaqueSamplesSorted) != 0;
     }
 
-    bool isTransparentSorted() CONST_FUNCTION {
-        return (flags & (uint)VisibilitySamplesContainerFlags::TransparentSamplesSorted) != 0;
-        //return (infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION] & (uint)VisibilitySamplesContainerFlags::TransparentSamplesSorted) != 0;
+    bool isTransparentRootsSorted() CONST_FUNCTION {
+        return (flags & (uint)VisibilitySamplesContainerFlags::TransparentRootsSorted) != 0;
+        //return (infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION] & (uint)VisibilitySamplesContainerFlags::TransparentRootsSorted) != 0;
+    }
+
+    bool isTransparentListsSorted() CONST_FUNCTION {
+        return (flags & (uint)VisibilitySamplesContainerFlags::TransparentListsSorted) != 0;
+        //return (infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION] & (uint)VisibilitySamplesContainerFlags::TransparentListsSorted) != 0;
     }
 
     bool hasTransparentSamples() CONST_FUNCTION {
@@ -175,6 +216,13 @@ struct VisibilitySamplesContainer {
         return opaqueSamplesBufferSize;
     }
 
+    uint transparentListsCount() CONST_FUNCTION {
+        if(isTransparentListsSorted()) {
+            return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_LISTS_COUNT_LOCATION];
+        }
+        return opaqueSamplesBufferSize;
+    }
+
     uint transparentSamplesCount() CONST_FUNCTION {
         return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION];
     }
@@ -183,25 +231,37 @@ struct VisibilitySamplesContainer {
         return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT_LOCATION];
     }
 
-    //uint2 pixelPos(uint2 pos) CONST_FUNCTION {
-    //    if(isOpaqueSorted()) {
-    //        return (uint2)u32to2x16(opaqueVisibilitySamplesPositionBuffer[pos.x + pos.y * resolution.x]);
-    //    }
-    //    return pos;
-    //}
+    uint2 offsetToPixelPos(uint pixelOffset) CONST_FUNCTION {
+        return { pixelOffset % resolution.x, pixelOffset / resolution.x };
+    }
 
-    uint2 pixelPos(uint pixelOffset) CONST_FUNCTION {
+    uint2 opaquePixelPos(uint pixelOffset) CONST_FUNCTION {
         if(isOpaqueSorted()) {
-            return (uint2)u32to2x16(opaqueVisibilitySamplesPositionBuffer[pixelOffset]);
+            return (uint2)u32to2x16(opaqueVisibilitySamplesPositionBufferPP[pixelOffset]);
         }
         return { pixelOffset % resolution.x, pixelOffset / resolution.x };
     }
 
-    uint transparentSamplesCount(uint2 pixelPos) CONST_FUNCTION {
-        uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
+    uint2 transparentPixelPos(uint pixelOffset) CONST_FUNCTION {
+        if(isTransparentRootsSorted()) {
+            return (uint2)u32to2x16(transparentVisibilitySamplesPositionBufferPP[pixelOffset]);
+        }
+        return { pixelOffset % resolution.x, pixelOffset / resolution.x };
+    }
+
+    uint transparentSamplesCount(uint pixelOffset) CONST_FUNCTION {
 #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
         // When strict samples count pp is enabled we can use offset buffer as simple samples counter
         return min(rootTransparentSampleOffsetBufferPP[pixelOffset] + 1, maxTransparentSamplesCountPP);
+#else
+        return transparentVisibilitySamplesCountBufferPP[pixelOffset];
+#endif
+    }
+
+    uint transparentSamplesCount2D(uint2 pixelPos) CONST_FUNCTION {
+        uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
+#if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+        return transparentSamplesCount(pixelOffset);
 #else
         return transparentVisibilitySamplesCountBufferPP[pixelOffset];
 #endif
