@@ -27,7 +27,7 @@ class dlldecl VisibilitySamplesContainer {
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
+		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 0);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -53,7 +53,8 @@ class dlldecl VisibilitySamplesContainer {
 		*/
 		bool hasTransparentSamples() const;
 
-		void setDepthBufferTexture(Texture::SharedPtr pTexture);
+		void setDepthTexture(Texture::SharedPtr pTexture);
+		void setDepthBuffer(Buffer::SharedPtr pBuffer);
 
 		/** Optimize samples.
 			This function analyzes samples and sorts them to achieve better shading and cache coherency.
@@ -79,6 +80,7 @@ class dlldecl VisibilitySamplesContainer {
 		uint opaqueSamplesCount() const;
 
 		uint transparentSamplesCount() const;
+		uint transparentListsCount() const;
 
 		uint maxTransparentLayersCount() const;
 
@@ -88,33 +90,36 @@ class dlldecl VisibilitySamplesContainer {
 
 		uint reservedTransparentSamplesCount() const { return mTransparentSamplesBufferSize; };
 
-		const Buffer::SharedConstPtr& getOpaquePassIndirectionArgsBuffer() const { return mpOpaquePassIndirectionArgsBuffer; };
+		const Buffer::SharedPtr& getOpaquePassIndirectionArgsBuffer() const { return mpOpaquePassIndirectionArgsBuffer; };
 
-		const Buffer::SharedConstPtr& getTransparentPassIndirectionArgsBuffer() const { return mpTransparentPassIndirectionArgsBuffer; };
+		const Buffer::SharedPtr& getTransparentPassIndirectionArgsBuffer() const { return mpTransparentPassIndirectionArgsBuffer; };
 
 		const uint3& getShadingThreadGroupSize() const { return mShadingThreadGroupSize; }
 
+		void  enableSorting(bool enabled);
+		void  enableSortingPP(bool enabled);
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
 		void createParameterBlock();
-		void uploadMaterial(const uint32_t materialID);
-
 		void createBuffers();
 
 		void readInfoBufferData() const;
 
 		void sortOpaqueSamples(RenderContext* pRenderContext);
-		void sortTransparentSamples(RenderContext* pRenderContext);
-		void orderTransparentRoots(RenderContext* pRenderContext);
+		void sortTransparentSamplesRoots(RenderContext* pRenderContext);
+		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
+		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
 
-		// Interanl state
+		// Internal state
 
 		uint2 mResolution;
 		uint 	mMaxTransparentSamplesCountPP;
 		uint 	mTransparentSamplesBufferSize;
-		uint  mOpaqueSamplesBufferSize;
+		uint  mResolution1D;
+		bool  mSortingEnabled = true;
+		bool  mSortingEnabledPP = true;
 
 		uint3 mShadingThreadGroupSize;
 
@@ -133,14 +138,17 @@ class dlldecl VisibilitySamplesContainer {
 		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
-		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBuffer;
+		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
-		Buffer::SharedPtr  	mpVisibilitySamplesCountBufferPP;
 
-		Texture::SharedPtr  mpDepthTexture;
-
-		Buffer::SharedPtr   mpInfoBuffer;
+		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
+		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
+		Buffer::SharedPtr   mpInfoBuffer;
+
+		//Optional data
+		Texture::SharedPtr  mpDepthTexture;
+		Buffer::SharedPtr  	mpDepthBuffer;
 
 		//Scratch data
 		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;
@@ -151,8 +159,9 @@ class dlldecl VisibilitySamplesContainer {
 		mutable std::vector<uint32_t> mpInfoBufferData;
 
 		ComputePass::SharedPtr 	mpOpaqueSortingPass;
-		ComputePass::SharedPtr 	mpTransparentSortingPass;
-		ComputePass::SharedPtr 	mpTransparentRootsOrderingPass;
+		ComputePass::SharedPtr 	mpTransparentRootsSortingPass;
+		ComputePass::SharedPtr 	mpTransparentOrderSortingPass;
+		ComputePass::SharedPtr 	mpFinalizeSortingPass;
 
 		ResourceFormat      		mHitInfoFormat = HitInfo::kDefaultFormat;
 };

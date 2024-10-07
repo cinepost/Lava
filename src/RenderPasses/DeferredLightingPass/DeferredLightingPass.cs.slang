@@ -524,16 +524,28 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     return surfaceColor;
 }
 
-[numthreads(16, 16, 1)]
+#if defined(USE_VISIBILITY_CONTAINER)
+[numthreads(GROUP_SIZE_X, 1, 1)]
+#else
+[numthreads(8, 8, 1)]
+#endif
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-    // pixel position
-    const uint2 pixelPos = dispatchThreadId.xy;
+    uint2 pixelPos;
 
-    // early out
-    if (any(pixelPos >= gFrameDim)) return;
+    #if !defined(USE_VISIBILITY_CONTAINER)
+        // pixel position
+        pixelPos = dispatchThreadId.xy;
 
-    #if is_valid(gTextureGrads)
-        const float4 texGrads = gTextureGrads[pixelPos];
+        // early out
+        if (any(pixelPos >= gFrameDim)) return;
+    #else
+        uint pixelOffset = dispatchThreadId.x;
+        // early out
+        #if defined(TRANSPARENT_SHADING_PASS)
+        if (pixelOffset >= gVisibilityContainer.transparentListsCount()) return;
+        #else
+        if (pixelOffset >= gVisibilityContainer.opaqueSamplesCount()) return;
+        #endif
     #endif
 
     HitInfo hit;
@@ -543,20 +555,28 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
-        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamples(pixelPos, transparenSamplesList);
+        pixelPos = gVisibilityContainer.transparentPixelPos(pixelOffset);
+
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransparentSamplesList(pixelOffset, transparenSamplesList);
         if(transparentVisibilitySamplesCount == 0) return;
 
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenSamplesList[layer].hitInfo);
-            sampleAlpha = transparenSamplesList[layer].alpha;
+            hit = HitInfo(transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].hitInfo);
+            sampleAlpha = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].alpha;
     #else
-        hit = gVisibilityContainer.readOpaqueHit(pixelPos);
+        pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
+        
+        hit = gVisibilityContainer.readOpaqueHit(pixelOffset);
     #endif
 #else
     hit = HitInfo(gVbuffer[pixelPos]);
 #endif
+
+    #if is_valid(gTextureGrads)
+        const float4 texGrads = gTextureGrads[pixelPos];
+    #endif
 
 #if !defined(TRANSPARENT_SHADING_PASS)
     if (!hit.isValid() || hit.getType() != HitType::Triangle) {

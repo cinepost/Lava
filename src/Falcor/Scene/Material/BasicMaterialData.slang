@@ -98,7 +98,7 @@ struct BasicMaterialData
     static const uint kFlipNormalYOffset = kFlipNormalXOffset + kFlipNormalBits;
 
     static const uint kNormalMapModeOffset = kFlipNormalYOffset + kFlipNormalBits;
-    static const uint kUseBaseColorAlphaOffset = kNormalMapModeOffset + kUseBaseColorAlphaBits;
+    static const uint kUseBaseColorAlphaOffset = kNormalMapModeOffset + kNormalMapModeBits;
 
     static const uint kTotalFlagsBits = kUseBaseColorAlphaOffset + kUseBaseColorAlphaBits;
 

@@ -214,6 +214,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         if(mpVisibilitySamplesContainer) {
             if(transparentPass) defines.add("TRANSPARENT_SHADING_PASS");
             defines.add("USE_VISIBILITY_CONTAINER", "1");
+            defines.add("GROUP_SIZE_X", to_string(mpVisibilitySamplesContainer->getShadingThreadGroupSize().x));
             defines.add(mpVisibilitySamplesContainer->getDefines());
         } else {
             defines.remove("TRANSPARENT_SHADING_PASS");
@@ -298,12 +299,12 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     if(mpTransparentShadingPass) setVar(mpTransparentShadingPass["PerFrameCB"], true);
 
     if(shadingRateInShader) {
-        mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-        if(mpTransparentShadingPass) mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+        mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+        if(mpTransparentShadingPass) mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
     } else {
         for(uint32_t i; i < mShadingRate; ++i){
-            mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-            if(mpTransparentShadingPass) mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+            mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+            if(mpTransparentShadingPass) mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
 
             mpShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
             if(mpTransparentShadingPass) mpTransparentShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;

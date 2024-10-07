@@ -68,9 +68,9 @@ static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLE
 #endif
 
 #if defined(USE_VISIBILITY_CONTAINER)
-[numthreads(256, 1, 1)]
+[numthreads(GROUP_SIZE_X, 1, 1)]
 #else
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 #endif
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     uint2 pixelPos;
@@ -82,29 +82,40 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         // early out
         if (any(pixelPos >= gFrameDim)) return;
     #else
+        uint pixelOffset = dispatchThreadId.x;
         // early out
-        if (dispatchThreadId.x >= gVisibilityContainer.)) return;
+        #if defined(TRANSPARENT_SHADING_PASS)
+        if (pixelOffset >= gVisibilityContainer.transparentListsCount()) return;
+        #else
+        if (pixelOffset >= gVisibilityContainer.opaqueSamplesCount()) return;
+        #endif
     #endif
 
     float sampleAlpha = 1.0f;
     HitInfo hit;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-    pixelPos = gVisibilityContainer.pixelPos(dispatchThreadId.x);
-    //gInOutColor[{dispatchThreadId.x % gFrameDim.x, dispatchThreadId.x / gFrameDim.x}] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
-    //return;
-
     #if defined(TRANSPARENT_SHADING_PASS)
-        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamples(pixelPos, transparenSamplesList);
+        pixelPos = gVisibilityContainer.transparentPixelPos(pixelOffset);
+
+        //gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isTransparentRootsSorted() ? 1 : 0, 1);
+        //return;
+
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransparentSamplesList(pixelOffset, transparenSamplesList);
         if(transparentVisibilitySamplesCount == 0) return;
 
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenSamplesList[layer].hitInfo);
-            sampleAlpha = transparenSamplesList[layer].alpha;
+            hit = HitInfo(transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].hitInfo);
+            sampleAlpha = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].alpha;
     #else
-        hit = gVisibilityContainer.readOpaqueHit(dispatchThreadId.x);
+        pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
+        
+        //gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
+        //return;
+
+        hit = gVisibilityContainer.readOpaqueHit(pixelOffset);
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);

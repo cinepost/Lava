@@ -34,6 +34,7 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Scene/Material/BasicMaterial.h"
 #include "Falcor/Scene/SceneDefines.slangh"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 #include "VBufferSW.MicroTriangle.slangh"
 
@@ -197,6 +198,8 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         return;
     }
 
+    SimpleProfiler profile("VBufferSW::execute");
+
     GBufferBase::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
@@ -275,7 +278,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     // Optional visibility container
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->setDepthBuffer(mpLocalDepthBuffer);
+        mpVisibilitySamplesContainer->beginFrame();
+    }
 
     // Create rasterization pass.
     if (!mpComputeRasterizerPass || mDirty) {

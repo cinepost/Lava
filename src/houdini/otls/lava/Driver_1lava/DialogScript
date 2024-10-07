@@ -2022,6 +2022,26 @@
         group {
             name    "images_4_1_5"
             label   "Advanced"
+
+            parm {
+                name    "lv_visibility_container_sort"
+                label   "Visibility Container Optimize"
+                type    toggle
+                default { "1" }
+                disablewhen "{ lv_visibility_container == 0 }"
+                help    "Optimize visibility samples for shading."
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
+                name    "lv_visibility_container_sort_pp"
+                label   "Visibility Container Transparent Sort"
+                type    toggle
+                default { "1" }
+                disablewhen "{ lv_visibility_container == 0 }"
+                help    "Sort transparent visibility samples by their depth."
+                parmtag { "spare_category" "Sampling" }
+            }
         }
     }
 
