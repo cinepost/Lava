@@ -40,7 +40,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    //GroupMemoryBarrierWithGroupSync();
 
     gVisibilityContainer.rootTransparentSampleOffsetBufferPP[existingOffset] = procRoot;
     gVisibilityContainer.rootTransparentSampleOffsetBufferPP[procPixelOffset] = UINT32_MAX;
