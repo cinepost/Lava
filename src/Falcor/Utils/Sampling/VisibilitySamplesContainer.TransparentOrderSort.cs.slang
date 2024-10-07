@@ -27,11 +27,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     if(!gVisibilityContainer.readRootTransparentVisibilitySample(pixelOffset, samplesList[0], offsetsList[0])) return;
 
-    //offsetsList[0] = gVisibilityContainer.rootTransparentSampleOffsetBufferPP[pixelOffset];
-    //if(offsetsList[0] == UINT32_MAX) return;
-
-    //samplesList[0] = gVisibilityContainer.transparentVisibilitySamplesBuffer[offsetsList[0]];
-
     // Fetch remaining transparent samples
     uint nextSampleOffset = samplesList[0].nextSampleOffset;
 
@@ -46,7 +41,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     GroupMemoryBarrierWithGroupSync();
 
     if(samplesCount < 2) return;
-
 
     // Sort list
     bool unsorted = true;
@@ -64,11 +58,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         unsorted = swaps > 0;
     }
 
-    // Fix head
-    #if !(VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP)
-    //    gVisibilityContainer.rootTransparentSampleOffsetBufferPP[pixelOffset] = offsetsList[0];
-    #endif
-
     // Fix offsets
     for(uint i = 0; i < (samplesCount - 1); ++i) {
         samplesList[i].nextSampleOffset = offsetsList[i + 1];
@@ -81,5 +70,4 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     GroupMemoryBarrierWithGroupSync();
-
 }

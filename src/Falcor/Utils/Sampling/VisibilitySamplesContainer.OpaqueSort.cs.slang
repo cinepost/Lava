@@ -14,6 +14,7 @@ cbuffer CB {
 RWStructuredBuffer<uint> gOpaqueIndirectionBuffer;
 RWStructuredBuffer<uint> gTransparentIndirectionBuffer;
 
+
 [numthreads(64, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if(dispatchThreadId.x >= gVisibilityContainer.resolution1D) return;
@@ -39,7 +40,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    //GroupMemoryBarrierWithGroupSync();
 
     gVisibilityContainer.opaqueVisibilitySamplesBuffer[existingOffset] = procHit;
     gVisibilityContainer.opaqueVisibilitySamplesBuffer[procPixelOffset] = {};
