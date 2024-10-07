@@ -190,32 +190,32 @@ void VisibilitySamplesContainer::createBuffers() {
   }
 
 	if(!mpOpaqueSamplesBuffer || mpOpaqueSamplesBuffer->getElementCount() != mResolution1D) {
-		mpOpaqueSamplesBuffer = Buffer::createStructured(mpDevice, mpParameterBlock[kOpaqueSamplesDataName], mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpOpaqueSamplesBuffer = Buffer::createStructured(mpDevice, mpParameterBlock[kOpaqueSamplesDataName], mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpOpaqueSamplesBuffer->setName("VisibilitySamplesContainer::opaqueSamplesBuffer");	
 	}
 
 	if(!mpOpaqueVisibilitySamplesPositionBufferPP || mpOpaqueVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
-		mpOpaqueVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpOpaqueVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpOpaqueVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::opaqueVisibilitySamplePositionBuffer");	
 	}
 
 	if(!mpRootTransparentSampleOffsetBufferPP || mpRootTransparentSampleOffsetBufferPP->getElementCount() != mResolution1D) {
-		mpRootTransparentSampleOffsetBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpRootTransparentSampleOffsetBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpRootTransparentSampleOffsetBufferPP->setName("VisibilitySamplesContainer::rootTransparentSampleOffsetBufferPP");	
 	}
 
 	if(!mpTransparentVisibilitySamplesBuffer || mpTransparentVisibilitySamplesBuffer->getElementCount() != mTransparentSamplesBufferSize) {
-		mpTransparentVisibilitySamplesBuffer = Buffer::createStructured(mpDevice, sizeof(TransparentVisibilitySample), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesBuffer = Buffer::createStructured(mpDevice, sizeof(TransparentVisibilitySample), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesBuffer->setName("VisibilitySamplesContainer::transparentVisibilitySamplesBuffer");
 	}
 
 	if(!mpTransparentVisibilitySamplesCountBufferPP || mpTransparentVisibilitySamplesCountBufferPP->getElementCount() != mResolution1D) {
-		mpTransparentVisibilitySamplesCountBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesCountBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesCountBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplesCountBuffer");	
 	}
 
 	if(!mpTransparentVisibilitySamplesPositionBufferPP || mpTransparentVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
-		mpTransparentVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplePositionBuffer");	
 	}
 }

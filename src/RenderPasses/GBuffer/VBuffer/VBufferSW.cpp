@@ -359,6 +359,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         if(mpVisibilitySamplesContainer) {
             var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
+    
+        if(mpSTBNGenerator) {
+            mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
+        }
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
@@ -367,8 +371,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
-
+        
         var["gVBufferSW"]["frameDim"] = mFrameDim;
         var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
         var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
@@ -397,10 +400,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gThreadLockBuffer"] = mpThreadLockBuffer;
         var["gOpacityShiftsBuffer"] = mpOpacityShiftsBuffer;
         
-        var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
-        for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
-            var["gMicroTriangleBuffers"][i] = mMicroTriangleBuffers[i];
-        }
+        //var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
+        //for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
+        //   var["gMicroTriangleBuffers"][i] = mMicroTriangleBuffers[i];
+        //}
 
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
@@ -498,6 +501,7 @@ void VBufferSW::createBuffers() {
 }
 
 void VBufferSW::createMicroTrianglesBuffer() {
+    return;
     if(!mDirty) return;
 
     static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
@@ -516,8 +520,6 @@ void VBufferSW::createMicroTrianglesBuffer() {
     static const Resource::BindFlags flags = Resource::BindFlags::None;
 
     mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, flags, Buffer::CpuAccess::None, nullptr, createCounter);
-
-    //total_buffers_size_bytes += maxMicroTrianglesCount * sizeof(MicroTriangle);
 
     mMicroTriangleBuffers.resize(1024);
     for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {

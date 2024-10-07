@@ -83,8 +83,8 @@ groupshared uint              gsDrawableIndex;
 
 uniform STBNGenerator         gNoiseGenerator;
 
-RWStructuredBuffer<MicroTriangle>   gMicroTrianglesBuffer;
-RWStructuredBuffer<MicroTriangle>   gMicroTriangleBuffers[1024]; 
+//RWStructuredBuffer<MicroTriangle>   gMicroTrianglesBuffer;
+//RWStructuredBuffer<MicroTriangle>   gMicroTriangleBuffers[1024]; 
 
 static constexpr float k18 = 1.f / 8.f;
 static constexpr float k34 = 3.f / 4.f;
