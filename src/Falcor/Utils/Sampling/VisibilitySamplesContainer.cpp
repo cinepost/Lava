@@ -51,13 +51,14 @@ VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice
 
 	mAlphaThresholdMin = kAlphaThresholdMin;
 	mAlphaThresholdMax = kAlphaThresholdMax;
-	mMaxTransparentSamplesCountPP = kDefaultTransparentSamplesCountPP;
 	mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
 	mpInfoBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), kInfoBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	mpInfoBuffer->setName("VisibilitySamplesContainer::infoBuffer");
 
 	mShadingThreadGroupSize = {64, 1, 1};
+
+	resize(resolution.x, resolution.y, maxTransparentSamplesCountPP);
 }
 
 bool VisibilitySamplesContainer::hasTransparentSamples() const {
@@ -88,6 +89,8 @@ void VisibilitySamplesContainer::sort() {
 void VisibilitySamplesContainer::sortOpaqueSamples(RenderContext* pRenderContext) {
 	if(!mSortingEnabled || is_set(mFlags, VisibilitySamplesContainerFlags::OpaqueSamplesSorted)) return;
 	
+	LLOG_TRC << "VisibilitySamplesContainer::sortOpaqueSamples()";
+
 	if(!mpOpaqueSortingPass) {
 		Program::DefineList defines;
 		defines.add(getDefines());
@@ -95,6 +98,7 @@ void VisibilitySamplesContainer::sortOpaqueSamples(RenderContext* pRenderContext
 		mpOpaqueSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
+	mpOpaqueSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 	mpOpaqueSortingPass->execute(pRenderContext, mResolution.x * mResolution.y, 1, 1);
 
 	mFlags |= VisibilitySamplesContainerFlags::OpaqueSamplesSorted;
@@ -103,6 +107,8 @@ void VisibilitySamplesContainer::sortOpaqueSamples(RenderContext* pRenderContext
 void VisibilitySamplesContainer::sortTransparentSamplesRoots(RenderContext* pRenderContext) {
 	if(!mSortingEnabled || is_set(mFlags, VisibilitySamplesContainerFlags::TransparentRootsSorted)) return;
 
+	LLOG_TRC << "VisibilitySamplesContainer::sortTransparentSamplesRoots()";
+
 	if(!mpTransparentRootsSortingPass) {
 		Program::DefineList defines;
 		defines.add(getDefines());
@@ -110,29 +116,34 @@ void VisibilitySamplesContainer::sortTransparentSamplesRoots(RenderContext* pRen
 		mpTransparentRootsSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
+	mpTransparentRootsSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 	mpTransparentRootsSortingPass->execute(pRenderContext, mResolution.x * mResolution.y, 1, 1);
 	
 	mFlags |= VisibilitySamplesContainerFlags::TransparentRootsSorted;
 }
 
 void VisibilitySamplesContainer::sortTransparentSamplesOrder(RenderContext* pRenderContext) {
-	return;
-
 	if(!mSortingEnabledPP || is_set(mFlags, VisibilitySamplesContainerFlags::TransparentListsSorted)) return;
+
+	LLOG_TRC << "VisibilitySamplesContainer::sortTransparentSamplesOrder()";
 
 	if(!mpTransparentOrderSortingPass) {
 		Program::DefineList defines;
 		defines.add(getDefines());
-		mpTransparentRootsSortingPass = ComputePass::create(mpDevice, kTransparentOrderSortShaderFilename, "main", defines);
-		mpTransparentRootsSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+		defines.add("GROUP_SIZE_X", to_string(getShadingThreadGroupSize().x));
+		mpTransparentOrderSortingPass = ComputePass::create(mpDevice, kTransparentOrderSortShaderFilename, "main", defines);
+		mpTransparentOrderSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
-	mpTransparentRootsSortingPass->executeIndirect(pRenderContext, mpTransparentPassIndirectionArgsBuffer.get());
+	mpTransparentOrderSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+	mpTransparentOrderSortingPass->executeIndirect(pRenderContext, mpTransparentPassIndirectionArgsBuffer.get());
 
 	mFlags |= VisibilitySamplesContainerFlags::TransparentListsSorted;
 }
 
 void VisibilitySamplesContainer::sortFinalizeIndirectArgs(RenderContext* pRenderContext) {
+	LLOG_TRC << "VisibilitySamplesContainer::sortFinalizeIndirectArgs()";
+
 	if(!mpFinalizeSortingPass) {
 		Program::DefineList defines;
 		defines.add(getDefines());
@@ -142,6 +153,8 @@ void VisibilitySamplesContainer::sortFinalizeIndirectArgs(RenderContext* pRender
 		mpFinalizeSortingPass["gOpaqueIndirectionBuffer"] = mpOpaquePassIndirectionArgsBuffer;
 		mpFinalizeSortingPass["gTransparentIndirectionBuffer"] = mpTransparentPassIndirectionArgsBuffer;
 	}
+
+	mpFinalizeSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 
 	auto cb = mpFinalizeSortingPass["CB"];
   cb["shadingThreadGroupSize"] = mShadingThreadGroupSize;
@@ -176,18 +189,18 @@ void VisibilitySamplesContainer::createBuffers() {
     mpTransparentPassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &kBaseIndirectArgs);
   }
 
-	if(!mpOpaqueSamplesBuffer || mpOpaqueSamplesBuffer->getElementCount() != mOpaqueSamplesBufferSize) {
-		mpOpaqueSamplesBuffer = Buffer::createStructured(mpDevice, mpParameterBlock[kOpaqueSamplesDataName], mOpaqueSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	if(!mpOpaqueSamplesBuffer || mpOpaqueSamplesBuffer->getElementCount() != mResolution1D) {
+		mpOpaqueSamplesBuffer = Buffer::createStructured(mpDevice, mpParameterBlock[kOpaqueSamplesDataName], mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpOpaqueSamplesBuffer->setName("VisibilitySamplesContainer::opaqueSamplesBuffer");	
 	}
 
-	if(!mpOpaqueVisibilitySamplesPositionBufferPP || mpOpaqueVisibilitySamplesPositionBufferPP->getElementCount() != mOpaqueSamplesBufferSize) {
-		mpOpaqueVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mOpaqueSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	if(!mpOpaqueVisibilitySamplesPositionBufferPP || mpOpaqueVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
+		mpOpaqueVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpOpaqueVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::opaqueVisibilitySamplePositionBuffer");	
 	}
 
-	if(!mpRootTransparentSampleOffsetBufferPP || mpRootTransparentSampleOffsetBufferPP->getElementCount() != mOpaqueSamplesBufferSize) {
-		mpRootTransparentSampleOffsetBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mOpaqueSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	if(!mpRootTransparentSampleOffsetBufferPP || mpRootTransparentSampleOffsetBufferPP->getElementCount() != mResolution1D) {
+		mpRootTransparentSampleOffsetBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpRootTransparentSampleOffsetBufferPP->setName("VisibilitySamplesContainer::rootTransparentSampleOffsetBufferPP");	
 	}
 
@@ -196,13 +209,13 @@ void VisibilitySamplesContainer::createBuffers() {
 		mpTransparentVisibilitySamplesBuffer->setName("VisibilitySamplesContainer::transparentVisibilitySamplesBuffer");
 	}
 
-	if(!mpTransparentVisibilitySamplesCountBufferPP || mpTransparentVisibilitySamplesCountBufferPP->getElementCount() != mOpaqueSamplesBufferSize) {
-		mpTransparentVisibilitySamplesCountBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mOpaqueSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	if(!mpTransparentVisibilitySamplesCountBufferPP || mpTransparentVisibilitySamplesCountBufferPP->getElementCount() != mResolution1D) {
+		mpTransparentVisibilitySamplesCountBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesCountBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplesCountBuffer");	
 	}
 
-	if(!mpTransparentVisibilitySamplesPositionBufferPP || mpTransparentVisibilitySamplesPositionBufferPP->getElementCount() != mOpaqueSamplesBufferSize) {
-		mpTransparentVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mOpaqueSamplesBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	if(!mpTransparentVisibilitySamplesPositionBufferPP || mpTransparentVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
+		mpTransparentVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplePositionBuffer");	
 	}
 }
@@ -221,9 +234,9 @@ void VisibilitySamplesContainer::resize(uint width, uint height, uint maxTranspa
 
 	mResolution.x = width;
 	mResolution.y = height;
-	mOpaqueSamplesBufferSize = width * height;
+	mResolution1D = width * height;
 	mMaxTransparentSamplesCountPP = maxTransparentSamplesCountPP;
-	mTransparentSamplesBufferSize = mOpaqueSamplesBufferSize * mMaxTransparentSamplesCountPP;
+	mTransparentSamplesBufferSize = mResolution1D * mMaxTransparentSamplesCountPP;
 
 	mpParameterBlock = nullptr;
 }
@@ -249,7 +262,7 @@ void VisibilitySamplesContainer::createParameterBlock() {
 	mpParameterBlock["maxTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP ? mMaxTransparentSamplesCountPP : kMaxTransparentSamplesCountPP;
 	mpParameterBlock["limitTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP;
 
-	LLOG_DBG << "Max transparent samples count PP " << mMaxTransparentSamplesCountPP;
+	LLOG_WRN << "Max transparent samples count PP " << mMaxTransparentSamplesCountPP;
 
 	mpParameterBlock["flags"] = static_cast<uint32_t>(mFlags);
 
@@ -266,12 +279,20 @@ void VisibilitySamplesContainer::createParameterBlock() {
 	mpParameterBlock["alphaThresholdMin"] = mAlphaThresholdMin;
 	mpParameterBlock["alphaThresholdMax"] = mAlphaThresholdMax;
 
-	mpParameterBlock["opaqueSamplesBufferSize"] = mOpaqueSamplesBufferSize;
+	mpParameterBlock["resolution1D"] = mResolution1D;
 }
 
-void VisibilitySamplesContainer::setDepthBufferTexture(Texture::SharedPtr pTexture) {
+void VisibilitySamplesContainer::setDepthTexture(Texture::SharedPtr pTexture) {
 	if(mpDepthTexture == pTexture) return;
 	mpDepthTexture = pTexture;
+	mpDepthBuffer = nullptr;
+	mpTransparentOrderSortingPass = nullptr;
+}
+
+void VisibilitySamplesContainer::setDepthBuffer(Buffer::SharedPtr pBuffer) {
+	if(mpDepthBuffer == pBuffer) return;
+	mpDepthBuffer = pBuffer;
+	mpDepthTexture = nullptr;
 	mpTransparentOrderSortingPass = nullptr;
 }
 

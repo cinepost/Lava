@@ -27,7 +27,7 @@ class dlldecl VisibilitySamplesContainer {
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
+		static SharedPtr create(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 0);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -53,7 +53,8 @@ class dlldecl VisibilitySamplesContainer {
 		*/
 		bool hasTransparentSamples() const;
 
-		void setDepthBufferTexture(Texture::SharedPtr pTexture);
+		void setDepthTexture(Texture::SharedPtr pTexture);
+		void setDepthBuffer(Buffer::SharedPtr pBuffer);
 
 		/** Optimize samples.
 			This function analyzes samples and sorts them to achieve better shading and cache coherency.
@@ -111,13 +112,13 @@ class dlldecl VisibilitySamplesContainer {
 		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
 		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
 
-		// Interanl state
+		// Internal state
 
 		uint2 mResolution;
 		uint 	mMaxTransparentSamplesCountPP;
 		uint 	mTransparentSamplesBufferSize;
-		uint  mOpaqueSamplesBufferSize;
-		bool  mSortingEnabled = false;
+		uint  mResolution1D;
+		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
 
 		uint3 mShadingThreadGroupSize;
@@ -145,8 +146,9 @@ class dlldecl VisibilitySamplesContainer {
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
-		//Optioanl data
+		//Optional data
 		Texture::SharedPtr  mpDepthTexture;
+		Buffer::SharedPtr  	mpDepthBuffer;
 
 		//Scratch data
 		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;

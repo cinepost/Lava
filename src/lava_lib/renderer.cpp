@@ -275,13 +275,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	const std::string shadingPassType = mRendererConfDict.getValue("shadingpasstype", std::string("deferred"));
 	const bool useVisibilitySamplesContainer = mRendererConfDict.getValue("visibilitycontainer", bool(false));
-	const bool visibilitySamplesContainerLimit = mRendererConfDict.getValue("visibilitycontainerlimit", bool(true));
-	const bool visibilitySamplesContainerSort = mRendererConfDict.getValue("visibilitycontainersort", bool(false));
+	const bool visibilitySamplesContainerLimit = mRendererConfDict.getValue("visibilitycontainerlimit", bool(false));
+	const bool visibilitySamplesContainerSort = mRendererConfDict.getValue("visibilitycontainersort", bool(true));
+	const bool visibilitySamplesContainerSortPP = mRendererConfDict.getValue("visibilitycontainersortpp", bool(true));
 
 	if(useVisibilitySamplesContainer) {
 		mpVisibilitySamplesContainer = VisibilitySamplesContainer::create(mpDevice, renderRegionDims);
 		mpVisibilitySamplesContainer->setLimitTransparentSamplesCountPP(visibilitySamplesContainerLimit);
 		mpVisibilitySamplesContainer->enableSorting(visibilitySamplesContainerSort);
+		mpVisibilitySamplesContainer->enableSortingPP(visibilitySamplesContainerSortPP);
 	} else {
 		mpVisibilitySamplesContainer = nullptr;
 	}

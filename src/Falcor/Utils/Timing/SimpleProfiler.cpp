@@ -8,16 +8,11 @@ namespace {
 
 SimpleProfiler::SimpleProfiler( const char* name ) {
 	mName = std::string( name );
-
-  //QueryPerformanceCounter( (LARGE_INTEGER *)&mTimeStart );
-	mTimeStart = Clock::now();
+  mTimeStart = Clock::now();
 }
 
 SimpleProfiler::~SimpleProfiler() {
 	TimePoint t = Clock::now();
-
-	//QueryPerformanceCounter( (LARGE_INTEGER *)&t );
-	//t -= mTimeStart;
 
 	std::map<std::string, acc_t >::iterator p = mMap.find( mName );
 	if( p == mMap.end() ) {
@@ -32,20 +27,19 @@ SimpleProfiler::~SimpleProfiler() {
 
 // Generate profile report
 void SimpleProfiler::printReport() {
-	TimePoint f = Clock::now();
+	//TimePoint f = Clock::now();
 
-	//QueryPerformanceFrequency( (LARGE_INTEGER *)&f );
-
-	printf("%20s Calls\tMean (secs)\tStdDev\n","Scope");
-	for(std::map<std::string, ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)>>>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
-		//float av = mean(p->second) / f;
-		//float stdev = sqrt( ((double) variance(p->second))  ) / f;
-
+	printf("SimpleProfiler report...\n");
+	printf("%30s Calls\tMean (secs)\tStdDev\n","Scope");
+	for(std::map<std::string, acc_t>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
 		float av = ba::mean(p->second);
 		float stdev = sqrt((double)(ba::variance(p->second)));
+		//float worst = ba::extract_result<ba::tag::max>(p->second);
+		//float best = ba::extract_result<ba::tag::min>(p->second);
 
-		printf("%20s %lu\t%f\t%f\n",p->first.c_str(), ba::count(p->second), av, stdev);
+		printf("%30s %lu\t%f\t%f\n",p->first.c_str(), ba::count(p->second), av * 0.001f, stdev * 0.001f);
 	}
+	printf("\n");
 }
 
 std::map<std::string, ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)> >> SimpleProfiler::mMap;

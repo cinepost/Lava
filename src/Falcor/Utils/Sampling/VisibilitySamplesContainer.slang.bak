@@ -35,8 +35,7 @@ struct VisibilitySamplesContainer {
     RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
 
     // Opaque depth buffer data
-    Texture2D<uint>                                 depthTexture;
-    StructuredBuffer<uint>                          depthBuffer;
+    Texture2D<uint>                                 depthBuffer;
 
     RWStructuredBuffer<uint>                        infoBuffer;
 
@@ -46,19 +45,34 @@ struct VisibilitySamplesContainer {
         // Fetch first transparent sample
         TransparentVisibilitySample rootTransparentSample;
         
+    #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pixelOffset];
+        if(sampleOffset == UINT32_MAX) return 0;
+        rootTransparentSample = transparentVisibilitySamplesBuffer[pixelOffset * maxTransparentSamplesCountPP];
+    #else
         if(!readRootTransparentVisibilitySample(pixelOffset, rootTransparentSample)) return 0;
-    
+    #endif
+
         samples[0].hitInfo = rootTransparentSample.hitInfo;
         samples[0].alpha = rootTransparentSample.alpha;
 
         // Fetch remaining transparent samples
+    #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+        uint nextSampleOffset = pixelOffset * maxTransparentSamplesCountPP + 1;
+    #else
         uint nextSampleOffset = rootTransparentSample.nextSampleOffset;
-    
+    #endif
+
         uint samplesCount = 1;
-        while(nextSampleOffset != UINT32_MAX && samplesCount < maxTransparentSamplesCountPP) {            
+        while(nextSampleOffset != UINT32_MAX && samplesCount < transparentSamplesCount(pixelOffset)) {            
             samples[samplesCount].hitInfo = transparentVisibilitySamplesBuffer[nextSampleOffset].hitInfo;
             samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
+
+        #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
+            nextSampleOffset++;
+        #else
             nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
+        #endif
         }
 
         return samplesCount;
@@ -128,24 +142,14 @@ struct VisibilitySamplesContainer {
     }
 
     bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySample sample) {
-        uint rootSampleOffset;
-        return readRootTransparentVisibilitySample(pixelOffset, sample, rootSampleOffset);
-    }
-
-
-    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySample sample, out uint rootSampleOffset) {
-        rootSampleOffset = rootTransparentSampleOffsetBufferPP[pixelOffset];
-        if(rootSampleOffset == UINT32_MAX) return false;
+        uint sampleOffset = rootTransparentSampleOffsetBufferPP[pixelOffset];
+        if(sampleOffset == UINT32_MAX) return false;
 
         #if VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP
-            if(isTransparentRootsSorted()) {
-                uint2 rootSamplePos = transparentPixelPos(pixelOffset);
-                pixelOffset = rootSamplePos.x + rootSamplePos.y * resolution.x;
-            } 
-            rootSampleOffset = (rootSampleOffset % maxTransparentSamplesCountPP) + pixelOffset * maxTransparentSamplesCountPP;
+            sampleOffset += pixelOffset * maxTransparentSamplesCountPP;
         #endif
 
-        sample = transparentVisibilitySamplesBuffer[rootSampleOffset];
+        sample = transparentVisibilitySamplesBuffer[sampleOffset];
         return true;
     }
 
@@ -282,10 +286,6 @@ struct VisibilitySamplesContainer {
         // When strict samples count pp is enabled we can use offset buffer as simple samples counter
         return min(rootTransparentSampleOffsetBufferPP[pixelOffset] + 1, maxTransparentSamplesCountPP);
 #else
-        if(isTransparentRootsSorted()) {
-            uint2 samplePos = transparentPixelPos(pixelOffset);
-            pixelOffset = samplePos.x + samplePos.y * resolution.x;
-        } 
         return transparentVisibilitySamplesCountBufferPP[pixelOffset];
 #endif
     }

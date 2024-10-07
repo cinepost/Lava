@@ -70,5 +70,5 @@ enum class VisibilitySamplesContainerFlags : uint32_t {
 
     OpaqueSamplesSorted          = 0x1,   ///< Indicates that opaque samples are sorted into separate buffer.
     TransparentRootsSorted       = 0x2,   ///< Indicates that transparent roots are sorted.
-    TransparentListsSorted       = 0x3,   ///< Indicates that transparent sample lists are sorted.
+    TransparentListsSorted       = 0x4,   ///< Indicates that transparent sample lists are sorted.
 };

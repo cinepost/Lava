@@ -101,14 +101,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         //gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isTransparentRootsSorted() ? 1 : 0, 1);
         //return;
 
-        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransaprentSamplesList(pixelOffset, transparenSamplesList);
+        const uint transparentVisibilitySamplesCount = gVisibilityContainer.fetchSortedTransparentSamplesList(pixelOffset, transparenSamplesList);
         if(transparentVisibilitySamplesCount == 0) return;
 
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenSamplesList[layer].hitInfo);
-            sampleAlpha = transparenSamplesList[layer].alpha;
+            hit = HitInfo(transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].hitInfo);
+            sampleAlpha = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].alpha;
     #else
         pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
         

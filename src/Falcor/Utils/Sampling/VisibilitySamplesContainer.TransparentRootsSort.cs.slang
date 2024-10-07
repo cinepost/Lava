@@ -17,7 +17,7 @@ RWStructuredBuffer<uint> gTransparentIndirectionBuffer;
 
 [numthreads(64, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-    if(dispatchThreadId.x >= gVisibilityContainer.opaqueSamplesBufferSize) return;
+    if(dispatchThreadId.x >= gVisibilityContainer.resolution1D) return;
 
     uint procPixelOffset = dispatchThreadId.x;
 

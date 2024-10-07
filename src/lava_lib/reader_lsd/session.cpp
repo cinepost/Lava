@@ -272,8 +272,9 @@ bool Session::cmdRaytrace() {
 	confDict["primaryraygentype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "primaryraygentype", std::string("hwraster"));
 	confDict["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
 	confDict["visibilitycontainer"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainer", bool(false));
-	confDict["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(true));
+	confDict["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(false));
 	confDict["visibilitycontainersort"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersort", bool(true));
+	confDict["visibilitycontainersortpp"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersortpp", bool(true));
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();

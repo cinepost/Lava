@@ -274,7 +274,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     // Optional visibility container
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->setDepthBuffer(mpLocalDepthBuffer);
+        mpVisibilitySamplesContainer->beginFrame();
+    }
 
     // Create rasterization pass.
     if (!mpComputeRasterizerPass || mDirty) {
