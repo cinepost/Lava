@@ -38,7 +38,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         samplesCount++;
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    //GroupMemoryBarrierWithGroupSync();
 
     if(samplesCount < 2) return;
 
@@ -69,5 +69,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         gVisibilityContainer.transparentVisibilitySamplesBuffer[offsetsList[i]] = samplesList[i];
     }
 
-    GroupMemoryBarrierWithGroupSync();
+    //GroupMemoryBarrierWithGroupSync();
 }

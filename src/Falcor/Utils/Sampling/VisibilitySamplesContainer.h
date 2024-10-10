@@ -21,6 +21,9 @@ namespace Falcor {
 
 class dlldecl VisibilitySamplesContainer {
 	public:
+		static const bool kDefaultStoreNormals = false;
+		static const bool kDefaultLimitTransparentSamplesCountPP = false;
+
 		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
 		using SharedConstPtr = std::shared_ptr<const VisibilitySamplesContainer>;
 
@@ -53,8 +56,11 @@ class dlldecl VisibilitySamplesContainer {
 		*/
 		bool hasTransparentSamples() const;
 
-		void setDepthTexture(Texture::SharedPtr pTexture);
-		void setDepthBuffer(Buffer::SharedPtr pBuffer);
+
+		void setExternalOpaqueSamplesTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueCombinedNormalsTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueDepthTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueDepthBuffer(const Buffer::SharedPtr& pBuffer);
 
 		/** Optimize samples.
 			This function analyzes samples and sorts them to achieve better shading and cache coherency.
@@ -98,6 +104,11 @@ class dlldecl VisibilitySamplesContainer {
 
 		void  enableSorting(bool enabled);
 		void  enableSortingPP(bool enabled);
+		void  storeCombinedNormals(bool enabled);
+
+		bool  hasCombinedNormals() const;
+
+		~VisibilitySamplesContainer();
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
@@ -120,12 +131,13 @@ class dlldecl VisibilitySamplesContainer {
 		uint  mResolution1D;
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
+		bool  mStoreCombinedNormals = kDefaultStoreNormals;
 
 		uint3 mShadingThreadGroupSize;
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
-    bool  mLimitTransparentSamplesCountPP = false;
+    bool  mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
 		Device::SharedPtr mpDevice = nullptr;
 		Scene::SharedPtr  mpScene;
@@ -138,17 +150,21 @@ class dlldecl VisibilitySamplesContainer {
 		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
 
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
+		Buffer::SharedPtr   mpOpaqueCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
 
 		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
+		Buffer::SharedPtr   mpTransparentCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
-		//Optional data
-		Texture::SharedPtr  mpDepthTexture;
-		Buffer::SharedPtr  	mpDepthBuffer;
+		// Optional external resources
+		Texture::SharedPtr  mpOpaqueSamplesExternalTexture;
+		Texture::SharedPtr  mpOpaqueCombinedNormalsExternalTexture;
+		Texture::SharedPtr  mpOpaqueDepthExternalTexture;
+		Buffer::SharedPtr   mpOpaqueDepthExternalBuffer;
 
 		//Scratch data
 		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;

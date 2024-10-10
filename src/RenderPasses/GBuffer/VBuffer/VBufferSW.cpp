@@ -226,6 +226,16 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = (mpScene->getCamera()->getApertureRadius() > 0.f) ? 2u : 0u;
     }
 
+    // Configure visibility samples container
+    if(mpVisibilitySamplesContainer) {
+        // Use already allocated resources to save some memory
+        mpVisibilitySamplesContainer->setExternalOpaqueDepthBuffer(mpLocalDepthBuffer);
+        //mpVisibilitySamplesContainer->setOpaqueSamplesTexture(renderData[kVBufferName]->asTexture());
+
+        bool storeCombinedNormals = mUseSubdivisions || mUseDisplacement; 
+        mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
+    }
+
     executeCompute(pRenderContext, renderData);
     mDirty = false;
 }
@@ -275,7 +285,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     // Optional visibility container
     if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->setDepthBuffer(mpLocalDepthBuffer);
         mpVisibilitySamplesContainer->beginFrame();
     }
 

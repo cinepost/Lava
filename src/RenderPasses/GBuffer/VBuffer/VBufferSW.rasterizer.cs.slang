@@ -693,7 +693,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
                 if( uv.x < 0.f) continue;
             #endif
-                
+
             #if defined(USE_HIGHP_DEPTH)
                 #if (USE_SRT == 1)
                     double z = pt0.z * mti.bary.x + pt1.z * mti.bary.y + pt2.z * mti.bary.z;
@@ -794,36 +794,39 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
             if ( depth_value < out_value) {
 
+                float3 faceNormalW = tri.getFaceNormalW();
+                uint3 combinedNormal = uint3(0);
+                if(gsSubdivide) {
+                    float3 normalW = tri.getNormalW(uv);
+                    
+                    combinedNormal = {
+                        packSnorm16(faceNormalW.x) | (floatToSnorm16(normalW.x) << 16),
+                        packSnorm16(faceNormalW.y) | (floatToSnorm16(normalW.y) << 16),
+                        packSnorm16(faceNormalW.z) | (floatToSnorm16(normalW.z) << 16)
+                    };
+                }
+
     #if defined(USE_VISIBILITY_CONTAINER)
                 if(isOpaque) {
-                    gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()));
+                    gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), combinedNormal);
                     gVBufferSW.writeDepth(pixelPos, z);
                 } else {
-                    gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);
+                    gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, combinedNormal);
                     gVBufferSW.writeAUX(pixelPos, float4(0.0, opacity, 0.0, 1.0));
                 }
     #else
                 gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
                 gVBufferSW.writeDepth(pixelPos, z);
+    
+                #if is_valid(gNormW)
+                    if(gsSubdivide) {
+                        gVBufferSW.writeNormal(pixelPos, combinedNormal);
+                    }
+                #endif
     #endif
 
                 #if is_valid(gTextureGrads)
                     gVBufferSW.writeTexGrads(pixelPos, float4(gradX, gradY));
-                #endif
-
-                #if is_valid(gNormW)
-                    if(gsSubdivide) {
-                        float3 normalW = tri.getNormalW(uv);
-                        
-                        float3 faceNormalW = tri.getFaceNormalW();
-
-                        uint3 combinedNormal = {
-                            packSnorm16(faceNormalW.x) | (floatToSnorm16(normalW.x) << 16),
-                            packSnorm16(faceNormalW.y) | (floatToSnorm16(normalW.y) << 16),
-                            packSnorm16(faceNormalW.z) | (floatToSnorm16(normalW.z) << 16)
-                        };
-                        gVBufferSW.writeNormal(pixelPos, combinedNormal);
-                    }
                 #endif
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
