@@ -64,7 +64,7 @@ uniform FalseColorGenerator gFalseColorGenerator;
 uniform HeatMapColorGenerator gHeatMapColorGenerator;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+static TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 #endif
 
 #if defined(USE_VISIBILITY_CONTAINER)
@@ -115,7 +115,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         //gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = float4(pixelPos.x, pixelPos.y, gVisibilityContainer.isOpaqueSorted() ? 1 : 0, 1);
         //return;
 
-        hit = gVisibilityContainer.readOpaqueHit(pixelOffset);
+        OpaqueVisibilitySample sample = gVisibilityContainer.readOpaqueSample(pixelOffset);
+        hit = HitInfo(sample.hitInfo);
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);

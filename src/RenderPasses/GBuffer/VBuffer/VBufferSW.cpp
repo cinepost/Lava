@@ -226,13 +226,18 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = (mpScene->getCamera()->getApertureRadius() > 0.f) ? 2u : 0u;
     }
 
+    createMeshletDrawList();
+    if(!mpMeshletDrawListBuffer) return;
+
+    createBuffers();
+
     // Configure visibility samples container
     if(mpVisibilitySamplesContainer) {
         // Use already allocated resources to save some memory
         mpVisibilitySamplesContainer->setExternalOpaqueDepthBuffer(mpLocalDepthBuffer);
         //mpVisibilitySamplesContainer->setOpaqueSamplesTexture(renderData[kVBufferName]->asTexture());
 
-        bool storeCombinedNormals = mUseSubdivisions || mUseDisplacement; 
+        bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement; 
         mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
     }
 
@@ -251,10 +256,6 @@ Dictionary VBufferSW::getScriptingDictionary() {
 }
 
 void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
-    createMeshletDrawList();
-    if(!mpMeshletDrawListBuffer) return;
-
-    createBuffers();
     createJitterTexture();
 
     if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
@@ -556,6 +557,7 @@ void VBufferSW::createMeshletDrawList() {
     mOpaqueMeshletsCount = 0;
     mTransparentMeshletsCount = 0;
     mTransparentMeshletsStartOffset = kInvalidIndex;
+    mSubdivMeshletsCount = 0;
 
     std::vector<MeshletDraw> meshletsDrawList;
     std::vector<MeshletDraw> nonOpaqueMeshletsDrawList;
@@ -566,10 +568,12 @@ void VBufferSW::createMeshletDrawList() {
         const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
         if(instanceData.getType() != GeometryType::TriangleMesh) continue; // Only triangles now
 
+        const bool isSubdivInstance = instanceData.isSubdividable();
         const uint32_t meshID = instanceData.geometryID;
         if(mpScene->hasMeshlets(meshID)) {
             const MeshletGroup& meshletGroup = mpScene->meshletGroup(meshID);
             if(meshletGroup.meshlets_count == 0) continue;
+            if(isSubdivInstance) mSubdivMeshletsCount++;
 
             const MeshDesc& mesh = mpScene->getMesh(meshID);
             
@@ -654,7 +658,8 @@ void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     } else {
         mpCamera = nullptr;
     }
-
+    
+    mSubdivMeshletsCount = 0;
     createPrograms();
 }
 

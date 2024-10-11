@@ -25,29 +25,29 @@ struct VisibilitySamplesContainer {
     uint32_t    flags;                      
     
     // Opaque samples data
-    RWStructuredBuffer<PackedHitInfo>               opaqueVisibilitySamplesBuffer;
-    RWTexture2D<PackedHitInfo>                      opaqueVisibilitySamplesExternalTexture;
+    RWStructuredBuffer<PackedHitInfo>                   opaqueVisibilitySamplesBuffer;
+    RWTexture2D<PackedHitInfo>                          opaqueVisibilitySamplesExternalTexture;
 
-    RWStructuredBuffer<uint3>                       opaqueCombinedNormalsBuffer;
-    RWTexture2D<uint3>                              opaqueCombinedNormalsExternalTexture;
+    RWStructuredBuffer<uint3>                           opaqueCombinedNormalsBuffer;
+    RWTexture2D<uint3>                                  opaqueCombinedNormalsExternalTexture;
 
-    RWStructuredBuffer<uint>                        opaqueVisibilitySamplesPositionBufferPP;
-    RWTexture2D<uint>                               opaqueExternalDepthTexture;
+    RWStructuredBuffer<uint>                            opaqueVisibilitySamplesPositionBufferPP;
+    RWTexture2D<uint>                                   opaqueExternalDepthTexture;
 
     // Transparent samples data
-    RWStructuredBuffer<uint>                        rootTransparentSampleOffsetBufferPP;
-    RWStructuredBuffer<uint>                        transparentVisibilitySamplesPositionBufferPP;
-    RWStructuredBuffer<uint>                        transparentVisibilitySamplesCountBufferPP;
-    RWStructuredBuffer<TransparentVisibilitySample> transparentVisibilitySamplesBuffer;
-    RWStructuredBuffer<uint3>                       transparentCombinedNormalsBuffer;
+    RWStructuredBuffer<uint>                            rootTransparentSampleOffsetBufferPP;
+    RWStructuredBuffer<uint>                            transparentVisibilitySamplesPositionBufferPP;
+    RWStructuredBuffer<uint>                            transparentVisibilitySamplesCountBufferPP;
+    RWStructuredBuffer<TransparentVisibilitySampleData> transparentVisibilitySamplesBuffer;
+    RWStructuredBuffer<uint3>                           transparentCombinedNormalsBuffer;
 
-    RWStructuredBuffer<uint>                        infoBuffer;
+    RWStructuredBuffer<uint>                            infoBuffer;
 
-    uint fetchTransparentSamplesList(uint pixelOffset, out SortedTransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
+    uint fetchTransparentSamplesList(uint pixelOffset, out TransparentVisibilitySample samples[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP]) {
         if(!hasTransparentSamples()) return 0;
 
         // Fetch first transparent sample
-        TransparentVisibilitySample rootTransparentSample;
+        TransparentVisibilitySampleData rootTransparentSample;
         
         if(!readRootTransparentVisibilitySample(pixelOffset, rootTransparentSample)) return 0;
     
@@ -81,7 +81,7 @@ struct VisibilitySamplesContainer {
         if(!hasTransparentSamples()) return 0;
 
         // Fetch first transparent sample
-        TransparentVisibilitySample rootTransparentSample;
+        TransparentVisibilitySampleData rootTransparentSample;
         
         if(!readRootTransparentVisibilitySample2D(pixelPos, rootTransparentSample)) return 0;
         
@@ -105,15 +105,23 @@ struct VisibilitySamplesContainer {
         return samplesCount;
     }
 
-    HitInfo readOpaqueHit(uint pixelOffset) {
-        return HitInfo(opaqueVisibilitySamplesBuffer[pixelOffset]);
+    uint3 __readOpaqueCombinedNormals(uint pixelOffset) {
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
+            return opaqueCombinedNormalsBuffer[pixelOffset];
+        #else
+            return uint3(0);
+        #endif
     }
 
-    HitInfo readOpaqueHit2D(uint2 pixelPos) {
+    OpaqueVisibilitySample readOpaqueSample(uint pixelOffset) {
+        return {opaqueVisibilitySamplesBuffer[pixelOffset]), __readOpaqueCombinedNormals(pixelOffset)};
+    }
+
+    OpaqueVisibilitySample readOpaqueSample2D(uint2 pixelPos) {
         if(isOpaqueSorted()) return {};
 
         uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
-        return readOpaqueHit(pixelOffset);
+        return readOpaqueSample(pixelOffset);
     }
 
     void invalidateOpaqueSample(uint pixelOffset) {
@@ -131,13 +139,13 @@ struct VisibilitySamplesContainer {
         #endif
     }
 
-    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySample sample) {
+    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySampleData sample) {
         uint rootSampleOffset;
         return readRootTransparentVisibilitySample(pixelOffset, sample, rootSampleOffset);
     }
 
 
-    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySample sample, out uint rootSampleOffset) {
+    bool readRootTransparentVisibilitySample(uint pixelOffset, inout TransparentVisibilitySampleData sample, out uint rootSampleOffset) {
         rootSampleOffset = rootTransparentSampleOffsetBufferPP[pixelOffset];
         if(rootSampleOffset == UINT32_MAX) return false;
 
@@ -153,7 +161,7 @@ struct VisibilitySamplesContainer {
         return true;
     }
 
-    bool readRootTransparentVisibilitySample2D(uint2 pixelPos, inout TransparentVisibilitySample sample) {
+    bool readRootTransparentVisibilitySample2D(uint2 pixelPos, inout TransparentVisibilitySampleData sample) {
         if(isTransparentRootsSorted()) {
             return false;
         }
@@ -162,7 +170,7 @@ struct VisibilitySamplesContainer {
         return readRootTransparentVisibilitySample(pixelOffset, sample);
     }
 
-    TransparentVisibilitySample readTransparentVisibilitySample(uint offset) {
+    TransparentVisibilitySampleData readTransparentVisibilitySample(uint offset) {
         return transparentVisibilitySamplesBuffer[offset];
     }
 
@@ -177,7 +185,7 @@ struct VisibilitySamplesContainer {
 
         infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION] = 1;
 
-        TransparentVisibilitySample transparentSample = {};
+        TransparentVisibilitySampleData transparentSample = {};
         transparentSample.hitInfo = hit.getData();
         transparentSample.depth = depth;
         transparentSample.alpha = alpha;

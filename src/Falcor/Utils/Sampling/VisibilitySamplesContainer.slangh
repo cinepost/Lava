@@ -24,7 +24,7 @@ BEGIN_NAMESPACE_FALCOR
 // alpha  8 bit
 
 
-struct TransparentVisibilitySample {
+struct TransparentVisibilitySampleData {
     uint64_t        depth;
     float           alpha;
     uint            nextSampleOffset;
@@ -36,7 +36,7 @@ struct TransparentVisibilitySample {
 #endif
 
 #ifdef HOST_CODE
-    TransparentVisibilitySample() {
+    TransparentVisibilitySampleData() {
         depth = 0;
         alpha = 0.0f;
         nextSampleOffset = UINT32_MAX;
@@ -52,14 +52,53 @@ struct TransparentVisibilitySample {
 #endif
 };
 
-struct SortedTransparentVisibilitySample {
+struct OpaqueVisibilitySample {
     #ifdef HOST_CODE
         uint4           hitInfo;
     #else // !HOST_CODE
         PackedHitInfo   hitInfo;
     #endif
 
-    float16_t alpha;
+    uint3               combinedNormal;
+
+#ifndef HOST_CODE
+    bool hasCombinedNormal() CONST_FUNCTION {
+        return !any(combinedNormal != uint3(0));
+    }
+
+    OpaqueVisibilitySample() {
+        hitInfo = uint4(0);
+        combinedNormal = uint3(0);
+    }
+
+    OpaqueVisibilitySample(PackedHitInfo _hitInfo, uint3 _combinedNormal) {
+        hitInfo = _hitInfo;
+        combinedNormal = _combinedNormal;
+    }
+#endif
+};
+
+struct TransparentVisibilitySample {
+    #ifdef HOST_CODE
+        uint4           hitInfo;
+    #else // !HOST_CODE
+        PackedHitInfo   hitInfo;
+    #endif
+
+    uint3               combinedNormal;
+    float16_t           alpha;
+    float16_t           visibilityWeight;
+
+#ifndef HOST_CODE
+    bool hasCombinedNormal() CONST_FUNCTION {
+        return !any(combinedNormal != uint3(0));
+    }
+
+    TransparentVisibilitySample() {
+        hitInfo = uint4(0);
+        combinedNormal = uint3(0);
+    }
+#endif
 };
 
 END_NAMESPACE_FALCOR

@@ -221,7 +221,7 @@ void VisibilitySamplesContainer::createBuffers() {
 	}
 
 	if(!mpTransparentVisibilitySamplesBuffer || mpTransparentVisibilitySamplesBuffer->getElementCount() != mTransparentSamplesBufferSize) {
-		mpTransparentVisibilitySamplesBuffer = Buffer::createStructured(mpDevice, sizeof(TransparentVisibilitySample), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesBuffer = Buffer::createStructured(mpDevice, sizeof(TransparentVisibilitySampleData), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
 		mpTransparentVisibilitySamplesBuffer->setName("VisibilitySamplesContainer::transparentVisibilitySamplesBuffer");
 	}
 
@@ -449,12 +449,39 @@ void VisibilitySamplesContainer::storeCombinedNormals(bool enabled) {
 
 bool VisibilitySamplesContainer::hasCombinedNormals() const {
 	 if(!mStoreCombinedNormals || !mpTransparentCombinedNormalsBuffer || !mpOpaqueCombinedNormalsBuffer) return false;
-
 }
 
 void VisibilitySamplesContainer::printStats() const {
+	size_t memUsageOpaque = 0;
+	size_t memUsageTransparent = 0;
 	size_t memUsage = 0;
-	memUsage += mpOpaqueSamplesBuffer ? mpOpaqueSamplesBuffer->getSize() : 0;
+
+	memUsageOpaque += mpOpaqueSamplesBuffer ? mpOpaqueSamplesBuffer->getSize() : 0;
+	memUsageOpaque += mpOpaqueCombinedNormalsBuffer ? mpOpaqueCombinedNormalsBuffer->getSize() : 0;
+	memUsageOpaque += mpOpaqueVisibilitySamplesPositionBufferPP ? mpOpaqueVisibilitySamplesPositionBufferPP->getSize() : 0;
+	
+	memUsageTransparent += mpRootTransparentSampleOffsetBufferPP ? mpRootTransparentSampleOffsetBufferPP->getSize() : 0;
+	memUsageTransparent += mpTransparentVisibilitySamplesCountBufferPP ? mpTransparentVisibilitySamplesCountBufferPP->getSize() : 0;
+	memUsageTransparent += mpTransparentVisibilitySamplesPositionBufferPP ? mpTransparentVisibilitySamplesPositionBufferPP->getSize() : 0;
+	memUsageTransparent += mpTransparentVisibilitySamplesBuffer ? mpTransparentVisibilitySamplesBuffer->getSize() : 0;
+	memUsageTransparent += mpTransparentCombinedNormalsBuffer ? mpTransparentCombinedNormalsBuffer->getSize() : 0;
+
+	memUsage = memUsageOpaque + memUsageTransparent;
+
+	LLOG_INF << "VisibilitySamplesContainer device opaque samples memory usage: " << uint32_t(memUsageOpaque >> 20) << " MB.";
+	LLOG_INF << "VisibilitySamplesContainer device transparent samples memory usage: " << uint32_t(memUsageTransparent >> 20) << " MB.";
+	LLOG_INF << "VisibilitySamplesContainer device total memory usage: " << uint32_t(memUsage >> 20) << " MB.";
+
+/*
+	printf("mpOpaqueSamplesBuffer size %zu\n", mpOpaqueSamplesBuffer ? mpOpaqueSamplesBuffer->getSize() : zero);
+	printf("mpOpaqueCombinedNormalsBuffer size %zu\n", mpOpaqueCombinedNormalsBuffer ? mpOpaqueCombinedNormalsBuffer->getSize() : zero);
+	printf("mpOpaqueVisibilitySamplesPositionBufferPP size %zu\n", mpOpaqueVisibilitySamplesPositionBufferPP ? mpOpaqueVisibilitySamplesPositionBufferPP->getSize() : zero);
+	printf("mpRootTransparentSampleOffsetBufferPP size %zu\n", mpRootTransparentSampleOffsetBufferPP ? mpRootTransparentSampleOffsetBufferPP->getSize() : zero);
+	printf("mpTransparentVisibilitySamplesCountBufferPP size %zu\n", mpTransparentVisibilitySamplesCountBufferPP ? mpTransparentVisibilitySamplesCountBufferPP->getSize() : zero);
+	printf("mpTransparentVisibilitySamplesPositionBufferPP size %zu\n", mpTransparentVisibilitySamplesPositionBufferPP ? mpTransparentVisibilitySamplesPositionBufferPP->getSize() : zero);
+	printf("mpTransparentVisibilitySamplesBuffer size %zu\n", mpTransparentVisibilitySamplesBuffer ? mpTransparentVisibilitySamplesBuffer->getSize() : zero);
+	printf("mpTransparentCombinedNormalsBuffer size %zu\n", mpTransparentCombinedNormalsBuffer ? mpTransparentCombinedNormalsBuffer->getSize() : zero);
+*/
 }
 
 VisibilitySamplesContainer::~VisibilitySamplesContainer() {

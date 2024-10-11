@@ -107,6 +107,7 @@ class PASS_API VBufferSW : public GBufferBase {
 		bool mUseSubdivisions = false;
 		bool mUseDisplacement = false;
 		bool mSubdivDataReady = false;
+		uint mSubdivMeshletsCount = 0u;
 
 		float mMinScreenEdgeLen = 4.0f;
 
