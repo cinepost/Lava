@@ -86,6 +86,7 @@ namespace {
     const std::string kOuputTime       = "time";
     const std::string kOuputAUX        = "aux";
     const std::string kOutputDrawCount = "drawCount";
+    const std::string kOutputNormal    = "normW";
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
@@ -108,7 +109,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraSubdChannels = {
-        { "normW",              "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
+        { kOutputNormal,         "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
     };
 };
 
@@ -235,14 +236,17 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
     if(mpVisibilitySamplesContainer) {
         // Use already allocated resources to save some memory
         mpVisibilitySamplesContainer->setExternalOpaqueDepthBuffer(mpLocalDepthBuffer);
-        //mpVisibilitySamplesContainer->setOpaqueSamplesTexture(renderData[kVBufferName]->asTexture());
+        //mpVisibilitySamplesContainer->setExternalOpaqueSamplesTexture(renderData[kVBufferName]->asTexture());
+        //mpVisibilitySamplesContainer->setExternalOpaqueCombinedNormalsTexture(renderData[kOutputNormal]->asTexture());
 
-        bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement; 
+        bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement;
         mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
     }
 
     executeCompute(pRenderContext, renderData);
     mDirty = false;
+
+    pRenderContext->flush(true);
 }
 
 Dictionary VBufferSW::getScriptingDictionary() {

@@ -808,10 +808,18 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 
     #if defined(USE_VISIBILITY_CONTAINER)
                 if(isOpaque) {
-                    gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), combinedNormal);
+                    if(gsSubdivide) {
+                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), uint4(combinedNormal, 0));
+                    } else {
+                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()));
+                    }
                     gVBufferSW.writeDepth(pixelPos, z);
                 } else {
-                    gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, combinedNormal);
+                    if(gsSubdivide) {
+                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, uint4(combinedNormal, 0));
+                    } else {
+                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);
+                    }
                     gVBufferSW.writeAUX(pixelPos, float4(0.0, opacity, 0.0, 1.0));
                 }
     #else

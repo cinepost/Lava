@@ -7,6 +7,7 @@
 #include <numeric>
 #include <map>
 #include <chrono>
+#include <atomic>
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Timing/CpuTimer.h"
@@ -38,6 +39,8 @@ class SimpleProfiler {
 		static std::map <std::string, acc_t> mMap;
 		std::string mName;
 		TimePoint mTimeStart;
+
+		static std::atomic<size_t> mCallerNameWidth;
 };
 
 }  // namespace Falcor

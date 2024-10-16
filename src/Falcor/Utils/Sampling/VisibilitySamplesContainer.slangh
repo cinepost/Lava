@@ -2,6 +2,11 @@
 #include "Utils/Math/MathConstants.slangh"
 #include "Utils/HostDeviceShared.slangh"
 
+#ifndef HOST_CODE
+import Utils.Math.PackedFormats;
+import Utils.Math.FormatConversion;
+#endif
+
 #define VISIBILITY_CONTAINER_INFOBUFFER_FLAGS_LOCATION                          0
 #define VISIBILITY_CONTAINER_INFOBUFFER_OPAQUE_SAMPLES_COUNT_LOCATION           1
 #define VISIBILITY_CONTAINER_INFOBUFFER_TRANSPARENT_SAMPLES_COUNT_LOCATION      2
@@ -30,9 +35,9 @@ struct TransparentVisibilitySampleData {
     uint            nextSampleOffset;
 
 #ifdef HOST_CODE
-    uint4           hitInfo;
+    uint4           packedHitInfo;
 #else // !HOST_CODE
-    PackedHitInfo   hitInfo;
+    PackedHitInfo   packedHitInfo;
 #endif
 
 #ifdef HOST_CODE
@@ -40,63 +45,87 @@ struct TransparentVisibilitySampleData {
         depth = 0;
         alpha = 0.0f;
         nextSampleOffset = UINT32_MAX;
-        hitInfo = uint4(0);
+        packedHitInfo = uint4(0);
     }
 #else
     __init() {
         depth = 0;
         alpha = 0.0f;
         nextSampleOffset = UINT32_MAX;
-        hitInfo = {};
+        packedHitInfo = {};
     }
 #endif
 };
 
 struct OpaqueVisibilitySample {
     #ifdef HOST_CODE
-        uint4           hitInfo;
+        uint4           packedHitInfo;
     #else // !HOST_CODE
-        PackedHitInfo   hitInfo;
+        PackedHitInfo   packedHitInfo;
     #endif
 
-    uint3               combinedNormal;
+    uint4               packedCombinedNormal;
 
 #ifndef HOST_CODE
     bool hasCombinedNormal() CONST_FUNCTION {
-        return !any(combinedNormal != uint3(0));
+        return !any(packedCombinedNormal != uint4(0));
     }
 
-    OpaqueVisibilitySample() {
-        hitInfo = uint4(0);
-        combinedNormal = uint3(0);
+    float3 getNormalW() CONST_FUNCTION {
+        return {unpackSnorm16(packedCombinedNormal.x >> 16), unpackSnorm16(packedCombinedNormal.y >> 16), unpackSnorm16(packedCombinedNormal.z >> 16)};
     }
 
-    OpaqueVisibilitySample(PackedHitInfo _hitInfo, uint3 _combinedNormal) {
-        hitInfo = _hitInfo;
-        combinedNormal = _combinedNormal;
+    float3 getFaceNormalW() CONST_FUNCTION {
+        return {unpackSnorm16(packedCombinedNormal.x & 0x0000ffff), unpackSnorm16(packedCombinedNormal.y & 0x0000ffff), unpackSnorm16(packedCombinedNormal.z & 0x0000ffff)};
+    }
+
+    HitInfo getHitInfo() CONST_FUNCTION {
+        return HitInfo(packedHitInfo);
+    }
+
+    __init() {
+        packedHitInfo = uint4(0);
+        packedCombinedNormal = uint4(0);
+    }
+
+    __init(PackedHitInfo _hitInfo, uint4 _packedCombinedNormal) {
+        packedHitInfo = _hitInfo;
+        packedCombinedNormal = _packedCombinedNormal;
     }
 #endif
 };
 
 struct TransparentVisibilitySample {
     #ifdef HOST_CODE
-        uint4           hitInfo;
+        uint4           packedHitInfo;
     #else // !HOST_CODE
-        PackedHitInfo   hitInfo;
+        PackedHitInfo   packedHitInfo;
     #endif
 
-    uint3               combinedNormal;
+    uint4               packedCombinedNormal;
     float16_t           alpha;
     float16_t           visibilityWeight;
 
 #ifndef HOST_CODE
     bool hasCombinedNormal() CONST_FUNCTION {
-        return !any(combinedNormal != uint3(0));
+        return !any(packedCombinedNormal != uint4(0));
     }
 
-    TransparentVisibilitySample() {
-        hitInfo = uint4(0);
-        combinedNormal = uint3(0);
+    float3 getNormalW() CONST_FUNCTION {
+        return {unpackSnorm16(packedCombinedNormal.x >> 16), unpackSnorm16(packedCombinedNormal.y >> 16), unpackSnorm16(packedCombinedNormal.z >> 16)};
+    }
+
+    float3 getFaceNormalW() CONST_FUNCTION {
+        return {unpackSnorm16(packedCombinedNormal.x & 0x0000ffff), unpackSnorm16(packedCombinedNormal.y & 0x0000ffff), unpackSnorm16(packedCombinedNormal.z & 0x0000ffff)};
+    }
+
+    HitInfo getHitInfo() CONST_FUNCTION {
+        return HitInfo(packedHitInfo);
+    }
+
+    __init() {
+        packedHitInfo = uint4(0);
+        packedCombinedNormal = uint4(0);
     }
 #endif
 };
@@ -110,4 +139,5 @@ enum class VisibilitySamplesContainerFlags : uint32_t {
     OpaqueSamplesSorted          = 0x1,   ///< Indicates that opaque samples are sorted into separate buffer.
     TransparentRootsSorted       = 0x2,   ///< Indicates that transparent roots are sorted.
     TransparentListsSorted       = 0x4,   ///< Indicates that transparent sample lists are sorted.
+    HasCombinedNormals           = 0x8,
 };

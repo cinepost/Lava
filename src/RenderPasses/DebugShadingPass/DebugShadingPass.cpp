@@ -228,6 +228,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     if(mpVisibilitySamplesContainer) {
         // Visibility container mode opaque samples shading
         mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+        //mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     } else {
         // Legacy (visibility buffer) mode shading
         mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
@@ -239,11 +240,14 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         cb_var["gFrameDim"] = mFrameDim;
 
         mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
+        //mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     }
 
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
 
     mDirty = false;
+
+    pContext->flush(true);
 }
 
 void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) {

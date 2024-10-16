@@ -13,7 +13,7 @@ cbuffer CB {
 StructuredBuffer<uint> gOpaqueIndirectionBuffer;
 StructuredBuffer<uint> gTransparentIndirectionBuffer;
 
-static TransparentVisibilitySample samplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+static TransparentVisibilitySampleData samplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 static uint offsetsList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 
 [numthreads(GROUP_SIZE_X, 1, 1)]
@@ -48,8 +48,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         uint swaps = 0;
         for(uint i = 0; i < (samplesCount - 1); ++i) {
             if(samplesList[i].depth > samplesList[i+1].depth) {
-                TransparentVisibilitySample tmp_sample1 = samplesList[i];
-                TransparentVisibilitySample tmp_sample2 = samplesList[i+1];
+                TransparentVisibilitySampleData tmp_sample1 = samplesList[i];
+                TransparentVisibilitySampleData tmp_sample2 = samplesList[i+1];
                 samplesList[i] = tmp_sample2;
                 samplesList[i+1] = tmp_sample1;
                 swaps++;

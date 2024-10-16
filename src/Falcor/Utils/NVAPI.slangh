@@ -26,6 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#ifndef FALCOR_NVAPI_AVAILABLE
+#define FALCOR_NVAPI_AVAILABLE 0
+#endif
+
 #if FALCOR_NVAPI_AVAILABLE
 #include "nvapi/nvShaderExtnEnums.h"
 #endif

@@ -550,6 +550,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     HitInfo hit;
     float sampleAlpha = 1.0f;
+    float3 sampleNormalW = float3(0.f);
+    float3 sampleFaceNormalW = float3(0.f);
 
     AOVData aov_data = AOVData.create();
 
@@ -563,12 +565,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].hitInfo);
-            sampleAlpha = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].alpha;
+            TransparentVisibilitySample sample = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1];
+            hit = sample.getHitInfo();
+            sampleAlpha = sample.alpha;
+            sampleNormalW = sample.getNormalW();
+            sampleFaceNormalW = sample.getFaceNormalW();
     #else
         pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
-        
-        hit = gVisibilityContainer.readOpaqueHit(pixelOffset);
+
+        OpaqueVisibilitySample sample = gVisibilityContainer.readOpaqueSample(pixelOffset);
+        hit = sample.getHitInfo();
+        sampleNormalW = sample.getNormalW();
+        sampleFaceNormalW = sample.getFaceNormalW();
     #endif
 #else
     hit = HitInfo(gVbuffer[pixelPos]);
@@ -603,33 +611,33 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     ShadingData primaryShadingData;
 
     if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
-    
-    VertexData v = gScene.getVertexData(primaryTriangleHit);
 
-#if is_valid(gNormW)
-    if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
+    VertexData v;
+
+#if defined(USE_VISIBILITY_CONTAINER)
+    v = gScene.getVertexData(primaryTriangleHit);
+
+    if( gScene.isObjectSubdividable(primaryTriangleHit.instanceID) ) {
+        v.normalW = sampleNormalW;
+        v.faceNormalW = sampleFaceNormalW;
+    }
+
+    const uint materialID = gScene.getMaterialID(primaryTriangleHit);
+    primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
+#else
+    if (is_valid(gNormW) && gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
+        v = gScene.getVertexData(primaryTriangleHit);
 
         uint3 packedNormal = gNormW[pixelPos].xyz;
 
-        v.normalW = {
-            unpackSnorm16(packedNormal.x >> 16),
-            unpackSnorm16(packedNormal.y >> 16),
-            unpackSnorm16(packedNormal.z >> 16)
-        };
-
-        v.faceNormalW = {
-            unpackSnorm16(packedNormal.x & 0x0000ffff),
-            unpackSnorm16(packedNormal.y & 0x0000ffff),
-            unpackSnorm16(packedNormal.z & 0x0000ffff)
-        };
+        v.normalW = { unpackSnorm16(packedNormal.x >> 16), unpackSnorm16(packedNormal.y >> 16), unpackSnorm16(packedNormal.z >> 16) };
+        v.faceNormalW = { unpackSnorm16(packedNormal.x & 0x0000ffff), unpackSnorm16(packedNormal.y & 0x0000ffff), unpackSnorm16(packedNormal.z & 0x0000ffff) };
 
         const uint materialID = gScene.getMaterialID(primaryTriangleHit);
         primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
     } else {
         calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
     }
-#else
-    calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
 #endif
 
     aov_data.face_normal = v.faceNormalW;
