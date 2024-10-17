@@ -312,7 +312,11 @@ struct VisibilitySamplesContainer {
     }
 
     bool hasCombinedNormals() CONST_FUNCTION {
-        return (flags & (uint)VisibilitySamplesContainerFlags::HasCombinedNormals) != 0;
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
+            return (flags & (uint)VisibilitySamplesContainerFlags::HasCombinedNormals) != 0;
+        #else
+            return false;
+        #endif
     }
 
     uint opaqueSamplesCount() CONST_FUNCTION {

@@ -17,17 +17,15 @@ import Utils.Sampling.VisibilitySamplesContainer;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-// VBuffer
-Texture2D<PackedHitInfo> gVBuffer;
+// Extra input channels
+Texture2D<PackedHitInfo>    gVBuffer;
+Texture2D<float>            gDepth;
+Texture2D<float4>           gTextureGrads;
+Texture2D<float2>           gMotionVector;
 
 // Extra input channels
-Texture2D<float>    gDepth;
-Texture2D<float4>   gTextureGrads;
-Texture2D<float2>   gMotionVector;
-
-// Extra input channels
-Texture2D<uint>     gDrawCount;
-Texture2D<uint4>    gNormW;
+Texture2D<uint>             gDrawCount;
+Texture2D<uint4>            gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
@@ -100,10 +98,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     #endif
 
     float sampleAlpha = 1.0f;
-    HitInfo hit;
-
     float3 normalW = float3(0.f);
     float3 faceNormalW = float3(0.f);
+    HitInfo hit;
 
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
@@ -149,7 +146,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 outColor = barycentrics;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-    if( !gScene.isObjectSubdividable(triangleHit.instanceID) ) {
+    if( !gVisibilityContainer.hasCombinedNormals() || !sample.hasCombinedNormals() || !gScene.isObjectSubdividable(triangleHit.instanceID) ) {
         VertexData v = gScene.getVertexData(triangleHit);
         normalW = v.normalW.xyz;
         faceNormalW = v.faceNormalW.xyz;

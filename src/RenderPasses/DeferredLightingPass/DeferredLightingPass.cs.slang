@@ -615,11 +615,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     VertexData v;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-    v = gScene.getVertexData(primaryTriangleHit);
-
-    if( gScene.isObjectSubdividable(primaryTriangleHit.instanceID) ) {
+    if( gVisibilityContainer.hasCombinedNormals() && sample.hasCombinedNormals() && gScene.isObjectSubdividable(primaryTriangleHit.instanceID) ) {
         v.normalW = sampleNormalW;
         v.faceNormalW = sampleFaceNormalW;
+    } else {
+        v = gScene.getVertexData(primaryTriangleHit);
     }
 
     const uint materialID = gScene.getMaterialID(primaryTriangleHit);
@@ -729,7 +729,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     gInOutColor[pixelPos] = colorAccum;
-    return;
+    //return;
 #else
     gInOutColor[pixelPos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
 #endif

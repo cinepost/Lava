@@ -83,6 +83,10 @@ struct OpaqueVisibilitySample {
         return HitInfo(packedHitInfo);
     }
 
+    bool hasCombinedNormals() CONST_FUNCTION {
+        return any(packedCombinedNormal != uint4(0));
+    }
+
     __init() {
         packedHitInfo = uint4(0);
         packedCombinedNormal = uint4(0);
@@ -121,6 +125,10 @@ struct TransparentVisibilitySample {
 
     HitInfo getHitInfo() CONST_FUNCTION {
         return HitInfo(packedHitInfo);
+    }
+
+    bool hasCombinedNormals() CONST_FUNCTION {
+        return any(packedCombinedNormal != uint4(0));
     }
 
     __init() {

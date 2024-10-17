@@ -47,9 +47,10 @@ namespace {
     const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const ChannelList kExtraInputChannels = {
-        { kInputDepth,            "gDepth",         "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
-        { kInputTexGrads,         "gTextureGrads",  "Texture gradients",             true /* optional */, ResourceFormat::Unknown },
-        { kInputNormalW,          "gNormW",         "Shading normal in world space", true /* optional */, ResourceFormat::Unknown },
+        { kInputVBuffer,          "gVbuffer",         "Visibility buffer in packed format", true /* optional */, ResourceFormat::RGBA32Uint },
+        { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
+        { kInputTexGrads,         "gTextureGrads",  "Texture gradients",                    true /* optional */, ResourceFormat::Unknown },
+        { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
         //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
     };
 
@@ -147,7 +148,7 @@ RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileDat
     const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
-    reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
+    //reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
     
     addRenderPassInputs(reflector, kExtraInputChannels);
     addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);

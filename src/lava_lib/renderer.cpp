@@ -419,9 +419,12 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 #else
 	// Deferred lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth",    "ShadingPass.depth");
-	mpRenderGraph->addEdge("VBufferPass.vbuffer",  "ShadingPass.vbuffer");
-	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
-	//mpRenderGraph->addEdge("VBufferPass.normW",    "ShadingPass.normW");
+
+	if(!mpVisibilitySamplesContainer) {
+		mpRenderGraph->addEdge("VBufferPass.vbuffer",  "ShadingPass.vbuffer");
+		mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
+		mpRenderGraph->addEdge("VBufferPass.normW",    "ShadingPass.normW");
+	}
 	mpRenderGraph->addEdge("EnvPass.target",       "ShadingPass.color");
 
 #endif
