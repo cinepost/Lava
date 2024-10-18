@@ -20,6 +20,10 @@ __exported import Scene.HitInfo;
 #define VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE 0
 #endif
 
+#ifndef VISIBILITY_SAMPLES_CONTAINER_READ_WRITE
+#define VISIBILITY_SAMPLES_CONTAINER_READ_WRITE 0
+#endif
+
 #if VISIBILITY_SAMPLES_CONTAINER_READ_WRITE
     #define __ByteAddressBuffer RWByteAddressBuffer
     #define __StructuredBuffer RWStructuredBuffer

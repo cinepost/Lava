@@ -553,6 +553,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 sampleNormalW = float3(0.f);
     float3 sampleFaceNormalW = float3(0.f);
 
+    TriangleHit primaryTriangleHit;
     AOVData aov_data = AOVData.create();
 
 #if defined(USE_VISIBILITY_CONTAINER)
@@ -607,7 +608,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
-    TriangleHit primaryTriangleHit = hit.getTriangleHit();
+    primaryTriangleHit = hit.getTriangleHit();
     ShadingData primaryShadingData;
 
     if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
