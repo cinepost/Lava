@@ -37,14 +37,17 @@ void SimpleProfiler::printReport() {
 	//TimePoint f = Clock::now();
 
 	printf("SimpleProfiler report...\n");
-	printf("%42s Calls\tMean (secs)\tStdDev\n","Scope");
+	printf("%42s Calls\tMean (secs)\tStdDev\tTotal (secs)\n","Scope");
 	for(std::map<std::string, acc_t>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
 		float av = ba::mean(p->second);
 		float stdev = sqrt((double)(ba::variance(p->second)));
+
+		size_t sum = ba::sum(p->second);
+    size_t cnt = ba::count(p->second);
 		//float worst = ba::extract_result<ba::tag::max>(p->second);
 		//float best = ba::extract_result<ba::tag::min>(p->second);
 
-		printf("%42s %lu\t%f\t%f\n", p->first.c_str(), ba::count(p->second), av * 0.001f, stdev * 0.001f);
+		printf("%42s %lu\t%f\t%f\t%f\n", p->first.c_str(), ba::count(p->second), av * 0.001f, stdev * 0.001f, float(sum) * 0.001f);
 	}
 	printf("\n");
 }

@@ -43,12 +43,15 @@ class dlldecl VisibilitySamplesContainer {
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
+		Shader::DefineList getDefines();
 		Shader::DefineList getDefines() const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterBlock; }
+		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterReadonlyBlock; }
+
+		ParameterBlock::SharedPtr& getParameterBlock() { return mpParameterBlock; }
 
 		void setScene(const Scene::SharedPtr& pScene);
 
@@ -113,7 +116,8 @@ class dlldecl VisibilitySamplesContainer {
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
-		void createParameterBlock();
+		void createParameterBlocks();
+		void clearParameterBlocks();
 		void createBuffers();
 
 		void readInfoBufferData() const;
@@ -122,6 +126,8 @@ class dlldecl VisibilitySamplesContainer {
 		void sortTransparentSamplesRoots(RenderContext* pRenderContext);
 		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
 		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
+
+		Shader::DefineList _getDefines() const;
 
 		// Internal state
 
@@ -144,11 +150,12 @@ class dlldecl VisibilitySamplesContainer {
 
 		VisibilitySamplesContainerFlags mFlags;
 
-		// GPU resources
+		// GPU resources internal
 		GpuFence::SharedPtr mpFence;
 		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
-		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
+		mutable ParameterBlock::SharedPtr mpParameterReadonlyBlock;         ///< Parameter block for binding all resources as read only.
 
+		// GPU resources
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
 		Buffer::SharedPtr   mpOpaqueCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;

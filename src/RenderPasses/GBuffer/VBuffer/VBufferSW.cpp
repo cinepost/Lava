@@ -246,7 +246,7 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
     executeCompute(pRenderContext, renderData);
     mDirty = false;
 
-    pRenderContext->flush(true);
+    //pRenderContext->flush(true);
 }
 
 Dictionary VBufferSW::getScriptingDictionary() {

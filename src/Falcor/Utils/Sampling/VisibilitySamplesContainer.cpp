@@ -78,7 +78,7 @@ void VisibilitySamplesContainer::setScene(const Scene::SharedPtr& pScene) {
 
 	mHitInfoFormat = mpScene ? mpScene->getHitInfo().getFormat() : HitInfo::kDefaultFormat;
 
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
 void VisibilitySamplesContainer::sort() {
@@ -179,10 +179,12 @@ Shader::DefineList VisibilitySamplesContainer::getDefaultDefines() {
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_TEXTURE", "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER", "0");
 
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "0");
+
 	return defines;
 }
 
-Shader::DefineList VisibilitySamplesContainer::getDefines() const {
+Shader::DefineList VisibilitySamplesContainer::_getDefines() const {
 	Shader::DefineList defines;
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? std::to_string(mMaxTransparentSamplesCountPP) : std::to_string(kMaxTransparentSamplesCountPP));
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? "1" : "0");
@@ -196,8 +198,26 @@ Shader::DefineList VisibilitySamplesContainer::getDefines() const {
 	return defines;
 }
 
+Shader::DefineList VisibilitySamplesContainer::getDefines() {
+	LLOG_WRN << "getDefines() RW";
+	Shader::DefineList defines = _getDefines();
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "1");
+
+	return defines;
+}
+
+Shader::DefineList VisibilitySamplesContainer::getDefines() const {
+	LLOG_WRN << "getDefines() RO";
+
+	Shader::DefineList defines = _getDefines();
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "0");
+
+	return defines;
+}
+
+
 void VisibilitySamplesContainer::createBuffers() {
-	SimpleProfiler profile("VisibilitySamplesContainer::createBuffers");
+	SimpleProfiler profile("VisibilitySamplesContainer::createBuffers()");
 
 	assert(mpParameterBlock);
 
@@ -281,66 +301,92 @@ void VisibilitySamplesContainer::resize(uint width, uint height, uint maxTranspa
 	mMaxTransparentSamplesCountPP = maxTransparentSamplesCountPP;
 	mTransparentSamplesBufferSize = mResolution1D * mMaxTransparentSamplesCountPP;
 
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
-void VisibilitySamplesContainer::createParameterBlock() {
-	// Create parameter block.
-	Program::DefineList defines = getDefines();
-	defines.add("VISIBILITY_CONTAINER_PARAMETER_BLOCK");
-	
-	auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
-	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gVisibilitySamplesContainer");
-	assert(pReflector);
+void VisibilitySamplesContainer::createParameterBlocks() {
+	if(mpParameterBlock && mpParameterReadonlyBlock) return;
 
-	mpParameterBlock = ParameterBlock::create(mpDevice, pReflector);
-	assert(mpParameterBlock);
+	SimpleProfiler profile("VisibilitySamplesContainer::createParameterBlocks()");
 
-	// Create / re-create buffers.
+	auto _createParameterBlock = [this](ParameterBlock::SharedPtr& pBlock, bool readonly) {
+
+		LLOG_WRN << "_createParameterBlock() " << (readonly ? "RO" : "RW");
+
+		Program::DefineList defines = _getDefines();
+		defines.add("VISIBILITY_CONTAINER_PARAMETER_BLOCK");
+		defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", readonly ? "0" : "1");
+		//defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "1");
+
+		auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
+		
+		auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gVisibilitySamplesContainer");
+		assert(pReflector);
+
+    pBlock = ParameterBlock::create(mpDevice, pReflector);
+    assert(pBlock);
+  };
+
+  auto _bindParameterBlockResources = [this](ParameterBlock::SharedPtr& pBlock) {
+		// Bind resources to parameter block.
+		pBlock["resolution"] = mResolution;
+		pBlock["maxTransparentSamplesCount"] = mTransparentSamplesBufferSize;
+		pBlock["maxTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP ? mMaxTransparentSamplesCountPP : kMaxTransparentSamplesCountPP;
+		pBlock["limitTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP;
+
+		pBlock["flags"] = static_cast<uint32_t>(mFlags);
+
+		pBlock["infoBuffer"] = mpInfoBuffer;
+
+		pBlock["opaqueVisibilitySamplesBuffer"] = mpOpaqueSamplesBuffer;
+		pBlock["opaqueCombinedNormalsBuffer"] = mpOpaqueCombinedNormalsBuffer;
+		pBlock["opaqueVisibilitySamplesPositionBufferPP"] = mpOpaqueVisibilitySamplesPositionBufferPP;
+		pBlock["rootTransparentSampleOffsetBufferPP"] = mpRootTransparentSampleOffsetBufferPP;
+
+		pBlock["transparentVisibilitySamplesPositionBufferPP"] = mpTransparentVisibilitySamplesPositionBufferPP;
+		pBlock["transparentVisibilitySamplesCountBufferPP"] = mpTransparentVisibilitySamplesCountBufferPP;
+		pBlock["transparentVisibilitySamplesBuffer"]  = mpTransparentVisibilitySamplesBuffer;
+		pBlock["transparentCombinedNormalsBuffer"]  = mpTransparentCombinedNormalsBuffer;
+
+		pBlock["opaqueVisibilitySamplesExternalTexture"] = mpOpaqueSamplesExternalTexture;
+		pBlock["opaqueCombinedNormalsExternalTexture"] = mpOpaqueCombinedNormalsBuffer;
+		pBlock["opaqueExternalDepthBuffer"] = mpOpaqueDepthExternalBuffer;
+		pBlock["opaqueExternalDepthTexture"] = mpOpaqueDepthExternalTexture;
+
+		pBlock["alphaThresholdMin"] = mAlphaThresholdMin;
+		pBlock["alphaThresholdMax"] = mAlphaThresholdMax;
+
+		pBlock["resolution1D"] = mResolution1D;
+  };
+
+
+  _createParameterBlock(mpParameterBlock, false);
+  _createParameterBlock(mpParameterReadonlyBlock, true);
+
+  // Create / re-create buffers.
 	createBuffers();
 
-	// Bind resources to parameter block.
-	mpParameterBlock["resolution"] = mResolution;
-	mpParameterBlock["maxTransparentSamplesCount"] = mTransparentSamplesBufferSize;
-	mpParameterBlock["maxTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP ? mMaxTransparentSamplesCountPP : kMaxTransparentSamplesCountPP;
-	mpParameterBlock["limitTransparentSamplesCountPP"] = mLimitTransparentSamplesCountPP;
+	_bindParameterBlockResources(mpParameterBlock);
+  _bindParameterBlockResources(mpParameterReadonlyBlock);
+}
 
-	mpParameterBlock["flags"] = static_cast<uint32_t>(mFlags);
-
-	mpParameterBlock["infoBuffer"] = mpInfoBuffer;
-
-	mpParameterBlock["opaqueVisibilitySamplesBuffer"] = mpOpaqueSamplesBuffer;
-	mpParameterBlock["opaqueCombinedNormalsBuffer"] = mpOpaqueCombinedNormalsBuffer;
-	mpParameterBlock["opaqueVisibilitySamplesPositionBufferPP"] = mpOpaqueVisibilitySamplesPositionBufferPP;
-	mpParameterBlock["rootTransparentSampleOffsetBufferPP"] = mpRootTransparentSampleOffsetBufferPP;
-
-	mpParameterBlock["transparentVisibilitySamplesPositionBufferPP"] = mpTransparentVisibilitySamplesPositionBufferPP;
-	mpParameterBlock["transparentVisibilitySamplesCountBufferPP"] = mpTransparentVisibilitySamplesCountBufferPP;
-	mpParameterBlock["transparentVisibilitySamplesBuffer"]  = mpTransparentVisibilitySamplesBuffer;
-	mpParameterBlock["transparentCombinedNormalsBuffer"]  = mpTransparentCombinedNormalsBuffer;
-
-	mpParameterBlock["opaqueVisibilitySamplesExternalTexture"] = mpOpaqueSamplesExternalTexture;
-	mpParameterBlock["opaqueCombinedNormalsExternalTexture"] = mpOpaqueCombinedNormalsBuffer;
-	mpParameterBlock["opaqueExternalDepthTexture"] = mpOpaqueDepthExternalTexture;
-
-	mpParameterBlock["alphaThresholdMin"] = mAlphaThresholdMin;
-	mpParameterBlock["alphaThresholdMax"] = mAlphaThresholdMax;
-
-	mpParameterBlock["resolution1D"] = mResolution1D;
+void VisibilitySamplesContainer::clearParameterBlocks() {
+	mpParameterBlock = nullptr;
+	mpParameterReadonlyBlock = nullptr;
 }
 
 void VisibilitySamplesContainer::setExternalOpaqueSamplesTexture(const Texture::SharedPtr& pTexture) {
 	if(!pTexture || mpOpaqueSamplesExternalTexture == pTexture) return;
 	mpOpaqueSamplesExternalTexture = pTexture;
 	mpOpaqueSamplesBuffer = nullptr;
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
 void VisibilitySamplesContainer::setExternalOpaqueCombinedNormalsTexture(const Texture::SharedPtr& pTexture) {
 	if(!pTexture || mpOpaqueCombinedNormalsExternalTexture == pTexture) return;
 	mpOpaqueCombinedNormalsExternalTexture = pTexture;
 	mpOpaqueCombinedNormalsBuffer = nullptr;
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
 void VisibilitySamplesContainer::setExternalOpaqueDepthTexture(const Texture::SharedPtr& pTexture) {
@@ -352,15 +398,16 @@ void VisibilitySamplesContainer::setExternalOpaqueDepthTexture(const Texture::Sh
 
 void VisibilitySamplesContainer::setExternalOpaqueDepthBuffer(const Buffer::SharedPtr& pBuffer) {
 	if(!pBuffer || mpOpaqueDepthExternalBuffer == pBuffer) return;
-	mpOpaqueDepthExternalBuffer = pBuffer;
+	
+  mpOpaqueDepthExternalBuffer = pBuffer;
 	mpOpaqueDepthExternalTexture = nullptr;
 	mpTransparentOrderSortingPass = nullptr;
 }
 
 void VisibilitySamplesContainer::beginFrame() {
-	SimpleProfiler profile("VisibilitySamplesContainer::beginFrame");
+	SimpleProfiler profile("VisibilitySamplesContainer::beginFrame()");
 
-	if(!mpParameterBlock) createParameterBlock();
+	createParameterBlocks();
 
 	mFlags = VisibilitySamplesContainerFlags::None;
 	
@@ -390,11 +437,12 @@ void VisibilitySamplesContainer::beginFrame() {
 }
 
 void VisibilitySamplesContainer::beginFrame() const {
-	if(!mpParameterBlock) return;
-	mpParameterBlock["flags"] = static_cast<uint32_t>(mFlags);
+	if(!mpParameterReadonlyBlock) return;
+	mpParameterReadonlyBlock["flags"] = static_cast<uint32_t>(mFlags);
 }
 
 void VisibilitySamplesContainer::endFrame() {
+	SimpleProfiler profile("VisibilitySamplesContainer::endFrame()");
 	sort();
 }
 
@@ -406,7 +454,7 @@ void VisibilitySamplesContainer::setLimitTransparentSamplesCountPP(bool limit) {
 	if(mLimitTransparentSamplesCountPP == limit) return;
 	mLimitTransparentSamplesCountPP = limit;
 	
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
 void VisibilitySamplesContainer::readInfoBufferData() const {
@@ -461,7 +509,7 @@ void VisibilitySamplesContainer::storeCombinedNormals(bool enabled) {
 		mpTransparentCombinedNormalsBuffer = nullptr;
 	}
 
-	mpParameterBlock = nullptr;
+	clearParameterBlocks();
 }
 
 bool VisibilitySamplesContainer::hasCombinedNormals() const {

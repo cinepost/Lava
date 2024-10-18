@@ -247,7 +247,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     mDirty = false;
 
-    pContext->flush(true);
+    //pContext->flush(true);
 }
 
 void DebugShadingPass::generateMeshletColorBuffer(const RenderData& renderData) {

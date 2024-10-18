@@ -80,25 +80,25 @@ public:
 
 			bool hasEntryPoint(ShaderType stage) const;
 
-			inline Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
-			inline Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
-			inline Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
-			inline Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
-			inline Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
-			inline Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
+			Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
+			Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
+			Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
+			Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
+			Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
+			Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
 			/** Adds a list of type conformances.
 				The type conformances are linked into all shaders in the program.
 			*/
-			inline Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mTypeConformances.add(typeConformances); return *this; }
+			Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mTypeConformances.add(typeConformances); return *this; }
 
 			/** Enable/disable treat-warnings-as-error compilation flag.
 			*/
-			inline Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
+			Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
 			/** Enable/disable pre-processed shader dump.
 			*/
-			inline Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+			Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
 			/** Set the shader model string.
 				This should be `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`.
@@ -107,19 +107,19 @@ public:
 
 			/** Get the compiler flags.
 			*/
-			inline Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
+			Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
 
 			/** Set the compiler flags. Replaces any previously set flags.
 			*/
-			inline Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
+			Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
 
 			/** Get additional compiler arguments.
 			*/
-			inline const ArgumentList& getCompilerArguments() const { return mCompilerArguments; }
+			const ArgumentList& getCompilerArguments() const { return mCompilerArguments; }
 
 			/** Set additional compiler arguments. Replaces any previously set arguments.
 			*/
-			inline Desc& setCompilerArguments(const ArgumentList& arguments) { mCompilerArguments = arguments; return *this; }
+			Desc& setCompilerArguments(const ArgumentList& arguments) { mCompilerArguments = arguments; return *this; }
 
 		protected:
 			friend class Program;
@@ -280,17 +280,17 @@ public:
 	/** Get the program reflection for the active program.
 		\return Program reflection object, or an exception is thrown on failure.
 	*/
-	inline const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
-
-	inline uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
-	inline uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
+	const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
 	
-	inline uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const {
+	uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
+	uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
+	
+	uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const {
 		return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
 	}
 
-	inline static const CompilationStats& getGlobalCompilationStats() { return sCompilationStats; }
-	inline static void resetGlobalCompilationStats() { sCompilationStats = {}; }
+	static const CompilationStats& getGlobalCompilationStats() { return sCompilationStats; }
+	static void resetGlobalCompilationStats() { sCompilationStats = {}; }
 
 protected:
 	friend class ::Falcor::ProgramVersion;
