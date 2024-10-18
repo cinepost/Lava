@@ -138,6 +138,7 @@ class dlldecl VisibilitySamplesContainer {
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
 		bool  mStoreCombinedNormals = kDefaultStoreNormals;
+		bool  mDepth64 = false;
 
 		uint3 mShadingThreadGroupSize;
 

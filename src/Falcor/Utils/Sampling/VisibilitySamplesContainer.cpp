@@ -62,7 +62,7 @@ VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice
 	mpInfoBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), kInfoBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	mpInfoBuffer->setName("VisibilitySamplesContainer::infoBuffer");
 
-	mShadingThreadGroupSize = {1024, 1, 1};
+	mShadingThreadGroupSize = {32, 1, 1};
 
 	resize(resolution.x, resolution.y, maxTransparentSamplesCountPP);
 }
@@ -180,6 +180,7 @@ Shader::DefineList VisibilitySamplesContainer::getDefaultDefines() {
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER", "0");
 
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "0");
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_DEPTH_64", "0");
 
 	return defines;
 }
@@ -195,11 +196,12 @@ Shader::DefineList VisibilitySamplesContainer::_getDefines() const {
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_TEXTURE", mpOpaqueDepthExternalTexture ? "1" : "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER", mpOpaqueDepthExternalBuffer ? "1" : "0");
 
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_DEPTH_64", mDepth64 ? "1" : "0");
 	return defines;
 }
 
 Shader::DefineList VisibilitySamplesContainer::getDefines() {
-	LLOG_WRN << "getDefines() RW";
+	LLOG_DBG << "getDefines() RW";
 	Shader::DefineList defines = _getDefines();
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "1");
 
@@ -207,7 +209,7 @@ Shader::DefineList VisibilitySamplesContainer::getDefines() {
 }
 
 Shader::DefineList VisibilitySamplesContainer::getDefines() const {
-	LLOG_WRN << "getDefines() RO";
+	LLOG_DBG << "getDefines() RO";
 
 	Shader::DefineList defines = _getDefines();
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "0");
@@ -311,7 +313,7 @@ void VisibilitySamplesContainer::createParameterBlocks() {
 
 	auto _createParameterBlock = [this](ParameterBlock::SharedPtr& pBlock, bool readonly) {
 
-		LLOG_WRN << "_createParameterBlock() " << (readonly ? "RO" : "RW");
+		LLOG_DBG << "_createParameterBlock() " << (readonly ? "RO" : "RW");
 
 		Program::DefineList defines = _getDefines();
 		defines.add("VISIBILITY_CONTAINER_PARAMETER_BLOCK");
@@ -399,6 +401,18 @@ void VisibilitySamplesContainer::setExternalOpaqueDepthTexture(const Texture::Sh
 void VisibilitySamplesContainer::setExternalOpaqueDepthBuffer(const Buffer::SharedPtr& pBuffer) {
 	if(!pBuffer || mpOpaqueDepthExternalBuffer == pBuffer) return;
 	
+
+	size_t bufferSize = pBuffer->getSize();
+	if(bufferSize == (mResolution.x * mResolution.y * 8)) {
+		mDepth64 = true;
+	} else if (bufferSize == (mResolution.x * mResolution.y * 4)) {
+		mDepth64 = false;
+	} else {
+		LLOG_ERR << "Wrong external depth buffer size !!!";
+		mpOpaqueDepthExternalBuffer = nullptr;
+		return;
+	}
+
   mpOpaqueDepthExternalBuffer = pBuffer;
 	mpOpaqueDepthExternalTexture = nullptr;
 	mpTransparentOrderSortingPass = nullptr;

@@ -257,7 +257,12 @@ struct VisibilitySamplesContainer {
 
         if(alpha > alphaThresholdMax) {
             #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER
-                opaqueExternalDepthBuffer.InterlockedMinU64(pixelOffset << 3, depth);
+                #if VISIBILITY_SAMPLES_CONTAINER_DEPTH_64
+                    opaqueExternalDepthBuffer.InterlockedMinU64(pixelOffset << 3, depth);
+                #else
+                    uint tmp;
+                    opaqueExternalDepthBuffer.InterlockedMin(pixelOffset << 2, (uint32_t)depth, tmp);
+                #endif
             #endif
             writeOpaqueHit2D(pixelPos, hit);
             return;

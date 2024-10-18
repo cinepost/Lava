@@ -299,6 +299,8 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     setVar(mpShadingPass["PerFrameCB"]);
     if(mpTransparentShadingPass) setVar(mpTransparentShadingPass["PerFrameCB"], true);
 
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
+
     if(shadingRateInShader) {
         if(mpVisibilitySamplesContainer) {
             // Visibility container mode
@@ -322,6 +324,9 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
             mSampleNumber++;
         }
     }
+
+    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
+
     mDirty = false;
 }
 

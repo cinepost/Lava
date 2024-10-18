@@ -29,26 +29,49 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if(gVisibilityContainer.maxTransparentSamplesCountPP < 2) return;
 #endif
 
-    if(!gVisibilityContainer.readRootTransparentVisibilitySample(pixelOffset, samplesList[0], offsetsList[0])) return;
+    uint64_t opaqueDepth = UINT64_MAX;
+    uint samplesCount = 0;
+    TransparentVisibilitySampleData sample;
+    uint sampleOffset;
 
-#if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
-    combinedNormalsList[0] = gVisibilityContainer.transparentCombinedNormalsBuffer[offsetsList[0]];
-#endif
+    if(!gVisibilityContainer.readRootTransparentVisibilitySample(pixelOffset, sample, sampleOffset)) return;
 
-    // Fetch remaining transparent samples
-    uint nextSampleOffset = samplesList[0].nextSampleOffset;
+    #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER
+        #if VISIBILITY_SAMPLES_CONTAINER_DEPTH_64
+            opaqueDepth = gVisibilityContainer.opaqueExternalDepthBuffer.Load<uint64_t>(pixelOffset << 3);
+        #else
+            opaqueDepth = gVisibilityContainer.opaqueExternalDepthBuffer.Load<uint32_t>(pixelOffset << 2);
+        #endif
+    #endif
 
-    uint samplesCount = 1;
-    while(nextSampleOffset != UINT32_MAX && samplesCount < gVisibilityContainer.maxTransparentSamplesCountPP) {
-        offsetsList[samplesCount] = nextSampleOffset;         
-        samplesList[samplesCount] = gVisibilityContainer.transparentVisibilitySamplesBuffer[nextSampleOffset];
-
+    if(sample.depth < opaqueDepth) {
+        samplesList[0] = sample;
+        offsetsList[0] = sampleOffset;
+        
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
-            combinedNormalsList[samplesCount] = gVisibilityContainer.transparentCombinedNormalsBuffer[nextSampleOffset];
+            combinedNormalsList[0] = gVisibilityContainer.transparentCombinedNormalsBuffer[offsetsList[0]];
         #endif
 
-        nextSampleOffset = samplesList[samplesCount].nextSampleOffset;
         samplesCount++;
+    }
+
+    // Fetch remaining transparent samples
+    uint nextSampleOffset = sample.nextSampleOffset;
+
+    while(nextSampleOffset != UINT32_MAX && samplesCount < gVisibilityContainer.maxTransparentSamplesCountPP) {
+        sample = gVisibilityContainer.transparentVisibilitySamplesBuffer[nextSampleOffset];
+
+        if(sample.depth < opaqueDepth) {
+            offsetsList[samplesCount] = nextSampleOffset;         
+            samplesList[samplesCount] = sample;
+
+            #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
+                combinedNormalsList[samplesCount] = gVisibilityContainer.transparentCombinedNormalsBuffer[nextSampleOffset];
+            #endif
+            
+            samplesCount++;
+        }
+        nextSampleOffset = sample.nextSampleOffset;
     }
 
     //GroupMemoryBarrierWithGroupSync();
@@ -93,5 +116,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #endif
     }
 
-    //GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 }
