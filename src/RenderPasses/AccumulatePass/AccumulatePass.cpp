@@ -221,6 +221,8 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     assert(pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight());
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
+    // reset output if needed
+    if(mFrameCount == 0) pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0));
 
     // Setup filtering passes if needed.
     Texture::SharedPtr pFilteredImage = pSrc;

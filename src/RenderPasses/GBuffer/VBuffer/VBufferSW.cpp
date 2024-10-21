@@ -86,6 +86,7 @@ namespace {
     const std::string kOuputTime       = "time";
     const std::string kOuputAUX        = "aux";
     const std::string kOutputDrawCount = "drawCount";
+    const std::string kOutputNormal    = "normW";
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
@@ -108,7 +109,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraSubdChannels = {
-        { "normW",              "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
+        { kOutputNormal,         "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
     };
 };
 
@@ -230,8 +231,26 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = (mpScene->getCamera()->getApertureRadius() > 0.f) ? 2u : 0u;
     }
 
+    createMeshletDrawList();
+    if(!mpMeshletDrawListBuffer) return;
+
+    createBuffers();
+
+    // Configure visibility samples container
+    if(mpVisibilitySamplesContainer) {
+        // Use already allocated resources to save some memory
+        mpVisibilitySamplesContainer->setExternalOpaqueDepthBuffer(mpLocalDepthBuffer);
+        //mpVisibilitySamplesContainer->setExternalOpaqueSamplesTexture(renderData[kVBufferName]->asTexture());
+        //mpVisibilitySamplesContainer->setExternalOpaqueCombinedNormalsTexture(renderData[kOutputNormal]->asTexture());
+
+        bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement;
+        mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
+    }
+
     executeCompute(pRenderContext, renderData);
     mDirty = false;
+
+    //pRenderContext->flush(true);
 }
 
 Dictionary VBufferSW::getScriptingDictionary() {
@@ -245,10 +264,6 @@ Dictionary VBufferSW::getScriptingDictionary() {
 }
 
 void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
-    createMeshletDrawList();
-    if(!mpMeshletDrawListBuffer) return;
-
-    createBuffers();
     createJitterTexture();
 
     if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
@@ -279,7 +294,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     // Optional visibility container
     if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->setDepthBuffer(mpLocalDepthBuffer);
         mpVisibilitySamplesContainer->beginFrame();
     }
 
@@ -363,6 +377,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         if(mpVisibilitySamplesContainer) {
             var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
+    
+        if(mpSTBNGenerator) {
+            mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
+        }
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
@@ -371,8 +389,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
-
+        
         var["gVBufferSW"]["frameDim"] = mFrameDim;
         var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
         var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
@@ -401,10 +418,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gThreadLockBuffer"] = mpThreadLockBuffer;
         var["gOpacityShiftsBuffer"] = mpOpacityShiftsBuffer;
         
-        var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
-        for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
-            var["gMicroTriangleBuffers"][i] = mMicroTriangleBuffers[i];
-        }
+        //var["gMicroTrianglesBuffer"] = mpMicroTrianglesBuffer;
+        //for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
+        //   var["gMicroTriangleBuffers"][i] = mMicroTriangleBuffers[i];
+        //}
 
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
@@ -502,6 +519,7 @@ void VBufferSW::createBuffers() {
 }
 
 void VBufferSW::createMicroTrianglesBuffer() {
+    return;
     if(!mDirty) return;
 
     static uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
@@ -520,8 +538,6 @@ void VBufferSW::createMicroTrianglesBuffer() {
     static const Resource::BindFlags flags = Resource::BindFlags::None;
 
     mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, flags, Buffer::CpuAccess::None, nullptr, createCounter);
-
-    //total_buffers_size_bytes += maxMicroTrianglesCount * sizeof(MicroTriangle);
 
     mMicroTriangleBuffers.resize(1024);
     for(size_t i = 0; i < mMicroTriangleBuffers.size(); ++i) {
@@ -549,6 +565,7 @@ void VBufferSW::createMeshletDrawList() {
     mOpaqueMeshletsCount = 0;
     mTransparentMeshletsCount = 0;
     mTransparentMeshletsStartOffset = kInvalidIndex;
+    mSubdivMeshletsCount = 0;
 
     std::vector<MeshletDraw> meshletsDrawList;
     std::vector<MeshletDraw> nonOpaqueMeshletsDrawList;
@@ -559,10 +576,12 @@ void VBufferSW::createMeshletDrawList() {
         const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
         if(instanceData.getType() != GeometryType::TriangleMesh) continue; // Only triangles now
 
+        const bool isSubdivInstance = instanceData.isSubdividable();
         const uint32_t meshID = instanceData.geometryID;
         if(mpScene->hasMeshlets(meshID)) {
             const MeshletGroup& meshletGroup = mpScene->meshletGroup(meshID);
             if(meshletGroup.meshlets_count == 0) continue;
+            if(isSubdivInstance) mSubdivMeshletsCount++;
 
             const MeshDesc& mesh = mpScene->getMesh(meshID);
             
@@ -647,7 +666,8 @@ void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     } else {
         mpCamera = nullptr;
     }
-
+    
+    mSubdivMeshletsCount = 0;
     createPrograms();
 }
 

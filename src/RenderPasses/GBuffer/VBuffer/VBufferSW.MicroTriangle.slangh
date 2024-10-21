@@ -56,7 +56,6 @@ struct MicroTriangle {
     float3 getFaceNormalW() {
         return normalize(cross(pw0 - pw1, pw0 - pw2));
     }
-
 #endif
 
 };

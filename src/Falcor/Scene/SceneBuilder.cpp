@@ -2919,7 +2919,7 @@ void SceneBuilder::createMeshSubdivData() {
 			mSceneData.meshAdjacencyCounts.insert(mSceneData.meshAdjacencyCounts.end(), adjacency.counts.begin(), adjacency.counts.end());
 			mSceneData.meshAdjacencyData.insert(mSceneData.meshAdjacencyData.end(), adjacency.data.begin(), adjacency.data.end());
 
-			LLOG_WRN << "Mesh " << mesh.name << " adjacency data hash " << adjacency.hash();
+			LLOG_DBG << "Mesh " << mesh.name << " adjacency data hash " << adjacency.hash();
 		} 
 
 		uint32_t prim_count = mesh.getPrimitivesCount();

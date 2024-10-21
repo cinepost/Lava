@@ -21,6 +21,9 @@ namespace Falcor {
 
 class dlldecl VisibilitySamplesContainer {
 	public:
+		static const bool kDefaultStoreNormals = false;
+		static const bool kDefaultLimitTransparentSamplesCountPP = false;
+
 		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
 		using SharedConstPtr = std::shared_ptr<const VisibilitySamplesContainer>;
 
@@ -40,12 +43,15 @@ class dlldecl VisibilitySamplesContainer {
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
+		Shader::DefineList getDefines();
 		Shader::DefineList getDefines() const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterBlock; }
+		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterReadonlyBlock; }
+
+		ParameterBlock::SharedPtr& getParameterBlock() { return mpParameterBlock; }
 
 		void setScene(const Scene::SharedPtr& pScene);
 
@@ -53,8 +59,11 @@ class dlldecl VisibilitySamplesContainer {
 		*/
 		bool hasTransparentSamples() const;
 
-		void setDepthTexture(Texture::SharedPtr pTexture);
-		void setDepthBuffer(Buffer::SharedPtr pBuffer);
+
+		void setExternalOpaqueSamplesTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueCombinedNormalsTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueDepthTexture(const Texture::SharedPtr& pTexture);
+		void setExternalOpaqueDepthBuffer(const Buffer::SharedPtr& pBuffer);
 
 		/** Optimize samples.
 			This function analyzes samples and sorts them to achieve better shading and cache coherency.
@@ -98,11 +107,17 @@ class dlldecl VisibilitySamplesContainer {
 
 		void  enableSorting(bool enabled);
 		void  enableSortingPP(bool enabled);
+		void  storeCombinedNormals(bool enabled);
+
+		bool  hasCombinedNormals() const;
+
+		~VisibilitySamplesContainer();
 
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
-		void createParameterBlock();
+		void createParameterBlocks();
+		void clearParameterBlocks();
 		void createBuffers();
 
 		void readInfoBufferData() const;
@@ -112,6 +127,8 @@ class dlldecl VisibilitySamplesContainer {
 		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
 		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
 
+		Shader::DefineList _getDefines() const;
+
 		// Internal state
 
 		uint2 mResolution;
@@ -120,35 +137,42 @@ class dlldecl VisibilitySamplesContainer {
 		uint  mResolution1D;
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
+		bool  mStoreCombinedNormals = kDefaultStoreNormals;
+		bool  mDepth64 = false;
 
 		uint3 mShadingThreadGroupSize;
 
 		float mAlphaThresholdMin;
     float mAlphaThresholdMax;
-    bool  mLimitTransparentSamplesCountPP = false;
+    bool  mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
 		Device::SharedPtr mpDevice = nullptr;
 		Scene::SharedPtr  mpScene;
 
 		VisibilitySamplesContainerFlags mFlags;
 
-		// GPU resources
+		// GPU resources internal
 		GpuFence::SharedPtr mpFence;
 		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
-		mutable ParameterBlock::SharedPtr mpParameterConstBlock;            ///< Parameter block for binding all resources as read only.
+		mutable ParameterBlock::SharedPtr mpParameterReadonlyBlock;         ///< Parameter block for binding all resources as read only.
 
+		// GPU resources
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
+		Buffer::SharedPtr   mpOpaqueCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
 
 		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
+		Buffer::SharedPtr   mpTransparentCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
-		//Optional data
-		Texture::SharedPtr  mpDepthTexture;
-		Buffer::SharedPtr  	mpDepthBuffer;
+		// Optional external resources
+		Texture::SharedPtr  mpOpaqueSamplesExternalTexture;
+		Texture::SharedPtr  mpOpaqueCombinedNormalsExternalTexture;
+		Texture::SharedPtr  mpOpaqueDepthExternalTexture;
+		Buffer::SharedPtr   mpOpaqueDepthExternalBuffer;
 
 		//Scratch data
 		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;

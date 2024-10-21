@@ -17,15 +17,17 @@ import Utils.Sampling.VisibilitySamplesContainer;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-// Extra input channels
-Texture2D<PackedHitInfo>    gVBuffer;
-Texture2D<float>            gDepth;
-Texture2D<float4>           gTextureGrads;
-Texture2D<float2>           gMotionVector;
+// VBuffer
+Texture2D<PackedHitInfo> gVBuffer;
 
 // Extra input channels
-Texture2D<uint>             gDrawCount;
-Texture2D<uint4>            gNormW;
+Texture2D<float>    gDepth;
+Texture2D<float4>   gTextureGrads;
+Texture2D<float2>   gMotionVector;
+
+// Extra input channels
+Texture2D<uint>     gDrawCount;
+Texture2D<uint4>    gNormW;
 
 // Extra input buffers
 Buffer<float4>      gFalseColorBuffer;
@@ -61,11 +63,9 @@ cbuffer PerFrameCB {
 uniform FalseColorGenerator gFalseColorGenerator;
 uniform HeatMapColorGenerator gHeatMapColorGenerator;
 
-//#if defined(USE_VISIBILITY_CONTAINER)
-//    #if defined(TRANSPARENT_SHADING_PASS)
-//        static TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
-//    #endif
-//#endif
+#if defined(USE_VISIBILITY_CONTAINER)
+static TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+#endif
 
 #if defined(USE_VISIBILITY_CONTAINER)
 [numthreads(GROUP_SIZE_X, 1, 1)]
@@ -73,12 +73,6 @@ uniform HeatMapColorGenerator gHeatMapColorGenerator;
 [numthreads(8, 8, 1)]
 #endif
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-#if defined(USE_VISIBILITY_CONTAINER)
-    #if defined(TRANSPARENT_SHADING_PASS)
-        TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
-    #endif
-#endif
-
     uint2 pixelPos;
 
     #if !defined(USE_VISIBILITY_CONTAINER)
@@ -98,9 +92,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     #endif
 
     float sampleAlpha = 1.0f;
+    HitInfo hit;
+
     float3 normalW = float3(0.f);
     float3 faceNormalW = float3(0.f);
-    HitInfo hit;
 
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
@@ -146,7 +141,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 outColor = barycentrics;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-    if( !gVisibilityContainer.hasCombinedNormals() || !sample.hasCombinedNormals() || !gScene.isObjectSubdividable(triangleHit.instanceID) ) {
+    if( !gScene.isObjectSubdividable(triangleHit.instanceID) ) {
         VertexData v = gScene.getVertexData(triangleHit);
         normalW = v.normalW.xyz;
         faceNormalW = v.faceNormalW.xyz;
@@ -181,12 +176,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     gInOutColor[pixelPos] = colorAccum;
+    return;
 #else
     gInOutColor[pixelPos] = float4(outColor, 1.f);
 #endif
 
 #if is_valid(gOutNormals)
-        gOutNormals[pixelPos] = float4(normalW.xyz, 0.f);
+    gOutNormals[pixelPos] = float4(normalW.xyz, 0.f);
 #endif  // gOutNormals
 
 #if is_valid(gOutFaceNormals)
@@ -212,11 +208,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif  // gMicroPolyColor
 
 #if is_valid(gPrimID)
-    gPrimID[pixelPos] = hit.getTriangleHit().primitiveIndex;
+    gPrimID[pixelPos] = triangleHit.primitiveIndex;
 #endif  // gOutFresnel
 
 #if is_valid(gOpID)
-    gOpID[pixelPos] = hit.getTriangleHit().instanceID.index;
+    gOpID[pixelPos] = triangleHit.instanceID.index;
 #endif  // gOpID
 
 #if is_valid(gDrawCount) && is_valid(gMeshletDrawHeatMap)

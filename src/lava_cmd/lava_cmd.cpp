@@ -98,11 +98,11 @@ void signalTraceHandler( int signum ){
 void atexitHandler()  {
   lava::ut::log::shutdown_log();
 
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>( std::chrono::high_resolution_clock::now() - gExecTimeStart ).count();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - gExecTimeStart ).count();
 
   SimpleProfiler::printReport();
 
-  std::cout << "Scene rendered in: " << duration << " sec.\n";
+  std::cout << "Scene rendered in: " << (float)duration * 0.001f << " sec.\n";
   std::cout << "Exiting lava. Bye :)\n";
 }
 

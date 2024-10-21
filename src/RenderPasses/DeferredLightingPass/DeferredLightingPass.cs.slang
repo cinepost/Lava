@@ -103,7 +103,7 @@ SamplerState gDepthSampler;
 Texture2D gNoiseTex;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-static SortedTransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+static TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 #endif
 
 /** write AOVData
@@ -550,7 +550,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     HitInfo hit;
     float sampleAlpha = 1.0f;
+    float3 sampleNormalW = float3(0.f);
+    float3 sampleFaceNormalW = float3(0.f);
 
+    TriangleHit primaryTriangleHit;
     AOVData aov_data = AOVData.create();
 
 #if defined(USE_VISIBILITY_CONTAINER)
@@ -563,12 +566,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         float4 colorAccum = gInOutColor[pixelPos];
 
         for(uint layer = 0; layer < transparentVisibilitySamplesCount; ++layer) {
-            hit = HitInfo(transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].hitInfo);
-            sampleAlpha = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1].alpha;
+            TransparentVisibilitySample sample = transparenSamplesList[transparentVisibilitySamplesCount - layer - 1];
+            hit = sample.getHitInfo();
+            sampleAlpha = sample.alpha;
+            sampleNormalW = sample.getNormalW();
+            sampleFaceNormalW = sample.getFaceNormalW();
     #else
         pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
-        
-        hit = gVisibilityContainer.readOpaqueHit(pixelOffset);
+
+        OpaqueVisibilitySample sample = gVisibilityContainer.readOpaqueSample(pixelOffset);
+        hit = sample.getHitInfo();
+        sampleNormalW = sample.getNormalW();
+        sampleFaceNormalW = sample.getFaceNormalW();
     #endif
 #else
     hit = HitInfo(gVbuffer[pixelPos]);
@@ -599,37 +608,37 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
-    TriangleHit primaryTriangleHit = hit.getTriangleHit();
+    primaryTriangleHit = hit.getTriangleHit();
     ShadingData primaryShadingData;
 
     if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
-    
-    VertexData v = gScene.getVertexData(primaryTriangleHit);
 
-#if is_valid(gNormW)
-    if(gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
+    VertexData v;
+
+#if defined(USE_VISIBILITY_CONTAINER)
+    if( gVisibilityContainer.hasCombinedNormals() && sample.hasCombinedNormals() && gScene.isObjectSubdividable(primaryTriangleHit.instanceID) ) {
+        v.normalW = sampleNormalW;
+        v.faceNormalW = sampleFaceNormalW;
+    } else {
+        v = gScene.getVertexData(primaryTriangleHit);
+    }
+
+    const uint materialID = gScene.getMaterialID(primaryTriangleHit);
+    primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
+#else
+    if (is_valid(gNormW) && gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
+        v = gScene.getVertexData(primaryTriangleHit);
 
         uint3 packedNormal = gNormW[pixelPos].xyz;
 
-        v.normalW = {
-            unpackSnorm16(packedNormal.x >> 16),
-            unpackSnorm16(packedNormal.y >> 16),
-            unpackSnorm16(packedNormal.z >> 16)
-        };
-
-        v.faceNormalW = {
-            unpackSnorm16(packedNormal.x & 0x0000ffff),
-            unpackSnorm16(packedNormal.y & 0x0000ffff),
-            unpackSnorm16(packedNormal.z & 0x0000ffff)
-        };
+        v.normalW = { unpackSnorm16(packedNormal.x >> 16), unpackSnorm16(packedNormal.y >> 16), unpackSnorm16(packedNormal.z >> 16) };
+        v.faceNormalW = { unpackSnorm16(packedNormal.x & 0x0000ffff), unpackSnorm16(packedNormal.y & 0x0000ffff), unpackSnorm16(packedNormal.z & 0x0000ffff) };
 
         const uint materialID = gScene.getMaterialID(primaryTriangleHit);
         primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
     } else {
         calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
     }
-#else
-    calcPrimaryShadingData(rayDir, primaryTriangleHit, primaryLod, primaryShadingData);
 #endif
 
     aov_data.face_normal = v.faceNormalW;
@@ -721,7 +730,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 
     gInOutColor[pixelPos] = colorAccum;
-    return;
+    //return;
 #else
     gInOutColor[pixelPos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
 #endif

@@ -4,10 +4,17 @@ namespace Falcor {
 
 namespace {
 
+template<typename T>
+void updateMaximum(std::atomic<T>& maximum_value, T const& value) noexcept {
+    T prev_value = maximum_value;
+    while(prev_value < value && !maximum_value.compare_exchange_weak(prev_value, value)) {}
+}
+
 }
 
 SimpleProfiler::SimpleProfiler( const char* name ) {
 	mName = std::string( name );
+	updateMaximum(mCallerNameWidth, mName.size());
   mTimeStart = Clock::now();
 }
 
@@ -30,18 +37,23 @@ void SimpleProfiler::printReport() {
 	//TimePoint f = Clock::now();
 
 	printf("SimpleProfiler report...\n");
-	printf("%30s Calls\tMean (secs)\tStdDev\n","Scope");
+	printf("%42s Calls\tMean (secs)\tStdDev\tTotal (secs)\n","Scope");
 	for(std::map<std::string, acc_t>::iterator p = mMap.begin(); p != mMap.end(); p++ ) {
 		float av = ba::mean(p->second);
 		float stdev = sqrt((double)(ba::variance(p->second)));
+
+		size_t sum = ba::sum(p->second);
+    size_t cnt = ba::count(p->second);
 		//float worst = ba::extract_result<ba::tag::max>(p->second);
 		//float best = ba::extract_result<ba::tag::min>(p->second);
 
-		printf("%30s %lu\t%f\t%f\n",p->first.c_str(), ba::count(p->second), av * 0.001f, stdev * 0.001f);
+		printf("%42s %lu\t%f\t%f\t%f\n", p->first.c_str(), ba::count(p->second), av * 0.001f, stdev * 0.001f, float(sum) * 0.001f);
 	}
 	printf("\n");
 }
 
 std::map<std::string, ba::accumulator_set<uint64_t, ba::stats<ba::tag::variance(ba::lazy)> >> SimpleProfiler::mMap;
+
+std::atomic<size_t> SimpleProfiler::mCallerNameWidth = 30; 
 
 }  // namespace Falcor
