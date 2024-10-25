@@ -831,8 +831,7 @@ SlangResult DeviceImpl::initialize(const Desc& desc) {
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = 0.0f;
-		SLANG_VK_RETURN_ON_FAIL(
-			m_api.vkCreateSampler(m_device, &samplerInfo, nullptr, &m_defaultSampler));
+		SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateSampler(m_device, &samplerInfo, nullptr, &m_defaultSampler));
 	}
 
 	// Create empty frame buffer.

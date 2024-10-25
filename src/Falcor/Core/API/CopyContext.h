@@ -67,10 +67,6 @@ class dlldecl CopyContext {
         uint32_t mActualRowSize;
         uint32_t mDepth;
 #endif
-
-#ifdef FALCOR_VK 
-        size_t mDataSize;
-#endif
     };
 
     virtual ~CopyContext();

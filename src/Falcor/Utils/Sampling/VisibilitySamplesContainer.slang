@@ -16,6 +16,10 @@ __exported import Scene.HitInfo;
 #define VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS 0
 #endif
 
+#ifndef VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+#define VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS 0
+#endif
+
 #ifndef VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE
 #define VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE 0
 #endif
@@ -50,7 +54,6 @@ struct VisibilitySamplesContainer {
     __StructuredBuffer<PackedHitInfo>                   opaqueVisibilitySamplesBuffer;
     __Texture2D<PackedHitInfo>                          opaqueVisibilitySamplesExternalTexture;
 
-    __StructuredBuffer<uint4>                           opaqueCombinedNormalsBuffer;
     __Texture2D<uint3>                                  opaqueCombinedNormalsExternalTexture;
 
     __StructuredBuffer<uint>                            opaqueVisibilitySamplesPositionBufferPP;
@@ -62,7 +65,17 @@ struct VisibilitySamplesContainer {
     __StructuredBuffer<uint>                            transparentVisibilitySamplesPositionBufferPP;
     __StructuredBuffer<uint>                            transparentVisibilitySamplesCountBufferPP;
     __StructuredBuffer<TransparentVisibilitySampleData> transparentVisibilitySamplesBuffer;
+
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
+    __StructuredBuffer<uint4>                           opaqueCombinedNormalsBuffer;
     __StructuredBuffer<uint4>                           transparentCombinedNormalsBuffer;
+#endif
+
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+    __StructuredBuffer<float16_t4>                      opaqueTextureGradientsBuffer;
+    __StructuredBuffer<float16_t4>                      transparentTextureGradientsBuffer;
+#endif
+
 
     __StructuredBuffer<uint>                            infoBuffer;
 
@@ -159,12 +172,20 @@ struct VisibilitySamplesContainer {
         #endif
     }
 
+    float16_t4 __readOpaqueTextureGradients(uint pixelOffset) {
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+            return opaqueTextureGradientsBuffer[pixelOffset];
+        #else
+            return float16_t4(0);
+        #endif
+    }
+
     OpaqueVisibilitySample readOpaqueSample(uint pixelOffset) {
         #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE
             uint2 pixelPos = uint2(pixelOffset % resolution.x, pixelOffset / resolution.x);
-            return {opaqueVisibilitySamplesExternalTexture[pixelPos], __readOpaqueCombinedNormals(pixelOffset)};
+            return {opaqueVisibilitySamplesExternalTexture[pixelPos], __readOpaqueCombinedNormals(pixelOffset), __readOpaqueTextureGradients(pixelOffset)};
         #else
-            return {opaqueVisibilitySamplesBuffer[pixelOffset], __readOpaqueCombinedNormals(pixelOffset)};
+            return {opaqueVisibilitySamplesBuffer[pixelOffset], __readOpaqueCombinedNormals(pixelOffset), __readOpaqueTextureGradients(pixelOffset)};
         #endif
     }
 
@@ -192,7 +213,7 @@ struct VisibilitySamplesContainer {
         #endif
     }
 
-    void writeOpaqueHit2D(uint2 pixelPos, const HitInfo hit, const uint4 packedCombinedNormal) {
+    void writeOpaqueHit2D(uint2 pixelPos, const HitInfo hit, const uint4 packedCombinedNormal, const float4 texGrads = float4(0.f)) {
         if(isOpaqueSorted()) return;
 
         uint pixelOffset = pixelPos.x + pixelPos.y * resolution.x;
@@ -204,13 +225,15 @@ struct VisibilitySamplesContainer {
         #endif
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
-            if(any(packedCombinedNormal != uint4(0))) {
             #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE
                 opaqueCombinedNormalsExternalTexture[pixelPos] = packedCombinedNormal;
             #else
                 opaqueCombinedNormalsBuffer[pixelOffset] = packedCombinedNormal;
             #endif
-            }
+        #endif
+
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+            opaqueTextureGradientsBuffer[pixelOffset] = float16_t4(texGrads);
         #endif
     }
 
@@ -253,7 +276,7 @@ struct VisibilitySamplesContainer {
 
 #if VISIBILITY_SAMPLES_CONTAINER_READ_WRITE
 
-    void writeTransparentHit(uint2 pixelPos, const HitInfo hit, float alpha, uint64_t depth, const uint4 packedCombinedNormal = uint4(0)) {
+    void writeTransparentHit(uint2 pixelPos, const HitInfo hit, float alpha, uint64_t depth, const uint4 packedCombinedNormal = uint4(0), const float4 texGrads = float4(0.f)) {
         if(pixelPos.x >= resolution.x || pixelPos.y >= resolution.y) return;
         if(!hit.isValid() || alpha < alphaThresholdMin) return;
 
@@ -303,7 +326,11 @@ struct VisibilitySamplesContainer {
         transparentVisibilitySamplesBuffer[newSampleOffset] = transparentSample;
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
-            if(any(packedCombinedNormal != uint4(0))) transparentCombinedNormalsBuffer[newSampleOffset] = packedCombinedNormal;
+            transparentCombinedNormalsBuffer[newSampleOffset] = packedCombinedNormal;
+        #endif
+
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+            transparentTextureGradientsBuffer[pixelOffset] = float16_t4(texGrads);
         #endif
 
         InterlockedMax(infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_MAX_TRANSPARENT_LAYERS_COUNT_LOCATION], min((curSamplesCount + 1), maxTransparentSamplesCountPP));
@@ -429,7 +456,7 @@ struct VisibilitySamplesContainer {
     }
 };
 
-#ifdef VISIBILITY_CONTAINER_PARAMETER_BLOCK
+#ifdef VISIBILITY_SAMPLES_CONTAINER_PARAMETER_BLOCK
 // Declare parameter block used for shader reflection.
 ParameterBlock<VisibilitySamplesContainer> gVisibilitySamplesContainer;
 void main() {};

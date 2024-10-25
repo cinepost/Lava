@@ -38,14 +38,13 @@ import Utils.Sampling.SampleGenerator;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-RWTexture2D<PackedHitInfo> gVBuffer;
-
 RWByteAddressBuffer gLocalDepthBuffer;
 
 // Meshlets related buffers
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
 
 // Optional buffers
+RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;

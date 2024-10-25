@@ -2024,6 +2024,35 @@
             label   "Advanced"
 
             parm {
+                name    "lv_shadercacheuse"
+                label   "Use Shaders Cache"
+                type    toggle
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_shadercachecompression"
+                label   "Shaders Cache Compression"
+                type    string
+                default { "none" }
+                menu {
+                    "none"  "No Compression"
+                    "blosc" "BLOSC Compression"
+                    "gzip"  "gzip Compression"
+                }
+                disablewhen "{ lv_shadercacheuse == 0 }"
+            }
+            parm {
+                name    "lv_shadercachestorage"
+                label   "Shaders cache storage"
+                type    file
+                default { "$HIP/lava/shaders_cache" }
+                disablewhen "{ lv_shadercacheuse == 0 }"
+                parmtag { "filechooser_mode" "write" }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "lv_visibility_container_sort"
                 label   "Visibility Container Optimize"
                 type    toggle

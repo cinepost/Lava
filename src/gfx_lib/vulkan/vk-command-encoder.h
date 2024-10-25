@@ -4,24 +4,23 @@
 #include "vk-base.h"
 #include "vk-pipeline-state.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-class PipelineCommandEncoder : public RefObject
-{
+class PipelineCommandEncoder : public RefObject {
 public:
+    ~PipelineCommandEncoder();
+
     CommandBufferImpl* m_commandBuffer;
     VkCommandBuffer m_vkCommandBuffer;
     VkCommandBuffer m_vkPreCommandBuffer = VK_NULL_HANDLE;
     VkPipeline m_boundPipelines[3] = {};
     DeviceImpl* m_device = nullptr;
     RefPtr<PipelineStateImpl> m_currentPipeline;
-
+    
     VulkanApi* m_api;
 
     static int getBindPointIndex(VkPipelineBindPoint bindPoint);

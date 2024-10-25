@@ -65,6 +65,7 @@ struct OpaqueVisibilitySample {
     #endif
 
     uint4               packedCombinedNormal;
+    float16_t4          texGrads;
 
 #ifndef HOST_CODE
     bool hasCombinedNormal() CONST_FUNCTION {
@@ -87,14 +88,26 @@ struct OpaqueVisibilitySample {
         return any(packedCombinedNormal != uint4(0));
     }
 
+    float4 getTextureGradients() CONST_FUNCTION {
+        return texGrads;
+    }
+
     __init() {
         packedHitInfo = uint4(0);
         packedCombinedNormal = uint4(0);
+        texGrads = float16_t4(0.0);
     }
 
     __init(PackedHitInfo _hitInfo, uint4 _packedCombinedNormal) {
         packedHitInfo = _hitInfo;
         packedCombinedNormal = _packedCombinedNormal;
+        texGrads = float16_t4(0.0);
+    }
+
+    __init(PackedHitInfo _hitInfo, uint4 _packedCombinedNormal, float16_t4 texGrads) {
+        packedHitInfo = _hitInfo;
+        packedCombinedNormal = _packedCombinedNormal;
+        texGrads = texGrads;
     }
 #endif
 };
@@ -107,8 +120,11 @@ struct TransparentVisibilitySample {
     #endif
 
     uint4               packedCombinedNormal;
+    
     float16_t           alpha;
     float16_t           visibilityWeight;
+
+    float16_t4          texGrads;
 
 #ifndef HOST_CODE
     bool hasCombinedNormal() CONST_FUNCTION {
@@ -131,9 +147,14 @@ struct TransparentVisibilitySample {
         return any(packedCombinedNormal != uint4(0));
     }
 
+    float4 getTextureGradients() CONST_FUNCTION {
+        return texGrads;
+    }
+
     __init() {
         packedHitInfo = uint4(0);
         packedCombinedNormal = uint4(0);
+        texGrads = float16_t4(0.0);
     }
 #endif
 };

@@ -28,7 +28,7 @@ Texture2D<uint>             gDrawCount;
 Texture2D<uint4>            gNormW;
 
 // Extra input buffers
-Buffer<float4>      gFalseColorBuffer;
+Buffer<float4>              gFalseColorBuffer;
 
 // Visibility samples container (optional)
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
@@ -130,6 +130,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         hit = sample.getHitInfo();
         normalW = sample.getNormalW();
         faceNormalW = sample.getFaceNormalW();
+
+        gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = sample.getTextureGradients();
+        return;
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);

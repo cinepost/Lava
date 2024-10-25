@@ -90,6 +90,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels = {
+        { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
         { "depth",              "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
@@ -241,6 +242,7 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement;
         mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
+        //mpVisibilitySamplesContainer->storeTextureGradients(true);
     }
 
     executeCompute(pRenderContext, renderData);
@@ -421,8 +423,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
-
-        var["gVBuffer"] = getOutput(renderData, kVBufferName);
 
         // Bind output channels as UAV buffers.
         auto bind = [&](const ChannelDesc& channel) {

@@ -118,20 +118,24 @@ struct MicroPatch3 {
 
 struct MicroTriangleIntersection {
     float3  pos;
-    bool    hit;
+    bool    valid;
     float3  bary;
     float   dist;
     
 #ifndef HOST_CODE
     __init() {
-        this.hit = false;
+        this.valid = false;
     }
-
-    __init(bool hit, float3 pos, float dist, float3 bary) {
-        this.hit = hit;
+    
+    __init(bool valid, float3 pos, float dist, float3 bary) {
+        this.valid = valid;
         this.pos = pos;
         this.dist = dist;
         this.bary = bary;
+    }
+
+    bool isValid() CONST_FUNCTION {
+        return valid && (dist != 0.0);
     }
 #endif
 };

@@ -167,7 +167,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
         // Bind mandatory input channels
         pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        pPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
 
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {

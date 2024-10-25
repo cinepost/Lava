@@ -22,6 +22,7 @@ namespace Falcor {
 class dlldecl VisibilitySamplesContainer {
 	public:
 		static const bool kDefaultStoreNormals = false;
+		static const bool kDefaultStoreTextureGradients = false;
 		static const bool kDefaultLimitTransparentSamplesCountPP = false;
 
 		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
@@ -108,6 +109,7 @@ class dlldecl VisibilitySamplesContainer {
 		void  enableSorting(bool enabled);
 		void  enableSortingPP(bool enabled);
 		void  storeCombinedNormals(bool enabled);
+		void  storeTextureGradients(bool enabled);
 
 		bool  hasCombinedNormals() const;
 
@@ -138,6 +140,7 @@ class dlldecl VisibilitySamplesContainer {
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
 		bool  mStoreCombinedNormals = kDefaultStoreNormals;
+		bool  mStoreTextureGradients = kDefaultStoreTextureGradients;
 		bool  mDepth64 = false;
 
 		uint3 mShadingThreadGroupSize;
@@ -161,11 +164,14 @@ class dlldecl VisibilitySamplesContainer {
 		Buffer::SharedPtr   mpOpaqueCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
+		Buffer::SharedPtr   mpOpaqueTextureGradientsBuffer;
+
 
 		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 		Buffer::SharedPtr   mpTransparentCombinedNormalsBuffer;
+		Buffer::SharedPtr   mpTransparentTextureGradientsBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
 		// Optional external resources

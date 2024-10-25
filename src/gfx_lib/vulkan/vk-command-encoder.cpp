@@ -25,6 +25,13 @@ using namespace Slang;
 
 namespace vk {
 
+PipelineCommandEncoder::~PipelineCommandEncoder() {
+	LLOG_WRN << "PipelineCommandEncoder::~PipelineCommandEncoder()";
+	if(m_currentPipeline) {
+		m_currentPipeline->destroy();
+	}
+}
+
 int PipelineCommandEncoder::getBindPointIndex(VkPipelineBindPoint bindPoint) {
 	switch (bindPoint) {
 		case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -47,8 +54,9 @@ void PipelineCommandEncoder::init(CommandBufferImpl* commandBuffer) {
 }
 
 void PipelineCommandEncoder::endEncodingImpl() {
-	for (auto& pipeline : m_boundPipelines)
+	for (auto& pipeline : m_boundPipelines) {
 		pipeline = VK_NULL_HANDLE;
+	}
 }
 
 void PipelineCommandEncoder::_uploadBufferData(
@@ -86,9 +94,7 @@ void PipelineCommandEncoder::_uploadBufferData(
 		&copyInfo);
 }
 
-void PipelineCommandEncoder::uploadBufferDataImpl(
-	IBufferResource* buffer, Offset offset, Size size, void* data)
-{
+void PipelineCommandEncoder::uploadBufferDataImpl(IBufferResource* buffer, Offset offset, Size size, void* data) {
 	m_vkPreCommandBuffer = m_commandBuffer->getPreCommandBuffer();
 	_uploadBufferData(
 		m_vkPreCommandBuffer,
@@ -99,14 +105,12 @@ void PipelineCommandEncoder::uploadBufferDataImpl(
 		data);
 }
 
-Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bindPoint)
-{
+Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bindPoint) {
 	// Obtain specialized root layout.
 	auto rootObjectImpl = &m_commandBuffer->m_rootObject;
 
 	auto specializedLayout = rootObjectImpl->getSpecializedLayout();
-	if (!specializedLayout)
-		return SLANG_FAIL;
+	if (!specializedLayout) return SLANG_FAIL;
 
 	// We will set up the context required when binding shader objects
 	// to the pipeline. Note that this is mostly just being packaged
@@ -161,6 +165,7 @@ Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bind
 }
 
 Result PipelineCommandEncoder::setPipelineStateImpl(IPipelineState* state, IShaderObject** outRootObject) {
+	m_currentPipeline.setNull();
 	m_currentPipeline = static_cast<PipelineStateImpl*>(state);
 	SLANG_RETURN_ON_FAIL(m_commandBuffer->m_rootObject.init(
 		m_commandBuffer->m_renderer,
@@ -172,8 +177,7 @@ Result PipelineCommandEncoder::setPipelineStateImpl(IPipelineState* state, IShad
 Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(IPipelineState* state, IShaderObject* inObject) {
 	IShaderObject* rootObject = nullptr;
 	SLANG_RETURN_ON_FAIL(setPipelineStateImpl(state, &rootObject));
-	static_cast<ShaderObjectBase*>(rootObject)
-		->copyFrom(inObject, m_commandBuffer->m_transientHeap);
+	static_cast<ShaderObjectBase*>(rootObject)->copyFrom(inObject, m_commandBuffer->m_transientHeap);
 	return SLANG_OK;
 }
 
@@ -183,19 +187,21 @@ void PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoi
 	// Get specialized pipeline state and bind it.
 	//
 	RefPtr<PipelineStateBase> newPipeline;
-	m_device->maybeSpecializePipeline(
-		m_currentPipeline, &m_commandBuffer->m_rootObject, newPipeline);
+	m_device->maybeSpecializePipeline(m_currentPipeline, &m_commandBuffer->m_rootObject, newPipeline);
 	PipelineStateImpl* newPipelineImpl = static_cast<PipelineStateImpl*>(newPipeline.Ptr());
 
 	newPipelineImpl->ensureAPIPipelineStateCreated();
+
 	m_currentPipeline = newPipelineImpl;
 
 	bindRootShaderObjectImpl(pipelineBindPoint);
 
 	auto pipelineBindPointId = getBindPointIndex(pipelineBindPoint);
-	if (m_boundPipelines[pipelineBindPointId] != newPipelineImpl->m_pipeline) {
-		api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, newPipelineImpl->m_pipeline);
-		m_boundPipelines[pipelineBindPointId] = newPipelineImpl->m_pipeline;
+
+	VkPipeline pipeline = newPipelineImpl->getPipeline();
+	if (m_boundPipelines[pipelineBindPointId] != pipeline) {
+		api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, pipeline);
+		m_boundPipelines[pipelineBindPointId] = pipeline;
 	}
 }
 
@@ -352,18 +358,21 @@ void ResourceCommandEncoder::copyTexture(
 	if (dstSubresource.layerCount == 0 && dstSubresource.mipLevelCount == 0) {
 		extent = dstDesc->size;
 		dstSubresource.layerCount = dstDesc->arraySize;
-		if (dstSubresource.layerCount == 0)
+		if (dstSubresource.layerCount == 0) {
 			dstSubresource.layerCount = 1;
+		}
 		dstSubresource.mipLevelCount = dstDesc->numMipLevels;
 	}
 
 	if (srcSubresource.layerCount == 0 && srcSubresource.mipLevelCount == 0) {
 		extent = srcDesc->size;
 		srcSubresource.layerCount = srcDesc->arraySize;
-		if (srcSubresource.layerCount == 0)
+		if (srcSubresource.layerCount == 0) {
 			srcSubresource.layerCount = 1;
+		}
 		srcSubresource.mipLevelCount = dstDesc->numMipLevels;
 	}
+	
 	VkImageCopy region = {};
 	region.srcSubresource.aspectMask = VulkanUtil::getAspectMask(srcSubresource.aspectMask, srcImage->m_vkformat);
 	region.srcSubresource.baseArrayLayer = srcSubresource.baseArrayLayer;
@@ -608,13 +617,10 @@ void ResourceCommandEncoder::uploadTextureData(
 	}
 }
 
-void ResourceCommandEncoder::_clearColorImage(
-	TextureResourceViewImpl* viewImpl, ClearValue* clearValue)
-{
+void ResourceCommandEncoder::_clearColorImage(TextureResourceViewImpl* viewImpl, ClearValue* clearValue) {
 	auto& api = m_commandBuffer->m_renderer->m_api;
 	auto layout = viewImpl->m_layout;
-	if (layout != VK_IMAGE_LAYOUT_GENERAL && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
+	if (layout != VK_IMAGE_LAYOUT_GENERAL && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		m_commandBuffer->m_renderer->_transitionImageLayout(
 			m_commandBuffer->m_commandBuffer,
@@ -643,8 +649,7 @@ void ResourceCommandEncoder::_clearColorImage(
 		1,
 		&subresourceRange);
 
-	if (layout != viewImpl->m_layout)
-	{
+	if (layout != viewImpl->m_layout) {
 		m_commandBuffer->m_renderer->_transitionImageLayout(
 			m_commandBuffer->m_commandBuffer,
 			viewImpl->m_texture->m_image,
@@ -655,9 +660,7 @@ void ResourceCommandEncoder::_clearColorImage(
 	}
 }
 
-void ResourceCommandEncoder::_clearDepthImage(
-	TextureResourceViewImpl* viewImpl, ClearValue* clearValue, ClearResourceViewFlags::Enum flags)
-{
+void ResourceCommandEncoder::_clearDepthImage(TextureResourceViewImpl* viewImpl, ClearValue* clearValue, ClearResourceViewFlags::Enum flags) {
 	auto& api = m_commandBuffer->m_renderer->m_api;
 	auto layout = viewImpl->m_layout;
 	if (layout != VK_IMAGE_LAYOUT_GENERAL && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
@@ -677,11 +680,13 @@ void ResourceCommandEncoder::_clearDepthImage(
 			subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
 		}
 	}
+	
 	if (flags & ClearResourceViewFlags::ClearStencil) {
 		if (VulkanUtil::isStencilFormat(viewImpl->m_texture->m_vkformat)) {
 			subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 	}
+
 	subresourceRange.baseArrayLayer = viewImpl->m_desc.subresourceRange.baseArrayLayer;
 	subresourceRange.baseMipLevel = viewImpl->m_desc.subresourceRange.mipLevel;
 	subresourceRange.layerCount = viewImpl->m_desc.subresourceRange.layerCount;
@@ -747,13 +752,9 @@ void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* 
 					case ResourceViewImpl::ViewType::Texture:
 						{
 							auto viewImpl = static_cast<TextureResourceViewImpl*>(viewImplBase);
-							if ((flags & ClearResourceViewFlags::ClearDepth) ||
-								(flags & ClearResourceViewFlags::ClearStencil))
-							{
+							if ((flags & ClearResourceViewFlags::ClearDepth) || (flags & ClearResourceViewFlags::ClearStencil)) {
 								_clearDepthImage(viewImpl, clearValue, flags);
-							}
-							else
-							{
+							} else {
 								_clearColorImage(viewImpl, clearValue);
 							}
 						}
@@ -768,10 +769,8 @@ void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* 
 							uint64_t clearStart = viewImpl->m_desc.bufferRange.firstElement;
 							uint64_t clearSize = viewImpl->m_desc.bufferRange.elementCount;
 
-							if (clearSize == 0)
-								clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
-							if (viewImpl->m_desc.bufferElementSize != 0)
-								clearSize *= viewImpl->m_desc.bufferElementSize;
+							if (clearSize == 0) clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
+							if (viewImpl->m_desc.bufferElementSize != 0) clearSize *= viewImpl->m_desc.bufferElementSize;
 							api.vkCmdFillBuffer(
 								m_commandBuffer->m_commandBuffer,
 								viewImpl->m_buffer->m_buffer.m_buffer,
@@ -847,9 +846,7 @@ void ResourceCommandEncoder::resolveResource(
 	}
 }
 
-void ResourceCommandEncoder::resolveQuery(
-	IQueryPool* queryPool, GfxIndex index, GfxCount count, IBufferResource* buffer, Offset offset)
-{
+void ResourceCommandEncoder::resolveQuery(IQueryPool* queryPool, GfxIndex index, GfxCount count, IBufferResource* buffer, Offset offset) {
 	auto& vkApi = m_commandBuffer->m_renderer->m_api;
 	auto poolImpl = static_cast<QueryPoolImpl*>(queryPool);
 	auto bufferImpl = static_cast<BufferResourceImpl*>(buffer);
@@ -944,11 +941,9 @@ void ResourceCommandEncoder::textureSubresourceBarrier(
 		barriers.getArrayView().getBuffer());
 }
 
-void ResourceCommandEncoder::beginDebugEvent(const char* name, float rgbColor[3])
-{
+void ResourceCommandEncoder::beginDebugEvent(const char* name, float rgbColor[3]) {
 	auto& vkApi = m_commandBuffer->m_renderer->m_api;
-	if (vkApi.vkCmdDebugMarkerBeginEXT)
-	{
+	if (vkApi.vkCmdDebugMarkerBeginEXT) {
 		VkDebugMarkerMarkerInfoEXT eventInfo = {};
 		eventInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
 		eventInfo.pMarkerName = name;
@@ -960,20 +955,18 @@ void ResourceCommandEncoder::beginDebugEvent(const char* name, float rgbColor[3]
 	}
 }
 
-void ResourceCommandEncoder::endDebugEvent()
-{
+void ResourceCommandEncoder::endDebugEvent() {
 	auto& vkApi = m_commandBuffer->m_renderer->m_api;
-	if (vkApi.vkCmdDebugMarkerEndEXT)
-	{
+	if (vkApi.vkCmdDebugMarkerEndEXT) {
 		vkApi.vkCmdDebugMarkerEndEXT(m_commandBuffer->m_commandBuffer);
 	}
 }
 
-void RenderCommandEncoder::beginPass(IRenderPassLayout* renderPass, IFramebuffer* framebuffer)
-{
+void RenderCommandEncoder::beginPass(IRenderPassLayout* renderPass, IFramebuffer* framebuffer){
 	FramebufferImpl* framebufferImpl = static_cast<FramebufferImpl*>(framebuffer);
-	if (!framebuffer)
-		framebufferImpl = this->m_device->m_emptyFramebuffer;
+
+	if (!framebuffer) framebufferImpl = this->m_device->m_emptyFramebuffer;
+	
 	RenderPassLayoutImpl* renderPassImpl = static_cast<RenderPassLayoutImpl*>(renderPass);
 	VkClearValue clearValues[kMaxTargets] = {};
 	VkRenderPassBeginInfo beginInfo = {};
@@ -981,8 +974,9 @@ void RenderCommandEncoder::beginPass(IRenderPassLayout* renderPass, IFramebuffer
 	beginInfo.framebuffer = framebufferImpl->m_handle;
 	beginInfo.renderPass = renderPassImpl->m_renderPass;
 	uint32_t targetCount = (uint32_t)framebufferImpl->renderTargetViews.getCount();
-	if (framebufferImpl->depthStencilView)
-		targetCount++;
+	
+	if (framebufferImpl->depthStencilView) targetCount++;
+
 	beginInfo.clearValueCount = targetCount;
 	beginInfo.renderArea.extent.width = framebufferImpl->m_width;
 	beginInfo.renderArea.extent.height = framebufferImpl->m_height;
@@ -991,33 +985,26 @@ void RenderCommandEncoder::beginPass(IRenderPassLayout* renderPass, IFramebuffer
 	api.vkCmdBeginRenderPass(m_vkCommandBuffer, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void RenderCommandEncoder::endEncoding()
-{
+void RenderCommandEncoder::endEncoding() {
 	auto& api = *m_api;
 	api.vkCmdEndRenderPass(m_vkCommandBuffer);
 	endEncodingImpl();
 }
 
-Result RenderCommandEncoder::bindPipeline(
-	IPipelineState* pipelineState, IShaderObject** outRootObject)
-{
+Result RenderCommandEncoder::bindPipeline(IPipelineState* pipelineState, IShaderObject** outRootObject) {
 	return setPipelineStateImpl(pipelineState, outRootObject);
 }
 
-Result RenderCommandEncoder::bindPipelineWithRootObject(
-	IPipelineState* pipelineState, IShaderObject* rootObject)
-{
+Result RenderCommandEncoder::bindPipelineWithRootObject( IPipelineState* pipelineState, IShaderObject* rootObject) {
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
-void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewports)
-{
+void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewports) {
 	static const int kMaxViewports = 8; // TODO: base on device caps
 	assert(count <= kMaxViewports);
 
 	m_viewports.setCount(count);
-	for (GfxIndex ii = 0; ii < count; ++ii)
-	{
+	for (GfxIndex ii = 0; ii < count; ++ii) {
 		auto& inViewport = viewports[ii];
 		auto& vkViewport = m_viewports[ii];
 
@@ -1033,14 +1020,12 @@ void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewport
 	api.vkCmdSetViewport(m_vkCommandBuffer, 0, uint32_t(count), m_viewports.getBuffer());
 }
 
-void RenderCommandEncoder::setScissorRects(GfxCount count, const ScissorRect* rects)
-{
+void RenderCommandEncoder::setScissorRects(GfxCount count, const ScissorRect* rects) {
 	static const int kMaxScissorRects = 8; // TODO: base on device caps
 	assert(count <= kMaxScissorRects);
 
 	m_scissorRects.setCount(count);
-	for (GfxIndex ii = 0; ii < count; ++ii)
-	{
+	for (GfxIndex ii = 0; ii < count; ++ii) {
 		auto& inRect = rects[ii];
 		auto& vkRect = m_scissorRects[ii];
 
@@ -1054,26 +1039,20 @@ void RenderCommandEncoder::setScissorRects(GfxCount count, const ScissorRect* re
 	api.vkCmdSetScissor(m_vkCommandBuffer, 0, uint32_t(count), m_scissorRects.getBuffer());
 }
 
-void RenderCommandEncoder::setPrimitiveTopology(PrimitiveTopology topology)
-{
+void RenderCommandEncoder::setPrimitiveTopology(PrimitiveTopology topology) {
 	auto& api = *m_api;
-	if (api.vkCmdSetPrimitiveTopologyEXT)
-	{
-		api.vkCmdSetPrimitiveTopologyEXT(
-			m_vkCommandBuffer, VulkanUtil::getVkPrimitiveTopology(topology));
-	}
-	else
-	{
-		switch (topology)
-		{
-		case PrimitiveTopology::TriangleList:
-			break;
-		default:
-			// We are using a non-list topology, but we don't have dynmaic state
-			// extension, error out.
-			assert(!"Non-list topology requires VK_EXT_extended_dynamic_states, which "
-					"is not present.");
-			break;
+	if (api.vkCmdSetPrimitiveTopologyEXT) {
+		api.vkCmdSetPrimitiveTopologyEXT( m_vkCommandBuffer, VulkanUtil::getVkPrimitiveTopology(topology));
+	} else {
+		switch (topology) {
+			case PrimitiveTopology::TriangleList:
+				break;
+			default:
+				// We are using a non-list topology, but we don't have dynmaic state
+				// extension, error out.
+				assert(!"Non-list topology requires VK_EXT_extended_dynamic_states, which "
+						"is not present.");
+				break;
 		}
 	}
 }
@@ -1084,71 +1063,59 @@ void RenderCommandEncoder::setVertexBuffers(
 	IBufferResource* const* buffers,
 	const Offset* offsets)
 {
-	for (GfxIndex i = 0; i < GfxIndex(slotCount); i++)
-	{
+	for (GfxIndex i = 0; i < GfxIndex(slotCount); i++) {
 		GfxIndex slotIndex = startSlot + i;
 		BufferResourceImpl* buffer = static_cast<BufferResourceImpl*>(buffers[i]);
-		if (buffer)
-		{
+		if (buffer) {
 			VkBuffer vertexBuffers[] = {buffer->m_buffer.m_buffer};
 			VkDeviceSize offset = VkDeviceSize(offsets[i]);
 
-			m_api->vkCmdBindVertexBuffers(
-				m_vkCommandBuffer, (uint32_t)slotIndex, 1, vertexBuffers, &offset);
+			m_api->vkCmdBindVertexBuffers(m_vkCommandBuffer, (uint32_t)slotIndex, 1, vertexBuffers, &offset);
 		}
 	}
 }
 
-void RenderCommandEncoder::setIndexBuffer(
-	IBufferResource* buffer, Format indexFormat, Offset offset)
-{
+void RenderCommandEncoder::setIndexBuffer(IBufferResource* buffer, Format indexFormat, Offset offset) {
 	VkIndexType indexType = VK_INDEX_TYPE_UINT16;
-	switch (indexFormat)
-	{
-	case Format::R16_UINT:
-		indexType = VK_INDEX_TYPE_UINT16;
-		break;
-	case Format::R32_UINT:
-		indexType = VK_INDEX_TYPE_UINT32;
-		break;
-	default:
-		assert(!"unsupported index format");
+	
+	switch (indexFormat) {
+		case Format::R16_UINT:
+			indexType = VK_INDEX_TYPE_UINT16;
+			break;
+		case Format::R32_UINT:
+			indexType = VK_INDEX_TYPE_UINT32;
+			break;
+		default:
+			assert(!"unsupported index format");
 	}
 
 	BufferResourceImpl* bufferImpl = static_cast<BufferResourceImpl*>(buffer);
 
-	m_api->vkCmdBindIndexBuffer(
-		m_vkCommandBuffer, bufferImpl->m_buffer.m_buffer, (VkDeviceSize)offset, indexType);
+	m_api->vkCmdBindIndexBuffer(m_vkCommandBuffer, bufferImpl->m_buffer.m_buffer, (VkDeviceSize)offset, indexType);
 }
 
-void RenderCommandEncoder::prepareDraw()
-{
+void RenderCommandEncoder::prepareDraw() {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
-	if (!pipeline)
-	{
+	if (!pipeline) {
 		assert(!"Invalid render pipeline");
 		return;
 	}
 	bindRenderState(VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
-void RenderCommandEncoder::draw(GfxCount vertexCount, GfxIndex startVertex)
-{
+void RenderCommandEncoder::draw(GfxCount vertexCount, GfxIndex startVertex) {
 	prepareDraw();
 	auto& api = *m_api;
 	api.vkCmdDraw(m_vkCommandBuffer, vertexCount, 1, 0, 0);
 }
 
-void RenderCommandEncoder::drawIndexed(
-	GfxCount indexCount, GfxIndex startIndex, GfxIndex baseVertex)
-{
+void RenderCommandEncoder::drawIndexed(GfxCount indexCount, GfxIndex startIndex, GfxIndex baseVertex) {
 	prepareDraw();
 	auto& api = *m_api;
 	api.vkCmdDrawIndexed(m_vkCommandBuffer, indexCount, 1, startIndex, baseVertex, 0);
 }
 
-void RenderCommandEncoder::setStencilReference(uint32_t referenceValue)
-{
+void RenderCommandEncoder::setStencilReference(uint32_t referenceValue) {
 	auto& api = *m_api;
 	api.vkCmdSetStencilReference(m_vkCommandBuffer, VK_STENCIL_FRONT_AND_BACK, referenceValue);
 }
@@ -1207,11 +1174,8 @@ void RenderCommandEncoder::drawIndexedIndirectCount(
     sizeof(VkDrawIndexedIndirectCommand));
 }
 
-Result RenderCommandEncoder::setSamplePositions(
-	GfxCount samplesPerPixel, GfxCount pixelCount, const SamplePosition* samplePositions)
-{
-	if (m_api->vkCmdSetSampleLocationsEXT)
-	{
+Result RenderCommandEncoder::setSamplePositions(GfxCount samplesPerPixel, GfxCount pixelCount, const SamplePosition* samplePositions) {
+	if (m_api->vkCmdSetSampleLocationsEXT) {
 		VkSampleLocationsInfoEXT sampleLocInfo = {};
 		sampleLocInfo.sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT;
 		sampleLocInfo.sampleLocationsCount = samplesPerPixel * pixelCount;
@@ -1230,8 +1194,7 @@ void RenderCommandEncoder::drawInstanced(
 {
 	prepareDraw();
 	auto& api = *m_api;
-	api.vkCmdDraw(
-		m_vkCommandBuffer, vertexCount, instanceCount, startVertex, startInstanceLocation);
+	api.vkCmdDraw(m_vkCommandBuffer, vertexCount, instanceCount, startVertex, startInstanceLocation);
 }
 
 void RenderCommandEncoder::drawIndexedInstanced(
@@ -1254,15 +1217,11 @@ void RenderCommandEncoder::drawIndexedInstanced(
 
 void ComputeCommandEncoder::endEncoding() { endEncodingImpl(); }
 
-Result ComputeCommandEncoder::bindPipeline(
-	IPipelineState* pipelineState, IShaderObject** outRootObject)
-{
+Result ComputeCommandEncoder::bindPipeline(IPipelineState* pipelineState, IShaderObject** outRootObject) {
 	return setPipelineStateImpl(pipelineState, outRootObject);
 }
 
-Result ComputeCommandEncoder::bindPipelineWithRootObject(
-	IPipelineState* pipelineState, IShaderObject* rootObject)
-{
+Result ComputeCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipelineState, IShaderObject* rootObject) {
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
@@ -1299,8 +1258,8 @@ void RayTracingCommandEncoder::_memoryBarrier(
 {
 	ShortList<VkBufferMemoryBarrier> memBarriers;
 	memBarriers.setCount(count);
-	for (int i = 0; i < count; i++)
-	{
+
+	for (int i = 0; i < count; i++) {
 		memBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 		memBarriers[i].pNext = nullptr;
 		memBarriers[i].dstAccessMask = translateAccelerationStructureAccessFlag(destAccess);
@@ -1313,6 +1272,7 @@ void RayTracingCommandEncoder::_memoryBarrier(
 		memBarriers[i].offset = asImpl->m_offset;
 		memBarriers[i].size = asImpl->m_size;
 	}
+	
 	m_commandBuffer->m_renderer->m_api.vkCmdPipelineBarrier(
 		m_commandBuffer->m_commandBuffer,
 		VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
@@ -1338,31 +1298,27 @@ void RayTracingCommandEncoder::_queryAccelerationStructureProperties(
 {
 	ShortList<VkAccelerationStructureKHR> vkHandles;
 	vkHandles.setCount(accelerationStructureCount);
-	for (GfxIndex i = 0; i < accelerationStructureCount; i++)
-	{
-		vkHandles[i] =
-			static_cast<AccelerationStructureImpl*>(accelerationStructures[i])->m_vkHandle;
+	for (GfxIndex i = 0; i < accelerationStructureCount; i++) {
+		vkHandles[i] = static_cast<AccelerationStructureImpl*>(accelerationStructures[i])->m_vkHandle;
 	}
 	auto vkHandlesView = vkHandles.getArrayView();
-	for (GfxIndex i = 0; i < queryCount; i++)
-	{
+	for (GfxIndex i = 0; i < queryCount; i++) {
 		VkQueryType queryType;
-		switch (queryDescs[i].queryType)
-		{
-		case QueryType::AccelerationStructureCompactedSize:
-			queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
-			break;
-		case QueryType::AccelerationStructureSerializedSize:
-			queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR;
-			break;
-		case QueryType::AccelerationStructureCurrentSize:
-			continue;
-		default:
-			getDebugCallback()->handleMessage(
-				DebugMessageType::Error,
-				DebugMessageSource::Layer,
-				"Invalid query type for use in queryAccelerationStructureProperties.");
-			return;
+		switch (queryDescs[i].queryType) {
+			case QueryType::AccelerationStructureCompactedSize:
+				queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+				break;
+			case QueryType::AccelerationStructureSerializedSize:
+				queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR;
+				break;
+			case QueryType::AccelerationStructureCurrentSize:
+				continue;
+			default:
+				getDebugCallback()->handleMessage(
+					DebugMessageType::Error,
+					DebugMessageSource::Layer,
+					"Invalid query type for use in queryAccelerationStructureProperties.");
+				return;
 		}
 		auto queryPool = static_cast<QueryPoolImpl*>(queryDescs[i].queryPool)->m_pool;
 		m_commandBuffer->m_renderer->m_api.vkCmdResetQueryPool(
@@ -1386,8 +1342,7 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	AccelerationStructureQueryDesc* queryDescs)
 {
 	AccelerationStructureBuildGeometryInfoBuilder geomInfoBuilder;
-	if (geomInfoBuilder.build(desc.inputs, getDebugCallback()) != SLANG_OK)
-		return;
+	if (geomInfoBuilder.build(desc.inputs, getDebugCallback()) != SLANG_OK) return;
 
 	if (desc.dest) {
 		geomInfoBuilder.buildInfo.dstAccelerationStructure =
@@ -1420,30 +1375,27 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	}
 }
 
-void RayTracingCommandEncoder::copyAccelerationStructure(
-	IAccelerationStructure* dest, IAccelerationStructure* src, AccelerationStructureCopyMode mode)
-{
+void RayTracingCommandEncoder::copyAccelerationStructure(IAccelerationStructure* dest, IAccelerationStructure* src, AccelerationStructureCopyMode mode) {
 	VkCopyAccelerationStructureInfoKHR copyInfo = {
 		VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR};
 	copyInfo.src = static_cast<AccelerationStructureImpl*>(src)->m_vkHandle;
 	copyInfo.dst = static_cast<AccelerationStructureImpl*>(dest)->m_vkHandle;
-	switch (mode)
-	{
-	case AccelerationStructureCopyMode::Clone:
-		copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
-		break;
-	case AccelerationStructureCopyMode::Compact:
-		copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
-		break;
-	default:
-		getDebugCallback()->handleMessage(
-			DebugMessageType::Error,
-			DebugMessageSource::Layer,
-			"Unsupported AccelerationStructureCopyMode.");
-		return;
+	
+	switch (mode) {
+		case AccelerationStructureCopyMode::Clone:
+			copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+			break;
+		case AccelerationStructureCopyMode::Compact:
+			copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
+			break;
+		default:
+			getDebugCallback()->handleMessage(
+				DebugMessageType::Error,
+				DebugMessageSource::Layer,
+				"Unsupported AccelerationStructureCopyMode.");
+			return;
 	}
-	m_commandBuffer->m_renderer->m_api.vkCmdCopyAccelerationStructureKHR(
-		m_commandBuffer->m_commandBuffer, &copyInfo);
+	m_commandBuffer->m_renderer->m_api.vkCmdCopyAccelerationStructureKHR(m_commandBuffer->m_commandBuffer, &copyInfo);
 }
 
 void RayTracingCommandEncoder::queryAccelerationStructureProperties(
@@ -1456,38 +1408,27 @@ void RayTracingCommandEncoder::queryAccelerationStructureProperties(
 		accelerationStructureCount, accelerationStructures, queryCount, queryDescs);
 }
 
-void RayTracingCommandEncoder::serializeAccelerationStructure(
-	DeviceAddress dest, IAccelerationStructure* source)
-{
-	VkCopyAccelerationStructureToMemoryInfoKHR copyInfo = {
-		VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR};
+void RayTracingCommandEncoder::serializeAccelerationStructure(DeviceAddress dest, IAccelerationStructure* source) {
+	VkCopyAccelerationStructureToMemoryInfoKHR copyInfo = {VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR};
 	copyInfo.src = static_cast<AccelerationStructureImpl*>(source)->m_vkHandle;
 	copyInfo.dst.deviceAddress = dest;
 	copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR;
-	m_commandBuffer->m_renderer->m_api.vkCmdCopyAccelerationStructureToMemoryKHR(
-		m_commandBuffer->m_commandBuffer, &copyInfo);
+	m_commandBuffer->m_renderer->m_api.vkCmdCopyAccelerationStructureToMemoryKHR(m_commandBuffer->m_commandBuffer, &copyInfo);
 }
 
-void RayTracingCommandEncoder::deserializeAccelerationStructure(
-	IAccelerationStructure* dest, DeviceAddress source)
-{
-	VkCopyMemoryToAccelerationStructureInfoKHR copyInfo = {
-		VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR};
+void RayTracingCommandEncoder::deserializeAccelerationStructure(IAccelerationStructure* dest, DeviceAddress source) {
+	VkCopyMemoryToAccelerationStructureInfoKHR copyInfo = {VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR};
 	copyInfo.src.deviceAddress = source;
 	copyInfo.dst = static_cast<AccelerationStructureImpl*>(dest)->m_vkHandle;
 	copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_DESERIALIZE_KHR;
-	m_commandBuffer->m_renderer->m_api.vkCmdCopyMemoryToAccelerationStructureKHR(
-		m_commandBuffer->m_commandBuffer, &copyInfo);
+	m_commandBuffer->m_renderer->m_api.vkCmdCopyMemoryToAccelerationStructureKHR(m_commandBuffer->m_commandBuffer, &copyInfo);
 }
 
-void RayTracingCommandEncoder::bindPipeline(IPipelineState* pipeline, IShaderObject** outRootObject)
-{
+void RayTracingCommandEncoder::bindPipeline(IPipelineState* pipeline, IShaderObject** outRootObject) {
 	setPipelineStateImpl(pipeline, outRootObject);
 }
 
-Result RayTracingCommandEncoder::bindPipelineWithRootObject(
-	IPipelineState* pipelineState, IShaderObject* rootObject)
-{
+Result RayTracingCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipelineState, IShaderObject* rootObject) {
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
@@ -1505,13 +1446,9 @@ void RayTracingCommandEncoder::dispatchRays(
 
 	auto rtProps = vkApi.m_rtProperties;
 	auto shaderTableImpl = (ShaderTableImpl*)shaderTable;
-	auto alignedHandleSize =
-		VulkanUtil::calcAligned(rtProps.shaderGroupHandleSize, rtProps.shaderGroupHandleAlignment);
+	auto alignedHandleSize = VulkanUtil::calcAligned(rtProps.shaderGroupHandleSize, rtProps.shaderGroupHandleAlignment);
 
-	auto shaderTableBuffer = shaderTableImpl->getOrCreateBuffer(
-		m_currentPipeline,
-		m_commandBuffer->m_transientHeap,
-		static_cast<ResourceCommandEncoder*>(this));
+	auto shaderTableBuffer = shaderTableImpl->getOrCreateBuffer(m_currentPipeline, m_commandBuffer->m_transientHeap, static_cast<ResourceCommandEncoder*>(this));
 	auto shaderTableAddr = shaderTableBuffer->getDeviceAddress();
 
 	VkStridedDeviceAddressRegionKHR raygenSBT;

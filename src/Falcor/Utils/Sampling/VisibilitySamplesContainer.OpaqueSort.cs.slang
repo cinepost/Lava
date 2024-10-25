@@ -73,10 +73,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
     #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE
         gVisibilityContainer.opaqueCombinedNormalsExternalTexture[existingPixelPos] = procCombinedNormal;
-        //gVisibilityContainer.opaqueCombinedNormalsExternalTexture[procPixelPos] = uint3(0);
     #else
         gVisibilityContainer.opaqueCombinedNormalsBuffer[existingOffset] = procCombinedNormal;
-        //gVisibilityContainer.opaqueCombinedNormalsBuffer[procPixelOffset] = uint3(0);
     #endif
 #endif
 

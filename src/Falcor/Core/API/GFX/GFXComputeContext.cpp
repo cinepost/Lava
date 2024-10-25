@@ -30,6 +30,9 @@
 #include "Falcor/Core/API/ComputeContext.h"
 #include "GFXLowLevelContextApiData.h"
 
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
+
+
 namespace Falcor {
 
 ComputeContext::ComputeContext(Device::SharedPtr pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue): CopyContext(pDevice, type, queue) {
@@ -39,6 +42,8 @@ ComputeContext::ComputeContext(Device::SharedPtr pDevice, LowLevelContextData::C
 ComputeContext::~ComputeContext() {}
 
 void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
+    SimpleProfiler profile("ComputeContext::dispatch(...)");
+
     pVars->prepareDescriptorSets(this);
 
     auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
@@ -80,6 +85,8 @@ void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t 
 }
 
 void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+    SimpleProfiler profile("ComputeContext::dispatchIndirect(...)");
+
     pVars->prepareDescriptorSets(this);
     resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
 

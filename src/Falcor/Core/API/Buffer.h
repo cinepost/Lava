@@ -251,7 +251,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the offset from the beginning of the GPU resource
     */
-    inline uint64_t getGpuAddressOffset() const { return mGpuVaOffset; };
+    uint64_t getGpuAddressOffset() const { return mGpuVaOffset; };
 
     /** Get the GPU address (this includes the offset)
     */
@@ -259,23 +259,23 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the size of the buffer
     */
-    inline size_t getSize() const { return mSize; }
+    size_t getSize() const { return mSize; }
 
     /** Get the element count. For structured-buffers, this is the number of structs. For typed-buffers, this is the number of elements. For other buffer, will return 0
     */
-    inline uint32_t getElementCount() const { return mElementCount; }
+    uint32_t getElementCount() const { return mElementCount; }
 
     /** Get the size of a single struct. This call is only valid for structued-buffer. For other buffer types, it will return 0
     */
-    inline uint32_t getStructSize() const { return mStructSize; }
+    uint32_t getStructSize() const { return mStructSize; }
 
     /** Get the buffer format. This call is only valid for typed-buffers, for other buffer types it will return ResourceFormat::Unknown
     */
-    inline ResourceFormat getFormat() const { return mFormat; }
+    ResourceFormat getFormat() const { return mFormat; }
 
     /** Get the UAV counter buffer
     */
-    inline const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
+    const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     /** Map the buffer.
 
@@ -293,7 +293,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get safe offset and size values
     */
-    inline bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
+    bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
         if (offset >= mSize) {
             LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.";
             return false;
@@ -308,11 +308,11 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the CPU access flags
     */
-    inline CpuAccess getCpuAccess() const { return mCpuAccess; }
+    CpuAccess getCpuAccess() const { return mCpuAccess; }
 
     /** Check if this is a typed buffer
     */
-    inline bool isTyped() const { return mFormat != ResourceFormat::Unknown; }
+    bool isTyped() const { return mFormat != ResourceFormat::Unknown; }
 
     /** Check if this is a structured-buffer
     */

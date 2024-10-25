@@ -1372,19 +1372,16 @@ struct RayTracingPipelineStateDesc
 	RayTracingPipelineFlags::Enum flags = RayTracingPipelineFlags::None;
 };
 
-class IShaderTable : public ISlangUnknown
-{
+class IShaderTable : public ISlangUnknown {
 public:
 	// Specifies the bytes to overwrite into a record in the shader table.
-	struct ShaderRecordOverwrite
-	{
+	struct ShaderRecordOverwrite {
 		Offset offset; // Offset within the shader record.
 		Size size; // Number of bytes to overwrite.
 		uint8_t data[8]; // Content to overwrite.
 	};
 
-	struct Desc
-	{
+	struct Desc {
 		GfxCount rayGenShaderCount;
 		const char** rayGenShaderEntryPointNames;
 		const ShaderRecordOverwrite* rayGenShaderRecordOverwrites;
@@ -1405,11 +1402,11 @@ public:
 		0xa721522c, 0xdf31, 0x4c2f, { 0xa5, 0xe7, 0x3b, 0xe0, 0x12, 0x4b, 0x31, 0x78 } \
 	}
 
-class IPipelineState : public ISlangUnknown
-{
-public:
-	virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) = 0;
+class IPipelineState : public ISlangUnknown {
+	public:
+		virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) = 0;
 };
+
 #define SLANG_UUID_IPipelineState                                                      \
 	{                                                                                 \
 		0xca7e57d, 0x8a90, 0x44f3, { 0xbd, 0xb1, 0xfe, 0x9b, 0x35, 0x3f, 0x5a, 0x72 } \
@@ -2126,23 +2123,31 @@ class IDevice: public ISlangUnknown {
 		struct Desc {
 			// The underlying API/Platform of the device.
 			DeviceType deviceType = DeviceType::Default;
+			
 			// The device's handles (if they exist) and their associated API. For D3D12, this contains a single InteropHandle
 			// for the ID3D12Device. For Vulkan, the first InteropHandle is the VkInstance, the second is the VkPhysicalDevice,
 			// and the third is the VkDevice. For CUDA, this only contains a single value for the CUDADevice.
 			InteropHandles existingDeviceHandles;
+			
 			// Name to identify the adapter to use
 			const char* adapter = nullptr;
+			
 			// Number of required features.
 			GfxCount requiredFeatureCount = 0;
+			
 			// Array of required feature names, whose size is `requiredFeatureCount`.
 			const char** requiredFeatures = nullptr;
+			
 			// A command dispatcher object that intercepts and handles actual low-level API call.
 			ISlangUnknown* apiCommandDispatcher = nullptr;
+			
 			// The slot (typically UAV) used to identify NVAPI intrinsics. If >=0 NVAPI is required.
 			GfxIndex nvapiExtnSlot = -1;
+			
 			// The file system for loading cached shader kernels. The layer does not maintain a strong reference to the object,
 			// instead the user is responsible for holding the object alive during the lifetime of an `IDevice`.
 			ISlangFileSystem* shaderCacheFileSystem = nullptr;
+			
 			// Configurations for Slang compiler.
 			SlangDesc slang = {};
 

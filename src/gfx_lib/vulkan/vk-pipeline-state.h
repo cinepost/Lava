@@ -1,62 +1,73 @@
 // vk-pipeline-state.h
 #pragma once
 
-#include "vk-base.h"
+#include <future>
 
-namespace gfx
-{
+#include "vk-base.h"
+#include "vk-pipeline-cache.h"
+#include "Falcor/Utils/ThreadPool.h"
+
+
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-class PipelineStateImpl : public PipelineStateBase
-{
-public:
-    PipelineStateImpl(DeviceImpl* device);
-    ~PipelineStateImpl();
+class PipelineStateImpl : public PipelineStateBase {
+	public:
+		PipelineStateImpl(DeviceImpl* pDevice);
+		virtual ~PipelineStateImpl() override;
 
-    // Turns `m_device` into a strong reference.
-    // This method should be called before returning the pipeline state object to
-    // external users (i.e. via an `IPipelineState` pointer).
-    void establishStrongDeviceReference();
+		// Turns `m_device` into a strong reference.
+		// This method should be called before returning the pipeline state object to
+		// external users (i.e. via an `IPipelineState` pointer).
+		void establishStrongDeviceReference();
 
-    virtual void comFree() override;
+		virtual void comFree() override;
 
-    void init(const GraphicsPipelineStateDesc& inDesc);
-    void init(const ComputePipelineStateDesc& inDesc);
-    void init(const RayTracingPipelineStateDesc& inDesc);
+		void init(const GraphicsPipelineStateDesc& inDesc);
+		void init(const ComputePipelineStateDesc& inDesc);
+		void init(const RayTracingPipelineStateDesc& inDesc);
 
-    Result createVKGraphicsPipelineState();
+		Result createVKGraphicsPipelineState();
 
-    Result createVKComputePipelineState();
+		Result createVKComputePipelineState();
 
-    virtual Result ensureAPIPipelineStateCreated() override;
+		virtual Result ensureAPIPipelineStateCreated() override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) override;
+		virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) override;
 
-    BreakableReference<DeviceImpl> m_device;
+		BreakableReference<DeviceImpl> m_device;
 
-    VkPipeline m_pipeline = VK_NULL_HANDLE;
+		VkPipeline getPipeline();
+
+		void destroy();
+
+		virtual bool hasCacheBlob() override;
+
+	protected:
+		VkPipeline m_pipeline = VK_NULL_HANDLE;
+		std::future<VkResult> mResult;
+
+		std::unique_ptr<PipelineCache> mpPipelineCache;
 };
 
-class RayTracingPipelineStateImpl : public PipelineStateImpl
-{
-public:
-    Dictionary<String, Index> shaderGroupNameToIndex;
-    Int shaderGroupCount;
+class RayTracingPipelineStateImpl : public PipelineStateImpl {
+	public:
+		Dictionary<String, Index> shaderGroupNameToIndex;
+		Int shaderGroupCount;
 
-    RayTracingPipelineStateImpl(DeviceImpl* device);
+		RayTracingPipelineStateImpl(DeviceImpl* device);
 
-    uint32_t findEntryPointIndexByName(
-        const Dictionary<String, Index>& entryPointNameToIndex, const char* name);
+		uint32_t findEntryPointIndexByName(
+			const Dictionary<String, Index>& entryPointNameToIndex, const char* name);
 
-    Result createVKRayTracingPipelineState();
+		Result createVKRayTracingPipelineState();
 
-    virtual Result ensureAPIPipelineStateCreated() override;
+		virtual Result ensureAPIPipelineStateCreated() override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) override;
+		virtual SLANG_NO_THROW Result SLANG_MCALL getNativeHandle(InteropHandle* outHandle) override;
 };
 
 } // namespace vk

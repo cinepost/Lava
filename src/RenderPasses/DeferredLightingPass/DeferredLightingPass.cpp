@@ -47,7 +47,7 @@ namespace {
     const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const ChannelList kExtraInputChannels = {
-        { kInputVBuffer,          "gVbuffer",         "Visibility buffer in packed format", true /* optional */, ResourceFormat::RGBA32Uint },
+        { kInputVBuffer,          "gVBuffer",       "Visibility buffer in packed format",   true /* optional */, ResourceFormat::RGBA32Uint },
         { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
         { kInputTexGrads,         "gTextureGrads",  "Texture gradients",                    true /* optional */, ResourceFormat::Unknown },
         { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
@@ -245,7 +245,6 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         // Bind mandatory input channels
         pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        pPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
         pPass["gLastFrameSum"] = mpLastFrameSum;
 
         // Bind extra input channels

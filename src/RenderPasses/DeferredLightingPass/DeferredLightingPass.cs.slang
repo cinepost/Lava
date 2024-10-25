@@ -48,7 +48,7 @@ static const bool kAdjustShadingNormals = true;
 
 // Extra input channels
 Texture2D<float>            gDepth;
-Texture2D<PackedHitInfo>    gVbuffer;
+Texture2D<PackedHitInfo>    gVBuffer;
 Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
 Texture2D<uint>             gOITStartOffset;
@@ -580,7 +580,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         sampleFaceNormalW = sample.getFaceNormalW();
     #endif
 #else
-    hit = HitInfo(gVbuffer[pixelPos]);
+    hit = HitInfo(gVBuffer[pixelPos]);
 #endif
 
     #if is_valid(gTextureGrads)

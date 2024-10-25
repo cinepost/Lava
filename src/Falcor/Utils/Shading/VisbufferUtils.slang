@@ -157,10 +157,18 @@ float interpolateWithDeriv_float3(BarycentricDeriv deriv, float3 v) {
 	return dot(v, deriv.m_lambda);
 }
 
+double interpolateWithDeriv_float3(BarycentricDeriv deriv, double3 v) {
+	return dot(v, (double3)deriv.m_lambda);
+}
+
 
 // Interpolate single values over triangle vertices.
 float interpolateWithDeriv(BarycentricDeriv deriv, float v0, float v1, float v2) {
 	return interpolateWithDeriv_float3(deriv, float3(v0, v1, v2));
+}
+
+double interpolateWithDeriv(BarycentricDeriv deriv, double v0, double v1, double v2) {
+	return interpolateWithDeriv_float3(deriv, double3(v0, v1, v2));
 }
 
 

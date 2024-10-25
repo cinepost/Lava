@@ -686,7 +686,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 //MicroTriangleIntersection mti = rayTriangleIntersect(ray, tri.pw0, tri.pw1, tri.pw2);
                 MicroTriangleIntersection mti = rayTriangleIntersect_MollerTrumore(ray, tri.pw0, tri.pw1, tri.pw2);
 
-                if(!mti.hit) continue;
+                if(!mti.isValid()) continue;
 
                 float2 uv = mti.bary.yz;
             #else

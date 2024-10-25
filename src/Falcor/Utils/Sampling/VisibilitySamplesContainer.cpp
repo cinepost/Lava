@@ -173,6 +173,7 @@ Shader::DefineList VisibilitySamplesContainer::getDefaultDefines() {
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", std::to_string(kDefaultTransparentSamplesCountPP));
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", kDefaultLimitTransparentSamplesCountPP ? "1" : "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS", kDefaultStoreNormals ? "1" : "0");
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS", kDefaultStoreTextureGradients ? "1" : "0");
 
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE", "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE", "0");
@@ -190,6 +191,7 @@ Shader::DefineList VisibilitySamplesContainer::_getDefines() const {
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? std::to_string(mMaxTransparentSamplesCountPP) : std::to_string(kMaxTransparentSamplesCountPP));
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_LIMIT_TRANSPARENT_SAMPLES_COUNT_PP", mLimitTransparentSamplesCountPP ? "1" : "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS", mStoreCombinedNormals ? "1" : "0");
+	defines.add("VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS", mStoreTextureGradients ? "1" : "0");
 
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE", mpOpaqueSamplesExternalTexture ? "1" : "0");
 	defines.add("VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE", mpOpaqueCombinedNormalsExternalTexture ? "1" : "0");
@@ -283,6 +285,19 @@ void VisibilitySamplesContainer::createBuffers() {
 			mpTransparentCombinedNormalsBuffer = nullptr;
 		}
 	}
+
+	// Optional texture gradients
+	if(mStoreTextureGradients) {
+		if(!mpOpaqueTextureGradientsBuffer || mpOpaqueTextureGradientsBuffer->getElementCount() != mResolution1D) {
+			mpOpaqueTextureGradientsBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t) * 4, mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpOpaqueTextureGradientsBuffer->setName("VisibilitySamplesContainer::opaqueTextureGradientsBuffer");	
+		}
+	
+		if(!mpTransparentTextureGradientsBuffer || mpTransparentTextureGradientsBuffer->getElementCount() != mTransparentSamplesBufferSize) {
+			mpTransparentTextureGradientsBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t) * 4, mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpTransparentTextureGradientsBuffer->setName("VisibilitySamplesContainer::transparentTextureGradientsBuffer");
+		}
+	}
 }
 
 void VisibilitySamplesContainer::resize(uint width, uint height) {
@@ -316,9 +331,8 @@ void VisibilitySamplesContainer::createParameterBlocks() {
 		LLOG_DBG << "_createParameterBlock() " << (readonly ? "RO" : "RW");
 
 		Program::DefineList defines = _getDefines();
-		defines.add("VISIBILITY_CONTAINER_PARAMETER_BLOCK");
+		defines.add("VISIBILITY_SAMPLES_CONTAINER_PARAMETER_BLOCK");
 		defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", readonly ? "0" : "1");
-		//defines.add("VISIBILITY_SAMPLES_CONTAINER_READ_WRITE", "1");
 
 		auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
 		
@@ -342,6 +356,7 @@ void VisibilitySamplesContainer::createParameterBlocks() {
 
 		pBlock["opaqueVisibilitySamplesBuffer"] = mpOpaqueSamplesBuffer;
 		pBlock["opaqueCombinedNormalsBuffer"] = mpOpaqueCombinedNormalsBuffer;
+		pBlock["opaqueTextureGradientsBuffer"] = mpOpaqueTextureGradientsBuffer;
 		pBlock["opaqueVisibilitySamplesPositionBufferPP"] = mpOpaqueVisibilitySamplesPositionBufferPP;
 		pBlock["rootTransparentSampleOffsetBufferPP"] = mpRootTransparentSampleOffsetBufferPP;
 
@@ -349,6 +364,7 @@ void VisibilitySamplesContainer::createParameterBlocks() {
 		pBlock["transparentVisibilitySamplesCountBufferPP"] = mpTransparentVisibilitySamplesCountBufferPP;
 		pBlock["transparentVisibilitySamplesBuffer"]  = mpTransparentVisibilitySamplesBuffer;
 		pBlock["transparentCombinedNormalsBuffer"]  = mpTransparentCombinedNormalsBuffer;
+		pBlock["transparentTextureGradientsBuffer"] = mpTransparentTextureGradientsBuffer;
 
 		pBlock["opaqueVisibilitySamplesExternalTexture"] = mpOpaqueSamplesExternalTexture;
 		pBlock["opaqueCombinedNormalsExternalTexture"] = mpOpaqueCombinedNormalsBuffer;
@@ -472,7 +488,6 @@ void VisibilitySamplesContainer::setLimitTransparentSamplesCountPP(bool limit) {
 }
 
 void VisibilitySamplesContainer::readInfoBufferData() const {
-	LLOG_WRN << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Do not call VisibilitySamplesContainer::readInfoBufferData()";
 	if(!mpInfoBufferData.empty()) return;
 
 	mpDevice->getRenderContext()->flush();
@@ -521,6 +536,18 @@ void VisibilitySamplesContainer::storeCombinedNormals(bool enabled) {
 	if(!mStoreCombinedNormals) {
 		mpOpaqueCombinedNormalsBuffer = nullptr;
 		mpTransparentCombinedNormalsBuffer = nullptr;
+	}
+
+	clearParameterBlocks();
+}
+
+void VisibilitySamplesContainer::storeTextureGradients(bool enabled) {
+	if(mStoreTextureGradients == enabled) return;
+	mStoreTextureGradients = enabled;
+
+	if(!mStoreTextureGradients) {
+		mpOpaqueTextureGradientsBuffer = nullptr;
+		mpTransparentTextureGradientsBuffer = nullptr;
 	}
 
 	clearParameterBlocks();
