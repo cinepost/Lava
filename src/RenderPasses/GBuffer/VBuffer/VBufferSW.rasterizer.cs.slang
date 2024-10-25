@@ -132,30 +132,38 @@ Tomas Möller & Ben Trumbore (1997) Fast, Minimum Storage Ray-Triangle Intersect
 Journal of Graphics Tools
 https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
 */
-MicroTriangleIntersection rayTriangleIntersect_MollerTrumore(Ray ray, float3 A, float3 B, float3 C) {
-    float3 e1 = B - A; float3 e2 = C - A;
+bool rayTriangleIntersect_MollerTrumore(Ray ray, float3 A, float3 B, float3 C, inout MicroTriangleIntersection hit) {
+    float3 e1 = B - A; 
+    float3 e2 = C - A;
     float3 dxe2 = cross(ray.dir, e2);
-    float det = dot(dxe2, e1);
+    float det = dot(e1, dxe2);
     
     // ray parallel to triangle plane
     if (abs(det) < RT_EPS
-
-    #if CULL_MODE == CULL_BACK
-        || det < 0.0f
-    #elif CULL_MODE == CULL_FRONT
-        || det > 0.0f
-    #endif
-    ) return MicroTriangleIntersection(false, float3(0.0), 0.0, float3(0.0));
+        #if CULL_MODE == CULL_BACK
+            || det < 0.0f
+        #elif CULL_MODE == CULL_FRONT
+            || det > 0.0f
+        #endif
+    ) return false;
     
-    float invDet = 1. / det;
+    float invDet = 1.f / det;
     float3 t = ray.origin - A;
     float u = dot(dxe2, t) * invDet;
+    if (u < 0.f || u > 1.f) return false;
+
     float3 txe1 = cross(t, e1);
     float v = dot(txe1, ray.dir) * invDet;
-    if (u < 0.f || v < 0.f || u + v > 1.f) return MicroTriangleIntersection(false, float3(0.0), 0.0, float3(0.0));
-    float d = dot(txe1, e2) * invDet;
     
-    return MicroTriangleIntersection(true, ray.origin + ray.dir * d, d, float3(1.f - u - v, u, v));
+    if (v < 0.f || (u + v) > 1.f) return false;
+
+    float d = dot(e2, txe1) * invDet;
+    
+    hit.pos = ray.origin + ray.dir * d;
+    hit.dist = d;
+    hit.bary = float3(1.f - u - v, u, v);
+    hit.valid = true;
+    return true;
 }
 
 bool edgesCanFit(float16_t3 esl) {
@@ -683,39 +691,46 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     const Ray ray = gVBufferSW.generateRay(pixelPos, rnd);
                 #endif
 
-                //MicroTriangleIntersection mti = rayTriangleIntersect(ray, tri.pw0, tri.pw1, tri.pw2);
-                MicroTriangleIntersection mti = rayTriangleIntersect_MollerTrumore(ray, tri.pw0, tri.pw1, tri.pw2);
+                //MicroTriangleIntersection hit = rayTriangleIntersect(ray, tri.pw0, tri.pw1, tri.pw2);
+                //MicroTriangleIntersection hit = rayTriangleIntersect_MollerTrumore(ray, tri.pw0, tri.pw1, tri.pw2);
 
-                if(!mti.isValid()) continue;
+                MicroTriangleIntersection hit = {};
+                if(!rayTriangleIntersect_MollerTrumore(ray, tri.pw0, tri.pw1, tri.pw2, hit)) continue;
 
-                float2 uv = mti.bary.yz;
+                float2 uv = hit.bary.yz;
             #else
                 float2 uv = triIntersect(float2(x, y), pj0.xy, pj1.xy, pj2.xy);
                 if( uv.x < 0.f) continue;
             #endif
 
+            #if (USE_SRT == 1)
+                if(hit.dist < gScene.camera.data.nearZ || hit.dist > gScene.camera.data.farZ) continue;
+            #endif
+            
             #if defined(USE_HIGHP_DEPTH)
                 #if (USE_SRT == 1)
-                    double z = pt0.z * mti.bary.x + pt1.z * mti.bary.y + pt2.z * mti.bary.z;
+                    double z = (hit.dist - gScene.camera.data.nearZ) / (gScene.camera.data.farZ - gScene.camera.data.nearZ);
                 #else
                     double z = (dz1 - dz0) * uv.x + (dz2 - dz0) * uv.y + dz0;
                 #endif
             #else
                 #if (USE_SRT == 1)
-                    float z = pt0.z * mti.bary.x + pt1.z * mti.bary.y + pt2.z * mti.bary.z;
+                    float z = (hit.dist - gScene.camera.data.nearZ) / (gScene.camera.data.farZ - gScene.camera.data.nearZ);
                 #else
                     float z = pt10.z * uv.x + pt20.z * uv.y + pt0.z;
                 #endif
             #endif
                 
+            #if (USE_SRT != 1)
                 if(z < 0.f || z > 1.f) continue;
+            #endif
 
                 TriangleHit triangleHit = {};
                 triangleHit.instanceID.index = instanceID.index;
                 triangleHit.primitiveIndex = tri.srcPrimID;
 
                 #if (USE_SRT == 1)
-                    triangleHit.barycentrics = tri.b0 * mti.bary.x + tri.b1 * mti.bary.y + tri.b2 * mti.bary.z;
+                    triangleHit.barycentrics = tri.b0 * hit.bary.x + tri.b1 * hit.bary.y + tri.b2 * hit.bary.z;
                 #else
                     triangleHit.barycentrics = tri.b0 + uv.x * (tri.b1 - tri.b0) + uv.y * (tri.b2 - tri.b0);
                 #endif
