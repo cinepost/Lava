@@ -47,35 +47,35 @@ namespace {
     const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const ChannelList kExtraInputChannels = {
-        { kInputVBuffer,          "gVBuffer",       "Visibility buffer in packed format",   true /* optional */, ResourceFormat::RGBA32Uint },
-        { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
-        { kInputTexGrads,         "gTextureGrads",  "Texture gradients",                    true /* optional */, ResourceFormat::Unknown },
-        { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
+        { kInputVBuffer,        "gVBuffer",           "Visibility buffer in packed format",     true /* optional */, ResourceFormat::RGBA32Uint },
+        { kInputDepth,          "gDepth",             "Depth buffer",                           true /* optional */, ResourceFormat::Unknown },
+        { kInputNormalW,        "gNormW",             "Shading normal in world space",          true /* optional */, ResourceFormat::Unknown },
         //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
     };
 
     const ChannelList kExtraInputOutputChannels = {
+        { kInputTexGrads,       "gTextureGrads",      "Texture gradients",                      true /* optional */, ResourceFormat::Unknown },
     };
 
     const ChannelList kExtraOutputChannels = {
-        { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
-        { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float    },
-        { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
-        { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
-        { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
-        { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
-        { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
-        { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
-        { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
-        { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
-        { "fresnel",          "gOutFresnel",        "Surface fresnel buffer",        true /* optional */, ResourceFormat::R16Float },
-        { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
+        { "normals",            "gOutNormals",        "Normals buffer",                         true /* optional */, ResourceFormat::RGBA16Float },
+        { "face_normals",       "gOutFaceNormals",    "Face Normals buffer",                    true /* optional */, ResourceFormat::RGBA16Float    },
+        { "Pz",                 "gOutPz",             "Shading depth",                          true /* optional */, ResourceFormat::R32Float },
+        { "posW",               "gOutPosition",       "Shading position",                       true /* optional */, ResourceFormat::RGBA32Float },
+        { "albedo",             "gOutAlbedo",         "Albedo color buffer",                    true /* optional */, ResourceFormat::RGBA16Float },
+        { "emission",           "gOutEmission",       "Emission color buffer",                  true /* optional */, ResourceFormat::RGBA16Float },
+        { "roughness",          "gOutRoughness",      "Roughness buffer",                       true /* optional */, ResourceFormat::R16Float },
+        { "tangent_normals",    "gOutTangentNormals", "Tangent space normals buffer",           true /* optional */, ResourceFormat::RGBA16Float },
+        { "shadows",            "gOutShadows",        "Shadows buffer",                         true /* optional */, ResourceFormat::RGBA16Float },
+        { "occlusion",          "gOutOcclusion",      "Ambient occlusion buffer",               true /* optional */, ResourceFormat::R16Float },
+        { "fresnel",            "gOutFresnel",        "Surface fresnel buffer",                 true /* optional */, ResourceFormat::R16Float },
+        { "motion_vecs",        "gOutMotionVecs",     "Motion vectors buffer",                  true /* optional */, ResourceFormat::RG16Float },
         
         // Service outputs
-        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
-        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
-        { "variance",         "gVariance",          "Ray variance buffer",           true /* optional */, ResourceFormat::R16Float },
-        { "uv",               "gUV",                "Texture coordinates buffer",    true /* optional */, ResourceFormat::RG16Float },
+        { "prim_id",            "gPrimID",            "Primitive id buffer",                    true /* optional */, ResourceFormat::R32Float },
+        { "op_id",              "gOpID",              "Operator id buffer",                     true /* optional */, ResourceFormat::R32Float },
+        { "variance",           "gVariance",          "Ray variance buffer",                    true /* optional */, ResourceFormat::R16Float },
+        { "uv",                 "gUV",                "Texture coordinates buffer",             true /* optional */, ResourceFormat::RG16Float },
     };
 
     const std::string kFrameSampleCount = "frameSampleCount";

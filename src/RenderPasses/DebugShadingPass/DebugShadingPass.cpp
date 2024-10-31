@@ -61,13 +61,13 @@ namespace {
     const ChannelList kExtraInputChannels = {
         { kInputVBuffer,            "gVBuffer",             "Visibility buffer in packed format",       true /* optional */, ResourceFormat::RGBA32Uint     },
         { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
-        { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         { kInputMVectors,           "gMotionVector",        "Motion vector buffer (float format)",      true /* optional */                                 },
         { kInputDrawCount,          "gDrawCount",           "Draw count debug buffer",                  true /* optional */, ResourceFormat::R32Uint        },
         { kInputNormalW,            "gNormW",               "Shading normal in world space",            true /* optional */, ResourceFormat::RGBA32Uint     },
     };
 
     const ChannelList kExtraInputOutputChannels = {
+        { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         { kInputOuputMeshlet,       "gMeshletID",           "Meshlet ID",                               true /* optional */, ResourceFormat::R32Uint        },
         { kInputOuputMicroPoly,     "gMicroPolyID",         "Micro-polygon ID",                         true /* optional */, ResourceFormat::R32Uint        },
         { kInputOuputAUX,           "gAUX",                 "Auxiliary debug buffer",                   true /* optional */, ResourceFormat::RGBA32Float    },
@@ -140,6 +140,11 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     SimpleProfiler profile("DebugShadingPass::execute");
 
     generateMeshletColorBuffer(renderData);
+
+    // Optional visibility container
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->beginFrame();
+    }
 
     auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
         if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
@@ -222,10 +227,9 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     auto cb_var = mpShadingPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
 
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
-
     if(mpVisibilitySamplesContainer) {
         // Visibility container mode opaque samples shading
+        
         mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
         //mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     } else {

@@ -49,9 +49,11 @@ static const bool kAdjustShadingNormals = true;
 // Extra input channels
 Texture2D<float>            gDepth;
 Texture2D<PackedHitInfo>    gVBuffer;
-Texture2D<float4>           gTextureGrads;
 Texture2D<uint4>            gNormW;
 Texture2D<uint>             gOITStartOffset;
+
+// Extra input-output
+RasterizerOrderedTexture2D<float4> gTextureGrads;
 
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
@@ -616,7 +618,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     VertexData v;
 
 #if defined(USE_VISIBILITY_CONTAINER)
-    if( gVisibilityContainer.hasCombinedNormals() && sample.hasCombinedNormals() && gScene.isObjectSubdividable(primaryTriangleHit.instanceID) ) {
+    if( gScene.isObjectSubdividable(primaryTriangleHit.instanceID) && gVisibilityContainer.hasCombinedNormals() && sample.hasCombinedNormals() ) {
         v.normalW = sampleNormalW;
         v.faceNormalW = sampleFaceNormalW;
     } else {

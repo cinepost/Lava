@@ -80,12 +80,17 @@ RWTexture2D<uint>   gTime;      // Timing debug buffer
 #define USE_PP_JITTER false
 #endif
 
+#if !defined(USE_VISIBILITY_CONTAINER)
+#define USE_VISIBILITY_CONTAINER false
+#endif
+
 struct VBufferSW {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
     static const uint kMaxLOD = MAX_LOD;
     static const bool kUsePerPixelJitter = USE_PP_JITTER;
+    static const bool kUseVisibilityContainer = USE_VISIBILITY_CONTAINER;
 
     uint2   frameDim;
     float2  frameDimInv;

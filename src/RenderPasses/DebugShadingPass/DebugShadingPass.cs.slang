@@ -20,12 +20,12 @@ import Utils.Sampling.VisibilitySamplesContainer;
 // Extra input channels
 Texture2D<PackedHitInfo>    gVBuffer;
 Texture2D<float>            gDepth;
-Texture2D<float4>           gTextureGrads;
 Texture2D<float2>           gMotionVector;
-
-// Extra input channels
 Texture2D<uint>             gDrawCount;
 Texture2D<uint4>            gNormW;
+
+// Extra input-output channels
+Texture2D<float4>           gTextureGrads;
 
 // Extra input buffers
 Buffer<float4>              gFalseColorBuffer;
@@ -73,6 +73,7 @@ uniform HeatMapColorGenerator gHeatMapColorGenerator;
 [numthreads(8, 8, 1)]
 #endif
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
+
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
         TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
@@ -131,8 +132,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         normalW = sample.getNormalW();
         faceNormalW = sample.getFaceNormalW();
 
-        gInOutColor[gVisibilityContainer.offsetToPixelPos(pixelOffset)] = sample.getTextureGradients();
-        return;
+        //gInOutColor[pixelPos] = sample.getTextureGradients();
+        //return;
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);

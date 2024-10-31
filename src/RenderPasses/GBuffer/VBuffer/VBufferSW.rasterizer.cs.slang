@@ -742,7 +742,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 uint originalValue = 0;
                 uint opacityShift = 0;
 
-                if(!isOpaque || is_valid(gTextureGrads)) {
+                if(gVBufferSW.kUseVisibilityContainer || is_valid(gTextureGrads) || !isOpaque) {
                     float2 screen_pos = float2(2.f, -2.f) * float2(x, y)/float2(gVBufferSW.frameDim) - float2(1.f, -1.f);
                     BarycentricDeriv deriv = calcFullBary(pndc0, pndc1, pndc2, screen_pos, gVBufferSW.frameDimInv2);
 
@@ -753,7 +753,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gradX = clamp(g.dx, float2(-1.0f), float2(1.0f));
                     gradY = clamp(g.dy, float2(-1.0f), float2(1.0f));
                     texC = g.interp;
+                }
 
+                if(!isOpaque) {
                     VertexData v = gScene.getVertexData(instanceID, triangleHit.primitiveIndex, triangleHit.getBarycentricWeights());
                     v.texC = texC;
 
@@ -824,18 +826,17 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
     #if defined(USE_VISIBILITY_CONTAINER)
                 if(isOpaque) {
                     if(gsSubdivide) {
-                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), uint4(combinedNormal, 0));
+                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), float4(gradX, gradY), uint4(combinedNormal, 0));
                     } else {
-                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()));
+                        gVisibilityContainer.writeOpaqueHit2D(pixelPos, HitInfo(triangleHit.pack()), float4(gradX, gradY));
                     }
                     gVBufferSW.writeDepth(pixelPos, z);
                 } else {
                     if(gsSubdivide) {
-                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, uint4(combinedNormal, 0));
+                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, float4(gradX, gradY), uint4(combinedNormal, 0));
                     } else {
-                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value);
+                        gVisibilityContainer.writeTransparentHit(pixelPos, HitInfo(triangleHit.pack()), opacity, depth_value, float4(gradX, gradY));
                     }
-                    gVBufferSW.writeAUX(pixelPos, float4(0.0, opacity, 0.0, 1.0));
                 }
     #else
                 gVBufferSW.writeHit(pixelPos, HitInfo(triangleHit.pack()));
@@ -846,11 +847,12 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                         gVBufferSW.writeNormal(pixelPos, combinedNormal);
                     }
                 #endif
-    #endif
 
                 #if is_valid(gTextureGrads)
                     gVBufferSW.writeTexGrads(pixelPos, float4(gradX, gradY));
                 #endif
+
+    #endif
 
                     gVBufferSW.writeMeshletID(pixelPos, draw.meshletID);
                     gVBufferSW.writeMicroPolyID(pixelPos, (tri.srcPrimID * MAX_MICRO_TRIANGLES) + micro_triangle_id);

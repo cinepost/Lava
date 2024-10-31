@@ -18,7 +18,6 @@ using namespace Slang;
 namespace vk {
 
 PipelineStateImpl::PipelineStateImpl(DeviceImpl* pDevice) {
-	LLOG_WRN << "PipelineStateImpl::PipelineStateImpl()";
 	// Only weakly reference `device` at start.
 	// We make it a strong reference only when the pipeline state is exposed to the user.
 	// Note that `PipelineState`s may also be created via implicit specialization that
@@ -31,7 +30,6 @@ PipelineStateImpl::PipelineStateImpl(DeviceImpl* pDevice) {
 }
 
 PipelineStateImpl::~PipelineStateImpl() {
-	LLOG_WRN << "PipelineStateImpl::~PipelineStateImpl()";
 	//destroy();
 
 	if (m_pipeline != VK_NULL_HANDLE) {
@@ -49,17 +47,14 @@ void PipelineStateImpl::destroy() {
 }
 
 bool PipelineStateImpl::hasCacheBlob() {
-	LLOG_WRN << "PipelineStateImpl::hasCacheBlob()";
 	if(!mpPipelineCache) return false;
 }
 
 void PipelineStateImpl::establishStrongDeviceReference() {
-	LLOG_WRN << "PipelineStateImpl::establishStrongDeviceReference()"; 
 	m_device.establishStrongReference(); 
 }
 
 void PipelineStateImpl::comFree() {
-	LLOG_WRN << "PipelineStateImpl::comFree()"; 
 	m_device.breakStrongReference(); 
 }
 
@@ -278,7 +273,6 @@ Result PipelineStateImpl::createVKGraphicsPipelineState() {
 }
 
 Result PipelineStateImpl::createVKComputePipelineState() {
-	LLOG_WRN << "!!! PipelineStateImpl::createVKComputePipelineState() !!!";
 	auto programImpl = static_cast<ShaderProgramImpl*>(m_program.Ptr());
 	if (programImpl->m_stageCreateInfos.getCount() == 0) {
 		SLANG_RETURN_ON_FAIL(programImpl->compileShaders());

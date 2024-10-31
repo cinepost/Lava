@@ -39,15 +39,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
-    #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
-        uint4 procCombinedNormal;
-        #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE
-            procCombinedNormal = gVisibilityContainer.opaqueCombinedNormalsExternalTexture[procPixelPos];
-        #else
-            procCombinedNormal = gVisibilityContainer.opaqueCombinedNormalsBuffer[procPixelOffset];
-        #endif
-    #endif
-
     uint16_t2 existingPixelPos = uint16_t2(existingOffset % gVisibilityContainer.resolution.x, existingOffset / gVisibilityContainer.resolution.x);
 #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE
     PackedHitInfo existingHit = gVisibilityContainer.opaqueVisibilitySamplesExternalTexture[existingPixelPos];
@@ -59,7 +50,19 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
-    //GroupMemoryBarrierWithGroupSync();
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
+    #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_NORMALS_TEXTURE
+        uint4 procCombinedNormal = gVisibilityContainer.opaqueCombinedNormalsExternalTexture[procPixelPos];
+    #else
+        uint4 procCombinedNormal = gVisibilityContainer.opaqueCombinedNormalsBuffer[procPixelOffset];
+    #endif
+#endif
+
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+    float16_t4 procTexGrads = gVisibilityContainer.opaqueTextureGradientsBuffer[procPixelOffset];
+#endif
+
+    GroupMemoryBarrierWithGroupSync();
 
 #if VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE
     gVisibilityContainer.opaqueVisibilitySamplesExternalTexture[existingPixelPos] = procHit;
@@ -76,6 +79,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     #else
         gVisibilityContainer.opaqueCombinedNormalsBuffer[existingOffset] = procCombinedNormal;
     #endif
+#endif
+
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+    gVisibilityContainer.opaqueTextureGradientsBuffer[existingOffset] = procTexGrads;
 #endif
 
     GroupMemoryBarrierWithGroupSync();

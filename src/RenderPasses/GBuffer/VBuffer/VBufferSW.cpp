@@ -202,11 +202,15 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
-    if (!pOutput) return;
+    if(pOutput) {
+        updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
+    } else if (mpVisibilitySamplesContainer) {
+        updateFrameDim(mpVisibilitySamplesContainer->getResolution());
+    } else {
+        return;
+    }
 
-    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
-
-    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
     clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
     
     if(mUseSubdivisions) {
@@ -242,13 +246,23 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement;
         mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
-        //mpVisibilitySamplesContainer->storeTextureGradients(true);
+        
+        bool storeTextureGradients = false;
+        if(mpScene && mpScene->getMaterialSystem()) {
+            storeTextureGradients = mpScene->getMaterialSystem()->hasTextures();
+        }
+        mpVisibilitySamplesContainer->storeTextureGradients(storeTextureGradients);
+
+        mpVisibilitySamplesContainer->beginFrame();
     }
 
     executeCompute(pRenderContext, renderData);
-    mDirty = false;
 
-    //pRenderContext->flush(true);
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->endFrame();
+    }
+
+    mDirty = false;
 }
 
 Dictionary VBufferSW::getScriptingDictionary() {
@@ -271,7 +285,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
     if(mpLocalDepthBuffer) pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
     if(mpOpacityShiftsBuffer) pRenderContext->clearUAV(mpOpacityShiftsBuffer->getUAV().get(), uint4(0));
-    //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     auto pStartOffsetBuffer = renderData[kOuputOITStartOffset]->asTexture();
     if(pStartOffsetBuffer) pRenderContext->clearUAV(pStartOffsetBuffer->getUAV().get(), uint4(kInvalidIndex));
@@ -288,11 +301,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         Program::DefineList defines;
         
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
-    }
-
-    // Optional visibility container
-    if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->beginFrame();
     }
 
     // Create rasterization pass.
@@ -482,13 +490,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             var["gVBufferSW"]["drawableIndex"] = i;
             mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
         }
-    }
-
-    if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->endFrame();
-        //LLOG_INF << "Reserved transparent samples count " << mpVisibilitySamplesContainer->reservedTransparentSamplesCount();
-        //LLOG_INF << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
-        //LLOG_INF << "Max transparent layers count " << mpVisibilitySamplesContainer->maxTransparentLayersCount();
     }
 
     mSampleNumber++;

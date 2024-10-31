@@ -19,7 +19,6 @@ std::unique_ptr<PipelineCache> PipelineCache::create(DeviceImpl* pDevice) {
 }
 
 PipelineCache::PipelineCache(DeviceImpl* pDevice) {
-	LLOG_WRN << "PipelineCache::PipelineCache() constructor";
 	m_device.setWeakReference(pDevice);
 
 	/* Add initial pipeline cache data from the cached file */
@@ -32,8 +31,6 @@ PipelineCache::PipelineCache(DeviceImpl* pDevice) {
 }
 
 PipelineCache::~PipelineCache() {
-	LLOG_WRN << "PipelineCache::~PipelineCache() destructor";
-
 	VkPipelineCache pipeline_cache = getPipelineCache();
 	if (pipeline_cache != VK_NULL_HANDLE) {
 		/* Get size of pipeline cache */

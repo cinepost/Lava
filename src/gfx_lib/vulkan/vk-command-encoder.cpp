@@ -26,7 +26,6 @@ using namespace Slang;
 namespace vk {
 
 PipelineCommandEncoder::~PipelineCommandEncoder() {
-	LLOG_WRN << "PipelineCommandEncoder::~PipelineCommandEncoder()";
 	if(m_currentPipeline) {
 		m_currentPipeline->destroy();
 	}

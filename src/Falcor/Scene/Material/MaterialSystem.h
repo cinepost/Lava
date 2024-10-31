@@ -110,7 +110,7 @@ class dlldecl MaterialSystem {
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
+		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
 
 		/** Set a default texture sampler to use for all materials.
 		*/
@@ -181,6 +181,8 @@ class dlldecl MaterialSystem {
 		/** 
 		*/
 		bool hasTransparentMaterials() const;
+
+		bool hasTextures() const { return mTextureDescCount > 0; }
 
 		/** Remove all duplicate materials.
 			\param[in] idMap Vector that holds for each material the ID of the material that replaces it.

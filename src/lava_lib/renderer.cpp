@@ -663,7 +663,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						mpRenderGraph->addEdge("VBufferPass.texGrads", pPlane->accumulationPassColorInputName());
+						//mpRenderGraph->addEdge("VBufferPass.texGrads", pPlane->accumulationPassColorInputName());
+						mpRenderGraph->addEdge("ShadingPass.texGrads", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;
