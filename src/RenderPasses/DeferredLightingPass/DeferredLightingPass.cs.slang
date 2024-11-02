@@ -53,29 +53,29 @@ Texture2D<uint4>            gNormW;
 Texture2D<uint>             gOITStartOffset;
 
 // Extra input-output
-RasterizerOrderedTexture2D<float4> gTextureGrads;
+RWTexture2D<float4> gTextureGrads;
 
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
 // Extra UAV output channels
-RasterizerOrderedTexture2D<float4> gOutNormals;
-RasterizerOrderedTexture2D<float4> gOutFaceNormals;
-RasterizerOrderedTexture2D<float>  gOutPz;
-RasterizerOrderedTexture2D<float4> gOutPosition;
-RasterizerOrderedTexture2D<float4> gOutAlbedo;
-RasterizerOrderedTexture2D<float4> gOutEmission;
-RasterizerOrderedTexture2D<float>  gOutRoughness;
-RasterizerOrderedTexture2D<float4> gOutShadows;
-RasterizerOrderedTexture2D<float4> gOutTangentNormals;
-RasterizerOrderedTexture2D<float2> gOutMotionVecs;
-RasterizerOrderedTexture2D<float>  gOutOcclusion;
-RasterizerOrderedTexture2D<float>  gOutFresnel;
-RasterizerOrderedTexture2D<float>  gPrimID;
-RasterizerOrderedTexture2D<float>  gOpID;
-RasterizerOrderedTexture2D<float16_t>  gVariance;
-RasterizerOrderedTexture2D<float2> gUV;
+RWTexture2D<float4> gOutNormals;
+RWTexture2D<float4> gOutFaceNormals;
+RWTexture2D<float>  gOutPz;
+RWTexture2D<float4> gOutPosition;
+RWTexture2D<float4> gOutAlbedo;
+RWTexture2D<float4> gOutEmission;
+RWTexture2D<float>  gOutRoughness;
+RWTexture2D<float4> gOutShadows;
+RWTexture2D<float4> gOutTangentNormals;
+RWTexture2D<float2> gOutMotionVecs;
+RWTexture2D<float>  gOutOcclusion;
+RWTexture2D<float>  gOutFresnel;
+RWTexture2D<float>  gPrimID;
+RWTexture2D<float>  gOpID;
+RWTexture2D<float16_t>  gVariance;
+RWTexture2D<float2> gUV;
 
-RasterizerOrderedTexture2D<float16_t4> gLastFrameSum;
+RWTexture2D<float16_t4> gLastFrameSum;
 
 // Main output channel
 RWTexture2D<float4> gInOutColor;
@@ -558,6 +558,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     TriangleHit primaryTriangleHit;
     AOVData aov_data = AOVData.create();
 
+    ITextureSampler primaryLod = TailTextureSampler(); // Default
+
 #if defined(USE_VISIBILITY_CONTAINER)
     #if defined(TRANSPARENT_SHADING_PASS)
         pixelPos = gVisibilityContainer.transparentPixelPos(pixelOffset);
@@ -573,6 +575,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
             sampleAlpha = sample.alpha;
             sampleNormalW = sample.getNormalW();
             sampleFaceNormalW = sample.getFaceNormalW();
+            
+            float4 texGrads = sample.getTextureGradients();
+            #if is_valid(gTextureGrads)
+                gTextureGrads[pixelPos] = texGrads;
+            #endif
+
+            primaryLod = ExplicitGradientTextureSampler(texGrads);
     #else
         pixelPos = gVisibilityContainer.opaquePixelPos(pixelOffset);
 
@@ -580,14 +589,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         hit = sample.getHitInfo();
         sampleNormalW = sample.getNormalW();
         sampleFaceNormalW = sample.getFaceNormalW();
+
+        float4 texGrads = sample.getTextureGradients();
+        #if is_valid(gTextureGrads)
+            gTextureGrads[pixelPos] = texGrads;
+        #endif
+
+        primaryLod = ExplicitGradientTextureSampler(texGrads);
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);
-#endif
 
     #if is_valid(gTextureGrads)
-        const float4 texGrads = gTextureGrads[pixelPos];
+        primaryLod = ExplicitGradientTextureSampler(gTextureGrads[pixelPos]);
     #endif
+#endif
 
 #if !defined(TRANSPARENT_SHADING_PASS)
     if (!hit.isValid() || hit.getType() != HitType::Triangle) {
@@ -604,10 +620,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #else
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(pixelPos, gFrameDim).dir);
 #endif
-
-    ITextureSampler primaryLod = createTextureSampler(pixelPos);
-    //ITextureSampler primaryLod = TailTextureSampler();
-    //ITextureSampler primaryLod = ExplicitLodTextureSampler(4.f);
     
     // Primary ray surface data
     primaryTriangleHit = hit.getTriangleHit();
@@ -615,22 +627,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     if(gScene.isObjectMatteShaded(primaryTriangleHit.instanceID)) return;
 
-    VertexData v;
+    VertexData v = gScene.getVertexData(primaryTriangleHit);
 
 #if defined(USE_VISIBILITY_CONTAINER)
     if( gScene.isObjectSubdividable(primaryTriangleHit.instanceID) && gVisibilityContainer.hasCombinedNormals() && sample.hasCombinedNormals() ) {
         v.normalW = sampleNormalW;
         v.faceNormalW = sampleFaceNormalW;
-    } else {
-        v = gScene.getVertexData(primaryTriangleHit);
     }
 
     const uint materialID = gScene.getMaterialID(primaryTriangleHit);
     primaryShadingData = gScene.materials.prepareShadingData(v, materialID, -rayDir, primaryLod);
 #else
     if (is_valid(gNormW) && gScene.isObjectSubdividable(primaryTriangleHit.instanceID)) {
-        v = gScene.getVertexData(primaryTriangleHit);
-
         uint3 packedNormal = gNormW[pixelPos].xyz;
 
         v.normalW = { unpackSnorm16(packedNormal.x >> 16), unpackSnorm16(packedNormal.y >> 16), unpackSnorm16(packedNormal.z >> 16) };

@@ -25,7 +25,7 @@ Texture2D<uint>             gDrawCount;
 Texture2D<uint4>            gNormW;
 
 // Extra input-output channels
-Texture2D<float4>           gTextureGrads;
+RWTexture2D<float4>         gTextureGrads;
 
 // Extra input buffers
 Buffer<float4>              gFalseColorBuffer;
@@ -101,6 +101,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float sampleAlpha = 1.0f;
     float3 normalW = float3(0.f);
     float3 faceNormalW = float3(0.f);
+    float2 texC = float2(0.f);
     HitInfo hit;
 
 #if defined(USE_VISIBILITY_CONTAINER)
@@ -132,8 +133,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         normalW = sample.getNormalW();
         faceNormalW = sample.getFaceNormalW();
 
-        //gInOutColor[pixelPos] = sample.getTextureGradients();
-        //return;
+        #if is_valid(gTextureGrads)
+            gTextureGrads[pixelPos] =  sample.getTextureGradients();
+        #endif 
     #endif
 #else
     hit = HitInfo(gVBuffer[pixelPos]);
@@ -149,29 +151,30 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 barycentrics = triangleHit.getBarycentricWeights();
     float3 outColor = barycentrics;
 
+    VertexData v = gScene.getVertexData(triangleHit);
+    texC = v.texC;
+
 #if defined(USE_VISIBILITY_CONTAINER)
     if( !gVisibilityContainer.hasCombinedNormals() || !sample.hasCombinedNormals() || !gScene.isObjectSubdividable(triangleHit.instanceID) ) {
-        VertexData v = gScene.getVertexData(triangleHit);
         normalW = v.normalW.xyz;
         faceNormalW = v.faceNormalW.xyz;
     }
 #else
     if (is_valid(gNormW) && gScene.isObjectSubdividable(triangleHit.instanceID)) {
-            uint3 packedNormal = gNormW[pixelPos].xyz;
-            
-            normalW = {
-                unpackSnorm16(packedNormal.x >> 16),
-                unpackSnorm16(packedNormal.y >> 16),
-                unpackSnorm16(packedNormal.z >> 16)
-            };
+        uint3 packedNormal = gNormW[pixelPos].xyz;
+        
+        normalW = {
+            unpackSnorm16(packedNormal.x >> 16),
+            unpackSnorm16(packedNormal.y >> 16),
+            unpackSnorm16(packedNormal.z >> 16)
+        };
 
-            faceNormalW = {
-                unpackSnorm16(packedNormal.x & 0x0000ffff),
-                unpackSnorm16(packedNormal.y & 0x0000ffff),
-                unpackSnorm16(packedNormal.z & 0x0000ffff)
-            };
+        faceNormalW = {
+            unpackSnorm16(packedNormal.x & 0x0000ffff),
+            unpackSnorm16(packedNormal.y & 0x0000ffff),
+            unpackSnorm16(packedNormal.z & 0x0000ffff)
+        };
     } else {
-        VertexData v = gScene.getVertexData(triangleHit);
         normalW = v.normalW.xyz;
         faceNormalW = v.faceNormalW.xyz;
     }
@@ -202,7 +205,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif  // gOutTangentNormals
 
 #if is_valid(gUV)
-    gUV[pixelPos] = v.texC;
+    gUV[pixelPos] = texC;
 #endif  // gUV
 
 #if is_valid(gMeshletColor) && is_valid(gMeshletID)

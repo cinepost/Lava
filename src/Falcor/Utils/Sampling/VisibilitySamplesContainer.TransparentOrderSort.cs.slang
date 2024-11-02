@@ -57,7 +57,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #endif
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
-            texGradsList[0] = gVisibilityContainer.opaqueTextureGradientsBuffer[offsetsList[0]];
+            texGradsList[0] = gVisibilityContainer.transparentTextureGradientsBuffer[offsetsList[0]];
         #endif
 
         samplesCount++;
@@ -78,7 +78,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
             #endif
 
             #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
-                texGradsList[samplesCount] = gVisibilityContainer.opaqueTextureGradientsBuffer[nextSampleOffset];
+                texGradsList[samplesCount] = gVisibilityContainer.transparentTextureGradientsBuffer[nextSampleOffset];
             #endif
             
             samplesCount++;
@@ -134,7 +134,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         #endif
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
-            gVisibilityContainer.opaqueTextureGradientsBuffer[offsetsList[i]] = texGradsList[i];
+            gVisibilityContainer.transparentTextureGradientsBuffer[offsetsList[i]] = texGradsList[i];
         #endif
     }
 

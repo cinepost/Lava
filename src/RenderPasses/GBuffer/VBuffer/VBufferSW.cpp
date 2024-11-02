@@ -89,7 +89,7 @@ namespace {
     const std::string kOutputNormal    = "normW";
 
     // Additional output channels.
-    const ChannelList kVBufferExtraChannels = {
+    const ChannelList kVBufferExtraOutputChannels = {
         { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
         { "depth",              "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
@@ -110,7 +110,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraSubdChannels = {
-        { kOutputNormal,         "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
+        { kOutputNormal,         "gNormW",          "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint  },
     };
 };
 
@@ -174,7 +174,7 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
 
     // Add all the other outputs.
-    addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     // Add subd outputs.
     if(mUseSubdivisions) {
@@ -211,7 +211,7 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
         return;
     }
 
-    clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
+    clearRenderPassChannels(pRenderContext, kVBufferExtraOutputChannels, renderData);
     
     if(mUseSubdivisions) {
         clearRenderPassChannels(pRenderContext, kVBufferExtraSubdChannels, renderData);
@@ -365,7 +365,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
-        defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
+        defines.add(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
         defines.add(getValidResourceDefines(kVBufferExtraSubdChannels, renderData));
         
         defines.add("is_valid_gIndicesBuffer", mpIndicesBuffer != nullptr ? "1" : "0");
@@ -439,7 +439,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         };
 
         // Bind extra output channels
-        for (const auto& channel : kVBufferExtraChannels) {
+        for (const auto& channel : kVBufferExtraOutputChannels) {
             bind(channel);
         }
 

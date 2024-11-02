@@ -178,6 +178,11 @@ struct ExplicitGradientTextureSampler : ITextureSampler {
         this.gradY = gradY;
     }
 
+    __init(float4 texGrads) {
+        this.gradX = texGrads.xy;
+        this.gradY = texGrads.zw;
+    }
+
     float4 ddxy(float2 uv) {
         return float4(gradX, gradY);
     }
@@ -187,10 +192,8 @@ struct ExplicitGradientTextureSampler : ITextureSampler {
     }
 
     float4 sampleVirtualTexture(Texture2D t, SamplerState s, float2 uv, VirtualTextureData vtexData) {
-        //return float4(1, 0, 0, 1);
         return t.SampleGrad(s, uv, gradX, gradY);
         //return sampleAnisotropicTexture2D(t, s, uv, gradX, gradY);
-        //return float4(1.f, 0.f, 0.f, 1.f);
     }
 };
 
