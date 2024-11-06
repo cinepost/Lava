@@ -1676,18 +1676,32 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     size_t envmapLightSamplerID = 0;
     size_t physkyLightSamplerID = 0;
 
-    for (const auto& light : mLights) {
+    for (const auto& light : mActiveLights) {
         switch(light->getType()) {
             case LightType::Env:
                 {
                     EnvironmentLight* pLight = dynamic_cast<EnvironmentLight*>(light.get());
-                    if(pLight) pLight->getLightSampler()->setShaderData(envmapSamplersVar[envmapLightSamplerID++]);
+                    if(pLight) {
+                        if(pLight->getLightSampler()) {
+                            pLight->setLightSamplerID(envmapLightSamplerID);
+                            pLight->getLightSampler()->setShaderData(envmapSamplersVar[envmapLightSamplerID++]);
+                        } else {
+                            pLight->setLightSamplerID(Light::kInvalidSamplerID);
+                        }
+                    }
                 }
                 break;
             case LightType::PhysSunSky:
                 {
                     PhysicalSunSkyLight* pLight = dynamic_cast<PhysicalSunSkyLight*>(light.get());
-                    if(pLight) pLight->getLightSampler()->setShaderData(physkySamplersVar[physkyLightSamplerID++]);
+                    if(pLight) {
+                        if(pLight->getLightSampler()) {
+                            pLight->setLightSamplerID(physkyLightSamplerID);
+                            pLight->getLightSampler()->setShaderData(physkySamplersVar[physkyLightSamplerID++]);
+                        } else {
+                            pLight->setLightSamplerID(Light::kInvalidSamplerID);
+                        }
+                    }
                 }
                 break;
             default:

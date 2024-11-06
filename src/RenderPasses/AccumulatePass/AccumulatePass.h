@@ -106,6 +106,8 @@ class PASS_API AccumulatePass : public RenderPass {
     void prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void prepareImageSampler(RenderContext* pContext);
 
+    void clearAccumulationBuffers(RenderContext* pRenderContext);
+
     // Internal state
     Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
     Camera::SharedPtr           mpCamera;                       ///< Current scene camera.

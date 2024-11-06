@@ -578,9 +578,10 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     // An environmentl light doesn't have a position. Just clear to zero.
     ls.posW = float3(0, 0, 0);
 
-    EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
+    uint samplerID = light.getLightSamplerID();
+    
     EnvMapSample els;
-    if(sampler.sample(rnd.xy, els)) {
+    if(samplerID != LightData::kInvalidSamplerID && gScene.envmapSamplers[samplerID].sample(rnd.xy, els)) {
         float lod = 0.f;
         ls.dir = ls.shadowDir = mul(els.dir, (float3x3)light.transMat);
         ls.Li = light.intensity * els.Le;
@@ -605,12 +606,19 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
     ls.dir = ls.shadowDir = normalize(dir);
 
     ls.normalW = -normalize(ls.dir);
-    
-    EnvMapSampler sampler = gScene.envmapSamplers[light.getLightSamplerID()];
-    float lod = 0.f;
-    ls.Li = light.intensity * sampler.eval(mul(ls.dir, (float3x3)light.transMatInv), lod);
+    ls.Li = light.intensity;
 
-    ls.pdf = 0.0f;
+    uint samplerID = light.getLightSamplerID();
+    
+    if(samplerID != LightData::kInvalidSamplerID) {
+        float lod = 0.f;
+        EnvMapSampler sampler = gScene.envmapSamplers[samplerID];
+        float3 dir = normalize(mul(ls.dir, (float3x3)light.transMatInv));
+        ls.Li *= sampler.eval(dir, lod);
+        ls.pdf = sampler.evalPdf(dir);
+    } else {
+        ls.pdf = uniformSpherePdf();
+    }
 
     return true;
 }
@@ -729,8 +737,8 @@ bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData 
             return intersectRectAreaLight(shadingPosW, dir, light, ls);
         case LightType::Disc:
             return intersectDiscAreaLight(shadingPosW, dir, light, ls);
-        case LightType::Distant:
-            return intersectDistantLight(shadingPosW, dir, light, ls);
+        //case LightType::Distant:
+        //    return intersectDistantLight(shadingPosW, dir, light, ls);
         case LightType::Env:
             return intersectEnvironmentLight(shadingPosW, dir, light, ls);
         case LightType::PhysSunSky:

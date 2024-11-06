@@ -222,7 +222,10 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     // reset output if needed
-    if(mFrameCount == 0) pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0));
+    if(mFrameCount == 0) {
+        if(mEnableAccumulation) clearAccumulationBuffers(pRenderContext);
+        //pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0));
+    }
 
     // Setup filtering passes if needed.
     Texture::SharedPtr pFilteredImage = pSrc;
@@ -488,6 +491,22 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
         // Depth buffers
         prepareBuffer(mpLastFrameDepth, width, height, ResourceFormat::R32Float, depthRequired, true);
     }
+}
+
+void AccumulatePass::clearAccumulationBuffers(RenderContext* pRenderContext) {
+    switch(mPrecisionMode) {
+        case Precision::SingleCompensated:
+            if(mpLastFrameCorr) pRenderContext->clearUAV(mpLastFrameCorr->getUAV().get(), uint4(0));
+         case Precision::Single:
+            if(mpLastFrameSum) pRenderContext->clearUAV(mpLastFrameSum->getUAV().get(), uint4(0));
+            break;
+        case Precision::Double: 
+            if(mpLastFrameSumLo) pRenderContext->clearUAV(mpLastFrameSumLo->getUAV().get(), uint4(0));
+            if(mpLastFrameSumHi) pRenderContext->clearUAV(mpLastFrameSumHi->getUAV().get(), uint4(0));
+            break;
+        default:
+            break;
+    } 
 }
 
 void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderContext) {

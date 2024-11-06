@@ -28,7 +28,11 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Scene.Scene;
+import Scene.Raster;
+import Scene.Shading;
+
 import Utils.Math.MathHelpers;
+import Experimental.Scene.Lights.EnvMapSampler;
 import Experimental.Scene.Lights.LightHelpers;
 import Utils.Sampling.SampleGenerator;
 
@@ -96,8 +100,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float  localMaxDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosW();
 
-    for(uint i = 0; i < lightsCount; ++i) {
-        const LightData light = gScene.getLight(gLightIDs[i]);
+    for(uint i = 0; i < gScene.getLightCount(); ++i) {
+        LightData light = gScene.getLight(i);
         if(!light.visibleToCamera()) continue;
 
         AnalyticLightSample ls = {};

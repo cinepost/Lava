@@ -77,7 +77,6 @@ namespace {
 
     //
     const std::string kLightsBufferName = "gLights";
-    const std::string kLightIDsBufferName = "gLightIDs";
 }
 
 EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
@@ -153,7 +152,6 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
         mpComputePass["gScene"] = mpScene->getParameterBlock();
         
-        mpComputePass[kLightIDsBufferName] = lightsIDsBuffer();
         mpComputePass[kBackdropTexture] = mpBackdropTexture;
 
         // Bind mandatory input channels
@@ -174,7 +172,7 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
     cb_var["gIntensity"] = mIntensity;
     cb_var["gOpacity"] = mOpacity;
-    cb_var["lightsCount"] = mpLightIDsBuffer ? mpLightIDsBuffer->getElementCount() : 0;
+    cb_var["lightsCount"] = mpScene->getLightCount();
 
     mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
     
@@ -182,25 +180,11 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 }
 
 void EnvPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    if(pScene && (mpScene == pScene)) return;
+    if(mpScene == pScene) return;
 
     mpScene = pScene;
-    mSceneLights.clear();
-
     if (mpScene) {
-        const std::vector<Light::SharedPtr>& lights = mpScene->getActiveLights();
-        for(const auto& light: lights) {
-            if(!light) continue;
-            switch(light->getType()) {
-                case LightType::Env:
-                case LightType::PhysSunSky:
-                    mSceneLights.push_back(light);
-                    break;
-                default:
-                    break;
-            }
-        }
-    setupCamera();
+        setupCamera();
     }
 
     mDirty = true;
@@ -219,31 +203,6 @@ void EnvPass::setupCamera() {
 
     if(mpCamera != pCamera) mDirty = true;
     mpCamera = pCamera;
-}
-
-Buffer::SharedPtr EnvPass::lightsIDsBuffer() {
-    if(!mDirty && mpLightIDsBuffer) return mpLightIDsBuffer;
-
-    if(mSceneLights.empty()) {
-        mpLightIDsBuffer = nullptr;
-    } else {
-        std::vector<uint32_t> lightIDs;
-        for(size_t i = 0; i < mpScene->getLightCount(); ++i) {
-            const auto& pLight = mpScene->getLight(i);
-            if(!pLight) continue;
-            switch(pLight->getType()) {
-                case LightType::Env:
-                case LightType::PhysSunSky:
-                    lightIDs.push_back(i);
-                    break;
-                default:
-                    break;
-            }
-        }
-        mpLightIDsBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)lightIDs.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, lightIDs.data(), false);
-        mpLightIDsBuffer->setName("EnvPass::mpLightIDsBuffer");
-    }
-    return mpLightIDsBuffer;
 }
 
 void EnvPass::setBackdropImage(const std::string& imageName, bool loadAsSrgb) {
