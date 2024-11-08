@@ -434,6 +434,10 @@ float uniformConePdf(float cosThetaMax) {
     return 1.0f / ((float)M_2PI * (1.0f - cosThetaMax));
 }
 
+float uniformSpherePdf() { 
+    return M_1_4PI; 
+}
+
 /******************************************************************************
 
     Motion vectors

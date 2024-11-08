@@ -6,28 +6,19 @@
 
 #include "vk-helper-functions.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
-    PipelineStateBase* pipeline,
-    TransientResourceHeapBase* transientHeap,
-    IResourceCommandEncoder* encoder)
-{
+RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(PipelineStateBase* pipeline, TransientResourceHeapBase* transientHeap, IResourceCommandEncoder* encoder) {
     auto vkApi = m_device->m_api;
     auto rtProps = vkApi.m_rtProperties;
     uint32_t handleSize = rtProps.shaderGroupHandleSize;
-    m_raygenTableSize = (uint32_t)VulkanUtil::calcAligned(
-        m_rayGenShaderCount * handleSize, rtProps.shaderGroupBaseAlignment);
-    m_missTableSize = (uint32_t)VulkanUtil::calcAligned(
-        m_missShaderCount * handleSize, rtProps.shaderGroupBaseAlignment);
-    m_hitTableSize = (uint32_t)VulkanUtil::calcAligned(
-        m_hitGroupCount * handleSize, rtProps.shaderGroupBaseAlignment);
+    m_raygenTableSize = (uint32_t)VulkanUtil::calcAligned(m_rayGenShaderCount * handleSize, rtProps.shaderGroupBaseAlignment);
+    m_missTableSize = (uint32_t)VulkanUtil::calcAligned(m_missShaderCount * handleSize, rtProps.shaderGroupBaseAlignment);
+    m_hitTableSize = (uint32_t)VulkanUtil::calcAligned(m_hitGroupCount * handleSize, rtProps.shaderGroupBaseAlignment);
     m_callableTableSize = 0; // TODO: Are callable shaders needed?
     uint32_t tableSize = m_raygenTableSize + m_missTableSize + m_hitTableSize + m_callableTableSize;
 
@@ -36,19 +27,16 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
     IBufferResource::Desc bufferDesc = {};
     bufferDesc.memoryType = MemoryType::DeviceLocal;
     bufferDesc.defaultState = ResourceState::General;
-    bufferDesc.allowedStates =
-        ResourceStateSet(ResourceState::General, ResourceState::CopyDestination);
+    bufferDesc.allowedStates = ResourceStateSet(ResourceState::General, ResourceState::CopyDestination);
     bufferDesc.type = IResource::Type::Buffer;
     bufferDesc.sizeInBytes = tableSize;
     m_device->createBufferResource(bufferDesc, nullptr, bufferResource.writeRef());
 
-    TransientResourceHeapImpl* transientHeapImpl =
-        static_cast<TransientResourceHeapImpl*>(transientHeap);
+    TransientResourceHeapImpl* transientHeapImpl = static_cast<TransientResourceHeapImpl*>(transientHeap);
 
     IBufferResource* stagingBuffer = nullptr;
     Offset stagingBufferOffset = 0;
-    transientHeapImpl->allocateStagingBuffer(
-        tableSize, stagingBuffer, stagingBufferOffset, MemoryType::Upload);
+    transientHeapImpl->allocateStagingBuffer(tableSize, stagingBuffer, stagingBufferOffset, MemoryType::Upload);
 
     assert(stagingBuffer);
     void* stagingPtr = nullptr;
@@ -60,7 +48,7 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
     handles.setCount(totalHandleSize);
     auto result = vkApi.vkGetRayTracingShaderGroupHandlesKHR(
         m_device->m_device,
-        pipelineImpl->m_pipeline,
+        pipelineImpl->getPipeline(),
         0,
         (uint32_t)handleCount,
         totalHandleSize,
@@ -73,14 +61,11 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
     // Each loop calculates the copy source and destination locations by fetching the name
     // of the shader group from the list of shader group names and getting its corresponding
     // index in the buffer of handles.
-    for (uint32_t i = 0; i < m_rayGenShaderCount; i++)
-    {
+    for (uint32_t i = 0; i < m_rayGenShaderCount; i++) {
         auto dstHandlePtr = subTablePtr + i * handleSize;
         auto shaderGroupName = m_shaderGroupNames[shaderTableEntryCounter++];
-        auto shaderGroupIndexPtr =
-            pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
-        if (!shaderGroupIndexPtr)
-            continue;
+        auto shaderGroupIndexPtr = pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
+        if (!shaderGroupIndexPtr) continue;
 
         auto shaderGroupIndex = *shaderGroupIndexPtr;
         auto srcHandlePtr = handles.getBuffer() + shaderGroupIndex * handleSize;
@@ -88,14 +73,11 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
     }
     subTablePtr += m_raygenTableSize;
 
-    for (uint32_t i = 0; i < m_missShaderCount; i++)
-    {
+    for (uint32_t i = 0; i < m_missShaderCount; i++) {
         auto dstHandlePtr = subTablePtr + i * handleSize;
         auto shaderGroupName = m_shaderGroupNames[shaderTableEntryCounter++];
-        auto shaderGroupIndexPtr =
-            pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
-        if (!shaderGroupIndexPtr)
-            continue;
+        auto shaderGroupIndexPtr = pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
+        if (!shaderGroupIndexPtr) continue;
 
         auto shaderGroupIndex = *shaderGroupIndexPtr;
         auto srcHandlePtr = handles.getBuffer() + shaderGroupIndex * handleSize;
@@ -103,14 +85,11 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(
     }
     subTablePtr += m_missTableSize;
 
-    for (uint32_t i = 0; i < m_hitGroupCount; i++)
-    {
+    for (uint32_t i = 0; i < m_hitGroupCount; i++) {
         auto dstHandlePtr = subTablePtr + i * handleSize;
         auto shaderGroupName = m_shaderGroupNames[shaderTableEntryCounter++];
-        auto shaderGroupIndexPtr =
-            pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
-        if (!shaderGroupIndexPtr)
-            continue;
+        auto shaderGroupIndexPtr = pipelineImpl->shaderGroupNameToIndex.TryGetValue(shaderGroupName);
+        if (!shaderGroupIndexPtr) continue;
 
         auto shaderGroupIndex = *shaderGroupIndexPtr;
         auto srcHandlePtr = handles.getBuffer() + shaderGroupIndex * handleSize;

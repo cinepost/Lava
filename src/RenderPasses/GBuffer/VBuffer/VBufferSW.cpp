@@ -89,7 +89,8 @@ namespace {
     const std::string kOutputNormal    = "normW";
 
     // Additional output channels.
-    const ChannelList kVBufferExtraChannels = {
+    const ChannelList kVBufferExtraOutputChannels = {
+        { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
         { "depth",              "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
@@ -109,7 +110,7 @@ namespace {
 
     // Additional output channels.
     const ChannelList kVBufferExtraSubdChannels = {
-        { kOutputNormal,         "gNormW",           "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint },
+        { kOutputNormal,         "gNormW",          "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint  },
     };
 };
 
@@ -177,7 +178,7 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
 
     // Add all the other outputs.
-    addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     // Add subd outputs.
     if(mUseSubdivisions) {
@@ -205,12 +206,16 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
-    if (!pOutput) return;
+    if(pOutput) {
+        updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
+    } else if (mpVisibilitySamplesContainer) {
+        updateFrameDim(mpVisibilitySamplesContainer->getResolution());
+    } else {
+        return;
+    }
 
-    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
-
-    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
-    clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
+    clearRenderPassChannels(pRenderContext, kVBufferExtraOutputChannels, renderData);
     
     if(mUseSubdivisions) {
         clearRenderPassChannels(pRenderContext, kVBufferExtraSubdChannels, renderData);
@@ -245,12 +250,23 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         bool storeCombinedNormals = (mUseSubdivisions && (mSubdivMeshletsCount > 0)) || mUseDisplacement;
         mpVisibilitySamplesContainer->storeCombinedNormals(storeCombinedNormals);
+        
+        bool storeTextureGradients = false;
+        if(mpScene && mpScene->getMaterialSystem()) {
+            storeTextureGradients = mpScene->getMaterialSystem()->hasTextures();
+        }
+        mpVisibilitySamplesContainer->storeTextureGradients(storeTextureGradients);
+
+        mpVisibilitySamplesContainer->beginFrame();
     }
 
     executeCompute(pRenderContext, renderData);
-    mDirty = false;
 
-    //pRenderContext->flush(true);
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->endFrame();
+    }
+
+    mDirty = false;
 }
 
 Dictionary VBufferSW::getScriptingDictionary() {
@@ -273,7 +289,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
     if(mpLocalDepthBuffer) pRenderContext->clearUAV(mpLocalDepthBuffer->getUAV().get(), uint4(UINT32_MAX));
     if(mpOpacityShiftsBuffer) pRenderContext->clearUAV(mpOpacityShiftsBuffer->getUAV().get(), uint4(0));
-    //pRenderContext->clearUAV(renderData[kVBufferName]->asTexture()->getUAV().get(), uint4(0));
 
     auto pStartOffsetBuffer = renderData[kOuputOITStartOffset]->asTexture();
     if(pStartOffsetBuffer) pRenderContext->clearUAV(pStartOffsetBuffer->getUAV().get(), uint4(kInvalidIndex));
@@ -290,11 +305,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         Program::DefineList defines;
         
         mpComputeJitterPass = ComputePass::create(mpDevice, desc, defines, true);
-    }
-
-    // Optional visibility container
-    if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->beginFrame();
     }
 
     // Create rasterization pass.
@@ -359,7 +369,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
         // TODO: This should be moved to a more general mechanism using Slang.
-        defines.add(getValidResourceDefines(kVBufferExtraChannels, renderData));
+        defines.add(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
         defines.add(getValidResourceDefines(kVBufferExtraSubdChannels, renderData));
         
         defines.add("is_valid_gIndicesBuffer", mpIndicesBuffer != nullptr ? "1" : "0");
@@ -426,8 +436,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gJitterTexture"] = mpJitterTexture;
         var["gJitterSampler"] = mpJitterSampler;
 
-        var["gVBuffer"] = getOutput(renderData, kVBufferName);
-
         // Bind output channels as UAV buffers.
         auto bind = [&](const ChannelDesc& channel) {
             Texture::SharedPtr pTex = getOutput(renderData, channel.name);
@@ -435,7 +443,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         };
 
         // Bind extra output channels
-        for (const auto& channel : kVBufferExtraChannels) {
+        for (const auto& channel : kVBufferExtraOutputChannels) {
             bind(channel);
         }
 
@@ -486,13 +494,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             var["gVBufferSW"]["drawableIndex"] = i;
             mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
         }
-    }
-
-    if(mpVisibilitySamplesContainer) {
-        mpVisibilitySamplesContainer->endFrame();
-        //LLOG_INF << "Reserved transparent samples count " << mpVisibilitySamplesContainer->reservedTransparentSamplesCount();
-        //LLOG_INF << "Transparent samples count " << mpVisibilitySamplesContainer->transparentSamplesCount();
-        //LLOG_INF << "Max transparent layers count " << mpVisibilitySamplesContainer->maxTransparentLayersCount();
     }
 
     mSampleNumber++;

@@ -214,6 +214,8 @@ void GBufferBase::setVisibilitySamplesContainer(VisibilitySamplesContainer::Shar
     if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
     mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
     setTransparencySamplesCount(mTransparencySamplesCount);
+
+    requestRecompile();
     mDirty = true;
 }
 

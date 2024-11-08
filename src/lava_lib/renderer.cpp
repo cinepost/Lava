@@ -228,15 +228,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	LLOG_DBG << "createRenderGraph frame dimensions: " << imageSize[0] << " " << imageSize[1];
 
-	//// EnvMapSampler stuff
-	Texture::SharedPtr pEnvTexture = nullptr;
-	if (pEnvTexture) {
-		auto pEnvMap = Falcor::EnvMap::create(mpDevice, pEnvTexture);
-		pScene->setEnvMap(pEnvMap);
-	}
-
-	auto pEnvMap = pScene->getEnvMap();
-
 	
 	// Rasterizer state
 	RasterizerState::CullMode cullMode;
@@ -405,7 +396,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// TODO: handle transparency    
 	mpEnvPass->setOpacity(1.0f);
 
-	//mpEnvPass->setScene(pRenderContext, pScene);
+	mpEnvPass->setScene(pRenderContext, pScene);
 	mpRenderGraph->addPass(mpEnvPass, "EnvPass");
 	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
@@ -663,7 +654,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
-						mpRenderGraph->addEdge("VBufferPass.texGrads", pPlane->accumulationPassColorInputName());
+						//mpRenderGraph->addEdge("VBufferPass.texGrads", pPlane->accumulationPassColorInputName());
+						mpRenderGraph->addEdge("ShadingPass.texGrads", pPlane->accumulationPassColorInputName());
 					}
 				}
 				break;

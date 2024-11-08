@@ -38,14 +38,13 @@ import Utils.Sampling.SampleGenerator;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-RWTexture2D<PackedHitInfo> gVBuffer;
-
 RWByteAddressBuffer gLocalDepthBuffer;
 
 // Meshlets related buffers
 StructuredBuffer<MeshletDraw> gMeshletDrawList;
 
 // Optional buffers
+RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
@@ -81,12 +80,17 @@ RWTexture2D<uint>   gTime;      // Timing debug buffer
 #define USE_PP_JITTER false
 #endif
 
+#if !defined(USE_VISIBILITY_CONTAINER)
+#define USE_VISIBILITY_CONTAINER false
+#endif
+
 struct VBufferSW {
     static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const bool kUseSubdivisions = USE_SUBDIVISIONS;
     static const uint kMaxLOD = MAX_LOD;
     static const bool kUsePerPixelJitter = USE_PP_JITTER;
+    static const bool kUseVisibilityContainer = USE_VISIBILITY_CONTAINER;
 
     uint2   frameDim;
     float2  frameDimInv;

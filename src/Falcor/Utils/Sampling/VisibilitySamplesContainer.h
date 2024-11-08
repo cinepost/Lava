@@ -22,6 +22,7 @@ namespace Falcor {
 class dlldecl VisibilitySamplesContainer {
 	public:
 		static const bool kDefaultStoreNormals = false;
+		static const bool kDefaultStoreTextureGradients = false;
 		static const bool kDefaultLimitTransparentSamplesCountPP = false;
 
 		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
@@ -43,15 +44,12 @@ class dlldecl VisibilitySamplesContainer {
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
-		Shader::DefineList getDefines();
 		Shader::DefineList getDefines() const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpParameterReadonlyBlock; }
-
-		ParameterBlock::SharedPtr& getParameterBlock() { return mpParameterBlock; }
+		const ParameterBlock::SharedPtr& getParameterBlock() const;// { return mpParameterBlock; }
 
 		void setScene(const Scene::SharedPtr& pScene);
 
@@ -84,7 +82,7 @@ class dlldecl VisibilitySamplesContainer {
 
 		void setMaxTransparencySamplesCountPP(uint maxTransparentSamplesCountPP);
 
-		const uint2& resolution() const { return mResolution; }
+		const uint2& getResolution() const { return mResolution; }
 
 		uint opaqueSamplesCount() const;
 
@@ -108,6 +106,7 @@ class dlldecl VisibilitySamplesContainer {
 		void  enableSorting(bool enabled);
 		void  enableSortingPP(bool enabled);
 		void  storeCombinedNormals(bool enabled);
+		void  storeTextureGradients(bool enabled);
 
 		bool  hasCombinedNormals() const;
 
@@ -116,8 +115,8 @@ class dlldecl VisibilitySamplesContainer {
 	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
-		void createParameterBlocks();
-		void clearParameterBlocks();
+		void createParameterBlock();
+		void clearParameterBlock();
 		void createBuffers();
 
 		void readInfoBufferData() const;
@@ -126,8 +125,6 @@ class dlldecl VisibilitySamplesContainer {
 		void sortTransparentSamplesRoots(RenderContext* pRenderContext);
 		void sortTransparentSamplesOrder(RenderContext* pRenderContext);
 		void sortFinalizeIndirectArgs(RenderContext* pRenderContext);
-
-		Shader::DefineList _getDefines() const;
 
 		// Internal state
 
@@ -138,6 +135,7 @@ class dlldecl VisibilitySamplesContainer {
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
 		bool  mStoreCombinedNormals = kDefaultStoreNormals;
+		bool  mStoreTextureGradients = kDefaultStoreTextureGradients;
 		bool  mDepth64 = false;
 
 		uint3 mShadingThreadGroupSize;
@@ -154,18 +152,20 @@ class dlldecl VisibilitySamplesContainer {
 		// GPU resources internal
 		GpuFence::SharedPtr mpFence;
 		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
-		mutable ParameterBlock::SharedPtr mpParameterReadonlyBlock;         ///< Parameter block for binding all resources as read only.
 
 		// GPU resources
 		Buffer::SharedPtr  	mpOpaqueSamplesBuffer;
 		Buffer::SharedPtr   mpOpaqueCombinedNormalsBuffer;
 		Buffer::SharedPtr   mpOpaqueVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr  	mpRootTransparentSampleOffsetBufferPP;
+		Buffer::SharedPtr   mpOpaqueTextureGradientsBuffer;
+
 
 		Buffer::SharedPtr  	mpTransparentVisibilitySamplesCountBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesPositionBufferPP;
 		Buffer::SharedPtr   mpTransparentVisibilitySamplesBuffer;
 		Buffer::SharedPtr   mpTransparentCombinedNormalsBuffer;
+		Buffer::SharedPtr   mpTransparentTextureGradientsBuffer;
 		Buffer::SharedPtr   mpInfoBuffer;
 
 		// Optional external resources

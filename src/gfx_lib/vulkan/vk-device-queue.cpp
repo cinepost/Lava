@@ -8,22 +8,17 @@
 namespace gfx {
 using namespace Slang;
 
-VulkanDeviceQueue::~VulkanDeviceQueue()
-{
+VulkanDeviceQueue::~VulkanDeviceQueue() {
     destroy();
 }
 
-void VulkanDeviceQueue::destroy()
-{
-    if (m_api)
-    {
-        for (int i = 0; i < int(EventType::CountOf); ++i)
-        {
+void VulkanDeviceQueue::destroy() {
+    if (m_api) {
+        for (int i = 0; i < int(EventType::CountOf); ++i) {
             m_api->vkDestroySemaphore(m_api->m_device, m_semaphores[i], nullptr);
         }
 
-        for (int i = 0; i < m_numCommandBuffers; i++)
-        {
+        for (int i = 0; i < m_numCommandBuffers; i++) {
             m_api->vkFreeCommandBuffers(m_api->m_device, m_commandPools[i], 1, &m_commandBuffers[i]);
             m_api->vkDestroyFence(m_api->m_device, m_fences[i].fence, nullptr);
             m_api->vkDestroyCommandPool(m_api->m_device, m_commandPools[i], nullptr);
@@ -32,12 +27,10 @@ void VulkanDeviceQueue::destroy()
     }
 }
 
-SlangResult VulkanDeviceQueue::init(const VulkanApi& api, VkQueue queue, int queueIndex)
-{
+SlangResult VulkanDeviceQueue::init(const VulkanApi& api, VkQueue queue, int queueIndex) {
     assert(m_api == nullptr);
     
-    for (int i = 0; i < int(EventType::CountOf); ++i)
-    {
+    for (int i = 0; i < int(EventType::CountOf); ++i) {
         m_semaphores[i] = VK_NULL_HANDLE;
         m_currentSemaphores[i] = VK_NULL_HANDLE;
     }
@@ -47,8 +40,7 @@ SlangResult VulkanDeviceQueue::init(const VulkanApi& api, VkQueue queue, int que
 
     m_queue = queue;
 
-    for (int i = 0; i < m_numCommandBuffers; i++)
-    {
+    for (int i = 0; i < m_numCommandBuffers; i++) {
         VkCommandPoolCreateInfo poolCreateInfo = {};
         poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -78,8 +70,7 @@ SlangResult VulkanDeviceQueue::init(const VulkanApi& api, VkQueue queue, int que
     VkSemaphoreCreateInfo semaphoreCreateInfo = {};
     semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    for (int i = 0; i < int(EventType::CountOf); ++i)
-    {
+    for (int i = 0; i < int(EventType::CountOf); ++i) {
         api.vkCreateSemaphore(api.m_device, &semaphoreCreateInfo, nullptr, &m_semaphores[i]);
     }
 
@@ -92,8 +83,7 @@ SlangResult VulkanDeviceQueue::init(const VulkanApi& api, VkQueue queue, int que
     return SLANG_OK;
 }
 
-void VulkanDeviceQueue::flushStepA()
-{
+void VulkanDeviceQueue::flushStepA() {
     m_api->vkEndCommandBuffer(m_commandBuffer);
 
     VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
@@ -102,8 +92,7 @@ void VulkanDeviceQueue::flushStepA()
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     // Wait semaphores
-    if (isCurrent(EventType::BeginFrame))
-    {
+    if (isCurrent(EventType::BeginFrame)) {
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = &m_currentSemaphores[int(EventType::BeginFrame)];
     }
@@ -113,8 +102,7 @@ void VulkanDeviceQueue::flushStepA()
     submitInfo.pCommandBuffers = &m_commandBuffer;
 
     // Signal semaphores
-    if (isCurrent(EventType::EndFrame))
-    {
+    if (isCurrent(EventType::EndFrame)) {
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &m_currentSemaphores[int(EventType::EndFrame)];
     }
@@ -135,37 +123,31 @@ void VulkanDeviceQueue::flushStepA()
     makeCompleted(EventType::EndFrame);
 }
 
-void VulkanDeviceQueue::_updateFenceAtIndex( int fenceIndex, bool blocking)
-{
+void VulkanDeviceQueue::_updateFenceAtIndex( int fenceIndex, bool blocking) {
     Fence& fence = m_fences[fenceIndex];
 
-    if (fence.active)
-    {
+    if (fence.active) {
         uint64_t timeout = blocking ? ~uint64_t(0) : 0;
 
-        if (VK_SUCCESS == m_api->vkWaitForFences(m_api->m_device, 1, &fence.fence, VK_TRUE, timeout))
-        {
+        if (VK_SUCCESS == m_api->vkWaitForFences(m_api->m_device, 1, &fence.fence, VK_TRUE, timeout)) {
             m_api->vkResetFences(m_api->m_device, 1, &fence.fence);
 
             fence.active = false;
 
-            if (fence.value > m_lastFenceCompleted)
-            {
+            if (fence.value > m_lastFenceCompleted) {
                 m_lastFenceCompleted = fence.value;
             }
         }
     }
 }
 
-void VulkanDeviceQueue::flushStepB()
-{
+void VulkanDeviceQueue::flushStepB() {
     m_commandBufferIndex = (m_commandBufferIndex + 1) % m_numCommandBuffers;
     m_commandBuffer = m_commandBuffers[m_commandBufferIndex];
     m_commandPool = m_commandPools[m_commandBufferIndex];
 
     // non-blocking update of fence values
-    for (int i = 0; i < m_numCommandBuffers; ++i)
-    {
+    for (int i = 0; i < m_numCommandBuffers; ++i) {
         _updateFenceAtIndex(i, false);
     }
 
@@ -181,33 +163,28 @@ void VulkanDeviceQueue::flushStepB()
     m_api->vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
 }
 
-void VulkanDeviceQueue::flush()
-{
+void VulkanDeviceQueue::flush() {
     flushStepA();
     flushStepB();
 }
 
-void VulkanDeviceQueue::flushAndWait()
-{
+void VulkanDeviceQueue::flushAndWait() {
     flush();
     waitForIdle();
 }
 
-VkSemaphore VulkanDeviceQueue::getSemaphore(EventType eventType)
-{
+VkSemaphore VulkanDeviceQueue::getSemaphore(EventType eventType) {
     return m_semaphores[int(eventType)];
 }
 
-VkSemaphore VulkanDeviceQueue::makeCurrent(EventType eventType)
-{
+VkSemaphore VulkanDeviceQueue::makeCurrent(EventType eventType) {
     assert(!isCurrent(eventType));
     VkSemaphore semaphore = m_semaphores[int(eventType)];
     m_currentSemaphores[int(eventType)] = semaphore;
     return semaphore;
 }
 
-void VulkanDeviceQueue::makeCompleted(EventType eventType)
-{
+void VulkanDeviceQueue::makeCompleted(EventType eventType) {
     m_currentSemaphores[int(eventType)] = VK_NULL_HANDLE;
 }
 

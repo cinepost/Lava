@@ -38,7 +38,7 @@ namespace {
     const char kShaderFilenameSetup[] = "Experimental/Scene/Lights/EnvMapSamplerSetup.cs.slang";
 
     // The defaults are 512x512 @ 64spp in the resampling step.
-    const uint32_t kDefaultDimension = 512;
+    const uint32_t kDefaultDimension = 1024;
     const uint32_t kDefaultSpp = 64;
 }
 

@@ -213,6 +213,10 @@ def header(now, propdefs):
     cmd_config('geo_tangent_generation', cfg_plist.get('lv_geo_tangent_generation', None))
     cmd_config('generate_meshlets', cfg_plist.get('lv_generate_meshlets', None))
 
+    cmd_config('shader_cache_use', cfg_plist.get('lv_shadercacheuse', None))
+    cmd_config('shader_cache_compression', cfg_plist.get('lv_shadercachecompression', None))
+    cmd_config('shader_cache_storate', cfg_plist.get('lv_shadercachestorage', None))
+
     cmd_declare_parm('global', 'async_geo', cfg_plist.get('lv_async_geo', None))
     cmd_declare_parm('global', 'vtoff', cfg_plist.get('lv_vtoff', None))
     

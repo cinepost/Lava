@@ -132,14 +132,16 @@ struct LightData {
 
 
     //
-    static const uint kLightTypeBits = uint(LightType::Count);
+    static const uint kLightTypeBits = 4;  //uint(LightType::Count);
     static const uint kLightTypeOffset = 0;
 
-    static const uint kLightShadowTypeBits = uint(LightShadowType::Count);
-    static const uint kLightShadowTypeOffset = kLightTypeBits;
+    static const uint kLightShadowTypeBits = 2; //uint(LightShadowType::Count);
+    static const uint kLightShadowTypeOffset = kLightTypeBits + kLightTypeOffset;
 
-    static const uint kLightSamplerIdBits = 4;              ///< 16 distinct samplers per light type. More than enough...
+    static const uint kLightSamplerIdBits = 4;              ///< 15 distinct samplers per light type. More than enough...
     static const uint kLightSamplerIdOffset = kLightShadowTypeBits + kLightShadowTypeOffset;
+
+    static constexpr uint kInvalidSamplerID = (uint(1) << kLightSamplerIdBits) - 1;
 
     /** Set light type.
     */

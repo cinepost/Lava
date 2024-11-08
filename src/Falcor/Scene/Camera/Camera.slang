@@ -184,7 +184,7 @@ struct Camera {
 
         float2 p = (float2(pixel) + rnd) / frameDim;
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
-        ray.dir = ndc.x * xform_tj.cameraU + ndc.y * xform_tj.cameraV + xform_tj.cameraW;
+        ray.dir = normalize(ndc.x * xform_tj.cameraU + ndc.y * xform_tj.cameraV + xform_tj.cameraW);
 
         float invCos = 1.f / dot(normalize(xform_tj.cameraW), ray.dir);
         ray.tMin = data.nearZ * invCos;

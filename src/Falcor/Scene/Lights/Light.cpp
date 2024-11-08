@@ -127,7 +127,7 @@ void Light::setShadowType(LightShadowType shadowType) {
     update();
 }
 
-void Light::setLightSamplerID(uint id) { 
+void Light::setLightSamplerID(uint id) {
     mData.setLightSamplerID(id); 
     update();
 }
@@ -139,8 +139,6 @@ void Light::setLightRadius(float radius) {
 }
 
 void Light::update() {
-    mData.intensity = mIntensity * M_2PI;
-
     if(maxColorComponentValue(getDirectDiffuseIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContribureDirectDiffuse;
     } else {
@@ -186,6 +184,7 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
     if (mPrevData.flags != mData.flags) mChanges |= Changes::Flags;
+    if (mPrevData.flags_ex != mData.flags_ex) mChanges |= Changes::Flags;
 
     if (mPrevData.getShadowType() != mData.getShadowType()) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
@@ -241,6 +240,10 @@ void Light::setShaderData(const ShaderVar& var) {
 Light::Light(const std::string& name, LightType type) : mName(name) {
     mIntensity = float3(.0f);
     mData.setLightType(type);
+    mData.setLightSamplerID(kInvalidSamplerID);
+
+    LLOG_WRN << "LightData::kInvalidSamplerID " << kInvalidSamplerID;
+
     mData.flags = 0x0;
 }
 
@@ -256,6 +259,7 @@ void Light::update(const Light& light) {
     setIndirectDiffuseIntensityMultiplier(light.getIndirectDiffuseIntensityMultiplier());
     setIndirectSpecularIntensityMultiplier(light.getIndirectSpecularIntensityMultiplier());
     setCameraVisibility(light.getCameraVisibility());
+    setLightSamplerID(light.getLightSamplerID());
 }
 
 void Light::setTexture(Texture::SharedPtr pTexture) {
@@ -317,6 +321,7 @@ void PointLight::update() {
         mData.transMat = glm::mat4();
     }
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+    mData.intensity = mIntensity * M_2PI;
     Light::update();
 }
 
@@ -379,6 +384,7 @@ DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
 }
 
 void DirectionalLight::update() {
+    mData.intensity = mIntensity * M_2PI;
     Light::update();
 }
 
@@ -463,6 +469,7 @@ void DistantLight::update() {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
     }
 
+    mData.intensity = mIntensity * M_2PI;
     Light::update();
 }
 
@@ -511,6 +518,7 @@ void EnvironmentLight::update() {
     mData.transMatInv = glm::inverse(mData.transMat);
 
     mData.posW = {0.0, 0.0, 0.0};
+    mData.intensity = mIntensity;
     Light::update();
 }
 
@@ -554,6 +562,7 @@ void PhysicalSunSkyLight::setDevice(Device::SharedPtr pDevice) {
 }
 
 void PhysicalSunSkyLight::update() {
+    mData.intensity = mIntensity;
     Light::update();
 }
 
@@ -621,14 +630,14 @@ void AnalyticAreaLight::update() {
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
     mData.transMatInv = glm::inverse(mData.transMat);
     mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
-    
-    Light::update();
 
     if(mNormalizeArea) {
         mData.intensity = (mIntensity / mData.surfaceArea) * (float)M_2PI; //M_SQRT2;
     } else {
         mData.intensity = mIntensity;
     }
+
+    Light::update();
 }
 
 void AnalyticAreaLight::updateFromAnimation(const glm::mat4& transform) { 

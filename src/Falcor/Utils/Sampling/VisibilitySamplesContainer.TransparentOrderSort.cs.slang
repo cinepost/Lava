@@ -20,6 +20,10 @@ static uint offsetsList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COU
 static uint4 combinedNormalsList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
 #endif
 
+#if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+static float16_t4 texGradsList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
+#endif
+
 [numthreads(GROUP_SIZE_X, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     uint pixelOffset = dispatchThreadId.x;
@@ -52,6 +56,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
             combinedNormalsList[0] = gVisibilityContainer.transparentCombinedNormalsBuffer[offsetsList[0]];
         #endif
 
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+            texGradsList[0] = gVisibilityContainer.transparentTextureGradientsBuffer[offsetsList[0]];
+        #endif
+
         samplesCount++;
     }
 
@@ -68,15 +76,19 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
             #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
                 combinedNormalsList[samplesCount] = gVisibilityContainer.transparentCombinedNormalsBuffer[nextSampleOffset];
             #endif
+
+            #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+                texGradsList[samplesCount] = gVisibilityContainer.transparentTextureGradientsBuffer[nextSampleOffset];
+            #endif
             
             samplesCount++;
         }
         nextSampleOffset = sample.nextSampleOffset;
     }
 
-    //GroupMemoryBarrierWithGroupSync();
-
     if(samplesCount < 2) return;
+
+    //GroupMemoryBarrierWithGroupSync();
 
     // Sort list
     bool unsorted = true;
@@ -91,6 +103,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
                     uint4 tmpN = combinedNormalsList[i];
                     combinedNormalsList[i] = combinedNormalsList[i+1];
                     combinedNormalsList[i+1] = tmpN;
+                #endif
+
+                #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+                    float16_t4 tmpT = texGradsList[i];
+                    texGradsList[i] = texGradsList[i+1];
+                    texGradsList[i+1] = tmpT;
                 #endif
 
                 samplesList[i] = tmp_sample2;
@@ -113,6 +131,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
             gVisibilityContainer.transparentCombinedNormalsBuffer[offsetsList[i]] = combinedNormalsList[i];
+        #endif
+
+        #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
+            gVisibilityContainer.transparentTextureGradientsBuffer[offsetsList[i]] = texGradsList[i];
         #endif
     }
 

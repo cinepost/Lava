@@ -20,13 +20,11 @@ static bool debugLayerEnabled = false;
 
 #define GFX_FORMAT_SIZE(name, blockSizeInBytes, pixelsPerBlock) {blockSizeInBytes, pixelsPerBlock},
 
-static const uint32_t s_formatSizeInfo[][2] =
-{
+static const uint32_t s_formatSizeInfo[][2] = {
     GFX_FORMAT(GFX_FORMAT_SIZE)
 };
 
-static bool _checkFormat()
-{
+static bool _checkFormat() {
     Index value = 0;
     Index count = 0;
 
@@ -42,13 +40,10 @@ static bool _checkFormat()
 // We don't make static because we will get a warning that it's unused
 static const bool _checkFormatResult = _checkFormat();
 
-struct FormatInfoMap
-{
-    FormatInfoMap()
-    {
+struct FormatInfoMap {
+    FormatInfoMap() {
         // Set all to nothing initially
-        for (auto& info : m_infos)
-        {
+        for (auto& info : m_infos) {
             info.channelCount = 0;
             info.channelType = SLANG_SCALAR_TYPE_NONE;
         }
@@ -155,8 +150,7 @@ struct FormatInfoMap
         set(Format::BC7_UNORM_SRGB, SLANG_SCALAR_TYPE_FLOAT32, 4, 4, 4);
     }
 
-    void set(Format format, SlangScalarType type, Index channelCount, uint32_t blockWidth = 1, uint32_t blockHeight = 1)
-    {
+    void set(Format format, SlangScalarType type, Index channelCount, uint32_t blockWidth = 1, uint32_t blockHeight = 1) {
         FormatInfo& info = m_infos[Index(format)];
         info.channelCount = uint8_t(channelCount);
         info.channelType = uint8_t(type);
@@ -175,98 +169,86 @@ struct FormatInfoMap
 
 static const FormatInfoMap s_formatInfoMap;
 
-static void _compileTimeAsserts()
-{
+static void _compileTimeAsserts() {
     SLANG_COMPILE_TIME_ASSERT(SLANG_COUNT_OF(s_formatSizeInfo) == int(Format::_Count));
 }
 
-extern "C"
-{
-    SLANG_GFX_API bool gfxIsCompressedFormat(Format format)
-    {
-        switch (format)
-        {
-        case Format::BC1_UNORM:
-        case Format::BC1_UNORM_SRGB:
-        case Format::BC2_UNORM:
-        case Format::BC2_UNORM_SRGB:
-        case Format::BC3_UNORM:
-        case Format::BC3_UNORM_SRGB:
-        case Format::BC4_UNORM:
-        case Format::BC4_SNORM:
-        case Format::BC5_UNORM:
-        case Format::BC5_SNORM:
-        case Format::BC6H_UF16:
-        case Format::BC6H_SF16:
-        case Format::BC7_UNORM:
-        case Format::BC7_UNORM_SRGB:
-            return true;
-        default:
-            return false;
+extern "C" {
+    SLANG_GFX_API bool gfxIsCompressedFormat(Format format) {
+        switch (format) {
+            case Format::BC1_UNORM:
+            case Format::BC1_UNORM_SRGB:
+            case Format::BC2_UNORM:
+            case Format::BC2_UNORM_SRGB:
+            case Format::BC3_UNORM:
+            case Format::BC3_UNORM_SRGB:
+            case Format::BC4_UNORM:
+            case Format::BC4_SNORM:
+            case Format::BC5_UNORM:
+            case Format::BC5_SNORM:
+            case Format::BC6H_UF16:
+            case Format::BC6H_SF16:
+            case Format::BC7_UNORM:
+            case Format::BC7_UNORM_SRGB:
+                return true;
+            default:
+                return false;
         }
     }
 
-    SLANG_GFX_API bool gfxIsTypelessFormat(Format format)
-    {
-        switch (format)
-        {
-        case Format::R32G32B32A32_TYPELESS:
-        case Format::R32G32B32_TYPELESS:
-        case Format::R32G32_TYPELESS:
-        case Format::R32_TYPELESS:
-        case Format::R16G16B16A16_TYPELESS:
-        case Format::R16G16_TYPELESS:
-        case Format::R16_TYPELESS:
-        case Format::R8G8B8A8_TYPELESS:
-        case Format::R8G8_TYPELESS:
-        case Format::R8_TYPELESS:
-        case Format::B8G8R8A8_TYPELESS:
-        case Format::R10G10B10A2_TYPELESS:
-            return true;
-        default:
-            return false;
+    SLANG_GFX_API bool gfxIsTypelessFormat(Format format) {
+        switch (format) {
+            case Format::R32G32B32A32_TYPELESS:
+            case Format::R32G32B32_TYPELESS:
+            case Format::R32G32_TYPELESS:
+            case Format::R32_TYPELESS:
+            case Format::R16G16B16A16_TYPELESS:
+            case Format::R16G16_TYPELESS:
+            case Format::R16_TYPELESS:
+            case Format::R8G8B8A8_TYPELESS:
+            case Format::R8G8_TYPELESS:
+            case Format::R8_TYPELESS:
+            case Format::B8G8R8A8_TYPELESS:
+            case Format::R10G10B10A2_TYPELESS:
+                return true;
+            default:
+                return false;
         }
     }
 
-    SLANG_GFX_API SlangResult gfxGetFormatInfo(Format format, FormatInfo* outInfo)
-    {
+    SLANG_GFX_API SlangResult gfxGetFormatInfo(Format format, FormatInfo* outInfo) {
         *outInfo = s_formatInfoMap.get(format);
         return SLANG_OK;
     }
     
-    SLANG_GFX_API SlangResult SLANG_MCALL
-        gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice)
-    {
+    SLANG_GFX_API SlangResult SLANG_MCALL gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice) {
         ComPtr<IDevice> innerDevice;
         auto resultCode = createVKDevice(desc, innerDevice.writeRef());
-        if (SLANG_FAILED(resultCode))
-            return resultCode;
-        if (!debugLayerEnabled)
-        {
+        
+        if (SLANG_FAILED(resultCode)) return resultCode;
+
+        if (!debugLayerEnabled) {
             returnComPtr(outDevice, innerDevice);
             return resultCode;
         }
+
         RefPtr<DebugDevice> debugDevice = new DebugDevice();
         debugDevice->baseObject = innerDevice;
         returnComPtr(outDevice, debugDevice);
         return resultCode;
     }
 
-    SLANG_GFX_API SlangResult SLANG_MCALL gfxSetDebugCallback(IDebugCallback* callback)
-    {
+    SLANG_GFX_API SlangResult SLANG_MCALL gfxSetDebugCallback(IDebugCallback* callback) {
         _getDebugCallback() = callback;
         return SLANG_OK;
     }
 
-    SLANG_GFX_API void SLANG_MCALL gfxEnableDebugLayer()
-    {
+    SLANG_GFX_API void SLANG_MCALL gfxEnableDebugLayer() {
         debugLayerEnabled = true;
     }
 
-    const char* SLANG_MCALL gfxGetDeviceTypeName(DeviceType type)
-    {
-        switch (type)
-        {
+    const char* SLANG_MCALL gfxGetDeviceTypeName(DeviceType type) {
+        switch (type) {
         case gfx::DeviceType::Unknown:
             return "Unknown";
         case gfx::DeviceType::Default:
@@ -289,27 +271,25 @@ extern "C"
     }
 
 
-    void SLANG_MCALL gfxGetIdentityProjection(ProjectionStyle style, float projMatrix[16])
-    {
-        switch (style)
-        {
-        case ProjectionStyle::DirectX:
-        case ProjectionStyle::OpenGl:
-            {
-                static const float kIdentity[] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-                ::memcpy(projMatrix, kIdentity, sizeof(kIdentity));
-                break;
-            }
-        case ProjectionStyle::Vulkan:
-            {
-                static const float kIdentity[] = {1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-                ::memcpy(projMatrix, kIdentity, sizeof(kIdentity));
-                break;
-            }
-        default:
-            {
-                assert(!"Not handled");
-            }
+    void SLANG_MCALL gfxGetIdentityProjection(ProjectionStyle style, float projMatrix[16]) {
+        switch (style) {
+            case ProjectionStyle::DirectX:
+            case ProjectionStyle::OpenGl:
+                {
+                    static const float kIdentity[] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+                    ::memcpy(projMatrix, kIdentity, sizeof(kIdentity));
+                    break;
+                }
+            case ProjectionStyle::Vulkan:
+                {
+                    static const float kIdentity[] = {1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+                    ::memcpy(projMatrix, kIdentity, sizeof(kIdentity));
+                    break;
+                }
+            default:
+                {
+                    assert(!"Not handled");
+                }
         }
     }
 }

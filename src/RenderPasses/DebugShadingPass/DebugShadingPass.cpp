@@ -61,7 +61,6 @@ namespace {
     const ChannelList kExtraInputChannels = {
         { kInputVBuffer,            "gVBuffer",             "Visibility buffer in packed format",       true /* optional */, ResourceFormat::RGBA32Uint     },
         { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
-        { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         { kInputMVectors,           "gMotionVector",        "Motion vector buffer (float format)",      true /* optional */                                 },
         { kInputDrawCount,          "gDrawCount",           "Draw count debug buffer",                  true /* optional */, ResourceFormat::R32Uint        },
         { kInputNormalW,            "gNormW",               "Shading normal in world space",            true /* optional */, ResourceFormat::RGBA32Uint     },
@@ -110,6 +109,7 @@ DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevic
 }
 
 RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
+    LLOG_WRN << "DebugShadingPass::reflect";
     RenderPassReflection reflector;
 
     const auto& texDims = compileData.defaultTexDims;
@@ -117,13 +117,28 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
     
     addRenderPassInputs(reflector, kExtraInputChannels);
-    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+
+    if(mpVisibilitySamplesContainer) {
+        static const ChannelList kOutputChannels = {
+            { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::RGBA16Float        },
+        };
+
+        addRenderPassOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+    } else {
+        static const ChannelList kOutputChannels = {
+            { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
+        };
+
+        addRenderPassInputOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+    }
 
     return reflector;
 }
 
 void DebugShadingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
+    LLOG_WRN << "DebugShadingPass::compile";
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();
@@ -141,6 +156,11 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     generateMeshletColorBuffer(renderData);
 
+    // Optional visibility container
+    if(mpVisibilitySamplesContainer) {
+        mpVisibilitySamplesContainer->beginFrame();
+    }
+
     auto createShadingPass = [this, renderData](const Program::Desc& desc, bool transparentPass = false) {
         if(transparentPass && !mpVisibilitySamplesContainer) return ComputePass::SharedPtr(nullptr);
 
@@ -149,6 +169,9 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         defines.add("FALSE_COLOR_BUFFER_SIZE", mpMeshletColorBuffer ? std::to_string(meshletColorCycleSize) : "0");
+
+        auto pTextureGradsTex = renderData[kInputTexGrads]->asTexture();
+        defines.add("is_valid_gTextureGrads", pTextureGradsTex != nullptr ? "1" : "0");
 
         if(mpVisibilitySamplesContainer) {
             if(transparentPass) defines.add("TRANSPARENT_SHADING_PASS");
@@ -167,7 +190,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
         // Bind mandatory input channels
         pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        pPass["gVBuffer"] = renderData[kInputVBuffer]->asTexture();
 
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
@@ -187,8 +209,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
             pPass[channel.texname] = pTex;
         }
 
-        auto pMeshletIDTexture = renderData[kInputOuputMeshlet]->asTexture();
-        
+        pPass["gTextureGrads"] = pTextureGradsTex;        
 
         if (!mpFalseColorGenerator && 
             (   
@@ -223,10 +244,9 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     auto cb_var = mpShadingPass["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
 
-    if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
-
     if(mpVisibilitySamplesContainer) {
         // Visibility container mode opaque samples shading
+        
         mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
         //mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     } else {
@@ -265,5 +285,7 @@ DebugShadingPass& DebugShadingPass::setColorFormat(ResourceFormat format) {
 void DebugShadingPass::setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer) {
     if(mpVisibilitySamplesContainer == pVisibilitySamplesContainer) return;
     mpVisibilitySamplesContainer = pVisibilitySamplesContainer;
+
+    requestRecompile();
     mDirty = true;
 }

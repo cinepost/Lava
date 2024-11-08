@@ -29,6 +29,9 @@
 #include "ComputeState.h"
 #include "Core/Program/ProgramVars.h"
 
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
+
+
 namespace Falcor {
 
     ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
@@ -36,6 +39,8 @@ namespace Falcor {
     }
 
     ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
+        SimpleProfiler profile("ComputeState::getCSO()");
+
         auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
         bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
         if (newProgram) {
@@ -45,8 +50,7 @@ namespace Falcor {
 
         ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
 
-        if(pCso == nullptr)
-        {
+        if(pCso == nullptr) {
             mDesc.setProgramKernels(pProgramKernels);
 
             _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
@@ -54,12 +58,9 @@ namespace Falcor {
                 return pCso && (desc == pCso->getDesc());
             };
 
-            if (mpCsoGraph->scanForMatchingNode(cmpFunc))
-            {
+            if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
                 pCso = mpCsoGraph->getCurrentNode();
-            }
-            else
-            {
+            } else {
                 pCso = ComputeStateObject::create(mpDevice, mDesc);
                 mpCsoGraph->setCurrentNodeData(pCso);
             }

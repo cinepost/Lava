@@ -47,14 +47,14 @@ namespace {
     const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const ChannelList kExtraInputChannels = {
-        { kInputVBuffer,          "gVbuffer",         "Visibility buffer in packed format", true /* optional */, ResourceFormat::RGBA32Uint },
+        { kInputVBuffer,          "gVBuffer",       "Visibility buffer in packed format",   true /* optional */, ResourceFormat::RGBA32Uint },
         { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
-        { kInputTexGrads,         "gTextureGrads",  "Texture gradients",                    true /* optional */, ResourceFormat::Unknown },
         { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
         //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
     };
 
     const ChannelList kExtraInputOutputChannels = {
+
     };
 
     const ChannelList kExtraOutputChannels = {
@@ -149,10 +149,23 @@ RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileDat
 
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
     //reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
-    
+
     addRenderPassInputs(reflector, kExtraInputChannels);
     addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+
+    if(mpVisibilitySamplesContainer) {
+        static const ChannelList kOutputChannels = {
+            { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::RGBA16Float        },
+        };
+
+        addRenderPassOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+    } else {
+        static const ChannelList kOutputChannels = {
+            { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
+        };
+        addRenderPassInputOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+    }
 
     return reflector;
 }
@@ -193,6 +206,9 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         defines.add(getValidResourceDefines(kExtraInputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
+
+        auto pTextureGradsTex = renderData[kInputTexGrads]->asTexture();
+        defines.add("is_valid_gTextureGrads", pTextureGradsTex != nullptr ? "1" : "0");
 
         // AOV channels processing
         Texture::SharedPtr pAovNormalsTex = renderData["normals"]->asTexture();
@@ -245,7 +261,6 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         // Bind mandatory input channels
         pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        pPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
         pPass["gLastFrameSum"] = mpLastFrameSum;
 
         // Bind extra input channels
@@ -259,6 +274,14 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
             pPass[channel.texname] = pTex;
         }
+
+        // Bind extra input-output channels as UAV buffers.
+        for (const auto& channel : kExtraInputOutputChannels) {
+            Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+            pPass[channel.texname] = pTex;
+        }
+
+        pPass["gTextureGrads"] = pTextureGradsTex;      
 
         if(mpVisibilitySamplesContainer) {
             pPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());

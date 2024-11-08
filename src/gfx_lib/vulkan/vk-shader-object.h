@@ -26,8 +26,7 @@ class ShaderObjectImpl
     : public ShaderObjectBaseImpl<ShaderObjectImpl, ShaderObjectLayoutImpl, SimpleShaderObjectData>
 {
 public:
-    static Result create(
-        IDevice* device, ShaderObjectLayoutImpl* layout, ShaderObjectImpl** outShaderObject);
+    static Result create(IDevice* device, ShaderObjectLayoutImpl* layout, ShaderObjectImpl** outShaderObject);
 
     RendererBase* getDevice();
 
@@ -181,6 +180,7 @@ public:
     // The offset into the transient constant buffer where the constant data starts.
     Offset m_constantBufferOffset = 0;
     Size m_constantBufferSize = 0;
+    VkDeviceSize mMaxConstantBufferSize = VK_WHOLE_SIZE;
 
     /// Dirty bit tracking whether the constant buffer needs to be updated.
     bool m_isConstantBufferDirty = true;

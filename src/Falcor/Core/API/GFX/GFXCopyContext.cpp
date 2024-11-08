@@ -110,8 +110,6 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
 }
 
 CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {
-	auto start = std::chrono::high_resolution_clock::now();
-
 	Device::SharedPtr pDevice = pCtx->device();
 	SharedPtr pThis = SharedPtr(new ReadTextureTask);
 	pThis->mpContext = pCtx;
@@ -159,9 +157,6 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 	pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
 	pThis->mRowCount = (uint32_t)rowCount;
 	pThis->mDepth = pTexture->getDepth(mipLevel);
-
-	auto stop = std::chrono::high_resolution_clock::now();
-  //std::cout << "CopyContext::ReadTextureTask::create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 	return pThis;
 }

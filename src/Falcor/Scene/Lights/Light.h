@@ -31,7 +31,6 @@
 #include <memory>
 #include <string>
 
-
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/Math/Vector.h"
@@ -53,6 +52,8 @@ class dlldecl Light : public Animatable {
   public:
     using SharedPtr = std::shared_ptr<Light>;
     using SharedConstPtr = std::shared_ptr<const Light>;
+
+    static const size_t kInvalidSamplerID = LightData::kInvalidSamplerID;
 
     virtual ~Light() = default;
 

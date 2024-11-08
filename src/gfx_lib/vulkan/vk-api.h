@@ -141,6 +141,11 @@ namespace gfx {
     x(vkCreateQueryPool) \
     x(vkGetQueryPoolResults) \
     x(vkDestroyQueryPool) \
+    \
+    x(vkCreatePipelineCache) \
+    x(vkGetPipelineCacheData) \
+    x(vkMergePipelineCaches) \
+    x(vkDestroyPipelineCache) \
     /* */
 
 #if SLANG_WINDOWS_FAMILY
