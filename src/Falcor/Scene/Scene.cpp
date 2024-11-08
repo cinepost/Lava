@@ -3459,6 +3459,8 @@ void Scene::updateNodeTransformList(uint32_t nodeID, const std::vector<float4x4>
     if( node.transformList != validTransformList) {
         node.transformList = std::move(validTransformList);
         mpAnimationController->setNodeEdited(nodeID);
+
+        invalidateTlasCache();
     }
 }
 
@@ -3469,6 +3471,8 @@ void Scene::clearNodeTransformList(uint32_t nodeID) {
     if(!node.transformList.empty()) {
         node.transformList.clear();
         mpAnimationController->setNodeEdited(nodeID);
+    
+        invalidateTlasCache();
     }
 }
     
