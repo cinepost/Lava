@@ -15,7 +15,7 @@ namespace gfx {
 
 namespace vk {
 
-class dlldecl PipelineCacheManager {
+class PipelineCacheManager {
 	using Header = PipelineCache::Header;
 
   public:
