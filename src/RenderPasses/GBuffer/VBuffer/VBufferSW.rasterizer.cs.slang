@@ -876,9 +876,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
     }
 }
 
-[numthreads(THREADS_COUNT, 1, 1)]
+[numthreads(1, THREADS_COUNT, 1)]
 void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
-    const uint group_id = groupID.y + groupID.x;                    // Sequential group index.
+    const uint group_id = groupID.x;                                // Sequential group index.
     const uint thread_id = groupIdx;                                // Local thread index in group (range 0..THREADS_COUNT-1).
     const uint global_id = group_id * THREADS_COUNT + thread_id;    // Global element index
 

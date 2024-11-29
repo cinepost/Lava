@@ -1224,7 +1224,7 @@ Result ComputeCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipelin
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
-void ComputeCommandEncoder::dispatchCompute(int x, int y, int z) {
+void ComputeCommandEncoder::dispatchCompute(uint32_t x, uint32_t y, uint32_t z) {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
 	if (!pipeline) {
 		assert(!"Invalid compute pipeline");

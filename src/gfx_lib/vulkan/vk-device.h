@@ -21,6 +21,11 @@ namespace vk {
 
 class DeviceImpl : public RendererBase {
 public:
+	struct SubgroupSizeControlProperties {
+		uint minSubgroupSize;
+		uint maxSubgroupSize;
+		uint maxComputeWorkgroupSubgroups;
+	};
 
 	// Renderer    implementation
 	Result initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename);
@@ -158,8 +163,8 @@ public:
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL getNativeDeviceHandles(InteropHandles* outHandles) override;
 
-	const VkPhysicalDeviceProperties& basicProperties() const { return m_basicProps; }
-	const VkPhysicalDeviceMemoryProperties& memoryProperties() const { return m_memoryProperties; }
+	const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const { return m_basicProps; }
+	const VkPhysicalDeviceMemoryProperties& getPhysicalDeviceMemoryProperties() const { return m_memoryProperties; }
 
 	VulkanApi& vkAPI() { return m_api; };
 	VkDevice   vkDevice() { return m_device; }
@@ -208,6 +213,9 @@ public:
 	uint32_t getQueueFamilyIndex(ICommandQueue::QueueType queueType);
 
 public:
+	const SubgroupSizeControlProperties& getSubgroupSizeControlProperties() const { return mSubgroupSizeControlProperties; }
+
+public:
 	// DeviceImpl members.
 
 	DeviceInfo m_info;
@@ -228,6 +236,8 @@ public:
 	uint32_t m_queueFamilyIndex;
 
 	Desc m_desc;
+
+	SubgroupSizeControlProperties mSubgroupSizeControlProperties;
 
 	VkPhysicalDeviceProperties m_basicProps;
 	VkPhysicalDeviceProperties m_deviceProps2;

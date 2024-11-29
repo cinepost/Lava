@@ -109,7 +109,6 @@ DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevic
 }
 
 RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
-    LLOG_WRN << "DebugShadingPass::reflect";
     RenderPassReflection reflector;
 
     const auto& texDims = compileData.defaultTexDims;

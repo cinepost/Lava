@@ -29,7 +29,7 @@ const char* storageNameTable[] = {
     "unknown",
     Traits<int32>::Name,
     Traits<fpreal32>::Name,
-    Traits<fpreal64>::Name
+    Traits<fpreal64>::Name,
 };
 
 uint8_t storageSizeTable[] = {

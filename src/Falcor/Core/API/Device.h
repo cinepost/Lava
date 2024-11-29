@@ -42,13 +42,7 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
-#ifdef FALCOR_GFX
-#include "gfx_lib/slang-gfx.h"
-#endif
-
-#if defined(FALCOR_VK) || defined(FALCOR_GFX_VK)
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
-#endif
 
 namespace Falcor {
 
@@ -78,14 +72,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     ~Device();
 
-#if defined(FALCOR_VK)
-    struct IDesc {
-        VkInstance vulkanInstance;
-        VkPhysicalDevice physicalDevice;
-    };
-#elif defined(FALCOR_GFX)
     using IDesc = gfx::IDevice::Desc;
-#endif
 
     /** Device configuration
     */
@@ -163,13 +150,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     std::string& getPhysicalDeviceName();
 
-#ifdef FALCOR_VK
-    /** VMA allocator
-    */
-    const VmaAllocator& allocator() const { return mAllocator; }
-#elif defined(FALCOR_GFX_VK)
     const VmaAllocator& allocator() const { return mApiHandle->getVmaAllocator(); }
-#endif
 
     /** Check if the window is occluded
     */
@@ -194,9 +175,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     CommandQueueHandle getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
 
-#if FALCOR_GFX_VK
     VkQueue            getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-#endif  // FALCOR_GFX_VK
 
     /** Get the API queue type.
         \return API queue type, or throws an exception if type is unknown.
@@ -207,9 +186,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     const DeviceHandle& getApiHandle() { return mApiHandle; }
 
-#if FALCOR_GFX_VK
     VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
-#endif
 
     /** Present the back-buffer to the window
     */
@@ -263,10 +240,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
 
 #if FALCOR_GFX_VK || defined(FALCOR_VK)
-    inline VkInstance       getVkInstance() const { return mVkInstance; };
-    inline VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
-    inline VkDevice         getVkDevice() const { return mVkDevice; };
-    inline VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
+    VkInstance       getVkInstance() const { return mVkInstance; };
+    VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
+    VkDevice         getVkDevice() const { return mVkDevice; };
+    VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
 #endif  // FALCOR_GFX_VK || FALCOR_VK
 #endif  // FALCOR_GFX
 
@@ -289,7 +266,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint32_t  getDeviceVendorID() const;
 #endif  // FALCOR_VK
 
-    inline DeviceApiData* apiData() const { return mpApiData; };
+    uint32_t getMaxComputeWorkgroupSubgroups() const;
+
+    const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const;
+
+    DeviceApiData* apiData() const { return mpApiData; };
 
     /** Check if a shader model is supported by the device
     */
@@ -413,7 +394,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static SharedPtr create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Desc& desc);
 
 
-    inline const NullResourceViews& nullResourceViews() const { return mNullViews; };
+    const NullResourceViews& nullResourceViews() const { return mNullViews; };
 
   protected:
     bool init();
@@ -433,10 +414,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     NullResourceViews mNullViews;
 
     std::shared_ptr<TextureManager>  mpTextureManager = nullptr;
-
-#ifdef FALCOR_VK
-    VmaAllocator    mAllocator;
-#endif 
 
     friend class DeviceManager;
     friend class ResourceManager;

@@ -30,6 +30,8 @@
 #include "Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/IndirectCommands.h"
+
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Scene/Material/BasicMaterial.h"
@@ -120,7 +122,7 @@ VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dict
 
 VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
     LLOG_DBG << "subgroupSize " << mpDevice->subgroupSize();
-    mSubgroupSize = std::max(32u, std::min(mpDevice->subgroupSize(), 64u));
+    mSubgroupSize = mpDevice->subgroupSize();
     setMaxSubdivLevel(3u);
 
     parseDictionary(dict);
@@ -145,6 +147,23 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         mSTBNOffsets[i][0] = static_cast<uint>(rnd[0] * stbn_dims[0]);
         mSTBNOffsets[i][1] = static_cast<uint>(rnd[1] * stbn_dims[1]);
     }   
+
+    // test
+    const auto& deviceProps = mpDevice->getPhysicalDeviceProperties();
+    uint3 maxComputeWorkGroupCount, maxComputeWorkGroupSize;
+    uint32_t maxComputeWorkGroupInvocations = deviceProps.limits.maxComputeWorkGroupInvocations;
+
+    maxComputeWorkGroupCount.x = deviceProps.limits.maxComputeWorkGroupCount[0];
+    maxComputeWorkGroupCount.y = deviceProps.limits.maxComputeWorkGroupCount[1];
+    maxComputeWorkGroupCount.z = deviceProps.limits.maxComputeWorkGroupCount[2];
+
+    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[0];
+    maxComputeWorkGroupSize.y = deviceProps.limits.maxComputeWorkGroupSize[1];
+    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[2];
+
+    //LLOG_WRN << "maxComputeWorkGroupInvocations " << maxComputeWorkGroupInvocations;
+    //LLOG_WRN << "maxComputeWorkGroupCount " << to_string(maxComputeWorkGroupCount);
+    //LLOG_WRN << "maxComputeWorkGroupSize " << to_string(maxComputeWorkGroupSize);
 
     mDirty = true;
 }
@@ -380,17 +399,21 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpComputeRasterizerPass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
-        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
-
         if(mpVisibilitySamplesContainer) {
+            ShaderVar var = mpComputeRasterizerPass->getRootVar();
             var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
     
         if(mpSTBNGenerator) {
             mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
         }
+    }
+
+    if(mpComputeRasterizerPass && mSampleNumber == 0) {
+        // update raytracing data once per-frame
+        ShaderVar var = mpComputeRasterizerPass->getRootVar();
+        mpScene->setRaytracingShaderData(pRenderContext, var);
+        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
@@ -469,24 +492,26 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Frustum culling pass
 
     // Meshlets rasterization pass
-    LLOG_TRC << "Software rasterizer dispatchX size " << std::to_string(dispatchX);
-    LLOG_TRC << "Software rasterizer threads count " << std::to_string(threadsX);
+    LLOG_DBG << "Software rasterizer dispatchX size " << std::to_string(dispatchX);
+    LLOG_DBG << "Software rasterizer threads count " << std::to_string(mOpaqueMeshletsCount + mTransparentMeshletsCount);
 
     if(1 == 1) {    
         ShaderVar var = mpComputeRasterizerPass->getRootVar();
         if(mTransparentMeshletsCount == 0) {
+            
             var["gVBufferSW"]["drawableOffset"] = 0;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, threadsX, 1));
+            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
         } else {
             // Rasterize opaque meshlets first
             var["gVBufferSW"]["drawableOffset"] = 0;
             var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, mOpaqueMeshletsCount, 1));
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
 
             // Rasterize potentially transparent meshlets second
             var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
             var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, mTransparentMeshletsCount, 1));
+            mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
         }
     } else {
         ShaderVar var = mpComputeRasterizerPass->getRootVar();

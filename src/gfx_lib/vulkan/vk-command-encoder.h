@@ -253,7 +253,7 @@ public:
     virtual SLANG_NO_THROW Result SLANG_MCALL bindPipelineWithRootObject(
         IPipelineState* pipelineState, IShaderObject* rootObject) override;
 
-    virtual SLANG_NO_THROW void SLANG_MCALL dispatchCompute(int x, int y, int z) override;
+    virtual SLANG_NO_THROW void SLANG_MCALL dispatchCompute(uint32_t x, uint32_t y, uint32_t z) override;
 
     virtual SLANG_NO_THROW void SLANG_MCALL
         dispatchComputeIndirect(IBufferResource* argBuffer, Offset offset) override;

@@ -1148,7 +1148,7 @@ Result DebugComputeCommandEncoder::bindPipelineWithRootObject(
 	return baseObject->bindPipelineWithRootObject(getInnerObj(state), getInnerObj(rootObject));
 }
 
-void DebugComputeCommandEncoder::dispatchCompute(int x, int y, int z)
+void DebugComputeCommandEncoder::dispatchCompute(uint32_t x, uint32_t y, uint32_t z)
 {
 	SLANG_GFX_API_FUNC;
 	baseObject->dispatchCompute(x, y, z);
