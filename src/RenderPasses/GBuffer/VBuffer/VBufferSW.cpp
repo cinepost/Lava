@@ -395,10 +395,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpComputeRasterizerPass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
-        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
-
         if(mpVisibilitySamplesContainer) {
             var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
@@ -406,6 +402,13 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         if(mpSTBNGenerator) {
             mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
         }
+    }
+
+    if(mpComputeRasterizerPass && mSampleNumber == 0) {
+        // update raytracing data once per-frame
+        ShaderVar var = mpComputeRasterizerPass->getRootVar();
+        mpScene->setRaytracingShaderData(pRenderContext, var);
+        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
