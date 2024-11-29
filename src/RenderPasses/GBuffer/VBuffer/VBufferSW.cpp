@@ -409,13 +409,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
     }
 
-    if(mpComputeRasterizerPass && mSampleNumber == 0) {
-        // update raytracing data once per-frame
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
-        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
-    }
-
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
     const uint32_t threadsX = meshletDrawsCount;// * kMaxGroupThreads;
     const uint32_t dispatchX = kMaxGroupThreads;
@@ -474,6 +467,10 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         for (const auto& channel : kVBufferExtraSubdChannels) {
             bind(channel);
         }
+
+        // TODO: update raytracing data once per-frame
+        mpScene->setRaytracingShaderData(pRenderContext, var);
+        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
     }
 
     // Jitter generation pass
