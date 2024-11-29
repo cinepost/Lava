@@ -396,6 +396,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind static resources
         if(mpVisibilitySamplesContainer) {
+            ShaderVar var = mpComputeRasterizerPass->getRootVar();
             var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
     
