@@ -16,6 +16,7 @@
 #include <UT/UT_JSONHandle.h>
 
 #include "util.h"
+#include "lava_utils_lib/logging.h"
 
 namespace ika
 {
@@ -236,8 +237,7 @@ void NumericData::load(UT_JSONParser &parser)
                 storage != storage::Fpreal64 &&
                 storage != storage::Int32)
             {
-                std::cerr << "Warning: unsupported format " << toString(storage)
-                          << ". skipping." << std::endl;
+                LLOG_DBG << "Warning: unsupported format " << toString(storage) << ". skipping.";
                 BGEO_CHECK(parser.skipNextObject());
                 continue;
             }
@@ -332,8 +332,7 @@ void NumericData::loadArray(UT_JSONParser& parser, storage::Storage storage_,
     }
     else
     {
-        std::cerr << "Warning: unsupported format " << toString(storage)
-                  << ". skipping." << std::endl;
+        LLOG_DBG << "Warning: unsupported format " << toString(storage) << ". skipping.";
         BGEO_CHECK(parser.skipNextObject());
     }
 }

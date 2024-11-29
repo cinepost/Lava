@@ -1787,7 +1787,7 @@ public:
 	// Sets the current pipeline state along with a pre-created mutable root shader object.
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		bindPipelineWithRootObject(IPipelineState* state, IShaderObject* rootObject) = 0;
-	virtual SLANG_NO_THROW void SLANG_MCALL dispatchCompute(int x, int y, int z) = 0;
+	virtual SLANG_NO_THROW void SLANG_MCALL dispatchCompute(uint32_t x, uint32_t y, uint32_t z) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL dispatchComputeIndirect(IBufferResource* cmdBuffer, Offset offset) = 0;
 };
 

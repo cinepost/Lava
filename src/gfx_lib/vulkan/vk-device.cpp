@@ -613,8 +613,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		VkPhysicalDeviceProperties2 extendedProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
 
-		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
-
 		VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT };
 		sampleLocationsProps.sampleLocationSampleCounts = VK_SAMPLE_COUNT_1_BIT; //metalFeatures.supportedSampleCounts;
 		sampleLocationsProps.maxSampleLocationGridSize = {4, 4};
@@ -623,14 +621,29 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		sampleLocationsProps.sampleLocationSubPixelBits = 4;
 		sampleLocationsProps.variableSampleLocations = VK_TRUE;
 
-		VkPhysicalDeviceSubgroupProperties subgroupProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
-		subgroupProps.subgroupSize = 128;
-		subgroupProps.pNext = &sampleLocationsProps;
+		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroupSizeControlProps = {};
+		subgroupSizeControlProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES;
+		subgroupSizeControlProps.minSubgroupSize = 0;
+    subgroupSizeControlProps.maxSubgroupSize = 0;
+    subgroupSizeControlProps.maxComputeWorkgroupSubgroups = 0;
+    subgroupSizeControlProps.pNext = NULL;
 
+		VkPhysicalDeviceSubgroupProperties subgroupProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
+		subgroupProps.subgroupSize = 32;
+		subgroupProps.pNext = &subgroupSizeControlProps;
+
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
 		rtProps.pNext = &subgroupProps;
+
+
 		extendedProps.pNext = &rtProps;
 
 		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &extendedProps);
+		
+		mSubgroupSizeControlProperties.minSubgroupSize = subgroupSizeControlProps.minSubgroupSize;
+		mSubgroupSizeControlProperties.maxSubgroupSize = subgroupSizeControlProps.maxSubgroupSize;
+		mSubgroupSizeControlProperties.maxComputeWorkgroupSubgroups = subgroupSizeControlProps.maxComputeWorkgroupSubgroups;
+
 		m_api.m_rtProperties = rtProps;
 		m_api.m_deviceSubgroupProperties = subgroupProps;
 

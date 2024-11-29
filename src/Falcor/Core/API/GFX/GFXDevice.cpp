@@ -533,9 +533,24 @@ namespace Falcor {
 		return mCurrentBackBufferIndex == -1;
 	}
 
+	const VkPhysicalDeviceProperties& Device::getPhysicalDeviceProperties() const {
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
+		return pDevice->getPhysicalDeviceProperties();
+	}
+
+	uint32_t Device::getMaxComputeWorkgroupSubgroups() const {
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
+		return pDevice->getSubgroupSizeControlProperties().maxComputeWorkgroupSubgroups;
+	}
+
 	uint32_t Device::subgroupSize() const {
 		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
 		auto& vk_api = pDevice->vkAPI();
 		return vk_api.m_deviceSubgroupProperties.subgroupSize;
 	}

@@ -2127,7 +2127,6 @@
         group {
             name    "rpasses_1_1"
             label   "Edge Detect"
-            disablewhen "{lv_plane_edgedetect == 0}"
 
             // EdgeDetectPass Depth
             parm {
@@ -2135,6 +2134,7 @@
                 label   "Trace Depth"
                 type    toggle
                 default { 1 }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2145,6 +2145,7 @@
                 size    2
                 default { "5.0" "10.0" }
                 hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2159,6 +2160,7 @@
                     "5"   "5x5"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2176,6 +2178,7 @@
                     "4"   "A"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2184,6 +2187,7 @@
                 label   "Separator"
                 type    separator
                 hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 default { "" }
             }
 
@@ -2194,6 +2198,7 @@
                 label   "Trace Normal"
                 type    toggle
                 default { 1 }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2204,6 +2209,7 @@
                 size    2
                 default { "0.2" "0.5" }
                 hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2218,6 +2224,7 @@
                     "5"   "5x5"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2235,6 +2242,7 @@
                     "4"   "A"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2243,6 +2251,7 @@
                 label   "Separator"
                 type    separator
                 hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 default { "" }
             }
 
@@ -2253,6 +2262,7 @@
                 label   "Trace Materials"
                 type    toggle
                 default { 1 }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2267,6 +2277,7 @@
                     "5"   "5x5"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2284,6 +2295,7 @@
                     "4"   "A"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_material == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2292,6 +2304,7 @@
                 label   "Separator"
                 type    separator
                 hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 default { "" }
             }
 
@@ -2302,6 +2315,7 @@
                 label   "Trace Objects"
                 type    toggle
                 default { 1 }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2316,6 +2330,7 @@
                     "5"   "5x5"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2333,6 +2348,7 @@
                     "4"   "A"
                 }
                 hidewhen "{lv_edgedetect_pass_trace_instance == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2341,6 +2357,7 @@
                 label   "Separator"
                 type    separator
                 hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 default { "" }
             }
 
@@ -2351,6 +2368,7 @@
                 label   "Ignore Alpha"
                 type    toggle
                 default { 0 }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
 
@@ -2365,6 +2383,7 @@
                     "5"   "5x5"
                 }
                 default { "0" }
+                disablewhen "{lv_plane_edgedetect == 0  lv_main_output_source != EdgeDetectPass }"
                 parmtag { "script_callback_language" "python" }
             }
         }
@@ -2373,7 +2392,7 @@
         group {
             name    "rpasses_1_2"
             label   "Ambient Occlusion"
-
+            
             parm {
                 name    "lv_ambocc_pass_shading_rate"
                 label   "Shading Rate"
@@ -2399,7 +2418,7 @@
         group {
             name    "rpasses_1_3"
             label   "Cryptomatte"
-
+            
             groupsimple {
                 name    "rpasses_1_3_1"
                 label   "Crypto Material"

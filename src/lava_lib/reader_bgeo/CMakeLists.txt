@@ -28,6 +28,7 @@ endif()
 
 target_link_libraries(
     reader_bgeo_lib
+    lava_utils_lib
     ${HOU_LIBS}
 )
 

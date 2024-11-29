@@ -48,7 +48,7 @@ void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const ui
 
     auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
     FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
-    computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
+    computeEncoder->dispatchCompute((uint32_t)dispatchSize.x, (uint32_t)dispatchSize.y, (uint32_t)dispatchSize.z);
     mCommandsPending = true;
 }
 

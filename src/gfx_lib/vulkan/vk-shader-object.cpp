@@ -856,7 +856,7 @@ Result ShaderObjectImpl::bindOrdinaryDataBufferIfNeeded(
 
     VkDeviceSize constBufferSize = m_constantBufferSize;
     if(constBufferSize == 0) {
-        const VkPhysicalDeviceProperties& props = context.device->basicProperties();
+        const VkPhysicalDeviceProperties& props = context.device->getPhysicalDeviceProperties();
         constBufferSize = props.limits.maxUniformBufferRange;
     }
 
