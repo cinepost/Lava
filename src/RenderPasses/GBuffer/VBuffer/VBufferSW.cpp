@@ -209,6 +209,10 @@ void VBufferSW::compile(RenderContext* pRenderContext, const CompileData& compil
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->resize(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
 }
 
+bool VBufferSW::beginFrame(RenderContext *pContext, const RenderData& renderData) {
+    mSampleNumber = 0;
+}
+
 void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::AtomicInt64))  {
         LLOG_FTL << "VBufferSW: Atomic Int64 is not supported by the current device !!!";
@@ -464,9 +468,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             bind(channel);
         }
 
-        // TODO: update raytracing data once per-frame
-        mpScene->setRaytracingShaderData(pRenderContext, var);
-        //mpScene->setNullRaytracingShaderData(pRenderContext, var);
+        if(mSampleNumber == 0) {
+            SimpleProfiler profile("VBufferSW::createBuffers() setRaytracingShaderData");
+            // TODO: update raytracing data once per-frame
+            mpScene->setRaytracingShaderData(pRenderContext, var);
+        }
     }
 
     // Jitter generation pass

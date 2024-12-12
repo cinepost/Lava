@@ -56,8 +56,7 @@ bool calcShadingData(const float3 rayDir, const HitInfo hit, out ShadingData sd)
     return false;
 }
 
-/** U pass.
-*/
+
 [numthreads(16, 16, 1)]
 void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -77,33 +76,30 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
             const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
             const ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 
-            float3 rayOrigin = sd.posW;
-            if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
-                rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, rayOrigin, 
-                    sd.frame.N, triangleHit.getBarycentricWeights());
-            }
-
             RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
             let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
             float pdf;
             
             RayDesc ray;
-            ray.Origin = rayOrigin;
-            ray.TMin = .001f;
+            ray.Origin = sd.posW;
+            ray.TMin = .0001f;
             ray.TMax = gDistanceRange.y;
 
             float occlusion = 0.f;
 
+            float3 viewDir = normalize(gScene.camera.getPosW() - sd.posW);
+            float3 ffNormalW = faceforward(sd.frame.N, -viewDir, sd.faceN);
+
             [[unroll]]
             for(uint i = 0; i < _SHADING_RATE; i ++) {
-
                 ray.Direction = normalize(sample_cosine_hemisphere_oriented(sampleNext2D(sg), sd.frame.N, pdf));
 
-                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-                rayQuery.Proceed();
-
                 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
+
+                    rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+                    rayQuery.Proceed();
+
                     if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
                         const float hitT = rayQuery.CommittedRayT();
                         const float w = hitT > gDistanceRange.x ? hitT < gDistanceRange.y ? (1.f - smoothstep(gDistanceRange.x, gDistanceRange.y, hitT)) : 0.f : 1.f;

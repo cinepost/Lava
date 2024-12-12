@@ -409,29 +409,44 @@ uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
 	return pMeshID ? (uint32_t)(*pMeshID) : addProcessedMesh(processMesh(mesh));
 }
 
-uint32_t SceneBuilder::getMeshID(const std::string& name) {
+uint32_t SceneBuilder::getMeshID(const std::string& meshName) {
 	MeshID* pMeshID = nullptr;
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);	
-        auto it = mMeshMap.find(name);
+        auto it = mMeshMap.find(meshName);
 		if(it != mMeshMap.end()) {
-			LLOG_DBG << "Mesh " << name << " already exists in SceneBuilder";
+			LLOG_DBG << "Mesh " << meshName << " already exists in SceneBuilder";
 			pMeshID = &it->second;
         }
     }
 	return pMeshID ? (uint32_t)(*pMeshID) : kInvalidMeshID;
 }
 
-bool  SceneBuilder::meshExist(const std::string& name) {
+bool SceneBuilder::meshExist(const std::string& meshName) {
     { // thread safety
         std::scoped_lock lock(mMeshesMutex);    
-        auto it = mMeshMap.find(name);
+        auto it = mMeshMap.find(meshName);
         if(it != mMeshMap.end()) {
             return true;
         }
     }
 
     return false;
+}
+
+bool SceneBuilder::updateMesh(const std::string& meshName, const Mesh& meshDesc, Mesh::UpdateFlags updateFlags) {
+	uint32_t meshID = getMeshID(meshName);
+	if(meshID == kInvalidMeshID) {
+        LLOG_ERR << "Error updating mesh " << meshName << ". No mesh exists!";
+        return false;
+    }
+
+    // calc update options
+    if(updateFlags == Mesh::UpdateFlags::Auto) {
+
+    }
+   
+    return true;
 }
 
 uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial) {

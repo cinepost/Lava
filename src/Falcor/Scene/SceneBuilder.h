@@ -255,9 +255,11 @@ class dlldecl SceneBuilder {
     */
     uint32_t addMesh(const Mesh& meshDesc);
 
-    uint32_t getMeshID(const std::string& name);
+    bool updateMesh(const std::string& meshName, const Mesh& meshDesc, Mesh::UpdateFlags updateFlags = Mesh::UpdateFlags::Auto);
 
-    bool meshExist(const std::string& name);
+    uint32_t getMeshID(const std::string& meshName);
+
+    bool meshExist(const std::string& meshName);
 
     /** Pre-process a mesh into the data format that is used in the global scene buffers.
         Throws an exception if something went wrong.

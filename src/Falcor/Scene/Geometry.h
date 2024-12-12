@@ -260,6 +260,15 @@ struct Mesh {
     using StringList = std::vector<std::string>;
     using AttributesStrings = std::unordered_map<AttribName, StringList>;
 
+    enum class UpdateFlags: uint32_t {
+        Auto                 = 0x0,      ///< Automatic mesh update
+        Topology             = 0x1,      ///< Replace mesh.
+        Positions            = 0x2,      ///< Update positions and rebuild BLAS.
+        Normals              = 0x4,      ///< Recalculate normals.
+        TextureCoordinates   = 0x8,      ///< Update texture coordinates.
+        Default = Auto
+    };
+
     enum class AttributeFrequency {
         None,
         Constant,       ///< Constant value for mesh. The element count must be 1.
@@ -439,6 +448,8 @@ struct Mesh {
         return boneWeights.pData || boneIDs.pData;
     }
 };
+
+enum_class_operators(Mesh::UpdateFlags);
 
 }  // namespace Geometry
 
