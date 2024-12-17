@@ -31,7 +31,7 @@ class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 
 		Falcor::Scene::SharedPtr getScene();
 
-		uint32_t addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name = "");
+		void addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name = "");
 		void addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name = "");
 
 		void finalize();
@@ -40,7 +40,8 @@ class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 
 	private:
 		SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags = Flags::Default);
-		uint32_t _addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name = "");
+		//uint32_t addOrUpdateGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name = "");
+		bool processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name, SceneBuilder::ProcessedMesh& processedMesh);
 
 	private:
 		StandardMaterial::SharedPtr mpDefaultMaterial = nullptr;

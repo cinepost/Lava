@@ -273,6 +273,24 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     LLOG_WRN << "Scenes count " << (uint32_t)(++_cnt);
 }
 
+void Scene::updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData) {
+    assert(meshID < mMeshDesc.size());
+
+    if(meshStaticData.empty() || (meshID >= mMeshDesc.size()) ) return;
+
+    size_t vertexCount = meshStaticData.size();
+
+    std::vector<PackedStaticVertexData> packedStaticData(vertexCount);
+
+    packedStaticData.insert(packedStaticData.begin(), meshStaticData.begin(), meshStaticData.end());
+
+    static constexpr size_t entrySize = sizeof(PackedStaticVertexData);
+
+    size_t offset = mMeshDesc[meshID].vbOffset * entrySize;
+    mpMeshVao->updateVertexBufferData(kStaticDataBufferIndex, packedStaticData.data(), offset, vertexCount * entrySize);
+    mBlasDataValid = false;
+}
+
 Scene::~Scene() {
     mpDevice->getRenderContext()->flush(true);
 
@@ -568,7 +586,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     }
 
     ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
-    Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+    //Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+    Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, staticData.data(), false);
     LLOG_TRC << "pStaticBuffer buffer size " << pStaticBuffer->getSize();
 
 

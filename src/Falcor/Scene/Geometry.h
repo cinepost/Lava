@@ -185,6 +185,10 @@ struct MeshSpec {
     // Primitives adjacency data.
     PrimitiveAdjacency adjacencyData;
 
+    // Interactive updates hash data.
+    uint64_t indexDataHash;
+    uint64_t positionsDataHash;
+
     // Thread sync.
     mutable std::mutex mMutex;
 
@@ -449,9 +453,9 @@ struct Mesh {
     }
 };
 
-enum_class_operators(Mesh::UpdateFlags);
-
 }  // namespace Geometry
+
+enum_class_operators(Geometry::Mesh::UpdateFlags);
 
 }  // namespace Falcor
 
