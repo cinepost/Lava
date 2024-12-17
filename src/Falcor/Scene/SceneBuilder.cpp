@@ -914,15 +914,6 @@ void SceneBuilder::updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mes
 
 	MeshSpec& existingMesh = mMeshes[meshID];
 
-	//LLOG_WRN << "Existing mesh index data hash " << existingMesh.indexDataHash;
-	//LLOG_WRN << "New mesh index data hash " << mesh.indexDataHash;
-
-	//LLOG_WRN << "Existing mesh staticData.size() " << existingMesh.staticData.size();
-	//LLOG_WRN << "New mesh staticData.size() " << mesh.staticData.size();
-
-	//LLOG_WRN << "Existing mesh positions data hash " << existingMesh.positionsDataHash;
-	//LLOG_WRN << "New mesh positions data hash " << mesh.positionsDataHash;
-
 	// calc update options
     if(updateFlags == Mesh::UpdateFlags::Auto) {
     	// Check topology changed
@@ -952,7 +943,7 @@ void SceneBuilder::updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mes
 
     if(mpScene) {
     	// Update scene static data
-    	mpScene->updateMeshStaticData(meshID, existingMesh.staticData);
+    	mpScene->updateMeshStaticData(meshID, existingMesh.staticData, rebuildBLAS);
     } else {
     	// Update scene builder meshes static data
     	std::copy(existingMesh.staticData.begin(), existingMesh.staticData.end(), mSceneData.meshStaticData.begin() + existingMesh.staticVertexOffset);

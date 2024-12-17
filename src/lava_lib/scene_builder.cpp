@@ -212,7 +212,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
                 vN[i] = N[vt_idx_ptr[i]];
             }
         } else {
-            LLOG_ERR << "Bgeo " << name << " geometry missing normals !!!";
+            LLOG_WRN << "Bgeo " << name << " geometry missing normals !!!";
         }
     }
 
@@ -224,7 +224,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
                 vUV[i] = UV[vt_idx_ptr[i]];
             }
         } else {
-            LLOG_WRN << "Mesh " << name << " has no texture coordinates !";
+            LLOG_DBG << "Mesh " << name << " has no texture coordinates !";
             for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vUV[i] = {0.f, 0.f};
             }
@@ -241,7 +241,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); ++p_i) {
         const auto& pPrim = pBgeo->getPrimitive(p_i);
         if(!pPrim) {
-            LLOG_WRN << "Unable to get primitive number: " << p_i;
+            LLOG_ERR << "Unable to get primitive number: " << p_i;
             continue;
         }
 

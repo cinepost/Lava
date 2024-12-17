@@ -1157,7 +1157,7 @@ public:
 
     /**
     */
-    void updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData);
+    void updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData, bool rebuildBLAS = false);
 
     /** Do any additional initialization required after scene data is set and draw lists are determined.
     */

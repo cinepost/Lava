@@ -273,7 +273,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     LLOG_WRN << "Scenes count " << (uint32_t)(++_cnt);
 }
 
-void Scene::updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData) {
+void Scene::updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData, bool rebuildBLAS) {
     assert(meshID < mMeshDesc.size());
 
     if(meshStaticData.empty() || (meshID >= mMeshDesc.size()) ) return;
@@ -288,7 +288,9 @@ void Scene::updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertex
 
     size_t offset = mMeshDesc[meshID].vbOffset * entrySize;
     mpMeshVao->updateVertexBufferData(kStaticDataBufferIndex, packedStaticData.data(), offset, vertexCount * entrySize);
-    mBlasDataValid = false;
+    if(rebuildBLAS) {
+        mBlasDataValid = false;
+    }
 }
 
 Scene::~Scene() {
