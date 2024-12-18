@@ -115,13 +115,13 @@ static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions,
     return mesh_face_count;
 }
 
-uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name, SceneBuilder::ProcessedMesh& processedMesh) {
     assert(pBgeo);
 
     const auto pDetail = pBgeo->getDetail();
     if(!pDetail) {
-        LLOG_ERR << "Bgeo " << name << " has no gepmetry !!!";
-        return SceneBuilder::kInvalidMeshID;
+        LLOG_ERR << "Bgeo " << name << " has no geometry !!!";
+        return false;
     }
 
     const int64_t bgeo_point_count = pBgeo->getPointCount();
@@ -155,7 +155,7 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
 
     if(P.size() != bgeo_point_count) {
         LLOG_ERR << "P positions count not equal to the bgeo points count !!!";
-        return SceneBuilder::kInvalidMeshID;
+        return false;
     }
 
     LLOG_TRC << "P<float3> size: " << P.size();
@@ -179,7 +179,7 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
     auto const& vt_map = pDetail->getVertexMap();
     if(vt_map.vertexCount != bgeo_vertex_count) {
         LLOG_ERR << "Bgeo " << name << " detail vertices count not equal to the number of bgeo vertices count !!!";
-        return SceneBuilder::kInvalidMeshID;
+        return false;
     }
 
     const bool hasVertexN = !vN.empty() && (vN.size() == bgeo_vertex_count);
@@ -212,7 +212,7 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
                 vN[i] = N[vt_idx_ptr[i]];
             }
         } else {
-            LLOG_ERR << "Bgeo " << name << " geometry missing normals !!!";
+            LLOG_WRN << "Bgeo " << name << " geometry missing normals !!!";
         }
     }
 
@@ -224,7 +224,7 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
                 vUV[i] = UV[vt_idx_ptr[i]];
             }
         } else {
-            LLOG_WRN << "Mesh " << name << " has no texture coordinates !";
+            LLOG_DBG << "Mesh " << name << " has no texture coordinates !";
             for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vUV[i] = {0.f, 0.f};
             }
@@ -241,7 +241,7 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
     for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); ++p_i) {
         const auto& pPrim = pBgeo->getPrimitive(p_i);
         if(!pPrim) {
-            LLOG_WRN << "Unable to get primitive number: " << p_i;
+            LLOG_ERR << "Unable to get primitive number: " << p_i;
             continue;
         }
 
@@ -338,48 +338,65 @@ uint32_t SceneBuilder::_addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const
 
     mUniqueTrianglesCount += mesh_face_count;
 
-    return addProcessedMesh(processMesh(mesh));
+    processedMesh = processMesh(mesh);
+    return true;
 }
 
-uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
-    const uint32_t id = _addGeometry(pBgeo, name);
-    {
-        std::scoped_lock lock(mMeshesMutex);
-        mMeshMap[name] = id;
+void SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+    SceneBuilder::ProcessedMesh processedMesh;
+    if(!processBgeo(pBgeo, name, processedMesh)) return;
+
+    uint32_t existingMeshID = getMeshID(name);
+
+    if(existingMeshID == kInvalidMeshID) {
+        mMeshMap[name] = addProcessedMesh(processedMesh);
+    } else {
+        updateProcessedMesh(existingMeshID, processedMesh);
     }
-    return id;
 }
 
 void SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
     assert(pGeo);
 
+    std::string fullpath = pGeo->detailFilePath().string();
+    const uint32_t existingMeshID = getMeshID(name);
+
     // Pass the task to thread pool to run asynchronously
     ThreadPool& pool = ThreadPool::instance();
-    mAddGeoTasks.push_back(std::move(pool.submit([this, pGeo, &name]
+    mAddGeoTasks.push_back(std::move(pool.submit([this, existingMeshID, fullpath, name]
     {
-        uint32_t result = std::numeric_limits<uint32_t>::max();
         ika::bgeo::Bgeo::SharedPtr pBgeo = ika::bgeo::Bgeo::create();
 
-        std::string fullpath = pGeo->detailFilePath().string();
         try {
             pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
             pBgeo->preCachePrimitives();
         } catch (const ika::bgeo::parser::ReadError& e) {
             LLOG_ERR << "Error parsing bgeo file " << fullpath;
             LLOG_ERR << "Parsing error: " << e.what();
-            return result;
+            return kInvalidMeshID;
         } catch (const std::runtime_error& e) {
             LLOG_ERR << "Error loading bgeo from file " << fullpath;
             LLOG_ERR << e.what();
-            return result;
+            return kInvalidMeshID;
         } catch (...) {
             LLOG_ERR << "Unknown error while loading bgeo from file " << fullpath;
-            return result;
+            return kInvalidMeshID;
         }
 
-        result = this->_addGeometry(pBgeo, name);
-        
-        return result;
+        SceneBuilder::ProcessedMesh processedMesh;
+        if(!processBgeo(pBgeo, name, processedMesh)) {
+            return existingMeshID;
+        }
+
+        uint32_t meshID = existingMeshID;
+
+        if(meshID == kInvalidMeshID) {
+            meshID = addProcessedMesh(processedMesh);
+        } else {
+            updateProcessedMesh(meshID, processedMesh);
+        }
+
+        return meshID;
     })));
 
     { // thread safety

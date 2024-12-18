@@ -75,6 +75,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		void enableDepthOfField(bool value);
 		void enableMotionBlur(bool value);
 
+		virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
+
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 

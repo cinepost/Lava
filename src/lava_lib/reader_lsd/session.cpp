@@ -631,7 +631,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
  	}
 
 #ifdef _DEBUG
-    pBgeo->printSummary(std::cout);
+  pBgeo->printSummary(std::cout);
 #endif
 
   pSceneBuilder->addGeometry(pBgeo, name);
@@ -1093,12 +1093,15 @@ bool Session::cmdEnd() {
 						return false;
 					}
 
+					/*
 					if (pSceneBuilder->meshExist(pScopeGeo->detailName())) {
+						LLOG_WRN << "Skip !?";
 						// mesh already exist. all ok
 						break;
 					} else {
 						LLOG_WRN << "Mesh " << pScopeGeo->detailName() << " doesn't exit. Pushing...";
 					}
+					*/
 				}
 
 				// If temporary bgeo, mark it so we can delete it later

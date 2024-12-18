@@ -185,6 +185,10 @@ struct MeshSpec {
     // Primitives adjacency data.
     PrimitiveAdjacency adjacencyData;
 
+    // Interactive updates hash data.
+    uint64_t indexDataHash;
+    uint64_t positionsDataHash;
+
     // Thread sync.
     mutable std::mutex mMutex;
 
@@ -259,6 +263,15 @@ struct Mesh {
     using AttribName = std::string;
     using StringList = std::vector<std::string>;
     using AttributesStrings = std::unordered_map<AttribName, StringList>;
+
+    enum class UpdateFlags: uint32_t {
+        Auto                 = 0x0,      ///< Automatic mesh update
+        Topology             = 0x1,      ///< Replace mesh.
+        Positions            = 0x2,      ///< Update positions and rebuild BLAS.
+        Normals              = 0x4,      ///< Recalculate normals.
+        TextureCoordinates   = 0x8,      ///< Update texture coordinates.
+        Default = Auto
+    };
 
     enum class AttributeFrequency {
         None,
@@ -441,6 +454,8 @@ struct Mesh {
 };
 
 }  // namespace Geometry
+
+enum_class_operators(Geometry::Mesh::UpdateFlags);
 
 }  // namespace Falcor
 

@@ -37,6 +37,9 @@ MeshSpec::MeshSpec(const MeshSpec& spec) {
     skinningData = spec.skinningData;
     perPrimitiveMaterialIDsData = spec.perPrimitiveMaterialIDsData;
 
+    indexDataHash  = spec.indexDataHash;
+    positionsDataHash = spec.positionsDataHash;
+
     meshletSpecs = spec.meshletSpecs;
 
     adjacencyData = spec.adjacencyData;
@@ -80,6 +83,9 @@ MeshSpec& MeshSpec::operator=(const MeshSpec& o) {
         staticData = o.staticData;
         skinningData = o.skinningData;
         perPrimitiveMaterialIDsData = o.perPrimitiveMaterialIDsData;
+
+        indexDataHash  = o.indexDataHash;
+        positionsDataHash = o.positionsDataHash;
 
         meshletSpecs = o.meshletSpecs;
 

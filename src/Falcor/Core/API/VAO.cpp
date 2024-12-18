@@ -79,6 +79,17 @@ Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const {
 	return desc;
 }
 
+void Vao::updateVertexBufferData(uint32_t index, const void* pData, size_t offset, size_t size) {
+	assert(index < (uint32_t)mpVBs.size());
+
+	auto& pBuffer = mpVBs[index];
+	assert(pBuffer);
+
+	if(!pBuffer || !pData || (size == 0)) return;
+    
+  pBuffer->setBlob(pData, offset, size);
+}
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(Vao) {
 	pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");

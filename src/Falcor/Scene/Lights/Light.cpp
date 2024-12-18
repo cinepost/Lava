@@ -241,9 +241,6 @@ Light::Light(const std::string& name, LightType type) : mName(name) {
     mIntensity = float3(.0f);
     mData.setLightType(type);
     mData.setLightSamplerID(kInvalidSamplerID);
-
-    LLOG_WRN << "LightData::kInvalidSamplerID " << kInvalidSamplerID;
-
     mData.flags = 0x0;
 }
 

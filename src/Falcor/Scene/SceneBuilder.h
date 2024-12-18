@@ -163,6 +163,10 @@ class dlldecl SceneBuilder {
         std::vector<SkinningVertexData> skinningData;
         std::vector<int32_t> perPrimitiveMaterialIDsData;
 
+        // hash data for interactive updates
+        uint64_t indexDataHash;
+        uint64_t positionsDataHash;
+
         bool hasMultipleMaterials() const { return !perPrimitiveMaterialIDsData.empty(); }
     };
 
@@ -248,6 +252,7 @@ class dlldecl SceneBuilder {
     bool deleteMeshInstance(const std::string& name);
 
     bool deleteMesh(const std::string& meshName);
+    bool deleteMesh(uint32_t meshID);
 
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
@@ -255,9 +260,11 @@ class dlldecl SceneBuilder {
     */
     uint32_t addMesh(const Mesh& meshDesc);
 
-    uint32_t getMeshID(const std::string& name);
+    bool updateMesh(uint32_t meshID, const Mesh& meshDesc, Mesh::UpdateFlags updateFlags = Mesh::UpdateFlags::Auto);
 
-    bool meshExist(const std::string& name);
+    uint32_t getMeshID(const std::string& meshName);
+
+    bool meshExist(const std::string& meshName);
 
     /** Pre-process a mesh into the data format that is used in the global scene buffers.
         Throws an exception if something went wrong.
@@ -276,7 +283,8 @@ class dlldecl SceneBuilder {
         \param mesh The pre-processed mesh.
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
     */
-    uint32_t addProcessedMesh(const ProcessedMesh& mesh);
+    uint32_t addProcessedMesh(const ProcessedMesh& mesh, uint32_t meshID = kInvalidMeshID);
+    void updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mesh, Mesh::UpdateFlags updateFlags = Mesh::UpdateFlags::Auto);
 
     /** Set mesh vertex cache for animation.
         \param[in] cachedCurves The mesh vertex cache data.

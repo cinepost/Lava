@@ -225,10 +225,10 @@ uint32_t SceneBuilder::MeshID::_get() const {
 	return SceneBuilder::kInvalidMeshID;
 }
 
-void SceneBuilder::MeshID::operator=(uint32_t id) { 
+void SceneBuilder::MeshID::operator=(uint32_t id) {
 	std::scoped_lock lock(mMutex);
 	mIntID = id;
-	mType = IDType::INTEGER; 
+	mType = IDType::INTEGER;
 }
 
 void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t>& f) { 
@@ -409,29 +409,34 @@ uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
 	return pMeshID ? (uint32_t)(*pMeshID) : addProcessedMesh(processMesh(mesh));
 }
 
-uint32_t SceneBuilder::getMeshID(const std::string& name) {
+uint32_t SceneBuilder::getMeshID(const std::string& meshName) {
 	MeshID* pMeshID = nullptr;
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);	
-        auto it = mMeshMap.find(name);
+        auto it = mMeshMap.find(meshName);
 		if(it != mMeshMap.end()) {
-			LLOG_DBG << "Mesh " << name << " already exists in SceneBuilder";
+			LLOG_DBG << "Mesh " << meshName << " already exists in SceneBuilder";
 			pMeshID = &it->second;
         }
     }
 	return pMeshID ? (uint32_t)(*pMeshID) : kInvalidMeshID;
 }
 
-bool  SceneBuilder::meshExist(const std::string& name) {
+bool SceneBuilder::meshExist(const std::string& meshName) {
     { // thread safety
         std::scoped_lock lock(mMeshesMutex);    
-        auto it = mMeshMap.find(name);
+        auto it = mMeshMap.find(meshName);
         if(it != mMeshMap.end()) {
             return true;
         }
     }
 
     return false;
+}
+
+bool SceneBuilder::updateMesh(uint32_t meshID, const Mesh& meshDesc, Mesh::UpdateFlags updateFlags) {
+	updateProcessedMesh(meshID, processMesh(meshDesc));
+    return true;
 }
 
 uint32_t SceneBuilder::addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial) {
@@ -481,6 +486,9 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 	processedMesh.pMaterial = mesh.pMaterial;
 	processedMesh.isFrontFaceCW = mesh.isFrontFaceCW;
 	processedMesh.skeletonNodeId = mesh.skeletonNodeId;
+
+	processedMesh.indexDataHash = 0;
+    processedMesh.positionsDataHash = 0;
 
 	// Error checking.
 	auto throw_on_missing_element = [&](const std::string& element) {
@@ -660,6 +668,10 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
 		if (!processedMesh.use16BitIndices) processedMesh.indexData = std::move(indices);
 		else processedMesh.indexData = compact16BitIndices(indices);
+
+		for(uint64_t i = 0; i < (uint64_t)processedMesh.indexData.size(); ++i ) {
+			processedMesh.indexDataHash += processedMesh.indexData[i] * i;
+		}
 	}
 
 	// Copy point indices into processed mesh (if present).
@@ -668,7 +680,6 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 			processedMesh.pointIndexData.resize(mesh.vertexCount);
 			for(size_t i = 0; i < mesh.vertexCount; ++i) {
 				processedMesh.pointIndexData[i] = static_cast<const uint32_t*>(mesh.pointIndices.pData)[i];
-				//printf("pt idx %u\n", processedMesh.pointIndexData[i]);
 			}
 		}
 	}
@@ -684,6 +695,12 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
 		StaticVertexData s;
 		s.position = v.position;
+
+		processedMesh.positionsDataHash += (
+			(((uint64_t)reinterpret_cast<const uint32_t &>(v.position.x) << 32) | ((uint64_t)reinterpret_cast<const uint32_t &>(v.position.y) << 16))
+			^ ((uint64_t)reinterpret_cast<const uint32_t &>(v.position.z))
+		);
+
 		s.normal = v.normal;
 		s.texCrd = v.texCrd;
 		s.tangent = v.tangent;
@@ -711,6 +728,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 			processedMesh.perPrimitiveMaterialIDsData.clear();
 		}
 	}
+
+	LLOG_DBG << "Mesh processing done for " << mesh.name;
 
 	return processedMesh;
 }
@@ -761,11 +780,20 @@ void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) c
 	}
 }
 
-uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
+uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh, uint32_t meshID) {
 	const bool keepMeshletSpecsData = is_set(mFlags, Flags::KeepLocalMeshletSpecData);
 	const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
 	MeshSpec spec;
+
+	// If mesh already exist copy old instances data
+	if(meshID != kInvalidMeshID && (meshID < mMeshes.size())) { 
+	// thread safety
+		std::scoped_lock lock(mMeshesMutex);
+
+		const MeshSpec& oldSpec = mMeshes[meshID];
+		spec.instances = oldSpec.instances;
+	}
 
 	spec.isAnimated = true; // TODO: for interactive scene we have to make them non static (animated). This is default for now
 							// So it's better to provide some hints from the outside. For the LSD case it's quite easy. If the mesh is not time dependent set a flag.
@@ -776,6 +804,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	spec.materialId = addMaterial(mesh.pMaterial);
 	spec.isFrontFaceCW = mesh.isFrontFaceCW;
 	spec.skeletonNodeID = mesh.skeletonNodeId;
+
+	spec.indexDataHash = mesh.indexDataHash;
+    spec.positionsDataHash = mesh.positionsDataHash;
 
 	spec.vertexCount = (uint32_t)mesh.staticData.size();
 	spec.staticVertexCount = (uint32_t)mesh.staticData.size();
@@ -812,7 +843,6 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 		mpMeshletBuilder->generateMeshlets(spec, buildMode);
 	}
 
-	uint32_t meshID = kInvalidMeshID;
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);
 
@@ -825,16 +855,22 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 			throw std::runtime_error("Trying to build a scene that exceeds supported number of meshes");
 		}
 
-		mMeshes.push_back(spec);
-		meshID = (uint32_t)(mMeshes.size() - 1);
+		if(meshID != kInvalidMeshID) {
+			mMeshes[meshID] = std::move(spec);
+		} else {
+			mMeshes.push_back(std::move(spec));
+			meshID = (uint32_t)(mMeshes.size() - 1);
+		}
 	}
 
 	{ // Meshlets part
 		std::scoped_lock lock(mMeshletsMutex);
 
-		if(spec.hasMeshlets()) {
+		const auto& meshSpec = mMeshes[meshID];
+
+		if(meshSpec.hasMeshlets()) {
 			MeshletList meshlets;
-			for(const auto& meshletSpec: spec.meshletSpecs) {
+			for(const auto& meshletSpec: meshSpec.meshletSpecs) {
 				
 				MeshletData meshlet;
 				meshlet.vertexOffset = mMeshletVertices.size();
@@ -868,6 +904,51 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 	}
 
 	return meshID;
+}
+
+void SceneBuilder::updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mesh, Mesh::UpdateFlags updateFlags) {
+	if(meshID >= mMeshes.size()) {
+		LLOG_ERR << "Error updating mesh " << mesh.name << " ! Mesh does not exist !!!";
+		return;
+	}
+
+	MeshSpec& existingMesh = mMeshes[meshID];
+
+	// calc update options
+    if(updateFlags == Mesh::UpdateFlags::Auto) {
+    	// Check topology changed
+    	if(existingMesh.indexDataHash != mesh.indexDataHash) updateFlags |= Mesh::UpdateFlags::Topology;
+    	if(existingMesh.staticData.size() != mesh.staticData.size()) updateFlags |= Mesh::UpdateFlags::Topology;
+
+    	// Check positions changed
+    	if(existingMesh.positionsDataHash != mesh.positionsDataHash) updateFlags |= Mesh::UpdateFlags::Positions;
+    }
+
+
+    if(is_set(updateFlags, Mesh::UpdateFlags::Topology)) {
+    	LLOG_WRN << "Replacing mesh " << mesh.name << " !";
+    	mReBuildMeshGroups = true;
+		resetScene(true);
+		addProcessedMesh(mesh, meshID);
+		return;
+    }
+
+    bool rebuildBLAS = false;
+    if(is_set(updateFlags, Mesh::UpdateFlags::Positions)) rebuildBLAS = true;
+
+    //existingMesh.staticData == mesh.staticData;
+    ::memcpy(existingMesh.staticData.data(), mesh.staticData.data(), mesh.staticData.size() * sizeof(StaticVertexData));
+
+    LLOG_DBG << "Updating mesh " << mesh.name << " !";
+
+    if(mpScene) {
+    	// Update scene static data
+    	mpScene->updateMeshStaticData(meshID, existingMesh.staticData, rebuildBLAS);
+    } else {
+    	// Update scene builder meshes static data
+    	std::copy(existingMesh.staticData.begin(), existingMesh.staticData.end(), mSceneData.meshStaticData.begin() + existingMesh.staticVertexOffset);
+    }
+
 }
 
 void SceneBuilder::addCustomPrimitive(uint32_t userID, const AABB& aabb) {
@@ -1128,11 +1209,13 @@ bool SceneBuilder::meshHasInstance(uint32_t meshID, const std::string& instance_
     }
 
     {   // thread safety
-        std::scoped_lock lock(mMeshesMutex);
+    	std::scoped_lock lock(mMeshesMutex);
 
         auto& instances = mMeshes[meshID].instances;
         auto match = std::find_if(instances.begin(), instances.end(), [&] (const MeshInstanceSpec& instance) { return instance.exported.name == instance_name; });
-        if(match == instances.end()) return false;
+        if(match == instances.end()) {
+        	return false;
+    	}
     }
     return true;
 }
@@ -1166,20 +1249,19 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
     // Some basic thread safety
 
     {
-		std::scoped_lock lock(mMeshesMutex);
+    	std::scoped_lock lock(mMeshesMutex);
 
 		if(pExportedDataSpec) mInstanceToMeshMap[pExportedDataSpec->name] = meshID;
 
 		auto& mesh = mMeshes[meshID];
 		mesh.instances.push_back({});
 		pInstance = &mesh.instances.back();
-
+	}
 		// We might move for lazy LightLinker creation in the future... So we do this here.
 		if(!pCreationSpec->isolatedLightNames.empty()) {
 			if(!mSceneData.pLightLinker) mSceneData.pLightLinker = LightLinker::create(mpDevice);
 			assert(mSceneData.pLightLinker && "No light linker present but required !!!");	
 		}
-	}
 
 	// It should be safe to release lock now... maybe...
 
@@ -1274,15 +1356,37 @@ bool SceneBuilder::deleteMeshInstance(const std::string& name) {
 
 	// Delete mesh it there are no instances left
 	if(instances.empty()) {
-		const bool deleted = deleteMesh(mesh.name);
-		if(!deleted) return false;
+		//const bool deleted = deleteMesh(mesh.name);
+		//if(!deleted) return false;
 	}
 
-	mUpdateSceneInstances = true;
-
-	resetScene(true); // reuse existing scene resources
+	if(mpScene) {
+		mpScene->invalidateTlasCache();
+		//resetScene(true); // reuse existing scene resources
+	} else {
+		mUpdateSceneInstances = true;
+	}
 
 	return true;
+}
+
+bool SceneBuilder::deleteMesh(uint32_t meshID) {
+	if(meshID == kInvalidMeshID) return false;
+
+	std::string meshName;
+
+	{ // thread safety
+		std::scoped_lock lock(mMeshesMutex);
+
+		if(meshID >= mMeshes.size()) {
+			LLOG_ERR << "Unable to delete mesh with id " << meshID << " ! No mesh exist !!!";
+			return false;
+		}
+
+		meshName = mMeshes[meshID].name;
+	}
+
+	return deleteMesh(meshName);
 }
 
 bool SceneBuilder::deleteMesh(const std::string& meshName) {
@@ -1333,7 +1437,7 @@ bool SceneBuilder::deleteMesh(const std::string& meshName) {
                     node.meshes.erase(node.meshes.begin() + id);      
                 }
             }
-        }
+        }	
 	}
 
 	mReBuildMeshGroups = true;
@@ -1690,15 +1794,23 @@ void SceneBuilder::prepareSceneGraph() {
 	}
 }
 
+
 void SceneBuilder::removeUnusedMeshes() {
 	// If the scene contained meshes that are not referenced by the scene graph,
 	// those will be removed here and warnings logged.
+
+	std::scoped_lock lock(mMeshesMutex);
 
 	// First count number of unused meshes.
 	size_t unusedCount = 0;
 	for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
 		auto& mesh = mMeshes[meshID];
 		if (mesh.instances.empty()) {
+			auto it = mMeshMap.find(mesh.name);
+			if(it != mMeshMap.end()) {
+				mMeshMap.erase(it);
+			}
+
 			LLOG_WRN << "Mesh with ID " << std::to_string(meshID) << " named '" << mesh.name << "' is not referenced by any scene graph nodes.";
 			unusedCount++;
 		}

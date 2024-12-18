@@ -109,6 +109,8 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
 	*/
 	Topology getPrimitiveTopology() const { return mTopology; }
 
+	void updateVertexBufferData(uint32_t index, const void* pData, size_t offset, size_t size);
+
  protected:
 	friend class RenderContext;
 
