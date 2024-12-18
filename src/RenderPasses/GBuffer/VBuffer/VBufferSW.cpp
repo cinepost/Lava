@@ -215,6 +215,7 @@ void VBufferSW::compile(RenderContext* pRenderContext, const CompileData& compil
 
 bool VBufferSW::beginFrame(RenderContext *pContext, const RenderData& renderData) {
     mSampleNumber = 0;
+    return true;
 }
 
 void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderData) {
