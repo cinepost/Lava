@@ -61,17 +61,11 @@ struct MaterialSystem
     Texture2D<float4> materialTextures[1]; // Zero-length arrays are not supported.
 #endif
 
-
     StructuredBuffer<ExtendedTextureData> extendedTexturesData;
 
     StructuredBuffer<VirtualTextureData>  virtualTexturesData;
     RWByteAddressBuffer virtualPagesResidencyData;
 
-//#if MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT > 0
-//    uint udimTextureTilesTable[MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT * 100];
-//#else
-//    uint udimTextureTilesTable[1];
-//#endif
     StructuredBuffer<uint16_t> udimTextureTilesTableBuffer;
 
 
@@ -251,9 +245,6 @@ struct MaterialSystem
                     
                     float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
                     
-                    //uint tileID = udimTextureTilesTable[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                    //uint byte_addr = (udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10) * 2;
-                    //uint tileID = (uint)udimTextureTilesTableBuffer.Load<float16_t>(byte_addr);
                     uint tileID = (uint)udimTextureTilesTableBuffer[udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
                     if(tileID == UINT16_MAX) return uniformValue;
 
@@ -264,7 +255,7 @@ struct MaterialSystem
                             return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
                         case ExtendedTextureData::Mode::Virtual:
                             uint32_t virtualTextureID = extendedTexturesData[tileID].virtualID;
-                            return lod.sampleVirtualTexture(materialTextures[tileID], s, float2(uv.x , 1.0f - uv.y), virtualTexturesData[virtualTextureID]);
+                            return lod.sampleVirtualTexture(materialTextures[tileID], udimTileSampler, udim_uv, virtualTexturesData[virtualTextureID]);
                         case ExtendedTextureData::Mode::Uniform:
                             return uniformValue;
                         default:

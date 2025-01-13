@@ -589,7 +589,8 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 				result = true;
 			}
 		} else {
-			if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile, compressionInfo)) {
+			bool speedUp = true;
+			if(ltxCpuGenerateAndWriteMIPTilesNPOT(header, mipInfo, srcBuff, pFile, compressionInfo, speedUp)) {
 				// re-write header as it might get modified ... 
 				// TODO: increment pagesCount ONLY upon successfull fwrite !
 				fseek(pFile, 0, SEEK_SET);
