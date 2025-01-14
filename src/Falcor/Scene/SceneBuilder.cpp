@@ -291,6 +291,9 @@ void SceneBuilder::freeTemporaryResources() {
 }
 
 Scene::SharedPtr SceneBuilder::getScene() {
+	mAddGeoTasks.wait();
+	mAddGeoTasks.clear();
+
 	if (mpScene) {
 		if(mUpdateSceneMaterials) {
 			mpScene->updateMaterials(true);
@@ -299,8 +302,6 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 		return mpScene;
 	}
-
-	mAddGeoTasks.wait();
 	
 	// Finish loading textures. This blocks until all textures are loaded and assigned.
 	mpMaterialTextureLoader.reset();
