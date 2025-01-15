@@ -157,11 +157,18 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
         cb_vars["gSampleNumber"] = mSampleNumber++;
         cb_vars["gResolution"] = resolution;
         cb_vars["gDistanceRange"] = mDistanceRange;
-        
+        cb_vars["gRandomSeed"] = mRandomSeed;
+
         mpPassRayTrace->execute(pRenderContext, resolution.x, resolution.y);
     }
 
     mDirty = false;
+}
+
+void AmbientOcclusionPass::setRandomSeed(int seed) {
+    if(mRandomSeed == seed) return;
+
+    mRandomSeed = seed * 1024;
 }
 
 void AmbientOcclusionPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

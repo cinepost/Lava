@@ -13,6 +13,7 @@ import Utils.Sampling.SampleGenerator;
 cbuffer PerFrameCB {
   uint2             gJitterTextureDim;
   uint              gSampleNumber;                 // Interframe sample number.
+  int               gRandomSeed;
 };
 
 RWTexture2D<float4> gJitterTexture;
@@ -129,12 +130,12 @@ void build(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if JITTER_TYPE == JITTER_TYPE_SIMPLE
 
-    SampleGenerator lsg = SampleGenerator(pixelPos, gSampleNumber);
+    SampleGenerator lsg = SampleGenerator(pixelPos, gSampleNumber + gRandomSeed);
     jitter = float4(sampleNext2D(lsg), sampleNext2D(lsg));
 
 #elif JITTER_TYPE == JITTER_TYPE_R1
 
-    SampleGenerator sg = SampleGenerator(gJitterTextureDim, gSampleNumber);
+    SampleGenerator sg = SampleGenerator(gJitterTextureDim, gSampleNumber + gRandomSeed);
     uint2 jitterPosX = pixelPos + gJitterTextureDim * sampleNext2D(sg);
     uint2 jitterPosY = pixelPos + gJitterTextureDim * sampleNext2D(sg);
     uint2 jitterPosZ = pixelPos + gJitterTextureDim * sampleNext2D(sg);

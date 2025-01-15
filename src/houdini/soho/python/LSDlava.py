@@ -162,8 +162,7 @@ def initializeFeatures(settings):
     Image("image", "randomseed", "int", "lv_randomseed")
     Image("image", "readcheckpoint", "bool", "lv_readcheckpoint")
     Image("image", "resolution", "int", "lv_uvunwrapres")
-    Image("image", "samplelock", "bool", "lv_samplelock")
-
+    
     Image("image", "cullmode", "string", "lv_cull_mode", skipdefault=False)
     Image("image", "usedof", "bool", "lv_dof", skipdefault=False)
     Image("image", "usemblur", "bool", "lv_allowmotionblur", skipdefault=False)

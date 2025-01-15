@@ -420,6 +420,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
         var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
         var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
+        var["gVBufferSW"]["randomSeed"] = mRandomSeed;
         var["gVBufferSW"]["dispatchX"] = dispatchX;
         var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
         var["gVBufferSW"]["minScreenEdgeLen"] = mMinScreenEdgeLen;
@@ -481,6 +482,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         var["PerFrameCB"]["gJitterTextureDim"] = jitterTexDim;
         var["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
+        var["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
 
         // Bind resources.
         var["gJitterTexture"] = mpJitterTexture;
@@ -521,6 +523,12 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     mSampleNumber++;
+}
+
+void VBufferSW::setRandomSeed(int seed) {
+    if(mRandomSeed == seed) return;
+
+    mRandomSeed = seed * 1024;
 }
 
 void VBufferSW::createBuffers() {

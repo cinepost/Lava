@@ -682,7 +682,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	}
 
 	//mpRenderGraph->setScene(pScene);
-	
+	mpRenderGraph->setRandomSeed(mRandomSeed);
+
 	// Compile graph
 	std::string log;
 	bool result = mpRenderGraph->compile(pRenderContext, log);
@@ -849,6 +850,14 @@ void Renderer::bindAOVPlanesToResources() {
 				pAOVPlane->bindToTexture(pResource->asTexture());
 			}
 		}
+	}
+}
+
+void Renderer::setRandomSeed(int seed) {
+	mRandomSeed = seed;
+
+	if(mpRenderGraph) {
+		mpRenderGraph->setRandomSeed(mRandomSeed);
 	}
 }
 

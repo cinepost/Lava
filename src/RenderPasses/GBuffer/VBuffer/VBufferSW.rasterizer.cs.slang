@@ -554,7 +554,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
     const uint y_d = THREADS_COUNT;
     const uint y_start = (thread_id + gsOffsetY) % THREADS_COUNT;
 
-    SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber);
+    SampleGenerator lsg = SampleGenerator(gVBufferSW.frameDim, gVBufferSW.sampleNumber + gVBufferSW.randomSeed);
 
     for(uint micro_triangle_id = 0; micro_triangle_id < gsMicroTrianglesCount; ++micro_triangle_id) {
 
@@ -657,7 +657,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 uint2 pixelPos = uint2(x, y);
 
                 // Jitter (noise) [0, 1] range
-                //float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber));
+                //float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + gVBufferSW.randomSeed));
                 float4 rnd = gJitterTexture[uint2(x % gVBufferSW.jitterTextureDim.x, y % gVBufferSW.jitterTextureDim.y)].rgba;
                 //rnd = float4(0.5f);
 
@@ -771,7 +771,7 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                     gOpacityShiftsBuffer.InterlockedAdd(addr, (uint)1 << (8 * pixelPosInUint), originalValue);
                     opacityShift = (originalValue >> (8 * pixelPosInUint)) & 0x000000FF;
 
-                    float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, gVBufferSW.sampleNumber + opacityShift ));
+                    float4 stbn = gNoiseGenerator.fetch(uint3(pixelPos + gVBufferSW.stbnOffset, (gVBufferSW.sampleNumber + gVBufferSW.randomSeed) + opacityShift ));
                  
                 #if defined(USE_VISIBILITY_CONTAINER)
                     // skip fully transparent sample
