@@ -168,7 +168,7 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
 void AmbientOcclusionPass::setRandomSeed(int seed) {
     if(mRandomSeed == seed) return;
 
-    mRandomSeed = seed * 1024;
+    mRandomSeed = seed;
 }
 
 void AmbientOcclusionPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

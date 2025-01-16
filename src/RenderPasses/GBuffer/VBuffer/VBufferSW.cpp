@@ -528,7 +528,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 void VBufferSW::setRandomSeed(int seed) {
     if(mRandomSeed == seed) return;
 
-    mRandomSeed = seed * 1024;
+    mRandomSeed = seed;
 }
 
 void VBufferSW::createBuffers() {

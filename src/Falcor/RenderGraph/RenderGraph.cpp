@@ -91,7 +91,8 @@ void RenderGraph::setScene(const Scene::SharedPtr& pScene) {
 }
 
 void RenderGraph::setRandomSeed(int seed) {
-    mRandomSeed = seed;
+    int _seed = seed * 1024; // we do this to eliminate possible inter-frame noise "wrapping"
+    mRandomSeed = _seed;
 
     for(auto& entry: mNodeData) {
         if(entry.second.pPass) entry.second.pPass->setRandomSeed(mRandomSeed);

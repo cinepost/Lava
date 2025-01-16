@@ -83,6 +83,7 @@ RWTexture2D<float4> gInOutColor;
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
   uint              gSampleNumber;                 // Interframe sample number.
+  int               gRandomSeed;
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
   float16_t3        gColorLimit = float3(10.0, 10.0, 10.0);
@@ -247,7 +248,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     float3 rayShadowOrigin = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
 
-    [[branch ]] 
     if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
         rayShadowOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.frame.N, triangleHit.getBarycentricWeights());
     } else {
@@ -613,7 +613,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
     // Sample generator
-    SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber);
+    SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber + gRandomSeed);
 
 #if USE_DEPTH_OF_FIELD
     const float3 rayDir = normalize(gScene.camera.computeRayThinlens(pixelPos, gFrameDim, sampleNext2D(sg)).dir);
