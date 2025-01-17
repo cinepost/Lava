@@ -309,6 +309,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         var["gNoiseOffset"] = noiseOffset;
         var["gSamplesPerFrame"]  = mFrameSampleCount;
         var["gSampleNumber"] = mSampleNumber++;
+        var["gRandomSeed"] = mRandomSeed;
         var["gColorLimit"] = mColorLimit;
         var["gIndirectColorLimit"] = mIndirectColorLimit;
         var["gRayDiffuseLimit"] = mRayDiffuseLimit;
@@ -339,10 +340,12 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
                 mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
                 mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
                 mpTransparentShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
+                mpTransparentShadingPass["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
             } else {
                 // Legacy (visibility buffer) mode shading
                 mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
                 mpShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
+                mpShadingPass["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
             }
             mSampleNumber++;
         }
@@ -351,6 +354,12 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
 
     mDirty = false;
+}
+
+void DeferredLightingPass::setRandomSeed(int seed) {
+    if(mRandomSeed = seed) return;
+
+    mRandomSeed = seed;
 }
 
 void DeferredLightingPass::createBuffers(RenderContext* pContext, const RenderData& renderData) {

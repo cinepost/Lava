@@ -96,6 +96,7 @@ struct VBufferSW {
     float2  frameDimInv;
     float2  frameDimInv2;
     uint    sampleNumber;
+    int     randomSeed;
     uint    dispatchX;
     uint    meshletDrawsCount;
     float   minScreenEdgeLen;

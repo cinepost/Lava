@@ -40,7 +40,11 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		void setOutputFormat(ResourceFormat format);
 
 		void setDistanceRange(float2 range);
-		inline Falcor::ResourceFormat format() const { return mOutputFormat; }
+		const Falcor::ResourceFormat& format() const { return mOutputFormat; }
+	
+	protected:
+
+		virtual void setRandomSeed(int seed) override;
 
 	protected:
 		AmbientOcclusionPass(Device::SharedPtr pDevice, const Dictionary& dict);
@@ -60,6 +64,8 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		float2                      mDistanceRange = {1.f, 2.f};
 		uint                        mShadingRate = 1;
 		uint                        mSampleNumber = 0;
+
+		int                         mRandomSeed = 0;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_AMBIENTOCCLUSIONPASS_AMBIENTOCCLUSIONPASS_H_

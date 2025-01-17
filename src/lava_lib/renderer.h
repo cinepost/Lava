@@ -125,6 +125,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     void renderSample();
     const uint8_t*  getAOVPlaneImageData(const AOVName& name);
 
+    void setRandomSeed(int seed);
+
     Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
 
     /** Query AOV output (if exist) geometry
@@ -230,6 +232,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     bool mMainAOVPlaneExist = false;
     bool mInited = false;
     bool mDirty = true;
+
+    int mRandomSeed = 0;
 
   private:
     friend class RendererIface;

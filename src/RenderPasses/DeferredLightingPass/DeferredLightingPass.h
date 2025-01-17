@@ -87,6 +87,10 @@ class PASS_API DeferredLightingPass : public RenderPass {
 
     void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
 
+	protected:
+
+		virtual void setRandomSeed(int seed) override;
+
 	private:
 		DeferredLightingPass(Device::SharedPtr pDevice);
 		
@@ -115,6 +119,8 @@ class PASS_API DeferredLightingPass : public RenderPass {
 
 		float 			mRayContribThreshold = 0.1f;
 		uint      	mRussRouletteLevel = 2u;
+
+		int         mRandomSeed = 0;
 
 		// Sampling buffer (optional)
 		VisibilitySamplesContainer::SharedConstPtr 	mpVisibilitySamplesContainer;

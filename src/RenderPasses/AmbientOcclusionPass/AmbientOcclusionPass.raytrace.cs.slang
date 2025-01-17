@@ -23,11 +23,11 @@ import Utils.Sampling.SampleGenerator;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-cbuffer PerFrameCB
-{
-    uint  gSampleNumber;
-    uint2 gResolution;
-    float2 gDistanceRange;   // min/max occlusion distance values
+cbuffer PerFrameCB {
+    uint    gSampleNumber;
+    uint2   gResolution;
+    float2  gDistanceRange;   // min/max occlusion distance values
+    int     gRandomSeed;
 }
 
 // Input edge detection data.
@@ -66,7 +66,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
     #if is_valid(gVBuffer)
         const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
         if(hit.isValid() && hit.getType() == HitType::Triangle) {
-            SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber);
+            SampleGenerator sg = SampleGenerator(pixelPos, gSampleNumber + gRandomSeed);
             const float3 rayDir = normalize(gScene.camera.computeRayPinhole(pixelPos, gResolution).dir);
             
             ITextureSampler lod = ExplicitLodTextureSampler(0.f);

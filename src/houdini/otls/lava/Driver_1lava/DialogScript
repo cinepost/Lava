@@ -1684,15 +1684,6 @@
             }
 
             parm {
-                name    "lv_samplelock"
-                label   "Sample Lock"
-                type    toggle
-                default { "0" }
-                help    ""
-                parmtag { "spare_category" "Sampling" }
-            }
-
-            parm {
                 name    "lv_sampling_pattern"
                 label   "Sampling Pattern"
                 type    string
@@ -1705,6 +1696,15 @@
                     "halton"        "Halton"
                 }
                 parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_randomseed"
+                label   "Random Seed"
+                type    integer
+                default { "0" }
+                help    ""
+                parmtag { "spare_category" "Sampling" }
             }
         }
 

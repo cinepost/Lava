@@ -90,6 +90,15 @@ void RenderGraph::setScene(const Scene::SharedPtr& pScene) {
     mRecompile = true;
 }
 
+void RenderGraph::setRandomSeed(int seed) {
+    int _seed = seed * 1024; // we do this to eliminate possible inter-frame noise "wrapping"
+    mRandomSeed = _seed;
+
+    for(auto& entry: mNodeData) {
+        if(entry.second.pPass) entry.second.pPass->setRandomSeed(mRandomSeed);
+    }
+}
+
 uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName) {
     assert(pPass);
     uint32_t passIndex = getPassIndex(passName);
@@ -103,6 +112,7 @@ uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::str
 
     pPass->mPassChangedCB = [this]() { mRecompile = true; };
     pPass->mName = passName;
+    pPass->setRandomSeed(mRandomSeed);
 
     if (mpScene) pPass->setScene(mpDevice->getRenderContext(), mpScene);
     mNodeData[passIndex] = { passName, pPass };
