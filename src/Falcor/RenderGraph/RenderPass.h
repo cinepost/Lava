@@ -142,7 +142,6 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     inline const std::string& getDesc() const { return mInfo.desc; }
 
-
     /** Called before render graph compilation. Describes I/O requirements of the pass.
         The function may be called repeatedly and should not perform any expensive operations.
         The requirements can't change after the graph is compiled. If the I/O are dynamic, you'll need to
@@ -199,7 +198,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Get the current pass' name as defined in the graph
     */
-    inline const std::string& getName() const { return mName; }
+    const std::string& getName() const { return mName; }
 
  protected:
     friend class RenderGraph;
@@ -209,7 +208,11 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
         Call this function if the I/O requirements of the pass have changed.
         During the recompile, reflect() will be called for the pass to report the new requirements.
     */
-    inline void requestRecompile() { mPassChangedCB(); }
+    void requestRecompile() { mPassChangedCB(); }
+
+        /** Set pass random generators seed
+    */
+    virtual void setRandomSeed(int seed) {};
 
     const Info mInfo;
     std::string mName;

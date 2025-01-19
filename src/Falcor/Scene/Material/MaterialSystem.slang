@@ -61,7 +61,6 @@ struct MaterialSystem
     Texture2D<float4> materialTextures[1]; // Zero-length arrays are not supported.
 #endif
 
-
     StructuredBuffer<ExtendedTextureData> extendedTexturesData;
 
     StructuredBuffer<VirtualTextureData>  virtualTexturesData;
@@ -256,7 +255,7 @@ struct MaterialSystem
                             return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
                         case ExtendedTextureData::Mode::Virtual:
                             uint32_t virtualTextureID = extendedTexturesData[tileID].virtualID;
-                            return lod.sampleVirtualTexture(materialTextures[tileID], udimTileSampler, float2(uv.x , 1.0f - uv.y), virtualTexturesData[virtualTextureID]);
+                            return lod.sampleVirtualTexture(materialTextures[tileID], udimTileSampler, udim_uv, virtualTexturesData[virtualTextureID]);
                         case ExtendedTextureData::Mode::Uniform:
                             return uniformValue;
                         default:

@@ -77,6 +77,10 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
 
+	protected:
+
+		virtual void setRandomSeed(int seed) override;
+
 	private:
 		void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
@@ -118,6 +122,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		uint mMaxMicroTrianglesPerThread = 1;
 
 		float mOpacityLimit = 0.995f;
+
+		int mRandomSeed = 0;
 
 		ComputePass::SharedPtr 	mpComputeMeshletsBuilderPass;
 		ComputePass::SharedPtr 	mpComputeFrustumCullingPass;

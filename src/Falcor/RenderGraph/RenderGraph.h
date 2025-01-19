@@ -117,6 +117,8 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void endFrame();
     void endFrame(RenderContext* pContext, uint32_t frameNumber = 0);
 
+    void setRandomSeed(int seed);
+
     /** Resolves graph's per frame sparse resources
     */
     void resolvePerFrameSparseResources(RenderContext* pContext);
@@ -286,6 +288,8 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     RenderGraphExe::SharedPtr mpExe;
     RenderGraphCompiler::Dependencies mCompilerDeps;
     bool mRecompile = false;
+
+    int mRandomSeed = 0;
 };
 
 }  // namespace Falcor

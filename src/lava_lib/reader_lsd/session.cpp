@@ -260,6 +260,8 @@ void Session::cmdReset() {
 bool Session::cmdRaytrace() {
 	PROFILE(mpDevice, "cmdRaytrace");
 
+	if(!mpRenderer) return false;
+
 	// Set up image sampling
 	const int imageSamples = mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
@@ -278,6 +280,8 @@ bool Session::cmdRaytrace() {
 
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
+
+	int random_seed = mpGlobal->getPropertyValue(ast::Style::IMAGE, "randomseed", int(0));
 
   passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
   passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
@@ -319,6 +323,8 @@ bool Session::cmdRaytrace() {
 
 	passDict["MAIN.VBufferRasterPass.highp_depth"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.highp_depth", bool(false));
 	passDict["MAIN.VBufferRasterPass.better_aa"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.better_aa", bool(false));
+
+	mpRenderer->setRandomSeed(random_seed);
 
 	auto pMainOutputPlane = mpRenderer->getAOVPlane("MAIN");
 

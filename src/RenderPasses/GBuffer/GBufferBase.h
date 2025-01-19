@@ -80,6 +80,7 @@ class PASS_API GBufferBase : public RenderPass {
 		virtual void parseDictionary(const Dictionary& dict);
 		void updateFrameDim(const uint2 frameDim);
 		void updateSamplePattern();
+
 		Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
 
 		// Internal state

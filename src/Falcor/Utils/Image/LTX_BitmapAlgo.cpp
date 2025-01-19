@@ -93,7 +93,7 @@ static uint32_t writeTailData(FILE *pFile, TLCInfo& compressionInfo, const std::
 	return (uint32_t)bytes_written;
 }
 
-bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
+bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo, bool speedUp) {
 	assert(pFile);
 
 	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
@@ -258,13 +258,25 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 		LLOG_TRC << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
 		partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
-
-		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
 		bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
 		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
-		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-		
+		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
+
+		if(speedUp) {
+			// Much faster but some information lost
+
+			//oiio::ImageBuf tmpBuff = oiio::ImageBufAlgo::resample(srcBuff, true, roi);
+			oiio::ImageBuf tmpBuff = oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi);
+
+			tmpBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			srcBuff.copy(tmpBuff, spec.format);
+			
+		} else {
+			// Much slower but no information loss
+			oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+		}
+
 		for(uint32_t z = 0; z < pagesCountZ; z++) {
 			for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
 				
@@ -372,14 +384,6 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	
 	LLOG_TRC << "Tail data size " << std::to_string(tailDataSize);
 
-	return true;
-}
-
-bool ltxCpuGenerateAndWriteMIPTilesHQFast(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-	return true;
-}
-
-bool ltxCpuGenerateAndWriteMIPTilesLQ(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
 	return true;
 }
 

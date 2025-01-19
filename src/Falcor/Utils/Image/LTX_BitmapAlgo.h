@@ -24,17 +24,9 @@ struct TLCInfo {
 	uint16_t *pCompressedPageSizes = nullptr;
 };
 
-/* Slow highest possible quility algorithm suitable for textures of any dimensions
+/* Algorithm suitable for textures of any dimensions
  */
-bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo);
-
-/* Faster highest possible quility algorithm with a higher memory footprint suitable for textures of any dimensions
- */
-bool ltxCpuGenerateAndWriteMIPTilesHQFast(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo);
-
-/* Fastest low quility algorithm suitable for textures of any dimensions
- */
-bool ltxCpuGenerateAndWriteMIPTilesLQ(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo);
+bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo, bool speedUp = true);
 
 /* Fast algorithm for textures with "power of two" side dimesions 
  */
