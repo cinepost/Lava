@@ -81,7 +81,6 @@ class PASS_API AccumulatePass : public RenderPass {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
-
     void setScene(const Scene::SharedPtr& pScene);
     void enableAccumulation(bool enable = true);
 

@@ -33,6 +33,7 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+		virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
 		virtual Dictionary getScriptingDictionary() override;
 
 		/** Set samples per frame count

@@ -186,6 +186,10 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
     mDirty = true;
 }
 
+bool DeferredLightingPass::beginFrame(RenderContext *pContext, const RenderData& renderData) {
+    mSampleNumber = 0;
+}
+
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
 
@@ -308,7 +312,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         var["gFrameDim"] = mFrameDim;
         var["gNoiseOffset"] = noiseOffset;
         var["gSamplesPerFrame"]  = mFrameSampleCount;
-        var["gSampleNumber"] = mSampleNumber++;
+        var["gSampleNumber"] = mSampleNumber;
         var["gRandomSeed"] = mRandomSeed;
         var["gColorLimit"] = mColorLimit;
         var["gIndirectColorLimit"] = mIndirectColorLimit;
@@ -347,9 +351,10 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
                 mpShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
                 mpShadingPass["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
             }
-            mSampleNumber++;
         }
     }
+
+    mSampleNumber++;
 
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();
 
