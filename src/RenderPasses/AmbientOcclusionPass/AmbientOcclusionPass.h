@@ -32,7 +32,8 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-
+    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
+    
 		/** Set shading rate (supersampling)
 		*/
 		AmbientOcclusionPass& setShadingRate(int rate);

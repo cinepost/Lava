@@ -93,6 +93,7 @@ AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRen
 
 AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     mpDevice = pDevice;
+    mSampleNumber = 0;
 
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -169,6 +170,10 @@ void AmbientOcclusionPass::setRandomSeed(int seed) {
     if(mRandomSeed == seed) return;
 
     mRandomSeed = seed;
+}
+
+bool AmbientOcclusionPass::beginFrame(RenderContext *pContext, const RenderData& renderData) {
+    mSampleNumber = 0;
 }
 
 void AmbientOcclusionPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
