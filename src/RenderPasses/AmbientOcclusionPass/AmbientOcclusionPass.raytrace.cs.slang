@@ -83,7 +83,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
             
             RayDesc ray;
             ray.Origin = sd.posW;
-            ray.TMin = .0001f;
+            ray.TMin = .001f;
             ray.TMax = gDistanceRange.y;
 
             float occlusion = 0.f;

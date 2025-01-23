@@ -362,7 +362,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 }
 
 void DeferredLightingPass::setRandomSeed(int seed) {
-    if(mRandomSeed = seed) return;
+    if(mRandomSeed == seed) return;
 
     mRandomSeed = seed;
 }
