@@ -58,11 +58,13 @@ static const float kMinGGXAlpha = 0.0001f; //0.0064f;
 */
 struct DiffuseReflectionLambert : IBSDF
 {
-    float3 albedo;  ///< Diffuse albedo.
+    float3 albedo;          ///< Diffuse albedo.
+    float roughness;        ///< Roughness before remapping.
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
+        if (wo.z < kMinCosTheta) return float3(0.f);
+        //if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
         return M_1_PI * albedo * wo.z;
     }
@@ -112,8 +114,10 @@ struct DiffuseReflectionDisney : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
+        if (wo.z < kMinCosTheta) return float3(0.f);
+        //if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
+        
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
@@ -148,7 +152,7 @@ struct DiffuseReflectionDisney : IBSDF
         float woDotH = dot(wo, h);
         float fd90 = 0.5f + 2.f * woDotH * woDotH * roughness;
         float fd0 = 1.f;
-        float wiScatter = evalFresnelSchlick(fd0, fd90, wi.z);
+        float wiScatter = 1.f; //evalFresnelSchlick(fd0, fd90, wi.z);
         float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
         return albedo * wiScatter * woScatter;
     }
@@ -175,7 +179,9 @@ struct DiffuseReflectionFrostbite : IBSDF {
     float roughness;        ///< Roughness before remapping.
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg) {
-        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
+        
+        if (wo.z < kMinCosTheta) return float3(0.f);
+        //if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
@@ -797,6 +803,16 @@ struct StandardBSDF : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
+
+
+        //DiffuseReflectionLambert _diffuseReflection;
+        //DiffuseReflectionDisney _diffuseReflection;
+        //DiffuseReflectionFrostbite _diffuseReflection;
+
+        //_diffuseReflection.albedo = float3(1.0f);
+        //_diffuseReflection.roughness = 0.5f;
+        //return float3(0, 1, 0) * _diffuseReflection.eval(wi, wo, sg);
+
         float3 result = 0.f;
         if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg);
         if (pDiffuseTransmission > 0.f) result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo, sg);

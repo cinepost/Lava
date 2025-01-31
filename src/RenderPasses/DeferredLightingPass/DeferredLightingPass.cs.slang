@@ -265,8 +265,12 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod, hints);
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
+    
     const float3 N = bsdfProperties.guideNormal;
+    //const float3 N = faceforward(bsdfProperties.guideNormal, rayData.dir, geometryFaceNormalW);
     //const float3 N = sd.frame.N;
+
+    return float3(dot(sd.V, N), dot(sd.V, sd.frame.N), 0.0);
 
     uint shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission;
     
@@ -317,6 +321,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         sd.mtl.setActiveLobes(shadingLobes);
 
         if (sampleLight(sd.posW, N, light, rnd, ls) && (dot(ls.dir, N) > kMinCosTheta)) {
+            
             [[branch]]if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;

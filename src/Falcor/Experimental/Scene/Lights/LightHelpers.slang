@@ -737,8 +737,8 @@ bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData 
             return intersectRectAreaLight(shadingPosW, dir, light, ls);
         case LightType::Disc:
             return intersectDiscAreaLight(shadingPosW, dir, light, ls);
-        //case LightType::Distant:
-        //    return intersectDistantLight(shadingPosW, dir, light, ls);
+        case LightType::Distant:
+            return intersectDistantLight(shadingPosW, dir, light, ls);
         case LightType::Env:
             return intersectEnvironmentLight(shadingPosW, dir, light, ls);
         case LightType::PhysSunSky:
