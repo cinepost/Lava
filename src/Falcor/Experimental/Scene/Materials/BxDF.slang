@@ -74,7 +74,8 @@ struct DiffuseReflectionLambert : IBSDF
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobeType = (uint)LobeType::DiffuseReflection;
 
-        if (min(wi.z, wo.z) < kMinCosTheta)
+        //if (min(wi.z, wo.z) < kMinCosTheta)
+        if (wo.z < kMinCosTheta)
         {
             weight = {};
             return false;
@@ -86,7 +87,8 @@ struct DiffuseReflectionLambert : IBSDF
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
+        if (wo.z < kMinCosTheta) return 0.f;
+        //if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
 
         return M_1_PI * wo.z;
     }
@@ -126,7 +128,8 @@ struct DiffuseReflectionDisney : IBSDF
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobeType = (uint)LobeType::DiffuseReflection;
 
-        if (min(wi.z, wo.z) < kMinCosTheta)
+        //if (min(wi.z, wo.z) < kMinCosTheta)
+        if (wo.z < kMinCosTheta)
         {
             weight = {};
             return false;
@@ -138,7 +141,8 @@ struct DiffuseReflectionDisney : IBSDF
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
+        if (wo.z < kMinCosTheta) return 0.f;
+        //if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
 
         return M_1_PI * wo.z;
     }
@@ -152,7 +156,7 @@ struct DiffuseReflectionDisney : IBSDF
         float woDotH = dot(wo, h);
         float fd90 = 0.5f + 2.f * woDotH * woDotH * roughness;
         float fd0 = 1.f;
-        float wiScatter = 1.f; //evalFresnelSchlick(fd0, fd90, wi.z);
+        float wiScatter = evalFresnelSchlick(fd0, fd90, max(0.0f, wi.z));
         float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
         return albedo * wiScatter * woScatter;
     }
@@ -183,7 +187,7 @@ struct DiffuseReflectionFrostbite : IBSDF {
         if (wo.z < kMinCosTheta) return float3(0.f);
         //if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
-        return evalWeight(wi, wo) * M_1_PI * wo.z;
+        return evalWeight(wi, wo) * M_1_PI * abs(wo.z);
     }
 
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
@@ -191,7 +195,8 @@ struct DiffuseReflectionFrostbite : IBSDF {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobeType = (uint)LobeType::DiffuseReflection;
 
-        if (min(wi.z, wo.z) < kMinCosTheta)
+        //if (min(wi.z, wo.z) < kMinCosTheta)
+        if (wo.z < kMinCosTheta)
         {
             weight = {};
             return false;
@@ -203,7 +208,8 @@ struct DiffuseReflectionFrostbite : IBSDF {
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
+        if (wo.z < kMinCosTheta) return 0.f;
+        //if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
 
         return M_1_PI * wo.z;
     }
@@ -219,8 +225,11 @@ struct DiffuseReflectionFrostbite : IBSDF {
         float energyFactor = lerp(1.f, 1.f / 1.51f, roughness);
         float fd90 = energyBias + 2.f * woDotH * woDotH * roughness;
         float fd0 = 1.f;
-        float wiScatter = evalFresnelSchlick(fd0, fd90, wi.z);
-        float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
+        float wiScatter = evalFresnelSchlick(fd0, fd90, max(0.f, wi.z));
+        float woScatter = evalFresnelSchlick(fd0, fd90, max(0.f, wo.z));
+        
+        //return float3(0.0, 1.0, 0.0) * wiScatter * woScatter, woScatter);
+
         return albedo * wiScatter * woScatter * energyFactor;
     }
 
@@ -245,7 +254,8 @@ struct DiffuseTransmissionLambert : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wi.z, -wo.z) < kMinCosTheta) return float3(0.f);
+        if ((-wo.z) < kMinCosTheta) return float3(0.f);
+        //if (min(wi.z, -wo.z) < kMinCosTheta) return float3(0.f);
 
         return M_1_PI * albedo * -wo.z;
     }
@@ -256,7 +266,8 @@ struct DiffuseTransmissionLambert : IBSDF
         wo.z = -wo.z;
         lobeType = (uint)LobeType::DiffuseTransmission;
 
-        if (min(wi.z, -wo.z) < kMinCosTheta)
+        //if (min(wi.z, -wo.z) < kMinCosTheta)
+        if ((-wo.z) < kMinCosTheta)
         {
             weight = {};
             return false;
@@ -268,7 +279,8 @@ struct DiffuseTransmissionLambert : IBSDF
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wi.z, -wo.z) < kMinCosTheta) return 0.f;
+        if ((-wo.z) < kMinCosTheta) return 0.f;
+        //if (min(wi.z, -wo.z) < kMinCosTheta) return 0.f;
 
         return M_1_PI * -wo.z;
     }
@@ -298,7 +310,8 @@ struct SpecularReflectionMicrofacet : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
+        if (wo.z < kMinCosTheta) return float3(0.f);
+        //if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
 #if EnableDeltaBSDF
         // Handle delta reflection.
@@ -310,7 +323,7 @@ struct SpecularReflectionMicrofacet : IBSDF
         float3 h = normalize(wi + wo);
         float wiDotH = dot(wi, h);
 
-        float D = evalNdfGGX(alpha, h.z);
+        float D = evalNdfGGX(alpha, max(0.0, h.z));
 #if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
         float G = evalMaskingSmithGGXSeparable(alpha, wi.z, wo.z);
 #elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
@@ -387,7 +400,8 @@ struct SpecularReflectionMicrofacet : IBSDF
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
+        if (wo.z < kMinCosTheta) return 0.f;
+        //if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
 
 #if EnableDeltaBSDF
         // Handle delta reflection.
@@ -803,15 +817,6 @@ struct StandardBSDF : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-
-
-        //DiffuseReflectionLambert _diffuseReflection;
-        //DiffuseReflectionDisney _diffuseReflection;
-        //DiffuseReflectionFrostbite _diffuseReflection;
-
-        //_diffuseReflection.albedo = float3(1.0f);
-        //_diffuseReflection.roughness = 0.5f;
-        //return float3(0, 1, 0) * _diffuseReflection.eval(wi, wo, sg);
 
         float3 result = 0.f;
         if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg);
