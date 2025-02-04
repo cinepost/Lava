@@ -43,8 +43,6 @@ import DeferredLightingAOV;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
-static const bool kAdjustShadingNormals = true;
-
 
 // Extra input channels
 Texture2D<float>            gDepth;
@@ -199,15 +197,9 @@ struct RayData {
 uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary) {
     uint hints = 0;
     if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle) {
-
-//#if GBUFFER_ADJUST_SHADING_NORMALS
-        if (kAdjustShadingNormals || isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
-//#else
-        if (kAdjustShadingNormals && !isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
-//#endif
-
+        hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
     }
-    return 0;//hints;
+    return hints;
 }
 
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
@@ -266,9 +258,9 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
     
-    const float3 N = bsdfProperties.guideNormal;
+    //const float3 N = bsdfProperties.guideNormal;
     //const float3 N = faceforward(bsdfProperties.guideNormal, rayData.dir, geometryFaceNormalW);
-    //const float3 N = sd.frame.N;
+    const float3 N = sd.frame.N;
 
     //return float3(dot(sd.V, faceforward(bsdfProperties.guideNormal, rayData.dir, geometryFaceNormalW)), dot(sd.V, sd.frame.N), dot(sd.V, N));
 
@@ -322,9 +314,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
         if (sampleLight(sd.posW, N, light, rnd, ls) && (dot(ls.dir, N) > kMinCosTheta)) {
 
-            //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-            //return mi.eval(sd, ls.dir, sg);
-            
             [[branch]]if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;
