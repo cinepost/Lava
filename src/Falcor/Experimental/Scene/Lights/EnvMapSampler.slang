@@ -122,7 +122,7 @@ struct EnvMapSampler {
         float pdf = importanceMap[pos] / avg_w;
 
         result.dir = normalize(envMap.toWorld(dir));
-        result.pdf = pdf * M_1_4PI;
+        result.pdf = pdf;
         result.Le = envMap.eval(result.dir, 0.0);
 
         return true;
@@ -140,7 +140,8 @@ struct EnvMapSampler {
         float2 uv = ndir_to_oct_equal_area_unorm(envMap.toLocal(dir));
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap.SampleLevel(importanceSampler, uv, 0) / avg_w;
-        return pdf * (1.f / M_4PI);
+
+        return pdf * M_1_4PI;
     }
 
     SamplerState        importanceSampler;      ///< Point sampling with clamp to edge.

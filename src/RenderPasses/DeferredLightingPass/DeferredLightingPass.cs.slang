@@ -43,8 +43,6 @@ import DeferredLightingAOV;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
-static const bool kAdjustShadingNormals = true;
-
 
 // Extra input channels
 Texture2D<float>            gDepth;
@@ -199,15 +197,9 @@ struct RayData {
 uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary) {
     uint hints = 0;
     if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle) {
-
-//#if GBUFFER_ADJUST_SHADING_NORMALS
-        if (kAdjustShadingNormals || isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
-//#else
-        if (kAdjustShadingNormals && !isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
-//#endif
-
+        hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
     }
-    return 0;//hints;
+    return hints;
 }
 
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
@@ -254,8 +246,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         rayShadowOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, triangleHit.getBarycentricWeights());
     }
 
-    //rayOrigin -= rayData.dir * gRayBias;
-
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowOriginQuery;
     //let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE;
@@ -267,8 +257,12 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod, hints);
 
     BSDFProperties bsdfProperties = mi.getProperties(sd);
-    const float3 N = bsdfProperties.guideNormal;
-    //const float3 N = sd.frame.N;
+    
+    //const float3 N = bsdfProperties.guideNormal;
+    //const float3 N = faceforward(bsdfProperties.guideNormal, rayData.dir, geometryFaceNormalW);
+    const float3 N = sd.frame.N;
+
+    //return float3(dot(sd.V, faceforward(bsdfProperties.guideNormal, rayData.dir, geometryFaceNormalW)), dot(sd.V, sd.frame.N), dot(sd.V, N));
 
     uint shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission;
     
@@ -301,12 +295,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     const uint lightSetIndex = gScene.getLightSetIndex(triangleHit.instanceID);
     const uint lightCount = gScene.getLightCount(lightSetIndex);
 
-    //if(lightSetIndex == 0) surfaceColor = float3(lightCount, 0, 0);
-    //if(lightSetIndex == 1) surfaceColor = float3(0, lightCount, 0);
-    //if(lightSetIndex == 2) surfaceColor = float3(0, 0, lightCount);
-
-    //return surfaceColor;
-
     // Process lights
     [loop]
     for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
@@ -325,6 +313,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
         sd.mtl.setActiveLobes(shadingLobes);
 
         if (sampleLight(sd.posW, N, light, rnd, ls) && (dot(ls.dir, N) > kMinCosTheta)) {
+
             [[branch]]if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;
@@ -357,17 +346,19 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
             }
 #endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
 
-            [[branch ]] if ((rayData.level == 0 && light.contributesDirectDiffuseIllumination()) || (rayData.level > 0 && light.contributesIndirectDiffuseIllumination())) {
+            if ((rayData.level == 0 && light.contributesDirectDiffuseIllumination()) || (rayData.level > 0 && light.contributesIndirectDiffuseIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                 diffuseColor += mi.eval(sd, ls.dir, sg) * ls.Li *((rayData.level == 0) ? light.directDiffuseIntensityMultiplier : light.indirectDiffuseIntensityMultiplier ) * shadowFactor * misDiffWeight;
             }
 
-            [[branch ]] if ((rayData.level == 0 && light.contributesDirectSpecularIllumination()) || (rayData.level > 0 && light.contributesIndirectSpecularIllumination())) {
-                sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misSpecWeight;
+            if ((rayData.level == 0 && light.contributesDirectSpecularIllumination()) || (rayData.level > 0 && light.contributesIndirectSpecularIllumination())) {
+                if(rayData.type != RayType::Diffuse) {
+                    sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+                    specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misSpecWeight;
 
-                sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
-                specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misRefrWeight;
+                    sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
+                    specularColor += mi.eval(sd, ls.dir, sg) * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misRefrWeight;
+                }
             }
 
             shadowColor *= shadowFactor;
@@ -383,11 +374,11 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 #endif
 
             uint _shadingLobes = 0;
-            [[branch ]] if ((rayData.level == 0 && light.contributesDirectDiffuseIllumination()) || (rayData.level > 0 && light.contributesIndirectDiffuseIllumination())) {
+            if ((rayData.level == 0 && light.contributesDirectDiffuseIllumination()) || (rayData.level > 0 && light.contributesIndirectDiffuseIllumination())) {
                 _shadingLobes |= (uint)LobeType::DiffuseReflection;
             }
 
-            [[branch ]] if ((rayData.level == 0 && light.contributesDirectSpecularIllumination()) || (rayData.level > 0 && light.contributesIndirectSpecularIllumination())) {
+            if ((rayData.level == 0 && light.contributesDirectSpecularIllumination()) || (rayData.level > 0 && light.contributesIndirectSpecularIllumination())) {
                 _shadingLobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission;
             }
             sd.mtl.setActiveLobes(_shadingLobes);
@@ -416,13 +407,11 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                         bsdfHitT = rayShadowOriginQuery.CommittedRayT();
 #endif
                     }
-
-                    [branch]
                     if(bsdfSample.isLobe(LobeType::DiffuseReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                         float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         diffuseColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directDiffuseIntensityMultiplier : light.indirectDiffuseIntensityMultiplier ) * shadowFactor * misWeight;
-                    } else if(bsdfSample.isLobe(LobeType::SpecularReflection)) {
+                    } else if(bsdfSample.isLobe(LobeType::SpecularReflection) && (rayData.type != RayType::Diffuse)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
                         float misWeight = evalMIS(1., mi.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         specularColor += bsdfSample.weight * ls.Li * ((rayData.level == 0) ? light.directSpecularIntensityMultiplier : light.indirectSpecularIntensityMultiplier ) * shadowFactor * misWeight;
@@ -451,7 +440,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     float3 colorLimit = rayData.level == 0 ? (float3)gColorLimit : (float3)gIndirectColorLimit;
     surfaceColor = float3(min(_surfaceColor.r, colorLimit.r), min(_surfaceColor.g, colorLimit.g), min(_surfaceColor.b, colorLimit.b));
     
-    [[branch ]] if( rayData.level >= maxRayLevel) return surfaceColor;
+    if( rayData.level >= maxRayLevel) return surfaceColor;
 
     /// Next hit point
     rayData.hit = {};
@@ -466,7 +455,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
 #ifdef _CACHE_NEXT_RAY    
     //Invalid bsdf sample. Terminate here
-    [[branch ]] if(!validBsdfSample) {
+    if(!validBsdfSample) {
         return surfaceColor;
     }
 
@@ -493,7 +482,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
             RayDesc ray;
             ray.Origin = sd.posW;
             ray.Direction = rayData.dir;
-            ray.TMin =  .001f;
+            ray.TMin = .001f;
             ray.TMax = 100000.0f;
 
             rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
@@ -503,10 +492,14 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
                 rayData.hit = HitInfo(getCommittedTriangleHit(rayQuery));
                 rayData.length += rayQuery.CommittedRayT();
 
-            } else {
-                if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission) ||
-                   bsdfSample.isLobe(LobeType::DeltaTransmission) || bsdfSample.isLobe(LobeType::DeltaReflection)) {
+                if(bsdfSample.isLobe(LobeType::Diffuse)) {
+                    rayData.type = RayType::Diffuse;
+                } else {
+                    rayData.type = RayType::Specular;
+                }
 
+            } else {
+                if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission) || bsdfSample.isLobe(LobeType::DeltaReflection)) {
                     [loop]
                     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
                         LightData light = gScene.getLight(lightIndex);

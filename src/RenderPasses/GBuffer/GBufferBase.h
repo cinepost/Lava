@@ -96,7 +96,7 @@ class PASS_API GBufferBase : public RenderPass {
 		ResourceFormat                  mDepthFormat = ResourceFormat::D32Float;
 		ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
-		uint 														mTransparencySamplesCount = 1;
+		uint 									  mTransparencySamplesCount = 1;
 
 		SamplePattern                   mSamplePattern = SamplePattern::Stratified; ///< Which camera jitter sample pattern to use.
 		uint32_t                        mSampleCount = 1024;                        ///< Sample count for camera jitter.

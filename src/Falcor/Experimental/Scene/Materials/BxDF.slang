@@ -58,7 +58,8 @@ static const float kMinGGXAlpha = 0.0001f; //0.0064f;
 */
 struct DiffuseReflectionLambert : IBSDF
 {
-    float3 albedo;  ///< Diffuse albedo.
+    float3 albedo;          ///< Diffuse albedo.
+    float roughness;        ///< Roughness before remapping.
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
@@ -112,8 +113,9 @@ struct DiffuseReflectionDisney : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
+        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
+        
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
@@ -175,9 +177,10 @@ struct DiffuseReflectionFrostbite : IBSDF {
     float roughness;        ///< Roughness before remapping.
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg) {
+        
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
-        return evalWeight(wi, wo) * M_1_PI * wo.z;
+        return evalWeight(wi, wo) * M_1_PI * abs(wo.z);
     }
 
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
@@ -215,6 +218,7 @@ struct DiffuseReflectionFrostbite : IBSDF {
         float fd0 = 1.f;
         float wiScatter = evalFresnelSchlick(fd0, fd90, wi.z);
         float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
+        
         return albedo * wiScatter * woScatter * energyFactor;
     }
 
@@ -304,7 +308,7 @@ struct SpecularReflectionMicrofacet : IBSDF
         float3 h = normalize(wi + wo);
         float wiDotH = dot(wi, h);
 
-        float D = evalNdfGGX(alpha, h.z);
+        float D = evalNdfGGX(alpha, max(0.0, h.z));
 #if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
         float G = evalMaskingSmithGGXSeparable(alpha, wi.z, wo.z);
 #elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
@@ -797,6 +801,7 @@ struct StandardBSDF : IBSDF
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
+
         float3 result = 0.f;
         if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg);
         if (pDiffuseTransmission > 0.f) result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo, sg);
