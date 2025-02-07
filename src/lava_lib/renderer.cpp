@@ -455,7 +455,10 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
-			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pPlane->getRenderPassesDict());
+			Dictionary d(mRenderPassesDict);
+			d.update(pPlane->getRenderPassesDict());
+
+			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, d);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 

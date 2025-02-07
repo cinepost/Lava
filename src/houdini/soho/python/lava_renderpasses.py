@@ -35,6 +35,7 @@ edgeDetectPassParms = {
 ambienOcclusionPassParms = {
     'shadingRate'               : SohoParm('lv_ambocc_pass_shading_rate',                'int',       [1], skipdefault=False),
     'distanceRange'             : SohoParm('lv_ambocc_pass_distance_range',              'float',     [1.0, 2.0], skipdefault=False),
+    'ignoreBackface'            : SohoParm('lv_ambocc_pass_ignore_backface',             'bool',      [0], skipdefault=False),
 }
 
 # Define a dictionary of standard passes with the relevant parameters.

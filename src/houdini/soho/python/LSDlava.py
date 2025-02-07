@@ -81,7 +81,10 @@ def initializeFeatures(settings):
     Renderer("renderer", "ptexrelativescale", "bool", "lv_ptexrelativescale")
     Renderer("renderer", "ptexscaleattr", "string", "lv_ptexscaleattr")
     Renderer("renderer", "ptexwraporient", "bool", "lv_ptexwraporient")
-    Renderer("renderer", "raybias", "float", "lv_raybias")
+    
+    Renderer("renderer", "autoraybias", "bool", "lv_ray_bias_auto", skipdefault=False)
+    Renderer("renderer", "raybias", "float", "lv_ray_bias", skipdefault=False)
+
     Renderer("renderer", "rayblurquality", "bool", "lv_rayblurquality")
     Renderer("renderer", "rayderivbias", "float", "lv_rayderivbias")
     Renderer("renderer", "rayderivrandom", "bool", "lv_rayderivrandom")
@@ -175,7 +178,6 @@ def initializeFeatures(settings):
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
     Image("image", "shadingrate", "int", "lv_shadingrate", skipdefault=False)
-    Image("image", "raybias", "float", "lv_ray_bias", skipdefault=False)
     Image("image", "areasampling", "string", "lv_area_lights_sampling_mode", skipdefault=False)
 
     Image("image", "saveoptions", "string", "lv_saveoptions")

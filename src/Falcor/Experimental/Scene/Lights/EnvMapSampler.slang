@@ -56,7 +56,7 @@ struct EnvMapSampler {
 
     /** Importance sampling of the environment map.
     */
-    bool sample(const float2 rnd, out EnvMapSample result) {
+    bool sample(const float2 rnd, out EnvMapSample result, float lod = 0.f) {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.
 
@@ -122,8 +122,8 @@ struct EnvMapSampler {
         float pdf = importanceMap[pos] / avg_w;
 
         result.dir = normalize(envMap.toWorld(dir));
-        result.pdf = pdf;
-        result.Le = envMap.eval(result.dir, 0.0);
+        result.pdf = pdf * M_1_4PI;
+        result.Le = envMap.eval(result.dir, lod);
 
         return true;
     }
@@ -140,7 +140,6 @@ struct EnvMapSampler {
         float2 uv = ndir_to_oct_equal_area_unorm(envMap.toLocal(dir));
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap.SampleLevel(importanceSampler, uv, 0) / avg_w;
-
         return pdf * M_1_4PI;
     }
 

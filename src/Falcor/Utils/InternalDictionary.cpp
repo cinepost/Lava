@@ -116,6 +116,10 @@ std::string InternalDictionary::toJsonString() const {
     return ss.str();
 }
 
+InternalDictionary& InternalDictionary::update(const InternalDictionary& d) {
+    for(auto const& e: d) mContainer[e.first] = e.second;
+}
+
 template<>
 InternalDictionary::Value::operator bool() const {
     if (mValue.type() == typeid(bool)) return std::any_cast<bool>(mValue); 

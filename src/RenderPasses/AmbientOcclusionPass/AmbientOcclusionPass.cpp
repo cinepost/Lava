@@ -63,11 +63,11 @@ namespace {
     const char kShaderFile[] = "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.raytrace.cs.slang";
     const std::string kShaderModel = "6_5";
 
-    const char kOutputChannel[]      = "output";
+    const char kOutputChannel[]         = "output";
     
-    const char kInputDepthChannel[]  = "depth";
-    const char kInputNormalChannel[] = "normal";
-    const char kInputVBufferChannel[] = "vbuffer";
+    const char kInputDepthChannel[]     = "depth";
+    const char kInputNormalChannel[]    = "normal";
+    const char kInputVBufferChannel[]   = "vbuffer";
 
     const ChannelList kEdgeDetectPassExtraInputChannels = {
         { kInputDepthChannel,            "gDepth",            "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
@@ -77,6 +77,8 @@ namespace {
 
     const std::string kShadingRate = "shadingRate";
     const std::string kDistanceRange = "distanceRange";
+    const std::string kIgnoreBackface = "ignoreBackface";
+    const std::string kRayBias = "rayBias";
     
 }
 
@@ -86,6 +88,8 @@ AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRen
     for (const auto& [key, value] : dict) {
         if (key == kShadingRate) pThis->setShadingRate(value);
         else if (key == kDistanceRange) pThis->setDistanceRange(value);
+        else if (key == kIgnoreBackface) pThis->setIgnoreBackface(value);
+        else if (key == kRayBias) pThis->setRayBias(value);
     }
 
     return pThis;
@@ -139,6 +143,7 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
             auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();
             defines.add(getValidResourceDefines(kEdgeDetectPassExtraInputChannels, renderData));
             defines.add("_SHADING_RATE", std::to_string(mShadingRate));
+            defines.add("_IGNORE_BACK_FACE", mIgnoreBackface ? "1" : "0");
             defines.add(mpSampleGenerator->getDefines());
 
             mpPassRayTrace = ComputePass::create(mpDevice, desc, defines, true);
@@ -157,13 +162,26 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
         auto cb_vars = mpPassRayTrace["PerFrameCB"];
         cb_vars["gSampleNumber"] = mSampleNumber++;
         cb_vars["gResolution"] = resolution;
-        cb_vars["gDistanceRange"] = mDistanceRange;
+        cb_vars["gFalloffRange"] = mDistanceRange;
         cb_vars["gRandomSeed"] = mRandomSeed;
+        cb_vars["gRayBias"] = mRayBias;
 
         mpPassRayTrace->execute(pRenderContext, resolution.x, resolution.y);
     }
 
     mDirty = false;
+}
+
+void AmbientOcclusionPass::setRayBias(float bias) {
+    if(mRayBias == bias) return;
+
+    mRayBias = bias;
+}
+
+void AmbientOcclusionPass::setIgnoreBackface(bool state) {
+    if(mIgnoreBackface == state) return;
+    mIgnoreBackface = state;
+    mDirty = true;
 }
 
 void AmbientOcclusionPass::setRandomSeed(int seed) {

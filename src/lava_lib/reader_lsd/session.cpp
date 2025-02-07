@@ -281,7 +281,10 @@ bool Session::cmdRaytrace() {
 	// Rendering passes configuration
 	auto& passDict = mpRenderer->getRenderPassesDict();
 
-	int random_seed = mpGlobal->getPropertyValue(ast::Style::IMAGE, "randomseed", int(0));
+	const int random_seed = mpGlobal->getPropertyValue(ast::Style::IMAGE, "randomseed", int(0));
+	const bool auto_ray_bias = mpGlobal->getPropertyValue(ast::Style::RENDERER, "autoraybias", bool(true));
+
+	passDict["rayBias"] = auto_ray_bias ? 0.0f : mpGlobal->getPropertyValue(ast::Style::RENDERER, "raybias", float(0.0f));
 
   passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
   passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
@@ -300,7 +303,6 @@ bool Session::cmdRaytrace() {
 
 	passDict["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(4));
 
-	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
 	passDict["opacityLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "opacitylimit", float(0.995f));
 

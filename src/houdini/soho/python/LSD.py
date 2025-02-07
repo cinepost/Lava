@@ -70,23 +70,22 @@ controlParameters = {
     #   Environment maps for the selected objects
     #   The main image from the camera
     #   A PBR render target
-    'shadow'  : SohoParm('render_any_shadowmap','int', [1], False,key='shadow'),
-    'env'     : SohoParm('render_any_envmap',   'int', [1], False,key='env'),
-    'photon'  : SohoParm('render_any_photonmap', 'int', [1], False, key='photon'),
+    'shadow'  :     SohoParm('render_any_shadowmap','int', [1], False,key='shadow'),
+    'env'     :     SohoParm('render_any_envmap',   'int', [1], False,key='env'),
+    'photon'  :     SohoParm('render_any_photonmap', 'int', [1], False, key='photon'),
     'pointcloud'  : SohoParm('render_any_pointcloud', 'int', [1], False, key='pointcloud'),
-    'main'    : SohoParm('render_viewcamera','int', [1], False, key='main'),
-    'decl'    : SohoParm('declare_all_shops', 'int', [0], False, key='decl'),
-    'engine'  : SohoParm('lv_renderengine',  'string', ['micropoly'],
+    'main'    :     SohoParm('render_viewcamera','int', [1], False, key='main'),
+    'decl'    :     SohoParm('declare_all_shops', 'int', [0], False, key='decl'),
+    'engine'  :     SohoParm('lv_renderengine',  'string', ['micropoly'],
                                             False, key='engine'),
 
     'lv_inheritproperties' : SohoParm('lv_inheritproperties', 'int', [0], False),
 
-    'lv_embedvex' :SohoParm('lv_embedvex',  'int', [0], False, key='embedvex'),
-    'lv_quickexit':SohoParm('lv_quickexit', 'int', [1], False),
-    'lv_numpathmap':SohoParm('lv_numpathmap', 'int', [0], False),
-    'lv_isuvrendering':SohoParm('lv_isuvrendering', 'bool', [False], False),
-    'lv_defaults' : SohoParm('lv_defaults', 'string',
-                            ['RenderProperties.json'], False),
+    'lv_embedvex' :     SohoParm('lv_embedvex',  'int', [0], False, key='embedvex'),
+    'lv_quickexit':     SohoParm('lv_quickexit', 'int', [1], False),
+    'lv_numpathmap':    SohoParm('lv_numpathmap', 'int', [0], False),
+    'lv_isuvrendering': SohoParm('lv_isuvrendering', 'bool', [False], False),
+    'lv_defaults' :     SohoParm('lv_defaults', 'string', ['RenderProperties.json'], False),
 }
 
 parmlist = soho.evaluate(controlParameters)
@@ -187,20 +186,17 @@ if len( camera_list ) == 0:
     camera_list.append( cam )
 
 # First, we add objects based on their display flags or dimmer values
-soho.addObjects(now, stdobject, stdlights, stdfog, True,
-    geo_parm='vobject', light_parm='alights', fog_parm='vfog')
-soho.addObjects(now, forceobject, forcelights, forcefog, False,
-    geo_parm='forceobject', light_parm=forcelightsparm, fog_parm='forcefog')
+soho.addObjects(now, stdobject, stdlights, stdfog, True, geo_parm='vobject', light_parm='alights', fog_parm='vfog')
+soho.addObjects(now, forceobject, forcelights, forcefog, False, geo_parm='forceobject', light_parm=forcelightsparm, fog_parm='forcefog')
 
 # Force matte & phantom objects to be visible too
 if matte_objects:
-    soho.addObjects(now, matte_objects, '', '', False,
-        geo_parm='matte_objects', light_parm='', fog_parm='')
+    soho.addObjects(now, matte_objects, '', '', False, geo_parm='matte_objects', light_parm='', fog_parm='')
+
 if phantom_objects:
-    soho.addObjects(now, phantom_objects, '', '', False,
-        geo_parm='phantom_objects', light_parm='', fog_parm='')
-soho.removeObjects(now, excludeobject, excludelights, excludefog,
-    geo_parm='excludeobject', light_parm='excludelights', fog_parm='excludefog')
+    soho.addObjects(now, phantom_objects, '', '', False, geo_parm='phantom_objects', light_parm='', fog_parm='')
+
+soho.removeObjects(now, excludeobject, excludelights, excludefog, geo_parm='excludeobject', light_parm='excludelights', fog_parm='excludefog')
 
 # site-wide customization hook
 LSDhooks.call('pre_lockObjects', parmlist, objparms, now, camera)
