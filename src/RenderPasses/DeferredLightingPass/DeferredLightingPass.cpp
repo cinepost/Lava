@@ -456,7 +456,6 @@ DeferredLightingPass& DeferredLightingPass::setAreaLightsSamplingMode(AnalyticAr
     return *this;
 }
 
-
 DeferredLightingPass& DeferredLightingPass::setFrameSampleCount(uint32_t samples) {
     if (mFrameSampleCount == samples) return *this;
 

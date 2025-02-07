@@ -79,6 +79,8 @@ namespace Falcor {
         */
         static SharedPtr create() { return SharedPtr(new InternalDictionary); }
 
+        InternalDictionary& update(const InternalDictionary& d); 
+
         bool operator==(const InternalDictionary& other) const;
         bool operator!=(const InternalDictionary& other) const { return !(other == *this); }
 

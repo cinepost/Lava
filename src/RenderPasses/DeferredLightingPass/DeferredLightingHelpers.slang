@@ -57,10 +57,25 @@ float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint t
     \param[in] p1 Pdf for the second sampling strategy.
     \return Weight for the contribution from the first strategy (p0).
 */
+float _evalMIS(float n0, float p0, float n1, float p1) {
+    // Balance heuristic
+    float q0 = n0 * p0;
+    float q1 = n1 * p1;
+    return q0 / (q0 + q1);
+}
+
 float evalMIS(float n0, float p0, float n1, float p1) {
     // Power two heuristic
     float q0 = (n0 * p0) * (n0 * p0);
     float q1 = (n1 * p1) * (n1 * p1);
+    return q0 / (q0 + q1);
+}
+
+float __evalMIS(float n0, float p0, float n1, float p1) {
+    static const float kMISPowerExponent = 2.f;
+    // Power exp heuristic
+    float q0 = pow(n0 * p0, kMISPowerExponent);
+    float q1 = pow(n1 * p1, kMISPowerExponent);
     return q0 / (q0 + q1);
 }
 

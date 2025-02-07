@@ -314,7 +314,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
         if (sampleLight(sd.posW, N, light, rnd, ls) && (dot(ls.dir, N) > kMinCosTheta)) {
 
-            [[branch]]if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
+            if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
                 SceneRayQuery<1> rayQuery;
                 const Ray ray = Ray(rayShadowOrigin, ls.shadowDir, _tmin, ls.distance);

@@ -40,6 +40,10 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 
 		void setOutputFormat(ResourceFormat format);
 
+		void setRayBias(float bias);
+
+		void setIgnoreBackface(bool state);
+
 		void setDistanceRange(float2 range);
 		const Falcor::ResourceFormat& format() const { return mOutputFormat; }
 	
@@ -62,9 +66,12 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 
 		bool                        mDirty = true;
 
-		float2                      mDistanceRange = {1.f, 2.f};
+		float2                      mDistanceRange = {0.f, 0.f};
 		uint                        mShadingRate = 1;
 		uint                        mSampleNumber = 0;
+
+		float                       mRayBias = 0.0f;
+		bool                        mIgnoreBackface = false;
 
 		int                         mRandomSeed = 0;
 };

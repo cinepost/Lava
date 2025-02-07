@@ -1713,12 +1713,20 @@
             label   "Shading"
 
             parm {
+                name    "lv_ray_bias_auto"
+                label   "Auto Ray Bias"
+                type    toggle
+                default { "0" }
+                 parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "lv_ray_bias"
                 label   "Ray Bias"
                 type    float
-                default { "0.0001" }
+                default { "0.001" }
                 range   { 0.0001 0.01 }
-                disablewhen "{ lv_enable_rt == 0 }"
+                disablewhen "{ lv_enable_rt == 0 } { lv_ray_bias_auto == 1 }"
                 parmtag { "script_callback_language" "python" }
             }
         }
@@ -2405,11 +2413,19 @@
 
             parm {
                 name    "lv_ambocc_pass_distance_range"
-                label   "Distance Range"
+                label   "Falloff Start/Stop"
                 type    float
                 size    2
-                default { "1.0" "2.0" }
+                default { "0.0" "0.0" }
                 disablewhen "{ lv_plane_ambientocclusion == 0  lv_main_output_source != AmbientOcclusionPass }"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_ambocc_pass_ignore_backface"
+                label   "Ignore Back Face"
+                type    toggle
+                default { "0" }
                 parmtag { "script_callback_language" "python" }
             }
         }
