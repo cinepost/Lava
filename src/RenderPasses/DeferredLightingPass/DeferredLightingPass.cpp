@@ -188,6 +188,7 @@ void DeferredLightingPass::setScene(RenderContext* pRenderContext, const Scene::
 
 bool DeferredLightingPass::beginFrame(RenderContext *pContext, const RenderData& renderData) {
     mSampleNumber = 0;
+    return true;
 }
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {

@@ -192,6 +192,7 @@ void AmbientOcclusionPass::setRandomSeed(int seed) {
 
 bool AmbientOcclusionPass::beginFrame(RenderContext *pContext, const RenderData& renderData) {
     mSampleNumber = 0;
+    return true;
 }
 
 void AmbientOcclusionPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

@@ -528,7 +528,7 @@ bool Session::cmdRaytrace() {
     frameInfo.renderRegion = tile.renderRegion;
 
   	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
-  	mpRenderer->prepareFrame(frameInfo);
+ 		mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
 		if(!pMainOutputPlane->getAOVPlaneGeometry(aov_geometry)) {

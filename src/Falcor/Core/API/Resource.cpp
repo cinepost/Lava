@@ -30,12 +30,45 @@
 #include "Texture.h"
 #include "Buffer.h"
 
+#include <atomic>
+
 namespace Falcor {
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
+std::atomic<size_t> gAllocatedBuffersCount = 0;
+std::atomic<size_t> gAllocatedTexturesCount = 0;
+
+void Resource::printUsage() {
+#ifdef _DEBUG
+    LLOG_INF << "Allocated buffers count " << gAllocatedBuffersCount;
+    LLOG_INF << "Allocated textures count " << gAllocatedTexturesCount;
+#endif
 }
 
-Resource::~Resource() = default;
+Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
+#ifdef _DEBUG
+    switch(type) {
+        case Type::Buffer:
+            gAllocatedBuffersCount++;
+            break;
+        default:
+            gAllocatedTexturesCount++;
+            break;
+    }
+#endif
+}
+
+Resource::~Resource() {
+#ifdef _DEBUG
+    switch(mType) {
+        case Type::Buffer:
+            gAllocatedBuffersCount--;
+            break;
+        default:
+            gAllocatedTexturesCount--;
+            break;
+    }
+#endif
+}
 
 const std::string to_string(Resource::Type type) {
     #define type_2_string(a) case Resource::Type::a: return #a;

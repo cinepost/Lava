@@ -217,18 +217,6 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     */
     virtual UnorderedAccessView::SharedPtr getUAV() override;
 
-#if FALCOR_ENABLE_CUDA
-        /** Get the CUDA device address for this resource.
-            \return CUDA device address.
-            Throws an exception if the buffer is not shared.
-        */
-        virtual void* getCUDADeviceAddress() const override;
-
-        /** Get the CUDA device address for a view of this resource.
-        */
-        virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const override;
-#endif
-
     /** Get the size of each element in this buffer.
 
         For a typed buffer, this will be the size of the format.

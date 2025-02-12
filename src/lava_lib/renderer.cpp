@@ -16,6 +16,7 @@
 
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Utils/Debug/DebugMemAlloc.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
@@ -925,8 +926,6 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mCurrentSampleNumber = 0;
 	mCurrentFrameInfo = frame_info;
 
-	//auto& pScene = mpSceneBuilder->getScene();
-
 	// Clear previous frame dependent data
 	mpRenderGraph->endFrame(pRenderContext);
 	
@@ -937,6 +936,10 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 
 	pRenderContext->flush(true);
 	mDirty = false;
+
+	// Debug test
+	Resource::printUsage();
+	printMemAllocCount();
 }
 
 void Renderer::renderSample() {

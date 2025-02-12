@@ -400,11 +400,6 @@ namespace Falcor {
 		desc.extendedDescCount = 1;
 		desc.extendedDescs = &pExtDesc;
 
-#if FALCOR_NVAPI_AVAILABLE
-		mpApiData->pApiDispatcher = new PipelineCreationAPIDispatcher();
-		desc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpApiData->pApiDispatcher);
-#endif
-
 #ifdef FALCOR_GFX
 		if (mUseIDesc) {
 			desc.existingDeviceHandles = mIDesc.existingDeviceHandles;

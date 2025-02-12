@@ -925,9 +925,10 @@ void SceneBuilder::updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mes
     	if(existingMesh.positionsDataHash != mesh.positionsDataHash) updateFlags |= Mesh::UpdateFlags::Positions;
     }
 
+    if(!is_set(updateFlags, Mesh::UpdateFlags::Topology) && !is_set(updateFlags, Mesh::UpdateFlags::Positions)) return;
 
     if(is_set(updateFlags, Mesh::UpdateFlags::Topology)) {
-    	LLOG_WRN << "Replacing mesh " << mesh.name << " !";
+    	LLOG_DBG << "Replacing mesh " << mesh.name << " !";
     	mReBuildMeshGroups = true;
 		resetScene(true);
 		addProcessedMesh(mesh, meshID);
@@ -947,7 +948,10 @@ void SceneBuilder::updateProcessedMesh(uint32_t meshID, const ProcessedMesh& mes
     	mpScene->updateMeshStaticData(meshID, existingMesh.staticData, rebuildBLAS);
     } else {
     	// Update scene builder meshes static data
-    	std::copy(existingMesh.staticData.begin(), existingMesh.staticData.end(), mSceneData.meshStaticData.begin() + existingMesh.staticVertexOffset);
+    	LLOG_WRN << "Check mesh update logic then no scene is present!!!";
+    	if(mSceneData.meshStaticData.size() >= (existingMesh.staticVertexOffset + existingMesh.staticData.size())) {
+    		std::copy(existingMesh.staticData.begin(), existingMesh.staticData.end(), mSceneData.meshStaticData.begin() + existingMesh.staticVertexOffset);
+    	}
     }
 
 }

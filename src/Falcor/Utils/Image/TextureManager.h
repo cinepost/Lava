@@ -296,6 +296,9 @@ private:
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 
+	uint32_t mMaxCPUSparseTexturesMemoryCap = 0;                ///< Maximum memory cap used for storing virtual textures page data
+	uint32_t mMaxGPUSparseTexturesMemoryCap = 0;								///< Maximum memory cap used for storing virtual textures page data
+
 	Texture::SharedPtr mNullTexture;
 
 	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;

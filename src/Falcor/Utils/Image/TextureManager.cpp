@@ -68,6 +68,10 @@ static std::mutex   g_simple_tail_cache_mutex;
 static const size_t kMinPagesPerLoadingThred = 10;
 static const std::string kLtxExtension = ".ltx";
 
+static const uint32_t kDefaultCPUSparseTexturesMemoryCap = 1024;	///< 1024 Mb
+static const uint32_t kDefaultGPUSparseTexturesMemoryCap = 256;		///< 256 Mb
+
+
 namespace {
 	const size_t kMaxTextureHandleCount = std::numeric_limits<uint32_t>::max();
 	static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
@@ -706,20 +710,11 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 			// Load single texture
 			Texture::SharedPtr pTexture = nullptr;
 
-#if LOAD_GIBBERISH_TEXTURE == 1 
-			//std::vector<uint8_t> testData(64*64*4);
-			//std::fill(testData.begin(), testData.end(), 0);
-			//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
-
-			LLOG_WRN << "Generating gibberish texture " << path;
-			pTexture = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
-#else
 			if(!loadAsSparse && (fullPath.extension() != kLtxExtension)) {
 				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			}
-#endif
 
 			if(!pTexture) {
 				LLOG_ERR << "Error loading " << (pTexture->isSparse() ? "virtual" : "") << " texture " << fullPath;
@@ -767,20 +762,12 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 				} else {
 
 					Texture::SharedPtr pUdimTileTex = nullptr;
-#if LOAD_GIBBERISH_TEXTURE == 1 
-					//std::vector<uint8_t> testData(64*64*4);
-					//std::fill(testData.begin(), testData.end(), 0);
-					//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
 
-					LLOG_WRN << "Loading gibberish udim tile texture " << path;
-					pUdimTileTex = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
-#else
 					if(!loadAsSparse) {
 						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
 						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					}
-#endif
 
 					if(!pUdimTileTex) {
 						LLOG_ERR << "Error loading " << (loadAsSparse ? "virtual" : "") << " texture " << udim_tile_fullpath;
