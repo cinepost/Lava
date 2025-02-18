@@ -41,7 +41,7 @@ class LRUCache {
 		}
 
 		bool get(const key_t& key, value_t& value) {
-			
+			return false;
 		}
 		
 		const value_t& get(const key_t& key) {

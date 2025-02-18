@@ -6,7 +6,12 @@
 #include "../mutable-shader-object.h"
 #include "../renderer-shared.h"
 #include "../transient-resource-heap-base.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-chunked-list.h"
+#pragma GCC diagnostic pop
+
 #include "vk-api.h"
 #include "vk-descriptor-allocator.h"
 #include "vk-device-queue.h"

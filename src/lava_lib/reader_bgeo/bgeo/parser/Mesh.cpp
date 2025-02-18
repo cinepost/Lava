@@ -6,17 +6,17 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Mesh.h"
-
 #include <cassert>
 #include <iostream>
 
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
+
+#include "Mesh.h"
+
 
 namespace ika {
 namespace bgeo {

@@ -225,24 +225,20 @@ namespace Falcor
         // inside the buffer/block, and thus implicitly
         // dereference this `ShaderVar`.
         //
-        if (auto pResourceType = pType->asResourceType())
-        {
-            switch (pResourceType->getType())
-            {
-            case ReflectionResourceType::Type::ConstantBuffer:
-                return getParameterBlock()->getRootVar()[loc];
-            default:
-                break;
+        if (auto pResourceType = pType->asResourceType()) {
+            switch (pResourceType->getType()) {
+                case ReflectionResourceType::Type::ConstantBuffer:
+                    return getParameterBlock()->getRootVar()[loc];
+                default:
+                    break;
             }
         }
 
         auto byteOffset = loc.getByteOffset();
         if (byteOffset == 0) return *this;
 
-        if (auto pArrayType = pType->asArrayType())
-        {
+        if (auto pArrayType = pType->asArrayType()) {
             auto pElementType = pArrayType->getElementType();
-            auto elementCount = pArrayType->getElementCount();
             auto elementStride = pArrayType->getElementByteStride();
 
             auto elementIndex = byteOffset / elementStride;
@@ -260,8 +256,8 @@ namespace Falcor
             // search here.
 
             auto memberCount = pStructType->getMemberCount();
-            for (uint32_t m = 0; m < memberCount; ++m)
-            {
+            
+            for (uint32_t m = 0; m < memberCount; ++m) {
                 auto pMember = pStructType->getMember(m);
                 auto memberByteOffset = pMember->getByteOffset();
                 auto memberByteSize = pMember->getType()->getByteSize();
@@ -346,14 +342,13 @@ namespace Falcor
         // the user actually means to write the blob *into* that buffer.
         //
         auto pType = getType();
-        if (auto pResourceType = pType->asResourceType())
-        {
-            switch (pResourceType->getType())
-            {
-            case ReflectionResourceType::Type::ConstantBuffer:
-                return getParameterBlock()->getRootVar().setBlob(data, size);
-            default:
-                break;
+
+        if (auto pResourceType = pType->asResourceType()) {
+            switch (pResourceType->getType()) {
+                case ReflectionResourceType::Type::ConstantBuffer:
+                    return getParameterBlock()->getRootVar().setBlob(data, size);
+                default:
+                    break;
             }
         }
 

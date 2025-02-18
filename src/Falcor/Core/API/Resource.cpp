@@ -44,7 +44,13 @@ void Resource::printUsage() {
 #endif
 }
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
+Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) 
+    : mType(type), 
+    mBindFlags(bindFlags), 
+    mSize(size), 
+    mpDevice(pDevice), 
+    mID(newResourceID++) {
+
 #ifdef _DEBUG
     switch(type) {
         case Type::Buffer:
@@ -163,8 +169,12 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
+
 std::shared_ptr<Texture> Resource::asTexture() {
     return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
 }
@@ -176,7 +186,9 @@ std::shared_ptr<const Texture> Resource::asTexture() const {
 std::shared_ptr<Buffer> Resource::asBuffer() {
     return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
 }
+
 #pragma GCC pop_options
+#pragma GCC diagnostic pop
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {

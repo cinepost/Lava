@@ -1,8 +1,13 @@
 #pragma once
 
 #include "slang-gfx.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-basic.h"
 #include "core/slang-com-object.h"
+#pragma GCC diagnostic pop
+
 #include "renderer-shared.h"
 
 namespace gfx

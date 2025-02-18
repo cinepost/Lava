@@ -7,11 +7,12 @@
  *  copied, modified, or distributed except according to those terms.
  */
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
+
+#include "util.h"
 
 #include "VertexMap.h"
 
-#include "util.h"
 
 namespace ika {
 namespace bgeo {

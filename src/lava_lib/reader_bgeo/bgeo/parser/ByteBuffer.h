@@ -14,7 +14,7 @@
 #include <cassert>
 #include <iostream>
 
-#include <UT/UT_String.h>
+#include "../houdini_inc.h"
 
 namespace ika
 {

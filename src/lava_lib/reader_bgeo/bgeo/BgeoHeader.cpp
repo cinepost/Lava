@@ -9,8 +9,7 @@
 
 #include "BgeoHeader.h"
 
-#include "UT/UT_IStream.h"
-#include "UT/UT_JSONParser.h"
+#include "houdini_inc.h"
 
 #include "parser/ReadError.h"
 #include "parser/FileVersion.h"

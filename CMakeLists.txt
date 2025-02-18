@@ -189,7 +189,7 @@ if ( MSVC )
   ADD_DEFINITIONS(/W3 /std:c++17 /MP /wd4005 /wd4068)
   add_compile_options($<$<CONFIG:DEBUG>:/bigobj>)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Werror -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()

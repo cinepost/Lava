@@ -44,7 +44,7 @@ void releaseNullViews(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mPhysicalDeviceName("Unknown") {
+Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mDesc(desc), mpWindow(pWindow), mPhysicalDeviceName("Unknown") {
     mCurrentBackBufferIndex = 0;
     _uid = UID++;
     if(pWindow) { mHeadless = false; } else { mHeadless = true; };
@@ -226,9 +226,14 @@ std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t 
 void Device::releaseResource(ApiObjectHandle pResource) {
     if (pResource) {
         // Some static objects get here when the application exits
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
         if(this) {
             mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
         }
+#pragma GCC diagnostic pop
+
     }
 }
 

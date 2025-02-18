@@ -39,9 +39,6 @@ const double kEpsilonTime = 1e-5f;
 
 // Bezier form hermite spline
 static float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t) {
-    float3 v1 = (p2 - p0) * 0.5f;
-    float3 v2 = (p3 - p1) * 0.5f;
-
     float3 b0 = p1;
     float3 b1 = p1 + (p2 - p0) * 0.5f / 3.f;
     float3 b2 = p2 - (p3 - p1) * 0.5f / 3.f;
@@ -209,21 +206,28 @@ double Animation::calcSampleTime(double currentTime) {
     assert(currentTime < firstKeyframeTime || currentTime > lastKeyframeTime);
 
     Behavior behavior = (currentTime < firstKeyframeTime) ? mPreInfinityBehavior : mPostInfinityBehavior;
-        switch (behavior) {
+    switch (behavior) {
         case Behavior::Constant:
             modifiedTime = clamp(currentTime, firstKeyframeTime, lastKeyframeTime);
             break;
         case Behavior::Cycle:
             // Calculate the relative time
-            modifiedTime = firstKeyframeTime + std::fmod(currentTime - firstKeyframeTime, duration);
-            if (modifiedTime < firstKeyframeTime) modifiedTime += duration;
+            {
+                modifiedTime = firstKeyframeTime + std::fmod(currentTime - firstKeyframeTime, duration);
+                if (modifiedTime < firstKeyframeTime) modifiedTime += duration;
+            }
             break;
         case Behavior::Oscillate:
             // Calculate the relative time
-            double offset = std::fmod(currentTime - firstKeyframeTime, 2 * duration);
-            if (offset < 0) offset += 2 * duration;
-            if (offset > duration) offset = 2 * duration - offset;
-            modifiedTime = firstKeyframeTime + offset;
+            {
+                double offset = std::fmod(currentTime - firstKeyframeTime, 2 * duration);
+                if (offset < 0) offset += 2 * duration;
+                if (offset > duration) offset = 2 * duration - offset;
+                modifiedTime = firstKeyframeTime + offset;
+            }
+            break;
+        default:
+            break;
     }
 
     return modifiedTime;

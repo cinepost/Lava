@@ -105,7 +105,7 @@ Program::Desc& Program::Desc::addTypeConformancesToGroup(const TypeConformanceLi
 
 uint32_t Program::Desc::declareEntryPoint(ShaderType type, const std::string& name) {
 	assert(!name.empty());
-	assert(mActiveGroup >= 0 && mActiveGroup < mGroups.size());
+	assert(mActiveGroup >= 0 && (static_cast<size_t>(mActiveGroup) < mGroups.size()));
 
 	if (mActiveSource < 0) {
 		throw std::runtime_error("Cannot declare an entry point without first adding a source file/library");
@@ -183,8 +183,6 @@ Program::~Program() {}
 
 std::string Program::getProgramDescString() const {
 	std::string desc;
-
-	int32_t groupCount = (int32_t)mDesc.mGroups.size();
 
 	for (size_t i = 0; i < mDesc.mSources.size(); i++) {
 		const auto& src = mDesc.mSources[i];
@@ -602,26 +600,6 @@ bool Program::doSlangReflection(
 	return true;
 }
 
-static ComPtr<slang::IComponentType> doSlangSpecialization(
-	slang::IComponentType*                      pSlangProgram,
-	ParameterBlock::SpecializationArgs const&   specializationArgs,
-	std::string&                                log)
-{
-	ComPtr<slang::IBlob> pSlangDiagnostics;
-	ComPtr<slang::IComponentType> pSpecializedSlangProgram;
-	bool failed = SLANG_FAILED(pSlangProgram->specialize(
-		specializationArgs.data(),
-		specializationArgs.size(),
-		pSpecializedSlangProgram.writeRef(),
-		pSlangDiagnostics.writeRef()));
-
-	if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0) {
-		log += (char const*)pSlangDiagnostics->getBufferPointer();
-	}
-
-	return failed ? nullptr : pSpecializedSlangProgram;
-}
-
 ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 	ProgramVersion const* pVersion,
 	ProgramVars    const* pVars,
@@ -633,28 +611,8 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 	auto pSlangGlobalScope = pVersion->getSlangGlobalScope();
 	auto pSlangSession = pSlangGlobalScope->getSession();
 
-#ifdef FALCOR_D3D12
-	// Global-scope specialization parameters apply to all the entry points
-	// in a `Program`. We will collect the arguments for global specialization
-	// parameters here, using the global `ProgramVars`.
-	//
-	ParameterBlock::SpecializationArgs specializationArgs;
-	pVars->collectSpecializationArgs(specializationArgs);
-
-	// Next we instruct Slang to specialize the global scope based on
-	// the global specialization arguments.
-	//
-	ComPtr<slang::IComponentType> pSpecializedSlangGlobalScope = doSlangSpecialization(
-		pSlangGlobalScope,
-		specializationArgs,
-		log);
-	if (!pSpecializedSlangGlobalScope) {
-		return nullptr;
-	}
-
-#else
 	slang::IComponentType* pSpecializedSlangGlobalScope = pSlangGlobalScope;
-#endif
+
 	// Create a composite component type that represents all type conformances
 	// linked into the `ProgramVersion`.
 	auto createTypeConformanceComponentList = [&](const TypeConformanceList& typeConformances) -> ComPtr<slang::IComponentType> {
@@ -724,7 +682,7 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 		auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
 
 		int32_t groupIndex = mDesc.mEntryPoints[ee].groupIndex;
-		assert(groupIndex >= 0 && groupIndex < typeConformancesCompositeComponents.size());
+		assert(groupIndex >= 0 && (size_t)groupIndex < typeConformancesCompositeComponents.size());
 
 		ComPtr<slang::IBlob> pSlangDiagnostics;
 

@@ -111,6 +111,7 @@ float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, 
 	their spread angles, returns a cone that bounds both of
 	them. Algorithm 1 in the 2018 Sony EGSR light sampling paper.
 */
+/*
 float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
 {
 	if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle)
@@ -198,6 +199,7 @@ float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, flo
 
 	return dir;
 }
+*/
 
 /** Returns the volume of a bounding box.
 	\param[in] epsilon Replace dimensions that are zero by this value.

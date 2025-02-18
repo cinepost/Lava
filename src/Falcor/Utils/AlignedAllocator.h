@@ -25,10 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_ALIGNED_ALLOCATOR_H_
+#define SRC_FALCOR_UTILS_ALIGNED_ALLOCATOR_H_
 
 #include <new>
 #include <utility>
+
+#include "Falcor/Core/Framework.h"
 
 namespace Falcor
 {
@@ -149,8 +152,10 @@ namespace Falcor
             return &*iter;
         }
 
-        int mMinAlignment = 16;
-        int mCacheLineSize = 128;
+        size_t mMinAlignment = 16;
+        size_t mCacheLineSize = 128;
         std::vector<uint8_t> mBuffer;
     };
 }
+
+#endif  // SRC_FALCOR_UTILS_ALIGNED_ALLOCATOR_H_

@@ -81,7 +81,7 @@ GraphicsStateObject::~GraphicsStateObject() {
     mpDevice->releaseResource(mApiHandle);
 }
 
-GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
+GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mDesc(desc), mpDevice(pDevice) {
     assert(mpDevice);
     if (spDefaultBlendState == nullptr) {
         // Create default objects

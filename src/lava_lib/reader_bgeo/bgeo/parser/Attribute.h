@@ -10,7 +10,7 @@
 #ifndef BGEO_PARSER_ATTRIBUTE_H
 #define BGEO_PARSER_ATTRIBUTE_H
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
 
 #include "ByteBuffer.h"
 #include "NumericData.h"

@@ -32,7 +32,7 @@ const char* toString(PrimType type) {
 }
 
 PrimType toPrimType(const char* type) {
-    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++) {
+    for (size_t i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); ++i) {
         if (type == typeStringMap[i] || strcmp(type, typeStringMap[i]) == 0) {
             return static_cast<PrimType>(i);
         }

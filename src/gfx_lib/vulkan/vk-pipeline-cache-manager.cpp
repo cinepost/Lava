@@ -8,6 +8,9 @@
 
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 static int64_t computeDataCheckSum(const uint8_t* pData, size_t count) {
 	uint64_t checksum = 0;
 
@@ -15,6 +18,8 @@ static int64_t computeDataCheckSum(const uint8_t* pData, size_t count) {
 
 	return checksum;
 }
+
+#pragma GCC diagnostic pop
 
 namespace gfx {
 

@@ -122,6 +122,8 @@ void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
 }
 
 const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
+    static const TextureHandle emptyHandle = {};
+
     switch(slot) {
         case TextureSlot::BaseColor:
             return mData.texBaseColor;
@@ -142,7 +144,7 @@ const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) con
         default:
             LLOG_ERR << "Error getting handle for slot " << to_string(slot);
             should_not_get_here();
-            return {};
+            return emptyHandle;
 
     }
 }

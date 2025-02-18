@@ -135,8 +135,8 @@ public:
 					File
 				};
 
-				Source(ShaderLibrary::SharedPtr pLib) : pLibrary(pLib), type(Type::File) {};
-				Source(std::string s) : str(s), type(Type::String) {};
+				Source(ShaderLibrary::SharedPtr pLib) : type(Type::File), pLibrary(pLib) {};
+				Source(const std::string& s) : type(Type::String), str(s) {};
 
 				Type type;
 				ShaderLibrary::SharedPtr pLibrary;

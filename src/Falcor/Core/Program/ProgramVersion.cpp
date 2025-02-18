@@ -96,13 +96,11 @@ namespace Falcor {
         const std::string& name)
         : mpDevice(pDevice)
         , mName(name)
+        , mUniqueEntryPointGroups(uniqueEntryPointGroups)
         , mpReflector(pReflector)
         , mpVersion(pVersion)
-        , mUniqueEntryPointGroups(uniqueEntryPointGroups)
     {
-#ifdef FALCOR_D3D12
-        mpRootSignature = D3D12RootSignature::create(pReflector.get());
-#endif
+
     }
 
     ProgramKernels::SharedPtr ProgramKernels::create(

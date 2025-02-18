@@ -48,7 +48,7 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
-MaterialX::MaterialX(std::shared_ptr<Device> pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
+MaterialX::MaterialX(std::shared_ptr<Device> pDevice, const std::string& name) : mName(name), mpDevice(pDevice) {
     MxNode::TypeCreateInfo info = {};
     info.nameSpace = "";
     info.typeName = "";

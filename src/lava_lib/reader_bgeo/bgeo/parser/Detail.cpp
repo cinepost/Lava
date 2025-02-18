@@ -6,16 +6,13 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include <UT/UT_JSONParser.h>
-#include <UT/UT_String.h>
-
-#include "Detail.h"
-
 #include "Info.h"
 #include "Attribute.h"
 #include "PrimitiveGroup.h"
 #include "util.h"
+
+#include "Detail.h"
+
 
 namespace ika {
 namespace bgeo {
@@ -213,7 +210,7 @@ const Attribute* Detail::getDetailAttributeByName(const char *name) const {
 
 void Detail::mapVerticesToPoints(const VertexArray& vertices, VertexArray& points) const {
     points.resize(vertices.size());
-    for (int i = 0; i < vertices.size(); i++) {
+    for (size_t i = 0; i < vertices.size(); i++) {
         assert(vertices[i] < vertexMap.vertexCount);
         points[i] = vertexMap.vertices[vertices[i]];
     }

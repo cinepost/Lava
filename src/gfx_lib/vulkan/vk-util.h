@@ -1,7 +1,11 @@
 // vk-util.h
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-basic.h"
+#pragma GCC diagnostic pop
+
 #include "vk-api.h"
 
 #include "../slang-gfx.h"
@@ -62,6 +66,8 @@ struct VulkanUtil
             case VK_FORMAT_D32_SFLOAT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
                 return true;
+            default:
+                break;
         }
         return false;
     }
@@ -72,6 +78,8 @@ struct VulkanUtil
             case VK_FORMAT_D24_UNORM_S8_UINT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
                 return true;
+            default:
+                break;
         }
         return false;
     }

@@ -25,12 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "ComputeState.h"
-#include "Core/Program/ProgramVars.h"
-
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 
+#include "ComputeState.h"
 
 namespace Falcor {
 

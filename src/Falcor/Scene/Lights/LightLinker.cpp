@@ -231,7 +231,8 @@ bool LightLinker::buildActiveLightsData(bool force) {
 bool LightLinker::buildLightsIndirectionData(bool force) {
     if(!force || mActiveLightIDsMap.empty()) return false;
 
-    bool rebuildIndirectionGPUBuffer = false;
+    //bool rebuildIndirectionGPUBuffer = false;
+    
     const std::vector<uint32_t> prevIndirectionData = mIndirectionData;
 
     mIndirectionData.clear();

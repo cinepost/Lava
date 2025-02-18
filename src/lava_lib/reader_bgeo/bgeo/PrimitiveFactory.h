@@ -12,7 +12,7 @@
 
 #include <map>
 
-#include <UT/UT_String.h>
+#include "houdini_inc.h"
 
 #include "Bgeo.h"
 

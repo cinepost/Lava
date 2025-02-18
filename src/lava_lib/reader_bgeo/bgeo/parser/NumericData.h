@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
 
 #include "storage.h"
 #include "StorageTraits.h"
@@ -77,7 +77,7 @@ public:
             std::vector<fpreal32> unpacked;
             getUnpackedData(unpacked);
 
-            assert(sourceIndex * tupleSize < unpacked.size());
+            assert(sourceIndex * (int64)tupleSize < (int64)unpacked.size());
             // have to cast
             const fpreal32* source = unpacked.data();
 
@@ -113,7 +113,7 @@ public:
         getUnpackedData(unpacked);
 
         if (storage == storage::Fpreal32) {
-            assert(sourceIndex * tupleSize < unpacked.size());
+            assert(sourceIndex * (int64)tupleSize < (int64)unpacked.size());
             // have to cast
             //const fpreal32* source = data.data.dataAs<fpreal32>();
             const fpreal32* source = unpacked.data();

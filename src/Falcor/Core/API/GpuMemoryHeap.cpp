@@ -43,8 +43,8 @@ namespace Falcor {
 
     GpuMemoryHeap::GpuMemoryHeap(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
         : mType(type)
-        , mPageSize(pageSize)
         , mpFence(pFence)
+        , mPageSize(pageSize)
         , mpDevice(device)
     {
         allocateNewPage();

@@ -18,8 +18,8 @@ Primitive::Primitive() { }
 
 /*virtual*/ Primitive::~Primitive() = default;
 
-int32_t Primitive::getVertexCount() const {
-    return 0;
+uint32_t Primitive::getVertexCount() const {
+    return 0u;
 }
 
 } // namespace ika

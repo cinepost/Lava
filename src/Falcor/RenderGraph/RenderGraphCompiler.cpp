@@ -232,7 +232,6 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
 
         const DirectedGraph::Node* pNode = mGraph.mpGraph->getNode(nodeIndex);
         assert(pNode);
-        RenderPass* pCurrPass = mGraph.mNodeData[nodeIndex].pPass.get();
         const auto& passReflection = mExecutionList[i].reflector;
 
         auto isResourceUsed = [&](auto field) {
@@ -283,7 +282,6 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
             std::string dstFieldName = mGraph.mNodeData[nodeIndex].name + '.' + dstField.getName();
 
             const auto& pSrcPass = mGraph.mNodeData[pEdge->getSourceNode()].pPass.get();
-            const auto& srcReflection = mExecutionList[passToIndex.at(pSrcPass)].reflector;
             pResourceCache->registerField(dstFieldName, dstField, passToIndex[pSrcPass], srcFieldName);
         }
     }

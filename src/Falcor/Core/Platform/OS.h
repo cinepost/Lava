@@ -201,7 +201,7 @@ dlldecl std::string stripDataDirectories(const std::string& filename);
 /** Structure to help with file dialog file-extension filters
 */
 struct dlldecl FileDialogFilter {
-    FileDialogFilter(const std::string& ext_, const std::string& desc_ = {}) : ext(ext_), desc(desc_) {}
+    FileDialogFilter(const std::string& ext_, const std::string& desc_ = {}) : desc(desc_), ext(ext_) {}
     std::string desc;   // The description ("Portable Network Graphics")
     std::string ext;    // The extension, without the `.` ("png")
 };

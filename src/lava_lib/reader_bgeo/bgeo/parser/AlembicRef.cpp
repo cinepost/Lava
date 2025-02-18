@@ -6,16 +6,16 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "AlembicRef.h"
-
 #include <cassert>
 
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
+
+#include "AlembicRef.h"
+
 
 namespace ika
 {

@@ -6,18 +6,18 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Primitives.h"
-
 #include <iostream>
 #include <cassert>
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
 
 #include "Primitive.h"
 #include "Detail.h"
 #include "Run.h"
 #include "util.h"
+
+#include "Primitives.h"
+
 
 namespace ika
 {
@@ -157,7 +157,7 @@ void Primitives::loadSharedData(UT_JSONParser &parser)
 
 const Primitive* Primitives::getPrimitive(int64 index) const
 {
-    assert(index < primitives.size());
+    assert((index >= 0) && (size_t)index < primitives.size());
     return primitives[index];
 }
 

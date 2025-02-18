@@ -1,5 +1,9 @@
 #include "renderer-shared.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-basic.h"
+#pragma GCC diagnostic pop
 
 namespace gfx
 {

@@ -10,8 +10,8 @@
 #ifndef BGEO_PARSER_PRIMITIVE_GROUP_H
 #define BGEO_PARSER_PRIMITIVE_GROUP_H
 
-#include <UT/UT_JSONParser.h>
-#include <UT/UT_String.h>
+#include "../houdini_inc.h"
+
 
 namespace ika
 {

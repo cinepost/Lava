@@ -491,6 +491,8 @@ namespace Falcor
             case 4: return ReflectionBasicType::Type::Float64_4;
             }
             break;
+        default:
+            break;
         }
 
         FALCOR_UNREACHABLE();
@@ -987,14 +989,12 @@ namespace Falcor
             case TypeReflection::Kind::None:
                 category = ParameterCategory::ConstantBuffer;
                 break;
+            default:
+                FALCOR_UNREACHABLE();
+                break;
             }
         }
         return category;
-    }
-
-    static ParameterCategory getParameterCategory(VariableLayoutReflection* pVarLayout)
-    {
-        return getParameterCategory(pVarLayout->getTypeLayout());
     }
 
     ReflectionVar::SharedPtr reflectVariable(
@@ -1237,12 +1237,10 @@ namespace Falcor
         FALCOR_ASSERT(entryPointCount != 0);
 
         slang::EntryPointLayout* pBestEntryPoint = pSlangEntryPointReflectors[pProgram->getGroupEntryPointIndex(groupIndex, 0)];
-        for (uint32_t ee = 0; ee < entryPointCount; ++ee)
-        {
+        for (uint32_t ee = 0; ee < entryPointCount; ++ee) {
             slang::EntryPointReflection* pSlangEntryPoint = pSlangEntryPointReflectors[pProgram->getGroupEntryPointIndex(groupIndex, ee)];
 
-            if (getUniformParameterCount(pSlangEntryPoint) > getUniformParameterCount(pBestEntryPoint))
-            {
+            if (getUniformParameterCount(pSlangEntryPoint) > getUniformParameterCount(pBestEntryPoint)) {
                 pBestEntryPoint = pSlangEntryPoint;
             }
         }
@@ -1269,8 +1267,7 @@ namespace Falcor
         // or `ParameterBlock<...>` types.
         //
         bool hasDefaultConstantBuffer = false;
-        if (pSlangEntryPointTypeLayout->getContainerVarLayout() != nullptr)
-        {
+        if (pSlangEntryPointTypeLayout->getContainerVarLayout() != nullptr) {
             hasDefaultConstantBuffer = true;
         }
 
@@ -1280,21 +1277,16 @@ namespace Falcor
         //
         auto pSlangElementVarLayout = pSlangEntryPointVarLayout;
         auto pSlangElementTypeLayout = pSlangEntryPointTypeLayout;
-        ReflectionPath* pElementPath = &entryPointPath;
 
         // If there is a default constant buffer, though, we need to drill down
         // to its element type to get the information we want.
         //
-        if (hasDefaultConstantBuffer)
-        {
+        if (hasDefaultConstantBuffer) {
             pSlangElementVarLayout = pSlangEntryPointTypeLayout->getElementVarLayout();
             pSlangElementTypeLayout = pSlangElementVarLayout->getTypeLayout();
         }
+        
         ExtendedReflectionPath elementPath(&entryPointPath, pSlangElementVarLayout);
-        if (hasDefaultConstantBuffer)
-        {
-            pElementPath = &elementPath;
-        }
 
         ReflectionStructType::BuildState elementTypeBuildState;
 
@@ -1306,8 +1298,7 @@ namespace Falcor
         pGroup->setElementType(pElementType);
 
         uint32_t entryPointParamCount = pBestEntryPoint->getParameterCount();
-        for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
-        {
+        for (uint32_t pp = 0; pp < entryPointParamCount; ++pp) {
             auto pSlangParam = pBestEntryPoint->getParameterByIndex(pp);
 
             // Note: Due to some quirks on the Slang reflection information,
@@ -1340,8 +1331,7 @@ namespace Falcor
         // entry-point `uniform` parameters should default to being
         // treated as a root constant buffer.
         //
-        if (hasDefaultConstantBuffer)
-        {
+        if (hasDefaultConstantBuffer) {
             extractDefaultConstantBufferBinding(pSlangEntryPointTypeLayout, &entryPointPath, pGroup.get(), /*shouldUseRootConstants:*/true);
         }
 
@@ -1358,36 +1348,6 @@ namespace Falcor
         // this kind of matching/validation in the application layer.
 
         return pGroup;
-    }
-
-    static ShaderType getShaderTypeFromSlangStage(SlangStage stage)
-    {
-        switch( stage )
-        {
-#define CASE(SLANG_NAME, FALCOR_NAME) case SLANG_STAGE_##SLANG_NAME: return ShaderType::FALCOR_NAME
-
-        CASE(VERTEX,    Vertex);
-        CASE(HULL,      Hull);
-        CASE(DOMAIN,    Domain);
-        CASE(GEOMETRY,  Geometry);
-        CASE(PIXEL,     Pixel);
-
-        CASE(COMPUTE,   Compute);
-
-#ifdef FALCOR_D3D12
-        CASE(RAY_GENERATION,    RayGeneration);
-        CASE(INTERSECTION,      Intersection);
-        CASE(ANY_HIT,           AnyHit);
-        CASE(CLOSEST_HIT,       ClosestHit);
-        CASE(MISS,              Miss);
-        CASE(CALLABLE,          Callable);
-#endif
-#undef CASE
-
-        default:
-            FALCOR_UNREACHABLE();
-            return ShaderType::Count;
-        }
     }
 
     ProgramReflection::ProgramReflection(
@@ -1492,8 +1452,7 @@ namespace Falcor
         // Get hashed strings
         uint32_t hashedStringCount = (uint32_t)pSlangReflector->getHashedStringCount();
         mHashedStrings.reserve(hashedStringCount);
-        for (uint32_t i = 0; i < hashedStringCount; ++i)
-        {
+        for (uint32_t i = 0; i < hashedStringCount; ++i) {
             size_t stringSize;
             const char *stringData = pSlangReflector->getHashedString(i, &stringSize);
             uint32_t stringHash = spComputeStringHash(stringData, stringSize);
@@ -1501,8 +1460,7 @@ namespace Falcor
         }
     }
 
-    void ProgramReflection::setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock)
-    {
+    void ProgramReflection::setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock) {
         mpDefaultBlock = pBlock;
     }
 
@@ -1567,11 +1525,9 @@ namespace Falcor
         const std::shared_ptr<const ReflectionVar>& pVar,
         ReflectionStructType::BuildState&           ioBuildState)
     {
-        if (mNameToIndex.find(pVar->getName()) != mNameToIndex.end())
-        {
+        if (mNameToIndex.find(pVar->getName()) != mNameToIndex.end()) {
             int32_t index = mNameToIndex[pVar->getName()];
-            if (*pVar != *mMembers[index])
-            {
+            if (*pVar != *mMembers[index]) {
                 throw std::runtime_error("Mismatch in variable declarations between different shader stages. Variable name is '" + pVar->getName() + "', struct name is " + mName);
             }
             return -1;
@@ -1630,59 +1586,12 @@ namespace Falcor
         auto pResult = createEmpty(pProgramVersion);
         pResult->setElementType(pElementType);
 
-#if FALCOR_D3D12_AVAILABLE
-        ReflectionStructType::BuildState counters;
-#endif
-
         auto rangeCount = pElementType->getResourceRangeCount();
-        for (uint32_t rangeIndex = 0; rangeIndex < rangeCount; ++rangeIndex)
-        {
-            auto const& rangeInfo = pElementType->getResourceRange(rangeIndex);
-
+        for (uint32_t rangeIndex = 0; rangeIndex < rangeCount; ++rangeIndex) {
             ResourceRangeBindingInfo bindingInfo;
 
             uint32_t regIndex = 0;
             uint32_t regSpace = 0;
-
-#if FALCOR_D3D12_AVAILABLE
-            switch (rangeInfo.descriptorType)
-            {
-            case ShaderResourceType::Cbv:
-                regIndex += counters.cbCount;
-                counters.cbCount += rangeInfo.count;
-                break;
-
-            case ShaderResourceType::TextureSrv:
-            case ShaderResourceType::RawBufferSrv:
-            case ShaderResourceType::TypedBufferSrv:
-            case ShaderResourceType::StructuredBufferSrv:
-            case ShaderResourceType::AccelerationStructureSrv:
-                regIndex += counters.srvCount;
-                counters.srvCount += rangeInfo.count;
-                break;
-
-            case ShaderResourceType::TextureUav:
-            case ShaderResourceType::RawBufferUav:
-            case ShaderResourceType::TypedBufferUav:
-            case ShaderResourceType::StructuredBufferUav:
-                regIndex += counters.uavCount;
-                counters.uavCount += rangeInfo.count;
-                break;
-
-            case ShaderResourceType::Sampler:
-                regIndex += counters.samplerCount;
-                counters.samplerCount += rangeInfo.count;
-                break;
-
-            case ShaderResourceType::Dsv:
-            case ShaderResourceType::Rtv:
-                break;
-
-            default:
-                FALCOR_UNREACHABLE();
-                break;
-            }
-#endif
 
             bindingInfo.regIndex = regIndex;
             bindingInfo.regSpace = regSpace;
@@ -1757,281 +1666,59 @@ namespace Falcor
         }
     }
 
-    const ReflectionVar::SharedConstPtr ParameterBlockReflection::getResource(const std::string& name) const
-    {
+    const ReflectionVar::SharedConstPtr ParameterBlockReflection::getResource(const std::string& name) const {
         return getElementType()->findMember(name);
     }
 
-    void ParameterBlockReflection::addResourceRange(
-        ResourceRangeBindingInfo const& bindingInfo)
-    {
+    void ParameterBlockReflection::addResourceRange(ResourceRangeBindingInfo const& bindingInfo) {
         mResourceRanges.push_back(bindingInfo);
     }
 
-#if FALCOR_D3D12_AVAILABLE
-    struct ParameterBlockReflectionFinalizer
-    {
-        struct SetIndex
-        {
-            SetIndex(
-                uint32_t                regSpace,
-                ShaderResourceType      descriptorType)
-                : regSpace(regSpace)
-                , isSampler(descriptorType == ShaderResourceType::Sampler)
-            {}
-            bool isSampler = false;
-            uint32_t regSpace;
-            bool operator<(const SetIndex& other) const
-            {
-                return (regSpace == other.regSpace) ? isSampler < other.isSampler : regSpace < other.regSpace;
-            }
-        };
-
-        std::map<SetIndex, uint32_t> newSetIndices;
-        ParameterBlockReflection* pPrimaryReflector;
-
-        uint32_t computeDescriptorSetIndex(
-            uint32_t                regSpace,
-            ShaderResourceType      descriptorType)
-        {
-            SetIndex origIndex(regSpace, descriptorType);
-            uint32_t setIndex;
-            if (newSetIndices.find(origIndex) == newSetIndices.end())
-            {
-                // New set
-                setIndex = (uint32_t) pPrimaryReflector->mDescriptorSets.size();
-                newSetIndices[origIndex] = setIndex;
-                pPrimaryReflector->mDescriptorSets.push_back({});
-            }
-            else
-            {
-                setIndex = newSetIndices[origIndex];
-            }
-            return setIndex;
-        }
-
-        uint32_t computeDescriptorSetIndex(
-            const ReflectionType::ResourceRange&                    range,
-            const ParameterBlockReflection::ResourceRangeBindingInfo& bindingInfo)
-        {
-            return computeDescriptorSetIndex(bindingInfo.regSpace, range.descriptorType);
-        };
-
-        void addSubObjectResources(
-            uint32_t subObjectResourceRangeIndex,
-            ParameterBlockReflection const* pSubObjectReflector,
-            bool shouldSkipDefaultConstantBufferRange)
-        {
-            // TODO: this function needs to accept a multiplier that gets
-            // applied to all of the counts on the way down, to deal with
-            // arrays of constant buffers.
-
-            FALCOR_ASSERT(pSubObjectReflector);
-            auto subSetCount = pSubObjectReflector->getD3D12DescriptorSetCount();
-            for (uint32_t subSetIndex = 0; subSetIndex < subSetCount; ++subSetIndex)
-            {
-                auto& subSet = pSubObjectReflector->getD3D12DescriptorSetInfo(subSetIndex);
-
-                FALCOR_ASSERT(subSet.layout.getRangeCount() != 0);
-                auto subRange = subSet.layout.getRange(0);
-
-                auto setIndex = computeDescriptorSetIndex(subRange.regSpace, subRange.type);
-                auto& setInfo = pPrimaryReflector->mDescriptorSets[setIndex];
-
-                ParameterBlockReflection::DescriptorSetInfo::SubObjectInfo subObjectInfo;
-                subObjectInfo.resourceRangeIndexOfSubObject = subObjectResourceRangeIndex;
-                subObjectInfo.setIndexInSubObject = subSetIndex;
-                setInfo.subObjects.push_back(subObjectInfo);
-
-                auto subLayoutRangeCount = subSet.layout.getRangeCount();
-                for (size_t r = 0; r < subLayoutRangeCount; ++r)
-                {
-                    if( shouldSkipDefaultConstantBufferRange
-                        && subSetIndex == 0
-                        && r == 0 )
-                    {
-                        // Skip the range corresponding to the default constant buffer.
-                        continue;
-                    }
-
-                    auto subRange = subSet.layout.getRange(r);
-                    setInfo.layout.addRange(
-                        subRange.type,
-                        subRange.baseRegIndex,
-                        subRange.descCount,
-                        subRange.regSpace);
-                }
-            }
-        }
-
-        void finalize(ParameterBlockReflection* pReflector)
-        {
-            pPrimaryReflector = pReflector;
-
-            if (pReflector->hasDefaultConstantBuffer())
-            {
-                auto descriptorType = ShaderResourceType::Cbv;
-                auto& bindingInfo = pReflector->mDefaultConstantBufferBindingInfo;
-
-                if(!bindingInfo.useRootConstants)
-                {
-                    auto setIndex = computeDescriptorSetIndex(bindingInfo.regSpace, descriptorType);
-
-                    bindingInfo.descriptorSetIndex = setIndex;
-                    auto& setInfo = pReflector->mDescriptorSets[setIndex];
-
-                    setInfo.layout.addRange(
-                        descriptorType,
-                        bindingInfo.regIndex,
-                        1,
-                        bindingInfo.regSpace);
-                }
-            }
-
-            // Iterate over descriptors
-            auto resourceRangeCount = pReflector->mResourceRanges.size();
-            for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex)
-            {
-                const auto& range = pReflector->getElementType()->getResourceRange(rangeIndex);
-                auto& rangeBindingInfo = pReflector->mResourceRanges[rangeIndex];
-
-                switch (rangeBindingInfo.flavor)
-                {
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Simple:
-                {
-                    auto setIndex = computeDescriptorSetIndex(range, rangeBindingInfo);
-
-                    rangeBindingInfo.descriptorSetIndex = setIndex;
-                    auto& setInfo = pReflector->mDescriptorSets[setIndex];
-
-                    setInfo.layout.addRange(
-                        range.descriptorType,
-                        rangeBindingInfo.regIndex,
-                        range.count,
-                        rangeBindingInfo.regSpace);
-
-                    setInfo.resourceRangeIndices.push_back(rangeIndex);
-                }
-                break;
-
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor:
-                    if (range.count > 1)
-                    {
-                        throw std::runtime_error("Root descriptor at register index "+std::to_string(rangeBindingInfo.regIndex)" in space "+ std::to_string(rangeBindingInfo.regSpace) +" is illegal. Root descriptors cannot be arrays.");
-                    }
-                    pReflector->mRootDescriptorRangeIndices.push_back(rangeIndex);
-                    break;
-
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer:
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock:
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface:
-                    break;
-                default:
-                    FALCOR_UNREACHABLE();
-                }
-            }
-
-            // Iterate over constant buffers
-            for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex)
-            {
-                auto& rangeBindingInfo = pReflector->mResourceRanges[rangeIndex];
-
-                if (rangeBindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer)
-                    continue;
-
-                addSubObjectResources(rangeIndex, rangeBindingInfo.pSubObjectReflector.get(), false);
-            }
-
-            // Iterate over parameter blocks
-            for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex)
-            {
-                auto& rangeBindingInfo = pReflector->mResourceRanges[rangeIndex];
-                if (rangeBindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock)
-                    continue;
-
-                pReflector->mParameterBlockSubObjectRangeIndices.push_back(rangeIndex);
-            }
-
-            // Iterate over interfaces
-            for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex)
-            {
-                auto& rangeBindingInfo = pReflector->mResourceRanges[rangeIndex];
-
-                if(rangeBindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface)
-                    continue;
-
-                // TODO(tfoley): need to figure out what exactly is appropriate here.
-                if( auto pSubObjectReflector = rangeBindingInfo.pSubObjectReflector )
-                {
-                    addSubObjectResources(rangeIndex, pSubObjectReflector.get(), pSubObjectReflector->hasDefaultConstantBuffer());
-                }
-            }
-
-            // TODO: Do we need to handle interface sub-object slots here?
-        }
-    };
-#endif // FALCOR_D3D12_AVAILABLE
     bool ParameterBlockReflection::hasDefaultConstantBuffer() const
     {
         // A parameter block needs a "default" constant buffer whenever its element type requires it to store ordinary/uniform data
         return getElementType()->getByteSize() != 0;
     }
 
-    void ParameterBlockReflection::setDefaultConstantBufferBindingInfo(DefaultConstantBufferBindingInfo const& info)
-    {
+    void ParameterBlockReflection::setDefaultConstantBufferBindingInfo(DefaultConstantBufferBindingInfo const& info) {
         mDefaultConstantBufferBindingInfo = info;
     }
 
-    ParameterBlockReflection::DefaultConstantBufferBindingInfo const& ParameterBlockReflection::getDefaultConstantBufferBindingInfo() const
-    {
+    ParameterBlockReflection::DefaultConstantBufferBindingInfo const& ParameterBlockReflection::getDefaultConstantBufferBindingInfo() const {
         return mDefaultConstantBufferBindingInfo;
     }
 
-    void ParameterBlockReflection::finalize()
-    {
+    void ParameterBlockReflection::finalize() {
         FALCOR_ASSERT(getElementType()->getResourceRangeCount() == mResourceRanges.size());
-#if FALCOR_D3D12_AVAILABLE
-        ParameterBlockReflectionFinalizer finalizer;
-        finalizer.finalize(this);
-#endif
     }
 
-    std::shared_ptr<const ProgramVersion> ProgramReflection::getProgramVersion() const
-    {
+    std::shared_ptr<const ProgramVersion> ProgramReflection::getProgramVersion() const {
         return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedPtr();
     }
 
-    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(const std::string& name) const
-    {
-        if(name == "")
-            return mpDefaultBlock;
+    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(const std::string& name) const {
+        if(name == "") return mpDefaultBlock;
 
         return mpDefaultBlock->getElementType()->findMember(name)->getType()->asResourceType()->getParameterBlockReflector()->shared_from_this();
     }
 
-    TypedShaderVarOffset ReflectionType::findMemberByOffset(size_t offset) const
-    {
-        if (auto pStructType = asStructType())
-        {
+    TypedShaderVarOffset ReflectionType::findMemberByOffset(size_t offset) const {
+        if (auto pStructType = asStructType()) {
             return pStructType->findMemberByOffset(offset);
         }
 
         return TypedShaderVarOffset::kInvalid;
     }
 
-    TypedShaderVarOffset ReflectionStructType::findMemberByOffset(size_t offset) const
-    {
-        for (auto pMember : mMembers)
-        {
+    TypedShaderVarOffset ReflectionStructType::findMemberByOffset(size_t offset) const {
+        for (auto pMember : mMembers) {
             auto memberOffset = pMember->getBindLocation();
             auto memberUniformOffset = memberOffset.getUniform().getByteOffset();
             auto pMemberType = pMember->getType();
             auto memberByteSize = pMember->getType()->getByteSize();
 
-            if (offset >= memberUniformOffset)
-            {
-                if (offset < memberUniformOffset + memberByteSize)
-                {
+            if (offset >= memberUniformOffset) {
+                if (offset < memberUniformOffset + memberByteSize) {
                     return TypedShaderVarOffset(
                         pMemberType.get(),
                         memberOffset);
@@ -2042,11 +1729,9 @@ namespace Falcor
         return TypedShaderVarOffset::kInvalid;
     }
 
-    ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const
-    {
-        if (auto pStructType = asStructType())
-        {
-            size_t fieldIndex = pStructType->getMemberIndex(name);
+    ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const {
+        if (auto pStructType = asStructType()) {
+            auto fieldIndex = pStructType->getMemberIndex(name);
             if (fieldIndex == ReflectionStructType::kInvalidMemberIndex) return nullptr;
 
             return pStructType->getMember(fieldIndex);
@@ -2055,22 +1740,22 @@ namespace Falcor
         return nullptr;
     }
 
-    int32_t ReflectionStructType::getMemberIndex(const std::string& name) const
-    {
+    int32_t ReflectionStructType::getMemberIndex(const std::string& name) const {
         auto it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidMemberIndex;
         return it->second;
     }
 
-    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(const std::string& name) const
-    {
+    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(const std::string& name) const {
         static ReflectionVar::SharedConstPtr pNull;
         auto index = getMemberIndex(name);
         return (index == kInvalidMemberIndex) ? pNull : getMember(index);
     }
 
-    const ReflectionResourceType* ReflectionType::asResourceType() const
-    {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
+    const ReflectionResourceType* ReflectionType::asResourceType() const {
         return this && this->getKind() == ReflectionType::Kind::Resource ? static_cast<const ReflectionResourceType*>(this) : nullptr;
     }
 
@@ -2093,6 +1778,8 @@ namespace Falcor
     {
         return this && this->getKind() == ReflectionType::Kind::Interface ? static_cast<const ReflectionInterfaceType*>(this) : nullptr;
     }
+    
+#pragma GCC diagnostic pop
 
     const ReflectionType* ReflectionType::unwrapArray() const
     {
@@ -2158,11 +1845,11 @@ namespace Falcor
     ReflectionResourceType::ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess,
         slang::TypeLayoutReflection* pSlangTypeLayout)
         : ReflectionType(ReflectionType::Kind::Resource, 0, pSlangTypeLayout)
-        , mType(type)
+        , mDimensions(dims)
         , mStructuredType(structuredType)
         , mReturnType(retType)
         , mShaderAccess(shaderAccess)
-        , mDimensions(dims)
+        , mType(type)
     {
         ResourceRange range;
         range.descriptorType = getShaderResourceType(this);

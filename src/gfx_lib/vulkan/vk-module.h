@@ -1,8 +1,11 @@
 // vk-module.h
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include <slang/slang.h>
 #include <slang/slang-com-helper.h>
+#pragma GCC diagnostic pop
 
 #if SLANG_WINDOWS_FAMILY
 #   define VK_USE_PLATFORM_WIN32_KHR 1

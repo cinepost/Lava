@@ -325,10 +325,10 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     // Take fast path to copy the entire resource if possible. This has many requirements;
     // the source/dest must have identical size/format/etc. and the views and rects must cover the full resources.
     
-    //if (fullCopy) {
-    //    copyResource(pBuffer.get(), pSrcResource.get());
-    //    return;
-    //}
+    if (fullCopy) {
+        copyResource(pBuffer.get(), pSrcResource.get());
+        return;
+    }
 
     // At this point, we have to run a shader to perform the blit.
     // The implementation has some limitations. Check that all requirements are fullfilled.

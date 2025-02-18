@@ -54,14 +54,6 @@ namespace {
 	using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
 	using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
 
-	/** Converts specular power to roughness. Note there is no "the conversion".
-		Reference: http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
-		\param specPower specular power of an obsolete Phong BSDF
-	*/
-	float convertSpecPowerToRoughness(float specPower) {
-		return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
-	}
-
 	enum class ImportMode {
 		Default,
 		OBJ,
@@ -129,7 +121,11 @@ namespace {
 
 	class ImporterData {
 	public:
-		ImporterData(const aiScene* pAiScene, SceneBuilder& sceneBuilder, const SceneBuilder::InstanceMatrices& modelInstances_) : pScene(pAiScene), modelInstances(modelInstances_), builder(sceneBuilder) {}
+		ImporterData(const aiScene* pAiScene, SceneBuilder& sceneBuilder, const SceneBuilder::InstanceMatrices& modelInstances_) 
+		: pScene(pAiScene)
+		, builder(sceneBuilder)
+		, modelInstances(modelInstances_) {}
+		
 		const aiScene* pScene;
 
 		SceneBuilder& builder;
@@ -555,48 +551,6 @@ namespace {
 	bool isBone(ImporterData& data, const std::string& name)
 	{
 		return data.localToBindPoseMatrices.find(name) != data.localToBindPoseMatrices.end();
-	}
-
-	std::string getNodeType(ImporterData& data, const aiNode* pNode)
-	{
-		if (pNode->mNumMeshes > 0) return "mesh instance";
-		if (isBone(data, pNode->mName.C_Str())) return "bone";
-		else return "local transform";
-	}
-
-	void dumpSceneGraphHierarchy(ImporterData& data, const std::string& filename, aiNode* pRoot)
-	{
-		std::ofstream dotfile;
-		dotfile.open(filename.c_str());
-
-		std::function<void(const aiNode* pNode)> dumpNode = [&dotfile, &dumpNode, &data](const aiNode* pNode)
-		{
-			for (uint32_t i = 0; i < pNode->mNumChildren; i++)
-			{
-				const aiNode* pChild = pNode->mChildren[i];
-				std::string parent = pNode->mName.C_Str();
-				std::string parentType = getNodeType(data, pNode);
-				std::string parentID = std::to_string(data.getFalcorNodeID(pNode));
-				std::string me = pChild->mName.C_Str();
-				std::string myType = getNodeType(data, pChild);
-				std::string myID = std::to_string(data.getFalcorNodeID(pChild));
-				std::replace(parent.begin(), parent.end(), '.', '_');
-				std::replace(me.begin(), me.end(), '.', '_');
-				std::replace(parent.begin(), parent.end(), '$', '_');
-				std::replace(me.begin(), me.end(), '$', '_');
-
-				dotfile << parentID << " " << parent << " (" << parentType << ") " << " -> " << myID << " " << me << " (" << myType << ") " << std::endl;
-
-				dumpNode(pChild);
-			}
-		};
-
-		// Header
-		dotfile << "digraph SceneGraph {" << std::endl;
-		dumpNode(pRoot);
-		// Close the file
-		dotfile << "}" << std::endl; // closing graph scope
-		dotfile.close();
 	}
 
 	glm::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)

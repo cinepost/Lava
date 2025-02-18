@@ -206,9 +206,7 @@ Result ShaderObjectImpl::_writeOrdinaryData(
     // be handled in this one location, rather than having some in `setObject()` and
     // others handled here.
     //
-    Index subObjectRangeCounter = 0;
     for (auto const& subObjectRangeInfo : specializedLayout->getSubObjectRanges()) {
-        Index subObjectRangeIndex = subObjectRangeCounter++;
         auto const& bindingRangeInfo =
             specializedLayout->getBindingRange(subObjectRangeInfo.bindingRangeIndex);
 

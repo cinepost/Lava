@@ -1,9 +1,13 @@
 // vk-api.cpp
 
 //#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+
 #include "vk-api.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-list.h"
+#pragma GCC diagnostic pop
 
 namespace gfx {
 using namespace Slang;
@@ -128,7 +132,6 @@ int VulkanApi::findQueue(VkQueueFlags reqFlags) const {
     // Find a queue that can service our needs
     //VkQueueFlags reqQueueFlags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
 
-    int queueFamilyIndex = -1;
     for (int i = 0; i < int(numQueueFamilies); ++i) {
         if ((queueFamilies[i].queueFlags & reqFlags) == reqFlags) {
             return i;

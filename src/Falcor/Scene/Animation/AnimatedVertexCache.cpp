@@ -100,50 +100,44 @@ namespace Falcor {
     }
 
     AnimatedVertexCache::AnimatedVertexCache(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
-        : mpScene(pScene)
+        : mpDevice(pScene->device())
+        , mpScene(pScene)
+        , mpPrevVertexData(pPrevVertexData)
         , mCachedCurves(cachedCurves)
         , mCachedMeshes(cachedMeshes)
-        , mpPrevVertexData(pPrevVertexData)
     {
-        assert(mpScene);
-        mpDevice = mpScene->device();
         if (mCachedCurves.empty() && mCachedMeshes.empty()) return;
 
-        if (!mCachedCurves.empty())
-        {
-            for (auto& cache : mCachedCurves)
-            {
+        if (!mCachedCurves.empty()) {
+            for (auto& cache : mCachedCurves) {
                 if (cache.tessellationMode == CurveTessellationMode::LinearSweptSphere) mCurveLSSCount++;
                 if (cache.tessellationMode == CurveTessellationMode::PolyTube) mCurvePolyTubeCount++;
             }
 
             initCurveKeyframes();
 
-            if (mCurveLSSCount > 0)
-            {
+            if (mCurveLSSCount > 0) {
                 bindCurveLSSBuffers();
                 createCurveLSSVertexUpdatePass();
                 createCurveLSSAABBUpdatePass();
             }
 
-            if (mCurvePolyTubeCount > 0)
-            {
+            if (mCurvePolyTubeCount > 0) {
                 bindCurvePolyTubeBuffers();
                 createCurvePolyTubeVertexUpdatePass();
             }
         }
 
-        if (!mCachedMeshes.empty())
-        {
+        if (!mCachedMeshes.empty()) {
             initMeshKeyframes();
             initMeshBuffers();
-
             createMeshVertexUpdatePass();
         }
     }
 
-    AnimatedVertexCache::UniquePtr AnimatedVertexCache::create(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
-    {
+    AnimatedVertexCache::UniquePtr AnimatedVertexCache::create(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes) {
+        assert(pScene);
+        if(!pScene) return nullptr;
         return UniquePtr(new AnimatedVertexCache(pScene, pPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes)));
     }
 

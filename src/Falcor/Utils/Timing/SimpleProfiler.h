@@ -9,12 +9,12 @@
 #include <chrono>
 #include <atomic>
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Timing/CpuTimer.h"
 #include "lava_utils_lib/logging.h"
-
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics.hpp>
 
 
 namespace ba = boost::accumulators;

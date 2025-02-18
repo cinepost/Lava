@@ -3,8 +3,12 @@
 #include "slang-gfx.h"
 
 #include "slang-context.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-basic.h"
 #include "core/slang-com-object.h"
+#pragma GCC diagnostic pop
 
 #include "resource-desc-utils.h"
 
@@ -690,6 +694,9 @@ public:
                     if (resourceView) setResource(offset, resourceView);
                 }
                 break;
+            default:
+                return SLANG_E_NOT_IMPLEMENTED;
+
         }
         return SLANG_OK;
     }
@@ -883,6 +890,8 @@ public:
                     return static_cast<ShaderProgramBase*>(graphics.program);
                 case PipelineType::RayTracing:
                     return static_cast<ShaderProgramBase*>(rayTracing.program);
+                default:
+                    break;
             }
             return nullptr;
         }
@@ -1365,6 +1374,8 @@ Result ShaderObjectBaseImpl<TShaderObjectImpl, TShaderObjectLayoutImpl, TShaderO
                     // `ExistentialValue` case here, but currently we lack a mechanism to
                     // distinguish the two scenarios.
                     break;
+                default:
+                    return SLANG_FAIL;
             }
 
             auto addedTypeArgCountForCurrentRange = args.getCount() - oldArgsCount;

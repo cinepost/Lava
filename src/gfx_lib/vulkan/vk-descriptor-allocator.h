@@ -3,7 +3,11 @@
 #pragma once
 
 #include "vk-api.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-list.h"
+#pragma GCC diagnostic pop
 
 namespace gfx
 {

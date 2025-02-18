@@ -230,10 +230,6 @@ void MeshletBuilder::buildPrimitiveAdjacency(SceneBuilder::MeshSpec& mesh) {
   } else {
     buildPrimitiveAdjacencyByPointIndices(mesh);
   }
-  
-  if(!mesh.adjacencyData.isValid()) return;
-
-  const auto& adjacency = mesh.adjacencyData;
 }
 
 static unsigned int getNeighborTriangle(const SceneBuilder::MeshSpec& mesh, const Geometry::PrimitiveAdjacency& adjacency, const SceneBuilder::MeshletSpec& meshletSpec, const Cone* pMeshletCone, const Cone* prim_cones, const uint32_t* live_primitives, const uint8_t* used, const uint8_t* usedPrims, float meshlet_expected_radius, float cone_weight, uint32_t* out_extra) {

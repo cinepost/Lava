@@ -59,6 +59,7 @@ Bgeo::PrimitivePtr create(const Bgeo& bgeo, const parser::Primitive& parserPrimi
     switch(parserPrimitive.getType())
     {
     case parser::Primitive::UnknownType:
+    case parser::Primitive::AlembicRefType:
         return nullptr;
     case parser::Primitive::PackedDiskType:
     {
@@ -122,7 +123,6 @@ Bgeo::PrimitivePtr create(const Bgeo& bgeo, const parser::Primitive& parserPrimi
         auto run = new Run(bgeo, *parserRun);
         return Bgeo::PrimitivePtr(run);
     }
-    /*
     case parser::Primitive::MeshType:
     {
         const parser::Mesh* parserMesh =
@@ -131,7 +131,6 @@ Bgeo::PrimitivePtr create(const Bgeo& bgeo, const parser::Primitive& parserPrimi
         auto mesh = new Mesh(bgeo, *parserMesh);
         return Bgeo::PrimitivePtr(mesh);
     }
-    */
     case parser::Primitive::SphereType:
     {
         const parser::Sphere* sphereParser =

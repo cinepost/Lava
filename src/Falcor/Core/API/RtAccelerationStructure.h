@@ -40,7 +40,7 @@ class RtAccelerationStructure;
 
 using DeviceAddress = uint64_t;
 
-enum class RtGeometryInstanceFlags {
+enum class RtGeometryInstanceFlags : uint8_t {
 	// The enum values are kept consistent with D3D12_RAYTRACING_INSTANCE_FLAGS
 	// and VkGeometryInstanceFlagBitsKHR.
 	None = 0,

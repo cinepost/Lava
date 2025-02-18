@@ -115,5 +115,6 @@ SCRIPT_BINDING(EnvMap)
     envMap.def_property("intensity", &EnvMap::getIntensity, &EnvMap::setIntensity);
     envMap.def_property("tint", &EnvMap::getTint, &EnvMap::setTint);
 }
-#endif SCRIPTING
+#endif  // SCRIPTING
+
 }

@@ -30,9 +30,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Shader.h"
 
-#if FALCOR_D3D12_AVAILABLE
-#include "Falcor/Core/API/Shared/D3D12RootSignature.h"
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
 #include "Falcor/Core/API/RootSignature.h"
 #endif
 
@@ -45,30 +43,6 @@ namespace Falcor
     class FALCOR_API Program;
     class FALCOR_API ProgramVars;
     class FALCOR_API ProgramVersion;
-
-#if 0
-    /** A collection of one or more entry points in a program kernels object.
-    */
-    class FALCOR_API EntryPointGroup
-    {
-    public:
-        using SharedPtr = std::shared_ptr<EntryPointGroup>;
-        using SharedConstPtr = std::shared_ptr<const EntryPointGroup>;
-
-        using Type = EntryPointGroupReflection::Type;
-
-        virtual ~EntryPointGroup() = default;
-
-        Type getType() const { return mType; }
-
-    protected:
-        EntryPointGroup() = default;
-        EntryPointGroup(const EntryPointGroup&) = delete;
-        EntryPointGroup& operator=(const EntryPointGroup&) = delete;
-
-        Type mType;
-    };
-#endif
 
     /** A collection of one or more entry points in a program kernels object.
     */
@@ -182,9 +156,7 @@ namespace Falcor
         */
         const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
 
-#if defined(FALCOR_D3D12)
-        D3D12RootSignature::SharedPtr const& getD3D12RootSignature() const { return mpRootSignature; }
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
         RootSignature::SharedPtr const& getRootSignature() const { return mpRootSignature; }
 #endif
 
@@ -216,9 +188,7 @@ namespace Falcor
 
         ProgramVersion const* mpVersion = nullptr;
 
-#if defined(FALCOR_D3D12)
-        D3D12RootSignature::SharedPtr mpRootSignature;
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
         RootSignature::SharedPtr mpRootSignature;
 #endif
     };

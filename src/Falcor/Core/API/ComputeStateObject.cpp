@@ -32,9 +32,7 @@
 namespace Falcor {
 
 bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
-    bool b = true;
-    b = b && (mpProgram == other.mpProgram);
-    return b;
+    return mpProgram == other.mpProgram;
 }
 
 ComputeStateObject::~ComputeStateObject() {
@@ -42,7 +40,7 @@ ComputeStateObject::~ComputeStateObject() {
     mpDevice->releaseResource(mApiHandle);
 }
 
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
+ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mDesc(desc), mpDevice(pDevice) {
     apiInit();
 }
 

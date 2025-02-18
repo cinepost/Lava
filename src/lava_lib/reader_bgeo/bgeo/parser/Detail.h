@@ -12,8 +12,7 @@
 
 #include <memory>
 
-//#include <UT/UT_JSONParser.h>
-//#include <UT/UT_String.h>
+#include "../houdini_inc.h"
 
 #include "VertexMap.h"
 #include "Primitives.h"
