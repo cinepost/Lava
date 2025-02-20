@@ -1527,8 +1527,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	Falcor::SceneBuilder::Node transformNode = {};
 	transformNode.name = obj_name;
 
-	const auto& transformList = pObj->getTransformList();
-	assert(transformList.size() > 0);
+	assert(pObj->getTransformList().size() > 0);
 	transformNode.transformList = pObj->getTransformList();
 	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.

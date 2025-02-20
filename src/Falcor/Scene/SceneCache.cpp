@@ -426,8 +426,8 @@ Camera::SharedPtr SceneCache::readCamera(InputStream& stream) {
 // Light
 
 void SceneCache::writeLight(OutputStream& stream, const Light::SharedPtr& pLight) {
-    LightType type = pLight->getType();
-    stream.write(type);
+    LightType light_type = pLight->getType();
+    stream.write(light_type);
 
     stream.write(pLight->mHasAnimation);
     stream.write(pLight->mIsAnimated);
@@ -437,7 +437,7 @@ void SceneCache::writeLight(OutputStream& stream, const Light::SharedPtr& pLight
     stream.write(pLight->mActive);
     stream.write(pLight->mData);
 
-    switch (type) {
+    switch (light_type) {
         case LightType::Point:
         case LightType::Directional:
             break;
@@ -450,14 +450,17 @@ void SceneCache::writeLight(OutputStream& stream, const Light::SharedPtr& pLight
             stream.write(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mScaling);
             stream.write(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
             break;
+        default:
+            LLOG_WRN << "SceneCache::writeLight(...) unsupported light type: " << to_string(light_type);
+            break;
     }
 }
 
 Light::SharedPtr SceneCache::readLight(InputStream& stream) {
     Light::SharedPtr pLight;
-    auto type = stream.read<LightType>();
+    auto light_type = stream.read<LightType>();
 
-    switch (type) {
+    switch (light_type) {
         case LightType::Point:
             pLight = PointLight::create();
             break;
@@ -476,6 +479,9 @@ Light::SharedPtr SceneCache::readLight(InputStream& stream) {
         case LightType::Sphere:
             pLight = SphereLight::create();
             break;
+        default:
+            LLOG_WRN << "SceneCache::readLight(...) unsupported light type: " << to_string(light_type);
+            break;
     }
 
     stream.read(pLight->mHasAnimation);
@@ -486,7 +492,7 @@ Light::SharedPtr SceneCache::readLight(InputStream& stream) {
     stream.read(pLight->mActive);
     stream.read(pLight->mData);
 
-    switch (type) {
+    switch (light_type) {
         case LightType::Point:
         case LightType::Directional:
             break;
@@ -498,6 +504,9 @@ Light::SharedPtr SceneCache::readLight(InputStream& stream) {
         case LightType::Sphere:
             stream.read(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mScaling);
             stream.read(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
+            break;
+        default:
+            LLOG_WRN << "SceneCache::readLight(...) unsupported light type: " << to_string(light_type);
             break;
     }
 

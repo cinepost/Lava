@@ -4,8 +4,10 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreorder"
+
 #include <slang/slang-com-ptr.h>
 #include "core/slang-com-object.h"
+
 #pragma GCC diagnostic pop
 
 #include "command-encoder-com-forward.h"

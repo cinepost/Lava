@@ -70,7 +70,7 @@ void passRayQuery(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;
-    
+
     #if is_valid(gVBuffer)
         const HitInfo hit = HitInfo(gVBuffer[pixelPos]);
         if(hit.isValid() && hit.getType() == HitType::Triangle) {

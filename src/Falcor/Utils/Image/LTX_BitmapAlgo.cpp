@@ -65,34 +65,6 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 	return (uint32_t)bytes_written;
 }
 
-static uint32_t writeTailData(FILE *pFile, TLCInfo& compressionInfo, const std::vector<uint8_t>& tail_data) {
-	size_t bytes_written = 0;
-	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-		std::vector<uint8_t> tmp_compressed_tail_data(tail_data.size() + BLOSC_MAX_OVERHEAD);
-		// write compressed page date
-		int cbytes = blosc_compress_ctx(compressionInfo.compressionLevel, kDoBloscShuffle, compressionInfo.compressionTypeSize, 
-			tail_data.size(), tail_data.data(), tmp_compressed_tail_data.data(), 
-			tmp_compressed_tail_data.size(), getBloscCompressionName(compressionInfo.topLevelCompression),
-			gBloscForceBlocksize, 4);
-
-		if (cbytes == 0 ) {
-			throw std::runtime_error("Compression error! Data cannot be copied without overrun destination.");
-		} else if (cbytes < 0) {
-			throw std::runtime_error("Compression error!");
-		}
-
-		LLOG_TRC << "Compressed tail data size is: " << cbytes << " bytes.";
-
-		bytes_written = fwrite(tmp_compressed_tail_data.data(), sizeof(uint8_t), cbytes, pFile);
-		//compressionInfo.pPageOffsets[pageId] = pageOffset;
-		//compressionInfo.pCompressedPageSizes[pageId] = cbytes;
-	} else {
-		// write uncompressed page data
-		bytes_written = fwrite(tail_data.data(), sizeof(uint8_t), tail_data.size(), pFile);
-	}
-	return (uint32_t)bytes_written;
-}
-
 bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo, bool speedUp) {
 	assert(pFile);
 
@@ -105,6 +77,12 @@ bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo
 	uint32_t img_width  = header.width;
 	uint32_t img_height = header.height;
 	uint32_t img_depth  = header.depth;
+
+	assert(img_depth == 1);
+	if(img_depth != 1) {
+		LLOG_ERR << "LTX image conversion for 3D images is not implemented !";
+		return false;
+	}
 
 	// image memory page dimensions
 	uint32_t page_width  = header.pageDims.width;
@@ -121,7 +99,7 @@ bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo
 
 	compressionInfo.compressionTypeSize = dstChannelBits / 8; // compressor shuffle preconditioner
 
-	size_t srcBytesPerPixel = spec.pixel_bytes();
+	//size_t srcBytesPerPixel = spec.pixel_bytes();
 	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
 	size_t tileWidthStride = page_width * dstBytesPerPixel;
@@ -236,6 +214,11 @@ bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo
 		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
 		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
 		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
+
+		assert(mipLevelDepth == 1);
+		if(mipLevelDepth != 1) {
+			LLOG_ERR << "Mip level " << std::to_string(mipLevel) << " has " << mipLevelDepth << " depth size. Unsupported !!!";
+		}
 
 		pagesCountX = mipLevelWidth / page_width;
 		pagesCountY = mipLevelHeight / page_height;
@@ -353,10 +336,15 @@ bool ltxCpuGenerateAndWriteMIPTilesNPOT(LTX_Header &header, LTX_MipInfo &mipInfo
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
 		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
 
+		assert(mipLevelDepth == 1);
+		if(mipLevelDepth != 1) {
+			LLOG_ERR << "Tail mip level " << std::to_string(mipTailLevel) << " has " << mipLevelDepth << " depth size. Unsupported !!!";
+		}
+
 		auto tailLevelByteSize = mipLevelWidth * mipLevelHeight * dstBytesPerPixel; 
 		
 		if (tailLevelByteSize > kLtxPageSize) {
-			LLOG_ERR << "Mip tail level " << std::to_string(mipTailLevel) << " data size is greater than " << std::to_string(kLtxPageSize);
+			LLOG_ERR << "Tail mip level " << std::to_string(mipTailLevel) << " data size is greater than " << std::to_string(kLtxPageSize);
 			continue;
 		}
 
@@ -415,7 +403,6 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 
 	compressionInfo.compressionTypeSize = dstChannelBits / 8; // compressor shuffle preconditioner
 
-	size_t srcBytesPerPixel = spec.pixel_bytes();
 	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
 	size_t tileWidthStride = page_width * dstBytesPerPixel;
@@ -547,6 +534,11 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
 		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
 
+		assert(mipLevelDepth == 1);
+		if(mipLevelDepth != 1) {
+			LLOG_ERR << "Tail mip level " << std::to_string(mipTailLevel) << " has " << mipLevelDepth << " depth size. Unsupported !!!";
+		}
+
 		auto tailLevelByteSize = mipLevelWidth * mipLevelHeight * dstBytesPerPixel; 
 		
 		if (tailLevelByteSize > kLtxPageSize) {
@@ -649,7 +641,6 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 	uint32_t dstChannelCount = getFormatChannelCount(format);
 	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-	size_t srcBytesPerPixel = spec.pixel_bytes();
 	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
 	size_t tileWidthStride = page_width * dstBytesPerPixel;

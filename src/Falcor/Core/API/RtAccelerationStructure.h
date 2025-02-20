@@ -180,6 +180,13 @@ public:
 
 	using ApiHandle = AccelerationStructureHandle;
 
+	/** Settings for how the scene is updated
+  */
+  enum class UpdateMode {
+    Rebuild,    ///< Recreate acceleration structure when updates are needed
+    Refit       ///< Update acceleration structure when updates are needed
+  };
+
 	class FALCOR_API Desc {
 		public:
 			friend class RtAccelerationStructure;

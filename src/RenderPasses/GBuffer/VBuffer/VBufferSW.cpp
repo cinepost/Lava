@@ -148,23 +148,6 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         mSTBNOffsets[i][1] = static_cast<uint>(rnd[1] * stbn_dims[1]);
     }   
 
-    // test
-    const auto& deviceProps = mpDevice->getPhysicalDeviceProperties();
-    uint3 maxComputeWorkGroupCount, maxComputeWorkGroupSize;
-    uint32_t maxComputeWorkGroupInvocations = deviceProps.limits.maxComputeWorkGroupInvocations;
-
-    maxComputeWorkGroupCount.x = deviceProps.limits.maxComputeWorkGroupCount[0];
-    maxComputeWorkGroupCount.y = deviceProps.limits.maxComputeWorkGroupCount[1];
-    maxComputeWorkGroupCount.z = deviceProps.limits.maxComputeWorkGroupCount[2];
-
-    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[0];
-    maxComputeWorkGroupSize.y = deviceProps.limits.maxComputeWorkGroupSize[1];
-    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[2];
-
-    //LLOG_WRN << "maxComputeWorkGroupInvocations " << maxComputeWorkGroupInvocations;
-    //LLOG_WRN << "maxComputeWorkGroupCount " << to_string(maxComputeWorkGroupCount);
-    //LLOG_WRN << "maxComputeWorkGroupSize " << to_string(maxComputeWorkGroupSize);
-
     mDirty = true;
 }
 
@@ -211,6 +194,7 @@ void VBufferSW::compile(RenderContext* pRenderContext, const CompileData& compil
 
 bool VBufferSW::beginFrame(RenderContext *pContext, const RenderData& renderData) {
     mSampleNumber = 0;
+    return true;
 }
 
 void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderData) {
@@ -410,7 +394,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    const uint32_t threadsX = meshletDrawsCount;// * kMaxGroupThreads;
     const uint32_t dispatchX = kMaxGroupThreads;
 
     {
@@ -555,7 +538,6 @@ void VBufferSW::createMicroTrianglesBuffer() {
     return;
     if(!mDirty) return;
 
-    static constexpr uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
     const uint32_t maxMicroTrianglesCount = mMaxMicroTrianglesPerThread * kMaxGroupThreads;
 
     if(mpMicroTrianglesBuffer && (mpMicroTrianglesBuffer->getElementCount() == maxMicroTrianglesCount)) return;
@@ -603,8 +585,6 @@ void VBufferSW::createMeshletDrawList() {
     std::vector<MeshletDraw> meshletsDrawList;
     std::vector<MeshletDraw> nonOpaqueMeshletsDrawList;
 
-    const std::vector<uint32_t>& meshletPrimIndicesList = mpScene->getMeshletPrimIndicesList();
-    
     for(uint32_t instanceID = 0; instanceID < mpScene->getGeometryInstanceCount(); ++instanceID) {
         const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
         if(instanceData.getType() != GeometryType::TriangleMesh) continue; // Only triangles now
@@ -616,11 +596,9 @@ void VBufferSW::createMeshletDrawList() {
             if(meshletGroup.meshlets_count == 0) continue;
             if(isSubdivInstance) mSubdivMeshletsCount++;
 
-            const MeshDesc& mesh = mpScene->getMesh(meshID);
+            //const MeshDesc& mesh = mpScene->getMesh(meshID);
             
             bool isOpaqueInstanceMaterial = isOpaqueMaterial(mpScene->getMaterial(instanceData.materialID));
-            bool instanceHasMultipleMaterials = instanceData.hasMultipleMaterials() && (instanceData.mbOffset != kInvalidIndex);
-
             LLOG_TRC << "Mesh " << meshID << " has " << meshletGroup.meshlets_count << " meshlets";
                 
             for(uint32_t i = 0; i < meshletGroup.meshlets_count; ++i) {
@@ -630,15 +608,6 @@ void VBufferSW::createMeshletDrawList() {
                 draw.drawCount = 1;
 
                 bool isOpaqueMehslet = isOpaqueInstanceMaterial;
-
-                if(instanceHasMultipleMaterials) {
-                    const PackedMeshletData& packedMeshletData = mpScene->getPackedMeshletData(draw.meshletID);
-                    //uint meshlet_offset;    ///< Offset into scene meshlets buffer.
-                    //uint meshlets_count;    ///< Number of meshlets within this group.
-
-                    uint primIndexOffset = packedMeshletData.primIndexOffset();
-                    uint primCount = packedMeshletData.primCount();
-                }
 
                 if(isOpaqueMehslet) {
                     meshletsDrawList.push_back(draw);

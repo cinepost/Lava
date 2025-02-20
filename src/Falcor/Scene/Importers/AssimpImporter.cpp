@@ -884,6 +884,7 @@ namespace {
 		}
 
 		b = validateBones(pScene);
+		if(!b) LLOG_ERR << "AssimpImporter. Scene has errors!";
 		assert(b);
 	}
 

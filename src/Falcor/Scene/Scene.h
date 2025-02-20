@@ -36,6 +36,7 @@
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 #include "Falcor/Scene/Animation/Animation.h"
+#include "Falcor/Scene/Geometry.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Lights/LightProfile.h"
 #include "Falcor/Scene/Camera/Camera.h"
@@ -43,6 +44,7 @@
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/Volume/GridVolume.h"
 #include "Falcor/Scene/Volume/Grid.h"
+
 #ifndef _WIN32
 #include "Falcor/Scene/SDFs/SDFGrid.h"
 #include "Falcor/Scene/SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
@@ -225,13 +227,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         All                         = -1
     };
 
-    /** Settings for how the scene is updated
-    */
-    enum class UpdateMode {
-        Rebuild,    ///< Recreate acceleration structure when updates are needed
-        Refit       ///< Update acceleration structure when updates are needed
-    };
-
     enum class CameraControllerType {
         FirstPerson,
         Orbiter,
@@ -384,7 +379,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         RtAccelerationStructure::SharedPtr pTlasObject;
         Buffer::SharedPtr pTlasBuffer;
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
-        UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
+        RtAccelerationStructure::UpdateMode updateMode = RtAccelerationStructure::UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
     };
 
     const SceneStats& getSceneStats() const { return mSceneStats; }
@@ -808,20 +803,20 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
     */
-    void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
+    void setTlasUpdateMode(RtAccelerationStructure::UpdateMode mode) { mTlasUpdateMode = mode; }
 
     /** Get the scene's TLAS update mode when raytracing.
     */
-    UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
+    RtAccelerationStructure::UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
 
     /** Set how the scene's BLASes are updated when raytracing.
         BLASes are REFIT by default
     */
-    void setBlasUpdateMode(UpdateMode mode);
+    void setBlasUpdateMode(RtAccelerationStructure::UpdateMode mode);
 
     /** Get the scene's BLAS update mode when raytracing.
     */
-    UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
+    RtAccelerationStructure::UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
 
     /** Update the scene. Call this once per frame to update the camera location, animations, etc.
         \param pContext
@@ -1418,8 +1413,8 @@ public:
     AnimationController::UniquePtr mpAnimationController;
 
     // Raytracing data
-    UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
-    UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
+    RtAccelerationStructure::UpdateMode mTlasUpdateMode = RtAccelerationStructure::UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
+    RtAccelerationStructure::UpdateMode mBlasUpdateMode = RtAccelerationStructure::UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
 
     std::vector<RtInstanceDesc> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
     std::vector<uint32_t>       mMeshIdToBlasId;
@@ -1453,7 +1448,7 @@ public:
         bool hasDynamicMesh = false;                    ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated.
         bool hasDynamicCurve = false;                   ///< Whether the BLAS contains an animated vertex cache, which means the BLAS may need to be updated.
         bool useCompaction = false;                     ///< Whether the BLAS should be compacted after build.
-        UpdateMode updateMode = UpdateMode::Refit;      ///< Update mode this BLAS was created with.
+        RtAccelerationStructure::UpdateMode updateMode = RtAccelerationStructure::UpdateMode::Refit;      ///< Update mode this BLAS was created with.
     
         bool hasDynamicGeometry() const
         {

@@ -6,6 +6,8 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
+#include <limits>
+
 #include "Info.h"
 #include "Attribute.h"
 #include "PrimitiveGroup.h"
@@ -163,7 +165,7 @@ void Detail::loadGeometry(UT_JSONParser &parser) {
     }
 }
 
-int64 Detail::getPointIndexForVertex(int64 vertex) const {
+uint64 Detail::getPointIndexForVertex(uint64 vertex) const {
     assert(vertex < vertexMap.vertexCount);
     return vertexMap.vertices[vertex];
 }
@@ -209,9 +211,10 @@ const Attribute* Detail::getDetailAttributeByName(const char *name) const {
 }
 
 void Detail::mapVerticesToPoints(const VertexArray& vertices, VertexArray& points) const {
+    assert(vertexMap.vertexCount <= std::numeric_limits<int32>::max());
     points.resize(vertices.size());
     for (size_t i = 0; i < vertices.size(); i++) {
-        assert(vertices[i] < vertexMap.vertexCount);
+        assert(vertices[i] < (int32)vertexMap.vertexCount);
         points[i] = vertexMap.vertices[vertices[i]];
     }
 }

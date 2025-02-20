@@ -293,9 +293,13 @@ void ShaderObjectImpl::writeBufferDescriptor(
 
     VkDescriptorBufferInfo bufferInfo = {};
     
+    printf("1\n");
+
     if (buffer) {
         bufferInfo.buffer = buffer->m_buffer.m_buffer;
     }
+
+    printf("2\n");
     
     bufferInfo.offset = bufferOffset;
     bufferInfo.range = bufferSize;
@@ -310,6 +314,8 @@ void ShaderObjectImpl::writeBufferDescriptor(
     write.pBufferInfo = &bufferInfo;
 
     writeDescriptor(context, write);
+    printf("3\n");
+
 }
 
 void ShaderObjectImpl::writeBufferDescriptor(

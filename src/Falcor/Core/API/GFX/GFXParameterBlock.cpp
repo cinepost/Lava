@@ -87,6 +87,7 @@ bool isUavType(const ReflectionType::SharedConstPtr& pType) {
     }
 }
 
+/*
 bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
     auto resourceType = pType->unwrapArray()->asResourceType();
     if (resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer) {
@@ -95,6 +96,7 @@ bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
     }
     return false;
 }
+*/
 
 }  // namespace
 
@@ -102,8 +104,8 @@ ParameterBlock::~ParameterBlock() {}
 
 ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
     : mpDevice(pDevice)
-    , mpReflector(pReflector->getDefaultParameterBlock())
-    , mpProgramVersion(pReflector->getProgramVersion()) {
+    , mpProgramVersion(pReflector->getProgramVersion())
+    , mpReflector(pReflector->getDefaultParameterBlock()) {
     assert(pDevice);
     assert(pReflector);
     
@@ -117,8 +119,8 @@ ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,
     const std::shared_ptr<const ProgramVersion>& pProgramVersion,
     const ParameterBlockReflection::SharedConstPtr& pReflection)
     : mpDevice(pDevice)
-    , mpReflector(pReflection)
-    , mpProgramVersion(pProgramVersion) {
+    , mpProgramVersion(pProgramVersion)
+    , mpReflector(pReflection) {
     FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableShaderObjectFromTypeLayout(
         pReflection->getElementType()->getSlangTypeLayout(),
         mpShaderObject.writeRef()));

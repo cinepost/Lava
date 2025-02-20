@@ -84,7 +84,7 @@ void Scripting::shutdown() {
 #endif // SCRIPTING
 }
 
-class RedirectStream {
+class __attribute__ ((visibility("hidden"))) RedirectStream {
  public:
     RedirectStream(const std::string& stream = "stdout") : mStream(stream) {
         auto m = pybind11::module::import("sys");

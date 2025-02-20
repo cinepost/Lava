@@ -94,8 +94,10 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc&
  * Initialize device
  */
 bool Device::init() {
+    #ifdef _DEBUG
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
+    #endif // _DEBUG
 
     if (!apiInit(mDesc.validationLayerOuputFilename)) return false;
 
@@ -233,7 +235,6 @@ void Device::releaseResource(ApiObjectHandle pResource) {
             mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
         }
 #pragma GCC diagnostic pop
-
     }
 }
 

@@ -9,11 +9,14 @@
 #include <sstream>
 #include <atomic>
 
-#include "lava_utils_lib/logging.h"
 
-#ifdef HUY_DEBUG
+#ifdef NO_DEBUG
+
+#define BOOST_CONTAINER_DETAIL_PLACEMENT_NEW_HPP
 
 #undef new
+
+struct boost_container_new_t{};
 
 inline void* operator new(std::size_t size, const char* file, int line, const char* function) {
 	return malloc(size);
@@ -53,6 +56,15 @@ inline void operator delete[](void* ptr, const char*, int) _GLIBCXX_USE_NOEXCEPT
 
 inline void operator delete[](void* ptr, std::size_t) _GLIBCXX_USE_NOEXCEPT {
   free(ptr);
+}
+
+// Boost placement
+
+inline void *operator new(std::size_t, void *p, boost_container_new_t) {  
+  return p;  }
+
+inline void operator delete(void *, void *, boost_container_new_t) {
+
 }
 
 //#define new new(__FILE__, __LINE__, __FUNCTION__)

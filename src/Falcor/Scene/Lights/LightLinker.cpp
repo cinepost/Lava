@@ -36,7 +36,8 @@
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "LightCollectionShared.slang"
-#include "Scene/Scene.h"
+#include "Falcor/Scene/Scene.h"
+#include "Falcor/Scene/Lights/Light.h"
 
 #include <sstream>
 

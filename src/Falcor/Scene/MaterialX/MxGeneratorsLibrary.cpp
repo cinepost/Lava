@@ -38,15 +38,6 @@ using PassFunc = typename Pass::SharedPtr(*)(RenderContext* pRenderContext, cons
 
 #define addNodeClass(c, desc) registerNodeClass(#c, desc, (PassFunc<c>)c::create)
 
-static bool addBuiltinGenerators() {
-  //auto& lib = MxGeneratorsLibrary::instance();
-  //lib.addGenerator(ResolvePass, ResolvePass::kDesc);
-
-  return true;
-};
-
-// static const bool b = addBuiltinPasses();
-
 static void copyDllFile(const std::string& fullpath) {
     std::ifstream src(fullpath, std::ios::binary);
     std::ofstream dst(fullpath + kMxTempLibSuffix, std::ios::binary);
@@ -204,6 +195,7 @@ void MxGeneratorsLibrary::releaseLibrary(const std::string& filename) {
 }
 
 void MxGeneratorsLibrary::reloadLibrary(std::string name) {
+/*
     auto lastTime = getFileModifiedTime(name);
     if ((lastTime == mLibs[name].lastModified) || (lastTime == 0)) return;
 
@@ -242,6 +234,7 @@ void MxGeneratorsLibrary::reloadLibrary(std::string name) {
     for (auto& n : nodesToReplace) {
         n.pNode->mpGenerator = createGenerator(n.info, {});
     }
+*/
 }
 
 void MxGeneratorsLibrary::reloadLibraries() {

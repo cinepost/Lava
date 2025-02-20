@@ -7,6 +7,8 @@
 #include <cstring>
 #include <string>
 
+#include "Falcor/Utils/Debug/DebugMemAlloc.h"
+
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>

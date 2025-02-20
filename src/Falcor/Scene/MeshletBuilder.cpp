@@ -85,10 +85,6 @@ static Cone getMeshletCone(const Cone& acc, uint32_t prim_count) {
   return result;
 }
 
-static uint32_t getPrimIndex(uint32_t vertexIndex) {
-  return (vertexIndex - (vertexIndex % 3)) / 3;
-}
-
 void MeshletBuilder::buildPrimitiveAdjacencyByPointIndices(SceneBuilder::MeshSpec& mesh) {
   if(mesh.pointIndexData.empty()) {
     return buildPrimitiveAdjacencyNoPoints(mesh);
@@ -512,17 +508,19 @@ void MeshletBuilder::Stats::appendTotalAdjacencyDataBuildDuration(const std::chr
 
 void MeshletBuilder::printStats() const {
 
-  auto totalMeshletsBuildCount = mStats.totalMeshletsBuildCount();
+  size_t totalMeshletsBuildCount = mStats.totalMeshletsBuildCount();
   auto totalMeshletsBuildDuration = mStats.totalMeshletsBuildDuration();
   auto totalAdjacencyDataBuildDuration = mStats.totalAdjacencyDataBuildDuration();
 
-  //LLOG_INF << "MeshletBuilder stats:";
-  //LLOG_INF << "\tTotal meshlets count: " << std::to_string(totalMeshletsBuildCount);
-  //LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalMeshletsBuildDuration).count() << " s"
-  //         << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalMeshletsBuildDuration).count() << " ms )";
-  //LLOG_INF << "\tTotal adjacency data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalAdjacencyDataBuildDuration).count() << " s"
-  //         << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalAdjacencyDataBuildDuration).count() << " ms )";
-  //LLOG_INF << std::endl;
+  if(totalMeshletsBuildCount == 0u) return;
+
+  LLOG_INF << "MeshletBuilder stats:";
+  LLOG_INF << "\tTotal meshlets count: " << std::to_string(totalMeshletsBuildCount);
+  LLOG_INF << "\tTotal meshlets build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalMeshletsBuildDuration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalMeshletsBuildDuration).count() << " ms )";
+  LLOG_INF << "\tTotal adjacency data build time: " << std::chrono::duration_cast<std::chrono::seconds>(totalAdjacencyDataBuildDuration).count() << " s"
+           << " ( " << std::chrono::duration_cast<std::chrono::milliseconds>(totalAdjacencyDataBuildDuration).count() << " ms )";
+  LLOG_INF << std::endl;
 }
 
 MeshletBuilder::MeshletBuilder() {
@@ -570,7 +568,6 @@ void MeshletBuilder::generateMeshletsScan(SceneBuilder::MeshSpec& mesh) {
   if (mesh.use16BitIndices) { assert(mesh.indexCount <= mesh.indexData.size() * 2); }
 
   uint32_t mesh_start_prim = 0;
-  uint32_t idx = 0;
 
   while(mesh_start_prim < mesh.getPrimitivesCount()) {
     std::vector<uint32_t> meshletPrimIndices;
@@ -736,7 +733,7 @@ void MeshletBuilder::generateMeshletsMeshopt(SceneBuilder::MeshSpec& mesh) {
     // add meshletSpec to the output; when the current meshletSpec is full we reset the accumulated bounds
     usedPrims[best_prim] = 1;
     if (appendMeshlet(mesh, meshlet_spec, best_prim, a, b, c, used.data(), mesh.meshletSpecs)) {
-      const auto& meshletSpec = mesh.meshletSpecs.back();
+      //const auto& meshletSpec = mesh.meshletSpecs.back();
 
       //LLOG_TRC << "Generated meshlet spec " << mesh.meshletSpecs.size() << " for mesh \"" << mesh.name << "\". " << meshletSpec.vertices.size() << 
       //" vertices. " << meshletSpec.indices.size() << " indices. " << meshletSpec.primitiveIndices.size() << " primitives.";

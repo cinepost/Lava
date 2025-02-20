@@ -42,10 +42,14 @@ namespace Falcor {
 
 namespace lava {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+	
 static bool isInVector(const std::vector<std::string>& strVec, const std::string& str) {
 	return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
 
+#pragma GCC diagnostic push
 
 Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 	assert(pDevice);
@@ -53,7 +57,7 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 }
 
 
-Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
+Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mGlobalDataInited(false), mpFrameRate(nullptr), mpClock(nullptr), mActiveGraphID(0), mInited(false) {
 	mMainAOVPlaneExist = false;
 }
 
@@ -223,8 +227,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	assert(pMainAOV);
 	
 	auto const& confgStore = Falcor::ConfigStore::instance();
-	bool vtoff = confgStore.get<bool>("vtoff", true);
-
+	
 	Falcor::uint2 imageSize = {renderRegionDims[0], renderRegionDims[1]};
 
 	LLOG_DBG << "createRenderGraph frame dimensions: " << imageSize[0] << " " << imageSize[1];
@@ -783,8 +786,8 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
 void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContext* pRenderContext) {
 	if (mGraphs.empty()) return;
 
-	auto& pGraph = mGraphs[mActiveGraph].pGraph;
-	LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
+	auto& pGraph = mGraphs[mActiveGraphID].pGraph;
+	LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
 	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
@@ -801,8 +804,8 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
 
 	if (mGraphs.empty()) return;
 
-	auto& pGraph = mGraphs[mActiveGraph].pGraph;
-	LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
+	auto& pGraph = mGraphs[mActiveGraphID].pGraph;
+	LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
 	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
@@ -842,7 +845,8 @@ void Renderer::finalizeScene(const FrameInfo& frame_info) {
 }
 
 void Renderer::bindAOVPlanesToResources() {
-	for (auto const& [name, pAOVPlane] : mAOVPlanes) {
+	for (auto const& entry : mAOVPlanes) {
+		auto& pAOVPlane = entry.second;
 		std::string passOutputName = pAOVPlane->accumulationPassColorOutputName();
 		if (passOutputName.empty()) {
 			LLOG_ERR << "AOV plane " << pAOVPlane->name() << " has no render pass output name !!! Resource binding skipped ...";
@@ -940,6 +944,8 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	// Debug test
 	Resource::printUsage();
 	printMemAllocCount();
+
+	return true;
 }
 
 void Renderer::renderSample() {
@@ -970,7 +976,6 @@ void Renderer::renderSample() {
 	}
 
 	mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-	
 	// Hard sync every 16 samples. TODO: this is UGLY !
 	if (mCurrentSampleNumber % 16 == 0) {
 		//pRenderContext->flush(true);
@@ -1007,6 +1012,8 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 		return false;
 	}
 	//mpSceneBuilder->addMaterialX(std::move(pMaterial));
+
+	return true;
 }
 
 uint32_t Renderer::addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial) {

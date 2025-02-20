@@ -133,7 +133,8 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
     mpProgram[Precision::Single] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
     
-    for(auto& [key, pProgram]: mpProgram) {
+    for(auto& entry: mpProgram) {
+        auto& pProgram = entry.second;
         pProgram->addDefine("is_valid_gDepth", "0");
     }
 
@@ -479,7 +480,6 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
 
     // Depth
     if(pDepthSrc && (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest || mPixelFilterType == PixelFilterType::Point)) {
-        ResourceFormat format = pDepthSrc->getFormat();
         uint32_t width = pDepthSrc->getWidth(0);
         uint32_t height = pDepthSrc->getHeight(0);
 

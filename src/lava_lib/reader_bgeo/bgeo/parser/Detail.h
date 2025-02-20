@@ -41,7 +41,7 @@ class Detail {
 
     friend std::ostream& operator << (std::ostream& co, const Detail& detail);
 
-    int64 getPointIndexForVertex(int64 vertex) const;
+    uint64 getPointIndexForVertex(uint64 vertex) const;
     const Attribute* getPointAttributeByName(const char* name) const;
     const Attribute* getVertexAttributeByName(const char* name) const;
     const Attribute* getPrimitiveAttributeByName(const char* name) const;

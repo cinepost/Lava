@@ -190,14 +190,13 @@ std::vector<uint32_t> compact16BitIndices(const std::vector<uint32_t>& indices) 
 	return indexData;
 }
 
-SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder::Flags buildFlags) {
-	SceneBuilder::Flags cacheFlags = buildFlags & (~(SceneBuilder::Flags::UseCache | SceneBuilder::Flags::RebuildCache));
-	SHA1 sha1;
-	sha1.update(scenePath.data(), scenePath.size());
-	sha1.update(&cacheFlags, sizeof(cacheFlags));
-	return sha1.final();
-
-}
+//SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder::Flags buildFlags) {
+//	SceneBuilder::Flags cacheFlags = buildFlags & (~(SceneBuilder::Flags::UseCache | SceneBuilder::Flags::RebuildCache));
+//	SHA1 sha1;
+//	sha1.update(scenePath.data(), scenePath.size());
+//	sha1.update(&cacheFlags, sizeof(cacheFlags));
+//	return sha1.final();
+//}
 
 }  // namespace
 
@@ -1543,8 +1542,12 @@ uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight) {
 	const uint32_t lightsCount = (uint32_t)mSceneData.lights.size() - 1;
 
 	if(mSceneData.pLightLinker) {
+		#ifdef _DEBUG
 		const uint32_t lightLinkerLightsCount = mSceneData.pLightLinker->addLight(pLight);
 		assert(lightsCount == lightLinkerLightsCount);
+		#else
+		mSceneData.pLightLinker->addLight(pLight);
+		#endif // _DEBUG
 	}
 
 	return lightsCount;
@@ -1653,7 +1656,11 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 	// Compute the combined transform.
 	auto& child = mSceneGraph[childNodeID];
 	glm::mat4 transform = child.transformList[0];
+	
+	#ifdef _DEBUG
 	uint32_t prevNodeID = childNodeID;
+	#endif // _DEBUG
+
 	uint32_t nodeID = child.parent;
 
 	while (nodeID != kInvalidNodeID) {
@@ -1673,7 +1680,11 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 		transform = node.transformList[0] * transform;
 		
 		if (nodeID == parentNodeID) break;
+
+		#ifdef _DEBUG
 		prevNodeID = nodeID;
+		#endif // _DEBUG
+
 		nodeID = mSceneGraph[nodeID].parent;
 	}
 
@@ -1858,10 +1869,12 @@ void SceneBuilder::removeUnusedMeshes() {
 		mMeshletLists = std::move(meshletLists);
 
 		// Validate scene graph.
+		#ifdef _DEBUG
 		assert((mMeshes.size() == meshCount - unusedCount) && (mMeshes.size() == mMeshletLists.size()));
 		for (const auto& node : mSceneGraph) {
 			for (uint32_t meshID : node.meshes) assert(meshID < mMeshes.size());
 		}
+		#endif // _DEBUG
 	}
 }
 
@@ -2215,9 +2228,11 @@ void SceneBuilder::createMeshGroups() {
 	meshList staticMeshes;
 	meshList staticDisplacedMeshes;
 	meshList dynamicDisplacedMeshes;
+
 	size_t nonInstancedMeshCount = 0;
 
 #ifdef NON_INSTANCED_MESH_SUPPORT
+
 	for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
 		auto& mesh = mMeshes[meshID];
 		if (mesh.instances.size() > 1) continue; // Only processing non-instanced meshes here
@@ -3017,8 +3032,6 @@ void SceneBuilder::createMeshSubdivData() {
 
 		LLOG_DBG << "Building subdiv data for mesh " << mesh.name;
 
-		bool cw = mesh.isFrontFaceCW;
-
 		mesh.subdivDataOffset = static_cast<uint32_t>(mSceneData.meshNeighborVerticesMap.size());
 
 		auto const& adjacency = mesh.adjacencyData;
@@ -3352,7 +3365,8 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 	auto& instanceNamesData = mSceneData.meshInstanceNamesData;
 	size_t drawCount = 0;
 	bool hasDisplaced = false;
-	uint32_t displacedMeshInstanceOffset = 0;
+	
+	//uint32_t displacedMeshInstanceOffset = 0;
 
 	for (const auto& meshGroup : mMeshGroups) {
 		// Displaced mesh instances must all be at the end of the instance list.
@@ -3362,7 +3376,10 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 		} else {
 			if (meshGroup.isDisplaced) {
 				hasDisplaced = true;
-				displacedMeshInstanceOffset = (uint32_t)instanceData.size();
+				
+				LLOG_WRN << "SceneBuilder::createMeshInstanceData(...) displaced mesh instances not supported!";
+
+				//displacedMeshInstanceOffset = (uint32_t)instanceData.size();
 			}
 		}
 
@@ -3374,7 +3391,6 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 		// This case is handled by pre-transforming the vertices in the BLAS build.
 		assert(!meshList.empty());
 		
-		uint32_t internalID = 0;
 		for(size_t meshID: meshList) {   
 
 			const auto& mesh = mMeshes[meshID];

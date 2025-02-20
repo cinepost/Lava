@@ -347,7 +347,9 @@ uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuri
 			throw std::runtime_error(("BVH depth of " + std::to_string(depth + 1) + " reached; maximum of " + std::to_string(kMaxBVHDepth) + " allowed.").c_str());
 		}
 
+		#ifdef _DEBUG
 		uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
+		#endif // _DEBUG
 		uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
 
 		assert(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.

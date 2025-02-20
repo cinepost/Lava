@@ -48,13 +48,13 @@ const Resource::SharedPtr& RenderData::getResource(const std::string& name) cons
     return mpResources->getResource(mName + '.' + name);
 }
 
-Texture::SharedPtr RenderData::getTexture(const std::string& name) const {
+const Texture::SharedPtr& RenderData::getTexture(const std::string& name) const {
     const auto pResource = mpResources->getResource(mName + '.' + name);
     if (!pResource) return mpNullTexture;
     return pResource->asTexture();
 }
 
-Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
+const Buffer::SharedPtr& RenderData::getBuffer(const std::string& name) const {
     const auto pResource = mpResources->getResource(mName + '.' + name);
     if (!pResource) return mpNullBuffer;
     return pResource->asBuffer();

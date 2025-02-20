@@ -190,6 +190,9 @@ void NumericData::load(UT_JSONParser &parser)
 {
     UT_WorkBuffer buffer;
     UT_String key;
+
+    assert(tupleSize <= std::numeric_limits<int32>::max());
+
     for (auto it = parser.beginArray(); !it.atEnd(); ++it)
     {
         it.getLowerKey(buffer);
@@ -291,7 +294,7 @@ void NumericData::load(UT_JSONParser &parser)
             {
                 packTotal += packing[i];
             }
-            assert(packTotal == tupleSize);
+            assert(packTotal == (int32)tupleSize);
         }
         else if (key == "pagesize")
         {

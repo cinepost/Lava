@@ -35,10 +35,15 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/State/GraphicsState.h"
 #include "Falcor/Core/Program/GraphicsProgram.h"
-#include "Falcor/Scene/Scene.h"
+
+#include "Falcor/Scene/Raytracing.h"
+
+#include "LightData.slang"
+
 #include "RenderGraph/BasePasses/ComputePass.h"
 
 #include "LightLinkerShared.slang"
@@ -47,6 +52,7 @@
 namespace Falcor {
 
 class Device;
+class Light;
 
 /** Class that holds a collection of bit masks for objects/lights for a scene.
 
@@ -62,7 +68,7 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
 
         using StringList     = std::vector<std::string>; // type alias for std::vector<std::string>
         using StringSet      = std::set<std::string>;
-        using LightMap       = std::unordered_map<std::string, Light::SharedPtr>;
+        using LightMap       = std::unordered_map<std::string, std::shared_ptr<Light>>;
 
         static constexpr uint32_t       kInvalidLightSetIndex   = 0xffffffff;
         static constexpr uint32_t       kInvalidTraceSetIndex   = 0xffffffff;
@@ -104,9 +110,9 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         */
         UpdateFlags update(bool forceUpdate);
 
-        uint32_t addLight(const Light::SharedPtr& pLight);
+        uint32_t addLight(const std::shared_ptr<Light>& pLight);
 
-        void     updateLight(const Light::SharedPtr& pLight);
+        void     updateLight(const std::shared_ptr<Light>& pLight);
 
         uint32_t getOrCreateLightSetIndex(const std::string& lightNamesString);
 
@@ -192,10 +198,10 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
 
         class TraceSet: public NameSet {
             public:
-                Scene::TlasData&      getTlasData() { return mTlasData; }
+                TlasData&      getTlasData() { return mTlasData; }
 
             private:
-                Scene::TlasData       mTlasData;
+                TlasData       mTlasData;
         };
 
         bool buildActiveLightsData(bool force);

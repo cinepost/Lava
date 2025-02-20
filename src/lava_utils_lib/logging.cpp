@@ -2,6 +2,8 @@
 #include <ostream>
 #include <iomanip>
 
+#include "lava_utils_lib/logging.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/phoenix/bind/bind_function.hpp>
@@ -11,8 +13,6 @@
 
 // Supporting headers
 #include <boost/log/support/date_time.hpp>
-
-#include "lava_utils_lib/logging.h"
 
 
 static bool g_logger_initialized = false;

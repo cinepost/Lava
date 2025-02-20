@@ -1251,7 +1251,7 @@ void RayTracingCommandEncoder::_memoryBarrier(
 	ShortList<VkBufferMemoryBarrier> memBarriers;
 	memBarriers.setCount(count);
 
-	for (int i = 0; i < count; i++) {
+	for (int i = 0; i < count; ++i) {
 		memBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 		memBarriers[i].pNext = nullptr;
 		memBarriers[i].dstAccessMask = translateAccelerationStructureAccessFlag(destAccess);

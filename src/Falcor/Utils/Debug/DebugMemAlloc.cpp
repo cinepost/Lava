@@ -5,8 +5,9 @@
 
 #ifdef _DEBUG
 
-std::atomic<int> gNumberOfAllocCalls = 0;
-std::atomic<int> gNumberOfDeallocCalls = 0;
+std::atomic<int64_t> gNumberOfAllocs = 0;
+std::atomic<int64_t> gNumberOfAllocCalls = 0;
+std::atomic<int64_t> gNumberOfDeallocCalls = 0;
 
 #endif
 

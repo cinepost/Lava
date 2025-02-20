@@ -50,6 +50,8 @@ using namespace gfx;
 
 namespace Falcor {
 
+static const uint32_t kInvalidBackbufferIndex = -1;
+
 #if FALCOR_NVAPI_AVAILABLE
 	// To use NVAPI, we intercept the API calls in the gfx layer and dispatch into the NVAPI_Create*PipelineState
 	// functions instead if the shader uses NVAPI functionalities.
@@ -247,7 +249,6 @@ namespace Falcor {
 	desc.type = gfx::IResource::Type::Texture2D; // same as resource dimension in D3D12
 
 	// default state and allowed states
-	gfx::ResourceState defaultState;
 	desc.defaultState = gfx::ResourceState::General;
 
 	desc.memoryType = gfx::MemoryType::DeviceLocal;
@@ -308,7 +309,7 @@ namespace Falcor {
 		// Call to acquireNextImage will block until the next image in the swapchain is ready for present and all the
 		// GPU tasks associated with rendering the next image in the swapchain has already completed.
 		mCurrentBackBufferIndex = mpApiData->pSwapChain->acquireNextImage();
-		if (mCurrentBackBufferIndex != -1) {
+		if (mCurrentBackBufferIndex != kInvalidBackbufferIndex) {
 			mpRenderContext->getLowLevelData()->closeCommandBuffer();
 			getCurrentTransientResourceHeap()->synchronizeAndReset();
 			mpRenderContext->getLowLevelData()->openCommandBuffer();
@@ -517,7 +518,7 @@ namespace Falcor {
 		FALCOR_ASSERT(mpApiData->pSwapChain);
 		FALCOR_GFX_CALL(mpApiData->pSwapChain->resize(width, height));
 		mCurrentBackBufferIndex = mpApiData->pSwapChain->acquireNextImage();
-		if (mCurrentBackBufferIndex != -1) {
+		if (mCurrentBackBufferIndex != kInvalidBackbufferIndex) {
 			mpRenderContext->getLowLevelData()->closeCommandBuffer();
 			getCurrentTransientResourceHeap()->synchronizeAndReset();
 			mpRenderContext->getLowLevelData()->openCommandBuffer();
@@ -525,7 +526,7 @@ namespace Falcor {
 	}
 
 	bool Device::isWindowOccluded() const {
-		return mCurrentBackBufferIndex == -1;
+		return mCurrentBackBufferIndex == kInvalidBackbufferIndex;
 	}
 
 	const VkPhysicalDeviceProperties& Device::getPhysicalDeviceProperties() const {

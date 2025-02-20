@@ -204,7 +204,7 @@ void PackedGeometry::getPivot(double pivot[3]) const
 
 void PackedGeometry::getTranslate(fpreal64 translate[3]) const
 {
-    int64 pointIndex = detail.getPointIndexForVertex(vertex);
+    uint64 pointIndex = detail.getPointIndexForVertex(vertex);
     const Attribute* attribute = detail.getPointAttributeByName("P");
     assert(attribute);
     attribute->data.copyTo(translate, 3, 1, pointIndex, 1);

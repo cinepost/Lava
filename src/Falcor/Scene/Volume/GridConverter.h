@@ -27,12 +27,19 @@
  **************************************************************************/
 #pragma once
 
-//#include <execution>
+#include <algorithm>
 
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
+#endif
+
 #include <nanovdb/NanoVDB.h>
+
+#ifdef _WIN32
 #pragma warning(pop)
+#endif
+
 #include "BC4Encode.h"
 #include "Utils/NumericRange.h"
 #include "BrickedGrid.h"
@@ -135,8 +142,7 @@ namespace Falcor
     }
 
     template <typename TexelType, unsigned int kBitsPerTexel>
-    void NanoVDBToBricksConverter<TexelType, kBitsPerTexel>::convertSlice(int z)
-    {
+    void NanoVDBToBricksConverter<TexelType, kBitsPerTexel>::convertSlice(int z) {
         uint3 atlasSizePixels = getAtlasSizePixels();
         uint brickMax = getAtlasMaxBrick();
         uint bricksPerSlice = mAtlasSizeBricks.x * mAtlasSizeBricks.y;
@@ -146,42 +152,38 @@ namespace Falcor
         uint32_t* rangedst = mRangeData.data() + offset;
         uint32_t* ptrdst = mPtrData.data() + offset;
         auto a = mpFloatGrid->getAccessor();
-        for (int y = 0; y < mLeafDim[0].y; ++y)
-        {
-            for (int x = 0; x < mLeafDim[0].x; ++x)
-            {
+
+        for (int y = 0; y < mLeafDim[0].y; ++y) {
+            for (int x = 0; x < mLeafDim[0].x; ++x) {
                 nanovdb::Coord ijk = { x * 8 + mBBMin.x, y * 8 + mBBMin.y, z * 8 + mBBMin.z };
                 auto val = a.getValue(ijk);
                 auto leaf = a.probeLeaf(ijk);
                 float minorant = val, majorant = val;
                 uint myleaf = 0;
-                if (leaf)
-                {
+                if (leaf) {
                     // Nanovdb only stores minorant/majorant for active voxels, but we need all of them... Grab the central 8x8x8 first the quick way.
-                    const float* data = leaf->data();
-                    for (int i = 0; i < kBrickSize * kBrickSize * kBrickSize; ++i) expandMinorantMajorant(data[i], minorant, majorant);
+                    const float* data = leaf->data()->mValues;
+                    for (int i = 0; i < (int)(kBrickSize * kBrickSize * kBrickSize); ++i) expandMinorantMajorant(data[i], minorant, majorant);
                     // We also need the 1-halo from neighbouring bricks. Fetch them in an order that maximises nanovdb's internal cache reuse.
-                    for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, -1)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, kBrickSize)), minorant, majorant);
-                    for (int j = 0; j < kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, -1, j)), minorant, majorant);
-                    for (int j = 0; j < kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, kBrickSize, j)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, i)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, i)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, -1)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, -1)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, kBrickSize)), minorant, majorant);
-                    for (int j = -1; j <= kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, kBrickSize)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, -1)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, kBrickSize)), minorant, majorant);
+                    for (int j = 0; j < (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, -1, j)), minorant, majorant);
+                    for (int j = 0; j < (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, kBrickSize, j)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, i)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) for (int i = 0; i < (int)kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, i)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, -1)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, -1)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(-1, j, kBrickSize)), minorant, majorant);
+                    for (int j = -1; j <= (int)kBrickSize; ++j) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(kBrickSize, j, kBrickSize)), minorant, majorant);
 
                     if (minorant != majorant) myleaf = mNonEmptyCount.fetch_add(1);
                 }
-                if (majorant == minorant || myleaf >= brickMax || leaf == nullptr)
-                {
+
+                if (majorant == minorant || myleaf >= brickMax || leaf == nullptr) {
                     *rangedst++ = f32tof16(majorant) + (f32tof16(majorant) << 16); // force identical major and minor
                     *ptrdst++ = 0;
-                }
-                else
-                {
-                    const float* data = leaf->data();
+                } else {
+                    const float* data = leaf->data()->mValues;
                     majorant = f16tof32(f32tof16(majorant) + 1);
                     minorant = f16tof32(f32tof16(minorant));
                     *rangedst++ = f32tof16(majorant) + (f32tof16(minorant) << 16);
@@ -193,12 +195,9 @@ namespace Falcor
                     if (!kBC4Compress) {
                         float invRange = ((1 << kBitsPerTexel) - 1.f) / (majorant - minorant);
                         TexelType* atlasdst = (TexelType*)mAtlasData.data() + atlasx * kBrickSize + atlasy * (atlasSizePixels.x * kBrickSize) + atlasz * (pixelsPerSlice * kBrickSize);
-                        for (int pixz = 0; pixz < kBrickSize; ++pixz)
-                        {
-                            for (int pixy = 0; pixy < kBrickSize; ++pixy)
-                            {
-                                for (int pixx = 0; pixx < kBrickSize; ++pixx)
-                                {
+                        for (int pixz = 0; pixz < (int)kBrickSize; ++pixz) {
+                            for (int pixy = 0; pixy < (int)kBrickSize; ++pixy) {
+                                for (int pixx = 0; pixx < (int)kBrickSize; ++pixx) {
                                     float f = data[pixx * kBrickSize * kBrickSize + pixy * kBrickSize + pixz];
                                     *atlasdst++ = TexelType((f - minorant) * invRange);
                                 }
@@ -211,17 +210,13 @@ namespace Falcor
                         // BC4 compression:
                         float invRange = (255.f) / (majorant - minorant);
                         uint64_t* atlasdst = ((uint64_t*)mAtlasData.data() + atlasx * (kBrickSize / 4) + atlasy * ((atlasSizePixels.x / 4) * kBrickSize / 4) + atlasz * (pixelsPerSlice / 16 * kBrickSize));
-                        for (int pixz = 0; pixz < kBrickSize; ++pixz)
-                        {
-                            for (int tiley = 0; tiley < kBrickSize; tiley += 4)
-                            {
-                                for (int tilex = 0; tilex < kBrickSize; tilex += 4) {
+                        for (int pixz = 0; pixz < (int)kBrickSize; ++pixz) {
+                            for (int tiley = 0; tiley < (int)kBrickSize; tiley += 4) {
+                                for (int tilex = 0; tilex < (int)kBrickSize; tilex += 4) {
                                     uint8_t tilevals[4][4];
                                     uint8_t tileminorant = 255, tilemajorant = 0;
-                                    for (int pixy = 0; pixy < 4; ++pixy)
-                                    {
-                                        for (int pixx = 0; pixx < 4; ++pixx)
-                                        {
+                                    for (int pixy = 0; pixy < 4; ++pixy) {
+                                        for (int pixx = 0; pixx < 4; ++pixx) {
                                             float f = data[(pixx + tilex) * (kBrickSize * kBrickSize) + (pixy + tiley) * kBrickSize + pixz];
                                             uint8_t voxel = uint8_t((f - minorant) * invRange);
                                             tileminorant = std::min(tileminorant, voxel);
@@ -252,15 +247,12 @@ namespace Falcor
         uint32_t slicestride_src = leafdim_src.y * rowstride_src;
 
         int3 leafdim_tgt = mLeafDim[mip];
-        uint32_t rowstride_tgt = leafdim_tgt.x;
-        uint32_t slicestride_tgt = leafdim_tgt.y * rowstride_tgt;
+        //uint32_t rowstride_tgt = leafdim_tgt.x;
+        //uint32_t slicestride_tgt = leafdim_tgt.y * rowstride_tgt;
 
-        for (int z = 0; z < leafdim_tgt.z; ++z, rangesrc += slicestride_src)
-        {
-            for (int y = 0; y < leafdim_tgt.y; ++y, rangesrc += rowstride_src)
-            {
-                for (int x = 0; x < leafdim_tgt.x; ++x, rangesrc += 2)
-                {
+        for (int z = 0; z < leafdim_tgt.z; ++z, rangesrc += slicestride_src) {
+            for (int y = 0; y < leafdim_tgt.y; ++y, rangesrc += rowstride_src) {
+                for (int x = 0; x < leafdim_tgt.x; ++x, rangesrc += 2) {
                     float2 majmin_dst = combineMajMin(
                         combineMajMin(
                             combineMajMin(unpackMajMin(rangesrc), unpackMajMin(rangesrc + 1)),
@@ -285,6 +277,7 @@ namespace Falcor
 
         // TODO: move to openmp
         //std::for_each(std::execution::par, range.begin(), range.end(), [&](int z) { convertSlice(z); });
+        std::for_each(range.begin(), range.end(), [&](int z) { convertSlice(z); });
         
         for (int mip = 1; mip < 4; ++mip) computeMip(mip);
         double dt = CpuTimer::calcDuration(t0, CpuTimer::getCurrentTimePoint());

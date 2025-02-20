@@ -176,15 +176,18 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 #pragma GCC optimize ("O0")
 
 std::shared_ptr<Texture> Resource::asTexture() {
-    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+    static const std::shared_ptr<Texture> pNullTexture = nullptr;
+    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : pNullTexture;
 }
 
 std::shared_ptr<const Texture> Resource::asTexture() const {
-    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
+    static const std::shared_ptr<Texture> pNullTexture = nullptr;
+    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : pNullTexture;
 }
 
 std::shared_ptr<Buffer> Resource::asBuffer() {
-    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+    static const std::shared_ptr<Buffer> pNullBuffer = nullptr;
+    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : pNullBuffer;
 }
 
 #pragma GCC pop_options

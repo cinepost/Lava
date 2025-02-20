@@ -43,7 +43,7 @@ namespace Falcor {
 static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha, const uint32_t* pSeed) {
     if(pSeed) rndEngine.seed(*pSeed);
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
-    float16_t4 prevColorVal;
+    float16_t4 prevColorVal = {0.f, 0.f, 0.f, 0.f};
 
     std::vector<float16_t4> colorVector(elementsCount);
 
@@ -75,7 +75,7 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr 
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
     
     using float32_t4 = std::array<float, 4>;
-    float32_t4 prevColorVal;
+    float32_t4 prevColorVal = {0.f, 0.f, 0.f, 0.f};
 
     std::vector<float32_t4> colorVector(elementsCount);
 
@@ -103,18 +103,21 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr 
 
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
     std::uniform_int_distribution<uint32_t> rndDist(0, std::numeric_limits<uint32_t>::max());
-
+    throw std::runtime_error("generateRandomColorsBufferUInt32(...) unimplemented !!!");
+    return nullptr;
 }
 
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt16(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
     std::uniform_int_distribution<uint16_t> rndDist(0, std::numeric_limits<uint16_t>::max());
-
+    throw std::runtime_error("generateRandomColorsBufferUInt16(...) unimplemented !!!");
+    return nullptr;
 }
 
 #ifndef _WIN32
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt8(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {
     std::uniform_int_distribution<uint8_t>  rndDist(0, std::numeric_limits<uint8_t>::max());
-
+    throw std::runtime_error("generateRandomColorsBufferUInt8(...) unimplemented !!!");
+    return nullptr;
 }
 #endif
 

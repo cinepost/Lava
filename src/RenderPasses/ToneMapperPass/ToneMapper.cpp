@@ -88,7 +88,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerPass(ToneMapperPass::kInfo, ToneMapperPass::create);
 }
 
-ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operator op, ResourceFormat outputFormat) : RenderPass(pDevice, kInfo), mOperator(op), mOutputFormat(outputFormat) {
+ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operator op, ResourceFormat outputFormat) : RenderPass(pDevice, kInfo), mOutputFormat(outputFormat), mOperator(op) {
     createLuminancePass(pDevice);
     createToneMapPass(pDevice);
 
@@ -102,8 +102,6 @@ ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operat
 }
 
 ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    // outputFormat can only be set on construction
-    ResourceFormat outputFormat = ResourceFormat::Unknown;
     auto pThis = SharedPtr(new ToneMapperPass(pRenderContext->device(), Operator::HableUc2, ResourceFormat::Unknown));
 
     for (const auto& [key, value] : dict) {

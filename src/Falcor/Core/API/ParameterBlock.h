@@ -416,51 +416,6 @@ protected:
     std::map<gfx::ShaderOffset, Sampler::SharedPtr> mSamplers;
     std::map<gfx::ShaderOffset, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
 #endif // FALCOR_GFX
-
-#if FALCOR_ENABLE_CUDA
-
-    // The following members pertain to the issue of exposing the
-    // current state/contents of a shader object to CUDA kernels.
-
-    /** A kind of data buffer used for communicating with CUDA.
-    */
-    enum class CUDABufferKind {
-        Host,   ///< A buffer in host memory
-        Device, ///< A buffer in device memory
-    };
-
-    /** Get a CUDA-compatible buffer that represents the contents of this shader object.
-    */
-    void* getCUDABuffer(
-        CUDABufferKind  bufferKind,
-        size_t& outSize);
-
-    /** Get a CUDA-compatible buffer that represents the contents of this shader object.
-    */
-    void* getCUDABuffer(
-        const ParameterBlockReflection* pReflector,
-        CUDABufferKind                  bufferKind,
-        size_t& outSize);
-
-    /** Update the CUDA-compatible buffer stored on this parameter block to reflect
-        the current state of the shader object.
-    */
-    void updateCUDABuffer(
-        const ParameterBlockReflection* pReflector,
-        CUDABufferKind                  bufferKind);
-
-    /** Information about the CUDA buffer (if any) used to represnet the state of
-        this shader object
-    */
-    struct UnderlyingCUDABuffer {
-        Buffer::SharedPtr   pBuffer;
-        void*               pData                       = nullptr;
-        ChangeEpoch         epochOfLastObservedChange   = 0;
-        size_t              size                        = 0;
-        CUDABufferKind      kind                        = CUDABufferKind::Host;
-    };
-    UnderlyingCUDABuffer mUnderlyingCUDABuffer;
-#endif
 };
 
 template<typename T> bool ShaderVar::setImpl(const T& val) const {

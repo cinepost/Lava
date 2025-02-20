@@ -30,7 +30,7 @@ file( GLOB SOURCES
     ./Scene/Lights/*.cpp
     ./Scene/Lights/LightLinker.cpp
     ./Scene/Material/*.cpp
-    #./Scene/MaterialX/*.cpp
+    ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp

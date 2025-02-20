@@ -13,13 +13,15 @@
 #include "VertexAttrib.slangh"
 #include "Falcor/Scene/Lights/LightLinker.h"
 
+#include "SceneTypes.slang"
 
 namespace Falcor {
 
 namespace Geometry {
 
-static constexpr uint32_t kInvalidExportedID = Animatable::kInvalidNode;    ///< Largest uint32 value (-1)
-static constexpr uint32_t kInvalidNodeID = Animatable::kInvalidNode;
+static const uint32_t kInvalidAttribIndex = 0xffffffff;
+static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;    ///< Largest uint32 value (-1)
+static const uint32_t kInvalidNodeID = Animatable::kInvalidNode;
 
 struct InstanceShadingSpec {
     bool        isMatte = false;
@@ -327,7 +329,7 @@ struct Mesh {
             default:
                 should_not_get_here();
         }
-        return Scene::kInvalidIndex;
+        return kInvalidAttribIndex;
     }
 
     const AttributesStrings& getAttributesStrings() const { return attributesStrings; }
@@ -454,6 +456,22 @@ struct Mesh {
 };
 
 }  // namespace Geometry
+
+#define geometry_type_str(a) case GeometryType::a: return #a
+inline std::string to_string(GeometryType g) {
+    switch (g) {
+        geometry_type_str(TriangleMesh);
+        geometry_type_str(DisplacedTriangleMesh);
+        geometry_type_str(Curve);
+        geometry_type_str(SDFGrid);
+        geometry_type_str(Custom);
+        geometry_type_str(None);
+        default:
+            should_not_get_here();
+            return "";
+    }
+}
+#undef geometry_type_str
 
 enum_class_operators(Geometry::Mesh::UpdateFlags);
 

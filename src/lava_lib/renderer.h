@@ -198,7 +198,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     lava::SceneBuilder::SharedPtr   mpSceneBuilder;
     Falcor::Sampler::SharedPtr      mpSampler;
     std::vector<GraphData>          mGraphs;
-    uint32_t mActiveGraph = 0;
+    uint32_t                        mActiveGraphID = 0;
 
     Config                          mCurrentConfig;
     FrameInfo                       mCurrentFrameInfo;

@@ -1075,8 +1075,10 @@ namespace Falcor
         }
         else if (kind == TypeReflection::Kind::Array)
         {
+            #ifdef _DEBUG
             auto arrayKind = pTypeLayout->getElementTypeLayout()->getKind();
             FALCOR_ASSERT((arrayKind == TypeReflection::Kind::Matrix) || (arrayKind == TypeReflection::Kind::Vector) || (arrayKind == TypeReflection::Kind::Scalar));
+            #endif // _DEBUG
             uint32_t arraySize = (uint32_t)pTypeLayout->getTotalArrayElementCount();
             uint32_t arrayStride = (uint32_t)pTypeLayout->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
             storeShaderVariable(path, category, name, varMap, pVarMapBySemantic, arraySize, arrayStride);
@@ -1752,48 +1754,45 @@ namespace Falcor
         return (index == kInvalidMemberIndex) ? pNull : getMember(index);
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnonnull-compare"
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 
     const ReflectionResourceType* ReflectionType::asResourceType() const {
         return this && this->getKind() == ReflectionType::Kind::Resource ? static_cast<const ReflectionResourceType*>(this) : nullptr;
     }
 
-    const ReflectionBasicType* ReflectionType::asBasicType() const
-    {
+    const ReflectionBasicType* ReflectionType::asBasicType() const {
         return this && this->getKind() == ReflectionType::Kind::Basic ? static_cast<const ReflectionBasicType*>(this) : nullptr;
     }
 
-    const ReflectionStructType* ReflectionType::asStructType() const
-    {
+    const ReflectionStructType* ReflectionType::asStructType() const {
         return this && this->getKind() == ReflectionType::Kind::Struct ? static_cast<const ReflectionStructType*>(this) : nullptr;
     }
 
-    const ReflectionArrayType* ReflectionType::asArrayType() const
-    {
+    const ReflectionArrayType* ReflectionType::asArrayType() const {
         return this && this->getKind() == ReflectionType::Kind::Array ? static_cast<const ReflectionArrayType*>(this) : nullptr;
     }
 
-    const ReflectionInterfaceType* ReflectionType::asInterfaceType() const
-    {
+    const ReflectionInterfaceType* ReflectionType::asInterfaceType() const {
         return this && this->getKind() == ReflectionType::Kind::Interface ? static_cast<const ReflectionInterfaceType*>(this) : nullptr;
     }
-    
-#pragma GCC diagnostic pop
 
-    const ReflectionType* ReflectionType::unwrapArray() const
-    {
+#pragma GCC pop_options
+//#pragma GCC diagnostic pop
+
+    const ReflectionType* ReflectionType::unwrapArray() const {
         const ReflectionType* pType = this;
-        while (auto pArrayType = pType->asArrayType())
-        {
+        while (auto pArrayType = pType->asArrayType()) {
             pType = pArrayType->getElementType().get();
         }
         return pType;
     }
 
-    uint32_t ReflectionType::getTotalArrayElementCount() const
-    {
-        uint32_t result = 1;
+    uint32_t ReflectionType::getTotalArrayElementCount() const {
+        uint32_t result = 1u;
 
         const ReflectionType* pType = this;
         while (auto pArrayType = pType->asArrayType())

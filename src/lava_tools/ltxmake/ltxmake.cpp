@@ -39,9 +39,6 @@ namespace fs = boost::filesystem;
 #include "lava_lib/version.h"
 #include "lava_utils_lib/logging.h"
 
-static uint8_t kMajorVersion = 1;
-static uint8_t kMinorVersion = 0;
-
 
 using namespace lava;
 
@@ -207,6 +204,7 @@ int main(int argc, char** argv){
           std::cout << "LTX texture " << input_filename << " info ...\n";
           std::cout << "---------------------------------------------\n";
           const auto& header = pLTXBitmap->header();
+          assert(header.mipLevelsCount > 0);
           std::cout << "LTX format version: " << header.versionString() << std::endl;
           std::cout << "LTX compressor name: " << to_string(header.topLevelCompression) << std::endl;
           std::cout << "LTX compression level: " << std::to_string(header.topLevelCompressionLevel) << std::endl;
@@ -222,7 +220,7 @@ int main(int argc, char** argv){
           std::cout << "Mip tail starts at level: "  << std::to_string(header.mipTailStart) << std::endl;
 
           for (uint mipLevel = 0; mipLevel < header.mipLevelsCount; mipLevel++) {
-            uint32_t numPagesInMipLevel = (mipLevel == (header.mipLevelsCount-1)) ? 1 : (header.mipBases[mipLevel + 1] - header.mipBases[mipLevel]);
+            uint32_t numPagesInMipLevel = (mipLevel == (header.mipLevelsCount-1u)) ? 1 : (header.mipBases[mipLevel + 1u] - header.mipBases[mipLevel]);
             std::cout << "Mip level " << std::to_string(mipLevel) << " contains " << std::to_string(numPagesInMipLevel) << " data pages. ";
             
             if (numPagesInMipLevel > 1) {
