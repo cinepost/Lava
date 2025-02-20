@@ -504,14 +504,6 @@ bool Session::cmdRaytrace() {
     }
     initDisplayTimeReport.measure("Display additional images open");
 
-///////
-	if( 1 == 2 ) {
-		// Simple performace test by sending zero image a bunch of times
-    for(uint i = 0; i < 100; i++) sendImageRegionData(hImage, mpDisplay.get(), mCurrentFrameInfo, nullptr);
-    initDisplayTimeReport.measure("Display initial zero data sent 100 times in");
-	}
-///////
-
   initDisplayTimeReport.addTotal("Display init total time");
   initDisplayTimeReport.printToLog();
 
@@ -564,6 +556,8 @@ bool Session::cmdRaytrace() {
 		mpRenderer->device()->getRenderContext()->flush(true);
 		renderingTimeReport.measure("Image rendering time");
 		LLOG_INF << renderingTimeReport.printToString();
+
+		Resource::printUsage();
 		
 		// Open delayed images 
 		LLOG_DBG << "Open " << delayedImageOpens.size() << " delayed images.";

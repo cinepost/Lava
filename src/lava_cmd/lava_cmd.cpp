@@ -213,7 +213,7 @@ int main(int argc, char** argv){
     std::string profilerCaptureFilename;
     po::options_description profiling("Profiling");
     profiling.add_options()
-      ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationFilename), "Output Vulkan validation info");
+      ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationFilename), "Output Vulkan validation info")
       ("perf-file", po::value<std::string>(&profilerCaptureFilename)->default_value(profilerCaptureDefaultFilename), "Output profiling file")
       ;
 

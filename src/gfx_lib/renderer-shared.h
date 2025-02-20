@@ -690,6 +690,10 @@ public:
                     if (resourceView) setResource(offset, resourceView);
                 }
                 break;
+            //default:
+            //    LLOG_ERR << "! ! ! !";
+            //    return SLANG_E_NOT_IMPLEMENTED;
+            //    break;
         }
         return SLANG_OK;
     }
@@ -883,6 +887,8 @@ public:
                     return static_cast<ShaderProgramBase*>(graphics.program);
                 case PipelineType::RayTracing:
                     return static_cast<ShaderProgramBase*>(rayTracing.program);
+                default:
+                    break;
             }
             return nullptr;
         }

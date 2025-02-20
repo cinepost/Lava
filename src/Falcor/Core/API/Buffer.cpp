@@ -45,8 +45,6 @@ namespace Falcor {
 
 namespace {
 
-static std::atomic<uint32_t> gTotalStagingBuffersCount = 0;
-
 
 Buffer::SharedPtr createStructuredFromType(
 	std::shared_ptr<Device> pDevice,

@@ -34,40 +34,37 @@
 
 namespace Falcor {
 
-std::atomic<size_t> gAllocatedBuffersCount = 0;
-std::atomic<size_t> gAllocatedTexturesCount = 0;
-
 void Resource::printUsage() {
-#ifdef _DEBUG
-    LLOG_INF << "Allocated buffers count " << gAllocatedBuffersCount;
-    LLOG_INF << "Allocated textures count " << gAllocatedTexturesCount;
-#endif
+//#ifdef _DEBUG
+    LLOG_INF << "Allocated buffers count: " << sAllocatedBuffersCount;
+    LLOG_INF << "Allocated textures count: " << sAllocatedTexturesCount;
+//#endif
 }
 
 Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
-#ifdef _DEBUG
+//#ifdef _DEBUG
     switch(type) {
         case Type::Buffer:
-            gAllocatedBuffersCount++;
+            sAllocatedBuffersCount++;
             break;
         default:
-            gAllocatedTexturesCount++;
+            sAllocatedTexturesCount++;
             break;
     }
-#endif
+//#endif
 }
 
 Resource::~Resource() {
-#ifdef _DEBUG
+//#ifdef _DEBUG
     switch(mType) {
         case Type::Buffer:
-            gAllocatedBuffersCount--;
+            sAllocatedBuffersCount--;
             break;
         default:
-            gAllocatedTexturesCount--;
+            sAllocatedTexturesCount--;
             break;
     }
-#endif
+//#endif
 }
 
 const std::string to_string(Resource::Type type) {
@@ -185,5 +182,7 @@ SCRIPT_BINDING(Resource) {
 #endif
 
 std::atomic<size_t> Resource::newResourceID = 0;
+std::atomic<int32_t> Resource::sAllocatedTexturesCount = 0;
+std::atomic<int32_t> Resource::sAllocatedBuffersCount = 0;
 
 }  // namespace Falcor

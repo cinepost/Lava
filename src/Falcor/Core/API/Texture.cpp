@@ -44,9 +44,6 @@ namespace {
 
 static const bool kTopDown = true; // Memory layout when loading from file
 
-static std::atomic<uint32_t> gTotalTexturesCount = 0;
-static std::atomic<uint32_t> gDeletedTexturesCount = 0;
-
 Texture::BindFlags updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
 	if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
 		flags |= Texture::BindFlags::RenderTarget;
@@ -203,8 +200,6 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 		mMipLevels = bitScanReverse(dims) + 1;
 	}
 	mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
-
-	gTotalTexturesCount++;
 }
 
 template<typename ViewClass>
@@ -612,7 +607,6 @@ Texture::~Texture() {
 
 		//mApiHandle.setNull();
 	}
-	LLOG_TRC << ++gDeletedTexturesCount << " textures deleted out of " << gTotalTexturesCount;
 }
 
 

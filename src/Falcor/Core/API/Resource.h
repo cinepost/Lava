@@ -127,14 +127,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-#ifdef FALCOR_GFX
     /** Get a shared resource API handle.
 
         The handle will be created on-demand if it does not already exist.
         Throws if a shared handle cannot be created for this resource.
     */
     SharedResourceApiHandle getSharedApiHandle() const;
-#endif
 
     struct ViewInfoHashFunc {
         std::size_t operator()(const ResourceViewInfo& v) const {
@@ -174,20 +172,11 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     std::shared_ptr<const Texture> asTexture() const;
     std::shared_ptr<Buffer> asBuffer();
 
-#if FALCOR_ENABLE_CUDA
-    /** Get the CUDA device address for this resource.
-        \return CUDA device address.
-        Throws an exception if the resource is not shared.
-    */
-    virtual void* getCUDADeviceAddress() const = 0;
-
-    /** Get the CUDA device address for a view of this resource.
-    */
-    virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const = 0;
-#endif
-
  private:
     static std::atomic<size_t> newResourceID;
+
+    static std::atomic<int32_t> sAllocatedTexturesCount;
+    static std::atomic<int32_t> sAllocatedBuffersCount;
 
  protected:
     friend class CopyContext;
@@ -212,9 +201,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
 
-#if defined(FALCOR_GFX)
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
-#endif
 
     std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;
