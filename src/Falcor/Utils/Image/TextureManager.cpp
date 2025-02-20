@@ -83,8 +83,8 @@ TextureManager::SharedPtr TextureManager::create(Device::SharedPtr pDevice, size
 
 TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount)
 	: mpDevice(pDevice)
-	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
 	, mAsyncTextureLoader(mpDevice, threadCount)
+	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
 {
 	mUDIMTextureTilesCount = 0;
 	mUDIMTexturesCount = 0;
@@ -319,7 +319,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   std::array<uint8_t, kLtxPageSize> scratchBuffer;
   auto pScratchBufferData = scratchBuffer.data();
 
-  bool loadTailData = true; // always load texture tail data
+  bool loadTailData = !pTexture->isMipTailFilled(); // always load texture tail data
   bool allocationChanged = false;
 
   const auto& texturePages = pTexture->sparseDataPages();
@@ -335,6 +335,8 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     if(pPage->allocate()) allocationChanged = true;
   }
 
+  const auto oldState = pTexture->getGlobalState();
+	const bool state_changed = (loadTailData || allocationChanged) ? pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest) : false;
 
   if(allocationChanged) {
 	  {
@@ -358,9 +360,6 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 			vk_api.vkDestroyFence(device, fence, nullptr);
 		}
 
-		auto oldState = pTexture->getGlobalState();
-		const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
-
 		for( uint32_t pageIndex: _pageIds ) {
 	  	if(pageIndex >= texturePages.size()) {
 				LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
@@ -379,22 +378,22 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 	  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
 	  	}
 	  }
-
-	  pContext->resourceBarrier(pTexture.get(), oldState);
 	}
 
-  if(loadTailData || pageIds.empty()) {
+  if(loadTailData) {
 		LLOG_TRC << "Loading tail data for texture " << ltxFilename;
 		std::vector<uint8_t> tailData(kLtxPageSize);
 		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
 		if(!tailData.empty()) {
-			auto oldState = pTexture->getGlobalState();
-			const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
+			//auto oldState = pTexture->getGlobalState();
+			//const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
 			pContext->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
-			pContext->resourceBarrier(pTexture.get(), oldState);
+			//if(state_changed) pContext->resourceBarrier(pTexture.get(), oldState);
 		}
 	}
+
+	if(state_changed) pContext->resourceBarrier(pTexture.get(), oldState);
 
 	pContext->flush(true);
 
@@ -437,7 +436,7 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 	  	std::vector<uint32_t> _pageIds = pageIds;
 	  	std::sort(_pageIds.begin(), _pageIds.end());
 	  	
-	    std::thread::id thread_id = std::this_thread::get_id();
+	    //std::thread::id thread_id = std::this_thread::get_id();
 
 	    std::array<uint8_t, kLtxPageSize> scratchBuffer;
 	    auto pScratchBufferData = scratchBuffer.data();
@@ -876,7 +875,7 @@ void TextureManager::finalize() {
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && pTex->isUDIMTexture()) {
-			//pTex->setUDIM_ID(udimID++);
+			pTex->setUDIM_ID(udimID++);
 		}
 	}
 

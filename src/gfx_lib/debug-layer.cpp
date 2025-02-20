@@ -148,6 +148,9 @@ SLANG_GFX_DEBUG_GET_INTERFACE_IMPL(ShaderTable)
 #undef SLANG_GFX_DEBUG_GET_INTERFACE_IMPL
 #undef SLANG_GFX_DEBUG_GET_INTERFACE_IMPL_PARENT
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 // Utility conversion functions to get Debug* object or the inner object from a user provided
 // pointer.
 #define SLANG_GFX_DEBUG_GET_OBJ_IMPL(type)                                                   \
@@ -186,6 +189,8 @@ SLANG_GFX_DEBUG_GET_OBJ_IMPL(ShaderTable)
 
 #undef SLANG_GFX_DEBUG_GET_OBJ_IMPL
 
+#pragma GCC diagnostic pop
+
 void validateAccelerationStructureBuildInputs(
 	const IAccelerationStructure::BuildInputs& buildInputs)
 {
@@ -208,6 +213,10 @@ void validateAccelerationStructureBuildInputs(
 		{
 			switch (buildInputs.geometryDescs[i].type)
 			{
+			case IAccelerationStructure::GeometryType::ProcedurePrimitives:
+				GFX_DIAGNOSE_ERROR(
+						"Unsupported IAccelerationStructure::GeometryType::ProcedurePrimitives.");
+				break;
 			case IAccelerationStructure::GeometryType::Triangles:
 				switch (buildInputs.geometryDescs[i].content.triangles.vertexFormat)
 				{

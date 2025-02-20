@@ -205,11 +205,11 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 		{}
 
 		bool operator<(TypeConformance const& other) const {
-			return mTypeName < other.mTypeName || mTypeName == other.mTypeName && mInterfaceName < other.mInterfaceName;
+			return (mTypeName < other.mTypeName) || ((mTypeName == other.mTypeName) && (mInterfaceName < other.mInterfaceName));
 		}
 
 		bool operator==(TypeConformance const& other) const {
-			return mTypeName == other.mTypeName && mInterfaceName == other.mInterfaceName;
+			return (mTypeName == other.mTypeName) && (mInterfaceName == other.mInterfaceName);
 		}
 
 		struct HashFunction {

@@ -1,7 +1,12 @@
 #include "renderer-shared.h"
 #include "mutable-shader-object.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
+#pragma GCC diagnostic ignored "-Wswitch"
 #include "core/slang-io.h"
 #include "core/slang-token-reader.h"
+#pragma GCC diagnostic pop
 
 #include "lava_utils_lib/logging.h"
 
@@ -782,7 +787,6 @@ Result ShaderProgramBase::compileShaders() {
                              slang::IComponentType* entryPointComponent,
                              SlangInt entryPointIndex)
     {
-        auto stage = entryPointInfo->getStage();
         ComPtr<ISlangBlob> kernelCode;
         ComPtr<ISlangBlob> diagnostics;
         auto compileResult = entryPointComponent->getEntryPointCode(entryPointIndex, 0, kernelCode.writeRef(), diagnostics.writeRef());
@@ -844,8 +848,7 @@ Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline,
             auto unspecializedProgram = static_cast<ShaderProgramBase*>(pipelineType == PipelineType::Compute
                 ? currentPipeline->desc.compute.program
                 : currentPipeline->desc.graphics.program);
-            auto unspecializedProgramLayout = unspecializedProgram->linkedProgram->getLayout();
-
+            
             ComPtr<slang::IComponentType> specializedComponentType;
             ComPtr<slang::IBlob> diagnosticBlob;
             auto compileRs = unspecializedProgram->linkedProgram->specialize(

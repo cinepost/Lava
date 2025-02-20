@@ -44,22 +44,6 @@
 #include <slang/slang-com-ptr.h>
 #include "gfx_lib/slang-gfx.h"
 
-//#define None 0L
-//#define Bool int
-//#define Status int
-//#define Always 2
-
-//#define GLFW_EXPOSE_NATIVE_X11
-//#include "GLFW/glfw3.h"
-//#include "GLFW/glfw3native.h"
-
-// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
-#ifndef _WIN32
-#undef None
-#undef Status
-#undef Bool
-#undef Always
-#endif
 
 #if defined (FALCOR_GFX_VK)
 #define FALCOR_GFX
@@ -85,9 +69,7 @@
 #endif
 #endif
 
-#if FALCOR_GFX_VK
 #include <vulkan/vulkan.h>
-#endif
 
 #define FALCOR_GFX_CALL(a) {auto hr_ = a; if(SLANG_FAILED(hr_)) { reportError(#a); }}
 
@@ -133,62 +115,50 @@ using ApiObjectHandle = Slang::ComPtr<ISlangUnknown>;
 
 class Device;
 
-#ifdef WIN32
-using WindowHandle = HWND;
-#else
-struct WindowHandle {
-    //Display* pDisplay;
-    //Window window;
+using DeviceHandle = Slang::ComPtr<gfx::IDevice>;
 
-    void*       pDisplay;
-    uint32_t    window;
-};
-#endif
+using CommandListHandle = Slang::ComPtr<gfx::ICommandBuffer>;
+using CommandQueueHandle = Slang::ComPtr<gfx::ICommandQueue>;
+using ApiCommandQueueType = gfx::ICommandQueue::QueueType;
+using CommandAllocatorHandle = Slang::ComPtr<gfx::ITransientResourceHeap>;
+using CommandSignatureHandle = void*;
+using FenceHandle = Slang::ComPtr<gfx::IFence>;
+using ResourceHandle = Slang::ComPtr<gfx::IResource>;
 
-    using DeviceHandle = Slang::ComPtr<gfx::IDevice>;
+using RtvHandle = Slang::ComPtr<gfx::IResourceView>;
+using DsvHandle = Slang::ComPtr<gfx::IResourceView>;
+using SrvHandle = Slang::ComPtr<gfx::IResourceView>;
+using CbvHandle = Slang::ComPtr<gfx::IResourceView>;
 
-    using CommandListHandle = Slang::ComPtr<gfx::ICommandBuffer>;
-    using CommandQueueHandle = Slang::ComPtr<gfx::ICommandQueue>;
-    using ApiCommandQueueType = gfx::ICommandQueue::QueueType;
-    using CommandAllocatorHandle = Slang::ComPtr<gfx::ITransientResourceHeap>;
-    using CommandSignatureHandle = void*;
-    using FenceHandle = Slang::ComPtr<gfx::IFence>;
-    using ResourceHandle = Slang::ComPtr<gfx::IResource>;
+using SamplerHandle = Slang::ComPtr<gfx::ISamplerState>;
+using UavHandle = Slang::ComPtr<gfx::IResourceView>;
+using AccelerationStructureHandle = Slang::ComPtr<gfx::IAccelerationStructure>;
+using FboHandle = Slang::ComPtr<gfx::IFramebuffer>;
+using GpuAddress = uint64_t;
+using QueryHeapHandle = Slang::ComPtr<gfx::IQueryPool>;
+using SharedResourceApiHandle = HANDLE;
+using SharedFenceApiHandle = HANDLE;
 
-    using RtvHandle = Slang::ComPtr<gfx::IResourceView>;
-    using DsvHandle = Slang::ComPtr<gfx::IResourceView>;
-    using SrvHandle = Slang::ComPtr<gfx::IResourceView>;
-    using CbvHandle = Slang::ComPtr<gfx::IResourceView>;
+using GraphicsStateHandle = Slang::ComPtr<gfx::IPipelineState>;
+using ComputeStateHandle = Slang::ComPtr<gfx::IPipelineState>;
+using RaytracingStateHandle = Slang::ComPtr<gfx::IPipelineState>;
 
-    using SamplerHandle = Slang::ComPtr<gfx::ISamplerState>;
-    using UavHandle = Slang::ComPtr<gfx::IResourceView>;
-    using AccelerationStructureHandle = Slang::ComPtr<gfx::IAccelerationStructure>;
-    using FboHandle = Slang::ComPtr<gfx::IFramebuffer>;
-    using GpuAddress = uint64_t;
-    using QueryHeapHandle = Slang::ComPtr<gfx::IQueryPool>;
-    using SharedResourceApiHandle = HANDLE;
-    using SharedFenceApiHandle = HANDLE;
+using VaoHandle = Slang::ComPtr<gfx::IInputLayout>;
 
-    using GraphicsStateHandle = Slang::ComPtr<gfx::IPipelineState>;
-    using ComputeStateHandle = Slang::ComPtr<gfx::IPipelineState>;
-    using RaytracingStateHandle = Slang::ComPtr<gfx::IPipelineState>;
+using ShaderHandle = Slang::ComPtr<slang::IComponentType>;
 
-    using VaoHandle = Slang::ComPtr<gfx::IInputLayout>;
+using VertexShaderHandle = void*;
+using FragmentShaderHandle = void*;
+using DomainShaderHandle = void*;
+using HullShaderHandle = void*;
+using GeometryShaderHandle = void*;
+using ComputeShaderHandle = void*;
+using ProgramHandle = Slang::ComPtr<gfx::IShaderProgram>;
+using DepthStencilStateHandle = void*;
+using RasterizerStateHandle = void*;
+using BlendStateHandle = void*;
 
-    using ShaderHandle = Slang::ComPtr<slang::IComponentType>;
-
-    using VertexShaderHandle = void*;
-    using FragmentShaderHandle = void*;
-    using DomainShaderHandle = void*;
-    using HullShaderHandle = void*;
-    using GeometryShaderHandle = void*;
-    using ComputeShaderHandle = void*;
-    using ProgramHandle = Slang::ComPtr<gfx::IShaderProgram>;
-    using DepthStencilStateHandle = void*;
-    using RasterizerStateHandle = void*;
-    using BlendStateHandle = void*;
-
-    inline uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) { return 8; }
+inline uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) { return 8; }
 
 #if FALCOR_GFX_VK
 

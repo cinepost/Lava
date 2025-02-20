@@ -17,25 +17,23 @@
 #include "Bgeo.h"
 #include "Primitive.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
+
 class PackedGeometry;
+
 }
 
-class PackedGeometry : public Primitive
-{
+class PackedGeometry : public Primitive {
     RTTI_DECLARE(PackedGeometry, Primitive)
 
 public:
     PackedGeometry(const parser::PackedGeometry& packed,
                    std::shared_ptr<Bgeo> embedded);
 
-    /*virtual*/ int32_t getVertexCount() const;
+    /*virtual*/ uint32_t getVertexCount() const;
 
     bool hasBoundingBox() const;
     void getBoundingBox(double bounds[6]) const;

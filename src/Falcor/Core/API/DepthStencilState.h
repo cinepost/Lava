@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_CORE_API_DEPTHSTENCILSTATE_H_
 #define SRC_FALCOR_CORE_API_DEPTHSTENCILSTATE_H_
 
+#include "Falcor/Core/API/GFX/FalcorGFX.h"
+
 namespace Falcor {
 
 /** Depth-Stencil state

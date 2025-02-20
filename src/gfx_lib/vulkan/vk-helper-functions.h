@@ -2,7 +2,12 @@
 #pragma once
 
 #include "vk-base.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-blob.h"
+#pragma GCC diagnostic pop
+
 #include "vk-util.h"
 
 // Vulkan has a different coordinate system to ogl

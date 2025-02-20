@@ -52,14 +52,14 @@ RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint
     return SharedPtr(new RenderGraph(pDevice, frame_size, format, name));
 }
 
-RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mName(name), mpDevice(pDevice) {
+RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mpDevice(pDevice), mName(name) {
     mpGraph = DirectedGraph::create();
     mpPassDictionary = InternalDictionary::create();
     gRenderGraphs.push_back(this);
     onResize(pTargetFbo.get());
 }
 
-RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mName(name), mpDevice(pDevice) {
+RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mpDevice(pDevice), mName(name) {
     mpGraph = DirectedGraph::create();
     mpPassDictionary = InternalDictionary::create();
     gRenderGraphs.push_back(this);

@@ -13,7 +13,7 @@
 #include <vector>
 #include <memory>
 
-#include <UT/UT_Matrix4.h>
+#include "../houdini_inc.h"
 
 #include "Primitive.h"
 

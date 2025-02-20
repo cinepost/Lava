@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include <UT/UT_String.h>
+#include "../houdini_inc.h"
 
 #include "PackedGeometry.h"
 

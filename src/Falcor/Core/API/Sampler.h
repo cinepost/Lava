@@ -32,6 +32,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/GFX/FalcorGFX.h"
 
 
 namespace Falcor {

@@ -44,7 +44,8 @@ DeviceManager::DeviceManager(): mInitialized(false), mEnableValidationLayer(fals
 }
 
 DeviceManager::~DeviceManager() {
-    for( auto& [id, pDevice]: mRenderingDevices ) {
+    for( auto& entry: mRenderingDevices ) {
+        auto& pDevice = entry.second;
         if (pDevice) {
             pDevice->cleanup();
             pDevice.reset();
@@ -67,8 +68,8 @@ DeviceManager::SharedPtr DeviceManager::create(bool enableValidationLayer) {
 
 std::vector<Device::SharedPtr> DeviceManager::renderingDevices() const {
     std::vector<Device::SharedPtr> devices;
-    for( auto& device: mRenderingDevices ) {
-        devices.push_back(device.second);
+    for( auto& entry: mRenderingDevices ) {
+        devices.push_back(entry.second);
     }
     return devices;
 }

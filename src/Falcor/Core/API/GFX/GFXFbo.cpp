@@ -54,7 +54,7 @@ void releaseFboHandleIfEmpty(Device::SharedPtr pDevice,  FboHandle& apiHandle, F
 
 }
 
-Fbo::Fbo(Device::SharedPtr pDevice): mpDevice(pDevice), mTempDesc(pDevice) {
+Fbo::Fbo(Device::SharedPtr pDevice): mTempDesc(pDevice), mpDevice(pDevice) {
 	mpPrivateData = std::make_unique<FboData>();
 	mColorAttachments.resize(getMaxColorTargetCount());
 }

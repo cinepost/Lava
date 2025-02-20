@@ -56,14 +56,18 @@ const std::string MxNode::path() const {
     }
 }
 
-MxNode::MxNode(const TypeCreateInfo& info, const std::string& name, MxNode::SharedPtr pParent): mInfo(info), mName(name), mpParent(pParent) {
+MxNode::MxNode(const TypeCreateInfo& info, const std::string& name, MxNode::SharedPtr pParent)
+    : mName(name)
+    , mInfo(info)
+    , mpParent(pParent) 
+{
 
 }
 
 MxNode::SharedPtr MxNode::create(const TypeCreateInfo& info, const std::string& name, MxNode::SharedPtr pParent) {
     MxNode* pNode = new MxNode(info, name, pParent);
     if (pNode) {
-        const auto& mxLibrary = MxGeneratorsLibrary::instance();
+        //const auto& mxLibrary = MxGeneratorsLibrary::instance();
 
         LLOG_DBG << "Created MxNode " << to_string(pNode->info()) << " at " <<  pNode->path();
     }

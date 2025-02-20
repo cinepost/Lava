@@ -124,8 +124,8 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
         return false;
     }
 
-    const int64_t bgeo_point_count = pBgeo->getPointCount();
-    const int64_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
+    const size_t bgeo_point_count = pBgeo->getPointCount();
+    const size_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
 
     auto pPrimitiveMatrialAttribute =  pBgeo->getPrimitiveAttributeByName("shop_materialpath");
     const bool hasPerPrimitiveMaterial = pPrimitiveMatrialAttribute != nullptr;
@@ -177,6 +177,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     LLOG_TRC << "vUV<float2> size: " << vUV.size();
 
     auto const& vt_map = pDetail->getVertexMap();
+    assert(vt_map.vertexCount >= 0);
     if(vt_map.vertexCount != bgeo_vertex_count) {
         LLOG_ERR << "Bgeo " << name << " detail vertices count not equal to the number of bgeo vertices count !!!";
         return false;
@@ -194,7 +195,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     if(hasVertexN || hasVertexUV || (bgeo_vertex_count != bgeo_point_count)) {
         vP.resize(bgeo_vertex_count);
         pointIndices.resize(bgeo_vertex_count);
-        for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+        for( ika::bgeo::parser::uint64 i = 0; i < vt_map.getVertexCount(); ++i){
             vP[i] = P[vt_idx_ptr[i]];
             pointIndices[i] = vt_idx_ptr[i];
         }
@@ -208,7 +209,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     if (!hasVertexN) {
         vN.resize(bgeo_vertex_count);
         if(N.size() == bgeo_point_count) {
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+            for( ika::bgeo::parser::uint64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vN[i] = N[vt_idx_ptr[i]];
             }
         } else {
@@ -220,12 +221,12 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     if (!hasVertexUV) {
         vUV.resize(bgeo_vertex_count);
         if(UV.size() == bgeo_point_count) {
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+            for( ika::bgeo::parser::uint64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vUV[i] = UV[vt_idx_ptr[i]];
             }
         } else {
             LLOG_DBG << "Mesh " << name << " has no texture coordinates !";
-            for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); ++i){
+            for( ika::bgeo::parser::uint64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vUV[i] = {0.f, 0.f};
             }
         }

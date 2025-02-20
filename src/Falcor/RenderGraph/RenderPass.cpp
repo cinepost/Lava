@@ -60,7 +60,7 @@ const Buffer::SharedPtr& RenderData::getBuffer(const std::string& name) const {
     return pResource->asBuffer();
 }
 
-RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mpDevice(pDevice), mInfo(info) {
+RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mInfo(info), mpDevice(pDevice) {
     assert(pDevice);
 }
 

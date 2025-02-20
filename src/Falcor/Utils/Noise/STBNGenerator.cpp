@@ -70,20 +70,9 @@ void STBNGenerator::generateNoiseData() {
     uint32_t data_size = mDims[0] * mDims[1] * mDims[2] * getFormatChannelCount(mFormat);
     mNoiseData.resize(data_size);
 
-#if 1 == 2
-    // test rgba noise
-    rndEngine.seed(0);
-
-    std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
-
-    for (uint32_t i = 0; i < data_size; ++i) {
-        *(reinterpret_cast<float *>(mNoiseData.data() + i)) = rndDist(rndEngine);
-    }
-#else
     static const float c_energySigma = 1.9f;
     STBN::Maker maker(mDims[0], mDims[1], mDims[2], getFormatChannelCount(mFormat), c_energySigma, c_energySigma, c_energySigma, c_energySigma);
     maker.make(mNoiseData);
-#endif
 
     mDirty = true;
 }
@@ -101,7 +90,7 @@ Shader::DefineList STBNGenerator::getDefines() const {
     return defines;
 }
 
- bool STBNGenerator::setShaderData(ShaderVar const& var) const {
+ void STBNGenerator::setShaderData(ShaderVar const& var) const {
     if(mAsync && mDirty) {
         mGenerateNoiseDataTask.get();
         uploadNoiseData();

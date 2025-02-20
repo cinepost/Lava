@@ -14,20 +14,17 @@
 
 #include "rtti.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-class Primitive
-{
+class Primitive {
     RTTI_DECLARE_BASE(Primitive)
 
 public:
     Primitive();
     virtual ~Primitive();
 
-    virtual int32_t getVertexCount() const;
+    virtual uint32_t getVertexCount() const;
 };
 
 } // namespace ika

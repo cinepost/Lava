@@ -729,12 +729,14 @@ void Scene::setSDFGridConfig() {
             break;
         }
         case SDFGrid::Type::SparseVoxelOctree:
+        default:
         {
             mSDFGridConfig.intersectionMethod = SDFGridIntersectionMethod::VoxelSphereTracing;
             mSDFGridConfig.gradientEvaluationMethod = SDFGridGradientEvaluationMethod::NumericDiscontinuous;
             mSDFGridConfig.solverMaxIterations = 256;
             mSDFGridConfig.optimizeVisibilityRays = true;
         }
+            break;
     }
 }
 
@@ -1003,6 +1005,9 @@ void Scene::updateBounds() {
                     mSceneBB |= AABB(center - halfExtent, center + halfExtent);
                     break;
                 }
+                default:
+                    LLOG_WRN << "Scene::updateBounds() unsupported geometry type: " << to_string(inst.getType());
+                    break;
             }
         }
     }
@@ -1433,6 +1438,9 @@ void Scene::updateGeometryStats() {
                 s.sdfGridInstancesDataCount++;
                 break;
             }
+            default:
+                LLOG_WRN << "Scene::updateGeometryStats() unsupported geometry type: " << to_string(instance.getType());
+                break;
         }
     }
 
@@ -1545,7 +1553,8 @@ void Scene::updateRaytracingTLASStats() {
     s.tlasMemoryInBytes = 0;
     s.tlasScratchMemoryInBytes = 0;
 
-    for (const auto& [i, tlas] : mTlasCache) {
+    for (const auto& entry : mTlasCache) {
+        const auto& tlas = entry.second;
         if (tlas.pTlasBuffer) {
             s.tlasMemoryInBytes += tlas.pTlasBuffer->getSize();
             s.tlasCount++;
@@ -1567,8 +1576,8 @@ void Scene::updateLightStats() {
     s.distantLightCount = 0;
     s.environmentLightCount = 0;
 
-    for (const auto& light : mLights) {
-        switch (light->getType()) {
+    for (const auto& pLight : mLights) {
+        switch (pLight->getType()) {
             case LightType::Point:
                 s.pointLightCount++;
                 break;
@@ -1586,6 +1595,9 @@ void Scene::updateLightStats() {
                 break;
             case LightType::Env:
                 s.environmentLightCount++;
+                break;
+            default:
+                LLOG_WRN << "Scene::updateLightStats() unsupported light type: " << to_string(pLight->getType());
                 break;
         }
     }
@@ -2200,7 +2212,7 @@ void Scene::toggleAnimations(bool animate) {
     mpAnimationController->setEnabled(animate);
 }
 
-void Scene::setBlasUpdateMode(UpdateMode mode) {
+void Scene::setBlasUpdateMode(RtAccelerationStructure::UpdateMode mode) {
     if (mode != mBlasUpdateMode) mRebuildBlas = true;
     mBlasUpdateMode = mode;
 }
@@ -2221,21 +2233,6 @@ void Scene::createDrawList() {
     mMaterialDrawArgs.resize(getMaterialCount());
 
     for( auto& draws: mMaterialDrawArgs) draws.clear();
-
-    // Helper to create the draw-indirect buffer.
-    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, bool isDoubleSided, ResourceFormat ibFormat = ResourceFormat::Unknown) {
-        if (drawMeshes.empty()) return;
-        for (const auto drawMesh: drawMeshes) {
-            DrawArgs draw;
-            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
-            draw.pBuffer->setName("Scene draw buffer");
-            draw.count = 1;//(uint32_t)drawMeshes.size();
-            draw.ccw = ccw;
-            draw.cullBackface = !isDoubleSided;
-            draw.ibFormat = ibFormat;
-            mDrawArgs.push_back(draw);
-        }
-    };
 
     auto processInstances = [this](const auto& instancesByMaterial, bool isDoubleSided) {
         // Helper to create the draw-indirect buffer.
@@ -2262,8 +2259,8 @@ void Scene::createDrawList() {
 
                 //uint32_t instanceID = 0;
                 for (const auto& drawInstance : instances) {
-                    const auto instance = drawInstance.instance;
-                    const auto& mesh = mMeshDesc[instance->geometryID];
+                    const auto pInstance = drawInstance.instance;
+                    const auto& mesh = mMeshDesc[pInstance->geometryID];
                     bool use16Bit = mesh.use16BitIndices();
 
                     DrawIndexedArguments draw;
@@ -2273,10 +2270,10 @@ void Scene::createDrawList() {
                     draw.BaseVertexLocation = mesh.vbOffset;
                     
                     draw.StartInstanceLocation = drawInstance.instanceID;
-                    draw.MaterialID = materialID; //instance->materialID;
+                    draw.MaterialID = materialID; //pInstance->materialID;
 
                     int i = use16Bit ? 0 : 1;
-                    (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
+                    (pInstance->isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
                 }
 
                 createDrawBuffer(drawClockwiseMeshes[0], false, isDoubleSided, ResourceFormat::R16Uint);
@@ -2287,8 +2284,8 @@ void Scene::createDrawList() {
                 std::vector<DrawArguments> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
                 for (const auto& drawInstance : instances) {
-                    const auto instance = drawInstance.instance;
-                    const auto& mesh = mMeshDesc[instance->geometryID];
+                    const auto pInstance = drawInstance.instance;
+                    const auto& mesh = mMeshDesc[pInstance->geometryID];
                     assert(mesh.indexCount == 0);
 
                     DrawArguments draw;
@@ -2297,9 +2294,9 @@ void Scene::createDrawList() {
                     draw.StartVertexLocation = mesh.vbOffset;
                     
                     draw.StartInstanceLocation = drawInstance.instanceID;
-                    draw.MaterialID = materialID; //instance->materialID;
+                    draw.MaterialID = materialID; //pInstance->materialID;
 
-                    (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
+                    (pInstance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
                 }
 
                 createDrawBuffer(drawClockwiseMeshes, false, isDoubleSided);
@@ -2449,7 +2446,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         desc.content.triangles.indexFormat = ibFormat;
                     } else {
                         assert(mesh.indexCount == 0);
-                        desc.content.triangles.indexData = NULL;
+                        desc.content.triangles.indexData = 0u;
                         desc.content.triangles.indexCount = 0;
                         desc.content.triangles.indexFormat = ResourceFormat::Unknown;
                     }
@@ -2578,7 +2575,9 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 
         uint32_t geomIndexOffset = 0;
 
-        for (const auto& customPrim : mCustomPrimitiveDesc) {
+        for (size_t i = 0; i < mCustomPrimitiveDesc.size(); ++i) {
+            //const auto& customPrim = mCustomPrimitiveDesc[i];
+
             RtGeometryDesc& desc = blas.geomDescs[geomIndexOffset++];
             desc.type = RtGeometryType::ProcedurePrimitives;
             desc.flags = RtGeometryFlags::None;
@@ -2607,7 +2606,7 @@ void Scene::preparePrebuildInfo(RenderContext* pContext) {
         // TODO: Add compaction on/off switch for profiling.
         // TODO: Disable compaction for skinned meshes if update performance becomes a problem.
         blas.updateMode = mBlasUpdateMode;
-        blas.useCompaction = (!blas.hasDynamicGeometry()) || blas.updateMode != UpdateMode::Rebuild;
+        blas.useCompaction = (!blas.hasDynamicGeometry()) || blas.updateMode != RtAccelerationStructure::UpdateMode::Rebuild;
 
         // Setup build parameters.
         RtAccelerationStructureBuildInputs& inputs = blas.buildInputs;
@@ -2620,7 +2619,7 @@ void Scene::preparePrebuildInfo(RenderContext* pContext) {
         if (blas.useCompaction) {
             inputs.flags |= RtAccelerationStructureBuildFlags::AllowCompaction;
         }
-        if ((blas.hasDynamicGeometry() || blas.hasProceduralPrimitives) && blas.updateMode == UpdateMode::Refit) {
+        if ((blas.hasDynamicGeometry() || blas.hasProceduralPrimitives) && blas.updateMode == RtAccelerationStructure::UpdateMode::Refit) {
             inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;
         }
         // Set optional performance hints.
@@ -2709,6 +2708,9 @@ void Scene::computeBlasGroups() {
 
         assert(resultSize == group.resultByteSize);
         assert(scratchSize == group.scratchByteSize);
+
+        totalResultSize += resultSize;
+        totalScratchSize += scratchSize;
     }
     assert(blasIDs.size() == mBlasData.size());
 }
@@ -2991,7 +2993,7 @@ void Scene::buildBlas(RenderContext* pContext) {
             asDesc.scratchData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
             asDesc.dest = mBlasObjects[blasId].get();
 
-            if (blas.updateMode == UpdateMode::Refit) {
+            if (blas.updateMode == RtAccelerationStructure::UpdateMode::Refit) {
                 // Set source address to destination address to update in place.
                 asDesc.source = asDesc.dest;
                 asDesc.inputs.flags |= RtAccelerationStructureBuildFlags::PerformUpdate;
@@ -3231,11 +3233,11 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
     inputs.flags = RtAccelerationStructureBuildFlags::None;
 
     // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
-    if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == UpdateMode::Refit) {
+    if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == RtAccelerationStructure::UpdateMode::Refit) {
         inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;
 
         // If TLAS has been built already and it was built with ALLOW_UPDATE
-        if (tlas.pTlasObject != nullptr && tlas.updateMode == UpdateMode::Refit) inputs.flags |= RtAccelerationStructureBuildFlags::PerformUpdate;
+        if (tlas.pTlasObject != nullptr && tlas.updateMode == RtAccelerationStructure::UpdateMode::Refit) inputs.flags |= RtAccelerationStructureBuildFlags::PerformUpdate;
     }
 
     tlas.updateMode = mTlasUpdateMode;

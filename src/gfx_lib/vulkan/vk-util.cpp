@@ -631,7 +631,6 @@ VkSamplerReductionMode VulkanUtil::translateReductionOp(TextureReductionOp op, b
 {
     assert(res != VK_SUCCESS);
     assert(!"Vulkan check failed");
-
 }
 
 /* static */VkPrimitiveTopology VulkanUtil::getVkPrimitiveTopology(PrimitiveTopology topology)

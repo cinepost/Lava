@@ -14,13 +14,10 @@
 
 #include "Primitive.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
 class Sphere;
 }
 
@@ -31,7 +28,7 @@ class Sphere : public Primitive
 public:
     Sphere(const parser::Sphere& sphereParser);
 
-    /*virtual*/ int32_t getVertexCount() const override;
+    /*virtual*/ uint32_t getVertexCount() const override;
 
     void getTranslate(double translate [3]) const;
     void getExtraTransform(double transform[16]) const;

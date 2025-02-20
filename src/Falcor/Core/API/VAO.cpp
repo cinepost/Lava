@@ -43,11 +43,13 @@ bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, B
 }
 
 Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology topology)
-	: mIbFormat(ibFormat)
+	: mpVertexLayout(pLayout)
 	, mpVBs(pVBs)
 	, mpIB(pIB)
-	, mpVertexLayout(pLayout)
-	, mTopology(topology) {
+	, mIbFormat(ibFormat) 
+	, mTopology(topology)
+{
+
 }
 
 Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat) {

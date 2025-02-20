@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
+#define SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
+
 #include "Core/Framework.h"
 #include "Core/API/ShaderResourceType.h"
-#if FALCOR_D3D12_AVAILABLE
-#include "Core/API/Shared/D3D12DescriptorSet.h"
-#endif
+#include "Core/API/GFX/FalcorGFX.h"
+
 #include <slang/slang.h>
 #include <map>
 
@@ -1626,3 +1627,5 @@ namespace Falcor {
 #undef type_2_string
     }
 }
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_

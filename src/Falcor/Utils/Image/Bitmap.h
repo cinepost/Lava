@@ -29,6 +29,7 @@
 #define SRC_FALCOR_UTILS_IMAGE_BITMAP_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Formats.h"
 
 
 namespace Falcor {

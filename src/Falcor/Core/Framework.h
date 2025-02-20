@@ -81,14 +81,9 @@
 #include <type_traits>
 
 
-// #ifdef _WIN32
-// #include <filesystem>
-// namespace fs = std::filesystem;
-// #else
 #include "boost/format.hpp"
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-// #endif
 
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Math/Vector.h"
@@ -327,10 +322,21 @@ public:
 
 }  // namespace Falcor
 
-#if defined(FALCOR_GFX_VK)
-#include "Core/API/GFX/FalcorGFX.h"
+// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
+#undef None
+#undef Status
+#undef Bool
+#undef Always
+#endif
+
+#ifdef WIN32
+using WindowHandle = HWND;
 #else
-#error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
+struct WindowHandle {
+    void*       pDisplay;
+    uint32_t    window;
+};
 #endif
 
 namespace Falcor {

@@ -166,7 +166,9 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
         cb_vars["gRandomSeed"] = mRandomSeed;
         cb_vars["gRayBias"] = mRayBias;
 
+        LLOG_WRN << "! " << resolution.x << " " << resolution.y;
         mpPassRayTrace->execute(pRenderContext, resolution.x, resolution.y);
+        //pRenderContext->clearUAV(pDst->getUAV().get(), float4(0.5f));
     }
 
     mDirty = false;
@@ -215,10 +217,11 @@ void AmbientOcclusionPass::setOutputFormat(ResourceFormat format) {
 }
 
 AmbientOcclusionPass& AmbientOcclusionPass::setShadingRate(int rate) {
-    rate = std::max(1u, static_cast<uint>(rate));
-    if(mShadingRate == rate) return *this;
-    mShadingRate = rate;
-    mDirty = true;
+    if(rate < 0) rate = 0;
+
+    uint _rate = std::max(1u, static_cast<uint>(rate));
+    if(mShadingRate != _rate) mDirty = true;
+    mShadingRate = _rate;
     return *this;
 }
 

@@ -61,16 +61,13 @@ namespace Falcor {
     {
         mBaseDesc.beginEntryPointGroup(entryPointNameSuffix);
         mBaseDesc.addTypeConformancesToGroup(typeConformances);
-        if (!closestHit.empty())
-        {
+        if (!closestHit.empty()) {
             mBaseDesc.entryPoint(ShaderType::ClosestHit, closestHit);
         }
-        if (!anyHit.empty())
-        {
+        if (!anyHit.empty()) {
             mBaseDesc.entryPoint(ShaderType::AnyHit, anyHit);
         }
-        if (!intersection.empty())
-        {
+        if (!intersection.empty()) {
             mBaseDesc.entryPoint(ShaderType::Intersection, intersection);
         }
 
@@ -88,16 +85,13 @@ namespace Falcor {
         : Program(pDevice, desc.mBaseDesc, programDefines)
         , mRtDesc(desc)
     {
-        if (desc.mRayGenCount == 0)
-        {
+        if (desc.mRayGenCount == 0) {
             throw std::runtime_error("Can't create an RtProgram without a ray generation shader");
         }
-        if (desc.mMaxTraceRecursionDepth == -1)
-        {
+        if (desc.mMaxTraceRecursionDepth == uint32_t(-1)) {
             throw std::runtime_error("Can't create an RtProgram without specifying maximum trace recursion depth");
         }
-        if (desc.mMaxPayloadSize == -1)
-        {
+        if (desc.mMaxPayloadSize == uint32_t(-1)) {
             throw std::runtime_error("Can't create an RtProgram without specifying maximum ray payload size");
         }
     }

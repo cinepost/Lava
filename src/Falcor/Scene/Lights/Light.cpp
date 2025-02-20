@@ -142,25 +142,25 @@ void Light::update() {
     if(maxColorComponentValue(getDirectDiffuseIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContribureDirectDiffuse;
     } else {
-        mData.flags != (uint32_t)LightDataFlags::ContribureDirectDiffuse;
+        mData.flags &= ~(uint32_t)LightDataFlags::ContribureDirectDiffuse;
     }
 
     if(maxColorComponentValue(getDirectSpecularIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeDirectSpecular;
     } else {
-        mData.flags != (uint32_t)LightDataFlags::ContributeDirectSpecular;
+        mData.flags &= ~(uint32_t)LightDataFlags::ContributeDirectSpecular;
     }
 
     if(maxColorComponentValue(getIndirectDiffuseIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeIndirectDiffuse;
     } else {
-        mData.flags != (uint32_t)LightDataFlags::ContributeIndirectDiffuse;
+        mData.flags &= ~(uint32_t)LightDataFlags::ContributeIndirectDiffuse;
     }
 
     if(maxColorComponentValue(getIndirectSpecularIntensity()) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeIndirectSpecular;
     } else {
-        mData.flags != (uint32_t)LightDataFlags::ContributeIndirectSpecular;
+        mData.flags &= ~(uint32_t)LightDataFlags::ContributeIndirectSpecular;
     }
 }
 
@@ -270,7 +270,7 @@ void Light::setCameraVisibility(bool visible) {
     if(visible) {
         mData.flags |= (uint32_t)LightDataFlags::VisibleToCamera;
     } else {
-        mData.flags &= !(uint32_t)LightDataFlags::VisibleToCamera;
+        mData.flags &= ~(uint32_t)LightDataFlags::VisibleToCamera;
     }
     update();
 }
@@ -463,7 +463,7 @@ void DistantLight::update() {
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
     } else {
-        mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
+        mData.flags &= ~(uint32_t)LightDataFlags::DeltaDirection;
     }
 
     mData.intensity = mIntensity * M_2PI;
@@ -535,9 +535,6 @@ void EnvironmentLight::setTexture(Texture::SharedPtr pTexture) {
 
 // PhysicalSunSkyLight
 PhysicalSunSkyLight::PhysicalSunSkyLight(const std::string& name): Light(name, LightType::PhysSunSky) {
-    mData.flags &= !(uint32_t)LightDataFlags::DeltaPosition;
-    mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
-
     setTexture(nullptr);
     update();
     mPrevData = mData;

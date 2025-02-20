@@ -6,16 +6,15 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "FileVersion.h"
-
 #include <sstream>
 
-#include <UT/UT_JSONParser.h>
-#include <UT/UT_String.h>
+#include "../houdini_inc.h"
 
 #include "util.h"
 #include "VersionError.h"
+
+#include "FileVersion.h"
+
 
 namespace ika {
 namespace bgeo {

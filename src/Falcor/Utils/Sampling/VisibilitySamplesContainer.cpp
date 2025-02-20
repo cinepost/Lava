@@ -47,7 +47,11 @@ VisibilitySamplesContainer::SharedPtr VisibilitySamplesContainer::create(Device:
 	return SharedPtr(new VisibilitySamplesContainer(pDevice, resolution, std::min(maxTransparentSamplesCountPP, kMaxTransparentSamplesCountPP)));
 }
 
-VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP): mpDevice(pDevice), mResolution(resolution), mMaxTransparentSamplesCountPP(maxTransparentSamplesCountPP) {
+VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP)
+: mResolution(resolution), 
+	mMaxTransparentSamplesCountPP(maxTransparentSamplesCountPP),
+	mpDevice(pDevice) {
+
 	mFlags = VisibilitySamplesContainerFlags::None;
 
 	mAlphaThresholdMin = kAlphaThresholdMin;

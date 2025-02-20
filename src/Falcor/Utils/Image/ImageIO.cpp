@@ -71,6 +71,8 @@ struct ExportData {
     std::vector<nvtt::Surface> images;
 };
 
+#ifdef _NVTT 
+
 ImageIO::CompressionMode convertFormatToMode(ResourceFormat format) {
     switch (format) {
         case ResourceFormat::BC1Unorm:
@@ -148,8 +150,6 @@ nvtt::Format convertFormatToNvttFormat(ResourceFormat format) {
         throw std::runtime_error("No corresponding NVTT compression format for the specified ResourceFormat.");
     }
 }
-
-#ifdef _NVTT 
 
 // Returns the corresponding NVTT input format for the provided ResourceFormat. Should only be used to convert formats for non-compressed textures.
 nvtt::InputFormat convertToNvttInputFormat(ResourceFormat format) {

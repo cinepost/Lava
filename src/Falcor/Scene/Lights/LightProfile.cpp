@@ -149,13 +149,13 @@ namespace {
             return IesStatus::WrongDataSize;
         }
 
-        int numLamps = int(numericData[0]);
+        //int numLamps = int(numericData[0]);
         int numVerticalAngles = int(numericData[3]);
         int numHorizontalAngles = int(numericData[4]);
         int headerSize = 13;
 
         int expectedDataSize = headerSize + numHorizontalAngles + numVerticalAngles + numHorizontalAngles * numVerticalAngles;
-        if (numericData.size() != expectedDataSize) {
+        if ((int)numericData.size() != expectedDataSize) {
             return IesStatus::WrongDataSize;
         }
 
@@ -194,6 +194,8 @@ LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Devic
     IesStatus status = parseIesFile(str.data(), numericData, maxCandelas);
     
     switch (status) {
+        case IesStatus::Success:
+            break;
         case IesStatus::UnsupportedProfile:
         case IesStatus::UnsupportedTilt:
         case IesStatus::WrongDataSize:

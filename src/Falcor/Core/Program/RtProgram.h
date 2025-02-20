@@ -204,8 +204,8 @@ public:
 		uint32_t mRayGenCount = 0;
 
 		// These parameters impact performance and must be explicitly set.
-		uint32_t mMaxTraceRecursionDepth = -1;
-		uint32_t mMaxPayloadSize = -1;
+		uint32_t mMaxTraceRecursionDepth = uint32_t(-1);
+		uint32_t mMaxPayloadSize = uint32_t(-1);
 		uint32_t mMaxAttributeSize = getRaytracingMaxAttributeSize();
 		RtPipelineFlags mPipelineFlags = RtPipelineFlags::None;
 	};

@@ -49,9 +49,9 @@ class Bgeo: public std::enable_shared_from_this<Bgeo> {
     void readInlineGeo(const std::string& bgeoString, bool checkVersion = false);
     void readGeoFromFile(const char* bgeoPath, bool checkVersion = false);
 
-    int64_t getPointCount() const;
-    int64_t getTotalVertexCount() const;
-    int64_t getPrimitiveCount() const;
+    size_t getPointCount() const;
+    size_t getTotalVertexCount() const;
+    size_t getPrimitiveCount() const;
 
     void getBoundingBox(double bound[6]) const;
 
@@ -79,35 +79,35 @@ class Bgeo: public std::enable_shared_from_this<Bgeo> {
     void getVertexUV(std::vector<float>& uv) const;
     void getVertexUV(std::vector<Falcor::float2>& uv) const;
 
-    int64_t getPointAttributeCount() const;
+    size_t getPointAttributeCount() const;
     typedef std::shared_ptr<Attribute> AttributePtr;
-    AttributePtr getPointAttribute(int64_t index) const;
+    AttributePtr getPointAttribute(size_t index) const;
     AttributePtr getPointAttributeByName(const char* name) const;
 
-    int64_t getVertexAttributeCount() const;
-    AttributePtr getVertexAttribute(int64_t index) const;
+    size_t getVertexAttributeCount() const;
+    AttributePtr getVertexAttribute(size_t index) const;
     AttributePtr getVertexAttributeByName(const char* name) const;
 
-    int64_t getPrimitiveAttributeCount() const;
-    AttributePtr getPrimitiveAttribute(int64_t index) const;
+    size_t getPrimitiveAttributeCount() const;
+    AttributePtr getPrimitiveAttribute(size_t index) const;
     AttributePtr getPrimitiveAttributeByName(const char* name) const;
 
-    int64_t getDetailAttributeCount() const;
-    AttributePtr getDetailAttribute(int64_t index) const;
+    size_t getDetailAttributeCount() const;
+    AttributePtr getDetailAttribute(size_t index) const;
     AttributePtr getDetailAttributeByName(const char* name) const;
 
     // primitives /////
 
     typedef std::shared_ptr<Primitive> PrimitivePtr;
-    PrimitivePtr getPrimitive(int64_t index) const;
+    PrimitivePtr getPrimitive(size_t index) const;
     void preCachePrimitives();
 
     // primitive groups //////
 
-    int64_t getPrimitiveGroupCount() const;
+    size_t getPrimitiveGroupCount() const;
 
-    std::string getPrimitiveGroupName(int64_t index) const;
-    void getPrimitiveGroup(int64_t index, std::vector<int32_t>& indices) const;
+    std::string getPrimitiveGroupName(size_t index) const;
+    void getPrimitiveGroup(size_t index, std::vector<int32_t>& indices) const;
 
  private:
     Bgeo();

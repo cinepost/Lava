@@ -49,7 +49,7 @@ public:
     ShortList<RefPtr<TextureResourceImpl>> m_images;
     RefPtr<DeviceImpl> m_renderer;
     VulkanApi* m_api;
-    uint32_t m_currentImageIndex = 0;
+    int m_currentImageIndex = 0;
     WindowHandle m_windowHandle;
     void destroySwapchainAndImages();
 

@@ -6,18 +6,15 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "PackedFragment.h"
-
 #include <cassert>
-
-#include <UT/UT_JSONHandle.h>
 
 #include "Attribute.h"
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
 #include "PackedGeometry.h"
+
+#include "PackedFragment.h"
 
 
 namespace ika {

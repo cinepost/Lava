@@ -17,24 +17,23 @@ void Mesh::getVertexList(std::vector<int32_t>& vertices) const {
     m_mesh.getVerticesMappedToPoints(vertices);
 }
 
-void Mesh::getStartIndices(std::vector<int32_t>& startIndices) const {
+void Mesh::getStartIndices(std::vector<uint32_t>& startIndices) const {
     startIndices.resize(m_mesh.sides.size() + 1);
     startIndices[0] = 0;
 
     int64 current = 0;
-    for (int i = 0; i < m_mesh.sides.size(); ++i)
-    {
+    for (size_t i = 0; i < m_mesh.sides.size(); ++i) {
         current += m_mesh.sides[i];
         startIndices[i + 1] = current;
     }
 }
 
-int32_t Mesh::getFaceCount() const {
-    return m_mesh.sides.size();
+uint32_t Mesh::getFaceCount() const {
+    return static_cast<uint32_t>(m_mesh.sides.size());
 }
 
-int32_t Mesh::getVertexCount() const {
-    return m_mesh.vertices.size();
+uint32_t Mesh::getVertexCount() const {
+    return static_cast<uint32_t>(m_mesh.vertices.size());
 }
 
 } // namespace ika

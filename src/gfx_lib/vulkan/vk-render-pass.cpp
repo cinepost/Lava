@@ -34,7 +34,7 @@ Result RenderPassLayoutImpl::init(DeviceImpl* renderer, const IRenderPassLayout:
     // We need extra space if we have depth buffer
     Array<VkAttachmentDescription, kMaxTargets> targetDescs;
     targetDescs = framebufferLayout->m_targetDescs;
-    for (GfxIndex i = 0; i < desc.renderTargetCount; ++i)
+    for (uint32_t i = 0; i < desc.renderTargetCount; ++i)
     {
         VkAttachmentDescription& dst = targetDescs[i];
         auto access = desc.renderTargetAccess[i];

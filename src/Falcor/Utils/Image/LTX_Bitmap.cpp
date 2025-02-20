@@ -62,12 +62,6 @@ static bool isPowerOfTwo(int x) {
 	return x > 0 && !(x & (x-1));
 }
 
-static struct {
-	bool operator()(size_t a, size_t b) const {   
-		return a < b;
-	}   
-} pageSort;
-
 LTX_Header::TopLevelCompression LTX_Bitmap::getTLCFromString(const std::string& name) {
 	if(name == "lz4") return LTX_Header::TopLevelCompression::LZ4;
 	if(name == "lz4hc") return LTX_Header::TopLevelCompression::LZ4HC;
@@ -170,7 +164,10 @@ static inline int _readUncompressedPageData(FILE * pFile, size_t dataOffset, siz
 static inline int _readCompressedPageData(FILE * pFile, size_t dataOffset, size_t readDataSize, uint8_t *pData, uint8_t *pScratchBuffer) {
 	assert(pScratchBuffer);
 	fseek(pFile, dataOffset, SEEK_SET);
-	fread(pScratchBuffer, 1, readDataSize, pFile);
+	size_t nbytes = fread(pScratchBuffer, 1, readDataSize, pFile);
+	if(nbytes != readDataSize) {
+		return 0;
+	}
 	return blosc_decompress_ctx(pScratchBuffer, pData, kLtxPageSize, 1);
 }
 
@@ -180,7 +177,7 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
 
 LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool isTopDown) {
 	if(!checkFileMagic(path, true)) {
-		LLOG_ERR << "Wrong LTX texture file magic!";
+		LLOG_ERR << "Wrong LTX bitmap " << path << " file magic!";
 		return nullptr;
 	}
 
@@ -188,7 +185,11 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
 	pLtxBitmap->mFilePath = path;
 	
 	auto pFile = fopen(path.string().c_str(), "rb");
-	fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pFile );
+	size_t nbytes = fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pFile );
+	if(nbytes != sizeof(LTX_Header)) {
+		LLOG_ERR << "Error reading LTX bitmap " << path << " header !!!";
+		return nullptr;
+	}
 
 	pLtxBitmap->mTopLevelCompression = pLtxBitmap->mHeader.topLevelCompression;
 
@@ -196,12 +197,25 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
 		pLtxBitmap->mCompressedPageDataOffset.resize(pLtxBitmap->mHeader.pagesCount);
 		pLtxBitmap->mCompressedPageDataSize.resize(pLtxBitmap->mHeader.pagesCount);
 
-		fread(pLtxBitmap->mCompressedPageDataOffset.data(), sizeof(uint32_t), pLtxBitmap->mHeader.pagesCount, pFile );
-		fread(pLtxBitmap->mCompressedPageDataSize.data(), sizeof(uint16_t), pLtxBitmap->mHeader.pagesCount, pFile );
+		nbytes = fread(pLtxBitmap->mCompressedPageDataOffset.data(), sizeof(uint32_t), pLtxBitmap->mHeader.pagesCount, pFile );
+		
+		if(nbytes != (sizeof(uint32_t) * pLtxBitmap->mHeader.pagesCount)) {
+			LLOG_ERR << "Error reading LTX bitmap " << path << " compressed pages data offsets !!!";
+			return nullptr;
+		}
+		
+		nbytes = fread(pLtxBitmap->mCompressedPageDataSize.data(), sizeof(uint16_t), pLtxBitmap->mHeader.pagesCount, pFile );
+	
+		if(nbytes != (sizeof(uint16_t) * pLtxBitmap->mHeader.pagesCount)) {
+			LLOG_ERR << "Error reading LTX bitmap " << path << " compressed pages data !!!";
+			return nullptr;
+		}
 	}
 
 	fseek(pFile, 0L, SEEK_END);
-	size_t mDataSize = ftell(pFile) - sizeof(LTX_Header);
+	
+	//size_t mDataSize = ftell(pFile) - sizeof(LTX_Header);
+	
 	fclose(pFile);
 
 	return SharedConstPtr(pLtxBitmap);
@@ -390,7 +404,6 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 	}
 
 	// Find mip tail starting mip level. This and all smaller layers (higher indices) combined memory footprint should be equal or less than kLtxPageSize 
-	uint8_t mipTailStart = info.mipLevelsCount - 1;
 	for( uint8_t currentMipLevel = 0; currentMipLevel < info.mipLevelsCount; ++currentMipLevel) {
 		// Find cumulative mip levels footprint
 		uint32_t currentMemCumulativeFootprint = 0;
@@ -409,6 +422,7 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 	return info;
 }
 
+/*
 static void fixBlackAlpha(oiio::ImageBuf& buff, oiio::ROI roi = {}) {
     roi.chend = std::min(roi.chend, buff.nchannels());
     if (buff.spec().format == oiio::TypeDesc::UINT8)
@@ -423,13 +437,12 @@ static void fixBlackAlpha(oiio::ImageBuf& buff, oiio::ROI roi = {}) {
     	}
     }
 }
-
+*/
 
 bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
 	oiio::ImageSpec config;
 
 	config.attribute("oiio:UnassociatedAlpha", 1);
-	//config["oiio:UnassociatedAlpha"] = 1;
 	
 	auto in = oiio::ImageInput::open(srcFilename, &config);
 	if (!in) {
@@ -653,7 +666,9 @@ bool LTX_Bitmap::readPageData(size_t pageNum, uint8_t *pData, FILE *pFile, uint8
 		if(nbytes < 0) {
 			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "!";
 			return false;
-		} else if( nbytes > kLtxPageSize) {
+		} 
+
+		if( static_cast<uint>(nbytes) > kLtxPageSize) {
 			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "! " << std::to_string(nbytes) << " bytes decompressed !!!";
 			return false;
 		} else if (nbytes == 0) {

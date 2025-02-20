@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include <UT/UT_StringArray.h>
+#include "../houdini_inc.h"
 
 #include "Primitive.h"
 #include "Primitives.h"

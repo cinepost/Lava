@@ -70,7 +70,9 @@ BSDFIntegrator::BSDFIntegrator(RenderContext* pRenderContext, const Scene::Share
     mResultCount = (kGridSize.x * kGridSize.y) / groupThreadCount;
     assert(mResultCount * groupThreadCount == kGridSize.x * kGridSize.y);
 
+    #ifdef _DEBUG
     uint3 finalGroupSize = mpFinalPass->getThreadGroupSize();
+    #endif // _DEBUG
     assert(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
     assert(finalGroupSize.x == mResultCount);
 

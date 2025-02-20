@@ -48,6 +48,7 @@ void PipelineStateImpl::destroy() {
 
 bool PipelineStateImpl::hasCacheBlob() {
 	if(!mpPipelineCache) return false;
+	return true;
 }
 
 void PipelineStateImpl::establishStrongDeviceReference() {

@@ -46,13 +46,15 @@ RefPtr<BufferResource> ShaderTableImpl::createDeviceBuffer(PipelineStateBase* pi
     auto handleCount = pipelineImpl->shaderGroupCount;
     auto totalHandleSize = handleSize * handleCount;
     handles.setCount(totalHandleSize);
-    auto result = vkApi.vkGetRayTracingShaderGroupHandlesKHR(
+    VkResult result = vkApi.vkGetRayTracingShaderGroupHandlesKHR(
         m_device->m_device,
         pipelineImpl->getPipeline(),
         0,
         (uint32_t)handleCount,
         totalHandleSize,
         handles.getBuffer());
+
+    SLANG_VK_CHECK(result);
 
     uint8_t* stagingBufferPtr = (uint8_t*)stagingPtr + stagingBufferOffset;
     auto subTablePtr = stagingBufferPtr;

@@ -1,9 +1,11 @@
 // render.cpp
 #include "renderer-shared.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-math.h"
-//#include "open-gl/render-gl.h"
-//#include "cuda/render-cuda.h"
-//#include "cpu/render-cpu.h"
+#pragma GCC diagnostic pop
+
 #include "debug-layer.h"
 
 #include <cstring>
@@ -168,10 +170,6 @@ struct FormatInfoMap {
 };
 
 static const FormatInfoMap s_formatInfoMap;
-
-static void _compileTimeAsserts() {
-    SLANG_COMPILE_TIME_ASSERT(SLANG_COUNT_OF(s_formatSizeInfo) == int(Format::_Count));
-}
 
 extern "C" {
     SLANG_GFX_API bool gfxIsCompressedFormat(Format format) {

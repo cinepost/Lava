@@ -140,7 +140,7 @@ void OpenDenoisePass::parseDictionary(const Dictionary& dict) {
 RenderPassReflection OpenDenoisePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     
-    const auto& texDims = compileData.defaultTexDims;
+    //const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInput(kInput, "Color buffer").format(ResourceFormat::Unknown);
     reflector.addOutput(kOutput, "Denoised color buffer").format(mOutputFormat);
@@ -271,14 +271,14 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     bool hasErrors = false;
     const char* errorMessage;
     if (mOidnDevice.getError(errorMessage) != oidn::Error::None) {
-        bool hasErrors = true;
+        hasErrors = true;
         LLOG_ERR << "OpenDenoisePass error: " << std::string(errorMessage);
         
         bypass(pRenderContext, renderData);
         return;
     }
 
-    LLOG_DBG << "OpenDenoisePass filter executed. Uploading denoised data.";
+    LLOG_DBG << "OpenDenoisePass filter executed " << (hasErrors ? "with errors" : "") << ". Uploading denoised data.";
 
     // Upload denoised image back to GPU
     pRenderContext->updateTextureData(pOutputTex.get(), (const void*)mOutputImageData.data());

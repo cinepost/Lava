@@ -48,7 +48,7 @@ size_t PolySplitter::splitByPrimitiveString(const Bgeo& bgeo, const Poly& poly, 
     m_faceMatches.resize(strings.size());
 
     for (size_t i = 0; i < values.size(); ++i) {
-        assert(values[i] < m_faceMatches.size());
+        assert(values[i] > 0 && (size_t)values[i] < m_faceMatches.size());
         m_faceMatches[values[i]].push_back(i);
     }
 
@@ -115,20 +115,20 @@ void PolySplitter::setCurrentSplit(size_t splitIndex) {
     m_currentStartIndices.push_back(0);
 
     for (const auto& face : faces) {
-        assert(face < m_startIndices.size());
-        assert((face + 1) < m_startIndices.size());
-        auto startIndex = m_startIndices[face];
-        auto vertexCount = m_startIndices[face + 1] - startIndex;
+        assert(face > 0 && (size_t)face < m_startIndices.size());
+        assert((size_t)(face + 1) < m_startIndices.size());
+        uint32_t startIndex = m_startIndices[face];
+        uint32_t vertexCount = m_startIndices[face + 1] - startIndex;
 
         // update vertices
 
-        for (int i = 0; i < vertexCount; ++i) {
+        for (size_t i = 0; i < vertexCount; ++i) {
             auto oldVertex = m_mappedVertices[startIndex + i];
-            if (oldVertex >= m_mapToNewVertices.size()) {
+            if ((size_t)oldVertex >= m_mapToNewVertices.size()) {
                 m_mapToNewVertices.resize(oldVertex + 1, -1);
             }
 
-            assert(oldVertex < m_mapToNewVertices.size());
+            assert((uint32_t)oldVertex < m_mapToNewVertices.size());
             if (m_mapToNewVertices[oldVertex] < 0) {
                 m_mapToNewVertices[oldVertex] = currentIndex;
                 m_currentVertices.push_back(currentIndex);
@@ -145,15 +145,11 @@ void PolySplitter::setCurrentSplit(size_t splitIndex) {
         // update start index
         previousStartIndex += vertexCount;
         m_currentStartIndices.push_back(previousStartIndex);
-
-//        std::cout << "start index(" << face << ") = " << m_startIndices[face] << std::endl;
-//        std::cout << "vertex count(" << face << ") = " << vertexCount << std::endl;
-
     }
 
     // reset map for later reuse
     for (const auto& vertex : m_currentMappedVertices) {
-        assert(vertex < m_mapToNewVertices.size());
+        assert((uint32_t)vertex < m_mapToNewVertices.size());
         m_mapToNewVertices[vertex] = -1;
     }
 //    for (const auto& face : faces)

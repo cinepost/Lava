@@ -206,9 +206,7 @@ Result ShaderObjectImpl::_writeOrdinaryData(
     // be handled in this one location, rather than having some in `setObject()` and
     // others handled here.
     //
-    Index subObjectRangeCounter = 0;
     for (auto const& subObjectRangeInfo : specializedLayout->getSubObjectRanges()) {
-        Index subObjectRangeIndex = subObjectRangeCounter++;
         auto const& bindingRangeInfo =
             specializedLayout->getBindingRange(subObjectRangeInfo.bindingRangeIndex);
 
@@ -295,9 +293,13 @@ void ShaderObjectImpl::writeBufferDescriptor(
 
     VkDescriptorBufferInfo bufferInfo = {};
     
+    printf("1\n");
+
     if (buffer) {
         bufferInfo.buffer = buffer->m_buffer.m_buffer;
     }
+
+    printf("2\n");
     
     bufferInfo.offset = bufferOffset;
     bufferInfo.range = bufferSize;
@@ -312,6 +314,8 @@ void ShaderObjectImpl::writeBufferDescriptor(
     write.pBufferInfo = &bufferInfo;
 
     writeDescriptor(context, write);
+    printf("3\n");
+
 }
 
 void ShaderObjectImpl::writeBufferDescriptor(

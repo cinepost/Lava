@@ -40,7 +40,7 @@ class RtAccelerationStructure;
 
 using DeviceAddress = uint64_t;
 
-enum class RtGeometryInstanceFlags {
+enum class RtGeometryInstanceFlags : uint8_t {
 	// The enum values are kept consistent with D3D12_RAYTRACING_INSTANCE_FLAGS
 	// and VkGeometryInstanceFlagBitsKHR.
 	None = 0,
@@ -179,6 +179,13 @@ public:
 	using SharedConstPtr = std::shared_ptr<const RtAccelerationStructure>;
 
 	using ApiHandle = AccelerationStructureHandle;
+
+	/** Settings for how the scene is updated
+  */
+  enum class UpdateMode {
+    Rebuild,    ///< Recreate acceleration structure when updates are needed
+    Refit       ///< Update acceleration structure when updates are needed
+  };
 
 	class FALCOR_API Desc {
 		public:

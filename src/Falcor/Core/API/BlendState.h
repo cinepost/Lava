@@ -29,6 +29,7 @@
 #define SRC_FALCOR_CORE_API_BLENDSTATE_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/GFX/FalcorGFX.h"
 
 
 namespace Falcor {

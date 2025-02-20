@@ -111,6 +111,7 @@ float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, 
 	their spread angles, returns a cone that bounds both of
 	them. Algorithm 1 in the 2018 Sony EGSR light sampling paper.
 */
+/*
 float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
 {
 	if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle)
@@ -198,6 +199,7 @@ float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, flo
 
 	return dir;
 }
+*/
 
 /** Returns the volume of a bounding box.
 	\param[in] epsilon Replace dimensions that are zero by this value.
@@ -345,7 +347,9 @@ uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuri
 			throw std::runtime_error(("BVH depth of " + std::to_string(depth + 1) + " reached; maximum of " + std::to_string(kMaxBVHDepth) + " allowed.").c_str());
 		}
 
+		#ifdef _DEBUG
 		uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
+		#endif // _DEBUG
 		uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
 
 		assert(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.

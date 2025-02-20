@@ -26,7 +26,6 @@ StructuredBuffer<MaterialResolveData> materialsResolveDataBuffer;
 Buffer<uint32_t> textureIdToVtexDataIdBuffer;
 
 Texture2D<float> mipCalibrationTexture;
-Texture2D ltxCalibrationTexture;
 Texture2D<float> mipCalibrationTextures[16];
 
 SamplerState gCalibrationSampler;
@@ -82,8 +81,6 @@ float2 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler,
     gl_TextureFootprint2DNV footprint;
     //Sampler2D<vector<float,4>> tst(mipCalibrationTextures[0], gCalibrationSampler);
     //bool _res = textureFootprintGradNV(footprint, tst , uv,  1, false, ddx_fine(tc), ddy_fine(tc));
-
-    //float _mip = ltxCalibrationTexture.CalculateLevelOfDetail(gCalibrationSampler, uv);
 
     int mipLevelLo = -1;
     int mipLevelHi = -1;

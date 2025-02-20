@@ -84,8 +84,6 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
         SlangInt descriptorRangeCount = typeLayout->getDescriptorSetDescriptorRangeCount(i);
         if (descriptorRangeCount == 0)
             continue;
-        auto descriptorSetIndex =
-            findOrAddDescriptorSet(offset.bindingSet + typeLayout->getDescriptorSetSpaceOffset(i));
     }
 
     // For actually populating the descriptor sets we prefer to enumerate
@@ -694,8 +692,6 @@ void EntryPointLayout::Builder::addEntryPointParams(slang::EntryPointLayout* ent
 
 Result EntryPointLayout::_init(Builder const* builder)
 {
-    auto renderer = builder->m_renderer;
-
     SLANG_RETURN_ON_FAIL(Super::_init(builder));
 
     m_slangEntryPointLayout = builder->m_slangEntryPointLayout;

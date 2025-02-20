@@ -67,6 +67,8 @@ void Attribute::getData(uint8_t* bytes, int64_t byteCount,
                         uint32_t elementSizeInBytes,
                         const std::vector<int32_t>& indices) const
 {
+    if(byteCount <= 0) return;
+
     // unpack the data into a temporary buffer and save it for later.
     if (m_buffer.empty())
     {
@@ -76,7 +78,7 @@ void Attribute::getData(uint8_t* bytes, int64_t byteCount,
         getData(m_buffer.data(), newByteCount);
     }
 
-    assert(byteCount == indices.size() * elementSizeInBytes);
+    assert(static_cast<size_t>(byteCount) == indices.size() * elementSizeInBytes);
     for (size_t i = 0; i < indices.size(); ++i)
     {
         auto sourceIndex = indices[i];

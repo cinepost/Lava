@@ -13,7 +13,7 @@
 #include <string>
 #include <memory>
 
-#include <UT/UT_IStream.h>
+#include "../houdini_inc.h"
 
 namespace ika
 {

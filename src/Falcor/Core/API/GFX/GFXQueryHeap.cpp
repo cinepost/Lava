@@ -32,7 +32,7 @@
 
 namespace Falcor {
 
-QueryHeap::QueryHeap(Device::SharedPtr pDevice, Type type, uint32_t count) : mType(type), mCount(count) {
+QueryHeap::QueryHeap(Device::SharedPtr pDevice, Type type, uint32_t count) : mCount(count), mType(type) {
     assert(pDevice);
     gfx::IQueryPool::Desc desc = {};
     desc.count = count;
