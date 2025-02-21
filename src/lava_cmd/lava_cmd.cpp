@@ -69,7 +69,11 @@ void signalHandler( int signum ){
 
   const char str[] = "received signal\n";
   // ok, write is signal-safe
-  write(STDERR_FILENO, str, sizeof(str) - 1);
+  const size_t write_size = sizeof(str) - 1;
+  size_t nbytes = write(STDERR_FILENO, str, sizeof(str) - 1);
+  if(nbytes != write_size) {
+    fprintf(stderr, "Error: signal %d:\n", signum);
+  }
 }
 
 #ifdef _WIN32

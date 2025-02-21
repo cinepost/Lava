@@ -185,8 +185,10 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
 	pLtxBitmap->mFilePath = path;
 	
 	auto pFile = fopen(path.string().c_str(), "rb");
-	size_t nbytes = fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pFile );
+	size_t nbytes = fread(&pLtxBitmap->mHeader, 1, sizeof(LTX_Header), pFile );
 	if(nbytes != sizeof(LTX_Header)) {
+		LLOG_ERR << "header " << sizeof(LTX_Header);
+		LLOG_ERR << "nbytes " << nbytes;
 		LLOG_ERR << "Error reading LTX bitmap " << path << " header !!!";
 		return nullptr;
 	}
@@ -197,14 +199,14 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
 		pLtxBitmap->mCompressedPageDataOffset.resize(pLtxBitmap->mHeader.pagesCount);
 		pLtxBitmap->mCompressedPageDataSize.resize(pLtxBitmap->mHeader.pagesCount);
 
-		nbytes = fread(pLtxBitmap->mCompressedPageDataOffset.data(), sizeof(uint32_t), pLtxBitmap->mHeader.pagesCount, pFile );
+		nbytes = fread(pLtxBitmap->mCompressedPageDataOffset.data(), 1, sizeof(uint32_t) * pLtxBitmap->mHeader.pagesCount, pFile );
 		
 		if(nbytes != (sizeof(uint32_t) * pLtxBitmap->mHeader.pagesCount)) {
 			LLOG_ERR << "Error reading LTX bitmap " << path << " compressed pages data offsets !!!";
 			return nullptr;
 		}
 		
-		nbytes = fread(pLtxBitmap->mCompressedPageDataSize.data(), sizeof(uint16_t), pLtxBitmap->mHeader.pagesCount, pFile );
+		nbytes = fread(pLtxBitmap->mCompressedPageDataSize.data(), 1, sizeof(uint16_t) * pLtxBitmap->mHeader.pagesCount, pFile );
 	
 		if(nbytes != (sizeof(uint16_t) * pLtxBitmap->mHeader.pagesCount)) {
 			LLOG_ERR << "Error reading LTX bitmap " << path << " compressed pages data !!!";

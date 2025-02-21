@@ -272,8 +272,8 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     const char* errorMessage;
     if (mOidnDevice.getError(errorMessage) != oidn::Error::None) {
         hasErrors = true;
-        LLOG_ERR << "OpenDenoisePass error: " << std::string(errorMessage);
-        
+        LLOG_ERR << "OpenImageDenoiser error: " << std::string(errorMessage);
+
         bypass(pRenderContext, renderData);
         return;
     }

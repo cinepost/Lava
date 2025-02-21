@@ -166,9 +166,7 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
         cb_vars["gRandomSeed"] = mRandomSeed;
         cb_vars["gRayBias"] = mRayBias;
 
-        LLOG_WRN << "! " << resolution.x << " " << resolution.y;
         mpPassRayTrace->execute(pRenderContext, resolution.x, resolution.y);
-        //pRenderContext->clearUAV(pDst->getUAV().get(), float4(0.5f));
     }
 
     mDirty = false;

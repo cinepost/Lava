@@ -588,6 +588,8 @@ static bool isUdimTextureFilename(const fs::path& path, const std::string& udimM
 
 
 static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMask, TextureManager::TileList& tileList) {
+	if(path.empty()) return false;
+	
 	tileList.clear();
 	size_t udimMask_found = std::string::npos;
 
@@ -599,6 +601,12 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 	boost::smatch what;
 
 	bool result = false;
+
+	const fs::path parent_dir = path.parent_path();
+	if(!fs::exists(parent_dir)) {
+		LLOG_ERR << "Directory " << parent_dir << " doesn't exist !!!";
+		return false;
+	}
 
 	for (auto &entry: boost::make_iterator_range(fs::directory_iterator(path.parent_path()), {})
 		| ba::filtered(static_cast<bool (*)(const fs::path &)>(&fs::is_regular_file))
@@ -639,19 +647,17 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 	// Find the full path to the texture if it's not a UDIM.
 	fs::path fullPath;
 
-	if (isUdimTextureFilename(path, udimMask)) {
+	const bool is_udim_texture = isUdimTextureFilename(path, udimMask);
+	if (is_udim_texture) {
 		// If UDIM texture requested we have store handle with no actual texture loaded that is referenced by actual tiles textures.
 		// So we use UDIM texture path as fullpath key for map storage and access.
 		fullPath = path.filename().string();
 	} else {
-#if LOAD_GIBBERISH_TEXTURE == 1
-		if (!findFileInDataDirectories(path, fullPath)) {
-			LLOG_WRN << "Can't find texture file " << path;
+		if (!fs::exists(path)) {
+			LLOG_WRN << "Can't find texture file: " << path;
 			return false;
 		}
-# else 
 		fullPath = path;
-#endif
 	}
 
 	std::unique_lock<std::mutex> lock(mMutex);
@@ -667,7 +673,12 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 
 		// Check if UDIM texture requested...
 		std::vector<std::pair<fs::path, Falcor::uint2>> udim_tile_fileinfos;
-		bool is_udim_texture = findUdimTextureTiles(path, udimMask, udim_tile_fileinfos);
+		bool udim_tiles_found = findUdimTextureTiles(path, udimMask, udim_tile_fileinfos);
+		
+		if(is_udim_texture && (!udim_tiles_found || udim_tile_fileinfos.empty())) {
+			LLOG_ERR << "No UDIM tiles found for texture " << path;
+			return false;
+		}
 
 #ifndef DISABLE_ASYNC_TEXTURE_LOADER
 		mLoadRequestsInProgress++;

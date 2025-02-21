@@ -60,13 +60,13 @@ class dlldecl RenderData {
         \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
         \return If the name exists, a pointer to the resource. Otherwise, nullptr
     */
-    const Texture::SharedPtr& getTexture(const std::string& name) const;
+    Texture::SharedPtr getTexture(const std::string& name) const;
 
     /** Get a buffer resource
         \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
         \return If the name exists, a pointer to the resource. Otherwise, nullptr
     */
-    const Buffer::SharedPtr& getBuffer(const std::string& name) const;
+    Buffer::SharedPtr getBuffer(const std::string& name) const;
 
     /** Get the global dictionary. You can use it to pass data between different passes
     */
@@ -96,9 +96,6 @@ class dlldecl RenderData {
     ResourceFormat mDefaultTexFormat;
     uint32_t mFrameNumber;
     uint32_t mSampleNumber;
-
-    Texture::SharedPtr mpNullTexture = nullptr;
-    Buffer::SharedPtr mpNullBuffer = nullptr;
 };
 
 /** Base class for render passes.

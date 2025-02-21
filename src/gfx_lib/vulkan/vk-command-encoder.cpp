@@ -418,13 +418,12 @@ void ResourceCommandEncoder::uploadTexturePageData(
 	Size bufferSize = 0;
 
 	// Calculate how large an array entry is
-	const TextureResource::Extents mipSize = calcMipSize(desc.size, mipLevel);
+	auto rowSizeInBytes = calcRowSize(desc.format, extent.width);
+	auto numRows = calcNumRows(desc.format, extent.height);
 
-	auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
-	auto numRows = calcNumRows(desc.format, mipSize.height);
-
-	bufferSize = (rowSizeInBytes * numRows) * mipSize.depth; // 65535
+	bufferSize = (rowSizeInBytes * numRows) * extent.depth; // 65535
 	
+	//printf("bufferSize %zu\n", bufferSize);
 
 	IBufferResource* uploadBuffer = nullptr;
 	Offset uploadBufferOffset = 0;

@@ -695,7 +695,7 @@ public:
                 }
                 break;
             default:
-                return SLANG_E_NOT_IMPLEMENTED;
+                break;
 
         }
         return SLANG_OK;

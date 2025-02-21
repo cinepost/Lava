@@ -48,16 +48,16 @@ const Resource::SharedPtr& RenderData::getResource(const std::string& name) cons
     return mpResources->getResource(mName + '.' + name);
 }
 
-const Texture::SharedPtr& RenderData::getTexture(const std::string& name) const {
+Texture::SharedPtr RenderData::getTexture(const std::string& name) const {
+    static const Texture::SharedPtr pNullTexture = nullptr;
     const auto pResource = mpResources->getResource(mName + '.' + name);
-    if (!pResource) return mpNullTexture;
-    return pResource->asTexture();
+    return pResource ? pResource->asTexture() : pNullTexture;
 }
 
-const Buffer::SharedPtr& RenderData::getBuffer(const std::string& name) const {
+Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
+    static const Buffer::SharedPtr pNullBuffer = nullptr;
     const auto pResource = mpResources->getResource(mName + '.' + name);
-    if (!pResource) return mpNullBuffer;
-    return pResource->asBuffer();
+    return pResource ? pResource->asBuffer() : pNullBuffer;
 }
 
 RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mInfo(info), mpDevice(pDevice) {

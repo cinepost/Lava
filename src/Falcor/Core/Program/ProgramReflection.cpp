@@ -1754,8 +1754,8 @@ namespace Falcor
         return (index == kInvalidMemberIndex) ? pNull : getMember(index);
     }
 
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
 
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
@@ -1781,7 +1781,7 @@ namespace Falcor
     }
 
 #pragma GCC pop_options
-//#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
     const ReflectionType* ReflectionType::unwrapArray() const {
         const ReflectionType* pType = this;

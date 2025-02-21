@@ -61,7 +61,6 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
 
 	// Create calibration textures
 	pTexturesResolvePass->createMipCalibrationTexture(pRenderContext);
-	pTexturesResolvePass->createLtxCalibrationTexture(pRenderContext);
 
 	return SharedPtr(pTexturesResolvePass);
 }
@@ -205,7 +204,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
 
 	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
-	mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
 
 	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); ++i) {
 		mpVars["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
@@ -345,16 +343,6 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 	}
 
 }
-
-void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderContext) {
-	if (mpLtxCalibrationTexture) return;
-
-	// Worst case scenario is 1024 pages per dimension
-
-	mpLtxCalibrationTexture = Texture::create2D(pRenderContext->device(), 1024, 1024, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
-	if (!mpLtxCalibrationTexture) LLOG_ERR << "Error creating LTX calibration texture !!!";
-}
-
 
 void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;

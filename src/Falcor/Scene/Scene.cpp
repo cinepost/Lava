@@ -3061,11 +3061,14 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
             for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
                 // Validate that the ordering is matching our expectations:
                 // InstanceID() + GeometryIndex() should look up the correct mesh instance.
+                
+                #ifdef _DEBUG
                 for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
                     const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
                     assert(instances.size() == instanceCount);
                     assert(instances[instanceIdx] == instanceID + geometryIndex);
                 }
+                #endif // _DEBUG
 
                 //const auto& instance = mGeometryInstanceData[instanceID];
                 const auto& instance = mGeometryInstanceData[mMeshIdToInstanceIds[meshID][instanceIdx]];
@@ -3105,8 +3108,11 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         }
     }
 
+    #ifdef _DEBUG
     uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mCurveDesc.empty() ? 0 : 1) + getSDFGridGeometryCount() + (mCustomPrimitiveDesc.empty() ? 0 : 1);
     assert((uint32_t)mBlasData.size() == totalBlasCount);
+    #endif // _DEBUG
+
 
     size_t blasDataIndex = mMeshGroups.size();
     // One instance for curves.
@@ -3408,7 +3414,10 @@ std::vector<uint32_t> Scene::getMeshBlasIDs() const {
         }
     }
 
+    #ifdef _DEBUG
     for (auto blasID : blasIDs) assert(blasID != invalidID);
+    #endif // _DEBUG
+
     return blasIDs;
 }
 
