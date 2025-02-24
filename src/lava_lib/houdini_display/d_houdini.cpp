@@ -602,13 +602,15 @@ static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDe
 }
 
 static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFormat* formats) {
+	if (nformats < 1) return 0;
+
 	uint i; 
 	int ok;
 	vector< h_shared_ptr< H_ChanDef > > defs;
 
 #if D_HOUDINI_DEBUG_LEVEL > 0
 	log(0, "SCAN %d formats\n", nformats);
-	for (i = 0; i < nformats; ++i) {
+	for (i = 0; i < (uint)nformats; ++i) {
 		unsigned int format_type = formats[i].type & PkDspyMaskType;
 		const char* type;
 
@@ -638,10 +640,6 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 		log(0, "Format[%d] = '%s' type %s (%d)\n", i, formats[i].name, type, format_type );
 	}
 #endif
-
-    if (nformats < 1) {
-		return 0;
-    }
 
     for (i = 0; i < (uint)nformats; ++i) {
 		addChanDef(formats[i], defs, i, img->isHalfFloat());
