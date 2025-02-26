@@ -27,14 +27,15 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include <set>
+#include <atomic>
+
 #include <slang/slang.h>
 
 #include "Falcor/Core/API/ParameterBlock.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "ProgramVersion.h"
-
-#include <set>
 
 namespace Falcor {
 

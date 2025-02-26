@@ -206,9 +206,7 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
                 // uniform buffer to hold ordinary/uniform data, if there is any.
 
                 SLANG_ASSERT(subObjectTypeLayout);
-
-                auto containerVarLayout = subObjectTypeLayout->getContainerVarLayout();
-                SLANG_ASSERT(containerVarLayout);
+                SLANG_ASSERT(subObjectTypeLayout->getContainerVarLayout());
 
                 auto elementVarLayout = subObjectTypeLayout->getElementVarLayout();
                 SLANG_ASSERT(elementVarLayout);
@@ -237,9 +235,7 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
                 // data part differently.
 
                 SLANG_ASSERT(subObjectTypeLayout);
-
-                auto containerVarLayout = subObjectTypeLayout->getContainerVarLayout();
-                SLANG_ASSERT(containerVarLayout);
+                SLANG_ASSERT(subObjectTypeLayout->getContainerVarLayout());
 
                 auto elementVarLayout = subObjectTypeLayout->getElementVarLayout();
                 SLANG_ASSERT(elementVarLayout);
@@ -645,6 +641,7 @@ Result ShaderObjectLayoutImpl::_init(Builder const* builder)
         createInfo.bindingCount = (uint32_t)descriptorSetInfo.vkBindings.getCount();
         VkDescriptorSetLayout vkDescSetLayout;
 
+        #ifdef _DEBUG
         {
             // Check for duplicate bindings. TODO: disable in production !
             uint32_t i = 0;
@@ -656,10 +653,23 @@ Result ShaderObjectLayoutImpl::_init(Builder const* builder)
                 i++;
             }
         }
+        #endif
 
         SLANG_RETURN_ON_FAIL(renderer->m_api.vkCreateDescriptorSetLayout(renderer->m_api.m_device, &createInfo, nullptr, &vkDescSetLayout));
 
         descriptorSetInfo.descriptorSetLayout = vkDescSetLayout;
+
+        #ifdef _DEBUG
+        {
+            LLOG_TRC << "Created descriptor set layout " << descriptorSetInfo.descriptorSetLayout;
+            
+            uint32_t i = 0;
+            for(auto& binding: descriptorSetInfo.vkBindings) {
+                LLOG_TRC << "Binding " << binding.binding << " at pBindings[" << i << "] with descriptor type " << to_string(binding.descriptorType);
+                i++;
+            }
+        }
+        #endif // _DEBUG
     }
     return SLANG_OK;
 }

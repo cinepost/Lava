@@ -96,6 +96,9 @@ class dlldecl RenderData {
     ResourceFormat mDefaultTexFormat;
     uint32_t mFrameNumber;
     uint32_t mSampleNumber;
+
+    Texture::SharedPtr  mpNullTexture;
+    Buffer::SharedPtr   mpNullBuffer;
 };
 
 /** Base class for render passes.

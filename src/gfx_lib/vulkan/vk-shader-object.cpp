@@ -786,8 +786,11 @@ Result ShaderObjectImpl::allocateDescriptorSets(
     // as part of the shader object layout, so we use that information here.
     //
     for (auto descriptorSetInfo : specializedLayout->getOwnDescriptorSets()) {
-        auto descriptorSetHandle =
-            context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
+        auto descriptorSetHandle = context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
+
+        #ifdef _DEBUG
+        LLOG_TRC << "allocated descriptor set " << descriptorSetHandle;
+        #endif // _DEBUG
 
         // For each set, we need to write it into the set of descriptor sets
         // being used for binding. This is done both so that other steps
@@ -1043,8 +1046,7 @@ Result RootShaderObjectImpl::bindAsRoot(PipelineCommandEncoder* encoder, RootBin
     SLANG_RETURN_ON_FAIL(allocateDescriptorSets(encoder, context, offset, layout));
 
     BindingOffset ordinaryDataBufferOffset = offset;
-    SLANG_RETURN_ON_FAIL(
-        bindOrdinaryDataBufferIfNeeded(encoder, context, ordinaryDataBufferOffset, layout));
+    SLANG_RETURN_ON_FAIL(bindOrdinaryDataBufferIfNeeded(encoder, context, ordinaryDataBufferOffset, layout));
 
     SLANG_RETURN_ON_FAIL(bindAsValue(encoder, context, offset, layout));
 

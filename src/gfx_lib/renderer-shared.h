@@ -1375,7 +1375,8 @@ Result ShaderObjectBaseImpl<TShaderObjectImpl, TShaderObjectLayoutImpl, TShaderO
                     // distinguish the two scenarios.
                     break;
                 default:
-                    return SLANG_FAIL;
+                    break;
+                //    return SLANG_FAIL;
             }
 
             auto addedTypeArgCountForCurrentRange = args.getCount() - oldArgsCount;

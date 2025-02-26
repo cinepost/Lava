@@ -55,6 +55,8 @@ public:
     void enableMotionBlur(bool value);
     void enableDepthOfField(bool value);
 
+    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
+
 private:
     void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
@@ -74,6 +76,8 @@ private:
 
     bool mUseCompute = true;
     bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
+
+    uint32_t mSampleNumber = 0;
 
     struct
     {

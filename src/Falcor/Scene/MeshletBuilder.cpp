@@ -30,13 +30,11 @@ static float getMeshletScore(float distance2, float spread, float cone_weight, f
 static float computePrimitiveCones(std::vector<Cone>& prim_cones, const SceneBuilder::MeshSpec& mesh) {
 
   size_t prim_count = mesh.getPrimitivesCount();
-  size_t vertex_count = mesh.vertexCount;
-
   float mesh_area = 0;
 
   for (size_t i = 0; i < prim_count; ++i) {
     const uint32_t a = mesh.getIndex(i * 3 + 0), b = mesh.getIndex(i * 3 + 1), c = mesh.getIndex(i * 3 + 2);
-    assert(a < vertex_count && b < vertex_count && c < vertex_count);
+    assert(a < mesh.vertexCount && b < mesh.vertexCount && c < mesh.vertexCount);
 
     const float3& p0 = mesh.staticData[a].position;
     const float3& p1 = mesh.staticData[b].position;

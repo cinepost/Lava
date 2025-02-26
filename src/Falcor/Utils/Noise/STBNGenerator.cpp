@@ -48,7 +48,7 @@ STBNGenerator::STBNGenerator(Device::SharedPtr pDevice, uint3 dims, Type type, R
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
         .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
-        .setUnnormalizedCoordinates(true);
+        .setUnnormalizedCoordinates(false);
 
     mpNoiseSampler = Sampler::create(pDevice, samplerDesc);
 

@@ -332,7 +332,7 @@ bool Session::cmdRaytrace() {
 	}
 
 #ifdef _DEBUG
-	mpGlobal->printSummary(std::cout);
+	//mpGlobal->printSummary(std::cout);
 #endif
 
 	if(!mpDisplay) {

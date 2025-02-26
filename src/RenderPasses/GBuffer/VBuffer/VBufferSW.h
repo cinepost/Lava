@@ -147,7 +147,6 @@ class PASS_API VBufferSW : public GBufferBase {
 
 		// Local textures
 		Texture::SharedPtr     	mpJitterTexture;
-		Sampler::SharedPtr     	mpJitterSampler;
 
 		// Misc
 		STBNGenerator::SharedPtr mpSTBNGenerator;

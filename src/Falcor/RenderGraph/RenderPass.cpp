@@ -40,6 +40,8 @@ RenderData::RenderData(const std::string& passName, const ResourceCache::SharedP
     , mDefaultTexFormat(defaultTexFormat)
     , mFrameNumber(frameNumber)
     , mSampleNumber(sampleNumber)
+    , mpNullTexture(nullptr)
+    , mpNullBuffer(nullptr)
 {
     if (!mpDictionary) mpDictionary = InternalDictionary::create();
 }
@@ -49,15 +51,13 @@ const Resource::SharedPtr& RenderData::getResource(const std::string& name) cons
 }
 
 Texture::SharedPtr RenderData::getTexture(const std::string& name) const {
-    static const Texture::SharedPtr pNullTexture = nullptr;
     const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asTexture() : pNullTexture;
+    return pResource ? pResource->asTexture() : mpNullTexture;
 }
 
 Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
-    static const Buffer::SharedPtr pNullBuffer = nullptr;
     const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asBuffer() : pNullBuffer;
+    return pResource ? pResource->asBuffer() : mpNullBuffer;
 }
 
 RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mInfo(info), mpDevice(pDevice) {

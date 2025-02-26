@@ -108,7 +108,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     mUseCompute ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
 
-    mFrameCount++;
+    mSampleNumber++;
 }
 
 
@@ -132,6 +132,11 @@ void VBufferRT::parseDictionary(const Dictionary& dict) {
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
+}
+
+bool VBufferRT::beginFrame(RenderContext *pContext, const RenderData& renderData) {
+    mSampleNumber = 0;
+    return true;
 }
 
 void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -216,20 +221,24 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
-        defines.add("FALCOR_NVAPI_AVAILABLE", "0");
 
         mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        //mpScene->setRaytracingShaderData(pRenderContext, var);
         mpSampleGenerator->setShaderData(var);
     }
 
-    mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
+   // mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mpComputePass->getRootVar();
-    setShaderData(var, renderData);
+    
+    if(mSampleNumber == 0) {
+        mpScene->setRaytracingShaderData(pRenderContext, var);
+    }
+
+    setShaderData(mpComputePass->getRootVar(), renderData);
 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 
@@ -238,6 +247,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
 Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const {
     Program::DefineList defines;
+    defines.add("FALCOR_NVAPI_AVAILABLE", "0");
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
     defines.add("USE_PP_JITTER", mUsePerPixelJitter ? "1" : "0");

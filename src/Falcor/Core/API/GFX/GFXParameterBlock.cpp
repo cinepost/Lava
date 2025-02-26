@@ -109,9 +109,7 @@ ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const ProgramReflecti
     assert(pDevice);
     assert(pReflector);
     
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(
-        pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(),
-        mpShaderObject.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(), mpShaderObject.writeRef()));
     createConstantBuffers(getRootVar());
 }
 

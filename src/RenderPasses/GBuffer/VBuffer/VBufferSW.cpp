@@ -130,13 +130,6 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 
-    // Jitter texture sampler
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
-        .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
-        .setUnnormalizedCoordinates(true);
-
-    mpJitterSampler = Sampler::create(pDevice, samplerDesc);
     mpSTBNGenerator = STBNGenerator::create(pDevice, uint3(32, 32, 16), STBNGenerator::Type::Scalar, ResourceFormat::R32Float, true /* async */);
 
     mpSTBNOffsetGenerator = StratifiedSamplePattern::create(kSTBNOffsetsCount);
@@ -434,7 +427,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         //}
 
         var["gJitterTexture"] = mpJitterTexture;
-        var["gJitterSampler"] = mpJitterSampler;
 
         // Bind output channels as UAV buffers.
         auto bind = [&](const ChannelDesc& channel) {
@@ -476,33 +468,22 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Frustum culling pass
 
     // Meshlets rasterization pass
-    LLOG_DBG << "Software rasterizer dispatchX size " << std::to_string(dispatchX);
-    LLOG_DBG << "Software rasterizer threads count " << std::to_string(mOpaqueMeshletsCount + mTransparentMeshletsCount);
-
-    if(1 == 1) {    
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        if(mTransparentMeshletsCount == 0) {
-            
-            var["gVBufferSW"]["drawableOffset"] = 0;
-            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
-        } else {
-            // Rasterize opaque meshlets first
-            var["gVBufferSW"]["drawableOffset"] = 0;
-            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
-
-            // Rasterize potentially transparent meshlets second
-            var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
-            var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
-        }
+    ShaderVar var = mpComputeRasterizerPass->getRootVar();
+    if(mTransparentMeshletsCount == 0) {
+        
+        var["gVBufferSW"]["drawableOffset"] = 0;
+        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
     } else {
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        for(uint i = 0; i < meshletDrawsCount; ++i) {
-            var["gVBufferSW"]["drawableIndex"] = i;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
-        }
+        // Rasterize opaque meshlets first
+        var["gVBufferSW"]["drawableOffset"] = 0;
+        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
+
+        // Rasterize potentially transparent meshlets second
+        var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
+        var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
     }
 
     mSampleNumber++;

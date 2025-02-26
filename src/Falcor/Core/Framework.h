@@ -113,6 +113,7 @@ namespace fs = boost::filesystem;
     if (!(a)) { \
         std::string str = "assertion failed(" + std::string(#a) + ")\nFile " + __FILE__ + ", line " + std::to_string(__LINE__);\
         LLOG_FTL << str;\
+        std::abort();\
     }
 
 #define should_not_get_here() assert(false);

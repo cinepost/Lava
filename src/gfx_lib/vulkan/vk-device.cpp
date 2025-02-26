@@ -191,7 +191,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	m_queueAllocCount = 0;
 
 	bool useValidationLayer = !validationLayerOuputFilename.empty();
-
+	
 	VkInstance instance = VK_NULL_HANDLE;
 	if (handles[0].handleValue == 0) {
 		VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };

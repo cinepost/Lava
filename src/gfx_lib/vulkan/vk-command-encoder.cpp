@@ -788,7 +788,7 @@ void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* 
 			}
 			break;
 		default:
-			throw std::runtime_error("Unsupported IResourceView::Type in esourceCommandEncoder::_clearBuffer(...)");
+		//	throw std::runtime_error("Unsupported IResourceView::Type in esourceCommandEncoder::_clearBuffer(...)");
 			break;
 	}
 }
@@ -992,7 +992,9 @@ Result RenderCommandEncoder::bindPipelineWithRootObject( IPipelineState* pipelin
 
 void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewports) {
 	static const int kMaxViewports = 8; // TODO: base on device caps
-	assert(count <= kMaxViewports);
+	assert(count >= 0 && count <= kMaxViewports);
+
+	count = std::min(count, kMaxViewports);
 
 	m_viewports.setCount(count);
 	for (GfxIndex ii = 0; ii < count; ++ii) {
@@ -1013,7 +1015,9 @@ void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewport
 
 void RenderCommandEncoder::setScissorRects(GfxCount count, const ScissorRect* rects) {
 	static const int kMaxScissorRects = 8; // TODO: base on device caps
-	assert(count <= kMaxScissorRects);
+	assert(count >= 0 && count <= kMaxScissorRects);
+
+	count = std::min(count, kMaxScissorRects);
 
 	m_scissorRects.setCount(count);
 	for (GfxIndex ii = 0; ii < count; ++ii) {

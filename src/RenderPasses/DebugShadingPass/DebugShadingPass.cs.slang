@@ -61,12 +61,6 @@ cbuffer PerFrameCB {
 uniform FalseColorGenerator gFalseColorGenerator;
 uniform HeatMapColorGenerator gHeatMapColorGenerator;
 
-//#if defined(USE_VISIBILITY_CONTAINER)
-//    #if defined(TRANSPARENT_SHADING_PASS)
-//        static TransparentVisibilitySample transparenSamplesList[VISIBILITY_SAMPLES_CONTAINER_MAX_TRANSPARENT_SAMPLES_COUNT_PP];
-//    #endif
-//#endif
-
 #if defined(USE_VISIBILITY_CONTAINER)
 [numthreads(GROUP_SIZE_X, 1, 1)]
 #else
