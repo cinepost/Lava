@@ -270,7 +270,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     // TODO: Init only if needed...
     initRayTracing();
 
-    LLOG_WRN << "Scenes count " << (uint32_t)(++_cnt);
+    LLOG_DBG << "Scenes count " << (uint32_t)(++_cnt);
 }
 
 void Scene::updateMeshStaticData(uint32_t meshID, const std::vector<StaticVertexData>& meshStaticData, bool rebuildBLAS) {
@@ -303,7 +303,7 @@ Scene::~Scene() {
 
     _cnt--;
     printMeshletsStats();
-    LLOG_WRN << "Scene destroyed!";
+    LLOG_DBG << "Scene destroyed!";
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {

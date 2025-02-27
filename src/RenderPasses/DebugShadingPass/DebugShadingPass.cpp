@@ -136,7 +136,6 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
 }
 
 void DebugShadingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    LLOG_WRN << "DebugShadingPass::compile";
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();

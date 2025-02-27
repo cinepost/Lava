@@ -1499,6 +1499,8 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool update) {
 	assert(pObj);
 
+	const bool renderable  = pObj->getPropertyValue(ast::Style::OBJECT, "renderable", bool(true));
+
 	auto const& mesh_name = pObj->geometryName();
 
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << mesh_name;
@@ -1520,7 +1522,15 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) update = false;
+	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) {
+		// Mesh instance does not exist yet
+		if(!renderable) return true;
+
+		update = false;
+	} else {
+		// Mesh instance exist
+		if(!renderable) return pSceneBuilder->deleteMeshInstance(obj_name);
+	}
 
 	LLOG_DBG << (update ? "Updating" : "Creating") << " mesh " << meshID << " instance named " << obj_name;
 

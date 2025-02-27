@@ -24,6 +24,10 @@ __exported import Scene.HitInfo;
 #define VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_SAMPLES_TEXTURE 0
 #endif
 
+#ifndef VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER
+#define VISIBILITY_SAMPLES_CONTAINER_USE_OPAQUE_DEPTH_BUFFER 0
+#endif
+
 
 /** This struct represents the GPU-side visibility samples container system.
 */

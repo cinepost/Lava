@@ -68,6 +68,7 @@ enum class GeometryType : uint32_t {
     Curve                   = GEOMETRY_TYPE_CURVE,
     SDFGrid                 = GEOMETRY_TYPE_SDF_GRID,
     Custom                  = GEOMETRY_TYPE_CUSTOM,
+    Points                  = GEOMETRY_TYPE_POINTS,
 
     Count
 };
@@ -80,6 +81,7 @@ enum class GeometryTypeFlags : uint32_t {
     Curve                   = (1u << GEOMETRY_TYPE_CURVE),
     SDFGrid                 = (1u << GEOMETRY_TYPE_SDF_GRID),
     Custom                  = (1u << GEOMETRY_TYPE_CUSTOM),
+    Points                  = (1u << GEOMETRY_TYPE_POINTS),
 };
 
 #ifdef HOST_CODE
@@ -244,6 +246,38 @@ struct GeometryInstanceData {
     bool hasMultipleMatrices() CONST_FUNCTION {
         return matrixCount > 1;
     }
+};
+
+struct PointInstanceData {
+    static const uint kTypeBits = 3;
+    static const uint kTypeOffset = 32 - kTypeBits;
+
+    uint32_t flags;         ///< Upper kTypeBits bits are reserved for storing the type.
+    uint nodeID;
+    uint materialID;
+    uint geometryID;
+
+    uint vbOffset;          ///< Offset into vertex buffer.
+    uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
+    uint mbOffset;          ///< Offset into global per-primitive material indices buffer.
+    uint instanceIndex;     ///< InstanceIndex in TLAS.
+
+    uint geometryIndex;     ///< GeometryIndex in BLAS.
+    uint internalID;        ///< Internal scene id.
+    uint externalID;        ///< External dcc id.
+    uint lightSetIndex;     ///< LightSet index in LightLinker. If set to 0 then all lights used.
+
+    uint globalMatrixOffset;
+    uint matrixCount;
+    uint _pad0;
+    uint _pad1;
+    
+#ifdef HOST_CODE
+    PointInstanceData() = default;
+
+    PointInstanceData(GeometryType type): flags((uint32_t)type << kTypeOffset)
+    {}
+#endif
 };
 
 struct StaticVertexData {
