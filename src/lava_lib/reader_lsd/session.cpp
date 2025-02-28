@@ -316,6 +316,7 @@ bool Session::cmdRaytrace() {
 	passDict["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
 
 	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
+	passDict["MAIN.OpenDenoisePass.quality"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.quality", int(0));
 	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
 	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 

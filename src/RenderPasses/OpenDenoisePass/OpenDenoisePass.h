@@ -39,9 +39,9 @@ using namespace Falcor;
 
 class PASS_API OpenDenoisePass : public RenderPass {
 	public:
-        enum class Quality : uint32_t {
-            High        = 0,                 
-            Interactive = 1,
+        enum class Quality : uint32_t {                
+            Fast = 0,
+            High = 1, 
         };
 
 		using SharedPtr = std::shared_ptr<OpenDenoisePass>;
@@ -91,7 +91,7 @@ class PASS_API OpenDenoisePass : public RenderPass {
         bool mUseAlbedo = false;
         bool mUseNormal = false;
 
-        Quality mQuality = Quality::High;
+        Quality mQuality = Quality::Fast;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_OPENDENOISEPASS_OPENDENOISEPASS_H_

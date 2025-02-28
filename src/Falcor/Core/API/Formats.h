@@ -303,6 +303,7 @@ class Device;
     }
 
     inline bool isHalfFloatFormat(ResourceFormat format) {
+        assert(format != ResourceFormat::Unknown);
         if(!isIntegerFormat(format) && ((getFormatBytesPerBlock(format) / getFormatChannelCount(format)) == 2)) return true;
         return false;
     }

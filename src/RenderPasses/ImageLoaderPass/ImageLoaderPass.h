@@ -46,15 +46,9 @@ class PASS_API ImageLoaderPass : public RenderPass {
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual Dictionary getScriptingDictionary() override;
 
-		void 	setSourceTexture(Texture::SharedPtr pTexture);
-		void 	setSourceAlbedoTexture(Texture::SharedPtr pTexture);
-		void 	setSourceNormalTexture(Texture::SharedPtr pTexture);
 	private:
 		ImageLoaderPass(Device::SharedPtr pDevice);
 
-		Texture::SharedPtr 	mpSrcTexture;
-		Texture::SharedPtr 	mpSrcAlbedoTexture;
-		Texture::SharedPtr 	mpSrcNormalTexture;
 		fs::path		 				mImageName;
 		
 		uint32_t 	mArraySlice = 0;
@@ -62,6 +56,7 @@ class PASS_API ImageLoaderPass : public RenderPass {
 		
 		bool 	mGenerateMips = false;
 		bool 	mLoadSRGB = true;
+		bool  mDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_

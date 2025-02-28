@@ -77,6 +77,25 @@ namespace {
         return oidn::Format::Undefined;
     }
 
+    oidn::Quality toOIDNQuality(OpenDenoisePass::Quality quality) {
+        switch(quality) {
+            case OpenDenoisePass::Quality::High:
+                return oidn::Quality::High;
+            default:
+                return oidn::Quality::Balanced;
+        }
+    }
+
+    inline std::string to_string(oidn::Quality quality) {
+        if(quality == oidn::Quality::High) return "high";
+        return "balanced";
+    }
+
+    inline std::string to_string(OpenDenoisePass::Quality quality) {
+        if(quality == OpenDenoisePass::Quality::High) return "high";
+        return "balanced";
+    }
+
 #define str(a) case oidn::Format::a: return #a
     inline std::string to_string(oidn::Format type) {
         switch (type) {
@@ -188,6 +207,8 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     auto auxAlbedoImageFormat = ResourceFormat::Unknown;
     oidn::Format auxAlbedoOIDNFormat = oidn::Format::Undefined;
     if(pAlbedoTex && mUseAlbedo) {
+        auxAlbedoImageFormat = pAlbedoTex->getFormat();
+        LLOG_WRN << "OpenDenoisePass albedo texture format " << to_string(auxAlbedoImageFormat);
         if(pInputTex->getWidth() != pAlbedoTex->getWidth() || pInputTex->getHeight() != pAlbedoTex->getHeight()) {
             LLOG_ERR << "OpenDenoisePass input and albedo images dimensions mismatch!";
             bypass(pRenderContext, renderData);
@@ -202,6 +223,7 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     auto auxNormalImageFormat = ResourceFormat::Unknown;
     oidn::Format auxNormalOIDNFormat = oidn::Format::Undefined;
     if(pNormalTex && mUseNormal) {
+        auxNormalImageFormat = pNormalTex->getFormat();
         if(pInputTex->getWidth() != pNormalTex->getWidth() || pInputTex->getHeight() != pNormalTex->getHeight()) {
             LLOG_ERR << "OpenDenoisePass input and normal images dimensions mismatch!";
             bypass(pRenderContext, renderData);
@@ -215,9 +237,9 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
 
     if(!mFilter) {
         mFilter = mOidnDevice.newFilter("RT");
-        mFilter.set("quality", (mQuality == Quality::High) ? OIDN_QUALITY_HIGH : OIDN_QUALITY_BALANCED);
     }
-
+    mFilter.set("quality", toOIDNQuality(mQuality));
+    
     size_t inputImageDataByteOffset = 0;
     size_t inputImageBytePixelStride = getFormatBytesPerBlock(inputImageFormat);
 
@@ -230,23 +252,32 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     // TODO: find a better faster way without full copy
     memcpy(&mOutputImageData[0], &mMainImageData[0], mMainImageData.size());
 
-    mFilter.setImage("color",  mMainImageData.data(),  inputImageOIDNFormat, mFrameDim.x, mFrameDim.y, 
-        inputImageDataByteOffset, inputImageBytePixelStride); // beauty
+    mFilter.setImage("color",  mMainImageData.data(),  inputImageOIDNFormat, mFrameDim.x, mFrameDim.y, inputImageDataByteOffset, inputImageBytePixelStride); // beauty
     
     if(pAlbedoTex && mUseAlbedo) {
         LLOG_DBG << "Denosing image using \"albedo\" auxiliary channel";
         size_t albedoImageDataByteOffset = 0;
         size_t albedoImageBytePixelStride = getFormatBytesPerBlock(auxAlbedoImageFormat);
-        mFilter.setImage("albedo", mAlbedoImageData.data(), auxAlbedoOIDNFormat, mFrameDim.x, mFrameDim.y, 
-            albedoImageDataByteOffset, albedoImageBytePixelStride); // auxiliary
+
+        if(auxAlbedoOIDNFormat == oidn::Format::Half4) auxAlbedoOIDNFormat = oidn::Format::Half3;
+        if(auxAlbedoOIDNFormat == oidn::Format::Float4) auxAlbedoOIDNFormat = oidn::Format::Float3;
+
+        mFilter.setImage("albedo", mAlbedoImageData.data(), auxAlbedoOIDNFormat, mFrameDim.x, mFrameDim.y, albedoImageDataByteOffset, albedoImageBytePixelStride); // auxiliary
+    } else {
+        LLOG_DBG << "Denosing image without \"albedo\" auxiliary channel !";
     }
 
     if(pNormalTex && mUseNormal) {
         LLOG_DBG << "Denosing image using \"normal\" auxiliary channel";
         size_t normalImageDataByteOffset = 0;
         size_t normalImageBytePixelStride = getFormatBytesPerBlock(auxNormalImageFormat);
-        mFilter.setImage("normal", mNormalImageData.data(), auxNormalOIDNFormat, mFrameDim.x, mFrameDim.y, 
-            normalImageDataByteOffset, normalImageBytePixelStride); // auxiliary
+
+        if(auxNormalOIDNFormat == oidn::Format::Half4) auxNormalOIDNFormat = oidn::Format::Half3;
+        if(auxNormalOIDNFormat == oidn::Format::Float4) auxNormalOIDNFormat = oidn::Format::Float3;
+        
+        mFilter.setImage("normal", mNormalImageData.data(), auxNormalOIDNFormat, mFrameDim.x, mFrameDim.y, normalImageDataByteOffset, normalImageBytePixelStride); // auxiliary
+    } else {
+        LLOG_DBG << "Denosing image without \"normal\" auxiliary channel !";
     }
 
     size_t outputImageDataByteOffset = 0;
@@ -262,11 +293,15 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
         mFilter.set("hdr", true); // MAIN (beauty) image is HDR
     }
 
+    LLOG_WRN << "OIDN commit";
     mFilter.commit();
 
     // Filter the image
+    LLOG_WRN << "OIDN execute";
     mFilter.execute();
 
+
+    LLOG_WRN << "OIDN done";
     // Check for errors
     bool hasErrors = false;
     const char* errorMessage;

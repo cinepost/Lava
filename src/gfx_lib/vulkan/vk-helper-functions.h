@@ -214,7 +214,8 @@ inline std::string to_string(VkDescriptorType dt) {
         dt2s(VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM);
         dt2s(VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM);
         dt2s(VK_DESCRIPTOR_TYPE_MAX_ENUM);
-        //default:
+        default:
+            return "";
         //    should_not_get_here();
         //    return "";
     }

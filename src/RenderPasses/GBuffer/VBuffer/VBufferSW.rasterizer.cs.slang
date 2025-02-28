@@ -57,7 +57,6 @@ ConstantBuffer<VBufferSW> gVBufferSW;
 RWByteAddressBuffer gThreadLockBuffer;
 RWByteAddressBuffer gOpacityShiftsBuffer;
 Texture2D<float4>   gJitterTexture;
-SamplerState        gJitterSampler;
 
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 

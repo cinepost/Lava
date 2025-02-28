@@ -517,7 +517,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpRenderGraph->addEdge("VBufferPass.depth", pMainAOV->accumulationPassDepthInputName());
 	}
 
-	// Create and bind additional AOV planes
+	// Bind additional AOV planes
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
 		if(!pPlane || !pPlane->isEnabled()) continue;
@@ -579,6 +579,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassColorInputName());
+						LLOG_INF << "!!!! " <<pPlane->accumulationPassColorOutputName();
 					}
 				}
 				break;
@@ -704,25 +705,36 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// MAIN (Beauty) pass image processing
 	if(mRenderPassesDict.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
-		Falcor::Dictionary lightingPassDictionary({});
+		Falcor::Dictionary tonemapPassDictionary({});
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.operator"))
-			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
+			tonemapPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.filmSpeed"))
-			lightingPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
+			tonemapPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.exposureValue"))
-			lightingPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
+			tonemapPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.autoExposure"))
-			lightingPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
+			tonemapPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
 	
-		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, lightingPassDictionary);
+		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, tonemapPassDictionary);
 	}
 
 	if(mRenderPassesDict.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
-		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
+		Falcor::Dictionary denoisePassDictionary({});
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.quality"))
+			denoisePassDictionary["quality"] = static_cast<OpenDenoisePass::Quality>(int(mRenderPassesDict["MAIN.OpenDenoisePass.quality"]));
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useAlbedo"))
+			denoisePassDictionary["useAlbedo"] = mRenderPassesDict["MAIN.OpenDenoisePass.useAlbedo"];
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useNormal"))
+			denoisePassDictionary["useNormal"] = mRenderPassesDict["MAIN.OpenDenoisePass.useNormal"];
+
+		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, denoisePassDictionary);
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
 			const auto pToneMapperPass = pMainAOV->tonemappingPass();
