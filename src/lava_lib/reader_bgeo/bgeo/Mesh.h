@@ -23,10 +23,10 @@ public:
 
     void getRawVertexList(std::vector<int32_t>& vertices) const;
     void getVertexList(std::vector<int32_t>& vertices) const;
-    void getStartIndices(std::vector<int32_t>& startIndices) const;
-    int32_t getFaceCount() const;
+    void getStartIndices(std::vector<uint32_t>& startIndices) const;
+    uint32_t getFaceCount() const;
 
-    /*virtual*/ int32_t getVertexCount() const override;
+    /*virtual*/ uint32_t getVertexCount() const override;
 
 private:
     const Bgeo& m_bgeo;

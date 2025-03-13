@@ -36,12 +36,12 @@ public:
 
     void getVertexList(std::vector<int32_t>& vertices) const;
     void getStartIndices(std::vector<int32_t>& startIndices) const;
-    int32_t getFaceCount() const;
+    uint32_t getFaceCount() const;
 
     void getSidesList(std::vector<int32_t>& sides) const;
     const std::vector<int32_t>& getSidesList() const;
 
-    /*virtual*/ int32_t getVertexCount() const override;
+    /*virtual*/ uint32_t getVertexCount() const override;
 
     void splitByPrimitiveString(const char* attributeName);
     void splitThisPoly(size_t primitiveIndex);

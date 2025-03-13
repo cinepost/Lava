@@ -7,11 +7,12 @@
  *  copied, modified, or distributed except according to those terms.
  */
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
+
+#include "util.h"
 
 #include "VertexMap.h"
 
-#include "util.h"
 
 namespace ika {
 namespace bgeo {
@@ -39,18 +40,13 @@ void VertexMap::load(UT_JSONParser &parser, int64 vertexCount_) {
     parseEndArray(parser);
 }
 
-std::ostream& operator << (std::ostream& co, const VertexMap& map)
-{
+std::ostream& operator << (std::ostream& co, const VertexMap& map) {
     co << "[";
-    if (map.vertexCount < 200)
-    {
-        for (int64 i = 0; i < map.vertexCount; i++)
-        {
+    if (map.vertexCount < 200) {
+        for (uint64 i = 0; i < map.vertexCount; i++) {
             co << map.vertices[i] << " ";
         }
-    }
-    else
-    {
+    } else {
         co << "...";
     }
     co << "]";

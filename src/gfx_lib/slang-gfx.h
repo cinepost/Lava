@@ -7,8 +7,11 @@
 #include <vector>
 #include <string>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include <slang/slang.h>
 #include <slang/slang-com-ptr.h>
+#pragma GCC diagnostic pop
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
@@ -1505,7 +1508,7 @@ public:
 	struct Desc
 	{
 		IFramebufferLayout* framebufferLayout = nullptr;
-		GfxCount renderTargetCount;
+		uint32_t renderTargetCount;
 		TargetAccessDesc* renderTargetAccess = nullptr;
 		TargetAccessDesc* depthStencilAccess = nullptr;
 	};

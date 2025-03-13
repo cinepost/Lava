@@ -25,6 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifndef FALCOR_NVAPI_AVAILABLE
+#define FALCOR_NVAPI_AVAILABLE 0
+#endif
+
 #if FALCOR_NVAPI_AVAILABLE
+huejop
 #include "nvapi/nvHLSLExtns.h"
 #endif

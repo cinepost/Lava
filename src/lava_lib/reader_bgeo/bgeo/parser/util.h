@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
 
 #include "ReadError.h"
 

@@ -59,7 +59,7 @@ namespace {
 
     const ChannelList kExtraOutputChannels = {
         { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
-        { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float    },
+        { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float },
         { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
         { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
@@ -145,7 +145,7 @@ DeferredLightingPass::DeferredLightingPass(Device::SharedPtr pDevice): RenderPas
 RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    const auto& texDims = compileData.defaultTexDims;
+    //const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
     //reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
@@ -426,10 +426,10 @@ DeferredLightingPass& DeferredLightingPass::setIndirectColorLimit(const float3& 
 }
 
 DeferredLightingPass& DeferredLightingPass::setShadingRate(int rate) {
-    rate = std::max(1u, static_cast<uint>(rate));
-    if(mShadingRate == rate) return *this;
-    mShadingRate = rate;
-    mDirty = true;
+    if(rate < 0) rate = 0;
+    uint32_t _rate = std::max(1u, static_cast<uint>(rate));
+    if(mShadingRate != _rate) mDirty = true;
+    mShadingRate = _rate;
     return *this;
 }
 

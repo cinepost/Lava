@@ -32,6 +32,8 @@ struct STBNGenerator {
         return noiseTexture[uint3(coord.x % dims.x, coord.y % dims.y, coord.z % dims.z)].rgba;
     }
 
+    /** Sample noise (normalized).
+    */
     float4 sample(float3 coord) {
         return noiseTexture.Sample(noiseSampler, coord);
     }

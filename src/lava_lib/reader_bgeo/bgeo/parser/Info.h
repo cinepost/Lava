@@ -10,7 +10,7 @@
 #ifndef BGEO_PARSER_INFO_H
 #define BGEO_PARSER_INFO_H
 
-#include <UT/UT_String.h>
+#include "../houdini_inc.h"
 
 class UT_JSONParser;
 

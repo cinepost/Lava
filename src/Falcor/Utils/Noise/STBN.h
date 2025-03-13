@@ -82,7 +82,6 @@ class Maker {
 		}
 
 		static int constexpr kernelRadius(float sigma) {
-			float energyLoss = 0.005f;
 			float logEnergyLoss = -5.29831736655f;// log(energyLoss);  not a constexpr unfortunately!
 			return int(sqrtNewtonRaphson(-2.0f * sigma * sigma * logEnergyLoss));
 		}

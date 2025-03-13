@@ -183,8 +183,6 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	const std::string camera_background_image_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "backgroundimage", std::string());
 	Vector4 camera_background_color = mpGlobal->getPropertyValue(ast::Style::CAMERA, "backgroundcolor", Vector4{0.0, 0.0, 0.0, 0.0});
 
-	auto dims = mCurrentFrameInfo.renderRegionDims();
-
 	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
 	
 	pCamera->setAspectRatio(aspect_ratio);
@@ -231,21 +229,19 @@ void Session::cmdQuit() {
 }
 
 void Session::cleanup() {
-// Remove temporary geometries from filesystem
-  const size_t temporary_geometries_count = mTemporaryGeometriesPaths.size();
-  if(!mTemporaryGeometriesPaths.empty()) {
-    for(auto const& fullpath: mTemporaryGeometriesPaths) {
-      boost::system::error_code ec;
-      bool retval = fs::remove_all(fullpath, ec);
-      if(!ec) {  // success
-        if(retval) {
-          LLOG_DBG << "Removed temporary geometry file " << fullpath;
-        } else {
-          LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
-        }
-      } else {  // error removing temp file
-        LLOG_ERR << "Error removing temporary geometry file " << fullpath;
+	// Remove temporary geometries from filesystem
+	
+  for(auto const& fullpath: mTemporaryGeometriesPaths) {
+    boost::system::error_code ec;
+    bool retval = fs::remove_all(fullpath, ec);
+    if(!ec) {  // success
+      if(retval) {
+        LLOG_DBG << "Removed temporary geometry file " << fullpath;
+      } else {
+        LLOG_DBG << "Temporary geometry file " << fullpath << " already deleted. All ok!";
       }
+    } else {  // error removing temp file
+      LLOG_ERR << "Error removing temporary geometry file " << fullpath;
     }
   }
 }
@@ -263,7 +259,7 @@ bool Session::cmdRaytrace() {
 	if(!mpRenderer) return false;
 
 	// Set up image sampling
-	const int imageSamples = mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
 
 	const Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
@@ -320,6 +316,7 @@ bool Session::cmdRaytrace() {
 	passDict["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
 
 	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
+	passDict["MAIN.OpenDenoisePass.quality"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.quality", int(0));
 	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
 	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 
@@ -336,7 +333,7 @@ bool Session::cmdRaytrace() {
 	}
 
 #ifdef _DEBUG
-	mpGlobal->printSummary(std::cout);
+	//mpGlobal->printSummary(std::cout);
 #endif
 
 	if(!mpDisplay) {
@@ -528,7 +525,7 @@ bool Session::cmdRaytrace() {
     frameInfo.renderRegion = tile.renderRegion;
 
   	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
-  	mpRenderer->prepareFrame(frameInfo);
+ 		mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
 		if(!pMainOutputPlane->getAOVPlaneGeometry(aov_geometry)) {
@@ -748,14 +745,12 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
 		bool singleSidedLight = pLightScope->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
-		bool reverseLight = false;
-
+		
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
 		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
 
 		if(pShaderProp) {
 			pShaderProps = pShaderProp->subContainer();
-			reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
 		}
 
 		if( light_type == "grid") {
@@ -1079,8 +1074,6 @@ bool Session::cmdEnd() {
 		LLOG_FTL << "Unable to end scope with no parent !!!";
 		return false;
 	}
-
-	const auto& configStore = Falcor::ConfigStore::instance();
 
 	bool result = true;
 
@@ -1507,6 +1500,8 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool update) {
 	assert(pObj);
 
+	const bool renderable  = pObj->getPropertyValue(ast::Style::OBJECT, "renderable", bool(true));
+
 	auto const& mesh_name = pObj->geometryName();
 
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << mesh_name;
@@ -1528,15 +1523,22 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 		return false;
 	}
 
-	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) update = false;
+	if(!pSceneBuilder->meshHasInstance(meshID, obj_name)) {
+		// Mesh instance does not exist yet
+		if(!renderable) return true;
+
+		update = false;
+	} else {
+		// Mesh instance exist
+		if(!renderable) return pSceneBuilder->deleteMeshInstance(obj_name);
+	}
 
 	LLOG_DBG << (update ? "Updating" : "Creating") << " mesh " << meshID << " instance named " << obj_name;
 
 	Falcor::SceneBuilder::Node transformNode = {};
 	transformNode.name = obj_name;
 
-	const auto& transformList = pObj->getTransformList();
-	assert(transformList.size() > 0);
+	assert(pObj->getTransformList().size() > 0);
 	transformNode.transformList = pObj->getTransformList();
 	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.

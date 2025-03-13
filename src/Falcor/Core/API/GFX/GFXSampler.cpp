@@ -91,10 +91,28 @@ uint32_t Sampler::getApiMaxAnisotropy(Device::SharedPtr pDevice) {
 }
 
 Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) {
+    static const std::string kWrongNormalizedAddressModeU = "VkSamplerCreateInfo unnormalizedCoordinates is VK_TRUE, addressModeU must be either VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE or VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER";
+    static const std::string kWrongNormalizedAddressModeV = "VkSamplerCreateInfo unnormalizedCoordinates is VK_TRUE, addressModeV must be either VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE or VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER";
+
     gfx::ISamplerState::Desc gfxDesc = {};
+    gfxDesc.unnormalizedCoordinates = desc.mUnnormalizedCoordinates;
+
     gfxDesc.addressU = getGFXAddressMode(desc.mModeU);
     gfxDesc.addressV = getGFXAddressMode(desc.mModeV);
     gfxDesc.addressW = getGFXAddressMode(desc.mModeW);
+
+    if(gfxDesc.unnormalizedCoordinates) {
+        if(gfxDesc.addressU != gfx::TextureAddressingMode::ClampToBorder && gfxDesc.addressU != gfx::TextureAddressingMode::ClampToEdge) {
+            FALCOR_ASSERT_MSG(false, kWrongNormalizedAddressModeU);
+            LLOG_ERR << kWrongNormalizedAddressModeU << ". Setting to VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE.";
+            gfxDesc.addressU = gfx::TextureAddressingMode::ClampToEdge;
+        }
+        if(gfxDesc.addressV != gfx::TextureAddressingMode::ClampToBorder && gfxDesc.addressV != gfx::TextureAddressingMode::ClampToEdge) {
+            FALCOR_ASSERT_MSG(false, kWrongNormalizedAddressModeV);
+            LLOG_ERR << kWrongNormalizedAddressModeV << ". Setting to VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE.";
+            gfxDesc.addressV = gfx::TextureAddressingMode::ClampToEdge;
+        }
+    }
 
     static_assert(sizeof(gfxDesc.borderColor) == sizeof(desc.mBorderColor));
     memcpy(gfxDesc.borderColor, &desc.mBorderColor, sizeof(desc.mBorderColor));
@@ -108,8 +126,6 @@ Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) 
     gfxDesc.mipFilter = getGFXFilter(desc.mMipFilter);
     gfxDesc.mipLODBias = desc.mLodBias;
     gfxDesc.reductionOp = (desc.mComparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.mReductionMode);
-
-    gfxDesc.unnormalizedCoordinates = desc.mUnnormalizedCoordinates;
 
     Sampler::SharedPtr result = Sampler::SharedPtr(new Sampler(pDevice, desc));
     FALCOR_GFX_CALL(pDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));

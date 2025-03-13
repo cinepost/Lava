@@ -45,6 +45,7 @@ BEGIN_NAMESPACE_FALCOR
 #define GEOMETRY_TYPE_CURVE                     4
 #define GEOMETRY_TYPE_SDF_GRID                  5
 #define GEOMETRY_TYPE_CUSTOM                    6
+#define GEOMETRY_TYPE_POINTS                    7
 
 #ifndef SCENE_GEOMETRY_TYPES
 #define SCENE_GEOMETRY_TYPES 0

@@ -9,12 +9,10 @@
 
 #include <iostream>
 
-#include "Info.h"
-
 #include "util.h"
 
-#include "UT/UT_JSONHandle.h"
-#include <UT/UT_JSONParser.h>
+#include "Info.h"
+
 
 namespace ika {
 namespace bgeo {

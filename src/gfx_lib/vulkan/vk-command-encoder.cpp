@@ -418,35 +418,29 @@ void ResourceCommandEncoder::uploadTexturePageData(
 	Size bufferSize = 0;
 
 	// Calculate how large an array entry is
-	const TextureResource::Extents mipSize = calcMipSize(desc.size, mipLevel);
+	auto rowSizeInBytes = calcRowSize(desc.format, extent.width);
+	auto numRows = calcNumRows(desc.format, extent.height);
 
-	auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
-	auto numRows = calcNumRows(desc.format, mipSize.height);
-
-	bufferSize += (rowSizeInBytes * numRows) * mipSize.depth;
+	bufferSize = (rowSizeInBytes * numRows) * extent.depth; // 65535
 	
+	//printf("bufferSize %zu\n", bufferSize);
 
 	IBufferResource* uploadBuffer = nullptr;
 	Offset uploadBufferOffset = 0;
-	m_commandBuffer->m_transientHeap->allocateStagingBuffer(65535, uploadBuffer, uploadBufferOffset, MemoryType::Upload);
+	m_commandBuffer->m_transientHeap->allocateStagingBuffer(bufferSize, uploadBuffer, uploadBufferOffset, MemoryType::Upload);
 
 	// Copy into upload buffer
 	{
-		int subResourceCounter = 0;
-
 		uint8_t* dstData;
 		uploadBuffer->map(nullptr, (void**)&dstData);
 		dstData += uploadBufferOffset;
 		
-		::memcpy(dstData, (const uint8_t*)subResourceData[0].data, 65535);
+		::memcpy(dstData, (const uint8_t*)subResourceData[0].data, bufferSize);
 		
 		uploadBuffer->unmap(nullptr);
 	}
 
 	{		
-		auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
-		auto numRows = calcNumRows(desc.format, mipSize.height);
-	
 		// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkBufferImageCopy.html
 		// bufferRowLength and bufferImageHeight specify the data in buffer
 		// memory as a subregion of a larger two- or three-dimensional image,
@@ -525,8 +519,6 @@ void ResourceCommandEncoder::uploadTextureData(
 		uint8_t* dstData;
 		uploadBuffer->map(nullptr, (void**)&dstData);
 		dstData += uploadBufferOffset;
-		uint8_t* dstDataStart;
-		dstDataStart = dstData;
 
 		Offset dstSubresourceOffset = 0;
 		for (GfxIndex i = 0; i < subResourceRange.layerCount; ++i) {
@@ -795,6 +787,9 @@ void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* 
 				}
 			}
 			break;
+		default:
+		//	throw std::runtime_error("Unsupported IResourceView::Type in esourceCommandEncoder::_clearBuffer(...)");
+			break;
 	}
 }
 
@@ -874,7 +869,6 @@ void ResourceCommandEncoder::copyTextureToBuffer(
 	assert(srcSubresource.mipLevelCount <= 1);
 
 	auto image = static_cast<TextureResourceImpl*>(src);
-	auto desc = image->getDesc();
 	auto buffer = static_cast<BufferResourceImpl*>(dst);
 	auto srcImageLayout = VulkanUtil::getImageLayoutFromState(srcState);
 
@@ -907,8 +901,7 @@ void ResourceCommandEncoder::textureSubresourceBarrier(
 {
 	ShortList<VkImageMemoryBarrier> barriers;
 	auto image = static_cast<TextureResourceImpl*>(texture);
-	auto desc = image->getDesc();
-
+	
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.image = image->m_image;
@@ -967,7 +960,6 @@ void RenderCommandEncoder::beginPass(IRenderPassLayout* renderPass, IFramebuffer
 	if (!framebuffer) framebufferImpl = this->m_device->m_emptyFramebuffer;
 	
 	RenderPassLayoutImpl* renderPassImpl = static_cast<RenderPassLayoutImpl*>(renderPass);
-	VkClearValue clearValues[kMaxTargets] = {};
 	VkRenderPassBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	beginInfo.framebuffer = framebufferImpl->m_handle;
@@ -1000,7 +992,9 @@ Result RenderCommandEncoder::bindPipelineWithRootObject( IPipelineState* pipelin
 
 void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewports) {
 	static const int kMaxViewports = 8; // TODO: base on device caps
-	assert(count <= kMaxViewports);
+	assert(count >= 0 && count <= kMaxViewports);
+
+	count = std::min(count, kMaxViewports);
 
 	m_viewports.setCount(count);
 	for (GfxIndex ii = 0; ii < count; ++ii) {
@@ -1021,7 +1015,9 @@ void RenderCommandEncoder::setViewports(GfxCount count, const Viewport* viewport
 
 void RenderCommandEncoder::setScissorRects(GfxCount count, const ScissorRect* rects) {
 	static const int kMaxScissorRects = 8; // TODO: base on device caps
-	assert(count <= kMaxScissorRects);
+	assert(count >= 0 && count <= kMaxScissorRects);
+
+	count = std::min(count, kMaxScissorRects);
 
 	m_scissorRects.setCount(count);
 	for (GfxIndex ii = 0; ii < count; ++ii) {
@@ -1258,7 +1254,7 @@ void RayTracingCommandEncoder::_memoryBarrier(
 	ShortList<VkBufferMemoryBarrier> memBarriers;
 	memBarriers.setCount(count);
 
-	for (int i = 0; i < count; i++) {
+	for (int i = 0; i < count; ++i) {
 		memBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 		memBarriers[i].pNext = nullptr;
 		memBarriers[i].dstAccessMask = translateAccelerationStructureAccessFlag(destAccess);

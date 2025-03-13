@@ -6,16 +6,16 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "PolygonRun.h"
-
 #include <cassert>
 
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
+
+#include "PolygonRun.h"
+
 
 namespace ika {
 namespace bgeo {
@@ -163,7 +163,7 @@ void PolygonRun::setupFromPolygonRunInfo(const VertexArray& numVertices) {
 void PolygonRun::setupFromPolygonRleInfo(const VertexArray& numVerticesRle) {
     int64 totalVertexCount = 0;
     assert(numVerticesRle.size() % 2 == 0); // must be even size
-    for (int i = 0; i < numVerticesRle.size(); i += 2) {
+    for (int i = 0; i < (int)numVerticesRle.size(); i += 2) {
         auto numVertices = numVerticesRle[i];
         auto count = numVerticesRle[i + 1];
         totalVertexCount += numVertices * count;
@@ -173,7 +173,7 @@ void PolygonRun::setupFromPolygonRleInfo(const VertexArray& numVerticesRle) {
     sides.reserve(numPrimitives);
 
     int64 currentVertex = startVertex;
-    for (int i = 0; i < numVerticesRle.size(); i += 2) {
+    for (int i = 0; i < (int)numVerticesRle.size(); i += 2) {
         auto numVertices = numVerticesRle[i];
         auto count = numVerticesRle[i + 1];
 

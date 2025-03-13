@@ -54,15 +54,16 @@ UserParameter Display::makeStringsParameter(const std::string& name, const std::
 
 	// Allocate enough space for the string pointers, and the strings, in one big block,
 	// makes it easy to deallocate later.
-	int count = strings.size();
-	int totallen = count * sizeof(char*);
+  assert(strings.size() < 256); // 8 bit storage
+	uint8_t count = strings.size();
+	uint nbytes = (uint)count * sizeof(char*);
 
-	for ( uint i = 0; i < count; i++ ) totallen += (strings[i].size()+1) * sizeof(char);
+	for ( uint i = 0; i < (uint)count; i++ ) nbytes += (strings[i].size()+1) * sizeof(char);
 
-	char** pstringptrs = reinterpret_cast<char**>(malloc(totallen));
+	char** pstringptrs = reinterpret_cast<char**>(malloc(nbytes));
 	char* pstrings = reinterpret_cast<char*>(&pstringptrs[count]);
 
-	for ( uint i = 0; i < count; i++ ) {
+	for ( uint i = 0; i < (uint)count; i++ ) {
     // Copy each string to the end of the block.
     strcpy(pstrings, strings[i].c_str());
     pstringptrs[i] = pstrings;
@@ -72,7 +73,7 @@ UserParameter Display::makeStringsParameter(const std::string& name, const std::
 	parameter.value = reinterpret_cast<RtPointer>(pstringptrs);
 	parameter.vtype = 's';
 	parameter.vcount = count;
-	parameter.nbytes = totallen;
+	parameter.nbytes = nbytes;
 
 	return parameter;
 }

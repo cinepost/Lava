@@ -16,22 +16,17 @@ namespace bgeo {
 
 RTTI_DEFINE(Part, Primitive, ParticlePrimType)
 
-Part::Part(const parser::Part& part): m_part(part)
-{
-}
+Part::Part(const parser::Part& part): m_part(part) { }
 
-void Part::getPointList(std::vector<int32_t>& points) const
-{
+void Part::getPointList(std::vector<int32_t>& points) const {
     m_part.getVerticesMappedToPoints(points);
 }
 
-void Part::getVertexList(std::vector<int32_t> &vertices) const
-{
+void Part::getVertexList(std::vector<int32_t> &vertices) const {
     vertices = m_part.vertices;
 }
 
-int32_t Part::getVertexCount() const
-{
+uint32_t Part::getVertexCount() const {
     return m_part.vertices.size();
 }
 

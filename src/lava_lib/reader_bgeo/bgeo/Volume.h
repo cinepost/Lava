@@ -33,10 +33,10 @@ public:
 
     void getResolution(int32_t resolution[3]) const;
 
-    int64_t getVoxelCount() const;
+    uint64_t getVoxelCount() const;
     void getVoxels(std::vector<float>& voxels) const;
 
-    /*virtual*/ int32_t getVertexCount() const override;
+    /*virtual*/ uint32_t getVertexCount() const override;
 
 private:
     const parser::Volume& m_volume;

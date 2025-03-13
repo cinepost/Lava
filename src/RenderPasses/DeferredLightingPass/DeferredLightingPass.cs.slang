@@ -43,6 +43,23 @@ import DeferredLightingAOV;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
+cbuffer PerFrameCB {
+  uint2             gNoiseOffset;
+  uint              gSampleNumber;                 // Interframe sample number.
+  int               gRandomSeed;
+  bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
+  int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
+  float16_t3        gColorLimit = float3(10.0, 10.0, 10.0);
+  float16_t3        gIndirectColorLimit = float3(3.0, 3.0, 3.0);
+  uint              gRayDiffuseLimit = 0;
+  uint              gRayReflectLimit = 0;
+  uint              gRayRefractLimit = 0;
+  float             gRayBias = 0.0001;
+  float             gRayContribThresh = 0.1;
+  uint              gRussRouletteLevel = 2;
+  uint2             gFrameDim;
+  uint              gSamplesPerFrame;
+};
 
 // Extra input channels
 Texture2D<float>            gDepth;
@@ -78,29 +95,7 @@ RWTexture2D<float16_t4> gLastFrameSum;
 // Main output channel
 RWTexture2D<float4> gInOutColor;
 
-cbuffer PerFrameCB {
-  uint2             gNoiseOffset;
-  uint              gSampleNumber;                 // Interframe sample number.
-  int               gRandomSeed;
-  bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
-  int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-  float16_t3        gColorLimit = float3(10.0, 10.0, 10.0);
-  float16_t3        gIndirectColorLimit = float3(3.0, 3.0, 3.0);
-  uint              gRayDiffuseLimit = 0;
-  uint              gRayReflectLimit = 0;
-  uint              gRayRefractLimit = 0;
-  float             gRayBias = 0.0001;
-  float             gRayContribThresh = 0.1;
-  uint              gRussRouletteLevel = 2;
-  uint2             gFrameDim;
-  uint              gSamplesPerFrame;
-
-  EnvMapSampler     gEnvMapSampler;
-  EmissiveLightSampler emissiveSampler;           ///< Emissive light sampler. Only valid when kUseEmissiveLights == true.
-};
-
 SamplerState gNoiseSampler;
-SamplerState gDepthSampler;
 Texture2D gNoiseTex;
 
 #if defined(USE_VISIBILITY_CONTAINER)

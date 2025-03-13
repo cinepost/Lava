@@ -6,13 +6,13 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Sphere.h"
-
 #include "util.h"
 
 #include "Attribute.h"
 #include "Detail.h"
+
+#include "Sphere.h"
+
 
 namespace ika
 {

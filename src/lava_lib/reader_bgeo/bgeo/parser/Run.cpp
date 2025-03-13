@@ -6,15 +6,13 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Run.h"
-
 #include <iostream>
 #include <cassert>
 
-#include <UT/UT_JSONHandle.h>
-
 #include "util.h"
+
+#include "Run.h"
+
 
 namespace ika {
 namespace bgeo {

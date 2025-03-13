@@ -68,6 +68,10 @@ static std::mutex   g_simple_tail_cache_mutex;
 static const size_t kMinPagesPerLoadingThred = 10;
 static const std::string kLtxExtension = ".ltx";
 
+static const uint32_t kDefaultCPUSparseTexturesMemoryCap = 1024;	///< 1024 Mb
+static const uint32_t kDefaultGPUSparseTexturesMemoryCap = 256;		///< 256 Mb
+
+
 namespace {
 	const size_t kMaxTextureHandleCount = std::numeric_limits<uint32_t>::max();
 	static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
@@ -79,8 +83,8 @@ TextureManager::SharedPtr TextureManager::create(Device::SharedPtr pDevice, size
 
 TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount)
 	: mpDevice(pDevice)
-	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
 	, mAsyncTextureLoader(mpDevice, threadCount)
+	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
 {
 	mUDIMTextureTilesCount = 0;
 	mUDIMTexturesCount = 0;
@@ -315,7 +319,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   std::array<uint8_t, kLtxPageSize> scratchBuffer;
   auto pScratchBufferData = scratchBuffer.data();
 
-  bool loadTailData = true; // always load texture tail data
+  bool loadTailData = !pTexture->isMipTailFilled(); // always load texture tail data
   bool allocationChanged = false;
 
   const auto& texturePages = pTexture->sparseDataPages();
@@ -331,6 +335,8 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     if(pPage->allocate()) allocationChanged = true;
   }
 
+  const auto oldState = pTexture->getGlobalState();
+	const bool state_changed = (loadTailData || allocationChanged) ? pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest) : false;
 
   if(allocationChanged) {
 	  {
@@ -354,9 +360,6 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 			vk_api.vkDestroyFence(device, fence, nullptr);
 		}
 
-		auto oldState = pTexture->getGlobalState();
-		const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
-
 		for( uint32_t pageIndex: _pageIds ) {
 	  	if(pageIndex >= texturePages.size()) {
 				LLOG_ERR << "Page index " << std::to_string(pageIndex) << " exceeds number of texturePages " << std::to_string(texturePages.size());
@@ -375,22 +378,22 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 	  		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
 	  	}
 	  }
-
-	  pContext->resourceBarrier(pTexture.get(), oldState);
 	}
 
-  if(loadTailData || pageIds.empty()) {
+  if(loadTailData) {
 		LLOG_TRC << "Loading tail data for texture " << ltxFilename;
 		std::vector<uint8_t> tailData(kLtxPageSize);
 		pLtxBitmap->readTailData(pFile, tailData, pScratchBufferData);
 		LLOG_TRC << "Loaded " << tailData.size() << " bytes of tail data for " << ltxFilename;
 		if(!tailData.empty()) {
-			auto oldState = pTexture->getGlobalState();
-			const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
+			//auto oldState = pTexture->getGlobalState();
+			//const bool state_changed = pContext->resourceBarrier(pTexture.get(), Resource::State::CopyDest);
 			pContext->fillMipTail(pTexture.get(), tailData.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
-			pContext->resourceBarrier(pTexture.get(), oldState);
+			//if(state_changed) pContext->resourceBarrier(pTexture.get(), oldState);
 		}
 	}
+
+	if(state_changed) pContext->resourceBarrier(pTexture.get(), oldState);
 
 	pContext->flush(true);
 
@@ -433,7 +436,7 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 	  	std::vector<uint32_t> _pageIds = pageIds;
 	  	std::sort(_pageIds.begin(), _pageIds.end());
 	  	
-	    std::thread::id thread_id = std::this_thread::get_id();
+	    //std::thread::id thread_id = std::this_thread::get_id();
 
 	    std::array<uint8_t, kLtxPageSize> scratchBuffer;
 	    auto pScratchBufferData = scratchBuffer.data();
@@ -585,6 +588,8 @@ static bool isUdimTextureFilename(const fs::path& path, const std::string& udimM
 
 
 static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMask, TextureManager::TileList& tileList) {
+	if(path.empty()) return false;
+	
 	tileList.clear();
 	size_t udimMask_found = std::string::npos;
 
@@ -596,6 +601,12 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 	boost::smatch what;
 
 	bool result = false;
+
+	const fs::path parent_dir = path.parent_path();
+	if(!fs::exists(parent_dir)) {
+		LLOG_ERR << "Directory " << parent_dir << " doesn't exist !!!";
+		return false;
+	}
 
 	for (auto &entry: boost::make_iterator_range(fs::directory_iterator(path.parent_path()), {})
 		| ba::filtered(static_cast<bool (*)(const fs::path &)>(&fs::is_regular_file))
@@ -636,19 +647,17 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 	// Find the full path to the texture if it's not a UDIM.
 	fs::path fullPath;
 
-	if (isUdimTextureFilename(path, udimMask)) {
+	const bool is_udim_texture = isUdimTextureFilename(path, udimMask);
+	if (is_udim_texture) {
 		// If UDIM texture requested we have store handle with no actual texture loaded that is referenced by actual tiles textures.
 		// So we use UDIM texture path as fullpath key for map storage and access.
 		fullPath = path.filename().string();
 	} else {
-#if LOAD_GIBBERISH_TEXTURE == 1
-		if (!findFileInDataDirectories(path, fullPath)) {
-			LLOG_WRN << "Can't find texture file " << path;
+		if (!fs::exists(path)) {
+			LLOG_WRN << "Can't find texture file: " << path;
 			return false;
 		}
-# else 
 		fullPath = path;
-#endif
 	}
 
 	std::unique_lock<std::mutex> lock(mMutex);
@@ -664,7 +673,12 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 
 		// Check if UDIM texture requested...
 		std::vector<std::pair<fs::path, Falcor::uint2>> udim_tile_fileinfos;
-		bool is_udim_texture = findUdimTextureTiles(path, udimMask, udim_tile_fileinfos);
+		bool udim_tiles_found = findUdimTextureTiles(path, udimMask, udim_tile_fileinfos);
+		
+		if(is_udim_texture && (!udim_tiles_found || udim_tile_fileinfos.empty())) {
+			LLOG_ERR << "No UDIM tiles found for texture " << path;
+			return false;
+		}
 
 #ifndef DISABLE_ASYNC_TEXTURE_LOADER
 		mLoadRequestsInProgress++;
@@ -706,20 +720,11 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 			// Load single texture
 			Texture::SharedPtr pTexture = nullptr;
 
-#if LOAD_GIBBERISH_TEXTURE == 1 
-			//std::vector<uint8_t> testData(64*64*4);
-			//std::fill(testData.begin(), testData.end(), 0);
-			//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
-
-			LLOG_WRN << "Generating gibberish texture " << path;
-			pTexture = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
-#else
 			if(!loadAsSparse && (fullPath.extension() != kLtxExtension)) {
 				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			}
-#endif
 
 			if(!pTexture) {
 				LLOG_ERR << "Error loading " << (pTexture->isSparse() ? "virtual" : "") << " texture " << fullPath;
@@ -767,20 +772,12 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 				} else {
 
 					Texture::SharedPtr pUdimTileTex = nullptr;
-#if LOAD_GIBBERISH_TEXTURE == 1 
-					//std::vector<uint8_t> testData(64*64*4);
-					//std::fill(testData.begin(), testData.end(), 0);
-					//pTexture = Texture::create2D(mpDevice, 64, 64, ResourceFormat::RGBA8Unorm, 1, 1, testData.data(), bindFlags);
 
-					LLOG_WRN << "Loading gibberish udim tile texture " << path;
-					pUdimTileTex = loadSparseTexture("/opt/1024x1024.jpg", generateMipLevels, loadAsSRGB, bindFlags);
-#else
 					if(!loadAsSparse) {
 						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
 						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					}
-#endif
 
 					if(!pUdimTileTex) {
 						LLOG_ERR << "Error loading " << (loadAsSparse ? "virtual" : "") << " texture " << udim_tile_fullpath;
@@ -889,7 +886,7 @@ void TextureManager::finalize() {
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && pTex->isUDIMTexture()) {
-			//pTex->setUDIM_ID(udimID++);
+			pTex->setUDIM_ID(udimID++);
 		}
 	}
 

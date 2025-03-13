@@ -38,8 +38,8 @@
 
 #include "ShaderVar.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     class GraphicsProgram;
     class ComputeProgram;
     class ComputeContext;
@@ -88,10 +88,6 @@ namespace Falcor
         */
         const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
-#ifdef FALCOR_D3D12
-        virtual bool updateSpecializationImpl() const override;
-#endif
-
         uint32_t getEntryPointGroupCount() const { return uint32_t(mpEntryPointGroupVars.size()); }
         EntryPointGroupVars* getEntryPointGroupVars(uint32_t index) const
         {
@@ -127,9 +123,7 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const GraphicsProgram* pProg);
 
-#if defined(FALCOR_D3D12)
-        virtual bool apply(RenderContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
         virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 #endif
 
@@ -158,9 +152,7 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const ComputeProgram* pProg);
 
-#if defined(FALCOR_D3D12)
-        virtual bool apply(ComputeContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
         virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 #endif
 
@@ -189,9 +181,6 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-#if defined(FALCOR_D3D12)
-        bool apply(RenderContext* pCtx, RtStateObject* pRtso);  
-#endif
 #if defined(FALCOR_GFX) || defined(FALCOR_VK)
         bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
 #endif
@@ -207,10 +196,7 @@ namespace Falcor
     private:
         struct EntryPointGroupInfo
         {
-#ifdef FALCOR_D3D12
-            EntryPointGroupVars::SharedPtr pVars;
-            ChangeEpoch lastObservedChangeEpoch = 0;
-#elif defined(FALCOR_GFX) || defined(FALCOR_VK)
+#if defined(FALCOR_GFX) || defined(FALCOR_VK)
             int32_t entryPointGroupIndex = -1;
 #endif
         };
@@ -221,9 +207,6 @@ namespace Falcor
 
         void init(const RtBindingTable::SharedPtr& pBindingTable);
 
-#ifdef FALCOR_D3D12
-        bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
-#endif
         static RtEntryPointGroupKernels* getUniqueRtEntryPointGroupKernels(const ProgramKernels::SharedConstPtr& pKernels, int32_t uniqueEntryPointGroupIndex);
 
         uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).

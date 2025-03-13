@@ -38,7 +38,7 @@
 
 namespace Falcor {
 
-ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): mpDevice(pDevice), ParameterBlock(pDevice, pReflector), mpReflector(pReflector) {
+ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): ParameterBlock(pDevice, pReflector), mpDevice(pDevice), mpReflector(pReflector) {
     assert(pReflector);
 }
 
@@ -100,10 +100,11 @@ bool RtProgramVars::prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso
         desc.hitGroupCount = (uint32_t)hitgroupShaders.size();
         desc.hitGroupNames = hitgroupShaders.data();
         desc.hitGroupRecordOverwrites = hitGroupRecordOverwrites.data();
-        assert(hitGroupRecordOverwrites.size() == desc.hitGroupCount);
+        assert(hitGroupRecordOverwrites.size() == (size_t)desc.hitGroupCount);
         desc.program = pRtso->getKernels()->getApiHandle();
-        if (SLANG_FAILED(mpDevice->getApiHandle()->createShaderTable(desc, mpShaderTable.writeRef())))
+        if (SLANG_FAILED(mpDevice->getApiHandle()->createShaderTable(desc, mpShaderTable.writeRef()))) {
             return false;
+        }
         mpCurrentRtStateObject = pRtso;
     }
     return true;

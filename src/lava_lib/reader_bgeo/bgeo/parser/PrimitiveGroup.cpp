@@ -6,15 +6,13 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "PrimitiveGroup.h"
-
 #include <cassert>
-
-#include <UT/UT_JSONHandle.h>
 
 #include "util.h"
 #include "Detail.h"
+
+#include "PrimitiveGroup.h"
+
 
 namespace ika
 {
@@ -221,7 +219,7 @@ void PrimitiveGroup::expandGroup(std::vector<int32_t>& indices) const
 
     if (!ingroup.empty())
     {
-        for (int i = 0; i < ingroup.size(); ++i)
+        for (int i = 0; i < (int)ingroup.size(); ++i)
         {
             if (ingroup[i])
             {

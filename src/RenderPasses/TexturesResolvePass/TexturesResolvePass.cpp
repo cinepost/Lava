@@ -61,7 +61,6 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
 
 	// Create calibration textures
 	pTexturesResolvePass->createMipCalibrationTexture(pRenderContext);
-	pTexturesResolvePass->createLtxCalibrationTexture(pRenderContext);
 
 	return SharedPtr(pTexturesResolvePass);
 }
@@ -96,7 +95,7 @@ RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData
 	RenderPassReflection reflector;
 
 	reflector.addOutput(kOutput, "DebugOutput-buffer").format(mTileDataDebugFormat).texture2D(0, 0, 0);
-	auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass")
+	reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass")
 		.bindFlags(Resource::BindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
 	return reflector;
 }
@@ -148,7 +147,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	createMipCalibrationTexture(pContext);
 
-	uint32_t totalPagesToUpdateCount = 0;
+	//uint32_t totalPagesToUpdateCount = 0;
 	uint32_t currTextureResolveID = 0; // texture id used to identify texture inside this pass. always starts from 0. nothing to do with real unique texture id or handle
 
 	std::vector<MaterialResolveData> materialsResolveBuffer;
@@ -182,7 +181,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		// fill data for active(used) textures
 		for( size_t i = 0; i < virtualTexturesCount; ++i) {
-			const auto& pTexture = materialSparseTextures[i].second;
 			const auto& textureHandle = pMaterial->getTextureHandle(materialSparseTextures[i].first);
 			materialResolveData.virtualTextureHandles[i] = textureHandle;
 		}
@@ -194,11 +192,11 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	uint32_t resolvedTexturesCount = currTextureResolveID + 1;
 
 	// ensure pages buffer is aligned to 4 bytes
-	auto totalPagesToUpdateCountAligned = totalPagesToUpdateCount;
-	auto dv = std::div(totalPagesToUpdateCount, 4);
-	if(dv.rem != 0) {
-		totalPagesToUpdateCountAligned = (dv.quot + 1) * 4;
-	}
+	//auto totalPagesToUpdateCountAligned = totalPagesToUpdateCount;
+	//auto dv = std::div(totalPagesToUpdateCount, 4);
+	//if(dv.rem != 0) {
+	//	totalPagesToUpdateCountAligned = (dv.quot + 1) * 4;
+	//}
 
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
 	mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
@@ -206,10 +204,10 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
 
 	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
-	mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
 
-	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); ++i)
+	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); ++i) {
 		mpVars["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
+	}
 
 	setDefaultSampler();
 	mpVars["gCalibrationSampler"] = mpSampler;
@@ -273,7 +271,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		} 
 	}
 
-	
 	if(pPagesBuffer) pPagesBuffer->unmap();
 
 	// In async mode we have to call updateSparseBindInfo on TextureManager as it triggers wait() function on pages loading multi-future
@@ -346,23 +343,6 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 	}
 
 }
-
-void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderContext) {
-//	if(!mpLtxCalibrationTexture) { mpLtxCalibrationTexture = nullptr; } return; // We don't need it right now
-
-	if (mpLtxCalibrationTexture) return;
-
-	// Worst case scenario is 1024 pages per dimension
-
-	mpLtxCalibrationTexture = Texture::create2D(pRenderContext->device(), 1024, 1024, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
-	if (!mpLtxCalibrationTexture) LLOG_ERR << "Error creating LTX calibration texture !!!";
-
-	for(uint32_t mipLevel = 0; mipLevel < mpLtxCalibrationTexture->getMipCount(); mipLevel++) {
-		uint32_t width = mpLtxCalibrationTexture->getWidth(mipLevel);
-		uint32_t height = mpLtxCalibrationTexture->getHeight(mipLevel); 
-	}
-}
-
 
 void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;

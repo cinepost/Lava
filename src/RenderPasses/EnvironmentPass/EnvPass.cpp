@@ -121,7 +121,7 @@ Dictionary EnvPass::getScriptingDictionary() {
 RenderPassReflection EnvPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kOutputColor, "Color buffer");
-    auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass");//.bindFlags(Resource::BindFlags::DepthStencil);
+    reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass");//.bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }
 

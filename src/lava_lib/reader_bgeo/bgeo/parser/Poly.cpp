@@ -6,17 +6,17 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Poly.h"
-
 #include <cassert>
 
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 #include "Detail.h"
 #include "ReadError.h"
 #include "VertexArrayBuilder.h"
 #include "util.h"
+
+#include "Poly.h"
+
 
 namespace ika {
 namespace bgeo {
@@ -28,11 +28,9 @@ class UniformDataHandle : public UT_JSONHandleError {
  public:
     UniformDataHandle(Poly& poly): poly(poly) { }
 
-    /*virtual*/ bool jsonKey(UT_JSONParser& parser, const char *v, int64 len)
-    {
+    /*virtual*/ bool jsonKey(UT_JSONParser& parser, const char *v, int64 len) {
         UT_String key(v);
-        if (key == "closed")
-        {
+        if (key == "closed") {
             poly.closed.resize(1);
             bool closedValue;
             BGEO_CHECK(parser.parseBool(closedValue));
@@ -43,13 +41,11 @@ class UniformDataHandle : public UT_JSONHandleError {
         return false;
     }
 
-    /*virtual*/ bool jsonBeginMap(UT_JSONParser& parser)
-    {
+    /*virtual*/ bool jsonBeginMap(UT_JSONParser& parser) {
         return true;
     }
 
-    /*virtual*/ bool jsonEndMap(UT_JSONParser& parser)
-    {
+    /*virtual*/ bool jsonEndMap(UT_JSONParser& parser) {
         return true;
     }
 

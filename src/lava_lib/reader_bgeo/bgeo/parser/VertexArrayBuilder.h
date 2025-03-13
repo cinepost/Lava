@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "types.h"
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 class UT_JSONHandleError;
 class UT_JSONParser;
@@ -24,7 +24,7 @@ namespace parser {
 
 class VertexArrayBuilder : public UT_JSONHandleError {
  public:
-    typedef std::vector<int32> VertexArray;
+    typedef std::vector<int32_t> VertexArray;
     VertexArrayBuilder(VertexArray& vertices, VertexArray& sides);
 
     /*virtual*/ bool jsonInt(UT_JSONParser& parser, int64 value);
@@ -33,7 +33,7 @@ class VertexArrayBuilder : public UT_JSONHandleError {
 
  private:
     int stack;
-    int64 sideCount;
+    uint64 sideCount;
     VertexArray& vertices;
     VertexArray& sides;
 };

@@ -57,7 +57,6 @@ ConstantBuffer<VBufferSW> gVBufferSW;
 RWByteAddressBuffer gThreadLockBuffer;
 RWByteAddressBuffer gOpacityShiftsBuffer;
 Texture2D<float4>   gJitterTexture;
-SamplerState        gJitterSampler;
 
 ParameterBlock<VisibilitySamplesContainer> gVisibilityContainer;
 
@@ -79,6 +78,7 @@ groupshared bool              gsCullCCW;
 groupshared bool              gsUse16BitIndices;
 groupshared bool              gsHidden;
 groupshared uint              gsOffsetY;
+groupshared bool              gsDoubleSided;
 groupshared uint              gsDrawableIndex;
 
 uniform STBNGenerator         gNoiseGenerator;
@@ -550,7 +550,7 @@ void subdivideTriangleUniform(uint triangle_id, uint8_t lod) {
     gsMTArray[write_id] = mt;
 }
 
-void rasterizeScanLines(uint thread_id, bool cullCCW) {
+void rasterizeScanLines(uint thread_id) {
     const uint y_d = THREADS_COUNT;
     const uint y_start = (thread_id + gsOffsetY) % THREADS_COUNT;
 
@@ -604,9 +604,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
 #if (COMPUTE_DEPTH_OF_FIELD == 0)
     // CCW culling
     #if CULL_MODE == CULL_BACK
-        if(det < 0.0f) continue;
+        if(det < 0.0f && !gsDoubleSided) continue;
     #elif CULL_MODE == CULL_FRONT
-        if(det > 0.0f) continue;
+        if(det > 0.0f && !gsDoubleSided) continue;
     #endif
 #endif
 
@@ -678,9 +678,9 @@ void rasterizeScanLines(uint thread_id, bool cullCCW) {
                 
                 // CCW culling
                 #if CULL_MODE == CULL_BACK
-                if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
+                if(!gsDoubleSided && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z > 0.0f) continue;
                 #elif CULL_MODE == CULL_FRONT
-                if(cullCCW && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z < 0.0f) continue;
+                if(!gsDoubleSided && cross(float3(pj1.xy - pj0.xy, .0), float3(pj2.xy - pj0.xy, .0)).z < 0.0f) continue;
                 #endif
             #endif
 
@@ -910,6 +910,7 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             gsUse16BitIndices = gsMeshDesc.flags & uint(MeshFlags::Use16BitIndices);
             gsSubdivide = instance.isSubdividable() && (MAX_LOD > 0);
             gsHidden = !instance.isPrimaryVisible();
+            gsDoubleSided = instance.isDoubleSided();
         }  
     }
 
@@ -986,13 +987,13 @@ void rasterize(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex) {
             }
 
             GroupMemoryBarrierWithGroupSync();
-            rasterizeScanLines(thread_id, gsCullCCW);
+            rasterizeScanLines(thread_id);
             GroupMemoryBarrierWithGroupSync();
         }
     } else {
         nullSubdivideTriangle(thread_id);
         GroupMemoryBarrierWithGroupSync();
-        rasterizeScanLines(thread_id, gsCullCCW);
+        rasterizeScanLines(thread_id);
         GroupMemoryBarrierWithGroupSync();
     }
 

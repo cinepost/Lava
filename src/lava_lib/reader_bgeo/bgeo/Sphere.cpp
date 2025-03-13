@@ -21,7 +21,7 @@ Sphere::Sphere(const parser::Sphere& sphereParser)
 {
 }
 
-/*virtual*/ int32_t Sphere::getVertexCount() const
+/*virtual*/ uint32_t Sphere::getVertexCount() const
 {
     return 1;
 }

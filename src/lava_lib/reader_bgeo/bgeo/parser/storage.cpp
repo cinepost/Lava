@@ -6,12 +6,12 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
+#include "../houdini_inc.h"
+
+#include "StorageTraits.h"
 
 #include "storage.h"
 
-#include <UT/UT_String.h>
-
-#include "StorageTraits.h"
 
 namespace ika
 {

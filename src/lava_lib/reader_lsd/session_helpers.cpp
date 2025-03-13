@@ -190,12 +190,12 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	AOVPlaneInfo aovCreateInfo;
 
 	std::string channel_name = pPlane->getPropertyValue(ast::Style::PLANE, "channel", std::string());
-	if(channel_name.size() == 0) {
+	if(channel_name.empty()) {
 		LLOG_ERR << "No channel name specified for plane !!!";
 	}
 
 	std::string output_variable_name = pPlane->getPropertyValue(ast::Style::PLANE, "variable", std::string());
-	if(output_variable_name.size() == 0) {
+	if(output_variable_name.empty()) {
 		LLOG_ERR << "No plane variable specified for plane !!!";
 	}
 

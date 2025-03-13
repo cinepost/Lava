@@ -45,17 +45,15 @@ namespace {
 }
 
 AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
-    : mpScene(pScene)
-    , mAnimations(animations)
+    : mAnimations(animations)
     , mNodesEdited(pScene->mSceneGraph.size())
     , mLocalMatrixLists(pScene->mSceneGraph.size())
     , mGlobalMatrixLists(pScene->mSceneGraph.size())
     , mInvTransposeGlobalMatrixLists(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
+    , mpScene(pScene)
+    , mpDevice(pScene->device())
 {
-    mpDevice = pScene->device();
-    assert(mpDevice);
-
     // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
     // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
     //
@@ -104,6 +102,8 @@ void AnimationController::createBuffers(size_t matrixCount) {
 }
 
 AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations) {
+    assert(pScene);
+    if(!pScene) return nullptr;
     return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
 }
 
@@ -243,7 +243,7 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime) {
 
     // Perform incremental update.
     // This updates all animated matrices and dynamic vertex data.
-    if (edited || mEnabled && (time != mTime || mTime != mPrevTime)) {
+    if (edited || (mEnabled && (time != mTime || mTime != mPrevTime))) {
         if (edited || hasAnimations()) {
             assert(mpWorldMatricesBuffer && mpPrevWorldMatricesBuffer);
             assert(mpInvTransposeWorldMatricesBuffer && mpPrevInvTransposeWorldMatricesBuffer);

@@ -26,12 +26,20 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
+#endif
+
 #include <nanovdb/NanoVDB.h>
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/HostBuffer.h>
+
+#ifdef _WIN32
 #pragma warning(pop)
+#endif
+
 #include "BrickedGrid.h"
 
 #include "Falcor/Core/Framework.h"

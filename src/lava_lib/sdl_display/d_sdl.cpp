@@ -69,16 +69,6 @@ static inline GLenum prmanToGLType(const PtDspyDevFormat& format) {
   }
 }
 
-static bool isFloatFormat(const PtDspyDevFormat& format) {
-  switch (format.type) {
-    case PkDspyFloat32:
-    case PkDspyFloat16:
-      return true;
-    default:
-      return false;
-  }
-}
-
 static inline GLenum getPixelFormat(int channels) {
   switch (channels) {
     case 1:
@@ -334,7 +324,7 @@ PtDspyError DspyImageClose(PtDspyImageHandle image_h) {
   // end of quit
   g_window.reset( nullptr );
 
-  delete image_h;
+  delete (float *)image_h;
 
   return PkDspyErrorNone;//quit;
 }

@@ -26,7 +26,6 @@ const std::vector<int32_t>& Poly::getRawVertexList() const {
     return m_poly.vertices;
 }
 
-
 void Poly::getSidesList(std::vector<int32_t>& sides) const {
     sides = m_poly.sides;
 }
@@ -44,18 +43,18 @@ void Poly::getStartIndices(std::vector<int32_t>& startIndices) const {
     startIndices.resize(m_poly.sides.size() + 1);
     startIndices[0] = 0;
 
-    int64 current = 0;
-    for (int i = 0; i < m_poly.sides.size(); ++i) {
+    uint64 current = 0;
+    for (size_t i = 0; i < m_poly.sides.size(); ++i) {
         current += m_poly.sides[i];
         startIndices[i + 1] = current;
     }
 }
 
-int32_t Poly::getFaceCount() const {
+uint32_t Poly::getFaceCount() const {
     return m_poly.sides.size();
 }
 
-int32_t Poly::getVertexCount() const {
+uint32_t Poly::getVertexCount() const {
     return m_poly.vertices.size();
 }
 

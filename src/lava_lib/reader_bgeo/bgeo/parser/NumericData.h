@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include <UT/UT_JSONParser.h>
+#include "../houdini_inc.h"
 
 #include "storage.h"
 #include "StorageTraits.h"
@@ -46,9 +46,9 @@ public:
     void load(UT_JSONParser& parser);
     void loadArray(UT_JSONParser& parser, storage::Storage storage, int32 count);
 
-    int64 elementCount;
+    uint64 elementCount;
 
-    int32 tupleSize;
+    uint32 tupleSize;
     storage::Storage storage;
     ByteBuffer data;
 
@@ -66,7 +66,7 @@ public:
     // sourceElementCount to ensure buffer is big enough. target tuple size can be
     // smaller than the source tuple size, in which case only the tuple size elements
     // are copied into target.
-    void copyTo(fpreal64* target, int32 targetTupleSize, int64 targetElementCount, int64 sourceIndex, int64 elementCopyCount) const {
+    void copyTo(fpreal64* target, uint32 targetTupleSize, uint64 targetElementCount, uint64 sourceIndex, uint64 elementCopyCount) const {
         if (elementCopyCount <= 0) return;
 
         assert(targetTupleSize <= tupleSize);
@@ -81,8 +81,8 @@ public:
             // have to cast
             const fpreal32* source = unpacked.data();
 
-            for (int64 i = 0; i < elementCopyCount; ++i) {
-                for (int j = 0; j < targetTupleSize; ++j) {
+            for (uint64 i = 0; i < elementCopyCount; ++i) {
+                for (uint j = 0; j < targetTupleSize; ++j) {
                     target[i * targetTupleSize + j] = source[(sourceIndex + i) * tupleSize + j];
                 }
             }
@@ -102,7 +102,7 @@ public:
 //        }
     }
 
-    void copyTo(fpreal32* target, int32 targetTupleSize, int64 targetElementCount, int64 sourceIndex, int64 elementCopyCount) const {
+    void copyTo(fpreal32* target, uint32 targetTupleSize, uint64 targetElementCount, uint64 sourceIndex, uint64 elementCopyCount) const {
         if (elementCopyCount <= 0) return;
 
         assert(targetTupleSize <= tupleSize);
@@ -118,7 +118,7 @@ public:
             //const fpreal32* source = data.data.dataAs<fpreal32>();
             const fpreal32* source = unpacked.data();
 
-            for (int64 i = 0; i < elementCopyCount; ++i) {
+            for (uint64 i = 0; i < elementCopyCount; ++i) {
                 memcpy(&target[i * targetTupleSize], &source[(sourceIndex + i) * tupleSize], sizeof(fpreal32) * targetTupleSize);
             }
         }

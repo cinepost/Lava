@@ -771,11 +771,11 @@
                     name    "lv_denoise_quality"
                     label   "Quality"
                     type    integer
-                    default { "1" }
+                    default { "0" }
                     help    "Denoising quality."
                     menu {
-                        "0" "High"
-                        "1" "Interactive"
+                        "0" "Interactive"
+                        "1" "High"
                     }
                     disablewhen "{ lv_postfx_denoise == 0 }"
                     parmtag { "script_callback_language" "python" }

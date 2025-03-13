@@ -6,26 +6,22 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "PolySoup.h"
-
 #include <cassert>
 
-#include <UT/UT_JSONHandle.h>
+#include "../houdini_inc.h"
 
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include "PolySoup.h"
 
-namespace
-{
+
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+namespace {
 
 class UniformDataHandle : public UT_JSONHandleError
 {
@@ -196,11 +192,11 @@ void PolySoup::setupFromSoupInfo(const VertexArray& soupSides,
 
     size_t face = 0;
     assert(soupSides.size() == soupCounts.size());
-    for (size_t i = 0; i < soupSides.size(); i++)
+    for (size_t i = 0; i < soupSides.size(); ++i)
     {
         auto count = soupCounts[i];
         auto faceSides = soupSides[i];
-        for (size_t i = 0; i < count; i++, face++)
+        for (int ii = 0; ii < count; ii++, face++)
         {
             sides[lastSides + face] = faceSides;
             closed[lastClosed + face] = true;

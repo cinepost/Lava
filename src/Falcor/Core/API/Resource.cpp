@@ -30,12 +30,51 @@
 #include "Texture.h"
 #include "Buffer.h"
 
+#include <atomic>
+
 namespace Falcor {
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
+std::atomic<size_t> gAllocatedBuffersCount = 0;
+std::atomic<size_t> gAllocatedTexturesCount = 0;
+
+void Resource::printUsage() {
+#ifdef _DEBUG
+    LLOG_INF << "Allocated buffers count " << gAllocatedBuffersCount;
+    LLOG_INF << "Allocated textures count " << gAllocatedTexturesCount;
+#endif
 }
 
-Resource::~Resource() = default;
+Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) 
+    : mType(type), 
+    mBindFlags(bindFlags), 
+    mSize(size), 
+    mpDevice(pDevice), 
+    mID(newResourceID++) {
+
+#ifdef _DEBUG
+    switch(type) {
+        case Type::Buffer:
+            gAllocatedBuffersCount++;
+            break;
+        default:
+            gAllocatedTexturesCount++;
+            break;
+    }
+#endif
+}
+
+Resource::~Resource() {
+#ifdef _DEBUG
+    switch(mType) {
+        case Type::Buffer:
+            gAllocatedBuffersCount--;
+            break;
+        default:
+            gAllocatedTexturesCount--;
+            break;
+    }
+#endif
+}
 
 const std::string to_string(Resource::Type type) {
     #define type_2_string(a) case Resource::Type::a: return #a;
@@ -130,20 +169,29 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
+
 std::shared_ptr<Texture> Resource::asTexture() {
+    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
     return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
 }
 
 std::shared_ptr<const Texture> Resource::asTexture() const {
+    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
     return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
 }
 
 std::shared_ptr<Buffer> Resource::asBuffer() {
+    //static const std::shared_ptr<Buffer> pNullBuffer = nullptr;
     return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
 }
+
 #pragma GCC pop_options
+#pragma GCC diagnostic pop
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {

@@ -130,16 +130,12 @@ VkBool32 DeviceImpl::handleDebugMessage(
 	const char* pLayerPrefix,
 	const char* pMsg)
 {
-	DebugMessageType msgType = DebugMessageType::Info;
-
 	char const* severity = "message";
 	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
 		severity = "warning";
-		msgType = DebugMessageType::Warning;
 	}
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
 		severity = "error";
-		msgType = DebugMessageType::Error;
 	}
 
 	// pMsg can be really big (it can be assembler dump for example)
@@ -153,7 +149,7 @@ VkBool32 DeviceImpl::handleDebugMessage(
 
 	//	getDebugCallback()->handleMessage(msgType, DebugMessageSource::Driver, buffer);
 	if(pVkValidationFile) {
-		fprintf(pVkValidationFile, buffer);
+		fprintf(pVkValidationFile, "%s", buffer);
 	} else {
 		if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
 			LLOG_WRN << std::string(buffer);
@@ -195,7 +191,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	m_queueAllocCount = 0;
 
 	bool useValidationLayer = !validationLayerOuputFilename.empty();
-
+	
 	VkInstance instance = VK_NULL_HANDLE;
 	if (handles[0].handleValue == 0) {
 		VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
@@ -605,17 +601,19 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			vulkan12Features.pNext = &extendedFeatures.fragmentShaderInterlockFeatures;
 		}
 
+		VkExtent2D maxSampleLocationGridSize = {4, 4};
+
 		if (m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT) {
 			VkMultisamplePropertiesEXT multisampleProperties = {VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT};
 			m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT(m_api.m_physicalDevice, VK_SAMPLE_COUNT_1_BIT, &multisampleProperties);
-			auto maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
+			maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
 		}
 
 		VkPhysicalDeviceProperties2 extendedProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
 
 		VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT };
 		sampleLocationsProps.sampleLocationSampleCounts = VK_SAMPLE_COUNT_1_BIT; //metalFeatures.supportedSampleCounts;
-		sampleLocationsProps.maxSampleLocationGridSize = {4, 4};
+		sampleLocationsProps.maxSampleLocationGridSize = maxSampleLocationGridSize;
 		sampleLocationsProps.sampleLocationCoordinateRange[0] = 0.f;
 		sampleLocationsProps.sampleLocationCoordinateRange[1] = 15.f / 16.f;
 		sampleLocationsProps.sampleLocationSubPixelBits = 4;
@@ -938,7 +936,7 @@ SlangResult DeviceImpl::readTextureResource(
 
 	auto desc = textureImpl->getDesc();
 	auto width = desc->size.width;
-	auto height = desc->size.height;
+	
 	FormatInfo sizeInfo;
 	SLANG_RETURN_ON_FAIL(gfxGetFormatInfo(desc->format, &sizeInfo));
 	Size pixelSize = sizeInfo.blockSizeInBytes / sizeInfo.pixelsPerBlock;
@@ -1350,9 +1348,8 @@ Result DeviceImpl::createTextureResource(
 		pTexture->mState.global = Falcor::Resource::State::Undefined;
 	}
 
-	VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
-
 #if SLANG_WINDOWS_FAMILY
+	VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
 	VkExternalMemoryHandleTypeFlags extMemoryHandleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 	if (descIn.isShared) {
 		externalMemoryImageCreateInfo.pNext = nullptr;
@@ -1542,10 +1539,10 @@ Result DeviceImpl::createTextureResource(
 		LLOG_DBG << "\tMip tail size: " << pTexture->mSparseImageMemoryRequirements.imageMipTailSize;
 
 		// Create signal semaphore for sparse binding
-		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCreateInfo.pNext = NULL;
-		semaphoreCreateInfo.flags = 0;
+		//VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+		//semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		//semaphoreCreateInfo.pNext = NULL;
+		//semaphoreCreateInfo.flags = 0;
 
 		//if ( m_api.vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &texture->mBindSparseSemaphore) != VK_SUCCESS ) {
 		//	LLOG_ERR << "Could not create semaphore !!!";
@@ -1615,10 +1612,6 @@ Result DeviceImpl::createTextureResource(
 
 			vmaMapMemory(m_api.mVmaAllocator, uploadBuffer.mAllocation, (void**)&dstData);
 
-			uint8_t* dstDataStart;
-			
-			dstDataStart = dstData;
-
 			Offset dstSubresourceOffset = 0;
 			for (int i = 0; i < arraySize; ++i) {
 				for (Index j = 0; j < mipSizes.getCount(); ++j) {
@@ -1657,7 +1650,7 @@ Result DeviceImpl::createTextureResource(
 			}
 
 			//m_api.vkUnmapMemory(m_device, uploadBuffer.m_memory);
-			vmaUnmapMemory(m_api.mVmaAllocator, uploadBuffer .mAllocation);
+			vmaUnmapMemory(m_api.mVmaAllocator, uploadBuffer.mAllocation);
 		}
 
 		_transitionImageLayout(

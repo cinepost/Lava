@@ -11,8 +11,8 @@
 #define BGEO_PARSER_VOLUME_H
 
 #include "Primitive.h"
-#include <UT/UT_VoxelArray.h>
-#include <UT/UT_Matrix4.h>
+#include "../houdini_inc.h"
+
 
 namespace ika
 {
@@ -56,7 +56,7 @@ public:
     void getMatrix(fpreal64 matrix[16]) const;
     void getBound(double bound[6]) const;
 
-    int64 getNumVoxels() const;
+    uint32_t getNumVoxels() const;
     void flattenVoxelData(fpreal32* target, int64 targetSize) const;
 
     int32 vertex;

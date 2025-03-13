@@ -20,7 +20,6 @@
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
 #include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
 #include "RenderPasses/OpenDenoisePass/OpenDenoisePass.h"
-#include "RenderPasses/ImageLoaderPass/ImageLoaderPass.h"
 
 namespace lava {
 
@@ -228,9 +227,9 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     bool bindToTexture(Falcor::Texture::SharedPtr pTexture);
 
-    AccumulatePass::SharedPtr               createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Dictionary& dict = {});
-    ToneMapperPass::SharedPtr               createTonemappingPass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
-    OpenDenoisePass::SharedPtr              createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
+    AccumulatePass::SharedPtr        createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Dictionary& dict = {});
+    ToneMapperPass::SharedPtr        createTonemappingPass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
+    OpenDenoisePass::SharedPtr       createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
 
     AccumulatePass::SharedPtr        accumulationPass() { return mpAccumulatePass; }
     AccumulatePass::SharedConstPtr   accumulationPass() const { return mpAccumulatePass; }
@@ -265,7 +264,6 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     AccumulatePass::SharedPtr           mpAccumulatePass = nullptr;
 
     // Internal render grpah passes
-    ImageLoaderPass::SharedPtr          mpImageLoaderPass = nullptr;
     ToneMapperPass::SharedPtr           mpToneMapperPass = nullptr;
     OpenDenoisePass::SharedPtr          mpDenoiserPass = nullptr;
 

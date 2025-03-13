@@ -46,12 +46,6 @@ bool VirtualTexturePage::allocate() {
 		// VirtualTexturePage already allocated
 		return false;
 	}
-
-	VkMemoryAllocateInfo memAllocInfo = {};
-	memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memAllocInfo.pNext = NULL;
-	memAllocInfo.allocationSize = mDevMemSize;
-	memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
 	
 	VkMemoryRequirements memRequirements = {};
 	memRequirements.size = mDevMemSize;

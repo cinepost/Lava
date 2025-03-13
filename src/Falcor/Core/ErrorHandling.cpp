@@ -47,6 +47,6 @@ namespace Falcor {
 
     void reportFatalError(const std::string& msg) {
         LLOG_FTL << msg;
-        std::quick_exit(1);
+        std::abort();
     }
 }

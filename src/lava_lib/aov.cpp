@@ -231,14 +231,17 @@ ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext*
 	LLOG_DBG << tonemapperPassName << " created";
 	mpToneMapperPass->setOutputFormat(mFormat);
 
-	// Unmark previously marked output
+	mpInternalRenderGraph->addPass(mpToneMapperPass, tonemapperPassName);
+
 	if(!mProcessedPassOutputName.empty() && mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
+		// Unmark previously marked output
 		mpInternalRenderGraph->unmarkOutput(mProcessedPassOutputName);
 		LLOG_DBG << "Unmarked output " << mProcessedPassOutputName;
+		mpInternalRenderGraph->addEdge(mProcessedPassOutputName, tonemapperPassName + ".input");
+	} else {
+		// Connect to extrenal resource
+		mpInternalRenderGraph->setInput(tonemapperPassName + ".input", mpRenderGraph->getOutput(mAccumulatePassColorOutputName));
 	}
-
-	mpInternalRenderGraph->addPass(mpToneMapperPass, tonemapperPassName);
-	mpInternalRenderGraph->addEdge(mProcessedPassOutputName, tonemapperPassName + ".input");
 
 	mProcessedPassOutputName = tonemapperPassName + ".output";
 	mpInternalRenderGraph->markOutput(mProcessedPassOutputName);
@@ -275,24 +278,32 @@ OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContex
 
 	LLOG_DBG << denoiserPassName << " created";
 
-	// Unmark previously marked output
+	mpInternalRenderGraph->addPass(mpDenoiserPass, denoiserPassName);
+
 	if(!mProcessedPassOutputName.empty() && mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
+		// Unmark previously marked output
 		mpInternalRenderGraph->unmarkOutput(mProcessedPassOutputName);
 		LLOG_DBG << "Unmarked output " << mProcessedPassOutputName;
+		mpInternalRenderGraph->addEdge(mProcessedPassOutputName, denoiserPassName + ".input");
+	} else {
+		// Connect to extrenal resource
+		mpInternalRenderGraph->setInput(denoiserPassName + ".input", mpRenderGraph->getOutput(mAccumulatePassColorOutputName));
 	}
 
-	mpInternalRenderGraph->addPass(mpDenoiserPass, denoiserPassName);
-	mpInternalRenderGraph->addEdge(mProcessedPassOutputName, denoiserPassName + ".input");
 
 	// Auxiliary albedo and normal
 	{
-		auto pResource = mpRenderGraph->getOutput(mAccumulatePassColorOutputName);
-			auto pTex = pResource ? pResource->asTexture() : nullptr;
-			if(pTex) {
-				mpImageLoaderPass->setSourceTexture(pTex);
-			} else {
-				LLOG_WRN << "No accumulation pass texture exist for processing !";
-			}
+    bool useAlbedo = mpDenoiserPass->enabledAlbedo();
+    bool useNormal = mpDenoiserPass->enabledNormal();
+	
+    if(useAlbedo && mpRenderGraph->isGraphOutput("AccumulatePass_ALBEDO.output")) {
+    	mpInternalRenderGraph->setInput(denoiserPassName + ".albedo", mpRenderGraph->getOutput("AccumulatePass_ALBEDO.output"));
+    }
+
+    if(useNormal) {
+
+    }
+
 	}
 
 	mProcessedPassOutputName = denoiserPassName + ".output";
@@ -316,25 +327,6 @@ void AOVPlane::createInternalRenderGraph(Falcor::RenderContext* pContext, bool f
 	if (! mpInternalRenderGraph) {
 		LLOG_ERR << "Error creating internal render graph " << internalGraphName;
 	}
-
-	if(!mpImageLoaderPass) {
-		mpImageLoaderPass = ImageLoaderPass::create(pContext);
-		if(!mAccumulatePassColorOutputName.empty() && mpRenderGraph->isGraphOutput(mAccumulatePassColorOutputName)) {
-			auto pResource = mpRenderGraph->getOutput(mAccumulatePassColorOutputName);
-			auto pTex = pResource ? pResource->asTexture() : nullptr;
-			if(pTex) {
-				mpImageLoaderPass->setSourceTexture(pTex);
-			} else {
-				LLOG_WRN << "No accumulation pass texture exist for processing !";
-			}
-		}
-	}
-
-	std::string imageLoaderPassName = "ImageLoaderPass_" + mInfo.name;
-
-	mProcessedPassOutputName = imageLoaderPassName + ".output";
-	mpInternalRenderGraph->addPass(mpImageLoaderPass, "ImageLoaderPass_" + mInfo.name);
-	mpInternalRenderGraph->markOutput(mProcessedPassOutputName);
 }
 
 bool AOVPlane::compileInternalRenderGraph(Falcor::RenderContext* pContext) {

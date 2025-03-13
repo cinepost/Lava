@@ -43,7 +43,7 @@ void SimpleProfiler::printReport() {
 		float stdev = sqrt((double)(ba::variance(p->second)));
 
 		size_t sum = ba::sum(p->second);
-    size_t cnt = ba::count(p->second);
+    	//size_t cnt = ba::count(p->second);
 		//float worst = ba::extract_result<ba::tag::max>(p->second);
 		//float best = ba::extract_result<ba::tag::min>(p->second);
 

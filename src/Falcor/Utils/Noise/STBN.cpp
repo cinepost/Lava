@@ -73,16 +73,6 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 
 	mNumPixels = mSizeX * mSizeY * mSizeZ * mChannelCount;
 
-	/*
-	// test
-	const PixelCoords pixelCoords = {5,6,7,3};
-	size_t pixelIndex = pixelCoordsToPixelIndex(pixelCoords);
-	PixelCoords calcCoords = pixelIndexToPixelCoords(pixelIndex);
-	LLOG_WRN << "PixelCoords: " << pixelCoords[0] << " " << pixelCoords[1] << " " << pixelCoords[2] << " " << pixelCoords[3];
-	LLOG_WRN << "Pixel index: " << pixelIndex;
-	LLOG_WRN << "PixelCoords: " << calcCoords[0] << " " << calcCoords[1] << " " << calcCoords[2] << " " << calcCoords[3];
-	*/
-
 	mKernelRadiusStartX = kernelRadius<false>(mSigmaX, mSizeX);
 	mKernelRadiusEndX = kernelRadius<true>(mSigmaX, mSizeX);
 	const int kernelRadiusMaxX = std::max(-mKernelRadiusStartX, mKernelRadiusEndX);
@@ -99,6 +89,11 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 	mKernelRadiusEndW = kernelRadius<true>(mSigmaW, mChannelCount);
 	const int kernelRadiusMaxW = std::max(-mKernelRadiusStartW, mKernelRadiusEndW);
 
+	assert(kernelRadiusMaxX > 0);
+	assert(kernelRadiusMaxY > 0);
+	assert(kernelRadiusMaxZ > 0);
+	assert(kernelRadiusMaxW > 0);
+
 	// Init buffers
 	mKernelX.resize(kernelRadiusMaxX + 1);
 	mKernelY.resize(kernelRadiusMaxY + 1);
@@ -113,7 +108,7 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 	{
 		mKernelX[0] = 1.0f;
 		float sum = 0.0f;
-		for (size_t index = 1; index <= kernelRadiusMaxX; ++index) {
+		for (size_t index = 1; index <= static_cast<size_t>(kernelRadiusMaxX); ++index) {
 			float x = float(index);
 			mKernelX[index] = exp(-(x * x) / (2.0f * sigmaX * sigmaX));
 			sum += mKernelX[index];
@@ -125,7 +120,7 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 	{
 		mKernelY[0] = 1.0f;
 		float sum = 0.0f;
-		for (size_t index = 1; index <= kernelRadiusMaxY; ++index) {
+		for (size_t index = 1; index <= static_cast<size_t>(kernelRadiusMaxY); ++index) {
 			float x = float(index);
 			mKernelY[index] = exp(-(x * x) / (2.0f * sigmaY * sigmaY));
 			sum += mKernelY[index];
@@ -137,7 +132,7 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 	{
 		mKernelZ[0] = 1.0f;
 		float sum = 0.0f;
-		for (size_t index = 1; index <= kernelRadiusMaxZ; ++index) {
+		for (size_t index = 1; index <= static_cast<size_t>(kernelRadiusMaxZ); ++index) {
 			float x = float(index);
 			mKernelZ[index] = exp(-(x * x) / (2.0f * sigmaZ * sigmaZ));
 			sum += mKernelZ[index];
@@ -148,7 +143,7 @@ Maker::Maker(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint8_t channelCoun
 	{
 		mKernelW[0] = 1.0f;
 		float sum = 0.0f;
-		for (size_t index = 1; index <= kernelRadiusMaxW; ++index) {
+		for (size_t index = 1; index <= static_cast<size_t>(kernelRadiusMaxW); ++index) {
 			float x = float(index);
 			mKernelW[index] = exp(-(x * x) / (2.0f * sigmaW * sigmaW));
 			sum += mKernelW[index];
@@ -212,7 +207,7 @@ void Maker::initData(std::vector<int> groups) {
   
   for (int group : uniqueGroupNumbers) {
     unsigned int mask = 0;
-    for (int index = 0; index < mDimsionality; ++index) {
+    for (uint index = 0; index < mDimsionality; ++index) {
       if (groups[index] != group) mask |= (1 << index);
     }
     mMasks.push_back(mask);
@@ -224,8 +219,8 @@ void Maker::initData(std::vector<int> groups) {
   
   const float logEnergyLoss = log(kEnergyLoss);
   
-  for (int i = 0; i < mDimsionality; ++i) {
-    int radius = int(sqrtf(-2.0f * sigmas[i] * sigmas[i] * logEnergyLoss));
+  for (uint i = 0; i < mDimsionality; ++i) {
+    uint radius = uint(sqrtf(-2.0f * sigmas[i] * sigmas[i] * logEnergyLoss));
 
     if (radius * 2 + 1 >= size[i]) {
         radius = (size[i] - 1) / 2;
@@ -243,7 +238,7 @@ size_t Maker::getTightestCluster() {
 	size_t clusterPixelIndex = 0;
 	float maxEnergy = -FLT_MAX;
 
-	for (int pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
+	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
 		if (!mPixelOn[pixelIndex]) continue;
 
 		if (mEnergy[pixelIndex] > maxEnergy) {
@@ -259,7 +254,7 @@ size_t Maker::getLargestVoid() {
 	size_t voidPixelIndex = 0;
 	float minEnergy = FLT_MAX;
 
-	for (int pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex){
+	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex){
 		if (mPixelOn[pixelIndex]) continue;
 
 		if (mEnergy[pixelIndex] < minEnergy) {
@@ -365,7 +360,6 @@ void Maker::runPhase1() {
 	LLOG_DBG << "STBN::Maker running phase 1";
 
 	size_t onesCount = getOnesCount();
-	size_t initialOnesCount = onesCount;
 
 	while (onesCount > 0) {
 		size_t tightestClusterIndex = getTightestCluster();
@@ -380,7 +374,7 @@ void Maker::runPhase1() {
 	}
 
 	// restore the "on" states
-	for (int pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
+	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
 		if (mPixelRank[pixelIndex] < mNumPixels) {
 			mPixelOn[pixelIndex] = true;
 			splatEnergy<true>(pixelIndex);

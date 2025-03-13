@@ -90,13 +90,14 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     using SharedPtr = std::shared_ptr<Resource>;
     using SharedConstPtr = std::shared_ptr<const Resource>;
-    //using ConstSharedPtrRef = const SharedPtr&;
+    
+    static void printUsage();
 
     /** Default value used in create*() methods
     */
     static const uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
 
-    virtual ~Resource() = 0;
+    virtual ~Resource();
 
     inline std::shared_ptr<Device> device() const { return mpDevice; }
 
@@ -193,7 +194,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
-    Type mType ;
+    Type mType;
     BindFlags mBindFlags;
 
     struct {

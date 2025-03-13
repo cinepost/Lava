@@ -188,8 +188,18 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 
 
 Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
-	: Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format), mIsSparse(false), 
-	  mMemRequirements({}), mIsSolid(false) {
+	: Resource(pDevice, type, bindFlags, 0), 
+		mWidth(width), 
+		mHeight(height), 
+		mDepth(depth), 
+		mMipLevels(mipLevels), 
+		mSampleCount(sampleCount), 
+		mArraySize(arraySize), 
+		mFormat(format), 
+		mIsSparse(false),  
+	  mIsSolid(false),
+	  mMemRequirements({}) 
+	  {
 	
 	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
@@ -362,9 +372,8 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 
 	RenderContext* pContext = mpDevice->getRenderContext();
 
-	// Handle the special case where we have an HDR texture with less then 3 channels
-	FormatType type = getFormatType(mFormat);
-	uint32_t channels = getFormatChannelCount(mFormat);
+	// TODO: Handle the special case where we have an HDR texture with less than 3 channels
+	//uint32_t channels = getFormatChannelCount(mFormat);
 	
 	if (mFormat != dstResourceFormat) {
 		uint32_t elementCount = getWidth(0) * getHeight(0);
@@ -382,7 +391,6 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
     	const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
 		
 		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
-		//pContext->flush(true);
 		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
 
 		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
@@ -392,7 +400,6 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 	} else {
 		uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
 		pContext->readTextureSubresource(this, subresource, pTextureData);
-		//pContext->flush(true);
 	}
 
 }
@@ -406,22 +413,8 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 
 	RenderContext* pContext = mpDevice->getRenderContext();
 
-	// Handle the special case where we have an HDR texture with less then 3 channels
-	FormatType type = getFormatType(mFormat);
-	channels = getFormatChannelCount(mFormat);
-	resourceFormat = mFormat;
-
-	//if (type == FormatType::Float && channels < 3) {
-	//	Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
-	//	pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
-	//	pContext->readTextureSubresource(pOther.get(), 0, textureData);
-	//	resourceFormat = ResourceFormat::RGBA32Float;
-	//} else {
-		uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
-		pContext->readTextureSubresource(this, subresource, textureData);
-	//}
-
-	//pContext->flush(true);
+	uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
+	pContext->readTextureSubresource(this, subresource, textureData);
 }
 
 void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {

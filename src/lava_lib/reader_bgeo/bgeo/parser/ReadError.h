@@ -12,8 +12,7 @@
 
 #include <stdexcept>
 
-#include <UT/UT_StringArray.h>
-#include <UT/UT_WorkBuffer.h>
+#include "../houdini_inc.h"
 
 namespace ika
 {

@@ -41,8 +41,7 @@ void Volume::getResolution(int32_t resolution[3]) const
     memcpy(resolution, m_volume.res, 3 * sizeof(int32_t));
 }
 
-int64_t Volume::getVoxelCount() const
-{
+uint64_t Volume::getVoxelCount() const {
     return m_volume.getNumVoxels();
 }
 
@@ -51,7 +50,7 @@ void Volume::getVoxels(std::vector<float>& voxels) const
     parser::Volume::extractVoxelData(m_volume, voxels);
 }
 
-/*virtual*/ int32_t Volume::getVertexCount() const
+/*virtual*/ uint32_t Volume::getVertexCount() const
 {
     return 1;
 }

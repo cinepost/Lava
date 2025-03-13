@@ -215,10 +215,11 @@ void AmbientOcclusionPass::setOutputFormat(ResourceFormat format) {
 }
 
 AmbientOcclusionPass& AmbientOcclusionPass::setShadingRate(int rate) {
-    rate = std::max(1u, static_cast<uint>(rate));
-    if(mShadingRate == rate) return *this;
-    mShadingRate = rate;
-    mDirty = true;
+    if(rate < 0) rate = 0;
+
+    uint _rate = std::max(1u, static_cast<uint>(rate));
+    if(mShadingRate != _rate) mDirty = true;
+    mShadingRate = _rate;
     return *this;
 }
 

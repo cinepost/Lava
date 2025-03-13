@@ -39,6 +39,7 @@ file( GLOB SOURCES
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
+    ./Utils/Debug/DebugMemAlloc.cpp
     ./Utils/Image/*.cpp
     ./Utils/Image/TextureDataCacheLRU.cpp
     ./Utils/Textures/*.cpp

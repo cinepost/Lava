@@ -6,9 +6,6 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "Primitive.h"
-
 #include "util.h"
 
 #include "Detail.h"
@@ -24,6 +21,9 @@
 #include "Volume.h"
 #include "AlembicRef.h"
 #include "Mesh.h"
+
+#include "Primitive.h"
+
 
 namespace ika {
 namespace bgeo {
@@ -50,7 +50,7 @@ const char* Primitive::toString(PrimType type) {
 }
 
 Primitive::PrimType Primitive::toPrimType(const UT_String& type) {
-    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++) {
+    for (uint i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++) {
         if (type == typeStringMap[i]) {
             return static_cast<Primitive::PrimType>(i);
         }

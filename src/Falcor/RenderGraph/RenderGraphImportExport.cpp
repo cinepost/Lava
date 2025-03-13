@@ -43,8 +43,8 @@ void updateGraphStrings(std::string& graph, std::string& file, std::string& func
     func = func.empty() ? RenderGraphIR::getFuncName(graph) : func;
 }
 
-void runScriptFile(const std::string& filename, const std::string& custom) {
 #ifdef SCRIPTING
+void runScriptFile(const std::string& filename, const std::string& custom) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         throw std::runtime_error("Can't find the file: " + filename);
@@ -52,8 +52,8 @@ void runScriptFile(const std::string& filename, const std::string& custom) {
 
     std::string script = readFile(fullpath) + custom;
     Scripting::runScript(script);
-#endif
 }
+#endif
 
 }  // namespace
 

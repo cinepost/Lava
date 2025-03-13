@@ -91,9 +91,8 @@ namespace {
 DebugShadingPass::SharedPtr DebugShadingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     auto pThis = SharedPtr(new DebugShadingPass(pRenderContext->device()));
         
-    for (const auto& [key, value] : dict) {
-    
-    }
+    //for (const auto& [key, value] : dict) {
+    //}
 
     return pThis;
 }
@@ -111,7 +110,7 @@ DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevic
 RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    const auto& texDims = compileData.defaultTexDims;
+    //const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
     
@@ -137,7 +136,6 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
 }
 
 void DebugShadingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    LLOG_WRN << "DebugShadingPass::compile";
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();
@@ -247,7 +245,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         // Visibility container mode opaque samples shading
         
         mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
-        //mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     } else {
         // Legacy (visibility buffer) mode shading
         mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
@@ -259,7 +256,6 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         cb_var["gFrameDim"] = mFrameDim;
 
         mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
-        //mpTransparentShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
     }
 
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->endFrame();

@@ -6,18 +6,16 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "PackedGeometry.h"
-
 #include <cassert>
 #include <limits>
-
-#include <UT/UT_JSONHandle.h>
 
 #include "Attribute.h"
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
+
+#include "PackedGeometry.h"
+
 
 namespace ika {
 namespace bgeo {
@@ -206,7 +204,7 @@ void PackedGeometry::getPivot(double pivot[3]) const
 
 void PackedGeometry::getTranslate(fpreal64 translate[3]) const
 {
-    int64 pointIndex = detail.getPointIndexForVertex(vertex);
+    uint64 pointIndex = detail.getPointIndexForVertex(vertex);
     const Attribute* attribute = detail.getPointAttributeByName("P");
     assert(attribute);
     attribute->data.copyTo(translate, 3, 1, pointIndex, 1);

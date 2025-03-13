@@ -16,6 +16,7 @@
 
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Utils/Debug/DebugMemAlloc.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
@@ -41,10 +42,14 @@ namespace Falcor {
 
 namespace lava {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+	
 static bool isInVector(const std::vector<std::string>& strVec, const std::string& str) {
 	return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
 
+#pragma GCC diagnostic push
 
 Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 	assert(pDevice);
@@ -52,7 +57,7 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 }
 
 
-Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
+Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mGlobalDataInited(false), mpFrameRate(nullptr), mpClock(nullptr), mActiveGraphID(0), mInited(false) {
 	mMainAOVPlaneExist = false;
 }
 
@@ -222,8 +227,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	assert(pMainAOV);
 	
 	auto const& confgStore = Falcor::ConfigStore::instance();
-	bool vtoff = confgStore.get<bool>("vtoff", true);
-
+	
 	Falcor::uint2 imageSize = {renderRegionDims[0], renderRegionDims[1]};
 
 	LLOG_DBG << "createRenderGraph frame dimensions: " << imageSize[0] << " " << imageSize[1];
@@ -513,7 +517,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpRenderGraph->addEdge("VBufferPass.depth", pMainAOV->accumulationPassDepthInputName());
 	}
 
-	// Create and bind additional AOV planes
+	// Bind additional AOV planes
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
 		if(!pPlane || !pPlane->isEnabled()) continue;
@@ -575,6 +579,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassColorInputName());
+						LLOG_INF << "!!!! " <<pPlane->accumulationPassColorOutputName();
 					}
 				}
 				break;
@@ -700,25 +705,36 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// MAIN (Beauty) pass image processing
 	if(mRenderPassesDict.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
-		Falcor::Dictionary lightingPassDictionary({});
+		Falcor::Dictionary tonemapPassDictionary({});
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.operator"))
-			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
+			tonemapPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.filmSpeed"))
-			lightingPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
+			tonemapPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.exposureValue"))
-			lightingPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
+			tonemapPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
 
 		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.autoExposure"))
-			lightingPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
+			tonemapPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
 	
-		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, lightingPassDictionary);
+		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, tonemapPassDictionary);
 	}
 
 	if(mRenderPassesDict.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
-		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
+		Falcor::Dictionary denoisePassDictionary({});
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.quality"))
+			denoisePassDictionary["quality"] = static_cast<OpenDenoisePass::Quality>(int(mRenderPassesDict["MAIN.OpenDenoisePass.quality"]));
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useAlbedo"))
+			denoisePassDictionary["useAlbedo"] = mRenderPassesDict["MAIN.OpenDenoisePass.useAlbedo"];
+
+		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useNormal"))
+			denoisePassDictionary["useNormal"] = mRenderPassesDict["MAIN.OpenDenoisePass.useNormal"];
+
+		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, denoisePassDictionary);
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
 			const auto pToneMapperPass = pMainAOV->tonemappingPass();
@@ -782,8 +798,8 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
 void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContext* pRenderContext) {
 	if (mGraphs.empty()) return;
 
-	auto& pGraph = mGraphs[mActiveGraph].pGraph;
-	LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
+	auto& pGraph = mGraphs[mActiveGraphID].pGraph;
+	LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
 	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
@@ -800,8 +816,8 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
 
 	if (mGraphs.empty()) return;
 
-	auto& pGraph = mGraphs[mActiveGraph].pGraph;
-	LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
+	auto& pGraph = mGraphs[mActiveGraphID].pGraph;
+	LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
 	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
@@ -841,7 +857,8 @@ void Renderer::finalizeScene(const FrameInfo& frame_info) {
 }
 
 void Renderer::bindAOVPlanesToResources() {
-	for (auto const& [name, pAOVPlane] : mAOVPlanes) {
+	for (auto const& entry : mAOVPlanes) {
+		auto& pAOVPlane = entry.second;
 		std::string passOutputName = pAOVPlane->accumulationPassColorOutputName();
 		if (passOutputName.empty()) {
 			LLOG_ERR << "AOV plane " << pAOVPlane->name() << " has no render pass output name !!! Resource binding skipped ...";
@@ -925,8 +942,6 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mCurrentSampleNumber = 0;
 	mCurrentFrameInfo = frame_info;
 
-	//auto& pScene = mpSceneBuilder->getScene();
-
 	// Clear previous frame dependent data
 	mpRenderGraph->endFrame(pRenderContext);
 	
@@ -937,6 +952,12 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 
 	pRenderContext->flush(true);
 	mDirty = false;
+
+	// Debug test
+	Resource::printUsage();
+	printMemAllocCount();
+
+	return true;
 }
 
 void Renderer::renderSample() {
@@ -967,7 +988,6 @@ void Renderer::renderSample() {
 	}
 
 	mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-	
 	// Hard sync every 16 samples. TODO: this is UGLY !
 	if (mCurrentSampleNumber % 16 == 0) {
 		//pRenderContext->flush(true);
@@ -1004,6 +1024,8 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 		return false;
 	}
 	//mpSceneBuilder->addMaterialX(std::move(pMaterial));
+
+	return true;
 }
 
 uint32_t Renderer::addStandardMaterial(Falcor::StandardMaterial::SharedPtr pMaterial) {

@@ -206,9 +206,7 @@ Result ShaderObjectImpl::_writeOrdinaryData(
     // be handled in this one location, rather than having some in `setObject()` and
     // others handled here.
     //
-    Index subObjectRangeCounter = 0;
     for (auto const& subObjectRangeInfo : specializedLayout->getSubObjectRanges()) {
-        Index subObjectRangeIndex = subObjectRangeCounter++;
         auto const& bindingRangeInfo =
             specializedLayout->getBindingRange(subObjectRangeInfo.bindingRangeIndex);
 
@@ -298,7 +296,7 @@ void ShaderObjectImpl::writeBufferDescriptor(
     if (buffer) {
         bufferInfo.buffer = buffer->m_buffer.m_buffer;
     }
-    
+
     bufferInfo.offset = bufferOffset;
     bufferInfo.range = bufferSize;
 
@@ -788,8 +786,11 @@ Result ShaderObjectImpl::allocateDescriptorSets(
     // as part of the shader object layout, so we use that information here.
     //
     for (auto descriptorSetInfo : specializedLayout->getOwnDescriptorSets()) {
-        auto descriptorSetHandle =
-            context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
+        auto descriptorSetHandle = context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
+
+        #ifdef _DEBUG
+        LLOG_TRC << "allocated descriptor set " << descriptorSetHandle;
+        #endif // _DEBUG
 
         // For each set, we need to write it into the set of descriptor sets
         // being used for binding. This is done both so that other steps
@@ -1045,8 +1046,7 @@ Result RootShaderObjectImpl::bindAsRoot(PipelineCommandEncoder* encoder, RootBin
     SLANG_RETURN_ON_FAIL(allocateDescriptorSets(encoder, context, offset, layout));
 
     BindingOffset ordinaryDataBufferOffset = offset;
-    SLANG_RETURN_ON_FAIL(
-        bindOrdinaryDataBufferIfNeeded(encoder, context, ordinaryDataBufferOffset, layout));
+    SLANG_RETURN_ON_FAIL(bindOrdinaryDataBufferIfNeeded(encoder, context, ordinaryDataBufferOffset, layout));
 
     SLANG_RETURN_ON_FAIL(bindAsValue(encoder, context, offset, layout));
 

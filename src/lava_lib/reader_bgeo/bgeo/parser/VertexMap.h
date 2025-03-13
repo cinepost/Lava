@@ -28,10 +28,10 @@ class VertexMap {
     void load(UT_JSONParser& parser, int64 vertexCount);
 
     const int32* getVertices() const { return vertices; };
-    const int64  getVertexCount() const { return vertexCount; };
+    const uint64  getVertexCount() const { return vertexCount; };
 
     int32* vertices;
-    int64 vertexCount;
+    uint64 vertexCount;
 
     friend std::ostream& operator << (std::ostream& co, const VertexMap& map);
 };

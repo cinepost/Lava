@@ -38,9 +38,6 @@ VkPipelineShaderStageCreateInfo ShaderProgramImpl::compileEntryPoint(
     VkShaderStageFlagBits stage,
     VkShaderModule& outShaderModule)
 {
-    char const* dataBegin = (char const*)code->getBufferPointer();
-    char const* dataEnd = (char const*)code->getBufferPointer() + code->getBufferSize();
-
     // We need to make a copy of the code, since the Slang compiler
     // will free the memory after a compile request is closed.
 

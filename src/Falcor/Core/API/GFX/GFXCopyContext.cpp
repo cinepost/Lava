@@ -377,6 +377,7 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 	mCommandsPending = true;
 }
 
+/*
 static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
 	std::random_device rd;
 	std::mt19937 rndEngine(rd());
@@ -396,6 +397,7 @@ static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
 		}
 	}
 }
+*/
 
 void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDataInOnePage) {
 	assert(pTexture);
@@ -451,18 +453,17 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
 
   const Texture* pTexture = pPage->texture().get();
   
-	uint8_t* dataPtr = (uint8_t*)pData;
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
 	gfx::ITextureResource::Offset3D gfxOffset = pPage->offsetGFX();
 	gfx::ITextureResource::Extents gfxSize = pPage->extentGFX();
 	gfx::FormatInfo formatInfo = {};
 	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
 
-	gfx::SubresourceRange subresourceRange = {};
-	subresourceRange.baseArrayLayer = 0;
-	subresourceRange.mipLevel = pPage->mipLevel();
-	subresourceRange.layerCount = 1;
-	subresourceRange.mipLevelCount = 1;
+	//gfx::SubresourceRange subresourceRange = {};
+	//subresourceRange.baseArrayLayer = 0;
+	//subresourceRange.mipLevel = pPage->mipLevel();
+	//subresourceRange.layerCount = 1;
+	//subresourceRange.mipLevelCount = 1;
 
 	gfx::ITextureResource::SubresourceData data = {};
 	data.data = (uint8_t*)pData;

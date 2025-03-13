@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "lava_utils_lib/logging.h"
+
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 

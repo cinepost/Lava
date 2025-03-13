@@ -85,7 +85,7 @@ CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice,
 RenderPassReflection CryptomattePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    const auto& texDims = compileData.defaultTexDims;
+    //const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
     addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);

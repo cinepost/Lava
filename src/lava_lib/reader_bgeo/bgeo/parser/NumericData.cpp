@@ -6,31 +6,23 @@
  *  http://opensource.org/licenses/MIT>, at your option. This file may not be
  *  copied, modified, or distributed except according to those terms.
  */
-
-#include "NumericData.h"
-
 #include <memory>
 #include <iostream>
-
-#include <UT/UT_String.h>
-#include <UT/UT_JSONHandle.h>
 
 #include "util.h"
 #include "lava_utils_lib/logging.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include "NumericData.h"
 
-namespace
-{
+
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+namespace {
 
 template <typename T>
-class TupleFlattener : public UT_JSONHandleError
-{
+class TupleFlattener : public UT_JSONHandleError {
 public:
     TupleFlattener(ByteBuffer& buffer)
         : m_buffer(buffer),
@@ -143,7 +135,7 @@ public:
         }
 
         // verify that we read all the elements we need
-        if (m_stack == 0 && m_index != m_flags.size())
+        if (m_stack == 0 && m_index != (int)m_flags.size())
         {
             UT_String message;
             message.sprintf("Expected %ld bool tuple values, but read %ld",
@@ -162,7 +154,7 @@ private:
 
     void setCurrentElement(bool value)
     {
-        if (m_index >= m_flags.size())
+        if (m_index >= (int)m_flags.size())
         {
             UT_String message;
             message.sprintf("Bool tuple array expecting total of %ld elements", m_flags.size());
@@ -198,6 +190,9 @@ void NumericData::load(UT_JSONParser &parser)
 {
     UT_WorkBuffer buffer;
     UT_String key;
+
+    assert(tupleSize <= std::numeric_limits<int32>::max());
+
     for (auto it = parser.beginArray(); !it.atEnd(); ++it)
     {
         it.getLowerKey(buffer);
@@ -253,7 +248,7 @@ void NumericData::load(UT_JSONParser &parser)
                 assert(packing.size() * numPages == constantPageFlags.size());
                 for (int page = 0; page < numPages; ++page)
                 {
-                    for (int pack = 0; pack < packing.size(); ++pack)
+                    for (size_t pack = 0; pack < packing.size(); ++pack)
                     {
                         assert(pack * numPages + page < constantPageFlags.size());
                         int elementsLeft = elementCount - (page * pageSize);
@@ -299,7 +294,7 @@ void NumericData::load(UT_JSONParser &parser)
             {
                 packTotal += packing[i];
             }
-            assert(packTotal == tupleSize);
+            assert(packTotal == (int32)tupleSize);
         }
         else if (key == "pagesize")
         {
@@ -365,7 +360,7 @@ void NumericData::getUnpackedData(uint8* unpacked, int64 unpackedByteCount,
         if (useFlags)
         {
             packTotalPageSize = 0;
-            for (int pack = 0; pack < packing.size(); ++pack)
+            for (size_t pack = 0; pack < packing.size(); ++pack)
             {
                 if (constantPageFlags[pack * numPages + page])
                 {
@@ -388,10 +383,10 @@ void NumericData::getUnpackedData(uint8* unpacked, int64 unpackedByteCount,
         {
             int packOffset = 0;
             int unpackOffset = 0;
-            for (int pack = 0; pack < packing.size(); ++pack)
+            for (int pack = 0; pack < (int)packing.size(); ++pack)
             {
                 int flagIndex = pack * numPages + page;
-                assert(!useFlags || flagIndex < constantPageFlags.size());
+                assert(!useFlags || flagIndex < (int)constantPageFlags.size());
 
                 int packIndex;
                 if (useFlags && constantPageFlags[flagIndex])

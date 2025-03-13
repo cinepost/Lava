@@ -34,6 +34,9 @@
 
 #include "lava_utils_lib/logging.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 /** Color conversion utility functions.
 
     Falcor currently assumes all input/outputs are in sRGB, which uses the
@@ -208,5 +211,7 @@ namespace Falcor {
     }
 
 }  // namespace Falcor
+
+#pragma GCC diagnostic pop
 
 #endif  // SRC_FALCOR_UTILS_COLOR_COLORUTILS_H_

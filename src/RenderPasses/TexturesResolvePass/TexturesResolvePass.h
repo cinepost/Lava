@@ -81,7 +81,6 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		void updateTexturesResolveData();
 
 		void createMipCalibrationTexture(RenderContext* pRenderContext);
-		void createLtxCalibrationTexture(RenderContext* pRenderContext);
 
 		void setDefaultSampler();
 

@@ -212,7 +212,8 @@ void GraphicsStateObject::apiInit() {
   auto& targetBlendDescs = desc.blend.targets;
   {
     desc.blend.targetCount = blendState->getRtCount();
-    for (gfx::UInt i = 0; i < desc.blend.targetCount; ++i) {
+    FALCOR_ASSERT(desc.blend.targetCount >= 0);
+    for (gfx::UInt i = 0; i < (gfx::UInt)desc.blend.targetCount; ++i) {
       auto& rtDesc = blendState->getRtDesc(i);
       auto& gfxRtDesc = targetBlendDescs[i];
       gfxRtDesc.enableBlend = rtDesc.blendEnabled;
@@ -278,7 +279,7 @@ void GraphicsStateObject::apiInit() {
 
         for (uint32_t j = 0; j < bufferLayout->getElementCount(); ++j) {
           gfx::InputElementDesc elementDesc = {};
-          gfx::VertexStreamDesc vertexStreamDesc = {};
+          //gfx::VertexStreamDesc vertexStreamDesc = {};
 
           elementDesc.format = getGFXFormat(bufferLayout->getElementFormat(j));
           elementDesc.offset = bufferLayout->getElementOffset(j);

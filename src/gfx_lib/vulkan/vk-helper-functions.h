@@ -1,8 +1,16 @@
 // vk-helper-functions.h
-#pragma once
+#ifndef GFX_LIB_VULKAN_VK_HELPER_FUNCTIONS_H_
+#define GFX_LIB_VULKAN_VK_HELPER_FUNCTIONS_H_
+
+#include <string>
 
 #include "vk-base.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-blob.h"
+#pragma GCC diagnostic pop
+
 #include "vk-util.h"
 
 // Vulkan has a different coordinate system to ogl
@@ -180,3 +188,39 @@ VkImageAspectFlags getAspectMaskFromFormat(VkFormat format);
 Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer);
 
 } // namespace gfx
+
+// string conversions
+
+inline std::string to_string(VkDescriptorType dt) {
+#define dt2s(t_) case t_: return #t_;
+    switch (dt) {
+        dt2s(VK_DESCRIPTOR_TYPE_SAMPLER);
+        dt2s(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        dt2s(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+        dt2s(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        dt2s(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+        dt2s(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+        dt2s(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        dt2s(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        dt2s(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+        dt2s(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+        dt2s(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+
+
+        dt2s(VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK);
+        dt2s(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+        dt2s(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV);
+        dt2s(VK_DESCRIPTOR_TYPE_MUTABLE_VALVE);
+        dt2s(VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM);
+        dt2s(VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM);
+        dt2s(VK_DESCRIPTOR_TYPE_MAX_ENUM);
+        default:
+            return "";
+        //    should_not_get_here();
+        //    return "";
+    }
+#undef dt2s
+}
+
+
+#endif  // GFX_LIB_VULKAN_VK_HELPER_FUNCTIONS_H_

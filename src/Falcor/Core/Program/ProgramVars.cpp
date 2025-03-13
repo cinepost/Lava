@@ -119,10 +119,8 @@ namespace Falcor
         //
         FALCOR_ASSERT(mpProgramVersion);
         FALCOR_ASSERT(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
-        auto pProgram = static_cast<RtProgram*>(mpProgramVersion->getProgram().get());
         auto pReflector = mpProgramVersion->getReflector();
 
-        auto& rtDesc = pProgram->getRtDesc();
         std::set<int32_t> entryPointGroupIndices;
 
         // Ray generation and miss programs are easy: we just allocate space
@@ -131,9 +129,7 @@ namespace Falcor
         const auto& info = pBindingTable->getRayGen();
         FALCOR_ASSERT(info.isValid());
         mRayGenVars.resize(1);
-#if defined(FALCOR_D3D12)
-        mRayGenVars[0].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-#elif defined(FALCOR_GFX)
+#if defined(FALCOR_GFX)
         mRayGenVars[0].entryPointGroupIndex = info.groupIndex;
 #endif
         entryPointGroupIndices.insert(info.groupIndex);
@@ -150,9 +146,7 @@ namespace Falcor
                 continue;
             }
 
-#if defined(FALCOR_D3D12)
-            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-#elif defined(FALCOR_GFX)
+#if defined(FALCOR_GFX)
             mMissVars[i].entryPointGroupIndex = info.groupIndex;
 #endif
             entryPointGroupIndices.insert(info.groupIndex);

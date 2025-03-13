@@ -207,9 +207,11 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 	}
 
 	// Burn in user parameters
+	/*
 	for(auto const& userParm : userParams) {
 		// TODO: do we need this !?
 	}
+	*/
 
 	// Write metadata
 	if(pMetaData) {

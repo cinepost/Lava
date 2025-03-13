@@ -130,13 +130,6 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 
-    // Jitter texture sampler
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
-        .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap)
-        .setUnnormalizedCoordinates(true);
-
-    mpJitterSampler = Sampler::create(pDevice, samplerDesc);
     mpSTBNGenerator = STBNGenerator::create(pDevice, uint3(32, 32, 16), STBNGenerator::Type::Scalar, ResourceFormat::R32Float, true /* async */);
 
     mpSTBNOffsetGenerator = StratifiedSamplePattern::create(kSTBNOffsetsCount);
@@ -147,23 +140,6 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         mSTBNOffsets[i][0] = static_cast<uint>(rnd[0] * stbn_dims[0]);
         mSTBNOffsets[i][1] = static_cast<uint>(rnd[1] * stbn_dims[1]);
     }   
-
-    // test
-    const auto& deviceProps = mpDevice->getPhysicalDeviceProperties();
-    uint3 maxComputeWorkGroupCount, maxComputeWorkGroupSize;
-    uint32_t maxComputeWorkGroupInvocations = deviceProps.limits.maxComputeWorkGroupInvocations;
-
-    maxComputeWorkGroupCount.x = deviceProps.limits.maxComputeWorkGroupCount[0];
-    maxComputeWorkGroupCount.y = deviceProps.limits.maxComputeWorkGroupCount[1];
-    maxComputeWorkGroupCount.z = deviceProps.limits.maxComputeWorkGroupCount[2];
-
-    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[0];
-    maxComputeWorkGroupSize.y = deviceProps.limits.maxComputeWorkGroupSize[1];
-    maxComputeWorkGroupSize.x = deviceProps.limits.maxComputeWorkGroupSize[2];
-
-    //LLOG_WRN << "maxComputeWorkGroupInvocations " << maxComputeWorkGroupInvocations;
-    //LLOG_WRN << "maxComputeWorkGroupCount " << to_string(maxComputeWorkGroupCount);
-    //LLOG_WRN << "maxComputeWorkGroupSize " << to_string(maxComputeWorkGroupSize);
 
     mDirty = true;
 }
@@ -415,7 +391,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     }
 
     const uint32_t meshletDrawsCount = mpMeshletDrawListBuffer ? mpMeshletDrawListBuffer->getElementCount() : 0;
-    const uint32_t threadsX = meshletDrawsCount;// * kMaxGroupThreads;
     const uint32_t dispatchX = kMaxGroupThreads;
 
     {
@@ -456,7 +431,6 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         //}
 
         var["gJitterTexture"] = mpJitterTexture;
-        var["gJitterSampler"] = mpJitterSampler;
 
         // Bind output channels as UAV buffers.
         auto bind = [&](const ChannelDesc& channel) {
@@ -498,33 +472,22 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Frustum culling pass
 
     // Meshlets rasterization pass
-    LLOG_DBG << "Software rasterizer dispatchX size " << std::to_string(dispatchX);
-    LLOG_DBG << "Software rasterizer threads count " << std::to_string(mOpaqueMeshletsCount + mTransparentMeshletsCount);
-
-    if(1 == 1) {    
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        if(mTransparentMeshletsCount == 0) {
-            
-            var["gVBufferSW"]["drawableOffset"] = 0;
-            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
-        } else {
-            // Rasterize opaque meshlets first
-            var["gVBufferSW"]["drawableOffset"] = 0;
-            var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
-
-            // Rasterize potentially transparent meshlets second
-            var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
-            var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
-        }
+    ShaderVar var = mpComputeRasterizerPass->getRootVar();
+    if(mTransparentMeshletsCount == 0) {
+        
+        var["gVBufferSW"]["drawableOffset"] = 0;
+        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
     } else {
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        for(uint i = 0; i < meshletDrawsCount; ++i) {
-            var["gVBufferSW"]["drawableIndex"] = i;
-            mpComputeRasterizerPass->execute(pRenderContext, uint3(1, 1, 1));
-        }
+        // Rasterize opaque meshlets first
+        var["gVBufferSW"]["drawableOffset"] = 0;
+        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
+
+        // Rasterize potentially transparent meshlets second
+        var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
+        var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
+        mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
     }
 
     mSampleNumber++;
@@ -560,7 +523,6 @@ void VBufferSW::createMicroTrianglesBuffer() {
     return;
     if(!mDirty) return;
 
-    static uint32_t kMaxMicroTriangles = VBufferSW::kMeshletMaxTriangles * pow(2u, kMaxLOD * 2u);
     const uint32_t maxMicroTrianglesCount = mMaxMicroTrianglesPerThread * kMaxGroupThreads;
 
     if(mpMicroTrianglesBuffer && (mpMicroTrianglesBuffer->getElementCount() == maxMicroTrianglesCount)) return;
@@ -608,8 +570,6 @@ void VBufferSW::createMeshletDrawList() {
     std::vector<MeshletDraw> meshletsDrawList;
     std::vector<MeshletDraw> nonOpaqueMeshletsDrawList;
 
-    const std::vector<uint32_t>& meshletPrimIndicesList = mpScene->getMeshletPrimIndicesList();
-    
     for(uint32_t instanceID = 0; instanceID < mpScene->getGeometryInstanceCount(); ++instanceID) {
         const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(instanceID);
         if(instanceData.getType() != GeometryType::TriangleMesh) continue; // Only triangles now
@@ -621,11 +581,9 @@ void VBufferSW::createMeshletDrawList() {
             if(meshletGroup.meshlets_count == 0) continue;
             if(isSubdivInstance) mSubdivMeshletsCount++;
 
-            const MeshDesc& mesh = mpScene->getMesh(meshID);
+            //const MeshDesc& mesh = mpScene->getMesh(meshID);
             
             bool isOpaqueInstanceMaterial = isOpaqueMaterial(mpScene->getMaterial(instanceData.materialID));
-            bool instanceHasMultipleMaterials = instanceData.hasMultipleMaterials() && (instanceData.mbOffset != kInvalidIndex);
-
             LLOG_TRC << "Mesh " << meshID << " has " << meshletGroup.meshlets_count << " meshlets";
                 
             for(uint32_t i = 0; i < meshletGroup.meshlets_count; ++i) {
@@ -635,15 +593,6 @@ void VBufferSW::createMeshletDrawList() {
                 draw.drawCount = 1;
 
                 bool isOpaqueMehslet = isOpaqueInstanceMaterial;
-
-                if(instanceHasMultipleMaterials) {
-                    const PackedMeshletData& packedMeshletData = mpScene->getPackedMeshletData(draw.meshletID);
-                    //uint meshlet_offset;    ///< Offset into scene meshlets buffer.
-                    //uint meshlets_count;    ///< Number of meshlets within this group.
-
-                    uint primIndexOffset = packedMeshletData.primIndexOffset();
-                    uint primCount = packedMeshletData.primCount();
-                }
 
                 if(isOpaqueMehslet) {
                     meshletsDrawList.push_back(draw);

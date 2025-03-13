@@ -36,7 +36,8 @@
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "LightCollectionShared.slang"
-#include "Scene/Scene.h"
+#include "Falcor/Scene/Scene.h"
+#include "Falcor/Scene/Lights/Light.h"
 
 #include <sstream>
 
@@ -231,7 +232,8 @@ bool LightLinker::buildActiveLightsData(bool force) {
 bool LightLinker::buildLightsIndirectionData(bool force) {
     if(!force || mActiveLightIDsMap.empty()) return false;
 
-    bool rebuildIndirectionGPUBuffer = false;
+    //bool rebuildIndirectionGPUBuffer = false;
+    
     const std::vector<uint32_t> prevIndirectionData = mIndirectionData;
 
     mIndirectionData.clear();

@@ -494,7 +494,8 @@ static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDe
 	char* name;
 	const char* dot;
 	std::string prefix;
-	int i, offset;
+	uint i; 
+	int offset;
 	int format;
 
 	// Map the RIB types to the types expected by imdisplay
@@ -601,12 +602,15 @@ static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDe
 }
 
 static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFormat* formats) {
-	int i, ok;
+	if (nformats < 1) return 0;
+
+	uint i; 
+	int ok;
 	vector< h_shared_ptr< H_ChanDef > > defs;
 
 #if D_HOUDINI_DEBUG_LEVEL > 0
 	log(0, "SCAN %d formats\n", nformats);
-	for (i = 0; i < nformats; ++i) {
+	for (i = 0; i < (uint)nformats; ++i) {
 		unsigned int format_type = formats[i].type & PkDspyMaskType;
 		const char* type;
 
@@ -637,11 +641,7 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 	}
 #endif
 
-    if (nformats < 1) {
-		return 0;
-    }
-
-    for (i = 0; i < nformats; ++i) {
+    for (i = 0; i < (uint)nformats; ++i) {
 		addChanDef(formats[i], defs, i, img->isHalfFloat());
     }
 
@@ -920,6 +920,10 @@ PtDspyError DspyImageQuery(PtDspyImageHandle pvImage,
 		int datalen,
 		void* data)
 {
+	if(datalen <= 0) return PkDspyErrorBadParams;
+
+	size_t data_size = static_cast<size_t>(datalen);
+
     H_MultiRes* mr = static_cast<H_MultiRes*>(pvImage);
 
 	// get the current multi-res level
@@ -927,16 +931,17 @@ PtDspyError DspyImageQuery(PtDspyImageHandle pvImage,
 	PtDspySizeInfo	 size_info;
 	PtDspyMultiResolutionQuery multiResolution_info;
 
-	log(0, "Image Query: %d/%d\n", query, datalen);
-	memset(data, 0, datalen);
+	log(0, "Image Query: %d/%zu\n", query, data_size);
+	memset(data, 0, data_size);
 	switch (query) {
 		case PkOverwriteQuery: {
 			PtDspyOverwriteInfo	overinfo;
-			if (datalen > sizeof(overinfo))
-				datalen = sizeof(overinfo);
+			if (data_size > sizeof(overinfo)) {
+				data_size = sizeof(overinfo);
+			}
 			overinfo.overwrite = 0;
 			overinfo.interactive = 1;
-			memcpy(data, &overinfo, datalen);
+			memcpy(data, &overinfo, data_size);
 			break;
 		}
 		case PkRenderingStartQuery:
@@ -945,31 +950,31 @@ PtDspyError DspyImageQuery(PtDspyImageHandle pvImage,
         case PkRedrawQuery:
         { 
             PtDspyRedrawInfo redrawInfo;
-            if (datalen > sizeof(redrawInfo))
-                datalen = sizeof(redrawInfo);
+            if (data_size > sizeof(redrawInfo))
+                data_size = sizeof(redrawInfo);
             redrawInfo.redraw = 1;
-            memcpy(data, &redrawInfo, datalen);
+            memcpy(data, &redrawInfo, data_size);
             break;
         }
 
 		case PkSizeQuery:
-            if (datalen > sizeof(size_info)) {
-				datalen = sizeof(size_info);
+            if (data_size > sizeof(size_info)) {
+				data_size = sizeof(size_info);
             }
             
             size_info.width = mr->getImage()->getXres();
             size_info.height = mr->getImage()->getYres();
 
             size_info.aspectRatio = 1.0F;
-			memcpy(data, &size_info, datalen);
+			memcpy(data, &size_info, data_size);
 			break;
 
 		case PkMultiResolutionQuery:
-            if (datalen > sizeof(multiResolution_info)) {
-				datalen = sizeof(multiResolution_info);
+            if (data_size > sizeof(multiResolution_info)) {
+				data_size = sizeof(multiResolution_info);
             }
 			multiResolution_info.supportsMultiResolution = 1;
-			memcpy(data, &multiResolution_info, datalen);
+			memcpy(data, &multiResolution_info, data_size);
 			break;
 
 		case PkSupportsCheckpointing:
@@ -1283,13 +1288,13 @@ int H_Image::getEntrySize(void) const {
 bool H_Image::writeChannelHeader() {
     FILE* fp = myIMD->GetFile();
 
-    int header[8];
+    uint header[8];
     ::memset(header, 0, sizeof(header));
 
-    for (int i = 0; i < myChannels.size(); ++i) {
+    for (size_t i = 0; i < myChannels.size(); ++i) {
         const H_Channel& chp = *myChannels[i];
         // Now, define each channel
-        int namelen = strlen(chp.getName().c_str());
+        uint namelen = strlen(chp.getName().c_str());
         header[0] = i;
         header[1] = namelen;
         header[2] = chp.getFormat();
@@ -1359,7 +1364,6 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 #if USE_OMP
 	const int nOMPThreadsCount = getMaximumAllowedOMPThreadsCount();
 	omp_set_num_threads(nOMPThreadsCount);
-//	#pragma omp parallel for collapse(2) private(sy, sx, pDataCurr, destPixelOffset)
 	#pragma omp parallel for
 #endif
 
@@ -1367,7 +1371,9 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 #if USE_OMP
 		const size_t threadIndex = static_cast<uint32_t>(omp_get_thread_num());
 #else
+#if USE_WRITE_SCANLINES
 		const size_t threadIndex = 0;
+#endif  // USE_WRITE_SCANLINES
 #endif
 
 #if USE_WRITE_SCANLINES
@@ -1376,11 +1382,6 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 
 	// We double bytes_per_pixel if have to convert from float16 to float32
 	const int scanLineBytesPerPixel = convertF16toF32 ? (2 * bytes_per_pixel) : bytes_per_pixel;	
-
-	//std::vector<std::vector<uint8_t>> scanlines(myChannels.size());
-	//for(auto& scanline: scanlines) {
-	//	scanline.resize(size_t(xres * scanLineBytesPerPixel));
-	//}
 #endif
 		// for each x pixel of the destination tile
 		for (int sx = 0; sx < xres; ++sx) {
@@ -1397,7 +1398,7 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 			// copy the data for each channel....
 			if(convertF16toF32) {
 				// Our data is in float16 format. We have to convert it to float32 for now (idisplay limitation)
-				for (int ch = 0; ch < myChannels.size(); ++ch) {
+				for (size_t ch = 0; ch < myChannels.size(); ++ch) {
 					float f[4]; //buffer
 					for(int _i = 0; _i < myChannels[ch]->getArraySize(); _i++) f[_i] = pDataCurr ? glm::detail::toFloat32(*reinterpret_cast<const short*>(pDataCurr + _i*2)) : 0.f;
 				#if USE_WRITE_SCANLINES
@@ -1409,7 +1410,7 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 				}
 			} else {
 				// Just send data as it is
-				for (int ch = 0; ch < myChannels.size(); ++ch) {
+				for (size_t ch = 0; ch < myChannels.size(); ++ch) {
 				#if !USE_WRITE_SCANLINES
 					const char* ptr = pDataCurr ? pDataCurr : reinterpret_cast<const char*>(g_zeroData);
 					myChannels[ch]->writePixel(ptr, destPixelOffset);
@@ -1419,7 +1420,7 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 		}
 
 	#if USE_WRITE_SCANLINES
-		for (int ch = 0; ch < myChannels.size(); ++ch) {
+		for (size_t ch = 0; ch < myChannels.size(); ++ch) {
 			if(convertF16toF32) {
 				// Send converted scanline
 				//myChannels[ch]->writeScanline(reinterpret_cast<const char*>(scanlines[ch].data()), destPixelOffset, (scanLinePixelsCount-1));
@@ -1436,9 +1437,9 @@ bool H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pDat
 
 	FILE* fp = myIMD->GetFile();
 
-    for (int ch = 0; ch < myChannels.size(); ++ch) {
-        int chanId = ch + myChannelOffset;
-        if (!myChannels[ch]->closeTile(fp, chanId, x0, x1, y0, y1)) {
+    for (size_t ch = 0; ch < myChannels.size(); ++ch) {
+        size_t chanId = ch + myChannelOffset;
+        if (!myChannels[ch]->closeTile(fp, static_cast<int>(chanId), x0, x1, y0, y1)) {
 			log(1, "H_Image::writeData error closing tile !!!\n");
 			return false;
 		}

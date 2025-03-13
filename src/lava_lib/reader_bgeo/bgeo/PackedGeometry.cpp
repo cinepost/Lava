@@ -22,38 +22,31 @@ PackedGeometry::PackedGeometry(const parser::PackedGeometry& packed, std::shared
 {
 }
 
-/*virtual*/ int32_t PackedGeometry::getVertexCount() const
-{
+/*virtual*/ uint32_t PackedGeometry::getVertexCount() const {
     return 1;
 }
 
-bool PackedGeometry::hasBoundingBox() const
-{
+bool PackedGeometry::hasBoundingBox() const {
     return m_packed.hasBounds();
 }
 
-void PackedGeometry::getBoundingBox(double bounds[]) const
-{
+void PackedGeometry::getBoundingBox(double bounds[]) const {
     m_packed.getBounds(bounds);
 }
 
-void PackedGeometry::getPivot(double pivot[]) const
-{
+void PackedGeometry::getPivot(double pivot[]) const {
     m_packed.getPivot(pivot);
 }
 
-void PackedGeometry::getTranslate(double translate[]) const
-{
+void PackedGeometry::getTranslate(double translate[]) const {
     m_packed.getTranslate(translate);
 }
 
-void PackedGeometry::getExtraTransform(double transform[]) const
-{
+void PackedGeometry::getExtraTransform(double transform[]) const {
     m_packed.getTransform(transform);
 }
 
-const std::shared_ptr<Bgeo> PackedGeometry::getEmbeddedGeo() const
-{
+const std::shared_ptr<Bgeo> PackedGeometry::getEmbeddedGeo() const {
     return m_embedded;
 }
 

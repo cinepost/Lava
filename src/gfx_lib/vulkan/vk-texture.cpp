@@ -10,7 +10,7 @@ using namespace Slang;
 namespace vk {
 
 TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): Parent(desc), 
-    m_device(device), mTailMemoryAllocated(false), mAllocation(VK_NULL_HANDLE), mAllocationInfo{}, mBindSparseSemaphore(VK_NULL_HANDLE) {
+    mAllocation(VK_NULL_HANDLE), mAllocationInfo{}, mBindSparseSemaphore(VK_NULL_HANDLE), mTailMemoryAllocated(false), m_device(device) {
 }
 
 TextureResourceImpl::~TextureResourceImpl() {
