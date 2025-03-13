@@ -118,6 +118,7 @@ std::string InternalDictionary::toJsonString() const {
 
 InternalDictionary& InternalDictionary::update(const InternalDictionary& d) {
     for(auto const& e: d) mContainer[e.first] = e.second;
+    return *this;
 }
 
 template<>
