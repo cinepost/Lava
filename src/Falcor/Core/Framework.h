@@ -89,6 +89,10 @@ namespace fs = boost::filesystem;
 #include "Falcor/Utils/Math/Vector.h"
 #include "lava_utils_lib/logging.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
 #endif

@@ -9,6 +9,19 @@
 #include <sstream>
 #include <atomic>
 
+#ifdef _WIN32
+#define FALCOR_API_EXPORT __declspec(dllexport)
+#define FALCOR_API_IMPORT __declspec(dllimport)
+#else
+#define FALCOR_API_EXPORT
+#define FALCOR_API_IMPORT
+#endif
+
+#ifdef FALCOR_DLL
+#define FALCOR_API FALCOR_API_EXPORT
+#else
+#define FALCOR_API FALCOR_API_IMPORT
+#endif
 
 #ifdef NO_DEBUG
 
@@ -77,6 +90,6 @@ inline void operator delete(void *, void *, boost_container_new_t) {
 
 #endif // _DEBUG
 
-void printMemAllocCount();
+FALCOR_API void printMemAllocCount();
 
 #endif // __FALCOR_UTILS_DEBUG_MEMALLOC_H__

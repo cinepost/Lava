@@ -95,7 +95,7 @@ static void calcCameraDataChanges(Camera::Changes& changes, const CameraData& da
 	if (prevData.jitterY != data.jitterY) changes |= Changes::Jitter;
 }
 
-static Camera::Changes calcCameraXformChanges(Camera::Changes& changes, const CameraXformData& data, const CameraXformData& prevData) {
+static void calcCameraXformChanges(Camera::Changes& changes, const CameraXformData& data, const CameraXformData& prevData) {
 	using Changes = Camera::Changes;
 
 	if (prevData.cameraU != data.cameraU) changes |= Changes::Movement;
