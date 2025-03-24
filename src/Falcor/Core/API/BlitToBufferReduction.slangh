@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_BLITTOBUFFERREDUCTION_H_
+#define SRC_FALCOR_CORE_API_BLITTOBUFFERREDUCTION_H_
 
 // Type defines shared between host and device.
 #define FORMAT_TYPE_UNKNOWN 0
@@ -34,3 +35,5 @@
 #define FORMAT_TYPE_UINT    3
 #define FORMAT_TYPE_SNORM   4
 #define FORMAT_TYPE_UNORM   5
+
+#endif  // SRC_FALCOR_CORE_API_BLITTOBUFFERREDUCTION_H_

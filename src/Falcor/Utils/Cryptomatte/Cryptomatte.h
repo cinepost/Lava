@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 
+#include "Falcor/Core/Macros.h"
 #include <Falcor/Core/Framework.h>
 
 #include "MurmurHash.h"
@@ -31,7 +32,7 @@ enum class CryptoNameFlags : uint8_t {
   CRYPTO_NAME_ALL           = 255
 };
 
-enum_class_operators(CryptoNameFlags);
+ENUM_CLASS_OPERATORS(CryptoNameFlags);
 
 namespace {
 

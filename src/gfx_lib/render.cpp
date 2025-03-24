@@ -4,9 +4,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-math.h"
+#include "core/slang-blob.h"
 #pragma GCC diagnostic pop
 
-#include "debug-layer.h"
+#include "debug-layer/debug-device.h"
 
 #include <cstring>
 
@@ -15,8 +16,10 @@ using namespace Slang;
 
 
 Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outDevice);
+Result SLANG_MCALL getVKAdapters(List<AdapterInfo>& outAdapters);
 
 static bool debugLayerEnabled = false;
+bool isGfxDebugLayerEnabled() { return debugLayerEnabled; }
 
 /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Global Renderer Functions !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
 
@@ -218,6 +221,43 @@ extern "C" {
         *outInfo = s_formatInfoMap.get(format);
         return SLANG_OK;
     }
+
+    SLANG_GFX_API SlangResult SLANG_MCALL gfxGetAdapters(DeviceType type, ISlangBlob** outAdaptersBlob) {
+        List<AdapterInfo> adapters;
+
+        switch (type)
+        {
+#if SLANG_WINDOWS_FAMILY
+        case DeviceType::OpenGl:
+            return SLANG_E_NOT_IMPLEMENTED;
+#endif
+#if SLANG_WINDOWS_FAMILY || SLANG_LINUX_FAMILY
+        // Assume no Vulkan or CUDA on MacOS or Cygwin
+        case DeviceType::Vulkan:
+            SLANG_RETURN_ON_FAIL(getVKAdapters(adapters));
+            break;
+        case DeviceType::CUDA:
+            return SLANG_E_NOT_IMPLEMENTED;
+#endif
+#if SLANG_APPLE_FAMILY
+        case DeviceType::Vulkan:
+            SLANG_RETURN_ON_FAIL(getVKAdapters(adapters));
+            break;
+        case DeviceType::Metal:
+            return SLANG_E_NOT_IMPLEMENTED;
+#endif
+        case DeviceType::CPU:
+            return SLANG_E_NOT_IMPLEMENTED;
+        default:
+            return SLANG_E_INVALID_ARG;
+        }
+
+        auto adaptersBlob = RawBlob::create(adapters.getBuffer(), adapters.getCount() * sizeof(AdapterInfo));
+        if (outAdaptersBlob)
+            returnComPtr(outAdaptersBlob, adaptersBlob);
+
+        return SLANG_OK;
+    }
     
     SLANG_GFX_API SlangResult SLANG_MCALL gfxCreateDevice(const IDevice::Desc* desc, IDevice** outDevice) {
         ComPtr<IDevice> innerDevice;
@@ -230,7 +270,7 @@ extern "C" {
             return resultCode;
         }
 
-        RefPtr<DebugDevice> debugDevice = new DebugDevice();
+        RefPtr<debug::DebugDevice> debugDevice = new debug::DebugDevice();
         debugDevice->baseObject = innerDevice;
         returnComPtr(outDevice, debugDevice);
         return resultCode;

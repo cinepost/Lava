@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_FENCEDPOOL_H_
+#define SRC_FALCOR_CORE_API_FENCEDPOOL_H_
 
 #include <queue>
 #include <memory>
@@ -110,3 +111,5 @@ private:
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_FENCEDPOOL_H_

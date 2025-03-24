@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GFX_FALCORGFX_H_
+#define SRC_FALCOR_CORE_API_GFX_FALCORGFX_H_
+
 #define NOMINMAX
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -35,6 +37,7 @@
 #include <Windows.h>
 #endif 
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
 
@@ -49,11 +52,14 @@
 #define FALCOR_GFX
 #endif
 
+
+#ifndef FALCOR_NVAPI_AVAILABLE
 #if FALCOR_ENABLE_NVAPI
 #define FALCOR_NVAPI_AVAILABLE 1
 #else
 #define FALCOR_NVAPI_AVAILABLE 0
 #endif
+#endif  // FALCOR_NVAPI_AVAILABLE
 
 #if FALCOR_GFX_VK
 // If we are building Falcor with GFX backend + Vulkan support, define `FALCOR_VK_AVAILABLE` so users
@@ -70,8 +76,6 @@
 #endif
 
 #include <vulkan/vulkan.h>
-
-#define FALCOR_GFX_CALL(a) {auto hr_ = a; if(SLANG_FAILED(hr_)) { reportError(#a); }}
 
 template<typename BlobType>
 inline std::string convertBlobToString(BlobType* pBlob)
@@ -106,7 +110,7 @@ enum class RayFlags : uint32_t {
     SkipTriangles = 0x100,
     SkipProceduralPrimitives = 0x200,
 };
-enum_class_operators(RayFlags);
+ENUM_CLASS_OPERATORS(RayFlags);
 
 // Maximum raytracing attribute size.
 inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
@@ -240,3 +244,5 @@ inline std::string to_string(VkResult result) {
 
     /*! @} */
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GFX_FALCORGFX_H_

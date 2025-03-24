@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/API/VAO.h"
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Scene/Material/Material.h"
@@ -473,7 +474,7 @@ inline std::string to_string(GeometryType g) {
 }
 #undef geometry_type_str
 
-enum_class_operators(Geometry::Mesh::UpdateFlags);
+ENUM_CLASS_OPERATORS(Geometry::Mesh::UpdateFlags);
 
 }  // namespace Falcor
 

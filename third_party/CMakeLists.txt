@@ -606,8 +606,8 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openvdb
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openvdb
   )
-  ExternalProject_Get_property(OpenVDB SOURCE_DIR)
   ExternalProject_Add_StepDependencies(OpenVDB configure zlib Tbb Boost Blosc)
+  ExternalProject_Get_property(OpenVDB SOURCE_DIR)
 
 endif()
 
@@ -1446,11 +1446,51 @@ else()
 endif()
 
 ########################
+# FMT section
+########################
+
+if( NOT EXTERNAL_FMT_VERSION)
+  set(EXTERNAL_FMT_VERSION 11.0.2) 
+endif()
+
+set(fmt_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(fmt ${EXTERNAL_FMT_VERSION} EXACT)
+
+if( fmt_FOUND )
+  add_custom_target( fmt COMMAND echo "FMT build exists, skipping rebuild ...")
+else()
+
+  message("FMT lib not found! Running external build ...")
+  set(FMT_PREFIX fmt)
+
+  ExternalProject_Add ( fmt
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${FMT_PREFIX}
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG ${EXTERNAL_FMT_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=ON
+    CMAKE_ARGS -D FMT_DOC:BOOL=OFF
+    CMAKE_ARGS -D FMT_TEST:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${FMT_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${FMT_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${FMT_PREFIX}
+  )
+
+endif()
+
+########################
 # Slang section
 ########################
 
 if( NOT EXTERNAL_SLANG_VERSION )
-  set(EXTERNAL_SLANG_VERSION 0.24.8) # last tested version was 0.18.6
+  message( FATAL_ERROR "No EXTERNAL_SLANG_VERSION set !!!" )
 endif()
 
 set(Slang_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -1462,20 +1502,7 @@ if( Slang_FOUND )
 else()
 
 set(SLANG_PREFIX slang)
-if(WIN32)
-set(SLANG_PLATFORM windows-x64)
-else()
-set(SLANG_PLATFORM linux-x64)
-endif()
-
-if(WIN32)
-set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
-else()
-set(SLANG_BUILD_LIBS "slang slang-glslang")
-endif()
-
-set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
-set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
+set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm")
 
 if(NOT DEFINED SLANG_BUILD_TYPE)
   set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
@@ -1483,17 +1510,17 @@ endif()
 
 
 if(SLANG_BUILD_TYPE STREQUAL "Release")
-  set(SLANG_BUILD_CONFIG release_x64)
-  set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
+  set(SLANG_BUILD_CONFIG release)
+  set(SLANG_BIN_DIR "build/Release")
 elseif(SLANG_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  set(SLANG_BUILD_CONFIG release_x64)
-  set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
+  set(SLANG_BUILD_CONFIG releaseWithDebugInfo)
+  set(SLANG_BIN_DIR "build/RelWithDebInfo")
 elseif(SLANG_BUILD_TYPE STREQUAL "MinSizeRel")
-  set(SLANG_BUILD_CONFIG release_x64)
-  set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
+  set(SLANG_BUILD_CONFIG release)
+  set(SLANG_BIN_DIR "build/Release")
 else()
-  set(SLANG_BUILD_CONFIG debug_x64)
-  set(SLANG_BIN_DIR ${SLANG_DEBUG_BIN_DIR})
+  set(SLANG_BUILD_CONFIG debug)
+  set(SLANG_BIN_DIR "build/Debug")
 endif()
 
 message("Slang build config " ${SLANG_BUILD_CONFIG})
@@ -1501,90 +1528,89 @@ message("Slang build config " ${SLANG_BUILD_CONFIG})
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
 if(WIN32)
-ExternalProject_Add( Slang
-  PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
-  GIT_REPOSITORY https://github.com/shader-slang/slang.git
-  GIT_TAG v${EXTERNAL_SLANG_VERSION}
-  UPDATE_DISCONNECTED ON
-  BUILD_IN_SOURCE   TRUE
-  LOG_BUILD ON
-  USES_TERMINAL ON
-  USES_TERMINAL_CONFIGURE ON
+  ExternalProject_Add( Slang
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
+    GIT_REPOSITORY https://github.com/shader-slang/slang.git
+    GIT_TAG v${EXTERNAL_SLANG_VERSION}
+    UPDATE_DISCONNECTED ON
+    BUILD_IN_SOURCE   TRUE
+    LOG_BUILD ON
+    USES_TERMINAL ON
+    USES_TERMINAL_CONFIGURE ON
 
-  CONFIGURE_COMMAND
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
-    COMMAND ${CMAKE_COMMAND}
-      -D PREMAKE_URL=https://github.com/premake/premake-core/releases/download/v5.0.0-beta3/premake-5.0.0-beta3-windows.zip
+    CONFIGURE_COMMAND
+      COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
+      COMMAND ${CMAKE_COMMAND}
+        -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
+        -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
+      COMMAND ${CMAKE_COMMAND}
+        -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+        -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
+        -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
+      COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+
+    BUILD_COMMAND 
+      COMMAND
+        msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
+
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
       -D SOURCE_DIR=<SOURCE_DIR>
-      -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
-    COMMAND ${CMAKE_COMMAND}
-      -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-      -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
-      -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-    COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+      -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
+      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
 
-  BUILD_COMMAND 
-    COMMAND
-      msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
-
-  INSTALL_COMMAND ${CMAKE_COMMAND}
-    -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
-    -D SOURCE_DIR=<SOURCE_DIR>
-    -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
-    -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
-
-  TMP_DIR ${EXTERNALS_TMP_DIR}/slang
-  STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
-)
+    TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
+  )
 else()
-ExternalProject_Add( Slang
-  PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
-  GIT_REPOSITORY https://github.com/shader-slang/slang.git
-  GIT_TAG v${EXTERNAL_SLANG_VERSION}
-  UPDATE_DISCONNECTED ON
-  BUILD_IN_SOURCE   TRUE
-  LOG_BUILD ON
-  USES_TERMINAL ON
-  USES_TERMINAL_CONFIGURE ON
+  ############################################################
+  #
+  # Ubuntu install packages: g++-9, ninja-build, cmake >= 3.25
+  #
+  ############################################################
 
-  CONFIGURE_COMMAND
-    COMMAND ${CMAKE_COMMAND}
-      -D PREMAKE_URL=https://github.com/premake/premake-core/releases/download/v5.0.0-alpha16/premake-5.0.0-alpha16-linux.tar.gz
+  ExternalProject_Add( Slang
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
+    GIT_REPOSITORY https://github.com/shader-slang/slang.git
+    GIT_TAG v${EXTERNAL_SLANG_VERSION}
+    UPDATE_DISCONNECTED ON
+    BUILD_IN_SOURCE   TRUE
+    LOG_BUILD ON
+
+    CONFIGURE_COMMAND
+      COMMAND ${CMAKE_COMMAND}
+        -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+        -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
+        -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
+      
+    BUILD_COMMAND
+      COMMAND ${CMAKE_COMMAND} --preset default
+      COMMAND ${CMAKE_COMMAND} --build --preset ${SLANG_BUILD_CONFIG}
+
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
       -D SOURCE_DIR=<SOURCE_DIR>
-      -D OUTPUT_FILE=<SOURCE_DIR>/premake5
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
-    COMMAND ${CMAKE_COMMAND}
-      -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-      -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
-      -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-    COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+      -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
+      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
 
-  BUILD_COMMAND 
-    COMMAND
-      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
-
-  INSTALL_COMMAND ${CMAKE_COMMAND}
-    -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
-    -D SOURCE_DIR=<SOURCE_DIR>
-    -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
-    -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
-
-  TMP_DIR ${EXTERNALS_TMP_DIR}/slang
-  STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
-)
+    TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
+  )
 endif()
 
 endif()
+
 
 #######################
 
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
 add_dependencies( dummy_target
+  fmt
   zlib
   Tbb
   CpuInfo

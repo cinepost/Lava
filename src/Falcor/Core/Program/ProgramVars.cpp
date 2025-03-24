@@ -26,11 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ComputeProgram.h"
-#include "Core/API/ComputeContext.h"
-#include "Core/API/RenderContext.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/Device.h"
 
 #include <slang/slang.h>
 

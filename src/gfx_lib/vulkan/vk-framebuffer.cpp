@@ -146,8 +146,10 @@ Result FramebufferImpl::init(DeviceImpl* renderer, const IFramebuffer::Desc& des
     }
     else
     {
-        m_width = 1;
-        m_height = 1;
+        // In case we create an "empty" framebuffer, use the maximum viewport dimensions.
+        // This to allow arbitrary viewport sizes when rendering to the empty framebuffer.
+        m_width = m_renderer->m_api.m_deviceProperties.limits.maxViewportDimensions[0];
+        m_height = m_renderer->m_api.m_deviceProperties.limits.maxViewportDimensions[1];
         layerCount = 1;
     }
     if (layerCount == 0)
@@ -164,20 +166,26 @@ Result FramebufferImpl::init(DeviceImpl* renderer, const IFramebuffer::Desc& des
         auto resourceView = static_cast<TextureResourceViewImpl*>(desc.renderTargetViews[i]);
         renderTargetViews[i] = resourceView;
         imageViews[i] = resourceView->m_view;
-        memcpy(
-            &m_clearValues[i],
-            &resourceView->m_texture->getDesc()->optimalClearValue.color,
-            sizeof(gfx::ColorClearValue));
+        if (resourceView->m_texture->getDesc()->optimalClearValue)
+        {
+            memcpy(
+                &m_clearValues[i],
+                &resourceView->m_texture->getDesc()->optimalClearValue->color,
+                sizeof(gfx::ColorClearValue));
+        }
     }
 
     if (dsv)
     {
         imageViews[desc.renderTargetCount] = dsv->m_view;
         depthStencilView = dsv;
-        memcpy(
-            &m_clearValues[desc.renderTargetCount],
-            &dsv->m_texture->getDesc()->optimalClearValue.depthStencil,
-            sizeof(gfx::DepthStencilClearValue));
+        if (dsv->m_texture->getDesc()->optimalClearValue)
+        {
+            memcpy(
+                &m_clearValues[desc.renderTargetCount],
+                &dsv->m_texture->getDesc()->optimalClearValue->depthStencil,
+                sizeof(gfx::DepthStencilClearValue));
+        }
     }
 
     // Create framebuffer.
@@ -195,6 +203,5 @@ Result FramebufferImpl::init(DeviceImpl* renderer, const IFramebuffer::Desc& des
         m_renderer->m_api.m_device, &framebufferInfo, nullptr, &m_handle));
     return SLANG_OK;
 }
-
 } // namespace vk
 } // namespace gfx

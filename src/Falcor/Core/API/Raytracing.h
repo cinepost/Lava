@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_RAYTRACING_H_
 #define SRC_FALCOR_CORE_API_RAYTRACING_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 
 namespace Falcor {
@@ -38,7 +39,7 @@ namespace Falcor {
 		SkipTriangles = 0x1,
 		SkipProceduralPrimitives = 0x2,
 	};
-	enum_class_operators(RtPipelineFlags);
+	ENUM_CLASS_OPERATORS(RtPipelineFlags);
 
 	/** Raytracing axis-aligned bounding box.
 	*/

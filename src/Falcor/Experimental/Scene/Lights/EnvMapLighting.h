@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPLIGHTING_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPLIGHTING_H_
+
 #include "Scene/Lights/EnvMap.h"
 
 namespace Falcor
@@ -84,4 +86,6 @@ namespace Falcor
         Texture::SharedPtr mpSpecularTexture;
         Sampler::SharedPtr mpSampler;
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPLIGHTING_H_

@@ -25,131 +25,148 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include <iostream>
-#include <iomanip>
-
-#include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/Utils/Timing/Profiler.h"
-
 #include "PrefixSum.h"
+#include "Core/Error.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
 
 
 namespace Falcor {
     
-namespace {
-
+namespace
+{
 const char kShaderFile[] = "Utils/Algorithm/PrefixSum.cs.slang";
 const uint32_t kGroupSize = 1024;
+} // namespace
 
-}
-
-PrefixSum::PrefixSum(std::shared_ptr<Device> pDevice) {
+PrefixSum::PrefixSum(ref<Device> pDevice) : mpDevice(pDevice)
+{
     // Create shaders and state.
-    Program::DefineList defines = { {"GROUP_SIZE", std::to_string(kGroupSize)} };
-    mpPrefixSumGroupProgram = ComputeProgram::createFromFile(pDevice, kShaderFile, "groupScan", defines);
-    mpPrefixSumGroupVars = ComputeVars::create(pDevice, mpPrefixSumGroupProgram.get());
-    mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(pDevice, kShaderFile, "finalizeGroups", defines);
-    mpPrefixSumFinalizeVars = ComputeVars::create(pDevice, mpPrefixSumFinalizeProgram.get());
+    DefineList defines = {{"GROUP_SIZE", std::to_string(kGroupSize)}};
+    mpPrefixSumGroupProgram = Program::createCompute(mpDevice, kShaderFile, "groupScan", defines);
+    mpPrefixSumGroupVars = ProgramVars::create(mpDevice, mpPrefixSumGroupProgram.get());
+    mpPrefixSumFinalizeProgram = Program::createCompute(mpDevice, kShaderFile, "finalizeGroups", defines);
+    mpPrefixSumFinalizeVars = ProgramVars::create(mpDevice, mpPrefixSumFinalizeProgram.get());
 
-    mpComputeState = ComputeState::create(pDevice);
+    mpComputeState = ComputeState::create(mpDevice);
 
-    // Create and bind buffer for per-group sums.
-    mpPrefixGroupSums = Buffer::create(pDevice, kGroupSize * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+    // Create and bind buffer for per-group sums and total sum.
+    mpPrefixGroupSums = mpDevice->createBuffer(
+        kGroupSize * sizeof(uint32_t),
+        ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType::DeviceLocal,
+        nullptr
+    );
+    mpTotalSum = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr);
+    mpPrevTotalSum = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr);
 
-    mpPrefixSumGroupVars["gPrefixGroupSums"] = mpPrefixGroupSums;
-    mpPrefixSumFinalizeVars["gPrefixGroupSums"] = mpPrefixGroupSums;
-}
-
-PrefixSum::SharedPtr PrefixSum::create(std::shared_ptr<Device> pDevice) {
-    return SharedPtr(new PrefixSum(pDevice));
-}
-
-bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum, Buffer::SharedPtr pTotalSumBuffer, uint64_t pTotalSumOffset) {
-    PROFILE(pRenderContext->device(), "PrefixSum::execute");
-
-    assert(pRenderContext);
-    assert(elementCount > 0);
-    assert(pData && pData->getSize() >= elementCount * sizeof(uint32_t));
-
-    // The current implementation is limited to N groups of 2N elements, where N = thread group size.
-    // This is because we reuse the 1st pass to also compute the prefix sum across the thread groups.
-    // It is easy to generalize this by adding an extra pass to compute the per-group prefix sum if needed
-    // (with that large data sets, we probably want that for efficiency reasons anyway).
-    const uint32_t maxElementCount = kGroupSize * kGroupSize * 2;
-    if (elementCount > maxElementCount) {
-        LLOG_ERR << "PrefixSum::execute() - Maximum supported element count is " << std::to_string(maxElementCount) << ". Aborting.";
-        return false;
-    }
-
-    // Compute number of thread groups in the first pass. Each thread operates on two elements.
-    const uint32_t numPrefixGroups = std::max(1u, div_round_up(elementCount, kGroupSize * 2));
-    assert(numPrefixGroups > 0 && numPrefixGroups < kGroupSize);
-
-    // Pass 1: compute per-thread group prefix sums.
     {
-        // Clear group sums to zero.
-        pRenderContext->clearUAV(mpPrefixGroupSums->getUAV().get(), uint4(0));
-
-        // Set constants and data.
-        mpPrefixSumGroupVars["CB"]["gNumGroups"] = numPrefixGroups;
-        mpPrefixSumGroupVars["CB"]["gNumElems"] = elementCount;
-        mpPrefixSumGroupVars["gData"] = pData;
-
-        mpComputeState->setProgram(mpPrefixSumGroupProgram);
-        pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumGroupVars.get(), { numPrefixGroups, 1, 1 });
+        auto var = mpPrefixSumGroupVars->getRootVar();
+        var["gPrefixGroupSums"] = mpPrefixGroupSums;
+        var["gTotalSum"] = mpTotalSum;
+        var["gPrevTotalSum"] = mpPrevTotalSum;
     }
+    {
+        auto var = mpPrefixSumFinalizeVars->getRootVar();
+        var["gPrefixGroupSums"] = mpPrefixGroupSums;
+        var["gTotalSum"] = mpTotalSum;
+        var["gPrevTotalSum"] = mpPrevTotalSum;
+    }
+}
 
-    // Add UAV barriers for our buffers to make sure writes from the previous pass finish before the next pass.
-    // This is necessary since the buffers are bound as UAVs in both passes and there are no resource transitions.
-    
-    #ifdef FALCOR_D3D12
-    pRenderContext->uavBarrier(pData.get());
-    pRenderContext->uavBarrier(mpPrefixGroupSums.get());
-    #else 
-    pRenderContext->flush(true);
-    #endif
+void PrefixSum::execute(
+    RenderContext* pRenderContext,
+    ref<Buffer> pData,
+    uint32_t elementCount,
+    uint32_t* pTotalSum,
+    ref<Buffer> pTotalSumBuffer,
+    uint64_t pTotalSumOffset
+)
+{
+    FALCOR_PROFILE(pRenderContext, "PrefixSum::execute");
 
+    FALCOR_ASSERT(pRenderContext);
+    FALCOR_ASSERT(elementCount > 0);
+    FALCOR_ASSERT(pData && pData->getSize() >= elementCount * sizeof(uint32_t));
 
-    // Pass 2: finalize prefix sum by adding the sums to the left to each group.
-    // This is only necessary if we have more than one group.
-    if (numPrefixGroups > 1) {
-        // Compute number of thread groups. Each thread operates on one element.
-        // Note that we're skipping the first group of 2N elements, as no add is needed (their group sum is zero).
-        const uint dispatchSizeX = (numPrefixGroups - 1) * 2;
-        assert(dispatchSizeX > 0);
+    // Clear total sum to zero.
+    pRenderContext->clearUAV(mpTotalSum->getUAV().get(), uint4(0));
 
-        // Set constants and data.
-        mpPrefixSumFinalizeVars["CB"]["gNumGroups"] = numPrefixGroups;
-        mpPrefixSumFinalizeVars["CB"]["gNumElems"] = elementCount;
-        mpPrefixSumFinalizeVars["gData"] = pData;
+    uint32_t maxElementCountPerIteration = kGroupSize * kGroupSize * 2;
+    uint32_t totalElementCount = elementCount;
+    uint32_t iterationsCount = div_round_up(totalElementCount, maxElementCountPerIteration);
 
-        mpComputeState->setProgram(mpPrefixSumFinalizeProgram);
-        pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumFinalizeVars.get(), { dispatchSizeX, 1, 1 });
+    for (uint32_t iter = 0; iter < iterationsCount; iter++)
+    {
+        // Compute number of thread groups in the first pass. Each thread operates on two elements.
+        uint32_t numPrefixGroups = std::max(1u, div_round_up(std::min(elementCount, maxElementCountPerIteration), kGroupSize * 2));
+        FALCOR_ASSERT(numPrefixGroups > 0 && numPrefixGroups <= kGroupSize);
+
+        // Copy previus iterations total sum to read buffer.
+        pRenderContext->copyResource(mpPrevTotalSum.get(), mpTotalSum.get());
+
+        // Pass 1: compute per-thread group prefix sums.
+        {
+            // Clear group sums to zero.
+            pRenderContext->clearUAV(mpPrefixGroupSums->getUAV().get(), uint4(0));
+
+            // Set constants and data.
+            auto var = mpPrefixSumGroupVars->getRootVar();
+            var["CB"]["gNumGroups"] = numPrefixGroups;
+            var["CB"]["gTotalNumElems"] = totalElementCount;
+            var["CB"]["gIter"] = iter;
+            var["gData"] = pData;
+
+            mpComputeState->setProgram(mpPrefixSumGroupProgram);
+            pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumGroupVars.get(), {numPrefixGroups, 1, 1});
+        }
+
+        // Add UAV barriers for our buffers to make sure writes from the previous pass finish before the next pass.
+        // This is necessary since the buffers are bound as UAVs in both passes and there are no resource transitions.
+        pRenderContext->uavBarrier(pData.get());
+        pRenderContext->uavBarrier(mpPrefixGroupSums.get());
+
+        // Pass 2: finalize prefix sum by adding the sums to the left to each group.
+        // This is only necessary if we have more than one group.
+        if (numPrefixGroups > 1)
+        {
+            // Compute number of thread groups. Each thread operates on one element.
+            // Note that we're skipping the first group of 2N elements, as no add is needed (their group sum is zero).
+            const uint32_t dispatchSizeX = (numPrefixGroups - 1) * 2;
+            FALCOR_ASSERT(dispatchSizeX > 0);
+
+            // Set constants and data.
+            auto var = mpPrefixSumFinalizeVars->getRootVar();
+            var["CB"]["gNumGroups"] = numPrefixGroups;
+            var["CB"]["gTotalNumElems"] = totalElementCount;
+            var["CB"]["gIter"] = iter;
+            var["gData"] = pData;
+
+            mpComputeState->setProgram(mpPrefixSumFinalizeProgram);
+            pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumFinalizeVars.get(), {dispatchSizeX, 1, 1});
+        }
+
+        // Subtract the number of elements handled this iteration.
+        elementCount -= maxElementCountPerIteration;
     }
 
     // Copy total sum to separate destination buffer, if specified.
-    if (pTotalSumBuffer) {
-        if (pTotalSumOffset + 4 > pTotalSumBuffer->getSize()) {
-            LLOG_ERR << "PrefixSum::execute() - Results buffer is too small. Aborting.";
-            return false;
+    if (pTotalSumBuffer)
+    {
+        if (pTotalSumOffset + 4 > pTotalSumBuffer->getSize())
+        {
+            FALCOR_THROW("PrefixSum::execute() - Results buffer is too small.");
         }
 
-        assert(numPrefixGroups > 0);
-        uint64_t srcOffset = (numPrefixGroups - 1) * 4;
-        pRenderContext->copyBufferRegion(pTotalSumBuffer.get(), pTotalSumOffset, mpPrefixGroupSums.get(), srcOffset, 4);
+        pRenderContext->copyBufferRegion(pTotalSumBuffer.get(), pTotalSumOffset, mpTotalSum.get(), 0, 4);
     }
 
     // Read back sum of all elements to the CPU, if requested.
-    if (pTotalSum) {
-        uint32_t* pGroupSums = (uint32_t*)mpPrefixGroupSums->map(Buffer::MapType::Read);
-        assert(pGroupSums);
-        assert(numPrefixGroups > 0);
-        *pTotalSum = pGroupSums[numPrefixGroups - 1];
-        mpPrefixGroupSums->unmap();
+    if (pTotalSum)
+    {
+        *pTotalSum = mpTotalSum->getElement<uint32_t>(0);
     }
-
-    return true;
 }
 
 }  // namespace Falcor

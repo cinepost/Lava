@@ -28,17 +28,9 @@
 #ifndef SRC_FALCOR_SCENE_SCENEBUILDER_H_
 #define SRC_FALCOR_SCENE_SCENEBUILDER_H_
 
-#include <map>
-#include <bitset>
-#include <string>
-#include <unordered_map>
-#include <atomic>
-
-#include "Falcor/Utils/Scripting/Dictionary.h"
-#include "Falcor/Utils/ThreadPool.h"
-
 #include "Scene.h"
 #include "SceneCache.h"
+#include "SceneIDs.h"
 #include "Transform.h"
 #include "TriangleMesh.h"
 #include "Material/MaterialTextureLoader.h"
@@ -46,8 +38,17 @@
 #include "VertexAttrib.slangh"
 
 #include "Falcor/Scene/Lights/LightLinker.h"
+#include "Falcor/Scene/Geometry.h"
 
-#include "Geometry.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/ThreadPool.h"
+
+#include <map>
+#include <bitset>
+#include <string>
+#include <unordered_map>
+#include <atomic>
 
 
 namespace Falcor {
@@ -183,7 +184,7 @@ class dlldecl SceneBuilder {
         uint32_t vertexCount = 0;                   ///< The number of vertices.
         uint32_t indexCount = 0;                    ///< The number of indices (i.e., tube segments).
         const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
-        Material::SharedPtr pMaterial;              ///< The curve's material. Can't be nullptr.
+        ref<Material> pMaterial;                    ///< The curve's material. Can't be nullptr.
 
         Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
         Attribute<float> radius;                    ///< Array of sphere radius. This field is required.
@@ -197,7 +198,7 @@ class dlldecl SceneBuilder {
     struct ProcessedCurve {
         std::string name;
         Vao::Topology topology = Vao::Topology::LineStrip;
-        Material::SharedPtr pMaterial;
+        ref<Material> pMaterial;
 
         std::vector<uint32_t> indexData;
         std::vector<StaticCurveVertexData> staticData;
@@ -209,25 +210,30 @@ class dlldecl SceneBuilder {
         std::vector<float4x4> transformList;
         float4x4 meshBind;          // For skinned meshes. World transform at bind time.
         float4x4 localToBindPose;   // For bones. Inverse bind transform.
-        uint32_t parent = kInvalidNodeID;
+        NodeID parent{ NodeID::Invalid() };
     };
 
     using InstanceMatrices = std::vector<float4x4>;
 
-    std::shared_ptr<Device> device() { return mpDevice; };
-    std::shared_ptr<Device> device() const { return mpDevice; };
+    SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
 
-    /** Create a new object
+    /** Constructor.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Flags mFlags = Flags::Default);
+    SceneBuilder(ref<Device> pDevice, const Settings& settings, Flags flags = Flags::Default);
 
-    /** Create a new builder and import a scene/model file
-        \param filename The filename to load
-        \param flags The build flags
-        \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
-        \return A new object with the imported file already initialized. If an import error occurred, a nullptr will be returned
+    /** Create a new builder and import a scene/model file.
+        Throws an ImporterError if importing went wrong.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+    SceneBuilder(ref<Device> pDevice, const fs::path& path, const Settings& settings, Flags flags = Flags::Default);
+
+    /** Create a new builder and import a scene/model from memory.
+        Throws an ImporterError if importing went wrong.
+    */
+    SceneBuilder(ref<Device> pDevice, const void* buffer, size_t byteSize, std::string_view extension, const Settings& settings, Flags flags = Flags::Default);
+
+    ~SceneBuilder();
+
+    const ref<Device>& getDevice() const { return mpDevice; }
 
     /** Import a scene/model file
         \param filename The filename to load
@@ -334,7 +340,7 @@ class dlldecl SceneBuilder {
     */
     Material::SharedPtr getMaterial(const std::string& name) const;
 
-    bool updateMaterial(const std::string& name, const Material::SharedPtr& pNewMaterial);
+    bool updateMaterial(const std::string& name, const ref<Material>& pNewMaterial);
 
     bool getMaterialID(const std::string& name, uint32_t& materialId) const;
 
@@ -342,14 +348,14 @@ class dlldecl SceneBuilder {
         \param pMaterial The material.
         \return The ID of the material in the scene.
     */
-    uint32_t addMaterial(const Material::SharedPtr& pMaterial);
+    uint32_t addMaterial(const ref<Material>& pMaterial);
 
     /** Request loading a material texture.
         \param[in] pMaterial Material to load texture into.
         \param[in] slot Slot to load texture into.
         \param[in] path Texture file path.
     */
-    bool loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
+    bool loadMaterialTexture(const ref<Material>& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
 
     /** Wait until all material textures are loaded.
     */
@@ -365,36 +371,36 @@ class dlldecl SceneBuilder {
 
     /** Get the list of grid volumes.
     */
-    const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mSceneData.gridVolumes; }
+    const std::vector<ref<GridVolume>>& getGridVolumes() const { return mSceneData.gridVolumes; }
 
     /** Get a grid volume by name.
         Note: This returns the first volume found with a matching name.
         \param name Volume name.
         \return Returns the first volume with a matching name or nullptr if none was found.
     */
-    GridVolume::SharedPtr getGridVolume(const std::string& name) const;
+    ref<GridVolume> getGridVolume(const std::string& name) const;
 
     /** Add a grid volume.
         \param pGridVolume The grid volume.
         \param nodeID The node to attach the volume to (optional).
         \return The ID of the volume in the scene.
     */
-    uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNodeID);
+    uint32_t addGridVolume(const ref<GridVolume>& pGridVolume, uint32_t nodeID = NodeID{ NodeID::Invalid() });
 
     // Lights
 
     /** Get the list of lights.
     */
-    const std::vector<Light::SharedPtr>& getLights() const { return mSceneData.lights; }
+    const std::vector<ref<Light>>& getLights() const { return mSceneData.lights; }
 
     /** Get a light by name.
         Note: This returns the first light found with a matching name.
         \param name Light name.
         \return Returns the first light with a matching name or nullptr if none was found.
     */
-    Light::SharedPtr getLight(const std::string& name) const;
+    ref<Light> getLight(const std::string& name) const;
 
-    Light::SharedPtr getLight(uint32_t lightID) const;
+    ref<Light> getLight(uint32_t lightID) const;
 
     /** Add a light source
         \param pLight The light object.
@@ -414,7 +420,7 @@ class dlldecl SceneBuilder {
 
     /** Get the environment map.
     */
-    const EnvMap::SharedPtr& getEnvMap() const { return mSceneData.pEnvMap; }
+    const ref<EnvMap>& getEnvMap() const { return mSceneData.pEnvMap; }
 
     /** Set an environment map.
         \param[in] pEnvMap Environment map. Can be nullptr.
@@ -425,7 +431,7 @@ class dlldecl SceneBuilder {
 
     /** Get the list of cameras.
     */
-    const std::vector<Camera::SharedPtr>& getCameras() const { return mSceneData.cameras; }
+    const std::vector<ref<Camera>>& getCameras() const { return mSceneData.cameras; }
 
     /** Add a camera.
         \param pCamera Camera to be added.
@@ -457,7 +463,7 @@ class dlldecl SceneBuilder {
 
     /** Get the list of animations.
     */
-    const std::vector<Animation::SharedPtr>& getAnimations() const { return mSceneData.animations; }
+    const std::vector<ref<Animation>>& getAnimations() const { return mSceneData.animations; }
 
     /** Add an animation
         \param animation The animation
@@ -470,7 +476,7 @@ class dlldecl SceneBuilder {
         \param duration Duration of the animation in seconds.
         \return Returns a new animation or nullptr if an animation already exists.
     */
-    Animation::SharedPtr createAnimation(Animatable::SharedPtr pAnimatable, const std::string& name, double duration);
+    ref<Animation> createAnimation(ref<Animatable> pAnimatable, const std::string& name, double duration);
 
     // Scene graph
 
@@ -539,8 +545,6 @@ public:
     };
 
 protected:
-    SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
-
     struct InternalNode : Node {
         InternalNode() = default;
         InternalNode(const Node& n) : Node(n) {}
@@ -563,7 +567,7 @@ protected:
     using MeshGroupList = std::vector<MeshGroup>;
     using CurveList = std::vector<CurveSpec>;
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     std::unique_ptr<MeshletBuilder> mpMeshletBuilder;
 
     Scene::SceneData mSceneData;
@@ -593,7 +597,6 @@ protected:
     std::vector<uint32_t> mMeshletPrimIndices; ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
 
     std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
-    GpuFence::SharedPtr mpFence;
 
     std::vector<Material::SharedPtr> mMaterials;
     std::vector<MaterialX::SharedPtr> mMaterialXs;
@@ -688,7 +691,7 @@ inline std::string to_string(SceneBuilder::Flags f) {
     return std::bitset<32>(static_cast<uint32_t>(f)).to_string();
 }
 
-enum_class_operators(SceneBuilder::Flags);
+ENUM_CLASS_OPERATORS(SceneBuilder::Flags);
 
 }  // namespace Falcor
 

@@ -28,6 +28,7 @@
 #ifndef FALCOR_RENDERGRAPH_RENDERPASSREFLECTION_H_
 #define FALCOR_RENDERGRAPH_RENDERPASSREFLECTION_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
 
@@ -149,8 +150,8 @@ private:
     std::vector<Field> mFields;
 };
 
-enum_class_operators(RenderPassReflection::Field::Visibility);
-enum_class_operators(RenderPassReflection::Field::Flags);
+ENUM_CLASS_OPERATORS(RenderPassReflection::Field::Visibility);
+ENUM_CLASS_OPERATORS(RenderPassReflection::Field::Flags);
 
 inline std::string to_string(RenderPassReflection::Field::Type t)
 {

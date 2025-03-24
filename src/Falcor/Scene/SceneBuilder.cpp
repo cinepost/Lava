@@ -237,9 +237,8 @@ void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t>& f) {
 }
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
-	mpFence = GpuFence::create(mpDevice);
-	mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
-	mSceneData.pLightLinker = LightLinker::create(mpDevice);
+	mSceneData.pMaterialSystem = std::make_unique<MaterialSystem>(mpDevice);
+	mSceneData.pLightLinker = std::make_unique<LightLinker>(mpDevice);
 
 	if(is_set(mFlags, SceneBuilder::Flags::GenerateMeshlets)) {
 		mpMeshletBuilder = MeshletBuilder::create();

@@ -8,6 +8,7 @@
 #pragma GCC diagnostic ignored "-Wreorder"
 #include "core/slang-basic.h"
 #include "core/slang-com-object.h"
+#include "core/slang-persistent-cache.h"
 #pragma GCC diagnostic pop
 
 #include "resource-desc-utils.h"
@@ -33,6 +34,7 @@ struct GfxGUID
     static const Slang::Guid IID_ITextureResource;
     static const Slang::Guid IID_IInputLayout;
     static const Slang::Guid IID_IDevice;
+    static const Slang::Guid IID_IShaderCache;
     static const Slang::Guid IID_IShaderObjectLayout;
     static const Slang::Guid IID_IShaderObject;
     static const Slang::Guid IID_IRenderPassLayout;
@@ -49,8 +51,11 @@ struct GfxGUID
     static const Slang::Guid IID_IFence;
     static const Slang::Guid IID_IShaderTable;
     static const Slang::Guid IID_IPipelineCreationAPIDispatcher;
-    static const Slang::Guid IID_ID3D12TransientResourceHeap;
+    static const Slang::Guid IID_IVulkanPipelineCreationAPIDispatcher;
+    static const Slang::Guid IID_ITransientResourceHeapD3D12;
 };
+
+bool isGfxDebugLayerEnabled();
 
 // We use a `BreakableReference` to avoid the cyclic reference situation in gfx implementation.
 // It is a common scenario where objects created from an `IDevice` implementation needs to hold
@@ -354,6 +359,8 @@ protected:
     ShaderObjectContainerType m_containerType = ShaderObjectContainerType::None;
 
 public:
+    ComPtr<slang::ISession> m_slangSession;
+
     ShaderObjectContainerType getContainerType() { return m_containerType; }
 
     static slang::TypeLayoutReflection* _unwrapParameterGroups(slang::TypeLayoutReflection* typeLayout, ShaderObjectContainerType& outContainerType) {
@@ -774,8 +781,14 @@ public:
         return false;
     }
 
-    Slang::Result compileShaders();
+    Slang::Result compileShaders(RendererBase* device);
     virtual Slang::Result createShaderModule(slang::EntryPointReflection* entryPointInfo, Slang::ComPtr<ISlangBlob> kernelCode);
+
+    virtual SLANG_NO_THROW slang::TypeReflection* SLANG_MCALL findTypeByName(const char* name) override {
+        return linkedProgram->getLayout()->findTypeByName(name);
+    }
+
+    bool isMeshShaderProgram() const;
 };
 
 class InputLayoutBase: public IInputLayout, public Slang::ComObject {
@@ -929,7 +942,7 @@ struct ComponentKey {
     Slang::UnownedStringSlice typeName;
     Slang::ShortList<ShaderComponentID> specializationArgs;
     Slang::HashCode hash;
-    Slang::HashCode getHashCode() { return hash; }
+    Slang::HashCode getHashCode() const { return hash; }
     void updateHash() {
         hash = typeName.getHashCode();
         
@@ -941,13 +954,13 @@ struct PipelineKey {
     PipelineStateBase* pipeline;
     Slang::ShortList<ShaderComponentID> specializationArgs;
     Slang::HashCode hash;
-    Slang::HashCode getHashCode() { return hash; }
+    Slang::HashCode getHashCode() const { return hash; }
     void updateHash() {
         hash = Slang::getHashCode(pipeline);
         for (auto& arg : specializationArgs) hash = Slang::combineHash(hash, arg);
     }
 
-    bool operator==(const PipelineKey& other) {
+    bool operator==(const PipelineKey& other) const {
         if (pipeline != other.pipeline) return false;
         if (specializationArgs.getCount() != other.specializationArgs.getCount()) return false;
 
@@ -962,10 +975,10 @@ struct OwningComponentKey {
     Slang::String typeName;
     Slang::ShortList<ShaderComponentID> specializationArgs;
     Slang::HashCode hash;
-    Slang::HashCode getHashCode() { return hash; }
+    Slang::HashCode getHashCode() const { return hash; }
 
     template<typename KeyType>
-    bool operator==(const KeyType& other) {
+    bool operator==(const KeyType& other) const {
         if (typeName != other.typeName) return false;
         if (specializationArgs.getCount() != other.specializationArgs.getCount()) return false;
         for (Slang::Index i = 0; i < other.specializationArgs.getCount(); i++) {
@@ -984,7 +997,7 @@ public:
 
     Slang::RefPtr<PipelineStateBase> getSpecializedPipelineState(PipelineKey programKey) {
         Slang::RefPtr<PipelineStateBase> result;
-        if (specializedPipelines.TryGetValue(programKey, result)) return result;
+        if (specializedPipelines.tryGetValue(programKey, result)) return result;
         return nullptr;
     }
     
@@ -1039,6 +1052,7 @@ public:
     uint32_t m_rayGenShaderCount;
     uint32_t m_missShaderCount;
     uint32_t m_hitGroupCount;
+    uint32_t m_callableShaderCount;
 
     Slang::Dictionary<PipelineStateBase*, Slang::RefPtr<BufferResource>> m_deviceBuffers;
 
@@ -1060,7 +1074,7 @@ public:
         TransientResourceHeapBase* transientHeap,
         IResourceCommandEncoder* encoder)
     {
-        if (auto ptr = m_deviceBuffers.TryGetValue(pipeline))
+        if (auto ptr = m_deviceBuffers.tryGetValue(pipeline))
         {
             return ptr->Ptr();
         }
@@ -1074,11 +1088,12 @@ public:
 
 // Renderer implementation shared by all platforms.
 // Responsible for shader compilation, specialization and caching.
-class RendererBase : public IDevice, public Slang::ComObject
+class RendererBase : public IDevice, public IShaderCache, public Slang::ComObject
 {
     friend class ShaderObjectBase;
 public:
-    SLANG_COM_OBJECT_IUNKNOWN_ALL
+    SLANG_COM_OBJECT_IUNKNOWN_ADD_REF
+    SLANG_COM_OBJECT_IUNKNOWN_RELEASE
 
     virtual SLANG_NO_THROW Result SLANG_MCALL getNativeDeviceHandles(InteropHandles* outHandles) SLANG_OVERRIDE;
     virtual SLANG_NO_THROW Result SLANG_MCALL getFeatures(
@@ -1087,6 +1102,8 @@ public:
     virtual SLANG_NO_THROW Result SLANG_MCALL
         getFormatSupportedResourceStates(Format format, ResourceStateSet* outStates) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL getSlangSession(slang::ISession** outSlangSession) SLANG_OVERRIDE;
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL
+        queryInterface(SlangUUID const& uuid, void** outObject) SLANG_OVERRIDE;
     IDevice* getInterface(const Slang::Guid& guid);
 
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureFromNativeHandle(
@@ -1110,12 +1127,30 @@ public:
         const IBufferResource::Desc& srcDesc,
         IBufferResource** outResource) SLANG_OVERRIDE;
 
+    virtual SLANG_NO_THROW Result SLANG_MCALL createProgram2(
+        const IShaderProgram::CreateDesc2& desc,
+        IShaderProgram** outProgram,
+        ISlangBlob** outDiagnostic) override;
+
+
     virtual SLANG_NO_THROW Result SLANG_MCALL createShaderObject(
         slang::TypeReflection* type,
         ShaderObjectContainerType containerType,
         IShaderObject** outObject) SLANG_OVERRIDE;
 
+    virtual SLANG_NO_THROW Result SLANG_MCALL createShaderObject2(
+        slang::ISession* session,
+        slang::TypeReflection* type,
+        ShaderObjectContainerType containerType,
+        IShaderObject** outObject) SLANG_OVERRIDE;
+
     virtual SLANG_NO_THROW Result SLANG_MCALL createMutableShaderObject(
+        slang::TypeReflection* type,
+        ShaderObjectContainerType containerType,
+        IShaderObject** outObject) SLANG_OVERRIDE;
+
+    virtual SLANG_NO_THROW Result SLANG_MCALL createMutableShaderObject2(
+        slang::ISession* session,
         slang::TypeReflection* type,
         ShaderObjectContainerType containerType,
         IShaderObject** outObject) SLANG_OVERRIDE;
@@ -1169,12 +1204,21 @@ public:
     // Provides a default implementation that returns SLANG_E_NOT_AVAILABLE.
     virtual SLANG_NO_THROW Result SLANG_MCALL getTextureRowAlignment(size_t* outAlignment) override;
 
+    Result getEntryPointCodeFromShaderCache(
+        slang::IComponentType* program,
+        SlangInt entryPointIndex,
+        SlangInt targetIndex,
+        slang::IBlob** outCode,
+        slang::IBlob** outDiagnostics = nullptr);
+
     Result getShaderObjectLayout(
+        slang::ISession*            session,
         slang::TypeReflection*      type,
         ShaderObjectContainerType   container,
         ShaderObjectLayoutBase**    outLayout);
 
     Result getShaderObjectLayout(
+        slang::ISession* session,
         slang::TypeLayoutReflection* typeLayout,
         ShaderObjectLayoutBase** outLayout);
 
@@ -1190,6 +1234,7 @@ public:
 
 
     virtual Result createShaderObjectLayout(
+        slang::ISession* session,
         slang::TypeLayoutReflection* typeLayout,
         ShaderObjectLayoutBase** outLayout) = 0;
 
@@ -1201,6 +1246,12 @@ public:
         ShaderObjectLayoutBase* layout,
         IShaderObject** outObject) = 0;
 
+public:
+    // IShaderCache interface
+    virtual SLANG_NO_THROW Result SLANG_MCALL clearShaderCache() SLANG_OVERRIDE;
+    virtual SLANG_NO_THROW Result SLANG_MCALL getShaderCacheStats(ShaderCacheStats* outStats) SLANG_OVERRIDE;
+    virtual SLANG_NO_THROW Result SLANG_MCALL resetShaderCacheStats() SLANG_OVERRIDE;
+
 protected:
     virtual SLANG_NO_THROW SlangResult SLANG_MCALL initialize(const Desc& desc);
 protected:
@@ -1209,6 +1260,8 @@ protected:
 public:
     SlangContext slangContext;
     ShaderCache shaderCache;
+
+    Slang::RefPtr<Slang::PersistentCache> persistentShaderCache;
 
     Slang::Dictionary<slang::TypeLayoutReflection*, Slang::RefPtr<ShaderObjectLayoutBase>> m_shaderObjectLayoutCache;
     Slang::ComPtr<IPipelineCreationAPIDispatcher> m_pipelineCreationAPIDispatcher;
@@ -1363,20 +1416,21 @@ Result ShaderObjectBaseImpl<TShaderObjectImpl, TShaderObjectLayoutImpl, TShaderO
                 case slang::BindingType::ConstantBuffer:
                 case slang::BindingType::RawBuffer:
                 case slang::BindingType::MutableRawBuffer:
-                    // Currently we only handle the case where the field's type is
-                    // `ParameterBlock<SomeStruct>` or `ConstantBuffer<SomeStruct>`, where
-                    // `SomeStruct` is a struct type (not directly an interface type). In this case,
-                    // we just recursively collect the specialization arguments from the bound sub
-                    // object.
+                    // If the field's type is `ParameterBlock<IFoo>`, we want to pull in the type argument
+                    // from the sub object for specialization.
+                    if (bindingRange.isSpecializable)
+                    {
+                        ExtendedShaderObjectType specializedSubObjType;
+                        SLANG_RETURN_ON_FAIL(
+                            subObject->getSpecializedShaderObjectType(&specializedSubObjType));
+                        typeArgs.add(specializedSubObjType);
+                    }
+
+                    // If field's type is `ParameterBlock<SomeStruct>` or `ConstantBuffer<SomeStruct>`, where
+                    // `SomeStruct` is a struct type (not directly an interface type), we need to recursively
+                    // collect the specialization arguments from the bound sub object.
                     SLANG_RETURN_ON_FAIL(subObject->collectSpecializationArgs(typeArgs));
-                    // TODO: we need to handle the case where the field is of the form
-                    // `ParameterBlock<IFoo>`. We should treat this case the same way as the
-                    // `ExistentialValue` case here, but currently we lack a mechanism to
-                    // distinguish the two scenarios.
                     break;
-                default:
-                    break;
-                //    return SLANG_FAIL;
             }
 
             auto addedTypeArgCountForCurrentRange = args.getCount() - oldArgsCount;
@@ -1405,4 +1459,4 @@ Result ShaderObjectBaseImpl<TShaderObjectImpl, TShaderObjectLayoutImpl, TShaderO
     }
     return SLANG_OK;
 }
-}
+}  // namespace gfx

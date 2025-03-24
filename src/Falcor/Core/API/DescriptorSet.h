@@ -31,6 +31,7 @@
 #include <vector>
 #include <memory>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "DescriptorPool.h"
 
@@ -57,7 +58,7 @@ enum class ShaderVisibility {
     All = (1 << (uint32_t)ShaderType::Count) - 1,
 };
 
-enum_class_operators(ShaderVisibility);
+ENUM_CLASS_OPERATORS(ShaderVisibility);
 
 class dlldecl DescriptorSet {
   public:

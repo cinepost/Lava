@@ -28,6 +28,8 @@
 #pragma once
 #include "D3D12DescriptorPool.h"
 
+#include "Falcor/Core/Macros.h"
+
 namespace Falcor
 {
     class ShaderResourceView;
@@ -50,7 +52,7 @@ namespace Falcor
         All = (1 << (uint32_t)ShaderType::Count) - 1,
     };
 
-    enum_class_operators(ShaderVisibility);
+    ENUM_CLASS_OPERATORS(ShaderVisibility);
 
     class FALCOR_API D3D12DescriptorSet
     {

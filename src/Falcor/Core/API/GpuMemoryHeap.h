@@ -28,35 +28,32 @@
 #ifndef SRC_FALCOR_CORE_API_GPUMEMORYHEAP_H_
 #define SRC_FALCOR_CORE_API_GPUMEMORYHEAP_H_
 
+#include "Handles.h"
+#include "Resource.h"
+#include "Buffer.h"
+#include "Fence.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
+
 #include <queue>
-#include <memory>
 #include <unordered_map>
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/GpuFence.h"
 
 namespace Falcor {
 
 class Device;
 
-class dlldecl GpuMemoryHeap {
+class FALCOR_API GpuMemoryHeap : public Object {
+    FALCOR_OBJECT(GpuMemoryHeap)
  public:
-    using SharedPtr = std::shared_ptr<GpuMemoryHeap>;
-    using SharedConstPtr = std::shared_ptr<const GpuMemoryHeap>;
-
-    enum class Type {
-        Default,
-        Upload,
-        Readback,
-        Count     // TODO: i've put it here. no idea why exactly
-    };
-
     struct BaseData {
-        ResourceHandle pResourceHandle;
+        Slang::ComPtr<gfx::IBufferResource> gfxBufferResource;
+        uint32_t size = 0;
         GpuAddress offset = 0;
         uint8_t* pData = nullptr;
-    };
 
+        uint64_t getGpuAddress() const { return gfxBufferResource->getDeviceAddress() + offset; }
+    };
     struct Allocation : public BaseData {
         uint64_t pageID = 0;
         uint64_t fenceValue = 0;
@@ -67,21 +64,25 @@ class dlldecl GpuMemoryHeap {
 
     ~GpuMemoryHeap();
 
-    /** Create a new GPU memory heap.
-        \param[in] type The type of heap.
-        \param[in] pageSize Page size in bytes.
-        \param[in] pFence Fence to use for synchronization.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    /**
+     * Create a new GPU memory heap.
+     * @param[in] memoryType The memory type of heap.
+     * @param[in] pageSize Page size in bytes.
+     * @param[in] pFence Fence to use for synchronization.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    static ref<GpuMemoryHeap> create(ref<Device> pDevice, MemoryType memoryType, size_t pageSize, ref<Fence> pFence);
 
     Allocation allocate(size_t size, size_t alignment = 1);
+    Allocation allocate(size_t size, ResourceBindFlags bindFlags);
     void release(Allocation& data);
     size_t getPageSize() const { return mPageSize; }
     void executeDeferredReleases();
 
+    void breakStrongReferenceToDevice();
+
 private:
-    GpuMemoryHeap(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    GpuMemoryHeap(ref<Device> pDevice, MemoryType memoryType, size_t pageSize, ref<Fence> pFence);
 
     struct PageData : public BaseData {
         uint32_t allocationsCount = 0;
@@ -90,8 +91,9 @@ private:
         using UniquePtr = std::unique_ptr<PageData>;
     };
 
-    Type mType;
-    GpuFence::SharedPtr mpFence;
+    BreakableReference<Device> mpDevice;
+    MemoryType mMemoryType;
+    ref<Fence> mpFence;
     size_t mPageSize = 0;
     size_t mCurrentPageId = 0;
     PageData::UniquePtr mpActivePage;
@@ -100,25 +102,9 @@ private:
     std::unordered_map<size_t, PageData::UniquePtr> mUsedPages;
     std::queue<PageData::UniquePtr> mAvailablePages;
 
-    std::shared_ptr<Device> mpDevice; 
-
     void allocateNewPage();
     void initBasePageData(BaseData& data, size_t size);
 };
-
-inline const std::string to_string(GpuMemoryHeap::Type t) {
-        #define type_2_string(a) case GpuMemoryHeap::Type::a: return #a;
-        switch(t) {
-            type_2_string(Default);
-            type_2_string(Upload);
-            type_2_string(Readback);
-            type_2_string(Count);
-            default:
-                should_not_get_here();
-                return "";
-        }
-        #undef type_2_string
-    }
 
 }  // namespace Falcor
 

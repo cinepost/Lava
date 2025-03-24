@@ -28,6 +28,8 @@
 #include "Falcor/stdafx.h"
 #include "VAO.h"
 
+#include "Falcor/Core/API/Buffer.h"
+
 namespace Falcor {
 
 bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat) {

@@ -30,6 +30,7 @@
 #include "SceneDefines.slangh"
 
 #ifdef HOST_CODE
+#include "Core/Macros.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/PackedFormats.h"
 #else
@@ -85,7 +86,7 @@ enum class GeometryTypeFlags : uint32_t {
 };
 
 #ifdef HOST_CODE
-enum_class_operators(GeometryTypeFlags);
+ENUM_CLASS_OPERATORS(GeometryTypeFlags);
 #endif
 
 enum class MeshFlags : uint32_t {

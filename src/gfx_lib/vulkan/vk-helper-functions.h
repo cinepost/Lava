@@ -148,12 +148,10 @@ struct RootBindingContext
     DeviceImpl* device;
 
     /// The descriptor sets that are being allocated and bound
-    VkDescriptorSet* descriptorSets;
+    List<VkDescriptorSet>* descriptorSets;
 
     /// Information about all the push-constant ranges that should be bound
     ConstArrayView<VkPushConstantRange> pushConstantRanges;
-
-    uint32_t descriptorSetCounter = 0;
 };
 
 Size calcRowSize(Format format, int width);
@@ -183,7 +181,11 @@ VkPipelineStageFlags calcPipelineStageFlagsFromImageLayout(VkImageLayout layout)
 
 VkImageAspectFlags getAspectMaskFromFormat(VkFormat format);
 
+AdapterLUID getAdapterLUID(VulkanApi api, VkPhysicalDevice physicaDevice);
+
 } // namespace vk
+
+Result SLANG_MCALL getVKAdapters(List<AdapterInfo>& outAdapters);
 
 Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer);
 

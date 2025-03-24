@@ -28,71 +28,78 @@
 #ifndef SRC_FALCOR_CORE_API_QUERYHEAP_H_
 #define SRC_FALCOR_CORE_API_QUERYHEAP_H_
 
-#include <deque>
-#include <memory>
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Core/Object.h"
 
-#include "Falcor/Core/Framework.h"
+#include <deque>
 
 
 namespace Falcor {
 
 class Device;
 
-class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
- public:
-    using SharedPtr = std::shared_ptr<QueryHeap>;
-    using ApiHandle = QueryHeapHandle;
-
-    enum class Type {
+class FALCOR_API QueryHeap : public Object {
+    FALCOR_OBJECT(QueryHeap)
+public:
+    enum class Type
+    {
         Timestamp,
         Occlusion,
-        PipelineStats,
-        AccelerationStructureCompactedSize
+        PipelineStats
     };
 
-    static const uint32_t kInvalidIndex = 0xffffffff;
+    static constexpr uint32_t kInvalidIndex = 0xffffffff;
 
-    /** Create a new query heap.
-        \param[in] type Type of queries.
-        \param[in] count Number of queries.
-        \return New object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, uint32_t count) { return SharedPtr(new QueryHeap(pDevice, type, count)); }
+    /**
+     * Create a new query heap.
+     * @param[in] type Type of queries.
+     * @param[in] count Number of queries.
+     * @return New object, or throws an exception if creation failed.
+     */
+    static ref<QueryHeap> create(ref<Device> pDevice, Type type, uint32_t count);
 
-    inline const ApiHandle& getApiHandle() const { return mApiHandle; }
-    inline uint32_t getQueryCount() const { return mCount; }
-    inline Type getType() const { return mType; }
+    gfx::IQueryPool* getGfxQueryPool() const { return mGfxQueryPool; }
+    uint32_t getQueryCount() const { return mCount; }
+    Type getType() const { return mType; }
 
-    /** Allocates a new query.
-        \return Query index, or kInvalidIndex if out of queries.
-    */
-    inline uint32_t allocate() {
-        if (mFreeQueries.size()) {
+    /**
+     * Allocates a new query.
+     * @return Query index, or kInvalidIndex if out of queries.
+     */
+    uint32_t allocate()
+    {
+        if (mFreeQueries.size())
+        {
             uint32_t entry = mFreeQueries.front();
             mFreeQueries.pop_front();
             return entry;
         }
-        if (mCurrentObject < mCount) {
+        if (mCurrentObject < mCount)
             return mCurrentObject++;
-        } else {
+        else
             return kInvalidIndex;
-        }
     }
 
-    inline void release(uint32_t entry) {
-        assert(entry != kInvalidIndex);
+    void release(uint32_t entry)
+    {
+        FALCOR_ASSERT(entry != kInvalidIndex);
         mFreeQueries.push_back(entry);
     }
 
- private:
-    QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count);
-    ApiHandle mApiHandle;
+    void breakStrongReferenceToDevice();
+
+private:
+    QueryHeap(ref<Device> pDevice, Type type, uint32_t count);
+
+    BreakableReference<Device> mpDevice;
+    Slang::ComPtr<gfx::IQueryPool> mGfxQueryPool;
     uint32_t mCount = 0;
     uint32_t mCurrentObject = 0;
     std::deque<uint32_t> mFreeQueries;
     Type mType;
 };
-
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_QUERYHEAP_H_

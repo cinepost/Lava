@@ -28,12 +28,16 @@
 #ifndef SRC_FALCOR_CORE_API_RESOURCE_H_
 #define SRC_FALCOR_CORE_API_RESOURCE_H_
 
-#include <string>
-#include <memory>
-#include <vector>
-#include <unordered_map>
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/API/NativeHandle.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/API/ResourceViews.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
-#include "ResourceViews.h"
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
@@ -43,12 +47,11 @@ class Device;
 class Texture;
 class Buffer;
 class ParameterBlock;
+struct ResourceViewInfo;
 
-class dlldecl Resource : public std::enable_shared_from_this<Resource> {
+class FALCOR_API Resource : public Object {
+    FALCOR_OBJECT(Resource)
  public:
-    using ApiHandle = ResourceHandle;
-    using BindFlags = ResourceBindFlags;
-
     /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
     */
     enum class Type {
@@ -88,28 +91,24 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         AccelerationStructureBuildInput
     };
 
-    using SharedPtr = std::shared_ptr<Resource>;
-    using SharedConstPtr = std::shared_ptr<const Resource>;
-    
-    static void printUsage();
-
     /** Default value used in create*() methods
     */
     static const uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
 
-    virtual ~Resource();
+    virtual ~Resource() = 0;
 
-    inline std::shared_ptr<Device> device() const { return mpDevice; }
+    ref<Device> getDevice() const;
 
-    inline size_t id() { return mID; }
-    inline size_t id() const { return mID; }
+    size_t id() const { return mID; }
+
+    static void printUsage();
 
 
     /** Get the bind flags
     */
-    inline BindFlags getBindFlags() const { return mBindFlags; }
+    ResourceBindFlags getBindFlags() const { return mBindFlags; }
 
-    inline bool isStateGlobal() const { return mState.isGlobal; }
+    bool isStateGlobal() const { return mState.isGlobal; }
 
     /** Get the current state. This is only valid if isStateGlobal() returns true
     */
@@ -123,32 +122,37 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     Type getType() const { return mType; }
 
-    /** Get the API handle
-    */
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
+    /**
+     * Get the resource
+     */
+    virtual gfx::IResource* getGfxResource() const = 0;
 
-#ifdef FALCOR_GFX
-    /** Get a shared resource API handle.
+    /**
+     * Returns the native API handle: VkBuffer or VkImage
+     */
+    NativeHandle getNativeHandle() const;
 
-        The handle will be created on-demand if it does not already exist.
-        Throws if a shared handle cannot be created for this resource.
-    */
+    /**
+     * Get a shared resource API handle.
+     *
+     * The handle will be created on-demand if it does not already exist.
+     * Throws if a shared handle cannot be created for this resource.
+     */
     SharedResourceApiHandle getSharedApiHandle() const;
-#endif
 
-    struct ViewInfoHashFunc {
-        std::size_t operator()(const ResourceViewInfo& v) const {
-            return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1)
-                ^ (std::hash<uint32_t>()(v.mipCount) << 1)
-                ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3)
-                ^ (std::hash<uint32_t>()(v.firstElement) << 5)
-                ^ (std::hash<uint32_t>()(v.elementCount) << 7);
+    struct ViewInfoHashFunc
+    {
+        std::size_t operator()(const ResourceViewInfo& v) const
+        {
+            return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1) ^
+                   (std::hash<uint32_t>()(v.mipCount) << 1) ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3) ^
+                   (std::hash<uint32_t>()(v.offset) << 5) ^ (std::hash<uint32_t>()(v.size) << 7);
         }
     };
 
     /** Get the size of the resource
     */
-    inline size_t getSize() const { return mSize; }
+    size_t getSize() const { return mSize; }
 
     /** Invalidate and release all of the resource views
     */
@@ -156,7 +160,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Set the resource name
     */
-    inline void setName(const std::string& name) { mName = name; apiSetName(); }
+    void setName(const std::string& name);
 
     /** Get the resource name
     */
@@ -165,26 +169,16 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     /** Get a SRV/UAV for the entire resource.
         Buffer and Texture have overloads which allow you to create a view into part of the resource
     */
-    virtual ShaderResourceView::SharedPtr getSRV() = 0;
-    virtual UnorderedAccessView::SharedPtr getUAV() = 0;
+    virtual ref<ShaderResourceView> getSRV() = 0;
+    virtual ref<UnorderedAccessView> getUAV() = 0;
 
     /** Conversions to derived classes
     */
-    std::shared_ptr<Texture> asTexture();
-    std::shared_ptr<const Texture> asTexture() const;
-    std::shared_ptr<Buffer> asBuffer();
+    ref<Texture> asTexture();
+    ref<const Texture> asTexture() const;
+    ref<Buffer> asBuffer();
 
-#if FALCOR_ENABLE_CUDA
-    /** Get the CUDA device address for this resource.
-        \return CUDA device address.
-        Throws an exception if the resource is not shared.
-    */
-    virtual void* getCUDADeviceAddress() const = 0;
-
-    /** Get the CUDA device address for a view of this resource.
-    */
-    virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const = 0;
-#endif
+    void breakStrongReferenceToDevice();
 
  private:
     static std::atomic<size_t> newResourceID;
@@ -192,10 +186,11 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
  protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
+    Resource(ref<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size);
 
+    BreakableReference<Device> mpDevice;
     Type mType;
-    BindFlags mBindFlags;
+    ResourceBindFlags mBindFlags;
 
     struct {
         bool isGlobal = true;
@@ -205,25 +200,18 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     void setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const;
     void setGlobalState(State newState) const;
-    void apiSetName();
 
-    ApiHandle mApiHandle;
     size_t mSize = 0;
-    GpuAddress mGpuVaOffset = 0;
     std::string mName;
-
-#if defined(FALCOR_GFX)
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
-#endif
 
-    std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;
     size_t mID;
 
-    mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
-    mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;
-    mutable std::unordered_map<ResourceViewInfo, DepthStencilView::SharedPtr, ViewInfoHashFunc> mDsvs;
-    mutable std::unordered_map<ResourceViewInfo, UnorderedAccessView::SharedPtr, ViewInfoHashFunc> mUavs;
+    mutable std::unordered_map<ResourceViewInfo, ref<ShaderResourceView>, ViewInfoHashFunc> mSrvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<RenderTargetView>, ViewInfoHashFunc> mRtvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<DepthStencilView>, ViewInfoHashFunc> mDsvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<UnorderedAccessView>, ViewInfoHashFunc> mUavs;
 };
 
 const std::string dlldecl to_string(Resource::Type);

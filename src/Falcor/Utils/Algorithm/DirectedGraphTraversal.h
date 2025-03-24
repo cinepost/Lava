@@ -30,10 +30,11 @@
 
 #include <unordered_map>
 #include <queue>
+#include <stack>
 
+#include "Falcor/Core/Macros.h"
 #include "DirectedGraph.h"
 
-#include <stack>
 
 namespace Falcor {
 
@@ -65,7 +66,7 @@ namespace Falcor {
         }
     };
 
-    enum_class_operators(DirectedGraphTraversal::Flags);
+    ENUM_CLASS_OPERATORS(DirectedGraphTraversal::Flags);
 
     template<typename Args>
     class DirectedGraphTraversalTemplate : public DirectedGraphTraversal {

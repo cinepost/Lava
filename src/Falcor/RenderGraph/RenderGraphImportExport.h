@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_
+#define SRC_FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_
+
 #include "RenderGraph.h"
 
 namespace Falcor
@@ -53,4 +55,6 @@ namespace Falcor
         static std::string getFuncName(const std::string& graphName);
         static bool save(const RenderGraph::SharedPtr& pGraph, std::string filename = {});
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_

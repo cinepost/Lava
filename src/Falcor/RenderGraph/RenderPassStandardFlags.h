@@ -28,6 +28,7 @@
 #ifndef FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_
 #define FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 
 #if defined(FALCOR_GFX)
@@ -58,7 +59,7 @@ static const char kRenderPassPRNGDimension[] = "_prngDimension";
 */
 static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
 
-enum_class_operators(RenderPassRefreshFlags);
+ENUM_CLASS_OPERATORS(RenderPassRefreshFlags);
 
 }  // namespace Falcor
 

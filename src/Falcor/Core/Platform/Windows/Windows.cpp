@@ -207,26 +207,34 @@ namespace Falcor
         return std::tmpnam(error);
     }
 
-    const std::string& getExecutableDirectory()
-    {
-        static std::string folder;
-        if (folder.size() == 0)
-        {
-            CHAR exeName[MAX_PATH];
-            GetModuleFileNameA(nullptr, exeName, ARRAYSIZE(exeName));
-            const std::string tmp(exeName);
-
-            auto last = tmp.find_last_of("/\\");
-            folder = tmp.substr(0, last);
-        }
-        return folder;
+    const std::filesystem::path& getExecutablePath() {
+        static std::filesystem::path path(
+            []() {
+                CHAR pathStr[1024];
+                if (GetModuleFileNameA(nullptr, pathStr, ARRAYSIZE(pathStr)) == 0) {
+                    FALCOR_THROW("Failed to get the executable path.");
+                }
+                return fs::path(pathStr);
+            }()
+        );
+        return path;
     }
 
-    const std::string getWorkingDirectory()
-    {
-        CHAR curDir[MAX_PATH];
-        GetCurrentDirectoryA(MAX_PATH, curDir);
-        return std::string(curDir);
+    const std::string getRuntimeDirectory() {
+        static fs::path path(
+            []() {
+                HMODULE hm = NULL;
+                if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&getRuntimeDirectory, &hm) == 0) {
+                    FALCOR_THROW("Failed to get the falcor directory. GetModuleHandle failed, error = {}.", GetLastError());
+                }
+                CHAR pathStr[1024];
+                if (GetModuleFileNameA(hm, pathStr, sizeof(pathStr)) == 0) {
+                    FALCOR_THROW("Failed to get the falcor directory. GetModuleFileNameA failed, error = {}.", GetLastError());
+                }
+                return fs::path(pathStr).parent_path();
+            }()
+        );
+        return path;
     }
 
     const std::string getAppDataDirectory()

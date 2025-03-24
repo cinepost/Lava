@@ -28,75 +28,83 @@
 #ifndef SRC_FALCOR_CORE_API_GPUTIMER_H_
 #define SRC_FALCOR_CORE_API_GPUTIMER_H_
 
-#include "Falcor/Core/API/LowLevelContextData.h"
-#include "Falcor/Core/API/QueryHeap.h"
-#include "Falcor/Core/API/Buffer.h"
+#include "QueryHeap.h"
+#include "Buffer.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
 
 namespace Falcor { 
 
 class Device;
 
-/** Abstracts GPU timer queries. \n
-    This class provides mechanism to get elapsed time in miliseconds between a pair of Begin()/End() calls.
-*/
-class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
- public:
-    using SharedPtr = std::shared_ptr<GpuTimer>;
-    using SharedConstPtr = std::shared_ptr<const GpuTimer>;
+/**
+ * Abstracts GPU timer queries.
+ * This class provides mechanism to get elapsed time in milliseconds between a pair of begin()/end() calls.
+ */
+class FALCOR_API GpuTimer : public Object
+{
+    FALCOR_OBJECT(GpuTimer)
+public:
+    /**
+     * Create a new timer object.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    static ref<GpuTimer> create(ref<Device> pDevice);
 
-    /** Create a new timer object.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
-
-    /** Destroy a new object
-    */
+    /**
+     * Destroy a new object
+     */
     ~GpuTimer();
 
-    /** Begin the capture window. \n
-        If begin() is called in the middle of a begin()/end() pair, it will be ignored and a warning will be logged.
-    */
+    /**
+     * Begin the capture window.
+     * If begin() is called in the middle of a begin()/end() pair, it will be ignored and a warning will be logged.
+     */
     void begin();
 
-    /** Begin the capture window. \n
-        If end() is called before a begin() was called, it will be ignored and a warning will be logged.
-    */
+    /**
+     * End the capture window.
+     * If end() is called before a begin() was called, it will be ignored and a warning will be logged.
+     */
     void end();
 
-     /** Resolve time stamps.
-        This must be called after a pair of begin()/end() calls.
-        A new measurement can be started after calling resolve() even before getElapsedTime() is called.
-    */
+    /**
+     * Resolve time stamps.
+     * This must be called after a pair of begin()/end() calls.
+     * A new measurement can be started after calling resolve() even before getElapsedTime() is called.
+     */
     void resolve();
 
-    /** Get the elapsed time in miliseconds between a pair of Begin()/End() calls. \n
-        If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
-    */
+    /**
+     * Get the elapsed time in milliseconds for the last resolved pair of begin()/end() calls.
+     * If this function called not after a begin()/end() pair, zero will be returned and a warning will be logged.
+     * The resolve() function must be called prior to calling this function.
+     * NOTE! The caller is responsible for inserting GPU synchronization between these two calls.
+     */
     double getElapsedTime();
 
- private:
-    GpuTimer(std::shared_ptr<Device> pDevice);
+    void breakStrongReferenceToDevice();
 
-    enum Status {
+private:
+    GpuTimer(ref<Device> pDevice);
+
+    enum class Status
+    {
         Begin,
         End,
         Idle
-    } mStatus = Idle;
+    };
 
-    static std::weak_ptr<QueryHeap> spHeap;
-    LowLevelContextData::SharedPtr mpLowLevelData;
+    BreakableReference<Device> mpDevice;
+    Status mStatus = Status::Idle;
     uint32_t mStart = 0;
     uint32_t mEnd = 0;
     double mElapsedTime = 0.0;
     bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
 
-    std::shared_ptr<Device> mpDevice;
-
-    void apiBegin();
-    void apiEnd();
-    void apiResolve();
-    void apiReadback(uint64_t result[2]);
+    ref<Buffer> mpResolveBuffer;        ///< GPU memory used as destination for resolving timestamp queries.
+    ref<Buffer> mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
 };
 
 }  // namespace Falcor

@@ -25,25 +25,59 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-
 #include "RtStateObject.h"
+#include "Device.h"
+#include "GFXAPI.h"
+#include "Falcor/Core/Program/Program.h"
 
 namespace Falcor {
-	bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const {
-		bool b = true;
-		b = b && (mMaxTraceRecursionDepth == other.mMaxTraceRecursionDepth);
-		b = b && (mpKernels == other.mpKernels);
-		return b;
-	}
 
-	RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const Desc& desc) {
-		return SharedPtr(new RtStateObject(pDevice, desc));
-	}
+RtStateObject::RtStateObject(ref<Device> pDevice, const RtStateObjectDesc& desc) : mpDevice(pDevice), mDesc(desc) {
+    auto pKernels = getKernels();
+    gfx::RayTracingPipelineStateDesc rtpDesc = {};
+    std::vector<gfx::HitGroupDesc> hitGroups;
+    
+    // Loop over the hitgroups
+    for (const auto& pEntryPointGroup : pKernels->getUniqueEntryPointGroups()) {
+        if (pEntryPointGroup->getType() == EntryPointGroupKernels::Type::RtHitGroup) {
+            const EntryPointKernel* pIntersection = pEntryPointGroup->getKernel(ShaderType::Intersection);
+            const EntryPointKernel* pAhs = pEntryPointGroup->getKernel(ShaderType::AnyHit);
+            const EntryPointKernel* pChs = pEntryPointGroup->getKernel(ShaderType::ClosestHit);
 
-	RtStateObject::RtStateObject(Device::SharedPtr pDevice, const Desc& desc): mpDevice(pDevice), mDesc(desc) {
-		apiInit();
-	}
+            gfx::HitGroupDesc hitgroupDesc = {};
+            hitgroupDesc.anyHitEntryPoint = pAhs ? pAhs->getEntryPointName().c_str() : nullptr;
+            hitgroupDesc.closestHitEntryPoint = pChs ? pChs->getEntryPointName().c_str() : nullptr;
+            hitgroupDesc.intersectionEntryPoint = pIntersection ? pIntersection->getEntryPointName().c_str() : nullptr;
+            hitgroupDesc.hitGroupName = pEntryPointGroup->getExportName().c_str();
+            hitGroups.push_back(hitgroupDesc);
+        }
+    }
 
+    rtpDesc.hitGroupCount = (uint32_t)hitGroups.size();
+    rtpDesc.hitGroups = hitGroups.data();
+    rtpDesc.maxRecursion = mDesc.maxTraceRecursionDepth;
+
+    static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipProcedurals == (uint32_t)RtPipelineFlags::SkipProceduralPrimitives);
+    static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipTriangles == (uint32_t)RtPipelineFlags::SkipTriangles);
+
+    rtpDesc.flags = (gfx::RayTracingPipelineFlags::Enum)mDesc.pipelineFlags;
+    auto rtProgram = dynamic_cast<Program*>(mDesc.pProgramKernels->getProgramVersion()->getProgram());
+    FALCOR_ASSERT(rtProgram);
+    rtpDesc.maxRayPayloadSize = rtProgram->getDesc().maxPayloadSize;
+    rtpDesc.maxAttributeSizeInBytes = rtProgram->getDesc().maxAttributeSize;
+    rtpDesc.program = mDesc.pProgramKernels->getGfxProgram();
+
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createRayTracingPipelineState(rtpDesc, mGfxPipelineState.writeRef()));
+
+    // Get shader identifiers.
+    // In GFX, a shader identifier is just the entry point group name.
+    for (const auto& pEntryPointGroup : pKernels->getUniqueEntryPointGroups()) {
+        mEntryPointGroupExportNames.push_back(pEntryPointGroup->getExportName());
+    }
 }
+
+RtStateObject::~RtStateObject() {
+    mpDevice->releaseResource(mGfxPipelineState);
+}
+
+} // namespace Falcor

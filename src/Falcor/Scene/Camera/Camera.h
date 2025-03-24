@@ -30,6 +30,7 @@
 
 #include "CameraData.slang"
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h" 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/Animation/Animatable.h"
@@ -360,7 +361,7 @@ class dlldecl Camera : public Animatable {
     friend class SceneCache;
 };
 
-enum_class_operators(Camera::Changes);
+ENUM_CLASS_OPERATORS(Camera::Changes);
 
 }  // namespace Falcor
 

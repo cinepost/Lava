@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GFX_GFXDEVICEAPIDATA_H_
+#define SRC_FALCOR_CORE_API_GFX_GFXDEVICEAPIDATA_H_
 
 #include "Falcor/Core/API/Device.h"
 #include "gfx_lib/slang-gfx.h"
@@ -48,3 +49,5 @@ struct DeviceApiData {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GFX_GFXDEVICEAPIDATA_H_

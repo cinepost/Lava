@@ -29,7 +29,9 @@
 /** Enums for texture level-of-detail -- see TexLODHelpers.slang
 */
 
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_TEXLODTYPES_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_TEXLODTYPES_H_
+
 #include "Utils/HostDeviceShared.slangh"
 
 BEGIN_NAMESPACE_FALCOR
@@ -56,3 +58,5 @@ enum class RayConeMode : uint32_t
 };
 
 END_NAMESPACE_FALCOR
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_TEXLODTYPES_H_

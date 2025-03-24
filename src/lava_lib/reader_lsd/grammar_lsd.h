@@ -16,8 +16,6 @@
 #include "boost/array.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/range.hpp"
-//#include <boost/range/join.hpp>
-//#include <boost/algorithm/string/join.hpp>
 
 #ifdef DEBUG
    // #define BOOST_SPIRIT_X3_DEBUG
@@ -38,6 +36,7 @@
 
 #include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
+#include <glm/mat4x4.hpp>
 
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"

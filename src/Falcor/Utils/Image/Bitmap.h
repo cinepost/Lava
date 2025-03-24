@@ -28,7 +28,8 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_BITMAP_H_
 #define SRC_FALCOR_UTILS_IMAGE_BITMAP_H_
 
-#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Platform/OS.h"
 #include "Falcor/Core/API/Formats.h"
 
 
@@ -39,13 +40,20 @@ class Texture;
 
 /** A class representing a memory bitmap
 */
-class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
+class FALCOR_API Bitmap {
  public:
     enum class ExportFlags : uint32_t {
         None = 0u,              //< Default
         ExportAlpha = 1u << 0,  //< Save alpha channel as well
         Lossy = 1u << 1,        //< Try to store in a lossy format
         Uncompressed = 1u << 2, //< Prefer faster load to a more compact file size
+        ExrFloat16 = 1u << 3,   //< Use half-float instead of float when writing EXRs
+    };
+
+    enum class ImportFlags : uint32_t
+    {
+        None = 0u,                  ///< Default.
+        ConvertToFloat16 = 1u << 0, ///< Convert HDR images to 16-bit float per channel on import.
     };
 
     enum class FileFormat {
@@ -65,9 +73,9 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
-    static UniqueConstPtr createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
+    static UniqueConstPtr createFromFileOIIO(ref<Device> pDevice, const std::string& filename, bool isTopDown, ImportFlags importFlags = ImportFlags::None);
+    static UniqueConstPtr createFromFile(ref<Device> pDevice, const std::string& filename, bool isTopDown, ImportFlags importFlags = ImportFlags::None);
+    static UniqueConstPtr createFromFile(ref<Device> pDevice, const fs::path& fullpath, bool isTopDown, ImportFlags importFlags = ImportFlags::None);
 
     /** Store a memory buffer to a PNG file.
         \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
@@ -79,7 +87,7 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel will be stored first, otherwise the bottom-left pixel will be stored first
         \param[in] pData Pointer to the buffer containing the image
     */
-    static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
+    static void saveImage(const fs::path& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
 
     /** Store a memory buffer to a sparse file.
         \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
@@ -88,7 +96,7 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
         \param[in] ResourceFormat the format of the resource data
         \param[in] pData Pointer to the buffer containing the image
     */
-    static void saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData);
+    static void saveSparseImage(const fs::path& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData);
 
     /**  Open dialog to save image to a file
         \param[in] pTexture Texture to save to file
@@ -96,15 +104,13 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
     */
     static void saveImageDialog(Texture* pTexture);
 
-    ~Bitmap();
-
     /** Get data size in bytes
-    */
-    size_t getDataSize() const;
+    */;
+    size_t getDataSize() const { return mSize; }
 
     /** Get a pointer to the bitmap's data store
     */
-    uint8_t* getData() const { return mpData; }
+    uint8_t* getData() const { return mpData.get(); }
 
     /** Get the width of the bitmap
     */
@@ -117,6 +123,9 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
     /** Get the number of bytes per pixel
     */
     ResourceFormat getFormat() const { return mFormat; }
+
+    /// Get the row pitch in bytes. For compressed formats this corresponds to one row of blocks, not pixels.
+    uint32_t getRowPitch() const { return mRowPitch; }
 
     /** Read data region
     */
@@ -138,13 +147,19 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
 
  private:
     Bitmap() = default;
-    uint8_t* mpData = nullptr;
-    uint32_t mWidth = 0;
-    uint32_t mHeight = 0;
+    Bitmap(uint32_t width, uint32_t height, ResourceFormat format);
+    Bitmap(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData);
+    
+    std::unique_ptr<uint8_t[]> mpData;
+    uint32_t mWidth = 0;    ///< Width in pixels.
+    uint32_t mHeight = 0;   ///< Height in pixels.
+    uint32_t mRowPitch = 0; ///< Row pitch in bytes.
+    size_t mSize = 0;       ///< Total size in bytes.
     ResourceFormat mFormat;
 };
 
-enum_class_operators(Bitmap::ExportFlags);
+ENUM_CLASS_OPERATORS(Bitmap::ExportFlags);
+ENUM_CLASS_OPERATORS(Bitmap::ImportFlags);
 
 }  // namespace Falcor
 

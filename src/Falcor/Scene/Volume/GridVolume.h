@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 
@@ -284,5 +285,5 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    enum_class_operators(GridVolume::UpdateFlags);
+    ENUM_CLASS_OPERATORS(GridVolume::UpdateFlags);
 }

@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PLATFORM_MONITORINFO_H_
+#define SRC_FALCOR_CORE_PLATFORM_MONITORINFO_H_
+
 // #TODO Implement MonitorInfo cross-platform. GLFW?
 #ifdef _WIN32
 
@@ -58,4 +60,6 @@ namespace Falcor
         static void displayMonitorInfo();
     };
 }
-#endif // _WIN32
+#endif  // _WIN32
+
+#endif  // SRC_FALCOR_CORE_PLATFORM_MONITORINFO_H_

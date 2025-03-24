@@ -28,21 +28,29 @@
 #ifndef SRC_FALCOR_CORE_API_DEVICE_H_
 #define SRC_FALCOR_CORE_API_DEVICE_H_
 
-#include <list>
-#include <string>
-#include <memory>
-#include <queue>
-#include <vector>
-#include <atomic>
-
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/Window.h"
-#include "Falcor/Core/API/LowLevelContextData.h"
-#include "Falcor/Core/API/GpuMemoryHeap.h"
-#include "Falcor/Core/API/QueryHeap.h"
-#include "Falcor/Core/API/ResourceViews.h"
+#include "Types.h"
+#include "Handles.h"
+#include "NativeHandle.h"
+#include "Formats.h"
+#include "QueryHeap.h"
+#include "LowLevelContextData.h"
+#include "RenderContext.h"
+#include "GpuMemoryHeap.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/ComputeStateObject.h"
+#include "Falcor/Core/API/GraphicsStateObject.h"
+#include "Falcor/Core/API/RtStateObject.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+#include <array>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <vector>
 
 namespace Falcor {
 
@@ -59,24 +67,54 @@ class Sampler;
 class CopyContext;
 class RenderContext;
 class TextureManager;
+class ProgramManager;
+class Profiler;
+class PipelineCreationAPIDispatcher;
+class GraphicsStateObjectDesc;
 
-class dlldecl Device: public std::enable_shared_from_this<Device> {
+/// Holds the adapter LUID (or UUID).
+/// Note: The adapter LUID is actually just 8 bytes, but on Linux the LUID is
+/// not supported, so we use this to store the 16-byte UUID instead.
+struct AdapterLUID {
+    std::array<uint8_t, 16> luid;
+
+    AdapterLUID() { luid.fill(0); }
+    bool isValid() const { return *this != AdapterLUID(); }
+    bool operator==(const AdapterLUID& other) const { return luid == other.luid; }
+    bool operator!=(const AdapterLUID& other) const { return luid != other.luid; }
+    bool operator<(const AdapterLUID& other) const { return luid < other.luid; }
+};
+
+struct AdapterInfo {
+    /// Descriptive name of the adapter.
+    std::string name;
+
+    /// Unique identifier for the vendor.
+    uint32_t vendorID;
+
+    // Unique identifier for the physical device among devices from the vendor.
+    uint32_t deviceID;
+
+    // Logically unique identifier of the adapter.
+    AdapterLUID luid;
+};
+
+
+class FALCOR_API Device: public Object {
+    FALCOR_OBJECT(Device)
  public:
-    using SharedPtr = std::shared_ptr<Device>;
-    using SharedConstPtr = std::shared_ptr<const Device>;
-    using ApiHandle = DeviceHandle;
-    using DeviceLocalUID = uint32_t;
-    
-    static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
-    static constexpr uint32_t kSwapChainBuffersCount = 3;
-
-    ~Device();
-
-    using IDesc = gfx::IDevice::Desc;
+    /**
+     * Maximum number of in-flight frames.
+     * Typically there are at least two frames, one being rendered to, the other being presented.
+     * We add one more to be on the save side.
+     */
+    static constexpr uint32_t kInFlightFrameCount = 3;
 
     /** Device configuration
     */
     struct Desc {
+        uint32_t gpu = 0; ///< GPU index (indexing into GPU list returned by getGPUList()).
+
         ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
         ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
         uint32_t apiMajorVersion = 1;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
@@ -85,18 +123,27 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;      ///< Enable the debug layer. The default for release build is false, for debug build it's true.
         std::string validationLayerOuputFilename;
 
-        static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
-        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 2 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
-
         std::vector<std::string> requiredExtensions;
 
-        uint32_t width = 1280;                                          ///< Headless FBO width
-        uint32_t height = 720;                                          ///< Headless FBO height
+        /// The maximum number of entries allowable in the shader cache. A value of 0 indicates no limit.
+        uint32_t maxShaderCacheEntryCount = 1000;
 
-#ifdef FALCOR_VK
-        VkSurfaceKHR surface = VK_NULL_HANDLE;
-#endif
+        /// The full path to the root directory for the shader cache. An empty string will disable the cache.
+        std::string shaderCachePath = (getRuntimeDirectory() / ".shadercache").string();
 
+        /// Whether to enable ray tracing validation (requires NVAPI)
+        bool enableRaytracingValidation = false;
+    };
+
+    struct Info {
+        std::string adapterName;
+        AdapterLUID adapterLUID;
+        std::string apiName;
+    };
+
+    struct Limits {
+        uint3 maxComputeDispatchThreadGroups;
+        uint32_t maxShaderVisibleSamplers;
     };
 
     enum class SupportedFeatures {
@@ -113,21 +160,281 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         WaveOperations = 0x200,
         AtomicInt64 = 0x400,
         AtomicFloat = 0x800,
+        ShaderExecutionReorderingAPI = 0x1000,         ///< On D3D12 and Vulkan, this means SER API is available (in the future this will be part of the shader model).
+        RaytracingReordering = 0x2000,                 ///< On D3D12, this means SER is supported on the hardware.
+
     };
 
-    enum class ShaderModel : uint32_t {
-        Unknown,
-        SM6_0,
-        SM6_1,
-        SM6_2,
-        SM6_3,
-        SM6_4,
-        SM6_5,
-        SM6_6,
-        SM6_7,
-    };
+    /**
+     * Constructor. Throws an exception if creation failed.
+     * @param[in] desc Device configuration descriptor.
+     */
+    Device(const Desc& desc);
+    ~Device();
 
-    using MemoryType = GpuMemoryHeap::Type;
+    /**
+     * Create a new buffer.
+     * @param[in] size Size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createBuffer(
+        size_t size,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr
+    );
+
+    /**
+     * Create a new typed buffer.
+     * @param[in] format Typed buffer format.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createTypedBuffer(
+        ResourceFormat format,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr
+    );
+
+    /**
+     * Create a new typed buffer. The format is deduced from the template parameter.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    template<typename T>
+    ref<Buffer> createTypedBuffer(
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const T* pInitData = nullptr
+    )
+    {
+        return createTypedBuffer(detail::FormatForElementType<T>::kFormat, elementCount, bindFlags, memoryType, pInitData);
+    }
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] structSize Size of the struct in bytes.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createStructuredBuffer(
+        uint32_t structSize,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] pType Type of the structured buffer.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createStructuredBuffer(
+        const ReflectionType* pType,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] shaderVar ShaderVar pointing to the buffer variable.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createStructuredBuffer(
+        const ShaderVar& shaderVar,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new buffer from an existing resource.
+     * @param[in] pResource Already allocated resource.
+     * @param[in] size The size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] memoryType Type of memory to use for the buffer. Flags must match those of the heap the original resource is
+     * allocated on.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createBufferFromResource(gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+
+    /**
+     * Create a new buffer from an existing native handle.
+     * @param[in] handle Handle of already allocated resource.
+     * @param[in] size The size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] memoryType Type of memory to use for the buffer. Flags must match those of the heap the original resource is
+     * allocated on.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    ref<Buffer> createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+
+    /**
+     * Create a 1D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTexture1D(
+        uint32_t width,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a 2D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTexture2D(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a 3D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] depth The depth of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTexture3D(
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        ResourceFormat format,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a cube texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTextureCube(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a multi-sampled 2D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] sampleCount The sample count of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTexture2DMS(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t sampleCount,
+        uint32_t arraySize = 1,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a new texture from an resource.
+     * @param[in] pResource Already allocated resource.
+     * @param[in] type The type of texture.
+     * @param[in] format The format of the texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] depth The depth of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels The number of mip levels.
+     * @param[in] sampleCount The sample count of the texture.
+     * @param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] initState The initial resource state.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    ref<Texture> createTextureFromResource(
+        gfx::ITextureResource* pResource,
+        Texture::Type type,
+        ResourceFormat format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t arraySize,
+        uint32_t mipLevels,
+        uint32_t sampleCount,
+        ResourceBindFlags bindFlags,
+        Resource::State initState
+    );
 
     /** Device unique id.
     */
@@ -140,17 +447,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     TextureManager* textureManager() { return mpTextureManager.get(); }
 
-    /** Enable/disable vertical sync
-    */
-    void toggleVSync(bool enable);
-
-    bool isHeadless() const { return mHeadless; };
-
     /** Get physical device name
     */
     std::string& getPhysicalDeviceName();
 
-    const VmaAllocator& allocator() const { return mApiHandle->getVmaAllocator(); }
+    const VmaAllocator& allocator() const { return mGfxDevice->getVmaAllocator(); }
 
     /** Check if the window is occluded
     */
@@ -171,27 +472,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
-    /** Get the command queue handle
-    */
-    CommandQueueHandle getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-
-    VkQueue            getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-
-    /** Get the API queue type.
-        \return API queue type, or throws an exception if type is unknown.
-    */
-    ApiCommandQueueType getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const;
-
-    /** Get the native API handle
-    */
-    const DeviceHandle& getApiHandle() { return mApiHandle; }
-
-    VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
-
-    /** Present the back-buffer to the window
-    */
-    void present();
-
     /** Flushes pipeline, releases resources, and blocks until completion
     */
     void flushAndSync();
@@ -200,77 +480,81 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     bool isVsyncEnabled() const { return mDesc.enableVsync; }
 
-    /** Resize the swap-chain
-        \return A new FBO object
-    */
-    std::shared_ptr<Fbo> resizeSwapChain(uint32_t width, uint32_t height);
-
     /** Get the desc
     */
     const Desc& getDesc() const { return mDesc; }
 
+    /**
+     * Flushes pipeline, releases resources, and blocks until completion
+     */
+    void wait();
+
+    /**
+     * Create a new sampler object.
+     * @param[in] desc Describes sampler settings.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    ref<Sampler> createSampler(const Sampler::Desc& desc);
+
     /** Get default sampler object
     */
-    std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
+    const ref<Sampler>& getDefaultSampler() const { return mpDefaultSampler; }
 
-    /** Create a new query heap.
-        \param[in] type Type of queries.
-        \param[in] count Number of queries.
-        \return New query heap.
-    */
-    std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
+    /**
+     * Create a new fence object.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    ref<Fence> createFence(const FenceDesc& desc);
 
-    DeviceApiData* getApiData() const { return mpApiData; }
+    /**
+     * Create a new fence object.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    ref<Fence> createFence(bool shared = false);
 
-    const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
+    /// Create a compute state object.
+    ref<ComputeStateObject> createComputeStateObject(const ComputeStateObjectDesc& desc);
+    /// Create a graphics state object.
+    ref<GraphicsStateObject> createGraphicsStateObject(const GraphicsStateObjectDesc& desc);
+    /// Create a raytracing state object.
+    ref<RtStateObject> createRtStateObject(const RtStateObjectDesc& desc);
+
+    ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
+
+    Profiler* getProfiler() const { return mpProfiler.get(); }
+
+    size_t getBufferDataAlignment(ResourceBindFlags bindFlags);
+
+    const ref<GpuMemoryHeap>& getUploadHeap() const { return mpUploadHeap; }
+    const ref<GpuMemoryHeap>& getReadBackHeap() const { return mpReadBackHeap; }
+    const ref<QueryHeap>& getTimestampQueryHeap() const { return mpTimestampQueryHeap; }
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; }  // ms/tick
 
     /** Check if features are supported by the device
     */
     bool isFeatureSupported(SupportedFeatures flags) const;
 
+    /**
+     * Get a list of all available GPUs.
+     */
+    static std::vector<AdapterInfo> getGPUs();
+
+    /**
+     * Get the global device mutex.
+     * WARNING: Falcor is generally not thread-safe. This mutex is used in very specific
+     * places only, currently only for doing parallel texture loading.
+     */
+    std::mutex& getGlobalGfxMutex() { return mGlobalGfxMutex; }
+
     uint32_t subgroupSize() const;
 
-    void releaseResource(ApiObjectHandle pResource);
-
-#ifdef FALCOR_GFX
     void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
 
     gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
 
-
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
-    VkInstance       getVkInstance() const { return mVkInstance; };
-    VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
-    VkDevice         getVkDevice() const { return mVkDevice; };
-    VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
-#endif  // FALCOR_GFX_VK || FALCOR_VK
-#endif  // FALCOR_GFX
-
-#ifdef FALCOR_VK
-    uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
-
-    /** Get the index of a memory type that has all the requested property bits set
-        *
-        * @param typeBits Bitmask with bits set for each memory type supported by the resource to request for (from VkMemoryRequirements)
-        * @param properties Bitmask of properties for the memory type to request
-        * @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
-        * 
-        * @return Index of the requested memory type
-        *
-        * @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
-        */
-    uint32_t getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) const;
-    
-    const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
-    uint32_t  getDeviceVendorID() const;
-#endif  // FALCOR_VK
-
     uint32_t getMaxComputeWorkgroupSubgroups() const;
 
     const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const;
-
-    DeviceApiData* apiData() const { return mpApiData; };
 
     /** Check if a shader model is supported by the device
     */
@@ -280,10 +564,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     ShaderModel getSupportedShaderModel() const { return mSupportedShaderModel; }
 
-    /** Return the current index of the back buffer being rendered to.
-    */
-    uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
-
     /* Return the GFX command queue.
     */
     gfx::IDevice* getGfxDevice() const { return mGfxDevice; }
@@ -292,128 +572,63 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
 
- private:
-    Device(Window::SharedPtr pWindow, const Desc& desc);
 
+    /**
+     * Get the supported bind-flags for a specific format.
+     */
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format);
+
+    /// Get the texture row memory alignment in bytes.
+    size_t getTextureRowAlignment() const;
+
+ private:
     struct ResourceRelease {
-        size_t frameID;
-        ApiObjectHandle pApiObject;
+        uint64_t fenceValue;
+        Slang::ComPtr<ISlangUnknown> mObject;
     };
 
-    std::shared_ptr<Sampler> mpDefaultSampler = nullptr;
     std::queue<ResourceRelease> mDeferredReleases;
 
-    uint32_t mCurrentBackBufferIndex;
-    std::shared_ptr<Fbo> mpSwapChainFbos[kSwapChainBuffersCount];
-    std::shared_ptr<Fbo> mpOffscreenFbo;
-
     void executeDeferredReleases();
-    void releaseFboData();
-    void release();
 
-    bool updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
-    bool updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
+    void enableRaytracingValidation();
+    void disableRaytracingValidation();
 
     Desc mDesc;
-    ApiHandle mApiHandle;
-    GpuMemoryHeap::SharedPtr mpUploadHeap;
-
-    bool mIsWindowOccluded = false;
-    GpuFence::SharedPtr mpFrameFence;
-
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
-    VkPhysicalDevice    mVkPhysicalDevice = VK_NULL_HANDLE;
-    VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
-    VkDevice            mVkDevice         = VK_NULL_HANDLE;
-    VkInstance          mVkInstance       = VK_NULL_HANDLE;
-
-    std::vector<VkQueue>            mCmdNativeQueues[kQueueTypeCount];
-#endif
-
-    Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
     Slang::ComPtr<gfx::IDevice> mGfxDevice;
+    Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<gfx::ITransientResourceHeap> mpTransientResourceHeaps[kInFlightFrameCount];
+    uint32_t mCurrentTransientResourceHeapIndex = 0;
 
-    Window::SharedPtr mpWindow = nullptr;
-    DeviceApiData* mpApiData;
-    std::shared_ptr<RenderContext> mpRenderContext = nullptr;
-    size_t mFrameID = 0;
-    std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
+    gfx::IDevice::InteropHandles mInteropHandles;
+
+    ref<Sampler> mpDefaultSampler;
+    ref<GpuMemoryHeap> mpUploadHeap;
+    ref<GpuMemoryHeap> mpReadBackHeap;
+    ref<QueryHeap> mpTimestampQueryHeap;
+
+    ref<Fence> mpFrameFence;
+
+    std::unique_ptr<RenderContext> mpRenderContext;
     double mGpuTimestampFrequency;
 
-    std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
-
-    bool mHeadless = false;
+    Info mInfo;
+    Limits mLimits;
 
     SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
     ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
-
-    // API specific functions
-    bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle);
-    bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
-    void destroyApiObjects();
-    void apiPresent();
-
-    bool apiInit(const std::string& validationLayerOuputFilename);
-
-    bool createSwapChain(ResourceFormat colorFormat);
-
-#if defined(FALCOR_VK)
-    bool createSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
-#endif
-
-    bool createOffscreenFBO(ResourceFormat colorFormat);
-
-    void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
-    void apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat);
-
-    void toggleFullScreen(bool fullscreen);
-
- public:
-    /** Create a new rendering(headless) device.
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(const Desc& desc);
-
-    /** Create a new display device.
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(Window::SharedPtr pWindow, const Desc& desc);
-
-    /** Create a new rendering(headless) device.
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(const Device::IDesc& idesc, const Desc& desc);
-
-    /** Create a new display device.
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Desc& desc);
-
-
-    const NullResourceViews& nullResourceViews() const { return mNullViews; };
+    ShaderModel mDefaultShaderModel = ShaderModel::Unknown;
 
   protected:
-    bool init();
-
-    void createNullViews();
-    void releaseNullViews();
-
     std::string mPhysicalDeviceName;
 
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
 
-    IDesc mIDesc; // device creation using gfx::IDevice::Desc
-
-    bool mUseIDesc = false; // create device using gfx::IDevice::Desc
-
-    NullResourceViews mNullViews;
-
-    std::shared_ptr<TextureManager>  mpTextureManager = nullptr;
+    std::unique_ptr<TextureManager>     mpTextureManager;
+    std::unique_ptr<ProgramManager>     mpProgramManager;
+    std::unique_ptr<Profiler>           mpProfiler;
 
     friend class DeviceManager;
     friend class ResourceManager;
@@ -433,9 +648,15 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceSynchronization2FeaturesKHR         mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
     VkPhysicalDeviceHostQueryResetFeatures              mEnabledHostQueryResetFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
 #endif
+
+    std::mutex mGlobalGfxMutex;
 };
 
-enum_class_operators(Device::SupportedFeatures);
+inline constexpr uint32_t getMaxViewportCount() {
+    return 8;
+}
+
+ENUM_CLASS_OPERATORS(Device::SupportedFeatures);
 
 }  // namespace Falcor
 

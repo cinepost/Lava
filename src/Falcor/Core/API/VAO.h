@@ -28,22 +28,24 @@
 #ifndef SRC_FALCOR_CORE_API_VAO_H_
 #define SRC_FALCOR_CORE_API_VAO_H_
 
-#include <vector>
-#include <memory>
-
 #include "VertexLayout.h"
-#include "Buffer.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Core/Object.h"
+
+#include <vector>
+
 
 namespace Falcor {
+
+class Buffer;
 
 /** Abstracts vertex array objects. A VAO must at least specify a primitive topology. You may additionally specify a number of vertex buffer layouts 
 	corresponding to the number of vertex buffers to be bound. The number of vertex buffers to be bound must match the number described in the layout.
 */
-class dlldecl Vao : public std::enable_shared_from_this<Vao> {
+class FALCOR_API Vao : public Object {
+    FALCOR_OBJECT(Vao)
  public:
-	using SharedPtr = std::shared_ptr<Vao>;
-	using WeakPtr = std::weak_ptr<Vao>;
-	using SharedConstPtr = std::shared_ptr<const Vao>;
 	~Vao() = default;
 
 	/** Primitive topology
@@ -64,21 +66,24 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
 		uint32_t elementIndex = kInvalidIndex;
 	};
 
-	using BufferVec = std::vector<Buffer::SharedPtr>;
+	using BufferVec = std::vector<ref<Buffer>>;
 
-	/** Create a new vertex array object.
-		\param primTopology The primitive topology.
-		\param pLayout The vertex layout description. Can be nullptr.
-		\param pVBs Array of pointers to vertex buffers. Number of buffers must match with pLayout.
-		\param pIB Pointer to the index buffer. Can be nullptr, in which case no index buffer will be bound.
-		\param ibFormat The resource format of the index buffer. Can be either R16Uint or R32Uint.
-		\return New object, or throws an exception on error.
-	*/
-	static SharedPtr create(Topology primTopology, const VertexLayout::SharedPtr& pLayout = nullptr, const BufferVec& pVBs = BufferVec(), const Buffer::SharedPtr& pIB = nullptr, ResourceFormat ibFormat = ResourceFormat::Unknown);
-
-	/** Get the API handle
-	*/
-	const VaoHandle& getApiHandle() const;
+	/**
+   * Create a new vertex array object.
+   * @param primTopology The primitive topology.
+   * @param pLayout The vertex layout description. Can be nullptr.
+   * @param pVBs Array of pointers to vertex buffers. Number of buffers must match with pLayout.
+   * @param pIB Pointer to the index buffer. Can be nullptr, in which case no index buffer will be bound.
+   * @param ibFormat The resource format of the index buffer. Can be either R16Uint or R32Uint.
+   * @return New object, or throws an exception on error.
+   */
+  static ref<Vao> create(
+      Topology primTopology,
+      ref<VertexLayout> pLayout = nullptr,
+      const BufferVec& pVBs = BufferVec(),
+      ref<Buffer> pIB = nullptr,
+      ResourceFormat ibFormat = ResourceFormat::Unknown
+  );
 
 	/** Get the vertex buffer count
 	*/
@@ -86,20 +91,24 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
 
 	/** Get a vertex buffer
 	*/
-	const Buffer::SharedPtr& getVertexBuffer(uint32_t index) const { assert(index < (uint32_t)mpVBs.size()); return mpVBs[index]; }
+	const ref<Buffer>& getVertexBuffer(uint32_t index) const {
+    FALCOR_ASSERT(index < (uint32_t)mpVBs.size());
+    return mpVBs[index];
+  }
 
 	/** Get a vertex buffer layout
 	*/
-	const VertexLayout::SharedPtr& getVertexLayout() const { return mpVertexLayout; }
+	const ref<VertexLayout>& getVertexLayout() const { return mpVertexLayout; }
 
 	/** Return the vertex buffer index and the element index by its location.
 		If the element is not found, returns the default ElementDesc
 	*/
 	ElementDesc getElementIndexByLocation(uint32_t elementLocation) const;
 
-	/** Get the index buffer
-	*/
-	const Buffer::SharedPtr& getIndexBuffer() const { return mpIB; }
+	/**
+   * Get the index buffer
+   */
+  const ref<Buffer>& getIndexBuffer() const { return mpIB; }
 
 	/** Get the index buffer format
 	*/
@@ -115,15 +124,14 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
 	friend class RenderContext;
 
  private:
-	Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology primTopology);
+	Vao(const BufferVec& pVBs, ref<VertexLayout> pLayout, ref<Buffer> pIB, ResourceFormat ibFormat, Topology primTopology);
 
-	VaoHandle mApiHandle;
-	VertexLayout::SharedPtr mpVertexLayout;
-	BufferVec mpVBs;
-	Buffer::SharedPtr mpIB;
-	void* mpPrivateData = nullptr;
-	ResourceFormat mIbFormat;
-	Topology mTopology;
+  ref<VertexLayout> mpVertexLayout;
+  BufferVec mpVBs;
+  ref<Buffer> mpIB;
+  void* mpPrivateData = nullptr;
+  ResourceFormat mIbFormat;
+  Topology mTopology;
 };
 
 }  // namespace Falcor

@@ -2,6 +2,8 @@
 #define SRC_FALCOR_UTILS_IMAGE_LTX_BITMAP_H_
 
 #include <stdio.h>
+
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
 
@@ -209,8 +211,8 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     std::vector<uint16_t> mCompressedPageDataSize;
 };
 
-enum_class_operators(LTX_Bitmap::ExportFlags);
-enum_class_operators(LTX_Header::Flags);
+ENUM_CLASS_OPERATORS(LTX_Bitmap::ExportFlags);
+ENUM_CLASS_OPERATORS(LTX_Header::Flags);
 
 const std::string dlldecl to_string(LTX_Header::TopLevelCompression);
 const char* getBloscCompressionName(LTX_Header::TopLevelCompression);

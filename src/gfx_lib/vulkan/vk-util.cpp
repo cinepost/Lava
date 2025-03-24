@@ -209,6 +209,8 @@ VkShaderStageFlags VulkanUtil::getShaderStage(SlangStage stage)
 VkImageLayout VulkanUtil::getImageLayoutFromState(ResourceState state) {
     switch (state) {
         case ResourceState::ShaderResource:
+        case ResourceState::PixelShaderResource:
+        case ResourceState::NonPixelShaderResource:
             return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         case ResourceState::UnorderedAccess:
         case ResourceState::General:
@@ -230,9 +232,9 @@ VkImageLayout VulkanUtil::getImageLayoutFromState(ResourceState state) {
         case ResourceState::ResolveDestination:
             return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         default:
-            assert(!"unsupported state.");
             return VK_IMAGE_LAYOUT_UNDEFINED;
     }
+    return VkImageLayout();
 }
 
 Falcor::Resource::State VulkanUtil::toFalcorState(ResourceState state) {
@@ -661,6 +663,8 @@ VkImageLayout VulkanUtil::mapResourceStateToLayout(ResourceState state)
     case ResourceState::Undefined:
         return VK_IMAGE_LAYOUT_UNDEFINED;
     case ResourceState::ShaderResource:
+    case ResourceState::PixelShaderResource:
+    case ResourceState::NonPixelShaderResource:
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     case ResourceState::UnorderedAccess:
         return VK_IMAGE_LAYOUT_GENERAL;

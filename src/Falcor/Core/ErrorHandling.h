@@ -25,13 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_ERRORHANDLING_H_
+#define SRC_FALCOR_CORE_ERRORHANDLING_H_
+
 #include "Falcor/Core/Framework.h"
 
 #include <string>
 
-namespace Falcor
-{
+namespace Falcor {
     /** Enable/disable showing a message box when reporting an error.
     */
     FALCOR_API void setShowMessageBoxOnError(bool enable);
@@ -60,4 +61,6 @@ namespace Falcor
         \param msg Error message.
     */
     FALCOR_API [[noreturn]] void reportFatalError(const std::string& msg);
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_ERRORHANDLING_H_

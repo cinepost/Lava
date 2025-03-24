@@ -5,6 +5,7 @@
 #include <mutex>
 #include <algorithm>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/Device.h"
@@ -190,7 +191,7 @@ class dlldecl VisibilitySamplesContainer {
 		ResourceFormat      		mHitInfoFormat = HitInfo::kDefaultFormat;
 };
 
-enum_class_operators(VisibilitySamplesContainerFlags);
+ENUM_CLASS_OPERATORS(VisibilitySamplesContainerFlags);
 
 }  // namespace Falcor
 

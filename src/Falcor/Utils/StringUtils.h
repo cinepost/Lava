@@ -258,6 +258,15 @@ namespace Falcor {
         buffer[length] = '\0';
     }
 
+    /**
+    * Convert an ASCII string to lower case.
+    */
+    inline std::string toLowerCase(const std::string& str)  {
+        std::string s = str;
+        std::transform(str.begin(), str.end(), s.begin(), ::tolower);
+        return s;
+    }
+
     /** Converts a size in bytes to a human readable string:
         - prints bytes (B) if size < 512 bytes
         - prints kilobytes (KB) if size < 512 kilobytes

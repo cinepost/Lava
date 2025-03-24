@@ -31,40 +31,39 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-/** Struct representing a material texture handle.
+/** Struct representing a material texture handle on the GPU.
 
     A texture handle can be in different modes:
     - 'Uniform' handle refers to a constant value.
     - 'Texture' handle refers to a traditional texture.
-    - 'Virtual' handle refers to a sparse (virtual) texture.
 
-    In the future we'll add a 'Procedural' mode here, where the handle
-    refers to a procedural texture identified by a unique ID.
+    Procedural texture identified by a unique ID.
 */
 struct TextureHandle {
-
     uint32_t packedData = 0;
-    
+
     enum class Mode {
         Uniform,
         Texture,
-        Virtual,
-        UDIM_Texture,
+        Procefural,
         Count // Must be last
     };
 
-    enum class WrapMode {
-        Repeat,
-        Mirror,
-        Streak,
-        Border,
-        Count // Must be last
-    };
+    static constexpr uint kTextureIDBits = 28;
+    static constexpr uint kModeBits = 2;
+    static constexpr uint kUdimTextureBits = 1;
+    static constexpr uint kSparseTextureBits = 1;
 
-    static const uint kTextureIDBits = 30;
-    static const uint kModeBits = 2;
+    static constexpr uint kModeOffset = kTextureIDBits;
+    static constexpr uint kUdimTextureOffset = kModeOffset + kModeBits;
+    static constexpr uint kSparseTextureOffset = kUdimTextureOffset + kUdimTextureBits;
 
-    static const uint kModeOffset = kTextureIDBits;
+#ifdef HOST_CODE
+    TextureHandle() = default;
+    explicit TextureHandle(uint32_t packedData_) : packedData(packedData_) {}
+#else
+    __init(uint32_t packedData) { this.packedData = packedData; }
+#endif
 
     /** Set mode.
     */
@@ -75,74 +74,37 @@ struct TextureHandle {
     Mode getMode() CONST_FUNCTION { return Mode(EXTRACT_BITS(kModeBits, kModeOffset, packedData)); }
 
     /** Set texture ID. This sets mode to Mode::Texture.
-    */
-    SETTER_DECL void setTextureID(uint texID) { packedData = ((uint)Mode::Texture << kModeOffset) | texID; }
+     */
+    SETTER_DECL void setTextureID(uint texID) { setMode(Mode::Texture); packedData = PACK_BITS(kTextureIDBits, 0, packedData, texID); }
 
     /** Get texture ID. This operation is only valid if mode is Mode::Texture.
     */
     uint getTextureID() CONST_FUNCTION { return EXTRACT_BITS(kTextureIDBits, 0, packedData); }
 
-    /**
-    */
-    bool isUDIMTexture() CONST_FUNCTION { return getMode() == Mode::UDIM_Texture; }
+    /** Set whether the texture uses udim or not.
+     */
+    SETTER_DECL void setUDIMTexture(bool udimTexture) { packedData = PACK_BITS(kUdimTextureBits, kUdimTextureOffset, packedData, udimTexture ? 1 : 0); }
+
+    /** Set whether the texture uses udim or not.
+     */
+    bool isUDIMTexture() CONST_FUNCTION { return IS_BIT_SET(packedData, kUdimTextureOffset); }
 
     /**
-    */
-    bool isVirtualTexture() CONST_FUNCTION { return getMode() == Mode::Virtual; }
+     */
+    SETTER_DECL void setSparseTexture(bool sparseTexture) { packedData = PACK_BITS(kSparseTextureBits, kSparseTextureOffset, packedData, sparseTexture ? 1 : 0); }
 
     /**
-    */
+     */
+    bool isSparseTexture() CONST_FUNCTION { return IS_BIT_SET(packedData, kSparseTextureOffset); }
+
+    /**
+     */
     bool isUniformTexture() CONST_FUNCTION { return getMode() == Mode::Uniform; }
 
-#ifdef HOST_CODE
-    bool operator==(const TextureHandle& rhs) const { return (packedData == rhs.packedData); }
-    bool operator!=(const TextureHandle& rhs) const { return (packedData != rhs.packedData); }
-#endif
-};
-
-struct ExtendedTextureData {
-    uint32_t virtualID = UINT32_MAX;
-    
-    uint16_t udimID = UINT16_MAX;
-    uint16_t flags = 0;
-
-    uint32_t _pad1;
-    uint32_t _pad2;
-
-    enum class Mode {
-        Uniform,
-        Texture,
-        Virtual,
-        UDIM_Texture,
-        Count // Must be last
-    };
-
-    static const uint kModeBits = 2;
-    static const uint kModeOffset = 0;
-
-    /** Set mode.
-    */
-    SETTER_DECL void setMode(Mode mode) { flags = PACK_BITS(kModeBits, kModeOffset, flags, (uint)mode); }
-
-    /** Get mode.
-    */
-    Mode getMode() CONST_FUNCTION { return Mode(EXTRACT_BITS(kModeBits, kModeOffset, flags)); }
-
-    /**
-    */
-    bool isUDIMTexture() CONST_FUNCTION { return getMode() == Mode::UDIM_Texture; }
-
-    /**
-    */
-    bool isVirtualTexture() CONST_FUNCTION { return getMode() == Mode::Virtual; }
-
-    /**
-    */
-    bool isUniformTexture() CONST_FUNCTION { return getMode() == Mode::Uniform; }
 
 #ifdef HOST_CODE
-    bool operator==(const ExtendedTextureData& rhs) const { return (flags == rhs.flags && virtualID == rhs.virtualID && udimID == rhs.udimID); }
-    bool operator!=(const ExtendedTextureData& rhs) const { return (flags != rhs.flags || virtualID != rhs.virtualID || udimID != rhs.udimID); }
+    bool operator==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }
+    bool operator!=(const TextureHandle& rhs) const { return packedData != rhs.packedData; }
 #endif
 };
 

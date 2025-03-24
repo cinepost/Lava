@@ -28,26 +28,18 @@
 #ifndef SRC_FALCOR_SCENE_LIGHTS_LIGH_LINKER_H_
 #define SRC_FALCOR_SCENE_LIGHTS_LIGH_LINKER_H_
 
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+
+#include "Falcor/Scene/Raytracing.h"
+#include "LightData.slang"
+#include "LightLinkerShared.slang"
+
+
 #include <algorithm>
 #include <iterator>
 #include <map>
 #include <set>
-
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/RtAccelerationStructure.h"
-#include "Falcor/Core/Program/ShaderVar.h"
-#include "Falcor/Core/State/GraphicsState.h"
-#include "Falcor/Core/Program/GraphicsProgram.h"
-
-#include "Falcor/Scene/Raytracing.h"
-
-#include "LightData.slang"
-
-#include "RenderGraph/BasePasses/ComputePass.h"
-
-#include "LightLinkerShared.slang"
-
 
 namespace Falcor {
 
@@ -61,11 +53,8 @@ class Light;
     This class has utility functions for updating and pre-processing the object/light bit masks.
     The LightLinker can be used standalone, but more commonly it will be used by an light helper.
 */
-class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
+class FALCOR_API LightLinker {
     public:
-        using SharedPtr = std::shared_ptr<LightLinker>;
-        using SharedConstPtr = std::shared_ptr<const LightLinker>;
-
         using StringList     = std::vector<std::string>; // type alias for std::vector<std::string>
         using StringSet      = std::set<std::string>;
         using LightMap       = std::unordered_map<std::string, std::shared_ptr<Light>>;
@@ -84,15 +73,9 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
             std::vector<UpdateFlags> linksUpdateInfo;
         };
 
-        ~LightLinker() = default;
-
-        /** Creates a light collection for the given scene.
-            Note that update() must be called before the collection is ready to use.
-            \param[in] pRenderContext The render context.
-            \param[in] pScene The scene.
-            \return Ptr to the created object, or nullptr if an error occured.
+        /** Constructor. Throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene = nullptr);
+        LightLinker(ref<Device> pDevice, ref<Scene> pScene = nullptr);
 
         /** Get default shader defines.
             This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -209,13 +192,11 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         bool buildLightSetsData(bool force);
 
     protected:
-        LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene = nullptr);
-
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
         void syncCPUData() const;
 
         // Internal state
-        Device::SharedPtr                           mpDevice = nullptr;
+        ref<Device>                                 mpDevice;
         std::weak_ptr<Scene>                        mpScene;                        ///< Weak pointer to scene (scene owns LightLinker).
         
         mutable CPUOutOfDateFlags                   mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
@@ -240,15 +221,15 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         mutable std::vector<LightSetData>           mLightSetsData;
         mutable std::vector<uint32_t>               mIndirectionData;
 
-        mutable Buffer::SharedPtr                   mpLightsDataBuffer;
-        mutable Buffer::SharedPtr                   mpLightSetsDataBuffer;
-        mutable Buffer::SharedPtr                   mpIndirectionTableBuffer;
+        mutable ref<Buffer>                         mpLightsDataBuffer;
+        mutable ref<Buffer>                         mpLightSetsDataBuffer;
+        mutable ref<Buffer>                         mpIndirectionTableBuffer;
 
 };
 
 
-enum_class_operators(LightLinker::CPUOutOfDateFlags);
-enum_class_operators(LightLinker::UpdateFlags);
+ENUM_CLASS_OPERATORS(LightLinker::CPUOutOfDateFlags);
+ENUM_CLASS_OPERATORS(LightLinker::UpdateFlags);
 
 inline std::string to_string(LightLinker::UpdateFlags flags) {
     if(flags == LightLinker::UpdateFlags::None) return "None";

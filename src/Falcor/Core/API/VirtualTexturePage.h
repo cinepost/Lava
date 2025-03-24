@@ -27,17 +27,15 @@ class TextureManager;
 
 // Virtual texture page as a part of the partially resident texture
 // Contains memory bindings, offsets and status information
-class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTexturePage>  {
+class dlldecl VirtualTexturePage: public Object  {
+  	FALCOR_OBJECT(VirtualTexturePage)
   public:
-		using SharedPtr = std::shared_ptr<VirtualTexturePage>;
-		using SharedConstPtr = std::shared_ptr<const VirtualTexturePage>;
-
 		using PageData = std::array<uint8_t, 65536>;
 
 		/** Create a new vertex buffer layout object.
 			\return New object, or throws an exception on error.
 		*/
-		static SharedPtr create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+		static ref<VirtualTexturePage> create(const ref<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
 
 		~VirtualTexturePage();
 
@@ -45,17 +43,15 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		bool allocate();
 		void release();
 
-		const std::shared_ptr<Device>& device() const { return mpDevice; }
+		const ref<Device>& device() const { return mpDevice; }
 
 		uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
 		const VkOffset3D& offsetVK() const { return mOffset; }
 		uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
 		const VkExtent3D& extentVK() const { return mExtent; }
 
-#if defined(FALCOR_GFX)
 		gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
 		gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
-#endif
 
 		size_t usedMemSize() const;
 
@@ -68,14 +64,14 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		const uint32_t id() const { return mID; }
 
-		const std::shared_ptr<Texture> texture() const { return mpTexture; }
+		const ref<Texture> texture() const { return mpTexture; }
 
   public:
   	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
 
  	protected:
-		const std::shared_ptr<Device>   mpDevice;
-		const std::shared_ptr<Texture>  mpTexture;
+		const ref<Device>   mpDevice;
+		const ref<Texture>  mpTexture;
 
 		bool mIsResident = false;
 
@@ -93,9 +89,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		friend class Texture;
 		friend class TextureManager;
-#if defined(FALCOR_GFX_VK)
 		friend class gfx::vk::DeviceImpl;
-#endif
 };
 
 }  // namespace Falcor

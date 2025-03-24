@@ -27,8 +27,12 @@
  **************************************************************************/
 #include <fstream>
 #include <regex>
+#include <mutex>
+
+#include "backward/backward.hpp" // TODO: Replace with C++20 <stacktrace> when available.
 
 #include "stdafx.h"
+#include "Falcor/Core/Error.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "OS.h"
@@ -150,6 +154,16 @@ static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
 
 const std::vector<std::string>& getDataDirectoriesList() {
     return gDataDirectories;
+}
+
+const fs::path& getProjectDirectory() {
+    static fs::path directory(FALCOR_PROJECT_DIR);
+    return directory;
+}
+
+const fs::path& getExecutableDirectory() {
+    static fs::path directory{getExecutablePath().parent_path()};
+    return directory;
 }
 
 void addDataDirectory(const std::string& dir) {
@@ -389,6 +403,37 @@ std::string readFile(const std::string& filename) {
     filestream.seekg(0, std::ios::beg);
     str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
     return str;
+}
+
+std::string getStackTrace(size_t skip, size_t maxDepth) {
+    // We need to initialize the resolver before taking the stack trace,
+    // otherwise we get invalid stack traces.
+    backward::TraceResolver resolver;
+
+    // Capture stack trace.
+    backward::StackTrace st;
+    st.load_here(maxDepth == 0 ? 1000 : maxDepth);
+    st.skip_n_firsts(skip);
+
+    // We implement our own stack trace formatting here as the default printer in backward is not printing
+    // source locations in a way that is parsable by typical IDEs (file:line).
+    resolver.load_stacktrace(st);
+    std::string result;
+    for (size_t i = 0; i < st.size(); ++i) {
+        auto trace = resolver.resolve(st[i]);
+
+        result += fmt::format(" {}#", i);
+        if (!trace.source.filename.empty()) {
+            result += fmt::format(" {} at {}:{}", trace.source.function, trace.source.filename, trace.source.line);
+        } else {
+            result += fmt::format(" 0x{:016x} ({})", reinterpret_cast<uintptr_t>(trace.addr), trace.object_function);
+            if (!trace.object_filename.empty())
+                result += fmt::format(" in {}", trace.object_filename);
+        }
+        result += "\n";
+    }
+
+    return result;
 }
 
 }  // namespace Falcor

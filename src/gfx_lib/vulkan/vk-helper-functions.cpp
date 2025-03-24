@@ -3,13 +3,11 @@
 
 #include "vk-device.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
 Size calcRowSize(Format format, int width)
 {
@@ -70,7 +68,6 @@ VkImageLayout translateImageLayout(ResourceState state)
 {
     switch (state)
     {
-    case ResourceState::General:
     case ResourceState::Undefined:
         return VK_IMAGE_LAYOUT_UNDEFINED;
     case ResourceState::PreInitialized:
@@ -84,6 +81,8 @@ VkImageLayout translateImageLayout(ResourceState state)
     case ResourceState::DepthWrite:
         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     case ResourceState::ShaderResource:
+    case ResourceState::NonPixelShaderResource:
+    case ResourceState::PixelShaderResource:
         return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     case ResourceState::ResolveDestination:
     case ResourceState::CopyDestination:
@@ -117,6 +116,8 @@ VkAccessFlagBits calcAccessFlags(ResourceState state)
         return VkAccessFlagBits(
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
     case ResourceState::ShaderResource:
+    case ResourceState::NonPixelShaderResource:
+    case ResourceState::PixelShaderResource:
         return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
     case ResourceState::UnorderedAccess:
         return VkAccessFlagBits(VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
@@ -168,6 +169,8 @@ VkPipelineStageFlagBits calcPipelineStageFlags(ResourceState state, bool src)
             VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
     case ResourceState::ShaderResource:
+    case ResourceState::NonPixelShaderResource:
+    case ResourceState::PixelShaderResource:
         return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     case ResourceState::RenderTarget:
         return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -238,6 +241,8 @@ VkBufferUsageFlagBits _calcBufferUsageFlags(ResourceState state)
         return (
             VkBufferUsageFlagBits)(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     case ResourceState::ShaderResource:
+    case ResourceState::NonPixelShaderResource:
+    case ResourceState::PixelShaderResource:
         return (
             VkBufferUsageFlagBits)(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     case ResourceState::CopySource:
@@ -278,6 +283,8 @@ VkImageUsageFlagBits _calcImageUsageFlags(ResourceState state)
     case ResourceState::DepthRead:
         return VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
     case ResourceState::ShaderResource:
+    case ResourceState::NonPixelShaderResource:
+    case ResourceState::PixelShaderResource:
         return VK_IMAGE_USAGE_SAMPLED_BIT;
     case ResourceState::UnorderedAccess:
         return VK_IMAGE_USAGE_STORAGE_BIT;
@@ -291,6 +298,7 @@ VkImageUsageFlagBits _calcImageUsageFlags(ResourceState state)
         return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     case ResourceState::Present:
         return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    case ResourceState::Undefined:
     case ResourceState::General:
         return (VkImageUsageFlagBits)0;
     default:
@@ -300,6 +308,7 @@ VkImageUsageFlagBits _calcImageUsageFlags(ResourceState state)
     }
     }
 }
+
 
 VkImageViewType _calcImageViewType(ITextureResource::Type type, const ITextureResource::Desc& desc)
 {
@@ -440,7 +449,79 @@ VkImageAspectFlags getAspectMaskFromFormat(VkFormat format)
     }
 }
 
+AdapterLUID getAdapterLUID(VulkanApi api, VkPhysicalDevice physicalDevice) {
+    AdapterLUID luid = {};
+
+    VkPhysicalDeviceIDPropertiesKHR idProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR };
+    VkPhysicalDeviceProperties2 props = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    props.pNext = &idProps;
+    SLANG_ASSERT(api.vkGetPhysicalDeviceFeatures2);
+    api.vkGetPhysicalDeviceProperties2(physicalDevice, &props);
+    if (idProps.deviceLUIDValid) {
+        SLANG_ASSERT(sizeof(AdapterLUID) >= VK_LUID_SIZE);
+        memcpy(&luid, idProps.deviceLUID, VK_LUID_SIZE);
+    } else {
+        SLANG_ASSERT(sizeof(AdapterLUID) >= VK_UUID_SIZE);
+        memcpy(&luid, idProps.deviceUUID, VK_UUID_SIZE);
+    }
+
+    return luid;
+}
+
 } // namespace vk
+
+Result SLANG_MCALL getVKAdapters(List<AdapterInfo>& outAdapters)
+{
+    for (int forceSoftware = 0; forceSoftware <= 1; forceSoftware++)
+    {
+        VulkanModule module;
+        if (module.init(forceSoftware != 0) != SLANG_OK)
+            continue;
+        VulkanApi api;
+        if (api.initGlobalProcs(module) != SLANG_OK)
+            continue;
+
+        VkInstanceCreateInfo instanceCreateInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+        const char* instanceExtensions[] = {
+            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+        };
+        instanceCreateInfo.enabledExtensionCount = SLANG_COUNT_OF(instanceExtensions);
+        instanceCreateInfo.ppEnabledExtensionNames = &instanceExtensions[0];
+        VkInstance instance;
+        SLANG_VK_RETURN_ON_FAIL(api.vkCreateInstance(&instanceCreateInfo, nullptr, &instance));
+
+        // This will fail due to not loading any extensions.
+        api.initInstanceProcs(instance);
+
+        // Make sure required functions for enumerating physical devices were loaded.
+        if (api.vkEnumeratePhysicalDevices || api.vkGetPhysicalDeviceProperties)
+        {
+            uint32_t numPhysicalDevices = 0;
+            SLANG_VK_RETURN_ON_FAIL(api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, nullptr));
+
+            List<VkPhysicalDevice> physicalDevices;
+            physicalDevices.setCount(numPhysicalDevices);
+            SLANG_VK_RETURN_ON_FAIL(api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, physicalDevices.getBuffer()));
+
+            for (const auto& physicalDevice : physicalDevices)
+            {
+                VkPhysicalDeviceProperties props;
+                api.vkGetPhysicalDeviceProperties(physicalDevice, &props);
+                AdapterInfo info = {};
+                memcpy(info.name, props.deviceName, Math::Min(strlen(props.deviceName), sizeof(AdapterInfo::name) - 1));
+                info.vendorID = props.vendorID;
+                info.deviceID = props.deviceID;
+                info.luid = vk::getAdapterLUID(api, physicalDevice);
+                outAdapters.add(info);
+            }
+        }
+
+        api.vkDestroyInstance(instance, nullptr);
+        module.destroy();
+    }
+
+    return SLANG_OK;
+}
 
 Result SLANG_MCALL createVKDevice(const IDevice::Desc* desc, IDevice** outRenderer)
 {

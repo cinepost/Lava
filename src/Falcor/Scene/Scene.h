@@ -30,6 +30,7 @@
 
 #include <memory>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 
 #include "Falcor/Core/API/VAO.h"
@@ -1489,7 +1490,7 @@ public:
     friend class lava::Renderer;
 };
 
-enum_class_operators(Scene::UpdateFlags);
+ENUM_CLASS_OPERATORS(Scene::UpdateFlags);
 
 }  // namespace Falcor
 

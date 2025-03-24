@@ -25,56 +25,34 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
 #include "Resource.h"
 #include "Texture.h"
+#include "Device.h"
 #include "Buffer.h"
+#include "GFXAPI.h"
+#include "NativeHandleTraits.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Core/ObjectPython.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
-#include <atomic>
 
 namespace Falcor {
 
-std::atomic<size_t> gAllocatedBuffersCount = 0;
-std::atomic<size_t> gAllocatedTexturesCount = 0;
-
 void Resource::printUsage() {
-#ifdef _DEBUG
-    LLOG_INF << "Allocated buffers count " << gAllocatedBuffersCount;
-    LLOG_INF << "Allocated textures count " << gAllocatedTexturesCount;
-#endif
+
 }
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) 
+ref<Device> Resource::getDevice() const { return mpDevice; }
+
+Resource::Resource(ref<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size) 
     : mType(type), 
     mBindFlags(bindFlags), 
     mSize(size), 
-    mpDevice(pDevice), 
-    mID(newResourceID++) {
-
-#ifdef _DEBUG
-    switch(type) {
-        case Type::Buffer:
-            gAllocatedBuffersCount++;
-            break;
-        default:
-            gAllocatedTexturesCount++;
-            break;
-    }
-#endif
+    mpDevice(pDevice) {
 }
 
-Resource::~Resource() {
-#ifdef _DEBUG
-    switch(mType) {
-        case Type::Buffer:
-            gAllocatedBuffersCount--;
-            break;
-        default:
-            gAllocatedTexturesCount--;
-            break;
-    }
-#endif
-}
+Resource::~Resource() = default;
 
 const std::string to_string(Resource::Type type) {
     #define type_2_string(a) case Resource::Type::a: return #a;
@@ -122,11 +100,20 @@ const std::string to_string(Resource::State state) {
 }
 
 void Resource::invalidateViews() const {
-    //logInfo("Invalidating resource views");
+    auto invalidateAll = [](auto& vec) {
+        for (const auto& item : vec) item.second->invalidate();
+        
+        vec.clear();
+    };
     mSrvs.clear();
     mUavs.clear();
     mRtvs.clear();
     mDsvs.clear();
+}
+
+void Resource::setName(const std::string& name) {
+    mName = name;
+    getGfxResource()->setDebugName(mName.c_str());
 }
 
 Resource::State Resource::getGlobalState() const {
@@ -169,25 +156,45 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
 
+SharedResourceApiHandle Resource::getSharedApiHandle() const {
+    gfx::InteropHandle handle = {};
+    FALCOR_GFX_CALL(getGfxResource()->getSharedHandle(&handle));
+    return (SharedResourceApiHandle)handle.handleValue;
+}
+
+NativeHandle Resource::getNativeHandle() const {
+    gfx::InteropHandle gfxNativeHandle = {};
+    FALCOR_GFX_CALL(getGfxResource()->getNativeResourceHandle(&gfxNativeHandle));
+    if (mType == Type::Buffer)
+        return NativeHandle(reinterpret_cast<VkBuffer>(gfxNativeHandle.handleValue));
+    else
+        return NativeHandle(reinterpret_cast<VkImage>(gfxNativeHandle.handleValue));
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
 
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
-std::shared_ptr<Texture> Resource::asTexture() {
-    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
-    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+ref<Texture> Resource::asTexture() {
+    FALCOR_ASSERT(this);
+    return ref<Texture>(dynamic_cast<Texture*>(this));
 }
 
-std::shared_ptr<const Texture> Resource::asTexture() const {
-    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
-    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
+ref<const Texture> Resource::asTexture() const {
+    FALCOR_ASSERT(this);
+    return ref<const Texture>(dynamic_cast<const Texture*>(this));
 }
 
-std::shared_ptr<Buffer> Resource::asBuffer() {
+ref<Buffer> Resource::asBuffer() {
     //static const std::shared_ptr<Buffer> pNullBuffer = nullptr;
-    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+    FALCOR_ASSERT(this);
+    return ref<Buffer>(dynamic_cast<Buffer*>(this));
+}
+
+void Resource::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
 }
 
 #pragma GCC pop_options
@@ -195,7 +202,7 @@ std::shared_ptr<Buffer> Resource::asBuffer() {
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {
-    pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
+    pybind11::class_<Resource, ref<Resource>>(m, "Resource");
 }
 #endif
 

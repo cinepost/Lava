@@ -25,11 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include <vector>
+#ifndef SRC_FALCOR_CORE_PLATFORM_PROGRESSBAR_H_
+#define SRC_FALCOR_CORE_PLATFORM_PROGRESSBAR_H_
 
-namespace Falcor
-{
+#include <vector>
+#include <memory>
+
+#include "Falcor/Core/Macros.h"
+
+
+namespace Falcor {
     struct ProgressBarData;
 
     /** Creates a progress bar visual and manages a new thread for it.
@@ -68,4 +73,6 @@ namespace Falcor
         ProgressBar() = default;
         void platformInit(const MessageList& list, uint32_t delayInMs);
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PLATFORM_PROGRESSBAR_H_

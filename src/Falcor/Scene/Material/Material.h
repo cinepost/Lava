@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_ 
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 
@@ -363,7 +364,7 @@ inline std::string to_string(Material::TextureSlot slot) {
 	}
 }
 
-enum_class_operators(Material::UpdateFlags);
+ENUM_CLASS_OPERATORS(Material::UpdateFlags);
 
 }  // namespace Falcor
 

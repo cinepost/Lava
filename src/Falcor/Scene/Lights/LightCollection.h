@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_SCENE_LIGHTS_LIGH_COLLECTION_H_
 #define SRC_FALCOR_SCENE_LIGHTS_LIGH_COLLECTION_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ShaderVar.h"
@@ -239,8 +240,8 @@ protected:
     mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
 };
 
-enum_class_operators(LightCollection::CPUOutOfDateFlags);
-enum_class_operators(LightCollection::UpdateFlags);
+ENUM_CLASS_OPERATORS(LightCollection::CPUOutOfDateFlags);
+ENUM_CLASS_OPERATORS(LightCollection::UpdateFlags);
 
 }  // namespace Falcor
 

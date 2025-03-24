@@ -27,78 +27,86 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "BlitToBufferContext.h"
+#include "Core/Error.h"
+#include "Core/API/Device.h"
+#include "Core/Program/Program.h"
+#include "Core/Pass/ComputePass.h"
 
 namespace Falcor {
 
-void BlitToBufferContext::init(Device::SharedPtr pDevice) {
+BlitToBufferContext::BlitToBufferContext(Device* pDevice) {
     assert(pDevice);
-    if (pPass == nullptr) {
-        // Init the blit data.
-        Program::DefineList defines = {
-            { "PIXEL_STRIDE_BYTES", "1"},
-            { "FORMAT_CHANNELS", "1" }, 
-            { "DST_HALF_FLOAT", "0" }, 
-            { "FORMAT_TYPE", "0" },
-            { "SAMPLE_COUNT", "1" },
-            { "COMPLEX_BLIT", "0" },
-            { "SRC_INT", "0" },
-            { "DST_INT", "0" },
-        };
-        Program::Desc d;
-        d.addShaderLibrary("Core/API/BlitToBufferReduction.cs.slang").csEntry("main");
-        pPass = ComputePass::create(pDevice, "Core/API/BlitToBufferReduction.cs.slang","main", defines);
-        assert(pPass);
+    
+    // Init the blit data.
+    DefineList defines = {
+        { "PIXEL_STRIDE_BYTES", "1"},
+        { "FORMAT_CHANNELS", "1" }, 
+        { "DST_HALF_FLOAT", "0" }, 
+        { "FORMAT_TYPE", "0" },
+        { "SAMPLE_COUNT", "1" },
+        { "COMPLEX_BLIT", "0" },
+        { "SRC_INT", "0" },
+        { "DST_INT", "0" },
+    };
+    ProgramDesc d;
+    d.addShaderLibrary("Core/API/BlitToBufferReduction.cs.slang").csEntry("main");
+    pPass = ComputePass::create(ref<Device>(pDevice), "Core/API/BlitToBufferReduction.cs.slang","main", defines);
+    assert(pPass);
 
-        pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
-        resolutionVarOffset = pBlitParamsBuffer->getVariableOffset("gResolution");
-        offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");
-        scaleVarOffset = pBlitParamsBuffer->getVariableOffset("gScale");
-        srcPixelHalfSizeVarOffset = pBlitParamsBuffer->getVariableOffset("gSrcPixelHalfSize");
-        prevSrcRectOffset = float2(-1.0f);
-        prevSrcReftScale = float2(-1.0f);
+    pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
+    resolutionVarOffset = pBlitParamsBuffer->getVariableOffset("gResolution");
+    offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");
+    scaleVarOffset = pBlitParamsBuffer->getVariableOffset("gScale");
+    srcPixelHalfSizeVarOffset = pBlitParamsBuffer->getVariableOffset("gSrcPixelHalfSize");
+    prevSrcRectOffset = float2(-1.0f);
+    prevSrcReftScale = float2(-1.0f);
 
-        Sampler::Desc desc;
-        desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        desc.setReductionMode(Sampler::ReductionMode::Standard);
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearSampler = Sampler::create(pDevice, desc);
-        desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointSampler = Sampler::create(pDevice, desc);
-        
-        // Min reductions.
-        desc.setReductionMode(Sampler::ReductionMode::Min);
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearMinSampler = Sampler::create(pDevice, desc);
-        desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointMinSampler = Sampler::create(pDevice, desc);
-        
-        // Max reductions.
-        desc.setReductionMode(Sampler::ReductionMode::Max);
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearMaxSampler = Sampler::create(pDevice, desc);
-        desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointMaxSampler = Sampler::create(pDevice, desc);
+    Sampler::Desc desc;
+    desc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+    desc.setReductionMode(TextureReductionMode::Standard);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearSampler = pDevice->createSampler(desc);
+    pLinearSampler->breakStrongReferenceToDevice();
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointSampler = pDevice->createSampler(desc);
+    pPointSampler->breakStrongReferenceToDevice();
 
-        const auto& pDefaultBlockReflection = pPass->getProgram()->getReflector()->getDefaultParameterBlock();
-        texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
-        buffBindLoc = pDefaultBlockReflection->getResourceBinding("gOutputBuffer");
+    // Min reductions.
+    desc.setReductionMode(TextureReductionMode::Min);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearMinSampler = pDevice->createSampler(desc);
+    pLinearMinSampler->breakStrongReferenceToDevice();
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointMinSampler = pDevice->createSampler(desc);
+    pPointMinSampler->breakStrongReferenceToDevice();
 
-        // Complex blit parameters
+    // Max reductions.
+    desc.setReductionMode(TextureReductionMode::Max);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearMaxSampler = pDevice->createSampler(desc);
+    pLinearMaxSampler->breakStrongReferenceToDevice();
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointMaxSampler = pDevice->createSampler(desc);
+    pPointMaxSampler->breakStrongReferenceToDevice();
 
-        compTransVarOffset[0] = pBlitParamsBuffer->getVariableOffset("gCompTransformR");
-        compTransVarOffset[1] = pBlitParamsBuffer->getVariableOffset("gCompTransformG");
-        compTransVarOffset[2] = pBlitParamsBuffer->getVariableOffset("gCompTransformB");
-        compTransVarOffset[3] = pBlitParamsBuffer->getVariableOffset("gCompTransformA");
-        prevComponentsTransform[0] = float4(1.0f, 0.0f, 0.0f, 0.0f);
-        prevComponentsTransform[1] = float4(0.0f, 1.0f, 0.0f, 0.0f);
-        prevComponentsTransform[2] = float4(0.0f, 0.0f, 1.0f, 0.0f);
-        prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        for (uint32_t i = 0; i < 4; i++) pBlitParamsBuffer->setVariable(compTransVarOffset[i], prevComponentsTransform[i]);
+    const auto& pDefaultBlockReflection = pPass->getProgram()->getReflector()->getDefaultParameterBlock();
+    texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
+    buffBindLoc = pDefaultBlockReflection->getResourceBinding("gOutputBuffer");
+
+    // Complex blit parameters
+
+    compTransVarOffset[0] = pBlitParamsBuffer->getVariableOffset("gCompTransformR");
+    compTransVarOffset[1] = pBlitParamsBuffer->getVariableOffset("gCompTransformG");
+    compTransVarOffset[2] = pBlitParamsBuffer->getVariableOffset("gCompTransformB");
+    compTransVarOffset[3] = pBlitParamsBuffer->getVariableOffset("gCompTransformA");
+    prevComponentsTransform[0] = float4(1.0f, 0.0f, 0.0f, 0.0f);
+    prevComponentsTransform[1] = float4(0.0f, 1.0f, 0.0f, 0.0f);
+    prevComponentsTransform[2] = float4(0.0f, 0.0f, 1.0f, 0.0f);
+    prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    
+    for (uint32_t i = 0; i < 4; i++) {
+        pBlitParamsBuffer->setVariable(compTransVarOffset[i], prevComponentsTransform[i]);
     }
-}
-
-void BlitToBufferContext::release() {
-    *this = {};
 }
 
 }  // namespace Falcor

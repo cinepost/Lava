@@ -157,25 +157,30 @@ std::string getTempFilename() {
     return filePath;
 }
 
-const std::string& getExecutableDirectory() {
-    char result[PATH_MAX] = { 0 };
-    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-    std::string path;
-    if (count != -1) {
-        fs::path p(result);
-        path = p.parent_path().string().c_str();
-    }
-    static std::string strpath(path);
-    return strpath;
+const fs::path& getExecutablePath() {
+    static fs::path path(
+        []() {
+            char pathStr[PATH_MAX] = {0};
+            if (readlink("/proc/self/exe", pathStr, PATH_MAX) == -1) {
+                FALCOR_THROW("Failed to get the executable path.");
+            }
+            return fs::path(pathStr);
+        }()
+    );
+    return path;
 }
 
-const std::string getWorkingDirectory() {
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-        return std::string(cwd);
-    }
-
-    return std::string();
+const std::string getRuntimeDirectory() {
+    static fs::path path(
+        []() {
+            Dl_info info;
+            if (dladdr((void*)&getRuntimeDirectory, &info) == 0) {
+                FALCOR_THROW("Failed to get the falcor directory. dladdr() failed.");
+            }
+            return fs::path(info.dli_fname).parent_path();
+        }()
+    );
+    return path;
 }
 
 const std::string getAppDataDirectory() {

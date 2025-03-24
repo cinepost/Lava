@@ -30,7 +30,6 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/StringUtils.h"
 
-#include <slang/slang.h>
 #include <map>
 
 #include "Program.h"
@@ -39,8 +38,7 @@
 
 using namespace slang;
 
-namespace Falcor
-{
+namespace Falcor {
     namespace
     {
         const char* kRootDescriptorAttribute = "root";
@@ -53,7 +51,7 @@ namespace Falcor
         , mpType(pType->shared_from_this())
     {}
 
-    TypedShaderVarOffset TypedShaderVarOffset::operator[](const std::string& name) const
+    TypedShaderVarOffset TypedShaderVarOffset::operator[](std::string_view name) const
     {
         if (!isValid()) return *this;
 
@@ -88,7 +86,7 @@ namespace Falcor
         return TypedShaderVarOffset(this, ShaderVarOffset::kZero);
     }
 
-    TypedShaderVarOffset ReflectionType::getMemberOffset(const std::string& name) const
+    TypedShaderVarOffset ReflectionType::getMemberOffset(std::string_view name) const
     {
         return getZeroOffset()[name];
     }
@@ -509,22 +507,21 @@ namespace Falcor
         if (pSlangType->getResourceShape() != SLANG_STRUCTURED_BUFFER)
             return invalid; // not a structured buffer
 
-        switch (pSlangType->getResourceAccess())
-        {
-        default:
-            FALCOR_UNREACHABLE();
-            return invalid;
+        switch (pSlangType->getResourceAccess()) {
+            default:
+                FALCOR_UNREACHABLE();
+                return invalid;
 
-        case SLANG_RESOURCE_ACCESS_READ:
-            return ReflectionResourceType::StructuredType::Default;
+            case SLANG_RESOURCE_ACCESS_READ:
+                return ReflectionResourceType::StructuredType::Default;
 
-        case SLANG_RESOURCE_ACCESS_READ_WRITE:
-        case SLANG_RESOURCE_ACCESS_RASTER_ORDERED:
-            return ReflectionResourceType::StructuredType::Counter;
-        case SLANG_RESOURCE_ACCESS_APPEND:
-            return ReflectionResourceType::StructuredType::Append;
-        case SLANG_RESOURCE_ACCESS_CONSUME:
-            return ReflectionResourceType::StructuredType::Consume;
+            case SLANG_RESOURCE_ACCESS_READ_WRITE:
+            case SLANG_RESOURCE_ACCESS_RASTER_ORDERED:
+                return ReflectionResourceType::StructuredType::Counter;
+            case SLANG_RESOURCE_ACCESS_APPEND:
+                return ReflectionResourceType::StructuredType::Append;
+            case SLANG_RESOURCE_ACCESS_CONSUME:
+                return ReflectionResourceType::StructuredType::Consume;
         }
     };
 
@@ -542,13 +539,10 @@ namespace Falcor
         ProgramVersion const*       pProgramVersion);
 
         // Determine if a Slang type layout consumes any storage/resources of the given kind
-    static bool hasUsage(slang::TypeLayoutReflection* pSlangTypeLayout, SlangParameterCategory resourceKind)
-    {
+    static bool hasUsage(slang::TypeLayoutReflection* pSlangTypeLayout, slang::ParameterCategory resourceKind) {
         auto kindCount = pSlangTypeLayout->getCategoryCount();
-        for(unsigned int ii = 0; ii < kindCount; ++ii)
-        {
-            if(pSlangTypeLayout->getCategoryByIndex(ii) == resourceKind)
-                return true;
+        for(unsigned int ii = 0; ii < kindCount; ++ii) {
+            if(pSlangTypeLayout->getCategoryByIndex(ii) == resourceKind) return true;
         }
         return false;
     }
@@ -556,13 +550,10 @@ namespace Falcor
         // Given a "breadcrumb trail" (reflection path), determine
         // the actual register/binding that will be used by a leaf
         // parameter for the given resource kind.
-    static size_t getRegisterIndexFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category)
-    {
+    static size_t getRegisterIndexFromPath(const ReflectionPathLink* pPath, slang::ParameterCategory category) {
         uint32_t offset = 0;
-        for (auto pp = pPath; pp; pp = pp->pParent)
-        {
-            if (pp->pVar)
-            {
+        for (auto pp = pPath; pp; pp = pp->pParent) {
+            if (pp->pVar) {
                 // We are in the process of walking up from a leaf
                 // shader variable to the root (some global shader
                 // parameter).
@@ -596,13 +587,10 @@ namespace Falcor
         return offset;
     }
 
-    static uint32_t getRegisterSpaceFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category)
-    {
+    static uint32_t getRegisterSpaceFromPath(const ReflectionPathLink* pPath, slang::ParameterCategory category) {
         uint32_t offset = 0;
-        for (auto pp = pPath; pp; pp = pp->pParent)
-        {
-            if (pp->pVar)
-            {
+        for (auto pp = pPath; pp; pp = pp->pParent) {
+            if (pp->pVar) {
                 // Similar to the case above in `getRegisterIndexFromPath`,
                 // if we are walking from a member in a parameter block
                 // up to the block itself, then the space for our parameter
@@ -614,8 +602,7 @@ namespace Falcor
                 // too subtle, and Slang should be providing a service
                 // to compute this.
                 //
-                if(pp->pVar->getTypeLayout()->getKind() == slang::TypeReflection::Kind::ParameterBlock)
-                {
+                if(pp->pVar->getTypeLayout()->getKind() == slang::TypeReflection::Kind::ParameterBlock) {
                     return offset + (uint32_t) getRegisterIndexFromPath(pp, SLANG_PARAMETER_CATEGORY_REGISTER_SPACE);
                 }
                 offset += (uint32_t)pp->pVar->getBindingSpace(category);
@@ -633,11 +620,11 @@ namespace Falcor
     static ParameterCategory getParameterCategory(TypeLayoutReflection* pTypeLayout);
 
     static void extractDefaultConstantBufferBinding(
-        slang::TypeLayoutReflection*    pSlangType,
-        ReflectionPath*                 pPath,
-        ParameterBlockReflection*       pBlock,
-        bool                            shouldUseRootConstants)
-    {
+        slang::TypeLayoutReflection* pSlangType,
+        ReflectionPath* pPath,
+        ParameterBlockReflection* pBlock,
+        bool shouldUseRootConstants
+    ) {
         auto pContainerLayout = pSlangType->getContainerVarLayout();
         FALCOR_ASSERT(pContainerLayout);
 
@@ -646,33 +633,36 @@ namespace Falcor
         for (int32_t containerCategoryIndex = 0; containerCategoryIndex < containerCategoryCount; ++containerCategoryIndex)
         {
             auto containerCategory = pContainerLayout->getCategoryByIndex(containerCategoryIndex);
-            switch (containerCategory)
-            {
-            case slang::ParameterCategory::DescriptorTableSlot:
-            case slang::ParameterCategory::ConstantBuffer:
-            {
-                ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
-                defaultConstantBufferInfo.regIndex = (uint32_t)getRegisterIndexFromPath(containerPath.pPrimary, containerCategory);
-                defaultConstantBufferInfo.regSpace = getRegisterSpaceFromPath(containerPath.pPrimary, containerCategory);
-                defaultConstantBufferInfo.useRootConstants = shouldUseRootConstants;
-                pBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
-            }
-            break;
-
-            default:
+            switch (containerCategory) {
+                case slang::ParameterCategory::DescriptorTableSlot:
+                case slang::ParameterCategory::ConstantBuffer:
+                {
+                    ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
+                    defaultConstantBufferInfo.regIndex =
+                        (uint32_t)getRegisterIndexFromPath(containerPath.pPrimary, SlangParameterCategory(containerCategory));
+                    defaultConstantBufferInfo.regSpace =
+                        getRegisterSpaceFromPath(containerPath.pPrimary, SlangParameterCategory(containerCategory));
+                    defaultConstantBufferInfo.useRootConstants = shouldUseRootConstants;
+                    pBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+                }
                 break;
+
+                default:
+                    break;
             }
         }
     }
 
-    ReflectionType::SharedPtr reflectResourceType(
-        TypeLayoutReflection*       pSlangType,
-        ParameterBlockReflection*   pBlock,
-        ReflectionPath*             pPath,
-        ProgramVersion const*       pProgramVersion)
+    ref<ReflectionType> reflectResourceType(
+        TypeLayoutReflection* pSlangType,
+        ParameterBlockReflection* pBlock,
+        ReflectionPath* pPath,
+        ProgramVersion const* pProgramVersion
+    )
     {
         ReflectionResourceType::Type type = getResourceType(pSlangType->getType());
-        ReflectionResourceType::Dimensions dims = getResourceDimensions(pSlangType->getResourceShape());;
+        ReflectionResourceType::Dimensions dims = getResourceDimensions(pSlangType->getResourceShape());
+        ;
         ReflectionResourceType::ShaderAccess shaderAccess = getShaderAccess(pSlangType->getType());
         ReflectionResourceType::ReturnType retType = getReturnType(pSlangType->getType());
         ReflectionResourceType::StructuredType structuredType = getStructuredBufferType(pSlangType->getType());
@@ -683,114 +673,117 @@ namespace Falcor
         // Check if resource type represents a root descriptor.
         // In the shader we use a custom [root] attribute to flag resources to map to root descriptors.
         auto pVar = pPath->pPrimary->pVar->getVariable();
-        bool isRootDescriptor = pVar->findUserAttributeByName(pProgramVersion->getSlangSession()->getGlobalSession(), kRootDescriptorAttribute) != nullptr;
+        bool isRootDescriptor =
+            pVar->findUserAttributeByName(pProgramVersion->getSlangSession()->getGlobalSession(), kRootDescriptorAttribute) != nullptr;
 
         // Check that the root descriptor type is supported.
-        if (isRootDescriptor)
-        {
+        if (isRootDescriptor) {
             // Check the resource type and shader access.
             if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer &&
                 type != ReflectionResourceType::Type::AccelerationStructure)
             {
-                throw std::runtime_error("Resource '" + name + "' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are supported.");
+                FALCOR_THROW(
+                    "Resource '{}' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are "
+                    "supported.",
+                    name
+                );
             }
-            if (shaderAccess != ReflectionResourceType::ShaderAccess::Read &&
-                shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite)
+            if (shaderAccess != ReflectionResourceType::ShaderAccess::Read && shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite)
             {
-                throw std::runtime_error("Buffer '"+ name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
+                FALCOR_THROW("Buffer '{}' cannot be bound as root descriptor. Only SRV/UAVs are supported.", name);
             }
-            FALCOR_ASSERT(type != ReflectionResourceType::Type::AccelerationStructure || shaderAccess == ReflectionResourceType::ShaderAccess::Read);
+            FALCOR_ASSERT(
+                type != ReflectionResourceType::Type::AccelerationStructure || shaderAccess == ReflectionResourceType::ShaderAccess::Read
+            );
 
             // Check that it's not an append/consume structured buffer, which is unsupported for root descriptors.
             // RWStructuredBuffer with counter is also not supported, but we cannot see that on the type declaration.
             // At bind time, we'll validate that the buffer has not been created with a UAV counter.
-            if (type == ReflectionResourceType::Type::StructuredBuffer)
-            {
+            if (type == ReflectionResourceType::Type::StructuredBuffer) {
                 FALCOR_ASSERT(structuredType != ReflectionResourceType::StructuredType::Invalid);
-                if (structuredType == ReflectionResourceType::StructuredType::Append || structuredType == ReflectionResourceType::StructuredType::Consume)
+                if (structuredType == ReflectionResourceType::StructuredType::Append ||
+                    structuredType == ReflectionResourceType::StructuredType::Consume)
                 {
-                    throw std::runtime_error("StructuredBuffer '" + name + "' cannot be bound as root descriptor. Only regular structured buffers are supported, not append/consume buffers.");
+                    FALCOR_THROW(
+                        "StructuredBuffer '{}' cannot be bound as root descriptor. Only regular structured buffers are supported, not "
+                        "append/consume buffers.",
+                        name
+                    );
                 }
             }
-            FALCOR_ASSERT(dims == ReflectionResourceType::Dimensions::Buffer || dims == ReflectionResourceType::Dimensions::AccelerationStructure); // We shouldn't get here otherwise
+            FALCOR_ASSERT(
+                dims == ReflectionResourceType::Dimensions::Buffer || dims == ReflectionResourceType::Dimensions::AccelerationStructure
+            ); // We shouldn't get here otherwise
         }
 
-        ReflectionResourceType::SharedPtr pType = ReflectionResourceType::create(type, dims, structuredType, retType, shaderAccess, pSlangType);
+        ref<ReflectionResourceType> pType = ReflectionResourceType::create(type, dims, structuredType, retType, shaderAccess, pSlangType);
 
         ParameterCategory category = getParameterCategory(pSlangType);
         ParameterBlockReflection::ResourceRangeBindingInfo bindingInfo;
-        bindingInfo.regIndex = (uint32_t)getRegisterIndexFromPath(pPath->pPrimary, category);
-        bindingInfo.regSpace = getRegisterSpaceFromPath(pPath->pPrimary, category);
+        bindingInfo.regIndex = (uint32_t)getRegisterIndexFromPath(pPath->pPrimary, SlangParameterCategory(category));
+        bindingInfo.regSpace = getRegisterSpaceFromPath(pPath->pPrimary, SlangParameterCategory(category));
         bindingInfo.dimension = dims;
 
-        if (isRootDescriptor) bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor;
+        if (isRootDescriptor)
+            bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor;
 
-        switch (type)
-        {
-        default:
+        switch (type) {
+            default:
+                break;
+
+            case ReflectionResourceType::Type::StructuredBuffer:
+            {
+                const auto& pElementLayout = pSlangType->getElementTypeLayout();
+                auto pBufferType = reflectType(pElementLayout, pBlock, pPath, pProgramVersion);
+                pType->setStructType(pBufferType);
+            }
             break;
 
-        case ReflectionResourceType::Type::StructuredBuffer:
-        {
-            const auto& pElementLayout = pSlangType->getElementTypeLayout();
-            auto pBufferType = reflectType(
-                pElementLayout,
-                pBlock,
-                pPath,
-                pProgramVersion);
-            pType->setStructType(pBufferType);
-        }
-        break;
-
-        // TODO: The fact that constant buffers (and parameter blocks, since Falcor currently
-        // pretends that parameter blocks are constant buffers in its reflection types) are
-        // treated so differently from other resource types is a huge sign that they should
-        // *not* be resource types to begin with (and they *aren't* resource types in Slang).
-        //
-        case ReflectionResourceType::Type::ConstantBuffer:
-        {
-            // We have a sub-parameter-block (whether a true parameter block, or just a constant buffer)
-            auto pSubBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
-            const auto& pElementLayout = pSlangType->getElementTypeLayout();
-            auto pElementType = reflectType(
-                pElementLayout,
-                pSubBlock.get(),
-                pPath,
-                pProgramVersion);
-            pSubBlock->setElementType(pElementType);
-
-            extractDefaultConstantBufferBinding(pSlangType, pPath, pSubBlock.get(), /*shouldUseRootConstants:*/false);
-
-            pSubBlock->finalize();
-
-            pType->setStructType(pElementType);
-            pType->setParameterBlockReflector(pSubBlock);
-
-            // TODO: `pSubBlock` should probably get stored on the
-            // `ReflectionResourceType` somewhere, so that we can
-            // retrieve it later without having to use a parent
-            // `ParameterBlockReflection` to look it up.
-
-            if (pSlangType->getKind() == slang::TypeReflection::Kind::ParameterBlock)
+            // TODO: The fact that constant buffers (and parameter blocks, since Falcor currently
+            // pretends that parameter blocks are constant buffers in its reflection types) are
+            // treated so differently from other resource types is a huge sign that they should
+            // *not* be resource types to begin with (and they *aren't* resource types in Slang).
+            //
+            case ReflectionResourceType::Type::ConstantBuffer:
             {
-                bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock;
+                // We have a sub-parameter-block (whether a true parameter block, or just a constant buffer)
+                auto pSubBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
+                const auto& pElementLayout = pSlangType->getElementTypeLayout();
+                auto pElementType = reflectType(pElementLayout, pSubBlock.get(), pPath, pProgramVersion);
+                pSubBlock->setElementType(pElementType);
+
+                extractDefaultConstantBufferBinding(pSlangType, pPath, pSubBlock.get(), /*shouldUseRootConstants:*/ false);
+
+                pSubBlock->finalize();
+
+                pType->setStructType(pElementType);
+                pType->setParameterBlockReflector(pSubBlock);
+
+                // TODO: `pSubBlock` should probably get stored on the
+                // `ReflectionResourceType` somewhere, so that we can
+                // retrieve it later without having to use a parent
+                // `ParameterBlockReflection` to look it up.
+
+                if (pSlangType->getKind() == slang::TypeReflection::Kind::ParameterBlock)
+                {
+                    bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock;
+                }
+                else
+                {
+                    bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer;
+                }
+                bindingInfo.pSubObjectReflector = pSubBlock;
             }
-            else
-            {
-                bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer;
-            }
-            bindingInfo.pSubObjectReflector = pSubBlock;
-        }
-        break;
+            break;
         }
 
-        if (pBlock)
-        {
+        if (pBlock) {
             pBlock->addResourceRange(bindingInfo);
         }
 
         return pType;
     }
+
 
     ReflectionType::SharedPtr reflectStructType(
         TypeLayoutReflection*       pSlangType,
@@ -812,8 +805,7 @@ namespace Falcor
 
         ReflectionStructType::BuildState buildState;
 
-        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
-        {
+        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++) {
             auto pSlangField = pSlangType->getFieldByIndex(i);
             ExtendedReflectionPath fieldPath(pPath, pSlangField);
 
@@ -828,8 +820,7 @@ namespace Falcor
         return pType;
     }
 
-    static ReflectionType::ByteSize getByteSize(TypeLayoutReflection* pSlangType)
-    {
+    static ReflectionType::ByteSize getByteSize(TypeLayoutReflection* pSlangType) {
         return pSlangType->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM);
     }
 
@@ -1668,7 +1659,7 @@ namespace Falcor
         }
     }
 
-    const ReflectionVar::SharedConstPtr ParameterBlockReflection::getResource(const std::string& name) const {
+    const ReflectionVar::SharedConstPtr ParameterBlockReflection::getResource(std::string_view name) const {
         return getElementType()->findMember(name);
     }
 
@@ -1698,7 +1689,7 @@ namespace Falcor
         return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedPtr();
     }
 
-    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(const std::string& name) const {
+    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(std::string_view name) const {
         if(name == "") return mpDefaultBlock;
 
         return mpDefaultBlock->getElementType()->findMember(name)->getType()->asResourceType()->getParameterBlockReflector()->shared_from_this();
@@ -1731,7 +1722,7 @@ namespace Falcor
         return TypedShaderVarOffset::kInvalid;
     }
 
-    ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const {
+    ReflectionVar::SharedConstPtr ReflectionType::findMember(std::string_view name) const {
         if (auto pStructType = asStructType()) {
             auto fieldIndex = pStructType->getMemberIndex(name);
             if (fieldIndex == ReflectionStructType::kInvalidMemberIndex) return nullptr;
@@ -1742,13 +1733,13 @@ namespace Falcor
         return nullptr;
     }
 
-    int32_t ReflectionStructType::getMemberIndex(const std::string& name) const {
+    int32_t ReflectionStructType::getMemberIndex(std::string_view name) const {
         auto it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidMemberIndex;
         return it->second;
     }
 
-    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(const std::string& name) const {
+    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(std::string_view name) const {
         static ReflectionVar::SharedConstPtr pNull;
         auto index = getMemberIndex(name);
         return (index == kInvalidMemberIndex) ? pNull : getMember(index);
@@ -1834,11 +1825,16 @@ namespace Falcor
         }
     }
 
-    ReflectionResourceType::SharedPtr ReflectionResourceType::create(
-        Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess,
-        slang::TypeLayoutReflection* pSlangTypeLayout)
+    ref<ReflectionResourceType> ReflectionResourceType::create(
+        Type type,
+        Dimensions dims,
+        StructuredType structuredType,
+        ReturnType retType,
+        ShaderAccess shaderAccess,
+        slang::TypeLayoutReflection* pSlangTypeLayout
+    )
     {
-        return SharedPtr(new ReflectionResourceType(type, dims, structuredType, retType, shaderAccess, pSlangTypeLayout));
+        return ref<ReflectionResourceType>(new ReflectionResourceType(type, dims, structuredType, retType, shaderAccess, pSlangTypeLayout));
     }
 
     ReflectionResourceType::ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess,
@@ -1887,12 +1883,12 @@ namespace Falcor
         : ReflectionType(ReflectionType::Kind::Struct, size, pSlangTypeLayout)
         , mName(name) {}
 
-    ParameterBlockReflection::BindLocation ParameterBlockReflection::getResourceBinding(const std::string& name) const
+    ParameterBlockReflection::BindLocation ParameterBlockReflection::getResourceBinding(std::string_view name) const
     {
         return getElementType()->getMemberOffset(name);
     }
 
-    const ReflectionVar::SharedConstPtr ProgramReflection::getResource(const std::string& name) const
+    const ReflectionVar::SharedConstPtr ProgramReflection::getResource(std::string_view name) const
     {
         return mpDefaultBlock->getResource(name);
     }
@@ -1976,28 +1972,28 @@ namespace Falcor
         return true;
     }
 
-    const ProgramReflection::ShaderVariable* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
+    const ProgramReflection::ShaderVariable* getShaderAttribute(std::string_view name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
     {
         const auto& it = varMap.find(name);
         return (it == varMap.end()) ? nullptr : &(it->second);
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(std::string_view semantic) const
     {
         return getShaderAttribute(semantic, mVertAttrBySemantic, "getVertexAttributeBySemantic()");
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttribute(const std::string& name) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttribute(std::string_view name) const
     {
         return getShaderAttribute(name, mVertAttr, "getVertexAttribute()");
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(std::string_view name) const
     {
         return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
     }
 
-    ReflectionType::SharedPtr ProgramReflection::findType(const std::string& name) const
+    ReflectionType::SharedPtr ProgramReflection::findType(std::string_view name) const
     {
         auto iter = mMapNameToType.find(name);
         if( iter != mMapNameToType.end() )
@@ -2015,7 +2011,7 @@ namespace Falcor
         return pFalcorTypeLayout;
     }
 
-    ReflectionVar::SharedConstPtr ProgramReflection::findMember(const std::string& name) const
+    ReflectionVar::SharedConstPtr ProgramReflection::findMember(std::string_view name) const
     {
         return mpDefaultBlock->findMember(name);
     }

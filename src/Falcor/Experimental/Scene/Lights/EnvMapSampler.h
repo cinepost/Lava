@@ -28,55 +28,50 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 
-#include "Falcor/RenderGraph/BasePasses/ComputePass.h"
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Utils/Timing/Profiler.h"
+#include "Falcor/Core/Pass/ComputePass.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 
 namespace Falcor {
 
 class Device;
+class RenderContext;
 
 /** Environment map sampler.
     Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
 */
-class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler> {
- public:
-    using SharedPtr = std::shared_ptr<EnvMapSampler>;
-
+class dlldecl EnvMapSampler {
+  public:
+    EnvMapSampler(RenderContext* pRenderContext, ref<EnvMap> pEnvMap);
+    EnvMapSampler(RenderContext* pRenderContext, ref<Texture> pTexture);
     virtual ~EnvMapSampler() = default;
 
     /** Create a new object.
         \param[in] pRenderContext A render-context that will be used for processing.
         \param[in] pEnvMap The environment map.
     */
-    static SharedPtr create(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
-    static SharedPtr create(RenderContext* pRenderContext, Texture::SharedPtr pTexture);
-    static SharedPtr create(Texture::SharedPtr pTexture);
 
     /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
     */
-    void setShaderData(const ShaderVar& var) const;
+   void bindShaderData(const ShaderVar& var) const;
 
-    const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    const ref<EnvMap>& getEnvMap() const { return mpEnvMap; }
 
-    const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
-    const Texture::SharedPtr& getTexture() const { assert(mpEnvMap); return mpEnvMap->getTexture(); }
+    const ref<Texture>& getImportanceMap() const { return mpImportanceMap; }
+    const ref<Texture>& getTexture() const { assert(mpEnvMap); return mpEnvMap->getTexture(); }
 
- protected:
-    EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
-    EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr pTexture);
-
+  protected:
     bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
 
-    EnvMap::SharedPtr       mpEnvMap;               ///< Environment map.
+    ref<Device>         mpDevice;
+    ref<EnvMap>         mpEnvMap;               ///< Environment map.
 
-    ComputePass::SharedPtr  mpSetupPass;            ///< Compute pass for creating the importance map.
+    ref<ComputePass>    mpSetupPass;            ///< Compute pass for creating the importance map.
 
-    std::shared_ptr<Device> mpDevice;
-
-    Texture::SharedPtr      mpImportanceMap;        ///< Hierarchical importance map (luminance).
-    Sampler::SharedPtr      mpImportanceSampler;
+    ref<Texture>      mpImportanceMap;        ///< Hierarchical importance map (luminance).
+    ref<Sampler>      mpImportanceSampler;
 };
 
 }  // namespace Falcor

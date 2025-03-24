@@ -25,24 +25,24 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
 #include "RasterizerState.h"
+#include "GFXAPI.h"
+#include "Falcor/Core/ObjectPython.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor {
 
+ref<RasterizerState> RasterizerState::create(const Desc& desc)
+{
+    return ref<RasterizerState>(new RasterizerState(desc));
+}
+
+RasterizerState::~RasterizerState() = default;
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(RasterizerState) {
-    pybind11::class_<RasterizerState, RasterizerState::SharedPtr>(m, "RasterizerState");
-
-    pybind11::enum_<RasterizerState::CullMode> cullMode(m, "CullMode");
-    cullMode.value("CullBack", RasterizerState::CullMode::Back);
-    cullMode.value("CullFront", RasterizerState::CullMode::Front);
-    cullMode.value("CullNone", RasterizerState::CullMode::None);
+    pybind11::class_<RasterizerState, ref<RasterizerState>>(m, "RasterizerState");
 }
 #endif
-
-RasterizerState::SharedPtr RasterizerState::create(const Desc& desc) {
-    return SharedPtr(new RasterizerState(desc));
-}
 
 }  // namespace Falcor

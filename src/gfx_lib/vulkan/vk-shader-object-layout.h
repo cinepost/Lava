@@ -59,6 +59,10 @@ public:
         // TODO: Ideally we could refactor so that only the root shader object layout
         // stores a set offset for its binding ranges, and all other objects skip
         // storing a field that never actually matters.
+
+        // Is this binding range representing a specialization point, such as
+        // an existential value or a ParameterBlock<IFoo>.
+        bool isSpecializable;
     };
 
     // Sometimes we just want to iterate over the ranges that represent
@@ -130,11 +134,12 @@ public:
     struct Builder
     {
     public:
-        Builder(DeviceImpl* renderer)
-            : m_renderer(renderer)
+        Builder(DeviceImpl* renderer, slang::ISession* session)
+            : m_renderer(renderer), m_session(session)
         {}
 
         DeviceImpl* m_renderer;
+        slang::ISession* m_session;
         slang::TypeLayoutReflection* m_elementTypeLayout;
 
         /// The container type of this shader object. When `m_containerType` is
@@ -210,8 +215,10 @@ public:
 
     static Result createForElementType(
         DeviceImpl* renderer,
+        slang::ISession* session,
         slang::TypeLayoutReflection* elementType,
         ShaderObjectLayoutImpl** outLayout);
+
 
     ~ShaderObjectLayoutImpl();
 
@@ -317,8 +324,8 @@ class EntryPointLayout : public ShaderObjectLayoutImpl
 public:
     struct Builder : Super::Builder
     {
-        Builder(DeviceImpl* device)
-            : Super::Builder(device)
+        Builder(DeviceImpl* device, slang::ISession* session)
+            : Super::Builder(device, session)
         {}
 
         Result build(EntryPointLayout** outLayout);
@@ -363,7 +370,7 @@ public:
             DeviceImpl* renderer,
             slang::IComponentType* program,
             slang::ProgramLayout* programLayout)
-            : Super::Builder(renderer)
+            : Super::Builder(renderer, program->getSession())
             , m_program(program)
             , m_programLayout(programLayout)
         {}

@@ -41,9 +41,26 @@ namespace oiio = OIIO;
 
 namespace Falcor {
 
-static inline void genError(const std::string& errMsg, const std::string& filename) {
-    std::string err = "Error when loading image file " + filename + '\n' + errMsg + '.';
-    LLOG_ERR << err;
+namespace {
+
+bool isFloat16Exr(const MemoryMappedFile& inputFile) {
+    OpenExrStream stream(inputFile);
+    Imf::InputFile imfFile(stream);
+    const Imf::ChannelList& channels = imfFile.header().channels();
+    for (auto it = channels.begin(); it != channels.end(); ++it) {
+        if (it.channel().type != Imf::HALF) return false;
+    }
+    return true;
+}
+
+} // namespace
+
+static inline void genError(const std::string& msg, const fs::path& path) {
+    LLOG_ERR << "Error when loading image file fomr '" << path << "': " << msg;
+}
+
+static inline void genWarning(const std::string& msg, const fs::path& path) {
+    LLOG_WRN << "Warning when loading image file from '" << path << "': " << msg;
 }
 
 Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
@@ -137,145 +154,172 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
     return UniqueConstPtr(pBmp);
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown) {
-    return createFromFile(pDevice, fullpath.string(), isTopDown);
+Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown, ImportFlags importFlags) {
+    return createFromFile(pDevice, fullpath.string(), isTopDown, importFlags);
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
-    std::string fullpath;
-    if (findFileInDataDirectories(filename, fullpath) == false) {
-        LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
+Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path, bool isTopDown, ImportFlags importFlags) {
+    if (!std::filesystem::exists(path)) {
+        logWarning("Error when loading image file. File '{}' does not exist.", path);
         return nullptr;
     }
 
     FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
-    fifFormat = FreeImage_GetFileType(fullpath.c_str(), 0);
+    fifFormat = FreeImage_GetFileType(path.string().c_str(), 0);
     if (fifFormat == FIF_UNKNOWN) {
         // Can't get the format from the file. Use file extension
-        fifFormat = FreeImage_GetFIFFromFilename(fullpath.c_str());
+        fifFormat = FreeImage_GetFIFFromFilename(path.string().c_str());
 
         if (fifFormat == FIF_UNKNOWN) {
-            genError("Image Type unknown", filename);
+            genWarning("Image type unknown", path);
             return nullptr;
         }
     }
 
-    // Check the the library supports loading this image Type
+    // Check the library supports loading this image type
     if (FreeImage_FIFSupportsReading(fifFormat) == false) {
-        genError("Library doesn't support the file format", filename);
+        genWarning("Library doesn't support the file format", path);
         return nullptr;
     }
 
-    // Read the DIB
-    FIBITMAP* pDib = FreeImage_Load(fifFormat, fullpath.c_str());
+    // Read file using memory mapped access which is much faster than regular file IO.
+    MemoryMappedFile file(path, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
+    if (!file.isOpen()) {
+        genWarning("Can't open image file {}", path);
+        return nullptr;
+    }
+
+    if (fifFormat == FIF_EXR) {
+        if (isFloat16Exr(file)) importFlags |= ImportFlags::ConvertToFloat16;
+    }
+
+    FIMEMORY* memory = FreeImage_OpenMemory((BYTE*)file.getData(), file.getSize());
+    FIBITMAP* pDib = FreeImage_LoadFromMemory(fifFormat, memory);
+    FreeImage_CloseMemory(memory);
+    file.close();
+
     if (pDib == nullptr) {
-        genError("Can't read image file", filename);
+        genWarning("Can't read image file", path);
         return nullptr;
-    }
-
-    FREE_IMAGE_COLOR_TYPE colorType = FreeImage_GetColorType(pDib);
-
-    switch(colorType) {
-        case FIC_PALETTE:
-            {
-                FIBITMAP* pNew = FreeImage_ConvertTo32Bits(pDib);
-                FreeImage_Unload(pDib);
-                pDib = pNew;
-            }
-            break;
-        default:
-            break;
     }
 
     // Create the bitmap
-    auto pBmp = new Bitmap;
-    pBmp->mHeight = FreeImage_GetHeight(pDib);
-    pBmp->mWidth = FreeImage_GetWidth(pDib);
+    const uint32_t height = FreeImage_GetHeight(pDib);
+    const uint32_t width = FreeImage_GetWidth(pDib);
 
-    if (pBmp->mHeight == 0 || pBmp->mWidth == 0 || FreeImage_GetBits(pDib) == nullptr) {
-        genError("Invalid image", filename);
+    if (height == 0 || width == 0 || FreeImage_GetBits(pDib) == nullptr) {
+        genWarning("Invalid image", path);
         return nullptr;
     }
 
+    // Convert palettized images to RGBA.
+    FREE_IMAGE_COLOR_TYPE colorType = FreeImage_GetColorType(pDib);
+    if (colorType == FIC_PALETTE) {
+        auto pNew = FreeImage_ConvertTo32Bits(pDib);
+        FreeImage_Unload(pDib);
+        pDib = pNew;
+
+        if (pDib == nullptr) {
+            genWarning("Failed to convert palettized image to RGBA format", path);
+            return nullptr;
+        }
+
+        colorType = FreeImage_GetColorType(pDib);
+    }
+
+    // Identify resource format based on bit depth.
+    ResourceFormat format = ResourceFormat::Unknown;
     uint32_t bpp = FreeImage_GetBPP(pDib);
-    switch(bpp) {
+    switch (bpp) {
         case 128:
-            pBmp->mFormat = ResourceFormat::RGBA32Float;    // 4xfloat32 HDR format
+            format = ResourceFormat::RGBA32Float; // 4xfloat32 HDR format
             break;
         case 96:
-            pBmp->mFormat = isRGB32fSupported(pDevice) ? ResourceFormat::RGB32Float : ResourceFormat::RGBA32Float;     // 3xfloat32 HDR format
+            format = isRGB32fSupported() ? ResourceFormat::RGB32Float : ResourceFormat::RGBA32Float; // 3xfloat32 HDR format
             break;
         case 64:
-            pBmp->mFormat = ResourceFormat::RGBA16Float;    // 4xfloat16 HDR format
+            FALCOR_CHECK(colorType == FIC_RGBALPHA, "Only expect 16b RGBA with 64 bits per pixel");
+            format = ResourceFormat::RGBA16Unorm;
             break;
         case 48:
-            pBmp->mFormat = ResourceFormat::RGB16Float;     // 3xfloat16 HDR format
-            break;
+        {
+            FALCOR_CHECK(colorType == FIC_RGB, "Only expect 16b RGB with 48 bits per pixel");
+            format = ResourceFormat::RGBA16Unorm;
+            auto pNew = FreeImage_ConvertToRGBA16(pDib);
+            FreeImage_Unload(pDib);
+            pDib = pNew;
+            bpp = FreeImage_GetBPP(pDib);
+        }
+        break;
         case 32:
-            pBmp->mFormat = ResourceFormat::BGRA8Unorm;
+            format = ResourceFormat::BGRA8Unorm;
             break;
         case 24:
-            pBmp->mFormat = ResourceFormat::BGRX8Unorm;
+            format = ResourceFormat::BGRX8Unorm;
             break;
         case 16:
-            pBmp->mFormat = ResourceFormat::RG8Unorm;
+            format = (FreeImage_GetImageType(pDib) == FIT_UINT16) ? ResourceFormat::R16Unorm : ResourceFormat::RG8Unorm;
             break;
         case 8:
-        case 1:
-            pBmp->mFormat = ResourceFormat::R8Unorm;
+            format = ResourceFormat::R8Unorm;
             break;
         default:
-            genError("Unknown bits-per-pixel (" + std::to_string(bpp) + ")", filename);
+            genWarning("Unknown bits-per-pixel", path);
             return nullptr;
     }
 
     // Convert the image to RGBX image
-    if (bpp == 1) {
-        LLOG_WRN << "Converting 1-bit texture to 8-bit";
-        bpp = 8;
-        auto pNew = FreeImage_ConvertTo8Bits(pDib);
-        FreeImage_Unload(pDib);
-        pDib = pNew;
-    }
-    else if (bpp == 24) {
-        LLOG_WRN << "Converting 24-bit texture to 32-bit";
+    if (bpp == 24)
+    {
         bpp = 32;
         auto pNew = FreeImage_ConvertTo32Bits(pDib);
         FreeImage_Unload(pDib);
         pDib = pNew;
     }
-    else if (bpp == 96 && (isRGB32fSupported(pDevice) == false))
+    else if ((bpp == 96 || bpp == 128) && is_set(importFlags, ImportFlags::ConvertToFloat16))
     {
-        LLOG_WRN << "Converting 96-bit texture to 128-bit";
+        bpp = 64;
+        format = ResourceFormat::RGBA16Float;
+        auto pNew = convertToRGBA16Float(pDib);
+        FreeImage_Unload(pDib);
+        pDib = pNew;
+    }
+    else if (bpp == 96 && (isRGB32fSupported() == false))
+    {
         bpp = 128;
         auto pNew = convertToRGBAF(pDib);
         FreeImage_Unload(pDib);
         pDib = pNew;
     }
-    
-    uint32_t bytesPerPixel = bpp / 8;
 
-    pBmp->mpData = new uint8_t[pBmp->mHeight * pBmp->mWidth * bytesPerPixel];
-    FreeImage_ConvertToRawBits(pBmp->mpData, pDib, pBmp->mWidth * bytesPerPixel, bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
+    // PFM images are loaded y-flipped, fix this by inverting the isTopDown flag.
+    if (fifFormat == FIF_PFM)
+        isTopDown = !isTopDown;
 
+    UniqueConstPtr pBmp = UniqueConstPtr(new Bitmap(width, height, format));
+    FreeImage_ConvertToRawBits(
+        pBmp->getData(), pDib, pBmp->getRowPitch(), bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown
+    );
     FreeImage_Unload(pDib);
-    return UniqueConstPtr(pBmp);
+    return pBmp;
 }
 
-size_t Bitmap::getDataSize() const {
-    if (mpData)
-        return sizeof(mpData);
+Bitmap::Bitmap(uint32_t width, uint32_t height, ResourceFormat format): mWidth(width), mHeight(height), mRowPitch(getFormatRowPitch(format, width)), mFormat(format) {
+    if (isCompressedFormat(format)) {
+        uint32_t blockSizeY = getFormatHeightCompressionRatio(format);
+        FALCOR_ASSERT(height % blockSizeY == 0); // Should divide evenly
+        mSize = size_t(mRowPitch) * (height / blockSizeY);
+    } else {
+        mSize = height * size_t(mRowPitch);
+    }
 
-    return 0;
+    mpData = std::unique_ptr<uint8_t[]>(new uint8_t[mSize]);
 }
 
-
-Bitmap::~Bitmap() {
-    delete[] mpData;
-    mpData = nullptr;
+Bitmap::Bitmap(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData) : Bitmap(width, height, format) {
+    std::memcpy(mpData.get(), pData, mSize);
 }
-
 
 Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext) {
     // This array is in the order of the enum
@@ -341,7 +385,16 @@ void Bitmap::saveImageDialog(Texture* pTexture) {
     }
 }
 
-void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData) {
+void Bitmap::saveImage(
+    const fs::string& filename, 
+    uint32_t width, 
+    uint32_t height, 
+    FileFormat fileFormat, 
+    ExportFlags exportFlags, 
+    ResourceFormat resourceFormat, 
+    bool isTopDown, 
+    void* pData) 
+{
     if (pData == nullptr) {
         LLOG_ERR << "Bitmap::saveImage provided no data to save.";
         return;
@@ -485,7 +538,7 @@ void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t hei
     FreeImage_Unload(pImage);
 }
 
-void Bitmap::saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData) {
+void Bitmap::saveSparseImage(const fs::path& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData) {
     if(!hasSuffix(filename, ".ltx")) {
         LLOG_ERR << "Only LTX format supported for saving sparse images !!!";
         return;

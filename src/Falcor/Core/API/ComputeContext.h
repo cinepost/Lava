@@ -29,33 +29,41 @@
 #define SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_
 
 #include "CopyContext.h"
-#include "Falcor/Core/Program/ProgramVars.h"
-#include "Falcor/Core/State/ComputeState.h"
+#include "Handles.h"
+#include "Buffer.h"
+#include "LowLevelContextData.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 
 namespace Falcor {
 
-class dlldecl ComputeContext : public CopyContext {
+class Device;
+class Buffer;
+class ComputeState;
+class ProgramVars;
+class ProgramKernels;
+class UnorderedAccessView;
+
+class FALCOR_API ComputeContext : public CopyContext {
  public:
-    using SharedPtr = std::shared_ptr<ComputeContext>;
-    using SharedConstPtr = std::shared_ptr<const ComputeContext>;
-
+    /**
+     * Constructor.
+     * Throws an exception if creation failed.
+     * @param[in] pDevice Graphics device.
+     * @param[in] pQueue Command queue.
+     */
+    ComputeContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~ComputeContext();
-
-    /** Create a new compute context.
-        \param[in] queue Command queue handle.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Dispatch a compute task
         \param[in] dispatchSize 3D dispatch group size
     */
-    void dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize);
+    void dispatch(ComputeState* pState, ProgramVars* pVars, const uint3& dispatchSize);
 
     /** Executes a dispatch call. Args to the dispatch call are contained in pArgBuffer
     */
-    void dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
+    void dispatchIndirect(ComputeState* pState, ProgramVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
 
     /** Clear an unordered-access view
         \param[in] pUav The UAV to clear
@@ -73,16 +81,16 @@ class dlldecl ComputeContext : public CopyContext {
         \param[in] pBuffer Structured Buffer containing UAV counter
         \param[in] value Value to clear counter to
     */
-    void clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value);
+    void clearUAVCounter(const ref<Buffer>& pBuffer, uint32_t value);
 
     /** Submit the command list
     */
-    virtual void flush(bool wait = false) override;
+    virtual void submit(bool wait = false) override;
 
  protected:
-    ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    ComputeContext(gfx::ICommandQueue* pQueue);
 
-    const ComputeVars* mpLastBoundComputeVars = nullptr;
+    const ProgramVars* mpLastBoundComputeVars = nullptr;
 };
 
 }  // namespace Falcor

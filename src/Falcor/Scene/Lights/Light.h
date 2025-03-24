@@ -31,6 +31,7 @@
 #include <memory>
 #include <string>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/Math/Vector.h"
@@ -574,7 +575,7 @@ private:
     virtual void update() override;
 };
 
-enum_class_operators(Light::Changes);
+ENUM_CLASS_OPERATORS(Light::Changes);
 
 inline std::string to_string(LightType lt) {
 #define t2s(t_) case LightType::t_: return #t_;

@@ -47,27 +47,23 @@ DeviceManager::~DeviceManager() {
     for( auto& entry: mRenderingDevices ) {
         auto& pDevice = entry.second;
         if (pDevice) {
-            pDevice->cleanup();
             pDevice.reset();
         }
     }
 }
 
 //static
-DeviceManager::SharedPtr DeviceManager::create(bool enableValidationLayer) {
-    auto pDeviceManager = new DeviceManager();
+std::unique_ptr<DeviceManager> DeviceManager::create(bool enableValidationLayer) {
+    auto pDeviceManager = std::make_unique<DeviceManager>();
     pDeviceManager->mEnableValidationLayer = enableValidationLayer;
 
-    if (!pDeviceManager->init()) {
-        delete pDeviceManager;
-        return nullptr;
-    }
+    if (!pDeviceManager->init()) return nullptr;
 
-    return SharedPtr(pDeviceManager);
+    return pDeviceManager;
 }
 
-std::vector<Device::SharedPtr> DeviceManager::renderingDevices() const {
-    std::vector<Device::SharedPtr> devices;
+std::vector<ref<Device>> DeviceManager::renderingDevices() const {
+    std::vector<ref<Device>> devices;
     for( auto& entry: mRenderingDevices ) {
         devices.push_back(entry.second);
     }
@@ -82,7 +78,7 @@ bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
     return false;
 }
 
-Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
+ref<Device> DeviceManager::renderingDevice(uint8_t gpuId) const {
     if (!deviceEnumerated(gpuId)) return nullptr;
 
     auto it = mRenderingDevices.find(gpuId);
@@ -102,11 +98,11 @@ void DeviceManager::printEnumeratedDevices() const {
     }
 }
 
-Device::SharedPtr DeviceManager::defaultRenderingDevice() const {
+ref<Device> DeviceManager::defaultRenderingDevice() const {
     return renderingDevice(mDefaultRenderingDeviceID);
 }
 
-Device::SharedPtr DeviceManager::defaultDisplayDevice() const {
+ref<Device> DeviceManager::defaultDisplayDevice() const {
     return renderingDevice(mDefaultDisplayDeviceID);
 }
 

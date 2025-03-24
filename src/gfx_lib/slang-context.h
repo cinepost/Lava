@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SLANG_CONTEXT_H_
+#define GFX_SLANG_CONTEXT_H_
 
 #include "slang-gfx.h"
 
@@ -14,7 +15,11 @@ namespace gfx
     public:
         Slang::ComPtr<slang::IGlobalSession> globalSession;
         Slang::ComPtr<slang::ISession> session;
-        Result initialize(const gfx::IDevice::SlangDesc& desc, SlangCompileTarget compileTarget, const char* defaultProfileName,
+        Result initialize(const gfx::IDevice::SlangDesc& desc,
+            uint32_t extendedDescCount,
+            void** extendedDescs, 
+            SlangCompileTarget compileTarget, 
+            const char* defaultProfileName,
             Slang::ConstArrayView<slang::PreprocessorMacroDesc> additionalMacros)
         {
             if (desc.slangGlobalSession)
@@ -41,16 +46,28 @@ namespace gfx
             if (targetProfile == nullptr)
                 targetProfile = defaultProfileName;
             targetDesc.profile = globalSession->findProfile(targetProfile);
-            targetDesc.optimizationLevel = desc.optimizationLevel;
             targetDesc.floatingPointMode = desc.floatingPointMode;
             targetDesc.lineDirectiveMode = desc.lineDirectiveMode;
             targetDesc.flags = desc.targetFlags;
+            targetDesc.forceGLSLScalarBufferLayout = true;
 
             slangSessionDesc.targets = &targetDesc;
             slangSessionDesc.targetCount = 1;
+
+            for (uint32_t i = 0; i < extendedDescCount; i++) {
+                if ((*(StructType*)extendedDescs[i]) == StructType::SlangSessionExtendedDesc) {
+                    auto extDesc = (SlangSessionExtendedDesc*)extendedDescs[i];
+                    slangSessionDesc.compilerOptionEntryCount = extDesc->compilerOptionEntryCount;
+                    slangSessionDesc.compilerOptionEntries = extDesc->compilerOptionEntries;
+                    break;
+                }
+            }
 
             SLANG_RETURN_ON_FAIL(globalSession->createSession(slangSessionDesc, session.writeRef()));
             return SLANG_OK;
         }
     };
-}
+
+}  // namespace gfx
+
+#endif  // GFX_SLANG_CONTEXT_H_

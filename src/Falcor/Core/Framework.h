@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_FRAMEWORK_H_
 #define SRC_FALCOR_CORE_FRAMEWORK_H_
 
+#include "Falcor/Core/Macros.h"
 #include "FalcorPlatform.h"
 
 #if FALCOR_GCC
@@ -38,33 +39,6 @@
 
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-
-// Define DLL export/import
-#if FALCOR_MSVC
-#define falcorexport __declspec(dllexport)
-#define falcorimport __declspec(dllimport)
-#define FALCOR_API_EXPORT __declspec(dllexport)
-#define FALCOR_API_IMPORT __declspec(dllimport)
-#elif FALCOR_GCC
-#define falcorexport __attribute__ ((visibility ("default")))
-#define falcorimport  // extern
-#define FALCOR_API_EXPORT __attribute__ ((visibility ("default")))
-#define FALCOR_API_IMPORT //extern
-#endif  // _MSC_VER
-
-#ifdef FALCOR_DLL
-#define FALCOR_API FALCOR_API_EXPORT
-#define dlldecl falcorexport
-#else   // BUILDING_SHARED_DLL
-#define FALCOR_API FALCOR_API_IMPORT
-#define dlldecl falcorimport
-#endif  // BUILDING_SHARED_DLL
-
-#ifdef PASS_DLL
-#define PASS_API FALCOR_API_EXPORT
-#else   // BUILDING_SHARED_DLL
-#define PASS_API FALCOR_API_IMPORT
-#endif  // BUILDING_SHARED_DLL
 
 #include "Falcor/Core/ErrorHandling.h"
 
@@ -134,49 +108,6 @@ namespace fs = boost::filesystem;
 
 #endif  // _DEBUG
 
-#ifdef _DEBUG
-
-#define FALCOR_ASSERT(a)\
-    if (!(a)) {\
-        std::string s = boost::str(boost::format("assertion failed( %1% )\n%2%(%3%)") % #a % __FILE__ % __LINE__); \
-        Falcor::reportFatalError(s);\
-    }
-#define FALCOR_ASSERT_MSG(a, msg)\
-    if (!(a)) {\
-        std::string s = boost::str(boost::format("assertion failed( %1% ): %2%\n%3%(%4%)") % #a % msg % __FILE__ % __LINE__); \
-        Falcor::reportFatalError(s); \
-    }
-#define FALCOR_ASSERT_OP(a, b, OP)\
-    if (!(a OP b)) {\
-        std::string s = boost::str(boost::format("assertion failed( %1% %2% %3% )\n%4%(%5%)") % #a % #OP % #b % __FILE__ % __LINE__); \
-        Falcor::reportFatalError(s); \
-    }
-#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
-#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
-#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
-#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
-#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
-#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
-
-
-#else // _DEBUG
-
-#define FALCOR_ASSERT(a) {}
-#define FALCOR_ASSERT_MSG(a, msg) {}
-#define FALCOR_ASSERT_OP(a, b, OP) {}
-#define FALCOR_ASSERT_EQ(a, b) {}
-#define FALCOR_ASSERT_NE(a, b) {}
-#define FALCOR_ASSERT_GE(a, b) {}
-#define FALCOR_ASSERT_GT(a, b) {}
-#define FALCOR_ASSERT_LE(a, b) {}
-#define FALCOR_ASSERT_LT(a, b) {}
-
-#endif // _DEBUG
-
-#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::std::runtime_error("Not implemented"); } while(0)
-
-#define FALCOR_UNREACHABLE() assert(false)
-
 
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
@@ -186,40 +117,10 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
-#define enum_class_operators(e_) \
-    inline e_ operator& (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b)); } \
-    inline e_ operator| (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)| static_cast<int>(b)); } \
-    inline e_& operator|= (e_& a, e_ b) { a = a | b; return a; } \
-    inline e_& operator&= (e_& a, e_ b) { a = a & b; return a; } \
-    inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
-    inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
-    inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
-
 /*!
 *  \addtogroup Falcor
 *  @{
 */
-
-/** Falcor shader types
-*/
-enum class ShaderType {
-    Vertex,         ///< Vertex shader
-    Pixel,          ///< Pixel shader
-    Geometry,       ///< Geometry shader
-    Hull,           ///< Hull shader (AKA Tessellation control shader)
-    Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
-    Compute,        ///< Compute shader
-
-    RayGeneration,  ///< Ray generation shader
-    Intersection,   ///< Intersection shader
-    AnyHit,         ///< Any hit shader
-    ClosestHit,     ///< Closest hit shader
-    Miss,           ///< Miss shader
-    Callable,       ///< Callable shader
-
-    Count           ///< Shader Type count
-};
-
 
 /** Shading languages. Used for shader cross-compilation.
 */
@@ -231,32 +132,6 @@ enum class ShadingLanguage {
     Slang,          ///< Slang shading language
 };
 
-/** Framebuffer target flags. Used for clears and copy operations
-*/
-enum class FboAttachmentType {
-    None    = 0,    ///< Nothing. Here just for completeness
-    Color   = 1,    ///< Operate on the color buffer.
-    Depth   = 2,    ///< Operate on the the depth buffer.
-    Stencil = 4,    ///< Operate on the the stencil buffer.
-
-    All = Color | Depth | Stencil  ///< Operate on all targets
-};
-
-enum_class_operators(FboAttachmentType);
-
-
-enum class ComparisonFunc {
-    Disabled,       ///< Comparison is disabled
-    Never,          ///< Comparison always fails
-    Always,         ///< Comparison always succeeds
-    Less,           ///< Passes if source is less than the destination
-    Equal,          ///< Passes if source is equal to the destination
-    NotEqual,       ///< Passes if source is not equal to the destination
-    LessEqual,      ///< Passes if source is less than or equal to the destination
-    Greater,        ///< Passes if source is greater than to the destination
-    GreaterEqual,   ///< Passes if source is greater than or equal to the destination
-};
-
 /** Flags indicating what hot-reloadable resources have changed
 */
 enum class HotReloadFlags {
@@ -264,7 +139,7 @@ enum class HotReloadFlags {
     Program = 1,    ///< Programs (shaders)
 };
 
-enum_class_operators(HotReloadFlags);
+ENUM_CLASS_OPERATORS(HotReloadFlags);
 
 /** Clamps a value within a range.
     \param[in] val Value to clamp
@@ -342,64 +217,6 @@ struct WindowHandle {
 
 namespace Falcor {
 
-/** Converts ShaderType enum elements to a string.
-    \param[in] type Type to convert to string
-    \return Shader type as a string
-*/
-inline const std::string to_string(ShaderType Type) {
-    switch (Type) {
-        case ShaderType::Vertex:
-            return "vertex";
-        case ShaderType::Pixel:
-            return "pixel";
-        case ShaderType::Hull:
-            return "hull";
-        case ShaderType::Domain:
-            return "domain";
-        case ShaderType::Geometry:
-            return "geometry";
-        case ShaderType::Compute:
-            return "compute";
-#ifdef FALCOR_D3D12
-        case ShaderType::RayGeneration:
-            return "raygeneration";
-        case ShaderType::Intersection:
-            return "intersection";
-        case ShaderType::AnyHit:
-            return "anyhit";
-        case ShaderType::ClosestHit:
-            return "closesthit";
-        case ShaderType::Miss:
-            return "miss";
-        case ShaderType::Callable:
-            return "callable";
-#endif
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-
-
-#define compare_str(a) case ComparisonFunc::a: return #a
-inline std::string to_string(ComparisonFunc f) {
-    switch (f) {
-        compare_str(Disabled);
-        compare_str(LessEqual);
-        compare_str(GreaterEqual);
-        compare_str(Less);
-        compare_str(Greater);
-        compare_str(Equal);
-        compare_str(NotEqual);
-        compare_str(Always);
-        compare_str(Never);
-        default:
-            should_not_get_here();
-            return "";
-    }
-}
-#undef compare_str
-
 // Required to_string functions
 using std::to_string;
 inline std::string to_string(const std::string& s) { return '"' + s + '"'; }  // Here for completeness
@@ -442,13 +259,11 @@ std::enable_if_t<has_iterator<T>::value, std::string> to_string(const T& t) {
 // Enable Windows visual styles
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function has been deprecated in " ##  _ver_ ## ". " ## _msg_))
-#define forceinline __forceinline
 using DllHandle = HMODULE;
 using SharedLibraryHandle = HMODULE;
 #define suppress_deprecation __pragma(warning(suppress : 4996));
 #elif FALCOR_GCC
 #define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function has been deprecated in " _ver_ ". " _msg_)))
-#define forceinline __attribute__((always_inline))
 using DllHandle = void*;
 using SharedLibraryHandle = void*;
 #define suppress_deprecation _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")

@@ -25,34 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_STATE_GRAPHICSSTATE_H_
+#define SRC_FALCOR_CORE_STATE_GRAPHICSSTATE_H_
 
-#include <stack>
+
+#include "StateGraph.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
 #include "Falcor/Core/API/Device.h"
 
 #include "Core/API/GraphicsStateObject.h"
-#include "StateGraph.h"
 #include "Core/API/FBO.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ProgramVars.h"
+#include "Core/API/VAO.h"
+#include "Core/Program/Program.h"
+
+#include <stack>
+#include <vector>
+#include <memory>
 
 namespace Falcor
 {
-    class GraphicsVars;
-    class Vao;
-    class GraphicsProgram;
+    class ProgramVars;
 
     /** Pipeline state.
         This class contains the entire state required by a single draw-call. It's not an immutable object - you can change it dynamically during rendering.
         The recommended way to use it is to create multiple PipelineState objects (ideally, a single object per render-pass)
     */
-    class FALCOR_API GraphicsState
+    class FALCOR_API GraphicsState : public Object
     {
+        FALCOR_OBJECT(GraphicsState)
     public:
-        using SharedPtr = std::shared_ptr<GraphicsState>;
-        using SharedConstPtr = std::shared_ptr<const GraphicsState>;
-        ~GraphicsState();
+        virtual ~GraphicsState();
 
         /** Defines the region to render to.
         */
@@ -87,27 +91,23 @@ namespace Falcor
         /** Create a new state object.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(Device::SharedPtr pDevice) { return SharedPtr(new GraphicsState(pDevice)); }
-
-        /** Copy constructor. Useful if you need to make minor changes to an already existing object
-        */
-        SharedPtr operator=(const SharedPtr& other);
+        static ref<GraphicsState> create(ref<Device> pDevice);
 
         /** Get current FBO.
         */
-        Fbo::SharedPtr getFbo() const { return mpFbo; }
+        ref<Fbo> getFbo() const { return mpFbo; }
 
         /** Set an FBO. This function doesn't store the current FBO state.
             \param[in] pFbo An FBO object. If nullptr is used, will detach the current FBO
             \param[in] setVp0Sc0 If true, will set viewport 0 and scissor 0 to match the FBO dimensions
         */
-        GraphicsState& setFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0 = true);
+        GraphicsState& setFbo(const ref<Fbo>& pFbo, bool setVp0Sc0 = true);
 
         /** Set a new FBO and store the current FBO into a stack. Useful for multi-pass effects.
             \param[in] pFbo - a new FBO object. If nullptr is used, will bind an empty framebuffer object
             \param[in] setVp0Sc0 If true, viewport 0 and scissor 0 will be set to match the FBO dimensions
         */
-        void pushFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0 = true);
+        void pushFbo(const ref<Fbo>& pFbo, bool setVp0Sc0 = true);
 
         /** Restore the last FBO pushed into the FBO stack. If the stack is empty, an error will be logged.
             \param[in] setVp0Sc0 If true, viewport 0 and scissor 0 will be set to match the FBO dimensions
@@ -117,11 +117,11 @@ namespace Falcor
         /** Set a new vertex array object. By default, no VAO is bound.
             \param[in] pVao The Vao object to bind. If this is nullptr, will unbind the current VAO.
         */
-        GraphicsState& setVao(const Vao::SharedConstPtr& pVao);
+        GraphicsState& setVao(const ref<Vao>& pVao);
 
         /** Get the currently bound VAO.
         */
-        Vao::SharedConstPtr getVao() const { return mpVao; }
+        ref<Vao> getVao() const { return mpVao; }
 
         /** Set the stencil reference value.
         */
@@ -188,35 +188,39 @@ namespace Falcor
 
         /** Bind a program to the pipeline.
         */
-        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { FALCOR_ASSERT(pProgram); mpProgram = pProgram; return *this; }
-
+        GraphicsState& setProgram(const ref<Program>& pProgram)
+        {
+            FALCOR_ASSERT(pProgram);
+            mpProgram = pProgram;
+            return *this;
+        }
         /** Get the currently bound program.
         */
-        GraphicsProgram::SharedPtr getProgram() const { return mpProgram; }
+        ref<Program> getProgram() const { return mpProgram; }
 
         /** Set a blend-state.
         */
-        GraphicsState& setBlendState(BlendState::SharedPtr pBlendState);
+        GraphicsState& setBlendState(ref<BlendState> pBlendState);
 
         /** Get the currently bound blend-state.
         */
-        BlendState::SharedPtr getBlendState() const { return mDesc.getBlendState(); }
+        ref<BlendState> getBlendState() const { return mDesc.pBlendState; }
 
         /** Set a rasterizer-state.
         */
-        GraphicsState& setRasterizerState(RasterizerState::SharedPtr pRasterizerState);
+        GraphicsState& setRasterizerState(ref<RasterizerState> pRasterizerState);
 
         /** Get the currently bound rasterizer-state.
         */
-        RasterizerState::SharedPtr getRasterizerState() const { return mDesc.getRasterizerState(); }
+        ref<RasterizerState> getRasterizerState() const { return mDesc.pRasterizerState; }
 
         /** Set a depth-stencil state.
         */
-        GraphicsState& setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState);
+        GraphicsState& setDepthStencilState(ref<DepthStencilState> pDepthStencilState);
 
         /** Get the currently bound depth-stencil state.
         */
-        DepthStencilState::SharedPtr getDepthStencilState() const { return mDesc.getDepthStencilState(); }
+        ref<DepthStencilState> getDepthStencilState() const { return mDesc.pDepthStencilState; }
 
         /** Set the sample mask.
         */
@@ -224,29 +228,31 @@ namespace Falcor
 
         /** Get the current sample mask.
         */
-        uint32_t getSampleMask() const { return mDesc.getSampleMask(); }
+        uint32_t getSampleMask() const { return mDesc.sampleMask; }
 
         /** Get the active graphics state object.
         */
-        virtual GraphicsStateObject::SharedPtr getGSO(const GraphicsVars* pVars);
+        virtual ref<GraphicsStateObject> getGSO(const ProgramVars* pVars);
 
         /** Get the desc
         */
-        const GraphicsStateObject::Desc& getDesc() const { return mDesc; }
+        const GraphicsStateObjectDesc& getDesc() const { return mDesc; }
+
+        void breakStrongReferenceToDevice();
 
     private:
-        GraphicsState(Device::SharedPtr pDevice);
+        GraphicsState(ref<Device> pDevice);
 
-        Device::SharedPtr mpDevice = nullptr;
-        Vao::SharedConstPtr mpVao;
-        Fbo::SharedPtr mpFbo;
-        GraphicsProgram::SharedPtr mpProgram;
-        GraphicsStateObject::Desc mDesc;
+        BreakableReference<Device> mpDevice;
+        ref<Vao> mpVao;
+        ref<Fbo> mpFbo;
+        ref<Program> mpProgram;
+        GraphicsStateObjectDesc mDesc;
         uint8_t mStencilRef = 0;
         std::vector<Viewport> mViewports;
         std::vector<Scissor> mScissors;
 
-        std::stack<Fbo::SharedPtr> mFboStack;
+        std::stack<ref<Fbo>> mFboStack;
         std::vector<std::stack<Viewport>> mVpStack;
         std::vector<std::stack<Scissor>> mScStack;
 
@@ -257,7 +263,9 @@ namespace Falcor
         };
         CachedData mCachedData;
 
-        using _StateGraph = StateGraph<GraphicsStateObject::SharedPtr, void*>;
-        _StateGraph::SharedPtr mpGsoGraph;
+        using GraphicsStateGraph = StateGraph<ref<GraphicsStateObject>, void*>;
+        std::unique_ptr<GraphicsStateGraph> mpGsoGraph;
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_STATE_GRAPHICSSTATE_H_

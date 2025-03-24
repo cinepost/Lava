@@ -30,7 +30,7 @@ enum class EdgeDetectOutputChannel : uint32_t
 };
 
 #ifdef HOST_CODE
-enum_class_operators(EdgeDetectTraceFlags);
+ENUM_CLASS_OPERATORS(EdgeDetectTraceFlags);
 #endif // HOST_CODE
 
 END_NAMESPACE_FALCOR

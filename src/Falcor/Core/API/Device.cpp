@@ -25,217 +25,371 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
+#include "Device.h"
+#include "Raytracing.h"
+#include "GFXHelpers.h"
+#include "GFXAPI.h"
+#include "ComputeStateObject.h"
+#include "GraphicsStateObject.h"
+#include "RtStateObject.h"
+#include "NativeHandleTraits.h"
 
-#include <thread>
+#include "Sampler.h"
 
+#include "Core/Macros.h"
+#include "Core/Error.h"
+#include "Core/ObjectPython.h"
+#include "Core/Program/Program.h"
+#include "Core/Program/ProgramManager.h"
+#include "Core/Program/ShaderVar.h"
+
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
 
-#include "Device.h"
-#include "Sampler.h"
+#include <thread>
 
 
 namespace Falcor {
+
+static_assert((uint32_t)RayFlags::None == 0);
+static_assert((uint32_t)RayFlags::ForceOpaque == 0x1);
+static_assert((uint32_t)RayFlags::ForceNonOpaque == 0x2);
+static_assert((uint32_t)RayFlags::AcceptFirstHitAndEndSearch == 0x4);
+static_assert((uint32_t)RayFlags::SkipClosestHitShader == 0x8);
+static_assert((uint32_t)RayFlags::CullBackFacingTriangles == 0x10);
+static_assert((uint32_t)RayFlags::CullFrontFacingTriangles == 0x20);
+static_assert((uint32_t)RayFlags::CullOpaque == 0x40);
+static_assert((uint32_t)RayFlags::CullNonOpaque == 0x80);
+static_assert((uint32_t)RayFlags::SkipTriangles == 0x100);
+static_assert((uint32_t)RayFlags::SkipProceduralPrimitives == 0x200);
+
+static_assert(getMaxViewportCount() <= 8);
     
-void createNullViews(Device::SharedPtr pDevice);
-void releaseNullViews(Device::SharedPtr pDevice);
+static const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 
-std::atomic<std::uint8_t> Device::UID = 0;
+static const size_t kConstantBufferDataPlacementAlignment = 256;
+// This actually depends on the size of the index, but we can handle losing 2 bytes
+static const size_t kIndexBufferDataPlacementAlignment = 4;
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mDesc(desc), mpWindow(pWindow), mPhysicalDeviceName("Unknown") {
-    mCurrentBackBufferIndex = 0;
-    _uid = UID++;
-    if(pWindow) { mHeadless = false; } else { mHeadless = true; };
-}
+/// The default Shader Model to use when compiling programs.
+/// If not supported, the highest supported shader model will be used instead.
+static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
-Device::SharedPtr Device::create(const Device::Desc& desc) {
-    auto pDevice = SharedPtr(new Device(nullptr, desc));
-    pDevice->mUseIDesc = false;
-    if (!pDevice->init())
-        return nullptr;
-
-    return pDevice;
-}
-
-Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::Desc& desc) {
-    auto pDevice = SharedPtr(new Device(pWindow, desc));
-    pDevice->mUseIDesc = false;
-    if (!pDevice->init())
-        return nullptr;
-
-    return pDevice;
-}
-
-Device::SharedPtr Device::create(const Device::IDesc& idesc, const Device::Desc& desc) {
-    auto pDevice = SharedPtr(new Device(nullptr, desc));
-    pDevice->mIDesc = idesc;
-    pDevice->mUseIDesc = true;
-
-    if (!pDevice->init())
-        return nullptr;
-
-    return pDevice;
-}
-
-Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Device::Desc& desc) {
-    auto pDevice = SharedPtr(new Device(pWindow, desc));
-    pDevice->mIDesc = idesc;
-    pDevice->mUseIDesc = true;
-
-    if (!pDevice->init())
-        return nullptr;
-
-    return pDevice;
-}
-
-/**
- * Initialize device
- */
-bool Device::init() {
-    #ifdef _DEBUG
-    const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
-    FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
-    #endif // _DEBUG
-
-    if (!apiInit(mDesc.validationLayerOuputFilename)) return false;
-
-    mpFrameFence = GpuFence::create(shared_from_this());
-    mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
-
-    createNullViews();
-
-    size_t maxTextureCount = 1024 * 10;
-    size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
-    mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
-    assert(mpTextureManager);
-
-    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-
-    // create default sampler
-    Sampler::Desc desc;
-    desc.setMaxAnisotropy(16);
-    desc.setLodParams(0.0f, 1000.0f, -0.0f);
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    mpDefaultSampler = Sampler::create(shared_from_this(), desc);
-
-    mpRenderContext->flush();  // This will bind the descriptor heaps.
-    // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
-
-    // Update the FBOs or offscreen buffer
-    if (!mHeadless) {
-        if (updateDefaultFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
-            return false;
-        }
-    } else {
-        // Update offscreen buffer
-        if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
-            return false;
+class GFXDebugCallBack : public gfx::IDebugCallback {
+    virtual SLANG_NO_THROW void SLANG_MCALL
+    handleMessage(gfx::DebugMessageType type, gfx::DebugMessageSource source, const char* message) override {
+        if (type == gfx::DebugMessageType::Error) {
+            LLOG_ERR << "GFX Error: " << message;
+        } else if (type == gfx::DebugMessageType::Warning) {
+            LLOG_WRN << "GFX Warning: " << message;
+        } else {
+            LLOG_DBG << "GFX Info: " << message;
         }
     }
-    return true;
+};
+
+GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
+
+inline Device::Limits queryLimits(gfx::IDevice* pDevice) {
+    const auto& deviceLimits = pDevice->getDeviceInfo().limits;
+
+    auto toUint3 = [](const uint32_t value[]) { return uint3(value[0], value[1], value[2]); };
+
+    Device::Limits limits = {};
+    limits.maxComputeDispatchThreadGroups = toUint3(deviceLimits.maxComputeDispatchThreadGroups);
+    limits.maxShaderVisibleSamplers = deviceLimits.maxShaderVisibleSamplers;
+    return limits;
+}
+
+inline Device::SupportedFeatures querySupportedFeatures(gfx::IDevice* pDevice) {
+    Device::SupportedFeatures result = Device::SupportedFeatures::None;
+    
+    if (pDevice->hasFeature("ray-tracing")) {
+        result |= Device::SupportedFeatures::Raytracing;
+    }
+
+    if (pDevice->hasFeature("ray-query")) {
+        result |= Device::SupportedFeatures::RaytracingTier1_1;
+    }
+
+    if (pDevice->hasFeature("conservative-rasterization-3")) {
+        result |= Device::SupportedFeatures::ConservativeRasterizationTier3;
+    }
+
+    if (pDevice->hasFeature("conservative-rasterization-2")) {
+        result |= Device::SupportedFeatures::ConservativeRasterizationTier2;
+    }
+
+    if (pDevice->hasFeature("conservative-rasterization-1")) {
+        result |= Device::SupportedFeatures::ConservativeRasterizationTier1;
+    }
+
+    if (pDevice->hasFeature("rasterizer-ordered-views")) {
+        result |= Device::SupportedFeatures::RasterizerOrderedViews;
+    }
+
+    if (pDevice->hasFeature("programmable-sample-positions-2")) {
+        result |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
+    } else if (pDevice->hasFeature("programmable-sample-positions-1")) {
+        result |= Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly;
+    }
+
+    if (pDevice->hasFeature("barycentrics")) {
+        result |= Device::SupportedFeatures::Barycentrics;
+    }
+
+    if (pDevice->hasFeature("wave-ops")) {
+        result |= Device::SupportedFeatures::WaveOperations;
+    }
+
+    return result;
+}
+
+inline ShaderModel querySupportedShaderModel(gfx::IDevice* pDevice) {
+    struct SMLevel {
+        const char* name;
+        ShaderModel level;
+    };
+
+    const SMLevel levels[] = {
+        {"sm_6_7", ShaderModel::SM6_7},
+        {"sm_6_6", ShaderModel::SM6_6},
+        {"sm_6_5", ShaderModel::SM6_5},
+        {"sm_6_4", ShaderModel::SM6_4},
+        {"sm_6_3", ShaderModel::SM6_3},
+        {"sm_6_2", ShaderModel::SM6_2},
+        {"sm_6_1", ShaderModel::SM6_1},
+        {"sm_6_0", ShaderModel::SM6_0},
+    };
+    
+    for (auto level : levels) {
+        if (pDevice->hasFeature(level.name)) {
+            return level.level;
+        }
+    }
+    return ShaderModel::Unknown;
+}
+
+Device::Device(const Device::Desc& desc) : mDesc(desc), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+
+    // Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
+    slang::createGlobalSession(mSlangGlobalSession.writeRef());
+
+    const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
+
+    gfx::IDevice::Desc gfxDesc = {};
+    gfxDesc.deviceType = gfx::DeviceType::Vulkan;    
+    gfxDesc.slang.slangGlobalSession = mSlangGlobalSession;
+
+    // Setup shader cache.
+    gfxDesc.shaderCache.maxEntryCount = mDesc.maxShaderCacheEntryCount;
+    if (mDesc.shaderCachePath == "") {
+        gfxDesc.shaderCache.shaderCachePath = nullptr;
+    } else {
+        gfxDesc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
+        // If the supplied shader cache path does not exist, we will need to create it before creating the device.
+        if (fs::exists(mDesc.shaderCachePath)) {
+            if (!fs::is_directory(mDesc.shaderCachePath))
+                FALCOR_THROW("Shader cache path {} exists and is not a directory", mDesc.shaderCachePath);
+        } else {
+            fs::create_directories(mDesc.shaderCachePath);
+        }
+    }
+
+    std::vector<void*> extendedDescs;
+    // Add extended desc for root parameter attribute.
+    gfx::D3D12DeviceExtendedDesc extDesc = {};
+    extDesc.rootParameterShaderAttributeName = "root";
+    extendedDescs.push_back(&extDesc);
+
+    gfxDesc.extendedDescCount = extendedDescs.size();
+    gfxDesc.extendedDescs = extendedDescs.data();
+
+    // Setup debug layer.
+    FALCOR_GFX_CALL(gfxSetDebugCallback(&gGFXDebugCallBack));
+    if (mDesc.enableDebugLayer) {
+        gfx::gfxEnableDebugLayer();
+    }
+
+    // Get list of available GPUs.
+    const auto gpus = getGPUs();
+
+    if (gpus.size() == 0) {
+        FALCOR_THROW("Did not find any Vulkan GPUs !!!");
+    }
+
+    if (mDesc.gpu >= gpus.size()) {
+        LLOG_WRN << "GPU index " << mDesc.gpu << " is out of range, using first GPU instead.";
+        mDesc.gpu = 0;
+    }
+
+
+    gfxDesc.validationLayerOuputFilename = mDesc.validationLayerOuputFilename;
+
+    // Try to create device on specific GPU.
+    {
+        gfxDesc.adapterLUID = reinterpret_cast<const gfx::AdapterLUID*>(&gpus[mDesc.gpu].luid);
+        if (SLANG_FAILED(gfxCreateDevice(&gfxDesc, mGfxDevice.writeRef()))) {
+            LLOG_ERR << "Failed to create rendering device on GPU " << mDesc.gpu << " (" <<gpus[mDesc.gpu].name  << ") !";
+        }
+    }
+
+    // Otherwise try create device on any available GPU.
+    if (!mGfxDevice) {
+        gfxDesc.adapterLUID = nullptr;
+        if (SLANG_FAILED(gfxCreateDevice(&gfxDesc, mGfxDevice.writeRef())))
+            FALCOR_THROW("Failed to create rendering device !!!");
+    }
+
+    const auto& deviceInfo = mGfxDevice->getDeviceInfo();
+    mInfo.adapterName = deviceInfo.adapterName;
+    mInfo.adapterLUID = gfxDesc.adapterLUID ? gpus[mDesc.gpu].luid : AdapterLUID();
+    mInfo.apiName = deviceInfo.apiName;
+    mLimits = queryLimits(mGfxDevice);
+    mSupportedFeatures = querySupportedFeatures(mGfxDevice);
+
+    // Attempt to enable ray tracing validation if requested
+    if (mDesc.enableRaytracingValidation) {
+        enableRaytracingValidation();
+    }
+
+    // Vulkan always supports SER.
+    mSupportedFeatures |= SupportedFeatures::ShaderExecutionReorderingAPI;
+
+    mGfxDevice->getNativeDeviceHandles(&mInteropHandles);
+
+    //mVkInstance = reinterpret_cast<VkInstance>(interopHandles.handles[0].handleValue);
+    //mVkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(interopHandles.handles[1].handleValue);
+    //mVkDevice = reinterpret_cast<VkDevice>(interopHandles.handles[2].handleValue);
+
+    mSupportedFeatures = querySupportedFeatures(mGfxDevice);
+    mSupportedShaderModel = querySupportedShaderModel(mGfxDevice);
+    mDefaultShaderModel = std::min(kDefaultShaderModel, mSupportedShaderModel);
+    mGpuTimestampFrequency = 1000.0 / (double)mGfxDevice->getDeviceInfo().timestampFrequency;
+
+    for (uint32_t i = 0; i < kInFlightFrameCount; ++i) {
+        gfx::ITransientResourceHeap::Desc transientHeapDesc = {};
+        transientHeapDesc.flags = gfx::ITransientResourceHeap::Flags::AllowResizing;
+        transientHeapDesc.constantBufferSize = kTransientHeapConstantBufferSize;
+        transientHeapDesc.samplerDescriptorCount = 2048;
+        transientHeapDesc.uavDescriptorCount = 1000000;
+        transientHeapDesc.srvDescriptorCount = 1000000;
+        transientHeapDesc.constantBufferDescriptorCount = 1000000;
+        transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
+        if (SLANG_FAILED(mGfxDevice->createTransientResourceHeap(transientHeapDesc, mpTransientResourceHeaps[i].writeRef())))
+            FALCOR_THROW("Failed to create transient resource heap");
+    }
+
+    gfx::ICommandQueue::Desc queueDesc = {};
+    queueDesc.type = gfx::ICommandQueue::QueueType::Graphics;
+    if (SLANG_FAILED(mGfxDevice->createCommandQueue(queueDesc, mGfxCommandQueue.writeRef()))) {
+        FALCOR_THROW("Failed to create command queue");
+    }
+
+    // The Device class contains a bunch of nested resource objects that have strong references to the device.
+    // This is because we want a strong reference to the device when those objects are returned to the user.
+    // However, here it immediately creates cyclic references device->resource->device upon creation of the device.
+    // To break the cycles, we break the strong reference to the device for the resources that it owns.
+
+    // Here, we temporarily increase the refcount of the device, so it won't be destroyed upon breaking the
+    // nested strong references to it.
+    this->incRef();
+
+#if FALCOR_ENABLE_REF_TRACKING
+    this->setEnableRefTracking(true);
+#endif
+
+    mpFrameFence = createFence();
+    mpFrameFence->breakStrongReferenceToDevice();
+
+    mpProgramManager = std::make_unique<ProgramManager>(this);
+
+    mpProfiler = std::make_unique<Profiler>(ref<Device>(this));
+    mpProfiler->breakStrongReferenceToDevice();
+
+    mpDefaultSampler = createSampler(Sampler::Desc());
+    mpDefaultSampler->breakStrongReferenceToDevice();
+
+    mpUploadHeap = GpuMemoryHeap::create(ref<Device>(this), MemoryType::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpUploadHeap->breakStrongReferenceToDevice();
+
+    mpReadBackHeap = GpuMemoryHeap::create(ref<Device>(this), MemoryType::ReadBack, 1024 * 1024 * 2, mpFrameFence);
+    mpReadBackHeap->breakStrongReferenceToDevice();
+
+    mpTimestampQueryHeap = QueryHeap::create(ref<Device>(this), QueryHeap::Type::Timestamp, 1024 * 1024);
+    mpTimestampQueryHeap->breakStrongReferenceToDevice();
+
+    static const size_t maxTextureCount = 1024 * 10;
+    const size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
+    mpTextureManager = std::make_unique<TextureManager>(this, maxTextureCount, threadCount);
+
+    mpRenderContext = std::make_unique<RenderContext>(this, mGfxCommandQueue);
+
+    // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
+    mpRenderContext->submit(); // This will bind the descriptor heaps.
+
+    this->decRef(false);
+}
+
+std::vector<AdapterInfo> Device::getGPUs() {
+    auto adapters = gfx::gfxGetAdapters(gfx::DeviceType::Vulkan);
+    std::vector<AdapterInfo> result;
+
+    for (gfx::GfxIndex i = 0; i < adapters.getCount(); ++i) {
+        const gfx::AdapterInfo& gfxInfo = adapters.getAdapters()[i];
+        AdapterInfo info;
+        info.name = gfxInfo.name;
+        info.vendorID = gfxInfo.vendorID;
+        info.deviceID = gfxInfo.deviceID;
+        info.luid = *reinterpret_cast<const AdapterLUID*>(&gfxInfo.luid);
+        result.push_back(info);
+    }
+    
+    // Move all NVIDIA adapters to the start of the list.
+    std::stable_partition(
+        result.begin(), result.end(), [](const AdapterInfo& info) { return toLowerCase(info.name).find("nvidia") != std::string::npos; }
+    );
+    return result;
 }
 
 std::string& Device::getPhysicalDeviceName() {
     return mPhysicalDeviceName;
 }
 
-void Device::releaseFboData() {
-    // First, delete all FBOs
-    if (!mHeadless) {
-        // Delete swapchain FBOs
-        for (auto& pFbo : mpSwapChainFbos) {
-            pFbo->attachColorTarget(nullptr, 0);
-            pFbo->attachDepthStencilTarget(nullptr);
-        }
-    } else {
-        // Delete headless FBO
-        mpOffscreenFbo->attachColorTarget(nullptr, 0);
-        mpOffscreenFbo->attachDepthStencilTarget(nullptr);
-    }
-
-    // Now execute all deferred releases
-    release();
+ref<Sampler> Device::createSampler(const Sampler::Desc& desc)
+{
+    return make_ref<Sampler>(ref<Device>(this), desc);
 }
 
-void Device::release() {
-    decltype(mDeferredReleases)().swap(mDeferredReleases);  
+ref<Fence> Device::createFence(const FenceDesc& desc)
+{
+    return make_ref<Fence>(ref<Device>(this), desc);
 }
 
-
-bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    //ResourceHandle apiHandle;
-    //getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
-
-    // Create a texture object
-    auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-    //pColorTex->mApiHandle = apiHandle;
-
-    // Create the FBO if it's required
-    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
-    mpOffscreenFbo->attachColorTarget(pColorTex, 0);
-
-    // Create a depth texture
-    if (depthFormat != ResourceFormat::Unknown) {
-        auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
-        mpOffscreenFbo->attachDepthStencilTarget(pDepth);
-    }
-
-    return true;
+ref<Fence> Device::createFence(bool shared)
+{
+    FenceDesc desc;
+    desc.shared = shared;
+    return createFence(desc);
 }
 
-bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    //ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
-    //getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
-
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
-        // Create a texture object
-        auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-        //pColorTex->mApiHandle = apiHandles[i];
-        
-        // Create the FBO if it's required
-        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(shared_from_this());
-        mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
-
-        // Create a depth texture
-        if (depthFormat != ResourceFormat::Unknown) {
-            auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
-            mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
-        }
-    }
-    return true;
+ref<ComputeStateObject> Device::createComputeStateObject(const ComputeStateObjectDesc& desc)
+{
+    return make_ref<ComputeStateObject>(ref<Device>(this), desc);
 }
 
-Fbo::SharedPtr Device::getSwapChainFbo() const {
-    assert(!mHeadless);
-    return mpSwapChainFbos[mCurrentBackBufferIndex];
+ref<GraphicsStateObject> Device::createGraphicsStateObject(const GraphicsStateObjectDesc& desc)
+{
+    return make_ref<GraphicsStateObject>(ref<Device>(this), desc);
 }
 
-Fbo::SharedPtr Device::getOffscreenFbo() const {
-    assert(mHeadless);
-    assert(mpOffscreenFbo);
-    return mpOffscreenFbo;
-}
-
-std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(shared_from_this(), type, count);
-    mTimestampQueryHeaps.push_back(pHeap);
-    return pHeap;
-}
-
-void Device::releaseResource(ApiObjectHandle pResource) {
-    if (pResource) {
-        // Some static objects get here when the application exits
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnonnull-compare"
-        if(this) {
-            mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
-        }
-#pragma GCC diagnostic pop
-    }
+ref<RtStateObject> Device::createRtStateObject(const RtStateObjectDesc& desc)
+{
+    return make_ref<RtStateObject>(ref<Device>(this), desc);
 }
 
 bool Device::isFeatureSupported(SupportedFeatures flags) const {
@@ -243,156 +397,113 @@ bool Device::isFeatureSupported(SupportedFeatures flags) const {
     //return is_set(mSupportedFeatures, flags);
 }
 
-void Device::executeDeferredReleases() {
+void Device::executeDeferredReleases()
+{
     mpUploadHeap->executeDeferredReleases();
-    uint64_t gpuVal = mpFrameFence->getGpuValue();
-    while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
+    mpReadBackHeap->executeDeferredReleases();
+    uint64_t currentValue = mpFrameFence->getCurrentValue();
+    while (mDeferredReleases.size() && mDeferredReleases.front().fenceValue < currentValue) {
         mDeferredReleases.pop();
     }
 }
 
-void Device::toggleVSync(bool enable) {
-    mDesc.enableVsync = enable;
+void Device::wait() {
+    mpRenderContext->submit(true);
+    mpRenderContext->signal(mpFrameFence.get());
+    executeDeferredReleases();
 }
 
-void Device::cleanup() {
-    toggleFullScreen(false);
-    mpRenderContext->flush(true);
+size_t Device::getBufferDataAlignment(ResourceBindFlags bindFlags) {
+    if (is_set(bindFlags, ResourceBindFlags::Constant)) return kConstantBufferDataPlacementAlignment;
+    if (is_set(bindFlags, ResourceBindFlags::Index)) return kIndexBufferDataPlacementAlignment;
+    return 1;
+}
 
-    //mpTextureManager.reset();
+Device::~Device() {
+    mpRenderContext->submit(true);
 
-    mGfxCommandQueue.setNull();
+    mpProfiler.reset();
 
-    mDeferredReleases = decltype(mDeferredReleases)();
+    disableRaytracingValidation();
 
     // Release all the bound resources. Need to do that before deleting the RenderContext
-    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
-        mCmdQueues[i].clear();
-#if FALCOR_GFX_VK
-        mCmdNativeQueues[i].clear();
-#endif
-    }
-
-    if(mHeadless) {
-        mpOffscreenFbo.reset();
-    } else {
-        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
-    }
-
+    mGfxCommandQueue.setNull();
     mDeferredReleases = decltype(mDeferredReleases)();
-
-    releaseNullViews();
-
     mpTextureManager.reset();
-    mDeferredReleases = decltype(mDeferredReleases)();
-
     mpRenderContext.reset();
-
     mpUploadHeap.reset();
-
-    mpFrameFence.reset();
-
-    for (auto& heap : mTimestampQueryHeaps) heap.reset();
-
-    if(mpWindow) {
-        mpWindow.reset();
+    mpReadBackHeap.reset();
+    mpTimestampQueryHeap.reset();
+    for (size_t i = 0; i < kInFlightFrameCount; ++i) {
+        mpTransientResourceHeaps[i].setNull();
     }
 
     mpDefaultSampler.reset();
+    mpFrameFence.reset();
+    mpProgramManager.reset();
 
     mDeferredReleases = decltype(mDeferredReleases)();
 
-    destroyApiObjects();
-}
-
-void Device::flushAndSync() {
-    mpRenderContext->flush(true);
-    mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
-    executeDeferredReleases();
+    mGfxDevice.setNull();
 }
 
 bool Device::isShaderModelSupported(ShaderModel shaderModel) const {
     return ((uint32_t)shaderModel <= (uint32_t)mSupportedShaderModel);
 }
 
-Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
-    FALCOR_ASSERT(width > 0 && height > 0);
+ResourceBindFlags Device::getFormatBindFlags(ResourceFormat format) {
+    gfx::ResourceStateSet stateSet;
+    FALCOR_GFX_CALL(mGfxDevice->getFormatSupportedResourceStates(getGFXFormat(format), &stateSet));
 
-    mpRenderContext->flush(true);
-
-    // Store the FBO parameters
-    ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
-    const auto& pDepth = mpSwapChainFbos[0]->getDepthStencilTexture();
-    ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
-
-    // updateDefaultFBO() attaches the resized swapchain to new Texture objects, with Undefined resource state.
-    // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
-    // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
-    // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
-    FALCOR_ASSERT(mpSwapChainFbos[0]->getSampleCount() == 1);
-
-    // Delete all the FBOs
-    releaseFboData();
-    apiResizeSwapChain(width, height, colorFormat);
-    updateDefaultFBO(width, height, colorFormat, depthFormat);
-
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX) && !defined(FALCOR_VK)
-#error Verify state handling on swapchain resize for this API
-#endif
-
-    return getSwapChainFbo();
-}
-
-void Device::createNullViews() {
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Buffer] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Buffer);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1DArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMS] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMS);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMSArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMSArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture3D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture3D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCube] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCube);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCubeArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCubeArray);
-
-    if (isFeatureSupported(Device::SupportedFeatures::Raytracing))
-    {
-        mNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::AccelerationStructure);
+    ResourceBindFlags flags = ResourceBindFlags::None;
+    if (stateSet.contains(gfx::ResourceState::ConstantBuffer)) {
+        flags |= ResourceBindFlags::Constant;
     }
 
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Buffer] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Buffer);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1D);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1DArray);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2D);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2DArray);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture3D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture3D);
+    if (stateSet.contains(gfx::ResourceState::VertexBuffer)) {
+        flags |= ResourceBindFlags::Vertex;
+    }
 
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1D);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1DArray);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2D);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DArray);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMS] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMS);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMSArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMSArray);
+    if (stateSet.contains(gfx::ResourceState::IndexBuffer)) {
+        flags |= ResourceBindFlags::Index;
+    }
 
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Buffer] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Buffer);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1D);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1DArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2D);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMS] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMS);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMSArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMSArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture3D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture3D);
+    if (stateSet.contains(gfx::ResourceState::IndirectArgument)) {
+        flags |= ResourceBindFlags::IndirectArg;
+    }
 
-    mNullViews.cbv = ConstantBufferView::create(shared_from_this());
+    if (stateSet.contains(gfx::ResourceState::StreamOutput)) {
+        flags |= ResourceBindFlags::StreamOutput;
+    }
+
+    if (stateSet.contains(gfx::ResourceState::ShaderResource)) {
+        flags |= ResourceBindFlags::ShaderResource;
+    }
+
+    if (stateSet.contains(gfx::ResourceState::RenderTarget)) {
+        flags |= ResourceBindFlags::RenderTarget;
+    }
+
+    if (stateSet.contains(gfx::ResourceState::DepthRead) || stateSet.contains(gfx::ResourceState::DepthWrite)) {
+        flags |= ResourceBindFlags::DepthStencil;
+    }
+
+    if (stateSet.contains(gfx::ResourceState::UnorderedAccess)) {
+        flags |= ResourceBindFlags::UnorderedAccess;
+    }
+
+    if (stateSet.contains(gfx::ResourceState::AccelerationStructure)) {
+        flags |= ResourceBindFlags::AccelerationStructure;
+    }
+
+    flags |= ResourceBindFlags::Shared;
+    return flags;
 }
 
-void Device::releaseNullViews() {
-    //mNullViews = {};
-    for(auto& srv: mNullViews.srv) srv.reset();
-    for(auto& uav: mNullViews.uav) uav.reset();
-    for(auto& dsv: mNullViews.dsv) dsv.reset();
-    for(auto& rtv: mNullViews.rtv) rtv.reset();
-    mNullViews.cbv.reset();
+size_t Device::getTextureRowAlignment() const {
+    size_t alignment = 1;
+    mGfxDevice->getTextureRowAlignment(&alignment);
+    return alignment;
 }
 
 #ifdef SCRIPTING

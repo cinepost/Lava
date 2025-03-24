@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHBUILDER_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHBUILDER_H_
+
 #include "LightBVH.h"
 
 #include "Utils/AlignedAllocator.h"
@@ -178,3 +180,5 @@ protected:
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHBUILDER_H_

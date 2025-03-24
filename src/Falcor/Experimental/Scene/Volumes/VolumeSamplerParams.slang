@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_VOLUMES_VOLUMESAMPLERPARAMS_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_VOLUMES_VOLUMESAMPLERPARAMS_H_
+
 #include "Utils/HostDeviceShared.slangh"
 
 BEGIN_NAMESPACE_FALCOR
@@ -51,3 +53,5 @@ inline bool requiresBrickedGrid(TransmittanceEstimator t) { return t == Transmit
 #endif
 
 END_NAMESPACE_FALCOR
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_VOLUMES_VOLUMESAMPLERPARAMS_H_

@@ -28,22 +28,33 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 
-#include "Falcor/Core/Program/ShaderVar.h"
-#include "Falcor/Utils/Image/LTX_Bitmap.h"
-#include "Falcor/Utils/ThreadPool.h"
-
-#include "TextureDataCacheLRU.h"
 #include "AsyncTextureLoader.h"
-
-#include "Scene/Material/VirtualTextureData.slang"
+#include "TextureDataCacheLRU.h"
 
 #include "lava_utils_lib/lru_cache.hpp"
 
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Scene/Material/VirtualTextureData.slang"
+#include "Falcor/Scene/Material/TextureHandle.slang"
+#include "Falcor/Utils/Image/LTX_Bitmap.h"
+#include "Falcor/Utils/ThreadPool.h"
+
+#include <condition_variable>
+#include <limits>
+#include <map>
+#include <set>
+#include <memory>
 #include <mutex>
+#include <thread>
+
 
 namespace Falcor {
 
 class Device;
+class AssetResolver;
 class VirtualTexturePage;
 
 /** Multi-threaded texture manager.
@@ -55,10 +66,15 @@ class VirtualTexturePage;
 	This handle is used in shader code to reference the given texture
 	in the array of GPU texture descriptors.
 */
-class dlldecl TextureManager {
+class FALCOR_API TextureManager {
 public:
-	using SharedPtr = std::shared_ptr<TextureManager>;
-	using TileList = std::vector<std::pair<fs::path, Falcor::uint2>>;
+	/**
+    * Constructor.
+    * @param[in] pDevice GPU device.
+    * @param[in] maxTextureCount Maximum number of textures that can be simultaneously managed.
+    * @param[in] threadCount Number of worker threads.
+    */
+  TextureManager(Device* pDevice, size_t maxTextureCount, size_t threadCount = std::thread::hardware_concurrency());
 
 	~TextureManager();
 
@@ -71,82 +87,127 @@ public:
 		Loaded,         ///< Texture has finished loading.
 	};
 
-	/** Sparse (virtual) texture info structure.
-	*/
+	struct Stats {
+    uint64_t textureCount = 0;             ///< Number of unique textures. A texture can be referenced by multiple materials.
+    uint64_t textureCompressedCount = 0;   ///< Number of unique compressed textures.
+    uint64_t textureTexelCount = 0;        ///< Total number of texels in all textures.
+    uint64_t textureTexelChannelCount = 0; ///< Total number of texel channels in all textures.
+    uint64_t textureMemoryInBytes = 0;     ///< Total memory in bytes used by the textures.
+  };
 
-//	struct VirtualTextureInfo {
-//	};
+    /**
+     * Handle to a managed texture on the CPU side.
+     */
+    class CpuTextureHandle {
+      public:
+        static constexpr uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
 
-	/** Handle to a managed texture.
-	*/
-	struct TextureHandle {
+      public:
+        CpuTextureHandle() = default;
+        explicit CpuTextureHandle(uint32_t id) : mID(id) {}
 
-		enum class Mode {
-			Uniform,
-			Texture,       ///< Normal texture.
-			Virtual,       ///< Virtual texture.
-			UDIM_Texture,  ///< UDIM texture. No actual data/resource associated.
-		};
+        explicit CpuTextureHandle(uint32_t id, bool isUdim) : mID(id), mIsUdim(isUdim) {}
 
-		uint32_t id = kInvalidID;
-		static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
+        explicit CpuTextureHandle(const TextureHandle& gpuHandle) {
+            if (gpuHandle.getMode() == TextureHandle::Mode::Texture) {
+                mID = gpuHandle.getTextureID();
+                mIsUdim = gpuHandle.isUDIMTexture();
+                mIsSparse = gpuHandle.isSparseTexture();
+            }
+        }
 
-		Mode mMode = Mode::Texture;
-		
-		inline uint32_t getID() const { return id; }
-		inline bool isValid() const { return id != kInvalidID; }
-		inline bool isUDIMTexture() const { return mMode == Mode::UDIM_Texture; }
-		inline Mode mode() const { return mMode; }
+        bool isValid() const { return mID != kInvalidID; }
+        explicit operator bool() const { return isValid(); }
 
-		explicit operator bool() const { return isValid(); }
-		bool operator==(const TextureHandle& other) const { return id == other.id; }
-	};
+        uint32_t getID() const { return mID; }
+        bool isUDIM() const { return mIsUdim; }
+        bool isSparse() const { return mIsSparse; }
+
+        void setSparse(bool is_sparse = true) { 
+        	if(mIsUdim) {
+        		mIsSparse = false;
+        		return;
+        	}
+
+        	mIsSparse = is_sparse; 
+        }
+
+        bool operator<(const CpuTextureHandle& other) const { return mID < other.mID; }
+        bool operator==(const CpuTextureHandle& other) const { return mID == other.mID && mIsUdim == other.mIsUdim && mIsSparse == other.mIsSparse; }
+
+        TextureHandle toGpuHandle() const {
+            TextureHandle gpuHandle;
+            if (isValid()) {
+                gpuHandle.setTextureID(this->getID());
+                gpuHandle.setMode(TextureHandle::Mode::Texture);
+                gpuHandle.setUDIMTexture(this->isUDIM());
+                gpuHandle.setSparseTexture(this->isSparse());
+            } else {
+                gpuHandle.setMode(TextureHandle::Mode::Uniform);
+                gpuHandle.setUDIMTexture(false);
+                gpuHandle.setSparseTexture(false);
+            }
+            return gpuHandle;
+        }
+
+    private:
+        uint32_t mID{kInvalidID};
+        bool mIsUdim{false};
+        bool mIsSparse{false};
+    };
 
 	/** Struct describing a managed texture.
 	*/
 	struct TextureDesc {
 		TextureState state = TextureState::Invalid;     ///< Current state of the texture.
-		Texture::SharedPtr pTexture;                    ///< Valid texture object when state is 'Loaded', or nullptr if loading failed.
+		ref<Texture> pTexture;                    			///< Valid texture object when state is 'Loaded', or nullptr if loading failed.
 
 		bool isValid() const { return state != TextureState::Invalid; }
 	};
-
-	/** Create a texture manager.
-		\param[in] maxTextureCount Maximum number of textures that can be simultaneously managed.
-		\param[in] threadCount Number of worker threads.
-		\return A new object.
-	*/
-	static SharedPtr create(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount = std::thread::hardware_concurrency());
 
 	/** Add a texture to the manager.
 		If the texture is already managed, its existing handle is returned.
 		\param[in] pTexture The texture resource.
 		\return Unique handle to the texture.
 	*/
-	TextureHandle addTexture(const Texture::SharedPtr& pTexture);
+	CpuTextureHandle addTexture(const ref<Texture>& pTexture);
 
-	/** Requst loading a texture from file.
-		This will add the texture to the set of managed textures. The function returns a handle immediately.
-		If asynchronous loading is requested, the texture data will not be available until loading completes.
-		The returned handle is valid for the entire lifetime of the texture, until removeTexture() is called.
-		\param[in] path File path of the texture. This can be a full path or a relative path from a data directory.
-		\param[in] generateMipLevels Whether the full mip-chain should be generated.
-		\param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
-		\param[in] bindFlags The bind flags for the texture resource.
-		\param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
-		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
-	*/
-	bool loadTexture(TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+  /**
+   * Requst loading a texture from file.
+   * This will add the texture to the set of managed textures. The function returns a handle immediately.
+   * If asynchronous loading is requested, the texture data will not be available until loading completes.
+   * The returned handle is valid for the entire lifetime of the texture, until removeTexture() is called.
+   * @param[in] path File path of the texture. This can be a full path or a relative path from a data directory.
+   * @param[in] generateMipLevels Whether the full mip-chain should be generated.
+   * @param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
+   * @param[in] bindFlags The bind flags for the texture resource.
+   * @param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
+   * @param[in] importFlags Optional flags for the file import.
+   * @param[in] assetResolver Optional asset resolver for resolving file paths.
+   * @param[out] loadedTextureCount Optionally can provided the number of actually loaded textures (2+ can happen with UDIMs)
+   * @return Unique handle to the texture, or an invalid handle if the texture can't be found.
+   */
+  CpuTextureHandle loadTexture(
+    const fs::path& path,
+    bool generateMipLevels,
+    bool loadAsSRGB,
+    ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+    bool async = true,
+    Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
+    const AssetResolver* assetResolver = nullptr,
+    size_t* loadedTextureCount = nullptr,
+    const Object* owner = nullptr
+  );
 
-	Texture::SharedPtr loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+	ref<Texture> loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
-	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
+	ref<Texture> loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Wait for a requested texture to load.
 		If the handle is valid, the call blocks until the texture is loaded (or failed to load).
 		\param[in] handle Texture handle.
 	*/
-	void waitForTextureLoading(const TextureHandle& handle);
+	void waitForTextureLoading(const CpuTextureHandle& handle);
 
 	/** Waits for all currently requested textures to be loaded.
 	*/
@@ -155,19 +216,42 @@ public:
 	/** Remove a texture.
 		\param[in] handle Texture handle.
 	*/
-	void removeTexture(const TextureHandle& handle);
+	void removeTexture(const CpuTextureHandle& handle);
 
-	/** Get a loaded texture. Call getTextureDesc() for more info.
-		\param[in] handle Texture handle.
-		\return Texture if loaded, or nullptr if handle doesn't exist or texture isn't yet loaded.
-	*/
-	Texture::SharedPtr getTexture(const TextureHandle& handle) const { return getTextureDesc(handle).pTexture; }
+  /**
+   * Remove all textures loaded by the given object.
+   * @param[in] object The object for which to remove textures.
+   */
+  void removeTextures(const Object* object);
+
+  /**
+   * Get a loaded texture. Call getTextureDesc() for more info.
+   * This function handles non-UDIM textures. If UDIMs are expected, supply UDIM ID or uv coordinate.
+   * @param[in] handle Texture handle.
+   * @return Texture if loaded, or nullptr if handle doesn't exist or texture isn't yet loaded.
+   */
+  ref<Texture> getTexture(const CpuTextureHandle& handle) const { return getTextureDesc(handle).pTexture; }
+  ref<Texture> getTexture(const CpuTextureHandle& handle, const float2& uv) const { return getTextureDesc(handle, uv).pTexture; }
+  ref<Texture> getTexture(const CpuTextureHandle& handle, const uint32_t udimID) const { return getTextureDesc(handle, udimID).pTexture; }
 
 	/** Get a texture desc.
 		\param[in] handle Texture handle.
 		\return Texture desc, or invalid desc if handle is invalid.
 	*/
-	TextureDesc getTextureDesc(const TextureHandle& handle) const;
+	TextureDesc getTextureDesc(const CpuTextureHandle& handle) const;
+  TextureDesc getTextureDesc(const CpuTextureHandle& handle, const float2& uv) const {
+    return getTextureDesc(resolveUdimTexture(handle, uv));
+  }
+
+  TextureDesc getTextureDesc(const CpuTextureHandle& handle, const uint32_t udimID) const {
+    return getTextureDesc(resolveUdimTexture(handle, udimID));
+  }
+
+  /**
+   * Get list of UDIM IDs for a texture.
+   * If the texture is not using UDIMs, an empty list is returned.
+   */
+  std::vector<uint32_t> getUdimIDs(const CpuTextureHandle& handle) const;
 
 	/** Get texture desc count.
 		\return Number of texture descs.
@@ -175,11 +259,14 @@ public:
 	size_t getTextureDescCount() const;
 
 
-	/** Get UDIM texture desc count.
-	  \return Number of UDIM texture descs.
-	*/
-
-	size_t getUDIMTextureTilesCount() const { return mUDIMTextureTilesCount; }
+  /**
+   * Number of UDIM indirections allocated.
+   * This is used to determine whether UDIMs should be enabled.
+   * This number intentionally does not shrink when UDIM material is supported,
+   * as the UDIM indirection can be sparse.
+   * Also, there is no need to recompile just because the number of udims shrunk.
+   */
+  size_t getUdimIndirectionCount() const { return mUdimIndirection.size(); }
 
 	size_t getUDIMTexturesCount() const { return mUDIMTexturesCount; }
 
@@ -187,15 +274,15 @@ public:
 
 	bool hasSparseTextures() const { return mHasSparseTextures; };
 
-	/** Bind all textures into a shader var.
-		The shader var should refer to a Texture2D descriptor array of fixed size.
-		The array must be large enough, otherwise an exception is thrown.
-		This restriction will go away when unbounded descriptor arrays are supported (see #1321).
-		\param[in] var Shader var for descriptor array.
-		\param[in] descCount Size of descriptor array.
-	*/
-	void setShaderData(const ShaderVar& var, const size_t descCount) const;
-	void setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const;
+  /**
+   * Bind all textures into a shader var.
+   * The shader var should refer to a Texture2D descriptor array of fixed size.
+   * The array must be large enough, otherwise an exception is thrown.
+   * This restriction will go away when unbounded descriptor arrays are supported (see #1321).
+   * @param[in] var Shader var for descriptor array.
+   * @param[in] descCount Size of descriptor array.
+   */
+  void bindShaderData(const ShaderVar& texturesVar, const size_t descCount, const ShaderVar& udimsVar) const;
 
 	void setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount);
 
@@ -205,22 +292,38 @@ public:
 
 	void finalize();
 
-	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
-	void loadPagesAsync(const std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>>& texturesToPageIDsList);
+	void loadPages(const ref<Texture>& pTexture, const std::vector<uint32_t>& pageIds);
+	void loadPagesAsync(const std::vector<std::pair<ref<Texture>, std::vector<uint32_t>>>& texturesToPageIDsList);
 
 	void updateSparseBindInfo();
 
 	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
 
-	Buffer::SharedPtr getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
-	Buffer::SharedConstPtr getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
+	ref<Buffer> getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
+	ref<const Buffer> getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
 
 	size_t getVirtualTexturePagesStartIndex(const Texture* pTexture);
 
 	const std::map<const Texture*, size_t>& getVirtualPagesStartMap() const { return mVirtualPagesStartMap;}
 
 private:
-	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
+	CpuTextureHandle resolveUdimTexture(const CpuTextureHandle& handle, const float2& uv) const;
+  CpuTextureHandle resolveUdimTexture(const CpuTextureHandle& handle, const uint32_t udimID) const;
+
+  /**
+   * Same as loadTexture, but explicitly handles Udim textures. If the texture isn't Udim, it falls back to loadTexture.
+   * Also, loadTexture will detect UDIM and call loadUdimTexture if needed.
+   */
+  CpuTextureHandle loadUdimTexture(
+    const fs::path& path,
+    bool generateMipLevels,
+    bool loadAsSRGB,
+    ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+    bool async = true,
+    Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
+    const AssetResolver* assetResolver = nullptr,
+    size_t* loadedTextureCount = nullptr
+  );
 
 	/** Builds data structures needed for sparse residency management.
 	*/
@@ -229,31 +332,45 @@ private:
 	/** Key to uniquely identify a managed texture.
 	*/
 	struct TextureKey {
-		fs::path fullPath;
+		std::vector<fs::path> fullPaths;
 		bool generateMipLevels;
 		bool loadAsSRGB;
-		Resource::BindFlags bindFlags;
+		ResourceBindFlags bindFlags;
+		Bitmap::ImportFlags importFlags;
 
-		TextureKey(const fs::path& path, bool mips, bool srgb, Resource::BindFlags flags)
-			: fullPath(path), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags)
-		{}
+		TextureKey(
+        const std::vector<fs::path>& paths,
+        bool mips,
+        bool srgb,
+        ResourceBindFlags flags,
+        Bitmap::ImportFlags importFlags
+    )
+        : fullPaths(paths), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags), importFlags(importFlags)
+    {}
 
 		bool operator<(const TextureKey& rhs) const {
-			if (fullPath != rhs.fullPath) return fullPath < rhs.fullPath;
-			else if (generateMipLevels != rhs.generateMipLevels) return generateMipLevels < rhs.generateMipLevels;
-			else if (loadAsSRGB != rhs.loadAsSRGB) return loadAsSRGB < rhs.loadAsSRGB;
-			else return bindFlags < rhs.bindFlags;
-		}
+      if (fullPaths != rhs.fullPaths)
+        return fullPaths < rhs.fullPaths;
+      else if (generateMipLevels != rhs.generateMipLevels)
+        return generateMipLevels < rhs.generateMipLevels;
+      else if (loadAsSRGB != rhs.loadAsSRGB)
+        return loadAsSRGB < rhs.loadAsSRGB;
+      else if (importFlags != rhs.importFlags)
+        return importFlags < rhs.importFlags;
+      else
+        return bindFlags < rhs.bindFlags;
+    }
 	};
 
-	TextureHandle addDesc(const TextureDesc& desc, TextureHandle::Mode mode = TextureHandle::Mode::Texture);
-	TextureDesc& getDesc(const TextureHandle& handle);
+	CpuTextureHandle addDesc(const TextureDesc& desc);
+	TextureDesc& getDesc(const CpuTextureHandle& handle);
+	void registerOwner(const CpuTextureHandle& handle, const Object* owner);
 
-	Device::SharedPtr mpDevice = nullptr;
+	Device* mpDevice;
 
-	TextureDataCacheLRU::SharedPtr mpTextureDataCache = nullptr;
+	ref<TextureDataCacheLRU> mpTextureDataCache;
 
-	lava::ut::data::LRUCache<uint32_t, VirtualTexturePage::PageData>::UniquePtr mpPageDataCache = nullptr;
+	std::unique_ptr<lava::ut::data::LRUCache<uint32_t, VirtualTexturePage::PageData>> mpPageDataCache;
 
 	std::vector<std::pair<VirtualTexturePage*, VirtualTexturePage::PageData>> mSimplePagesDataCache;
 	std::vector<std::pair<Texture*, VirtualTexturePage::PageData>> mSimpleTextureTailDataCache;
@@ -267,19 +384,19 @@ private:
 
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
-	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
-	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
+	std::map<TextureKey, CpuTextureHandle> mKeyToHandle;         ///< Map from texture key to handle.
+  std::map<const Texture*, CpuTextureHandle> mTextureToHandle; ///< Map from texture ptr to handle.
 
-	Buffer::SharedPtr mpExtendedTexturesDataBuffer;
+	ref<Buffer> mpExtendedTexturesDataBuffer;
 
 	std::vector<VirtualTextureData> mVirtualTexturesData;
 	std::vector<uint8_t> mVirtualPagesData;
 	std::map<const Texture*, size_t> mVirtualPagesStartMap;
 
-	Buffer::SharedPtr mpVirtualTexturesDataBuffer;
-	Buffer::SharedPtr mpVirtualPagesResidencyDataBuffer;
+	ref<Buffer> mpVirtualTexturesDataBuffer;
+	ref<Buffer> mpVirtualPagesResidencyDataBuffer;
 
-	Buffer::SharedPtr mpUDIMTextureTilesTableBuffer;
+	ref<Buffer> mpUDIMTextureTilesTableBuffer;
 
 	bool mSparseTexturesEnabled = false;
 	bool mHasSparseTextures = false;
@@ -292,6 +409,21 @@ private:
 	size_t mUDIMTextureTilesCount = 0;                          ///< Number of managed UDIM tile textures
 	size_t mUDIMTexturesCount = 0;
 
+	/// Map from UDIM-1001 to an actual textureID, -1 if the texture does not exist (e.g., there is 1001 and 1003, so 1002 [1] == -1)
+  std::vector<int32_t> mUdimIndirection;
+  /// For each udim indirection range, writes (at the first element), how long that range is (there is 0 everywhere else)
+  std::vector<size_t> mUdimIndirectionSize;
+  /// Free ranges in the udimIndirection, when a UDIM texture is deleted (contains first position)
+  std::vector<size_t> mFreeUdimRanges;
+
+	mutable bool mUdimIndirectionDirty = true;
+  mutable ref<Buffer> mpUdimIndirection;
+
+	using Objects = std::set<const Object*>;
+  using Handles = std::set<CpuTextureHandle>;
+  std::map<CpuTextureHandle, Objects> mHandleToObjects; ///< Map from texture handle to set of objects using the handle.
+  std::map<const Object*, Handles> mObjectToHandles;    ///< Map from object to set of texture handles used by the object.
+
 	std::atomic<uint32_t> mSparseTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
@@ -299,25 +431,11 @@ private:
 	uint32_t mMaxCPUSparseTexturesMemoryCap = 0;                ///< Maximum memory cap used for storing virtual textures page data
 	uint32_t mMaxGPUSparseTexturesMemoryCap = 0;								///< Maximum memory cap used for storing virtual textures page data
 
-	Texture::SharedPtr mNullTexture;
+	ref<Texture> mpNullTexture;
 
 	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;
-	std::vector<std::shared_ptr<VirtualTexturePage>>  mSparseDataPages;
+	std::vector<ref<VirtualTexturePage>>  						mSparseDataPages;
 };
-
-inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
-#define mode_2_string(a) case TextureManager::TextureHandle::Mode::a: return #a;
-  switch (mode) {
-  		mode_2_string(Uniform);
-      mode_2_string(Texture);
-      mode_2_string(Virtual);
-      mode_2_string(UDIM_Texture);
-    default:
-      assert(false);
-      return "Unknown TextureHandle::Mode";
-  }
-#undef mode_2_string
-}
 
 }  // namespace Falcor
 

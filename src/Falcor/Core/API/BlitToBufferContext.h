@@ -28,42 +28,44 @@
 #ifndef FALCOR_CORE_API_BLITTOBUFFERCONTEXT_H_
 #define FALCOR_CORE_API_BLITTOBUFFERCONTEXT_H_
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Core/Program/ProgramVersion.h"
+#include "Sampler.h"
+#include "ParameterBlock.h"
+#include "Utils/Math/Vector.h"
 
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include <memory>
+
 
 namespace Falcor {
 
+class Device;
+class ComputePass;
+
 struct BlitToBufferContext {
-    std::shared_ptr<ComputePass> pPass;
+    ref<ComputePass> pPass;
 
-    Sampler::SharedPtr pLinearSampler;
-    Sampler::SharedPtr pPointSampler;
-    Sampler::SharedPtr pLinearMinSampler;
-    Sampler::SharedPtr pPointMinSampler;
-    Sampler::SharedPtr pLinearMaxSampler;
-    Sampler::SharedPtr pPointMaxSampler;
+    ref<Sampler> pLinearSampler;
+    ref<Sampler> pPointSampler;
+    ref<Sampler> pLinearMinSampler;
+    ref<Sampler> pPointMinSampler;
+    ref<Sampler> pLinearMaxSampler;
+    ref<Sampler> pPointMaxSampler;
 
-    ParameterBlock::SharedPtr pBlitParamsBuffer;
+    ref<ParameterBlock> pBlitParamsBuffer;
     float2 prevSrcRectOffset = float2(0, 0);
     float2 prevSrcReftScale = float2(0, 0);
 
     // Variable offsets in constant buffer
-    UniformShaderVarOffset resolutionVarOffset;
-    UniformShaderVarOffset offsetVarOffset;
-    UniformShaderVarOffset scaleVarOffset;
-    UniformShaderVarOffset srcPixelHalfSizeVarOffset;
+    TypedShaderVarOffset resolutionVarOffset;
+    TypedShaderVarOffset offsetVarOffset;
+    TypedShaderVarOffset scaleVarOffset;
+    TypedShaderVarOffset srcPixelHalfSizeVarOffset;
     ProgramReflection::BindLocation texBindLoc;
     ProgramReflection::BindLocation buffBindLoc;
 
     // Parameters for complex blit
     float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
-    UniformShaderVarOffset compTransVarOffset[4];
-    void init(Device::SharedPtr pDevice);
-    void release();
+    TypedShaderVarOffset compTransVarOffset[4];
+    BlitToBufferContext(Device* pDevice);
 };
 
 }  // namespace Falcor

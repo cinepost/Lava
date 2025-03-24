@@ -25,26 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#include "Falcor/Core/API/GpuTimer.h"
+#include "Profiler.h"
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/GpuTimer.h"
+#include "Falcor/Utils/Logger.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
-#include "lava_utils_lib/logging.h"
-
-#include "pybind11/embed.h"
-
-
-#include <sstream>
 #include <fstream>
 
-// #ifdef _WIN32
-// #define USE_PIX
-// #include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
-// #endif
-
-#include "Profiler.h"
 
 using namespace pybind11::literals;
 
@@ -52,37 +40,64 @@ using namespace pybind11::literals;
 namespace Falcor {
 
 namespace {
-    // With sigma = 0.98, then after 100 frames, a given value's contribution is down to ~1.7% of
-    // the running average, which seems to provide a reasonable trade-off of temporal smoothing
-    // versus setting in to a new value when something has changed.
-    const float kSigma = 0.98f;
+// With sigma = 0.98, then after 100 frames, a given value's contribution is down to ~1.7% of
+// the running average, which seems to provide a reasonable trade-off of temporal smoothing
+// versus setting in to a new value when something has changed.
+const float kSigma = 0.98f;
 
-    // Size of the event history. The event history is keeping track of event times to allow
-    // for computing statistics (min, max, mean, stddev) over the recent history.
-    const size_t kMaxHistorySize = 512;
+// Size of the event history. The event history is keeping track of event times to allow
+// for computing statistics (min, max, mean, stddev) over the recent history.
+const size_t kMaxHistorySize = 512;
+
+pybind11::dict toPython(const Profiler::Stats& stats) {
+    pybind11::dict d;
+    d["min"] = stats.min;
+    d["max"] = stats.max;
+    d["mean"] = stats.mean;
+    d["std_dev"] = stats.stdDev;
+    return d;
 }
+
+pybind11::dict toPython(const Profiler::Capture& capture) {
+    pybind11::dict pyCapture;
+    pybind11::dict pyEvents;
+
+    pyCapture["frame_count"] = capture.getFrameCount();
+    pyCapture["events"] = pyEvents;
+
+    for (const auto& lane : capture.getLanes()) {
+        pybind11::dict pyLane;
+        pyLane["name"] = lane.name;
+        pyLane["stats"] = toPython(lane.stats);
+        pyLane["records"] = lane.records;
+        pyEvents[lane.name.c_str()] = pyLane;
+    }
+
+    return pyCapture;
+}
+
+pybind11::dict toPython(const std::vector<Profiler::Event*>& events) {
+    pybind11::dict result;
+
+    auto addLane = [&result](std::string name, float value, float average, const Profiler::Stats& stats) {
+        pybind11::dict d;
+        d["name"] = name;
+        d["value"] = value;
+        d["average"] = average;
+        d["stats"] = toPython(stats);
+        result[name.c_str()] = d;
+    };
+
+    for (const Profiler::Event* pEvent : events) {
+        addLane(pEvent->getName() + "/cpu_time", pEvent->getCpuTime(), pEvent->getCpuTimeAverage(), pEvent->computeCpuTimeStats());
+        addLane(pEvent->getName() + "/gpu_time", pEvent->getGpuTime(), pEvent->getGpuTimeAverage(), pEvent->computeGpuTimeStats());
+    }
+
+    return result;
+}
+} // namespace
 
 // Profiler::Stats
-
-pybind11::dict Profiler::Stats::toPython() const {
-    pybind11::dict d;
-
-    d["min"] = min;
-    d["max"] = max;
-    d["mean"] = mean;
-    d["stdDev"] = stdDev;
-    return d;
-}
-
-boost::json::object Profiler::Stats::toBoostJSON() const {
-    boost::json::object d;
-    d["min"] = min;
-    d["max"] = max;
-    d["mean"] = mean;
-    d["stdDev"] = stdDev;
-    return d;
-}
-
 
 Profiler::Stats Profiler::Stats::compute(const float* data, size_t len) {
     if (len == 0) return {};
@@ -92,7 +107,8 @@ Profiler::Stats Profiler::Stats::compute(const float* data, size_t len) {
     double sum = 0.0;
     double sum2 = 0.0;
 
-    for (size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < len; ++i)
+    {
         float value = data[i];
         min = std::min(min, value);
         max = std::max(max, value);
@@ -102,15 +118,16 @@ Profiler::Stats Profiler::Stats::compute(const float* data, size_t len) {
 
     double mean = sum / len;
     double mean2 = sum2 / len;
-    double variance = mean2 - mean * mean;
+    double variance = len > 1 ? std::max(mean2 - mean * mean, 0.0) : 0.0;
     double stdDev = std::sqrt(variance);
 
-    return { min, max, (float)mean, (float)stdDev };
+    return {min, max, (float)mean, (float)stdDev};
 }
 
 // Profiler::Event
 
-Profiler::Event::Event(const std::string& name): mName(name), mCpuTimeHistory(kMaxHistorySize, 0.f), mGpuTimeHistory(kMaxHistorySize, 0.f) {}
+Profiler::Event::Event(const std::string& name) : mName(name), mCpuTimeHistory(kMaxHistorySize, 0.f), mGpuTimeHistory(kMaxHistorySize, 0.f)
+{}
 
 Profiler::Stats Profiler::Event::computeCpuTimeStats() const {
     return Stats::compute(mCpuTimeHistory.data(), mHistorySize);
@@ -120,9 +137,12 @@ Profiler::Stats Profiler::Event::computeGpuTimeStats() const {
     return Stats::compute(mGpuTimeHistory.data(), mHistorySize);
 }
 
-void Profiler::Event::start(std::shared_ptr<Device> pDevice, uint32_t frameIndex) {
+void Profiler::Event::start(Profiler& profiler, uint32_t frameIndex) {
     if (++mTriggered > 1) {
-        LLOG_WRN <<"Profiler event '{" << mName << "}' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.";
+        LLOG_WRN << "Profiler event '" << mName 
+                 << "' was triggered while it is already running. Nesting profiler events with the same name is disallowed and "
+                 << "you should probably fix that. Ignoring the new call.";
+
         return;
     }
 
@@ -132,12 +152,15 @@ void Profiler::Event::start(std::shared_ptr<Device> pDevice, uint32_t frameIndex
     frameData.cpuStartTime = CpuTimer::getCurrentTimePoint();
 
     // Update GPU time.
-    assert(frameData.pActiveTimer == nullptr);
-    assert(frameData.currentTimer <= frameData.pTimers.size());
-
+    FALCOR_ASSERT(frameData.pActiveTimer == nullptr);
+    FALCOR_ASSERT(frameData.currentTimer <= frameData.pTimers.size());
+    
     if (frameData.currentTimer == frameData.pTimers.size()) {
-        frameData.pTimers.push_back(GpuTimer::create(pDevice));
+        ref<GpuTimer> timer = GpuTimer::create(profiler.mpDevice);
+        timer->breakStrongReferenceToDevice();
+        frameData.pTimers.push_back(timer);
     }
+
     frameData.pActiveTimer = frameData.pTimers[frameData.currentTimer++].get();
     frameData.pActiveTimer->begin();
     frameData.valid = false;
@@ -152,7 +175,7 @@ void Profiler::Event::end(uint32_t frameIndex) {
     frameData.cpuTotalTime += (float)CpuTimer::calcDuration(frameData.cpuStartTime, CpuTimer::getCurrentTimePoint());
 
     // Update GPU time.
-    assert(frameData.pActiveTimer != nullptr);
+    FALCOR_ASSERT(frameData.pActiveTimer != nullptr);
     frameData.pActiveTimer->end();
     frameData.pActiveTimer = nullptr;
     frameData.valid = true;
@@ -163,6 +186,7 @@ void Profiler::Event::endFrame(uint32_t frameIndex) {
     // This is necessary before we readback of results next frame.
     {
         auto& frameData = mFrameData[frameIndex % 2];
+
         for (auto& pTimer : frameData.pTimers) {
             pTimer->resolve();
         }
@@ -176,7 +200,9 @@ void Profiler::Event::endFrame(uint32_t frameIndex) {
 
     mCpuTime = frameData.cpuTotalTime;
     mGpuTime = 0.f;
+
     for (size_t i = 0; i < frameData.currentTimer; ++i) mGpuTime += (float)frameData.pTimers[i]->getElapsedTime();
+    
     frameData.cpuTotalTime = 0.f;
     frameData.currentTimer = 0;
 
@@ -193,100 +219,49 @@ void Profiler::Event::endFrame(uint32_t frameIndex) {
     mTriggered = 0;
 }
 
+void Profiler::Event::resetStats() {
+    FALCOR_ASSERT(mTriggered == 0);
+    mHistoryWriteIndex = 0;
+    mHistorySize = 0;
+}
+
 // Profiler::Capture
-pybind11::dict Profiler::Capture::toPython() const {
-    pybind11::dict pyCapture;
-    pybind11::dict pyEvents;
-
-    pyCapture["frameCount"] = mFrameCount;
-    pyCapture["events"] = pyEvents;
-
-    for (const auto& lane : mLanes) {
-        pybind11::dict pyLane;
-        pyLane["name"] = lane.name;
-        pyLane["stats"] = lane.stats.toPython();
-        pyLane["records"] = lane.records;
-        pyEvents[lane.name.c_str()] = pyLane;
-    }
-
-    return pyCapture;
-}
-
-boost::json::object Profiler::Capture::toBoostJSON() const {
-    boost::json::object dCapture;
-    boost::json::object dEvents;
-
-    for (const auto& lane : mLanes) {
-        boost::json::object dLane;
-        dLane["name"] = lane.name;
-        dLane["stats"] = lane.stats.toBoostJSON();
-
-        boost::json::array records;
-        for (float value: lane.records) records.emplace_back(value);
-
-        dLane["records"] = records;
-        dEvents[lane.name.c_str()] = dLane;
-    }
-
-    dCapture["frameCount"] = mFrameCount;
-    dCapture["events"] = dEvents;
-
-    return dCapture;
-}
-
 
 std::string Profiler::Capture::toJsonString() const {
+    using namespace pybind11::literals;
+
     // We use pythons JSON encoder to encode the python dictionary to a JSON string.
     pybind11::module json = pybind11::module::import("json");
     pybind11::object dumps = json.attr("dumps");
-    return pybind11::cast<std::string>(dumps(toPython(), "indent"_a = 2));
+    return pybind11::cast<std::string>(dumps(toPython(*this), "indent"_a = 2));
 }
 
-void Profiler::Capture::writeToFile(const fs::path& path, Profiler::Capture::OuputFactory factory) const {
-    LLOG_DBG << "Writing profiler capture using " << to_string(factory) << " factory.";
-    std::ofstream ofs(path.string());
-    switch (factory) {
-        case Profiler::Capture::OuputFactory::PYTHON:
-            {
-                auto json = toJsonString();
-                ofs.write(json.data(), json.size());
-            }
-            break;
-        case Profiler::Capture::OuputFactory::BOOST_JSON:
-            {
-                boost::json::object bjson = toBoostJSON();
-                ofs << bjson;
-            }
-            break;
-        default:
-            assert(false);
-            break;
-    }
+void Profiler::Capture::writeToFile(const fs::path& path) const {
+    auto json = toJsonString();
+    std::ofstream ofs(path);
+    ofs.write(json.data(), json.size());
 }
 
-Profiler::Capture::Capture(size_t reservedEvents, size_t reservedFrames): mReservedFrames(reservedFrames) {
+Profiler::Capture::Capture(size_t reservedEvents, size_t reservedFrames) : mReservedFrames(reservedFrames) {
     // Speculativly allocate event record storage.
     mLanes.resize(reservedEvents * 2);
+
     for (auto& lane : mLanes) lane.records.reserve(reservedFrames);
 }
 
-Profiler::Capture::SharedPtr Profiler::Capture::create(size_t reservedEvents, size_t reservedFrames) {
-    return SharedPtr(new Capture(reservedEvents, reservedFrames));
-}
-
 void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
-    if (events.empty()) {
-        return;
-    }
+    if (events.empty()) return;
+
     // Initialize on first capture.
     if (mEvents.empty()) {
         mEvents = events;
         mLanes.resize(mEvents.size() * 2);
+        
         for (size_t i = 0; i < mEvents.size(); ++i) {
             auto& pEvent = mEvents[i];
-            mLanes[i * 2].name = pEvent->getName() + "/cpuTime";
+            mLanes[i * 2].name = pEvent->getName() + "/cpu_time";
             mLanes[i * 2].records.reserve(mReservedFrames);
-            mLanes[i * 2 + 1].name = pEvent->getName() + "/gpuTime";
+            mLanes[i * 2 + 1].name = pEvent->getName() + "/gpu_time";
             mLanes[i * 2 + 1].records.reserve(mReservedFrames);
         }
         return; // Exit as no data is available on first capture.
@@ -303,7 +278,7 @@ void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
 }
 
 void Profiler::Capture::finalize() {
-    assert(!mFinalized);
+    FALCOR_ASSERT(!mFinalized);
 
     for (auto& lane : mLanes) {
         lane.stats = Stats::compute(lane.records.data(), lane.records.size());
@@ -314,7 +289,12 @@ void Profiler::Capture::finalize() {
 
 // Profiler
 
-void Profiler::startEvent(const std::string& name, Flags flags) {
+Profiler::Profiler(ref<Device> pDevice) : mpDevice(pDevice) {
+    mpFence = mpDevice->createFence();
+    mpFence->breakStrongReferenceToDevice();
+}
+
+void Profiler::startEvent(RenderContext* pRenderContext, const std::string& name, Flags flags) {
     if (mEnabled && is_set(flags, Flags::Internal)) {
         // '/' is used as a "path delimiter", so it cannot be used in the event name.
         if (name.find('/') != std::string::npos) {
@@ -325,42 +305,37 @@ void Profiler::startEvent(const std::string& name, Flags flags) {
         mCurrentEventName = mCurrentEventName + "/" + name;
 
         Event* pEvent = getEvent(mCurrentEventName);
-        assert(pEvent != nullptr);
-        if (!mPaused) pEvent->start(mpDevice, mFrameIndex);
+        FALCOR_ASSERT(pEvent != nullptr);
+        
+        if (!mPaused) pEvent->start(*this, mFrameIndex);
 
         if (std::find(mCurrentFrameEvents.begin(), mCurrentFrameEvents.end(), pEvent) == mCurrentFrameEvents.end()) {
             mCurrentFrameEvents.push_back(pEvent);
         }
     }
+
     if (is_set(flags, Flags::Pix)) {
-#if defined(FALCOR_GFX)
-        mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
-#else 
-        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
-#endif
+        FALCOR_ASSERT(pRenderContext);
+        pRenderContext->getLowLevelData()->beginDebugEvent(name.c_str());
     }
 }
 
-void Profiler::endEvent(const std::string& name, Flags flags) {
+void Profiler::endEvent(RenderContext* pRenderContext, const std::string& name, Flags flags) {
     if (mEnabled && is_set(flags, Flags::Internal)) {
         // '/' is used as a "path delimiter", so it cannot be used in the event name.
         if (name.find('/') != std::string::npos) return;
 
         Event* pEvent = getEvent(mCurrentEventName);
-        assert(pEvent != nullptr);
+        FALCOR_ASSERT(pEvent != nullptr);
+
         if (!mPaused) pEvent->end(mFrameIndex);
 
         mCurrentEventName.erase(mCurrentEventName.find_last_of("/"));
     }
 
     if (is_set(flags, Flags::Pix)) {
-#if defined(FALCOR_D3D12)
-        PIXEndEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
-#elif defined(FALCOR_GFX)
-        mpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
-#else 
-        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
-#endif
+        FALCOR_ASSERT(pRenderContext)
+        pRenderContext->getLowLevelData()->endDebugEvent();
     }
 }
 
@@ -369,73 +344,54 @@ Profiler::Event* Profiler::getEvent(const std::string& name) {
     return event ? event : createEvent(name);
 }
 
-void Profiler::endFrame() {
+void Profiler::endFrame(RenderContext* pRenderContext) {
     if (mPaused) return;
 
     // Wait for GPU timings to be available from last frame.
     // We use a single fence here instead of one per event, which gets too inefficient.
     // TODO: This code should refactored to batch the resolve and readback of timestamps.
-    if (mFenceValue != uint64_t(-1)) mpFence->syncCpu();
+    if (mFenceValue != uint64_t(-1)) mpFence->wait();
 
     for (Event* pEvent : mCurrentFrameEvents) {
         pEvent->endFrame(mFrameIndex);
     }
 
     // Flush and insert signal for synchronization of GPU timings.
-    auto pRenderContext = mpDevice->getRenderContext();
-    pRenderContext->flush(false);
-    mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->submit(false);
+    mFenceValue = pRenderContext->signal(mpFence.get());
 
     if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
 
     mLastFrameEvents = std::move(mCurrentFrameEvents);
     ++mFrameIndex;
+
+    if (mPendingReset) {
+        for (auto e : mLastFrameEvents) e->resetStats();
+        
+        mPendingReset = false;
+    }
+}
+
+void Profiler::resetStats() {
+    mPendingReset = true;
 }
 
 void Profiler::startCapture(size_t reservedFrames) {
     setEnabled(true);
-    mpCapture = Capture::create(mLastFrameEvents.size(), reservedFrames);
+    mpCapture = std::make_shared<Capture>(mLastFrameEvents.size(), reservedFrames);
 }
 
-Profiler::Capture::SharedPtr Profiler::endCapture() {
-    Capture::SharedPtr pCapture;
+std::shared_ptr<Profiler::Capture> Profiler::endCapture() {
+    std::shared_ptr<Capture> pCapture;
     std::swap(pCapture, mpCapture);
+    
     if (pCapture) pCapture->finalize();
+    
     return pCapture;
 }
 
 bool Profiler::isCapturing() const {
     return mpCapture != nullptr;
-}
-
-pybind11::dict Profiler::getPythonEvents() const {
-    pybind11::dict result;
-
-    auto addLane = [&result] (std::string name, float value, float average, const Stats& stats) {
-        pybind11::dict d;
-        d["name"] = name;
-        d["value"] = value;
-        d["average"] = average;
-        d["stats"] = stats.toPython();
-        result[name.c_str()] = d;
-    };
-
-    for (const Profiler::Event* pEvent : getEvents()) {
-        addLane(pEvent->getName() + "/cpuTime", pEvent->getCpuTime(), pEvent->getCpuTimeAverage(), pEvent->computeCpuTimeStats());
-        addLane(pEvent->getName() + "/gpuTime", pEvent->getGpuTime(), pEvent->getGpuTimeAverage(), pEvent->computeGpuTimeStats());
-    }
-
-    return result;
-}
-
-const Profiler::SharedPtr& Profiler::instancePtr(std::shared_ptr<Device> pDevice) {
-    static std::array<Profiler::SharedPtr, 256> pInstances;
-    if (!pInstances[pDevice->uid()]) pInstances[pDevice->uid()] = std::make_shared<Profiler>(pDevice);
-    return pInstances[pDevice->uid()];
-}
-
-Profiler::Profiler(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
-    mpFence = GpuFence::create(pDevice);
 }
 
 Profiler::Event* Profiler::createEvent(const std::string& name) {
@@ -449,9 +405,32 @@ Profiler::Event* Profiler::findEvent(const std::string& name) {
     return (event == mEvents.end()) ? nullptr : event->second.get();
 }
 
-ProfilerEvent::ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags) :mpDevice(pDevice), mName(name), mFlags(flags) { 
-    Profiler::instance(mpDevice).startEvent(mName, mFlags); 
+void Profiler::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
 }
+
+ScopedProfilerEvent::ScopedProfilerEvent(RenderContext* pRenderContext, const std::string& name, Profiler::Flags flags)
+    : mpRenderContext(pRenderContext), mName(name), mFlags(flags)
+{
+    FALCOR_ASSERT(mpRenderContext);
+    mpRenderContext->getProfiler()->startEvent(mpRenderContext, mName, mFlags);
+}
+
+ScopedProfilerEvent::~ScopedProfilerEvent() {
+    mpRenderContext->getProfiler()->endEvent(mpRenderContext, mName, mFlags);
+}
+
+/// Implements a Python context manager for profiling events.
+class PythonProfilerEvent {
+    public:
+        PythonProfilerEvent(RenderContext* pRenderContext, std::string_view name) : mpRenderContext(pRenderContext), mName(name) {}
+        void enter() { mpRenderContext->getProfiler()->startEvent(mpRenderContext, mName); }
+        void exit(pybind11::object, pybind11::object, pybind11::object) { mpRenderContext->getProfiler()->endEvent(mpRenderContext, mName); }
+
+    private:
+        RenderContext* mpRenderContext;
+        std::string mName;
+};
 
 #ifdef SCRIPTING
     SCRIPT_BINDING(Profiler) {

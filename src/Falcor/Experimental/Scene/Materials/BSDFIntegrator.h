@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_BSDFINTEGRATOR_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_BSDFINTEGRATOR_H_
 
 #include <vector>
 #include "Falcor/Core/Framework.h"
@@ -81,4 +82,6 @@ namespace Falcor
         GpuFence::SharedPtr mpFence;                ///< Fence for synchronizing readback.
         uint32_t mResultCount;                      ///< Number of intermediate results per integration grid.
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_MATERIALS_BSDFINTEGRATOR_H_

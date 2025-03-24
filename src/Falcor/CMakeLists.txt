@@ -2,18 +2,26 @@ set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
 
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${PROJECT_SOURCE_DIR}/third_party
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
 include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
 
 file( GLOB SOURCES
+    ./Core/API/Device.cpp
+    ./Core/API/Buffer.cpp
+    ./Core/API/Texture.cpp
+    ./Core/API/LowLevelContextData.cpp
+    ./Core/Object.cpp
+    ./Core/Error.cpp
     ./Core/ErrorHandling.cpp
     ./Core/Framework.cpp
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
+    ./Core/API/Fence.cpp
+    ./Core/API/QueryHeap.cpp
     ./Core/Platform/*.cpp
-    # ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
@@ -48,6 +56,7 @@ file( GLOB SOURCES
     ./Utils/Noise/pcg_basic.c
     ./Utils/Noise/STBN.cpp
     ./Utils/Noise/STBNGenerator.cpp
+    ./Utils/Math/Float16.cpp
     
     # CPU sample generators
     ./Utils/SampleGenerators/DxSamplePattern.cpp
@@ -71,6 +80,7 @@ file( GLOB SOURCES
     ./Experimental/Scene/Materials/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
+    ${PROJECT_SOURCE_DIR}/third_party/backward/backward.cpp
 )
 
 if(WIN32)
@@ -94,9 +104,6 @@ list(APPEND SOURCES ${SOURCES_ARCH})
 string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
 if(backend_type STREQUAL "gfx")
     add_definitions(-D_FLACOR_API_BACKEND_GFX)
-    file( GLOB BACKEND_API_SOURCES 
-        ./Core/API/GFX/*.cpp
-    )
 else()
      message( FATAL_ERROR "Unsupported backend type specified !!!" )
 endif()
@@ -115,6 +122,11 @@ else()
     target_compile_options(falcor_lib PUBLIC "$<$<CONFIG:DEBUG>:-ggdb3>")
 endif()
 
+# fmt
+set(fmt_ROOT ${DEPS_DIR})
+find_package(fmt ${EXTERNAL_FMT_VERSION} REQUIRED)
+include_directories( ${fmt_INCLUDE_DIR} )
+
 # Blosc
 set(BLOSC_USE_STATIC_LIBS ON)
 set(Blosc_ROOT ${DEPS_DIR})
@@ -123,13 +135,14 @@ if(WIN32)
 endif()
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT REQUIRED)
 
+# Python
+set(Python_ADDITIONAL_VERSIONS)
+find_package( Python3 REQUIRED COMPONENTS Development )
+target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
+
 # PyBind11
 set(pybind11_ROOT ${DEPS_DIR})
 find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT REQUIRED CONFIG)
-
-# Python
-find_package( Python3 REQUIRED COMPONENTS Development )
-target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
 
 # Assimp
 set(assimp_ROOT ${DEPS_DIR})

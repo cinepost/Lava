@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_SCENE_LIGHTS_ENVMAP_H_ 
 #define SRC_FALCOR_SCENE_LIGHTS_ENVMAP_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
@@ -144,7 +145,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     friend class SceneCache;
 };
 
-enum_class_operators(EnvMap::Changes);
+ENUM_CLASS_OPERATORS(EnvMap::Changes);
 
 } // namespace Falcor
 

@@ -28,73 +28,53 @@
 #ifndef SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTUREPOOL_H_
 #define SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTUREPOOL_H_
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
-#if defined(FALCOR_VK)
-#include "RtQueryPool.h"
-#endif
+#include "gfx_lib/slang-gfx.h"
+
 
 namespace Falcor {
 
-enum class RtAccelerationStructurePostBuildInfoQueryType {
-  CompactedSize,
-  SerializationSize,
-  CurrentSize,
+class Device;
+class CopyContext;
+
+enum class RtAccelerationStructurePostBuildInfoQueryType
+{
+    CompactedSize,
+    SerializationSize,
+    CurrentSize,
 };
 
-#if defined(FALCOR_VK)
-
-struct AccelerationStructureQueryDesc {
-    RtQueryPool::QueryType queryType;
-    RtQueryPool* queryPool; 
-    int firstQueryIndex;
-};
-
-#endif
-
-class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
-  public:
-    using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
-
-    struct Desc {
+class FALCOR_API RtAccelerationStructurePostBuildInfoPool : public Object
+{
+    FALCOR_OBJECT(RtAccelerationStructurePostBuildInfoPool)
+public:
+    struct Desc
+    {
         RtAccelerationStructurePostBuildInfoQueryType queryType;
         uint32_t elementCount;
     };
-
-    static SharedPtr create(Device::SharedPtr pDevice, const Desc& desc);
+    static ref<RtAccelerationStructurePostBuildInfoPool> create(Device* pDevice, const Desc& desc);
     ~RtAccelerationStructurePostBuildInfoPool();
     uint64_t getElement(CopyContext* pContext, uint32_t index);
     void reset(CopyContext* pContext);
-
-#if defined(FALCOR_GFX)
     gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
-#elif defined(FALCOR_VK)
-    RtQueryPool* getRtQueryPool() const { return mpRtQueryPool.get(); }
-#endif
 
-  protected:
-    RtAccelerationStructurePostBuildInfoPool(Device::SharedPtr pDevice, const Desc& desc);
+protected:
+    RtAccelerationStructurePostBuildInfoPool(Device* pDevice, const Desc& desc);
 
-  private:
-    Device::SharedPtr mpDevice = nullptr;
+private:
     Desc mDesc;
-
-#if defined(FALCOR_GFX)
     Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
     bool mNeedFlush = true;
-#elif defined(FALCOR_VK)
-    RtQueryPool::SharedPtr mpRtQueryPool;
-    bool mNeedFlush = true;
-#endif
-
 };
 
-struct RtAccelerationStructurePostBuildInfoDesc {
-  RtAccelerationStructurePostBuildInfoQueryType type;
-  RtAccelerationStructurePostBuildInfoPool* pool;
-  uint32_t index;
+struct RtAccelerationStructurePostBuildInfoDesc
+{
+    RtAccelerationStructurePostBuildInfoQueryType type;
+    RtAccelerationStructurePostBuildInfoPool* pool;
+    uint32_t index;
 };
 
 }

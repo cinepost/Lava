@@ -28,61 +28,46 @@
 #ifndef SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_
 #define SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_
 
-#include "Falcor/Core/Program/ProgramVersion.h"
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/API/NativeHandle.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
-#if defined(FALCOR_VK)
-#include "Falcor/Core/API/RootSignature.h"
-#endif
+#include "Falcor/Core/Program/ProgramVersion.h"
 
 namespace Falcor {
 
 class Device;
 
-class dlldecl ComputeStateObject {
+struct ComputeStateObjectDesc {
+    ref<const ProgramKernels> pProgramKernels;
+
+    bool operator==(const ComputeStateObjectDesc& other) const {
+        bool result = true;
+        result = result && (pProgramKernels == other.pProgramKernels);
+        return result;
+    }
+};
+
+class FALCOR_API ComputeStateObject : public Object {
+    FALCOR_OBJECT(ComputeStateObject)
  public:
-    using SharedPtr = std::shared_ptr<ComputeStateObject>;
-    using SharedConstPtr = std::shared_ptr<const ComputeStateObject>;
-    using ApiHandle = ComputeStateHandle;
-
-    class dlldecl Desc {
-        public:
-#if defined(FALCOR_VK)
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
-#endif
-            Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
-
-            inline const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-            inline ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
-            bool operator==(const Desc& other) const;
-        private:
-            friend class ComputeStateObject;
-            ProgramKernels::SharedConstPtr mpProgram;
-#if defined(FALCOR_VK)
-         RootSignature::SharedPtr mpRootSignature;
-#endif
-    };
-
+    ComputeStateObject(ref<Device> pDevice, ComputeStateObjectDesc desc);
     ~ComputeStateObject();
 
-    /** Create a compute state object.
-        \param[in] desc State object description.
-        \return New object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
+    gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
 
-    inline const ApiHandle& getApiHandle() { return mApiHandle; }
-    inline const Desc& getDesc() const { return mDesc; }
+    /**
+     * Returns the native API handle: VkPipeline
+     */
+    NativeHandle getNativeHandle() const;
 
-  public:
-    ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+    const ComputeStateObjectDesc& getDesc() const { return mDesc; }
 
   private:
-    void apiInit();
-
-    Desc mDesc;
-    ApiHandle mApiHandle;
-
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
+    ComputeStateObjectDesc mDesc;
+    Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 };
 
 }  // namespace Falcor

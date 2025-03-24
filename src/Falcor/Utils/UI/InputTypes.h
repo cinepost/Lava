@@ -29,7 +29,9 @@
 
 #include <bitset>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
+
 
 namespace Falcor
 {
@@ -54,7 +56,7 @@ namespace Falcor
             Ctrl = 2,
             Alt = 4
         };
-        enum_class_operators(ModifierFlags);
+        ENUM_CLASS_OPERATORS(ModifierFlags);
 
         /** Enum for the different modifiers. Used for checking modifier state in the InputState class and for checking modifier status on the KeyboardEvent.
             For that to work these needs to have the same values as their flags.

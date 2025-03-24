@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Scene/SDFs/SDF3DPrimitiveCommon.slang"
@@ -235,5 +236,5 @@ namespace Falcor
         ComputePass::SharedPtr mpEvaluatePrimitivesPass;
     };
 
-    enum_class_operators(SDFGrid::UpdateFlags);
+    ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);
 }

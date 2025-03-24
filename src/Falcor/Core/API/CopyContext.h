@@ -28,61 +28,64 @@
 #ifndef SRC_FALCOR_CORE_API_COPYCONTEXT_H_
 #define SRC_FALCOR_CORE_API_COPYCONTEXT_H_
 
-#include <memory>
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/ResourceViews.h"
+#include "Falcor/Core/API/Fence.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Core/API/VirtualTexturePage.h"
+#include "Falcor/Core/Macros.h"
 
-#include "Resource.h"
-#include "Buffer.h"
-#include "LowLevelContextData.h"
-#include "VirtualTexturePage.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 
 namespace Falcor {
 
-class Device;
+class Buffer;
 class Texture;
 class TextureManager;
 
 uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format);
 
-class dlldecl CopyContext {
+class FALCOR_API CopyContext {
  public:
-    using SharedPtr = std::shared_ptr<CopyContext>;
-    using SharedConstPtr = std::shared_ptr<const CopyContext>;
-
-    class ReadTextureTask {
+    class FALCOR_API ReadTextureTask {
      public:
         using SharedPtr = std::shared_ptr<ReadTextureTask>;
         static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
-        std::vector<uint8_t> getData();
-        void getData(uint8_t* textureData);
-        void getData(std::vector<uint8_t>& textureData);
+        std::vector<uint8_t> getData() const;
+        void getData(uint8_t* textureData) const;
+        void getData(std::vector<uint8_t>& textureData) const;
+        void getData(void* pData, size_t size) const;
 
      private:
         ReadTextureTask() = default;
-        GpuFence::SharedPtr mpFence;
-        Buffer::SharedPtr mpBuffer;
+        ref<Fence> mpFence;
+        ref<Buffer> mpBuffer;
         CopyContext* mpContext;
         uint32_t mRowCount;
-#ifdef FALCOR_GFX
         uint32_t mRowSize;
         uint32_t mActualRowSize;
         uint32_t mDepth;
-#endif
     };
 
+    /**
+     * Constructor.
+     * Throws an exception if creation failed.
+     * @param[in] pDevice Graphics device.
+     * @param[in] pQueue Command queue.
+     */
+    CopyContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     virtual ~CopyContext();
 
-    std::shared_ptr<Device> device() const { return mpDevice; };
-
-    /** Create a copy context.
-        \param[in] queue Command queue handle.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
+    ref<Device> getDevice() const;
 
     /** Flush the command list. This doesn't reset the command allocator, just submits the commands
         \param[in] wait If true, will block execution until the GPU finished processing the commands
     */
-    virtual void flush(bool wait = false);
+    virtual void submit(bool wait = false);
 
     /** Check if we have pending commands
     */
@@ -91,6 +94,23 @@ class dlldecl CopyContext {
     /** Signal the context that we have pending commands. Useful in case you make raw API calls
     */
     void setPendingCommands(bool commandsPending) { mCommandsPending = commandsPending; }
+
+    /**
+     * Signal a fence.
+     * @param pFence The fence to signal.
+     * @param value The value to signal. If Fence::kAuto, the signaled value will be auto-incremented.
+     * @return Returns the signaled value.
+     */
+    uint64_t signal(Fence* pFence, uint64_t value = Fence::kAuto);
+
+    /**
+     * Wait for a fence to be signaled on the device.
+     * Queues a device-side wait and returns immediately.
+     * The device will wait until the fence reaches or exceeds the specified value.
+     * @param pFence The fence to wait for.
+     * @param value The value to wait for. If Fence::kAuto, wait for the last signaled value.
+     */
+    void wait(Fence* pFence, uint64_t value = Fence::kAuto);
 
     /** Insert a resource barrier
         if pViewInfo is nullptr, will transition the entire resource. Otherwise, it will only transition the subresource in the view
@@ -105,6 +125,7 @@ class dlldecl CopyContext {
     /** Copy an entire resource
     */
     void copyResource(const Resource* pDst, const Resource* pSrc);
+    void copyResource(const Buffer* pDstBuf, const Resource* pSrc);
 
     /** Copy a subresource
     */
@@ -145,6 +166,11 @@ class dlldecl CopyContext {
     */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
 
+    void readBuffer(const Buffer* pBuffer, void* pData, size_t offset = 0, size_t numBytes = 0);
+
+    template<typename T>
+    std::vector<T> readBuffer(const Buffer* pBuffer, size_t firstElement = 0, size_t elementCount = 0);
+
     /** Read texture data synchronously. Calling this command will flush the pipeline and wait for the GPU to finish execution
     */
     std::vector<uint8_t> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
@@ -160,19 +186,23 @@ class dlldecl CopyContext {
 
     /** Get the low-level context data
     */
-    virtual const LowLevelContextData::SharedPtr& getLowLevelData() const { return mpLowLevelData; }
-
-    /** Override the low-level context data with a user provided object
-    */
-    void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
+    LowLevelContextData* getLowLevelData() const { return mpLowLevelData.get(); }
 
     /** Bind the descriptor heaps from the device into the command list.
     */
     void bindDescriptorHeaps();
 
- protected:
-    CopyContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    /**
+     * Binds the GPU descriptor pool for passes that need to access descriptors directly from root signatures.
+     */
+    void bindCustomGPUDescriptorPool();
 
+    /**
+     * Unbinds the GPU descriptor pool for passes that need to access descriptors directly from root signatures.
+     */
+    void unbindCustomGPUDescriptorPool();
+
+ protected:
     bool textureBarrier(const Texture* pTexture, Resource::State newState);
     bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);
     bool subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
@@ -181,16 +211,11 @@ class dlldecl CopyContext {
 
     /** Update texture page data
     */
-    void updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer);
+    void updateTexturePage(const VirtualTexturePage* pPage, ref<Buffer> pStagingBuffer);
 
+    Device* mpDevice;
+    std::unique_ptr<LowLevelContextData> mpLowLevelData;
     bool mCommandsPending = false;
-    LowLevelContextData::SharedPtr mpLowLevelData;
-
- //private:
-    std::shared_ptr<Device> mpDevice;
-
-    friend class Texture;
-    friend class TextureManager;
 };
 
 }  // namespace Falcor

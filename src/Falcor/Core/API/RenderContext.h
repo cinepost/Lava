@@ -28,35 +28,55 @@
 #ifndef SRC_FALCOR_CORE_API_RENDERCONTEXT_H_
 #define SRC_FALCOR_CORE_API_RENDERCONTEXT_H_
 
-#include <stack>
-#include <vector>
-#include <memory>
-
-#include "ComputeContext.h"
-#include "Sampler.h"
-#include "ShaderTable.h"
-#include "Falcor/Utils/Math/Vector.h"
-#include "Falcor/Core/State/GraphicsState.h"
-#include "Falcor/Core/API/BlitContext.h"
-#include "Falcor/Core/API/BlitToBufferContext.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/API/FBO.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include "gfx_lib/slang-gfx.h"
 
+#include <memory>
+#include <limits>
+
+
 namespace Falcor {
 
-class RtProgram;
+class GraphicsStateObject;
+class GraphicsState;
+class ProgramVars;
+
+class RenderTargetView;
+
+class Program;
 class RtProgramVars;
 
-class FullScreenPass;
+struct BlitContext;
+struct BlitToBufferContext;
+
+/**
+ * Framebuffer target flags. Used for clears and copy operations
+ */
+enum class FboAttachmentType
+{
+    None = 0,    ///< Nothing. Here just for completeness
+    Color = 1,   ///< Operate on the color buffer.
+    Depth = 2,   ///< Operate on the the depth buffer.
+    Stencil = 4, ///< Operate on the the stencil buffer.
+
+    All = Color | Depth | Stencil ///< Operate on all targets
+};
+
+ENUM_CLASS_OPERATORS(FboAttachmentType);
 
 /** The rendering context. Use it to bind state and dispatch calls to the GPU
 */
 class dlldecl RenderContext : public ComputeContext {
  public:
-    using SharedPtr = std::shared_ptr<RenderContext>;
-    using SharedConstPtr = std::shared_ptr<const RenderContext>;
-
     /**
         This flag control which aspects of the GraphicState will be bound into the pipeline before drawing.
         It is useful in cases where the user wants to set a specific object using a raw-API call before calling one of the draw functions
@@ -82,24 +102,26 @@ class dlldecl RenderContext : public ComputeContext {
         Compact,              ///<Compact acceleration structure and store the result at destination.
     };
 
-    static uint4 kMaxRect;
+    static constexpr uint4 kMaxRect = {0, 0, std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()};
 
+    /**
+     * Constructor.
+     * Throws an exception if creation failed.
+     * @param[in] pDevice Graphics device.
+     * @param[in] pQueue Command queue.
+     */
+    RenderContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~RenderContext();
 
-    /** Create a new render context.
-        \param[in] queue The command queue.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
-
-    /** Clear an FBO.
-        \param[in] pFbo The FBO to clear
-        \param[in] color The clear color for the bound render-targets
-        \param[in] depth The depth clear value
-        \param[in] stencil The stencil clear value
-        \param[in] flags Optional. Which components of the FBO to clear. By default will clear all attached resource.
-        If you'd like to clear a specific color target, you can use RenderContext#clearFboColorTarget().
-    */
+    /**
+     * Clear an FBO.
+     * @param[in] pFbo The FBO to clear
+     * @param[in] color The clear color for the bound render-targets
+     * @param[in] depth The depth clear value
+     * @param[in] stencil The stencil clear value
+     * @param[in] flags Optional. Which components of the FBO to clear. By default will clear all attached resource.
+     * If you'd like to clear a specific color target, you can use RenderContext#clearFboColorTarget().
+     */
     void clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags = FboAttachmentType::All);
 
     /** Clear a render-target view.
@@ -128,7 +150,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] vertexCount Number of vertices to draw
         \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
     */
-    void draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation);
+    void draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation);
 
     /** Ordered instanced draw call.
         \param[in] vertexCount Number of vertices to draw
@@ -136,14 +158,14 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
         \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
     */
-    void drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation);
+    void drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation);
 
     /** Indexed draw call.
         \param[in] indexCount Number of indices to draw
         \param[in] startIndexLocation The location of the first index to read from the index buffer (offset in indices)
         \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
     */
-    void drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
+    void drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
     /** Indexed instanced draw call.
         \param[in] indexCount Number of indices to draw per instance
@@ -152,7 +174,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
         \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
     */
-    void drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
+    void drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
 
     /** Executes an indirect draw call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
@@ -161,14 +183,14 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have to be a dedicated buffer
         \param[in] countBufferOffset Offset into pCountBuffer to read the value from
     */
-    void drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
+    void drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
     /** Executes an indirect draw-indexed call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
         \param[in] pArgBuffer Buffer containing draw arguments
         \param[in] argBufferOffset Offset into buffer to read arguments from
     */
-    void drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset);
+    void drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
     /** Executes an indirect draw-indexed call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
@@ -177,7 +199,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have to be a dedicated buffer
         \param[in] countBufferOffset Offset into pCountBuffer to read the value from
     */
-    void drawIndexedIndirectCount(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
+    void drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
 
     /** Blits (low-level copy) an SRV into an RTV.
@@ -188,7 +210,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down].
         \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down].
     */
-    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect = kMaxRect, uint4 dstRect = kMaxRect, Sampler::Filter = Sampler::Filter::Linear);
+    void blit(const ref<ShaderResourceView>& pSrc, const ref<RenderTargetView>& pDst, uint4 srcRect = kMaxRect, uint4 dstRect = kMaxRect, TextureFilteringMode = TextureFilteringMode::Linear);
 
     /** Complex blits (low-level copy) an SRV into an RTV.
         The source and destination rectangles get clamped to the dimensions of the view.
@@ -200,13 +222,14 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] componentsReduction Reduction mode for each of the input components (Standard, Min, Max). Comparison reduction mode is not supported.
         \param[in] componentsTransform Linear combination factors of the input components for each output component.
     */
-    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+    void blit(const ref<ShaderResourceView>& pSrc, const ref<RenderTargetView>& pDst, uint4 srcRect, uint4 dstRect, TextureFilteringMode filter, const TextureReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
-    void blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+    void blitToBuffer(const ref<ShaderResourceView>& pSrc, const ref<Buffer>& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, TextureFilteringMode filter, const TextureReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
-    /** Submit the command list
-    */
-    void flush(bool wait = false) override;
+    /**
+     * Submit the command list
+     */
+    void submit(bool wait = false) override;
 
     /** Tell the render context what it should and shouldn't bind before drawing
     */
@@ -219,15 +242,15 @@ class dlldecl RenderContext : public ComputeContext {
     /** Resolve an entire multi-sampled resource. The dst and src resources must have the same dimensions, array-size, mip-count and format.
         If any of these properties don't match, you'll have to use `resolveSubresource`
     */
-    void resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst);
+    void resolveResource(const ref<Texture>& pSrc, const ref<Texture>& pDst);
 
     /** Resolve a multi-sampled sub-resource
     */
-    void resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource);
+    void resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSubresource, const ref<Texture>& pDst, uint32_t dstSubresource);
 
     /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same.
     */
-    void raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
+    void raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
 
     /** Build an acceleration structure.
     */
@@ -238,20 +261,19 @@ class dlldecl RenderContext : public ComputeContext {
     void copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RtAccelerationStructureCopyMode mode);
 
 private:
-    RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
+    RenderContext(gfx::ICommandQueue* pQueue);
 
-    Falcor::BlitContext& getBlitContext();
-    Falcor::BlitToBufferContext& getBlitToBufferContext();
+    gfx::IRenderCommandEncoder* drawCallCommon(GraphicsState* pState, ProgramVars* pVars);
 
-#if defined(FALCOR_VK)
-        bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
-        bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
-#endif
-        StateBindFlags mBindFlags = StateBindFlags::All;
-        GraphicsVars* mpLastBoundGraphicsVars = nullptr;
+    std::unique_ptr<BlitContext> mpBlitContext;
+    std::unique_ptr<BlitToBufferContext> mpBlitToBufferContext;
+
+    StateBindFlags mBindFlags = StateBindFlags::All;
+    GraphicsStateObject* mpLastBoundGraphicsStateObject = nullptr;
+    ProgramVars* mpLastBoundGraphicsVars = nullptr;
 };
 
-enum_class_operators(RenderContext::StateBindFlags);
+ENUM_CLASS_OPERATORS(RenderContext::StateBindFlags);
 
 }  // namespace Falcor
 

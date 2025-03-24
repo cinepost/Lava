@@ -28,9 +28,12 @@
 #ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
 #define SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
 
-#include "Core/Framework.h"
-#include "Core/API/ShaderResourceType.h"
-#include "Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/ShaderResourceType.h"
+#include "Falcor/Core/API/GFX/FalcorGFX.h"
 
 #include <slang/slang.h>
 #include <map>
@@ -70,9 +73,7 @@ namespace Falcor {
 
         /** Construct from an explicit byte offset.
         */
-        explicit UniformShaderVarOffset(size_t offset)
-            : mByteOffset(ByteOffset(offset))
-        {}
+        explicit UniformShaderVarOffset(size_t offset) : mByteOffset(ByteOffset(offset)) {}
 
         /** Custom enumeration type used to represent a zero offset.
 
@@ -85,9 +86,7 @@ namespace Falcor {
 
         /** Construct an explicit zero offset.
         */
-        UniformShaderVarOffset(Zero)
-            : mByteOffset(0)
-        {}
+        UniformShaderVarOffset(Zero) : mByteOffset(0) {}
 
         /** Custom enumeration type used to represent an invalid offset.
 
@@ -104,27 +103,25 @@ namespace Falcor {
 
         /** Default constructor: creates an invalid offset.
         */
-        UniformShaderVarOffset(Invalid _ = kInvalid)
-            : mByteOffset(ByteOffset(-1))
-        {}
+        UniformShaderVarOffset(Invalid _ = kInvalid) : mByteOffset(ByteOffset(-1)) {}
 
         /** Get the raw byte offset.
         */
-        inline ByteOffset getByteOffset() const { return mByteOffset; }
+        ByteOffset getByteOffset() const { return mByteOffset; }
 
         /** Check whether this offset is valid.
 
         An invalid offset has an all-ones bit pattern (`ByteOffset(-1)`).
         */
-        inline bool isValid() const { return mByteOffset != ByteOffset(-1); }
+        bool isValid() const { return mByteOffset != ByteOffset(-1); }
 
         /** Compare this offset to another offset.
         */
-        inline bool operator==(UniformShaderVarOffset const& other) const { return mByteOffset == other.mByteOffset; }
+        bool operator==(UniformShaderVarOffset const& other) const { return mByteOffset == other.mByteOffset; }
 
         /** Compare this offset to another offset.
         */
-        inline bool operator!=(UniformShaderVarOffset const& other) const { return mByteOffset != other.mByteOffset; }
+        bool operator!=(UniformShaderVarOffset const& other) const { return mByteOffset != other.mByteOffset; }
 
         /** Compare this offset to an invalid offset.
 
@@ -132,7 +129,7 @@ namespace Falcor {
 
             if(myOffset == UniformShaderVarOffset::kInvalid) { ... }
         */
-        inline bool operator==(Invalid _) const { return !isValid(); }
+        bool operator==(Invalid _) const { return !isValid(); }
 
         /** Compare this offset to an invalid offset.
 
@@ -140,13 +137,13 @@ namespace Falcor {
 
             if(myOffset != UniformShaderVarOffset::kInvalid) { ... }
         */
-        inline bool operator!=(Invalid _) const { return isValid(); }
+        bool operator!=(Invalid _) const { return isValid(); }
 
         /** Add an additional byte offset to this offset.
 
         If this offset is invalid, returns an invalid offset.
         */
-        inline UniformShaderVarOffset operator+(size_t offset) const
+        UniformShaderVarOffset operator+(size_t offset) const
         {
             if(!isValid()) return kInvalid;
 
@@ -157,7 +154,7 @@ namespace Falcor {
 
         If either `this` or `other` is an invalid offset, returns an invalid offset.
         */
-        inline UniformShaderVarOffset operator+(UniformShaderVarOffset other) const
+        UniformShaderVarOffset operator+(UniformShaderVarOffset other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -202,10 +199,7 @@ namespace Falcor {
 
         /** Construct an explicit zero offset.
         */
-        ResourceShaderVarOffset(Zero)
-            : mRangeIndex(0)
-            , mArrayIndex(0)
-        {}
+        ResourceShaderVarOffset(Zero) : mRangeIndex(0), mArrayIndex(0) {}
 
         /** Custom enumeration type used to represent an invalid offset.
 
@@ -223,23 +217,17 @@ namespace Falcor {
 
         /** Default constructor: constructs an invalid offset.
         */
-        ResourceShaderVarOffset(Invalid _ = kInvalid)
-            : mRangeIndex(RangeIndex(-1))
-            , mArrayIndex(ArrayIndex(-1))
-        {}
+        ResourceShaderVarOffset(Invalid _ = kInvalid) : mRangeIndex(RangeIndex(-1)), mArrayIndex(ArrayIndex(-1)) {}
 
         /** Check if this is a valid offset.
         */
-        inline bool isValid() const
-        {
-            return mRangeIndex != RangeIndex(-1);
-        }
+        bool isValid() const { return mRangeIndex != RangeIndex(-1); }
 
         /** Add a further offset to this offset.
 
         If either `this` or `other` is invalid, returns an invalid offset.
         */
-        inline ResourceShaderVarOffset operator+(ResourceShaderVarOffset const& other) const
+        ResourceShaderVarOffset operator+(ResourceShaderVarOffset const& other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -251,18 +239,14 @@ namespace Falcor {
 
         /** Compare with another offset.
         */
-        inline bool operator==(ResourceShaderVarOffset const& other) const
+        bool operator==(const ResourceShaderVarOffset& other) const
         {
-            return mRangeIndex == other.mRangeIndex
-                && mArrayIndex == other.mArrayIndex;
+            return mRangeIndex == other.mRangeIndex && mArrayIndex == other.mArrayIndex;
         }
 
         /** Compare with another offset.
         */
-        inline bool operator!=(ResourceShaderVarOffset const& other) const
-        {
-            return !(*this == other);
-        }
+        bool operator!=(const ResourceShaderVarOffset& other) const { return !(*this == other); }
 
         /** Type used to store the resource/descriptor range.
 
@@ -280,34 +264,25 @@ namespace Falcor {
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        inline RangeIndex getRangeIndex() const { return mRangeIndex; }
+        RangeIndex getRangeIndex() const { return mRangeIndex; }
 
         /** Get the underlying array index into the resource/descriptor range.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        inline ArrayIndex getArrayIndex() const { return mArrayIndex; }
+        ArrayIndex getArrayIndex() const { return mArrayIndex; }
 
         /** Construct an offset representing an explicit resource range and array index.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        ResourceShaderVarOffset(
-            RangeIndex rangeIndex,
-            ArrayIndex arrayIndex)
-            : mRangeIndex(rangeIndex)
-            , mArrayIndex(arrayIndex)
-        {}
+        ResourceShaderVarOffset(RangeIndex rangeIndex, ArrayIndex arrayIndex) : mRangeIndex(rangeIndex), mArrayIndex(arrayIndex) {}
 
         /** Construct an offset representing an explicit resource range.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        explicit ResourceShaderVarOffset(
-            RangeIndex rangeIndex)
-            : mRangeIndex(rangeIndex)
-            , mArrayIndex(0)
-        {}
+        explicit ResourceShaderVarOffset(RangeIndex rangeIndex) : mRangeIndex(rangeIndex), mArrayIndex(0) {}
 
     private:
         RangeIndex    mRangeIndex;
@@ -335,12 +310,7 @@ namespace Falcor {
     public:
         /** Construct a shader variable offset from its underlying uniform and resource offsets.
         */
-        ShaderVarOffset(
-            UniformShaderVarOffset uniform,
-            ResourceShaderVarOffset resource)
-            : mUniform(uniform)
-            , mResource(resource)
-        {}
+        ShaderVarOffset(UniformShaderVarOffset uniform, ResourceShaderVarOffset resource) : mUniform(uniform), mResource(resource) {}
 
         /** Custom enumeration type used to represent an invalid offset.
 
@@ -358,10 +328,7 @@ namespace Falcor {
 
         /** Default constructor: constructs an invalid offset.
         */
-        ShaderVarOffset(Invalid _ = kInvalid)
-            : mUniform(UniformShaderVarOffset::kInvalid)
-            , mResource(ResourceShaderVarOffset::kInvalid)
-        {}
+        ShaderVarOffset(Invalid _ = kInvalid) : mUniform(UniformShaderVarOffset::kInvalid), mResource(ResourceShaderVarOffset::kInvalid) {}
 
         /** Custom enumeration type used to represent a zero offset.
 
@@ -373,42 +340,39 @@ namespace Falcor {
 
         /** Construct an explicit zero offset.
         */
-        ShaderVarOffset(Zero)
-            : mUniform(UniformShaderVarOffset::kZero)
-            , mResource(ResourceShaderVarOffset::kZero)
-        {}
+        ShaderVarOffset(Zero) : mUniform(UniformShaderVarOffset::kZero), mResource(ResourceShaderVarOffset::kZero) {}
 
         /** Check if this is a valid offset.
         */
-        inline bool isValid() const { return mUniform.isValid(); }
+        bool isValid() const { return mUniform.isValid(); }
 
         /** Get the underlying uniform offset.
         */
-        inline UniformShaderVarOffset getUniform() const { return mUniform; }
+        UniformShaderVarOffset getUniform() const { return mUniform; }
 
         /** Get the underlying uniform offset.
 
         This implicit conversion allows a `ShaderVarOffset` to be
         passed to functions that expect a `UniformShaderVarOffset`.
         */
-        inline operator UniformShaderVarOffset() const { return mUniform; }
+        operator UniformShaderVarOffset() const { return mUniform; }
 
         /** Get the underlying resource offset.
         */
-        inline ResourceShaderVarOffset getResource() const { return mResource; }
+        ResourceShaderVarOffset getResource() const { return mResource; }
 
         /** Get the underlying resource offset.
 
         This implicit conversion allows a `ShaderVarOffset` to be
         passed to functions that expect a `ResourceShaderVarOffset`.
         */
-        inline operator ResourceShaderVarOffset() const { return mResource; }
+        operator ResourceShaderVarOffset() const { return mResource; }
 
         /** Add an additional offset.
 
         If either `this` or `other` is invalid, returns an invalid offset.
         */
-        inline ShaderVarOffset operator+(ShaderVarOffset const& other) const
+        ShaderVarOffset operator+(ShaderVarOffset const& other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -420,15 +384,14 @@ namespace Falcor {
 
         /** Compare to another offset.
         */
-        inline bool operator==(ShaderVarOffset const& other) const
-        {
+        bool operator==(ShaderVarOffset const& other) const {
             return mUniform == other.mUniform
                 && mResource == other.mResource;
         }
 
         /** Compare to another offset.
         */
-        inline bool operator!=(ShaderVarOffset const& other) const { return !(*this == other); }
+        bool operator!=(ShaderVarOffset const& other) const { return !(*this == other); }
 
         /** Type used to store the underlying uniform byte offset.
         */
@@ -436,7 +399,7 @@ namespace Falcor {
 
         /** Get the uniform byte offset.
         */
-        inline ByteOffset getByteOffset() const { return mUniform.getByteOffset(); }
+        ByteOffset getByteOffset() const { return mUniform.getByteOffset(); }
 
         /** Type used to store the resource/descriptor range.
 
@@ -454,13 +417,13 @@ namespace Falcor {
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        inline RangeIndex getResourceRangeIndex() const { return mResource.getRangeIndex(); }
+        RangeIndex getResourceRangeIndex() const { return mResource.getRangeIndex(); }
 
         /** Get the underlying resource array index.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        inline ArrayIndex getResourceArrayIndex() const { return mResource.getArrayIndex(); }
+        ArrayIndex getResourceArrayIndex() const { return mResource.getArrayIndex(); }
 
     protected:
         UniformShaderVarOffset mUniform;
@@ -501,24 +464,19 @@ namespace Falcor {
     public:
         /** Default constructor: constructs an invalid offset.
         */
-        TypedShaderVarOffset(Invalid _ = kInvalid)
-        {}
+        TypedShaderVarOffset(Invalid _ = kInvalid) {}
 
         /** Get the type of the shader variable.
         */
-        inline std::shared_ptr<const ReflectionType> getType() const { return mpType; }
+        const ReflectionType* getType() const { return mpType; }
 
         /** Check if `this` represents a valid offset.
         */
-        inline bool isValid() const { return mpType != nullptr; }
+        bool isValid() const { return mpType != nullptr; }
 
         /** Look up type and offset of a sub-field with the given `name`.
         */
-        TypedShaderVarOffset operator[](const std::string& name) const;
-
-        /** Look up type and offset of a sub-field with the given `name`.
-        */
-        TypedShaderVarOffset operator[](const char*) const;
+        TypedShaderVarOffset operator[](std::string_view name) const;
 
         /** Look up type and offset of a sub-element or sub-field with the given `index`.
         */
@@ -529,22 +487,18 @@ namespace Falcor {
         The caller takes responsibility for ensuring that `pType` is a valid type
         for the data at `offset`.
         */
-        TypedShaderVarOffset(
-            const ReflectionType* pType,
-            ShaderVarOffset       offset);
+        TypedShaderVarOffset(const ReflectionType* pType, ShaderVarOffset offset);
 
     private:
-        std::shared_ptr<const ReflectionType> mpType;
+        const ReflectionType* mpType{nullptr};
     };
 
     /** Reflection and layout information for a type in shader code.
     */
-    class FALCOR_API ReflectionType : public std::enable_shared_from_this<ReflectionType>
+    class FALCOR_API ReflectionType : public Object
     {
+        FALCOR_OBJECT(ReflectionType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionType>;
-
         virtual ~ReflectionType() = default;
 
         /** The kind of a type.
@@ -561,6 +515,16 @@ namespace Falcor {
             Resource,   ///< ReflectionResourceType
             Interface,  ///< ReflectionInterfaceType
         };
+        FALCOR_ENUM_INFO(
+        Kind,
+            {
+                {Kind::Array, "Array"},
+                {Kind::Struct, "Struct"},
+                {Kind::Basic, "Basic"},
+                {Kind::Resource, "Resource"},
+                {Kind::Interface, "Interface"},
+            }
+        );
 
         /** Get the kind of this type.
 
@@ -610,20 +574,20 @@ namespace Falcor {
 
         This function only counts uniform/ordinary data, and not resources like textures/buffers/samplers.
         */
-        inline ByteSize getByteSize() const { return mByteSize; }
+        ByteSize getByteSize() const { return mByteSize; }
 
         /** Find a field/member of this type with the given `name`.
 
         If this type doesn't have fields/members, or doesn't have a field/member matching `name`, then returns null.
         */
-        std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const;
+        ref<const ReflectionVar> findMember(std::string_view name) const;
 
         /** Get the (type and) offset of a field/member with the given `name`.
 
         If this type doesn't have fields/members, or doesn't have a field/member matching `name`,
         then logs an error and returns an invalid offset.
         */
-        TypedShaderVarOffset getMemberOffset(const std::string& name) const;
+        TypedShaderVarOffset getMemberOffset(std::string_view name) const;
 
         /** Find a typed member/element offset corresponding to the given byte offset.
         */
@@ -646,7 +610,7 @@ namespace Falcor {
 
         /** Compare types for inequality.
         */
-        inline bool operator!=(const ReflectionType& other) const { return !(*this == other); }
+        bool operator!=(const ReflectionType& other) const { return !(*this == other); }
 
         /** A range of resources contained (directly or indirectly) in this type.
 
@@ -694,13 +658,13 @@ namespace Falcor {
 
         /** Get the number of descriptor ranges contained in this type.
         */
-        inline uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
+        uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
 
         /** Get information on a contained descriptor range.
         */
-        inline ResourceRange const& getResourceRange(uint32_t index) const { return mResourceRanges[index]; }
+        ResourceRange const& getResourceRange(uint32_t index) const { return mResourceRanges[index]; }
 
-        inline slang::TypeLayoutReflection* getSlangTypeLayout() const { return mpSlangTypeLayout; }
+        slang::TypeLayoutReflection* getSlangTypeLayout() const { return mpSlangTypeLayout; }
 
     protected:
         ReflectionType(Kind kind, ByteSize byteSize, slang::TypeLayoutReflection* pSlangTypeLayout)
@@ -720,21 +684,19 @@ namespace Falcor {
     class FALCOR_API ReflectionArrayType : public ReflectionType
     {
     public:
-        using SharedPtr = std::shared_ptr<ReflectionArrayType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionArrayType>;
-
         /** Create a new object
         */
-        static SharedPtr create(
+        static ref<ReflectionArrayType> create(
             uint32_t elementCount,
             uint32_t elementByteStride,
-            const ReflectionType::SharedConstPtr& pElementType,
+            const ref<const ReflectionType>& pElementType,
             ByteSize byteSize,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+            slang::TypeLayoutReflection* pSlangTypeLayout
+        );
 
         /** Get the number of elements in the array.
         */
-        inline uint32_t getElementCount() const { return mElementCount; }
+        uint32_t getElementCount() const { return mElementCount; }
 
         /** Get the "stride" in bytes of the array.
 
@@ -744,11 +706,11 @@ namespace Falcor {
         of `float3`s in a constant buffer may have a stride
         of 16 bytes, but each element is only 12 bytes.
         */
-        inline uint32_t getElementByteStride() const { return mElementByteStride; }
+        uint32_t getElementByteStride() const { return mElementByteStride; }
 
         /** Get the type of the array elements.
         */
-        inline const ReflectionType::SharedConstPtr& getElementType() const { return mpElementType; }
+        const ReflectionType* getElementType() const { return mpElementType.get(); }
 
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -757,13 +719,13 @@ namespace Falcor {
         ReflectionArrayType(
             uint32_t                                elementCount,
             uint32_t                                elementByteStride,
-            const ReflectionType::SharedConstPtr&   pElementType,
+            const ref<const ReflectionType>&        pElementType,
             ByteSize                                totalByteSize,
             slang::TypeLayoutReflection*    pSlangTypeLayout);
 
         uint32_t mElementCount = 0;
         uint32_t mElementByteStride = 0;
-        ReflectionType::SharedConstPtr mpElementType;
+        ref<const ReflectionType> mpElementType;
     };
 
     /** Represents a `struct` type in shader code.
@@ -771,24 +733,24 @@ namespace Falcor {
     class FALCOR_API ReflectionStructType : public ReflectionType
     {
     public:
-        using SharedPtr = std::shared_ptr<ReflectionStructType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionStructType>;
-
         /** Get the name of the struct type
         */
-        inline const std::string& getName() const { return mName; }
+        const std::string& getName() const { return mName; }
 
         /** Get the total number members
         */
-        inline uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
+        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
 
-        /** Get member by index
-        */
-        inline const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
+        /**
+         * Get member by index
+         */
+        const ref<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
 
-        /** Get member by name
-        */
-        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name) const;
+        /**
+         * Get member by name
+         */
+        const ref<const ReflectionVar>& getMember(std::string_view name) const;
+
 
         /** Constant used to indicate that member lookup failed.
         */
@@ -798,7 +760,7 @@ namespace Falcor {
 
         Returns `kInvalidMemberIndex` if no such member exists.
         */
-        int32_t getMemberIndex(const std::string& name) const;
+        int32_t getMemberIndex(std::string_view name) const;
 
         /** Find a member based on a byte offset.
         */
@@ -813,10 +775,7 @@ namespace Falcor {
             \param[in] size The size of the struct in bytes
             \param[in] name The name of the struct
         */
-        static SharedPtr create(
-            size_t              byteSize,
-            const std::string& name,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+        static ref<ReflectionStructType> create(size_t byteSize, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
 
         struct BuildState
         {
@@ -828,17 +787,14 @@ namespace Falcor {
 
         /** Add a new member
         */
-        int32_t addMember(const std::shared_ptr<const ReflectionVar>& pVar, BuildState& ioBuildState);
+        int32_t addMember(const ref<const ReflectionVar>& pVar, BuildState& ioBuildState);
 
-        int32_t addMemberIgnoringNameConflicts(const std::shared_ptr<const ReflectionVar>& pVar, BuildState& ioBuildState);
+        int32_t addMemberIgnoringNameConflicts(const ref<const ReflectionVar>& pVar, BuildState& ioBuildState);
 
     private:
-        ReflectionStructType(
-            size_t size,
-            const std::string& name,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
-        std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
-        std::unordered_map<std::string, int32_t> mNameToIndex; // Translates from a name to an index in mMembers
+        ReflectionStructType(size_t size, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
+        std::vector<ref<const ReflectionVar>> mMembers;           // Struct members
+        std::map<std::string, int32_t, std::less<>> mNameToIndex; // Translates from a name to an index in mMembers
         std::string mName;
     };
 
@@ -847,9 +803,6 @@ namespace Falcor {
     class FALCOR_API ReflectionBasicType : public ReflectionType
     {
     public:
-        using SharedPtr = std::shared_ptr<ReflectionBasicType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionBasicType>;
-
         /** The type of the object
         */
         enum class Type
@@ -904,6 +857,16 @@ namespace Falcor {
             Float16_3,
             Float16_4,
 
+            Float16_2x2,
+            Float16_2x3,
+            Float16_2x4,
+            Float16_3x2,
+            Float16_3x3,
+            Float16_3x4,
+            Float16_4x2,
+            Float16_4x3,
+            Float16_4x4,
+
             Float,
             Float2,
             Float3,
@@ -926,6 +889,79 @@ namespace Falcor {
 
             Unknown = -1
         };
+        FALCOR_ENUM_INFO(
+            Type,
+            {
+                {Type::Bool, "Bool"},
+                {Type::Bool2, "Bool2"},
+                {Type::Bool3, "Bool3"},
+                {Type::Bool4, "Bool4"},
+                {Type::Uint8, "Uint8"},
+                {Type::Uint8_2, "Uint8_2"},
+                {Type::Uint8_3, "Uint8_3"},
+                {Type::Uint8_4, "Uint8_4"},
+                {Type::Uint16, "Uint16"},
+                {Type::Uint16_2, "Uint16_2"},
+                {Type::Uint16_3, "Uint16_3"},
+                {Type::Uint16_4, "Uint16_4"},
+                {Type::Uint, "Uint"},
+                {Type::Uint2, "Uint2"},
+                {Type::Uint3, "Uint3"},
+                {Type::Uint4, "Uint4"},
+                {Type::Uint64, "Uint64"},
+                {Type::Uint64_2, "Uint64_2"},
+                {Type::Uint64_3, "Uint64_3"},
+                {Type::Uint64_4, "Uint64_4"},
+                {Type::Int8, "Int8"},
+                {Type::Int8_2, "Int8_2"},
+                {Type::Int8_3, "Int8_3"},
+                {Type::Int8_4, "Int8_4"},
+                {Type::Int16, "Int16"},
+                {Type::Int16_2, "Int16_2"},
+                {Type::Int16_3, "Int16_3"},
+                {Type::Int16_4, "Int16_4"},
+                {Type::Int, "Int"},
+                {Type::Int2, "Int2"},
+                {Type::Int3, "Int3"},
+                {Type::Int4, "Int4"},
+                {Type::Int64, "Int64"},
+                {Type::Int64_2, "Int64_2"},
+                {Type::Int64_3, "Int64_3"},
+                {Type::Int64_4, "Int64_4"},
+                {Type::Float16, "Float16"},
+                {Type::Float16_2, "Float16_2"},
+                {Type::Float16_3, "Float16_3"},
+                {Type::Float16_4, "Float16_4"},
+                {Type::Float16_2x2, "Float16_2x2"},
+                {Type::Float16_2x3, "Float16_2x3"},
+                {Type::Float16_2x4, "Float16_2x4"},
+                {Type::Float16_3x2, "Float16_3x2"},
+                {Type::Float16_3x3, "Float16_3x3"},
+                {Type::Float16_3x4, "Float16_3x4"},
+                {Type::Float16_4x2, "Float16_4x2"},
+                {Type::Float16_4x3, "Float16_4x3"},
+                {Type::Float16_4x4, "Float16_4x4"},
+                {Type::Float, "Float"},
+                {Type::Float2, "Float2"},
+                {Type::Float3, "Float3"},
+                {Type::Float4, "Float4"},
+                {Type::Float2x2, "Float2x2"},
+                {Type::Float2x3, "Float2x3"},
+                {Type::Float2x4, "Float2x4"},
+                {Type::Float3x2, "Float3x2"},
+                {Type::Float3x3, "Float3x3"},
+                {Type::Float3x4, "Float3x4"},
+                {Type::Float4x2, "Float4x2"},
+                {Type::Float4x3, "Float4x3"},
+                {Type::Float4x4, "Float4x4"},
+                {Type::Float64, "Float64"},
+                {Type::Float64_2, "Float64_2"},
+                {Type::Float64_3, "Float64_3"},
+                {Type::Float64_4, "Float64_4"},
+                {Type::Unknown, "Unknown"},
+            }
+        );
+
 
         /** Create a new object
             \param[in] offset The offset of the variable relative to the parent variable
@@ -933,9 +969,7 @@ namespace Falcor {
             \param[in] isRowMajor For matrices, true means row-major, otherwise it's column-major
             \param[in] size The size of the object
         */
-        static SharedPtr create(
-            Type type, bool isRowMajor, size_t size,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+        static ref<ReflectionBasicType> create(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout);
 
         /** Get the object's type
         */
@@ -948,11 +982,7 @@ namespace Falcor {
         bool operator==(const ReflectionBasicType& other) const;
         bool operator==(const ReflectionType& other) const override;
     private:
-        ReflectionBasicType(
-            Type type,
-            bool isRowMajor,
-            size_t size,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+        ReflectionBasicType(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout);
         Type mType;
         bool mIsRowMajor;
     };
@@ -962,9 +992,6 @@ namespace Falcor {
     class FALCOR_API ReflectionResourceType : public ReflectionType
     {
     public:
-        using SharedPtr = std::shared_ptr<ReflectionResourceType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
-
         /** Describes how the shader will access the resource
         */
         enum class ShaderAccess
@@ -973,6 +1000,14 @@ namespace Falcor {
             Read,
             ReadWrite
         };
+        FALCOR_ENUM_INFO(
+            ShaderAccess,
+            {
+                {ShaderAccess::Undefined, "Undefined"},
+                {ShaderAccess::Read, "Read"},
+                {ShaderAccess::ReadWrite, "ReadWrite"},
+            }
+        );
 
         /** The expected return type
         */
@@ -984,6 +1019,16 @@ namespace Falcor {
             Int,
             Uint
         };
+        FALCOR_ENUM_INFO(
+            ReturnType,
+            {
+                {ReturnType::Unknown, "Unknown"},
+                {ReturnType::Float, "Float"},
+                {ReturnType::Double, "Double"},
+                {ReturnType::Int, "Int"},
+                {ReturnType::Uint, "Uint"},
+            }
+        );
 
         /** The resource dimension
         */
@@ -1004,6 +1049,23 @@ namespace Falcor {
 
             Count
         };
+        FALCOR_ENUM_INFO(
+            Dimensions,
+            {
+                {Dimensions::Unknown, "Unknown"},
+                {Dimensions::Texture1D, "Texture1D"},
+                {Dimensions::Texture2D, "Texture2D"},
+                {Dimensions::Texture3D, "Texture3D"},
+                {Dimensions::TextureCube, "TextureCube"},
+                {Dimensions::Texture1DArray, "Texture1DArray"},
+                {Dimensions::Texture2DArray, "Texture2DArray"},
+                {Dimensions::Texture2DMS, "Texture2DMS"},
+                {Dimensions::Texture2DMSArray, "Texture2DMSArray"},
+                {Dimensions::TextureCubeArray, "TextureCubeArray"},
+                {Dimensions::AccelerationStructure, "AccelerationStructure"},
+                {Dimensions::Buffer, "Buffer"},
+            }
+        );
 
         /** For structured-buffers, describes the type of the buffer
         */
@@ -1015,6 +1077,16 @@ namespace Falcor {
             Append,     ///< AppendStructuredBuffer
             Consume     ///< ConsumeStructuredBuffer
         };
+        FALCOR_ENUM_INFO(
+            StructuredType,
+            {
+                {StructuredType::Invalid, "Invalid"},
+                {StructuredType::Default, "Default"},
+                {StructuredType::Counter, "Counter"},
+                {StructuredType::Append, "Append"},
+                {StructuredType::Consume, "Consume"},
+            }
+        );
 
         /** The type of the resource
         */
@@ -1028,64 +1100,85 @@ namespace Falcor {
             ConstantBuffer,
             AccelerationStructure,
         };
+        FALCOR_ENUM_INFO(
+            Type,
+            {
+                {Type::Texture, "Texture"},
+                {Type::StructuredBuffer, "StructuredBuffer"},
+                {Type::RawBuffer, "RawBuffer"},
+                {Type::TypedBuffer, "TypedBuffer"},
+                {Type::Sampler, "Sampler"},
+                {Type::ConstantBuffer, "ConstantBuffer"},
+                {Type::AccelerationStructure, "AccelerationStructure"},
+            }
+        );
 
         /** Create a new object
         */
-        static SharedPtr create(
-            Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess,
-            slang::TypeLayoutReflection* pSlangTypeLayout);
+        static ref<ReflectionResourceType> create(
+            Type type,
+            Dimensions dims,
+            StructuredType structuredType,
+            ReturnType retType,
+            ShaderAccess shaderAccess,
+            slang::TypeLayoutReflection* pSlangTypeLayout
+        );
 
         /** For structured- and constant-buffers, set a reflection-type describing the buffer's layout
         */
-        void setStructType(const ReflectionType::SharedConstPtr& pType);
+        void setStructType(const ref<const ReflectionType>& pType);
 
         /** Get the struct-type
         */
-        inline const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
+        const ReflectionType* getStructType() const { return mpStructType.get(); }
 
-        inline const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        inline void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector)
-        {
-            mpParameterBlockReflector = pReflector;
-        }
+        const ref<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
+        void setParameterBlockReflector(const ref<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
+
 
         /** Get the dimensions
         */
-        inline Dimensions getDimensions() const { return mDimensions; }
+        Dimensions getDimensions() const { return mDimensions; }
 
         /** Get the structured-buffer type
         */
-        inline StructuredType getStructuredBufferType() const { return mStructuredType; }
+        StructuredType getStructuredBufferType() const { return mStructuredType; }
 
         /** Get the resource return type
         */
-        inline ReturnType getReturnType() const { return mReturnType; }
+        ReturnType getReturnType() const { return mReturnType; }
 
         /** Get the required shader access
         */
-        inline ShaderAccess getShaderAccess() const { return mShaderAccess; }
+        ShaderAccess getShaderAccess() const { return mShaderAccess; }
 
         /** Get the resource type
         */
-        inline Type getType() const { return mType; }
+        Type getType() const { return mType; }
 
         /** For structured- and constant-buffers, return the underlying type size, otherwise returns 0
         */
-        inline size_t getSize() const { return mpStructType ? mpStructType->getByteSize() : 0; }
+        size_t getSize() const { return mpStructType ? mpStructType->getByteSize() : 0; }
 
         bool operator==(const ReflectionResourceType& other) const;
         bool operator==(const ReflectionType& other) const override;
     private:
-        ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess,
-            slang::TypeLayoutReflection* pSlangTypeLayout);
+        ReflectionResourceType(
+            Type type,
+            Dimensions dims,
+            StructuredType structuredType,
+            ReturnType retType,
+            ShaderAccess shaderAccess,
+            slang::TypeLayoutReflection* pSlangTypeLayout
+        );
 
         Dimensions mDimensions;
         StructuredType mStructuredType;
         ReturnType mReturnType;
         ShaderAccess mShaderAccess;
         Type mType;
-        ReflectionType::SharedConstPtr mpStructType;   // For constant- and structured-buffers
-        std::shared_ptr<const ParameterBlockReflection> mpParameterBlockReflector; // For constant buffers and parameter blocks
+        ref<const ReflectionType> mpStructType;                        // For constant- and structured-buffers
+        ref<const ParameterBlockReflection> mpParameterBlockReflector; // For constant buffers and parameter blocks
     };
 
     /** Reflection object for resources
@@ -1093,69 +1186,55 @@ namespace Falcor {
     class FALCOR_API ReflectionInterfaceType : public ReflectionType
     {
     public:
-        using SharedPtr = std::shared_ptr<ReflectionInterfaceType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionInterfaceType>;
-
-        static SharedPtr create(
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+        static ref<ReflectionInterfaceType> create(slang::TypeLayoutReflection* pSlangTypeLayout);
 
         bool operator==(const ReflectionInterfaceType& other) const;
         bool operator==(const ReflectionType& other) const override;
 
-        const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        
-        inline void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
+        const ref<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
+        void setParameterBlockReflector(const ref<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
 
     private:
-        ReflectionInterfaceType(
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+        ReflectionInterfaceType( slang::TypeLayoutReflection*    pSlangTypeLayout);
 
-        std::shared_ptr<const ParameterBlockReflection> mpParameterBlockReflector; // For interface types that have been specialized
+        ref<const ParameterBlockReflection> mpParameterBlockReflector; // For interface types that have been specialized
     };
 
     /** An object describing a variable
     */
-    class FALCOR_API ReflectionVar
+    class FALCOR_API ReflectionVar : public Object
     {
+        FALCOR_OBJECT(ReflectionVar)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionVar>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
-
         /** Create a new object
             \param[in] name The name of the variable
             \param[in] pType The type of the variable
             \param[in] bindLocation The offset of the variable relative to the parent object
         */
-        static SharedPtr create(
-            const std::string& name,
-            const ReflectionType::SharedConstPtr& pType,
-            ShaderVarOffset const& bindLocation);
+        static ref<ReflectionVar> create(const std::string& name, const ref<const ReflectionType>& pType, const ShaderVarOffset& bindLocation);
 
         /** Get the variable name
         */
-        inline const std::string& getName() const { return mName; }
+        const std::string& getName() const { return mName; }
 
         /** Get the variable type
         */
-        inline const ReflectionType::SharedConstPtr& getType() const { return mpType; }
+        const ReflectionType* getType() const { return mpType.get(); }
 
         /** Get the variable offset
         */
-        inline ShaderVarOffset getBindLocation() const { return mBindLocation; }
-        inline size_t getByteOffset() const { return mBindLocation.getByteOffset(); }
-        inline size_t getOffset() const { return mBindLocation.getByteOffset(); }
+        ShaderVarOffset getBindLocation() const { return mBindLocation; }
+        size_t getByteOffset() const { return mBindLocation.getByteOffset(); }
+        size_t getOffset() const { return mBindLocation.getByteOffset(); }
 
         bool operator==(const ReflectionVar& other) const;
-        inline bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
+        bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
 
     private:
-        ReflectionVar(
-            const std::string& name,
-            const ReflectionType::SharedConstPtr& pType,
-            ShaderVarOffset const& bindLocation);
+        ReflectionVar(const std::string& name, const ref<const ReflectionType>& pType, const ShaderVarOffset& bindLocation);
 
         std::string mName;
-        ReflectionType::SharedConstPtr mpType;
+        ref<const ReflectionType> mpType;
         ShaderVarOffset mBindLocation;
     };
 
@@ -1163,29 +1242,26 @@ namespace Falcor {
 
     /** A reflection object describing a parameter block
     */
-    class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<ParameterBlockReflection>
+    class FALCOR_API ParameterBlockReflection : public Object
     {
+        FALCOR_OBJECT(ParameterBlockReflection)
     public:
-        using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
-        using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
-
         static const uint32_t kInvalidIndex = 0xffffffff;
 
-        /** Create a new parameter block reflector, for the given element type.
-        */
-        static SharedPtr create(
-            ProgramVersion const* pProgramVersion,
-            ReflectionType::SharedConstPtr const& pElementType);
+        /**
+         * Create a new parameter block reflector, for the given element type.
+         */
+        static ref<ParameterBlockReflection> create(ProgramVersion const* pProgramVersion, const ref<const ReflectionType>& pElementType);
 
-        /** Create a new shader object reflector, for the given element type.
-        */
-        static SharedPtr create(
-            ProgramVersion const* pProgramVersion,
-            slang::TypeLayoutReflection* pElementType);
+        /**
+         * Create a new shader object reflector, for the given element type.
+         */
+        static ref<ParameterBlockReflection> create(ProgramVersion const* pProgramVersion, slang::TypeLayoutReflection* pElementType);
 
-        /** Get the type of the contents of the parameter block.
-        */
-        inline ReflectionType::SharedConstPtr getElementType() const { return mpElementType; }
+        /**
+         * Get the type of the contents of the parameter block.
+         */
+        ref<const ReflectionType> getElementType() const { return mpElementType; }
 
         using BindLocation = TypedShaderVarOffset;
 
@@ -1193,65 +1269,11 @@ namespace Falcor {
 
         /** Get the variable for a resource in the block
         */
-        const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
+        const ref<const ReflectionVar> getResource(std::string_view name) const;
 
         /** Get the bind-location for a resource in the block
         */
-        BindLocation getResourceBinding(const std::string& name) const;
-
-#if FALCOR_D3D12_AVAILABLE
-        /// Information on how a particular descriptor set should be filled in.
-        ///
-        /// A single `ParameterBlock` may map to zero or more distinct descriptor
-        /// sets, depending on what members it contains, and how those members
-        /// are mapped to API registers/spaces.
-        ///
-        struct DescriptorSetInfo
-        {
-            /// The layout of the API descriptor set to allocate.
-            D3D12DescriptorSet::Layout   layout;
-
-            /// The indices of resource ranges within the parameter block
-            /// to bind to the descriptor ranges of the above set.
-            ///
-            /// The order of entries in the `resourceRangeIndices`
-            /// array will correspond to the order of the corresponding
-            /// descriptor ranges in the `layout`.
-            ///
-            std::vector<uint32_t>   resourceRangeIndices;
-
-            /// Information about a sub-object that should have some
-            /// of its resource ranges bound into this descriptor set.
-            ///
-            struct SubObjectInfo
-            {
-                /// The index of the resource range that defines the
-                /// sub-object.
-                ///
-                uint32_t resourceRangeIndexOfSubObject;
-
-                /// The set index within the sub-object for which
-                /// data should be written into this set.
-                ///
-                uint32_t setIndexInSubObject;
-            };
-
-            /// All of the sub-objects of this parameter block that should
-            /// have data written into this descriptor sets.
-            ///
-            std::vector<SubObjectInfo> subObjects;
-        };
-
-        /** Get the number of descriptor sets that are needed for an object of this type.
-        */
-        inline uint32_t getD3D12DescriptorSetCount() const { return (uint32_t) mDescriptorSets.size(); }
-
-        inline const DescriptorSetInfo& getD3D12DescriptorSetInfo(uint32_t index) const { return mDescriptorSets[index]; }
-
-        /** Get the layout for the `index`th descriptor set that needs to be created for an object of this type.
-        */
-        inline const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
-#endif // FALCOR_D3D12_AVAILABLE
+        BindLocation getResourceBinding(std::string_view name) const;
 
         /** Describes binding information for a resource range.
 
@@ -1280,10 +1302,10 @@ namespace Falcor {
             uint32_t descriptorSetIndex = kInvalidIndex;    ///< The index of the descriptor set to be bound into, when flavor is Flavor::Simple.
 
             /// The reflection object for a sub-object range.
-            ParameterBlockReflection::SharedConstPtr pSubObjectReflector;
+            ref<const ParameterBlockReflection> pSubObjectReflector;
 
-            inline bool isDescriptorSet() const { return flavor == Flavor::Simple; }
-            inline bool isRootDescriptor() const { return flavor == Flavor::RootDescriptor; }
+            bool isDescriptorSet() const { return flavor == Flavor::Simple; }
+            bool isRootDescriptor() const { return flavor == Flavor::RootDescriptor; }
         };
 
         struct DefaultConstantBufferBindingInfo
@@ -1294,11 +1316,9 @@ namespace Falcor {
             bool useRootConstants = false;
         };
 
-        static SharedPtr createEmpty(
-            ProgramVersion const* pProgramVersion);
+        static ref<ParameterBlockReflection> createEmpty(ProgramVersion const* pProgramVersion);
 
-        void setElementType(
-            ReflectionType::SharedConstPtr const& pElementType);
+        void setElementType(const ref<const ReflectionType>& pElementType);
 
         void addResourceRange(
             ResourceRangeBindingInfo const& bindingInfo);
@@ -1312,27 +1332,26 @@ namespace Falcor {
 
         /** Get the number of descriptor ranges contained in this type.
         */
-        inline uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
+        uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
 
-        inline ReflectionType::ResourceRange const& getResourceRange(uint32_t index) const { return getElementType()->getResourceRange(index); }
+        const ReflectionType::ResourceRange& getResourceRange(uint32_t index) const { return getElementType()->getResourceRange(index); }
 
         /** Get binding information on a contained descriptor range.
         */
-        inline ResourceRangeBindingInfo const& getResourceRangeBindingInfo(uint32_t index) const { return mResourceRanges[index]; }
+        const ResourceRangeBindingInfo& getResourceRangeBindingInfo(uint32_t index) const { return mResourceRanges[index]; }
 
-        inline uint32_t getRootDescriptorRangeCount() const { return (uint32_t)mRootDescriptorRangeIndices.size(); }
-        inline uint32_t getRootDescriptorRangeIndex(uint32_t index) const { return mRootDescriptorRangeIndices[index]; }
+        uint32_t getRootDescriptorRangeCount() const { return (uint32_t)mRootDescriptorRangeIndices.size(); }
+        uint32_t getRootDescriptorRangeIndex(uint32_t index) const { return mRootDescriptorRangeIndices[index]; }
 
-        inline uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
-        inline uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
+        uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
+        uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
 
-        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
+        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
 
-        inline std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const { return getElementType()->findMember(name); }
+        ref<const ReflectionVar> findMember(std::string_view name) const { return getElementType()->findMember(name); }
 
     protected:
-        ParameterBlockReflection(
-            ProgramVersion const* pProgramVersion);
+        ParameterBlockReflection(ProgramVersion const* pProgramVersion);
 
     private:
         /// The element type of the parameter block
@@ -1340,7 +1359,7 @@ namespace Falcor {
         /// For a `ConstantBuffer<T>` or `ParameterBlock<T>`,
         /// this will be the type `T`.
         ///
-        ReflectionType::SharedConstPtr mpElementType;
+        ref<const ReflectionType> mpElementType;
 
         /// Binding information for the "default" constant buffer, if needed.
         ///
@@ -1352,19 +1371,6 @@ namespace Falcor {
         /// this will record the corresponding `register` and `space`.
         ///
         std::vector<ResourceRangeBindingInfo> mResourceRanges;
-
-#if FALCOR_D3D12_AVAILABLE
-        /// Layout and binding information for all descriptor sets that
-        /// must be created to represent the state of a parameter block
-        /// using this reflector.
-        ///
-        /// Note: this array does *not* include information for descriptor
-        /// sets that correspond to `ParameterBlock` sub-objects, since
-        /// they are required to allocate and maintain their own
-        /// descriptor sets that this object can simply re-use.
-        ///
-        std::vector<DescriptorSetInfo> mDescriptorSets;
-#endif
 
         /// Indices of the resource ranges that represent root descriptors,
         /// and which therefore need their resources to be bound to the root signature.
@@ -1392,24 +1398,23 @@ namespace Falcor {
         using SharedPtr = std::shared_ptr<EntryPointGroupReflection>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupReflection>;
 
-        static SharedPtr create(
-            ProgramVersion const*   pProgramVersion,
-            uint32_t                groupIndex,
-            std::vector<slang::EntryPointLayout*> const& pSlangEntryPointReflectors);
+        static ref<EntryPointGroupReflection> create(
+            ProgramVersion const* pProgramVersion,
+            uint32_t groupIndex,
+            const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors
+        );
 
     private:
-        EntryPointGroupReflection(
-            ProgramVersion const* pProgramVersion);
+        EntryPointGroupReflection(ProgramVersion const* pProgramVersion);
     };
     typedef EntryPointGroupReflection EntryPointBaseReflection;
 
     /** Reflection object for an entire program. Essentially, it's a collection of ParameterBlocks
     */
-    class FALCOR_API ProgramReflection
+    class FALCOR_API ProgramReflection : public Object
     {
+        FALCOR_OBJECT(ProgramReflection)
     public:
-        using SharedPtr = std::shared_ptr<ProgramReflection>;
-        using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
         static const uint32_t kInvalidLocation = -1;
 
         /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
@@ -1434,75 +1439,77 @@ namespace Falcor {
 
         /** Create a new object for a Slang reflector object
         */
-        static SharedPtr create(
+        static ref<const ProgramReflection> create(
             ProgramVersion const* pProgramVersion,
             slang::ShaderReflection* pSlangReflector,
-            std::vector<slang::EntryPointLayout*> const& pSlangEntryPointReflectors,
-            std::string& log);
+            const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors,
+            std::string& log
+        );
 
-        static SharedPtr createEmpty();
         void finalize();
 
-        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
+        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
 
-        /** Get parameter block by name
-        */
-        ParameterBlockReflection::SharedConstPtr getParameterBlock(const std::string& name) const;
+        /**
+         * Get parameter block by name
+         */
+        ref<const ParameterBlockReflection> getParameterBlock(std::string_view name) const;
 
-        /** Get the default (unnamed) parameter block.
-        */
-        inline ParameterBlockReflection::SharedConstPtr getDefaultParameterBlock() const { return mpDefaultBlock; }
+        /**
+         * Get the default (unnamed) parameter block.
+         */
+        ref<const ParameterBlockReflection> getDefaultParameterBlock() const { return mpDefaultBlock; }
 
         /** For compute-shaders, return the required thread-group size
         */
-        inline uint3 getThreadGroupSize() const { return mThreadGroupSize; }
+        uint3 getThreadGroupSize() const { return mThreadGroupSize; }
 
         /** For pixel-shaders, check if we need to run the shader at sample frequency
         */
-        inline bool isSampleFrequency() const { return mIsSampleFrequency; }
+        bool isSampleFrequency() const { return mIsSampleFrequency; }
 
         /** Get a resource from the default parameter block
         */
-        const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
+        const ref<const ReflectionVar> getResource(std::string_view name) const;
 
         /** Search for a vertex attribute by its semantic name
         */
-        const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
+        const ShaderVariable* getVertexAttributeBySemantic(std::string_view semantic) const;
 
         /** Search for a vertex attribute by the variable name
         */
-        const ShaderVariable* getVertexAttribute(const std::string& name) const;
+        const ShaderVariable* getVertexAttribute(std::string_view name) const;
 
         /** Get a pixel shader output variable
         */
-        const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
+        const ShaderVariable* getPixelShaderOutput(std::string_view name) const;
 
         /** Look up a type by name.
             \return nullptr if the type does not exist.
         */
-        ReflectionType::SharedPtr findType(const std::string& name) const;
+        ref<ReflectionType> findType(std::string_view name) const;
 
-        ReflectionVar::SharedConstPtr findMember(const std::string& name) const;
+        ref<const ReflectionVar> findMember(std::string_view name) const;
 
-        inline std::vector<EntryPointGroupReflection::SharedPtr> const& getEntryPointGroups() const { return mEntryPointGroups; }
+        const std::vector<ref<EntryPointGroupReflection>>& getEntryPointGroups() const { return mEntryPointGroups; }
 
-        inline EntryPointGroupReflection::SharedPtr const& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
+        const ref<EntryPointGroupReflection>& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
 
-        inline std::vector<HashedString> const& getHashedStrings() const { return mHashedStrings; }
+        const std::vector<HashedString>& getHashedStrings() const { return mHashedStrings; }
 
     private:
         ProgramReflection(
             ProgramVersion const* pProgramVersion,
             slang::ShaderReflection* pSlangReflector,
-            std::vector<slang::EntryPointLayout*> const& pSlangEntryPointReflectors,
+            const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors,
             std::string& log);
         ProgramReflection(ProgramVersion const* pProgramVersion);
         ProgramReflection(const ProgramReflection&) = default;
-        void setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock);
+        void setDefaultParameterBlock(const ref<ParameterBlockReflection>& pBlock);
 
         ProgramVersion const* mpProgramVersion;
 
-        ParameterBlockReflection::SharedPtr mpDefaultBlock;
+        ref<ParameterBlockReflection> mpDefaultBlock;
         uint3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
 
@@ -1511,12 +1518,20 @@ namespace Falcor {
         VariableMap mVertAttrBySemantic;
 
         slang::ShaderReflection* mpSlangReflector = nullptr;
-        mutable std::map<std::string, ReflectionType::SharedPtr> mMapNameToType;
+        mutable std::map<std::string, ref<ReflectionType>, std::less<>> mMapNameToType;
 
-        std::vector<EntryPointGroupReflection::SharedPtr> mEntryPointGroups;
+        std::vector<ref<EntryPointGroupReflection>> mEntryPointGroups;
 
         std::vector<HashedString> mHashedStrings;
     };
+
+    FALCOR_ENUM_REGISTER(ReflectionType::Kind);
+    FALCOR_ENUM_REGISTER(ReflectionBasicType::Type);
+    FALCOR_ENUM_REGISTER(ReflectionResourceType::ShaderAccess);
+    FALCOR_ENUM_REGISTER(ReflectionResourceType::ReturnType);
+    FALCOR_ENUM_REGISTER(ReflectionResourceType::Dimensions);
+    FALCOR_ENUM_REGISTER(ReflectionResourceType::StructuredType);
+    FALCOR_ENUM_REGISTER(ReflectionResourceType::Type);
 
     inline const std::string to_string(ReflectionBasicType::Type type)
     {

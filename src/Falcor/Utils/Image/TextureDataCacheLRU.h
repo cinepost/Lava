@@ -28,21 +28,18 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREDATACACHELRU_H_
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREDATACACHELRU_H_
 
-#include <unordered_map>
-
-#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/VirtualTexturePage.h"
+
+#include <unordered_map>
 
 
 namespace Falcor {
 
-class dlldecl TextureDataCacheLRU {
+class Device;
+
+class FALCOR_API TextureDataCacheLRU {
 	public:
-		using SharedPtr = std::shared_ptr<TextureDataCacheLRU>;
-
-		//struct 
-
 		~TextureDataCacheLRU();
 
 		/** Create a texture cache.
@@ -50,15 +47,15 @@ class dlldecl TextureDataCacheLRU {
 			\param[in] maxDeviceMemoryLimit Maximum device memory in megabytes that can be used for textures.
 			\return A new object.
 		*/
-		static SharedPtr create(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit = 1024, size_t maxDeviceMemoryLimit = 512);
+		static ref<TextureDataCacheLRU> create(ref<Device> pDevice, size_t maxSystemMemoryLimit = 1024, size_t maxDeviceMemoryLimit = 512);
 
 		void clear();
 
 
 	private:
-		TextureDataCacheLRU(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit);
+		TextureDataCacheLRU(ref<Device> pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit);
 
-		Device::SharedPtr mpDevice = nullptr;
+		ref<Device> mpDevice;
 
 		size_t mSystemCachedDataSize = 0;
 		size_t mDeviceCachedDataSize = 0;
@@ -66,7 +63,7 @@ class dlldecl TextureDataCacheLRU {
 		size_t mSystemCachedDataSizeLimit = 0;
 		size_t mDeviceCachedDataSizeLimit = 0;
 
-		std::unordered_map<Texture::SharedPtr, std::unordered_map<uint32_t, VirtualTexturePage::SharedPtr>> mPagesMap;
+		std::unordered_map<ref<Texture>, std::unordered_map<uint32_t, ref<VirtualTexturePage>>> mPagesMap;
 };
 
 }  // namespace Falcor

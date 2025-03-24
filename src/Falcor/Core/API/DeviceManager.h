@@ -36,13 +36,7 @@
 #include <atomic>
 #include <unordered_map>
 
-#ifdef FALCOR_VK
-#include "Falcor/Core/API/Vulkan/FalcorVK.h"
-#endif 
-
-#if FALCOR_GFX_VK
 #include <vulkan/vulkan.h>
-#endif
 
 #include "Falcor/Core/API/Device.h"
 
@@ -54,7 +48,7 @@ namespace Falcor {
     #define DEFAULT_ENABLE_DEBUG_LAYER false
 #endif
 
-class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> {
+class FALCOR_API DeviceManager {
   public:
     struct DeviceInfo {
         std::string deviceName;
@@ -63,20 +57,18 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     };
 
   public:
-    using SharedPtr = std::shared_ptr<DeviceManager>;
-    using SharedConstPtr = std::shared_ptr<const DeviceManager>;
-
+     DeviceManager();
     ~DeviceManager();
 
     const std::unordered_map<uint8_t, DeviceInfo>& deviceInfos() { return mDeviceInfos; }
-    std::vector<Device::SharedPtr> renderingDevices() const;
+    std::vector<ref<Device>> renderingDevices() const;
 
-    Device::SharedPtr renderingDevice(uint8_t gpuId) const;
+    ref<Device> renderingDevice(uint8_t gpuId) const;
 
-    Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
+    ref<Device> createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
 
-    Device::SharedPtr defaultDisplayDevice() const;
-    Device::SharedPtr defaultRenderingDevice() const;
+    ref<Device> defaultDisplayDevice() const;
+    ref<Device> defaultRenderingDevice() const;
 
     void setDefaultRenderingDevice(uint8_t gpuId);
 
@@ -84,19 +76,14 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
 
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
     const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
     VkInstance vulkanInstance() const;
-#endif
 
-    static SharedPtr create(bool enableValidationLayer = false);
+    static std::unique_ptr<DeviceManager> create(bool enableValidationLayer = false);
 
  private:
-    DeviceManager();
 
-#if defined(FALCOR_VK)
     static VkInstance createVulkanInstance(bool enableDebugLayer);
-#endif
 
     bool init();
     bool deviceEnumerated(uint8_t gpuId) const;
@@ -106,16 +93,14 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     bool mEnableValidationLayer = false;
 
     std::unordered_map<uint8_t, DeviceInfo> mDeviceInfos;
-    std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 
+    std::unordered_map<uint8_t, ref<Device>> mRenderingDevices; 
 
     uint8_t mDefaultDisplayDeviceID = 0;
     uint8_t mDefaultRenderingDeviceID = 0;   
 
     uint32_t                        mPhysicalDevicesCount = 0;
 
-#if defined(FALCOR_GFX) || defined(FALCOR_VK)
     std::vector<VkPhysicalDevice>   mPhysicalDevices;
-#endif
 };
 
 

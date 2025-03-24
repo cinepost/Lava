@@ -28,78 +28,89 @@
 #ifndef SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_
 #define SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_
 
-#include <memory>
+#include "Fence.h"
+#include "Handles.h"
+#include "NativeHandle.h"
+#include "Falcor/Core/Macros.h"
 
-#include "Falcor/Core/Framework.h"
-#include "GpuFence.h"
 
 namespace Falcor {
 
 class Device;    
-struct LowLevelContextApiData;
 
-class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData> {
- public:
-    using SharedPtr = std::shared_ptr<LowLevelContextData>;
-    using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
-
-    enum class CommandQueueType {
-        Copy,
-        Compute,
-        Direct,
-        Count
-    };
-
+class FALCOR_API LowLevelContextData
+{
+public:
+    /**
+     * Constructor. Throws an exception if creation failed.
+     * @param[in] pDevice Device.
+     * @param[in] pQueue Command queue.
+     */
+    LowLevelContextData(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~LowLevelContextData();
 
-    /** Create a new low-level context data object.
-        \param[in] type Command queue type.
-        \param[in] queue Command queue handle. Can be nullptr.
-        \return A new object, or throws an expception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueType type, CommandQueueHandle queue);
+    gfx::ICommandQueue* getGfxCommandQueue() const { return mpGfxCommandQueue; }
+    gfx::ICommandBuffer* getGfxCommandBuffer() const { return mGfxCommandBuffer; }
 
-    void flush();
+    /**
+     * Returns the native API handle for the command queue:
+     * - D3D12: ID3D12CommandQueue*
+     * - Vulkan: VkQueue (Vulkan)
+     */
+    NativeHandle getCommandQueueNativeHandle() const;
 
-    const CommandListHandle& getCommandList() const { return mpList; }
-    const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
-    const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
-    const GpuFence::SharedPtr& getFence() const { return mpFence; }
-    LowLevelContextApiData* getApiData() const { return mpApiData; }
+    /**
+     * Returns the native API handle for the command buffer:
+     * - D3D12: ID3D12GraphicsCommandList*
+     * - Vulkan: VkCommandBuffer
+     */
+    NativeHandle getCommandBufferNativeHandle() const;
 
-#ifdef FALCOR_GFX
-    void closeCommandBuffer();
-    void openCommandBuffer();
-    void beginDebugEvent(const char* name);
-    void endDebugEvent();
+    const ref<Fence>& getFence() const { return mpFence; }
+
+#if FALCOR_HAS_CUDA
+    const ref<Fence>& getCudaFence() const { return mpCudaFence; }
+    const ref<cuda_utils::ExternalSemaphore>& getCudaSemaphore() const { return mpCudaSemaphore; }
 #endif
 
- protected:
-    LowLevelContextData(std::shared_ptr<Device> pDevice, CommandQueueType type, CommandQueueHandle queue);
+    void closeCommandBuffer();
+    void openCommandBuffer();
+    void submitCommandBuffer();
 
-    std::shared_ptr<Device> mpDevice; 
-    LowLevelContextApiData* mpApiData = nullptr;
-    CommandQueueType mType;
-    CommandListHandle mpList;
-    CommandQueueHandle mpQueue;  // Can be nullptr
-    CommandAllocatorHandle mpAllocator;
-    GpuFence::SharedPtr mpFence;
+    gfx::IResourceCommandEncoder* getResourceCommandEncoder();
+    gfx::IComputeCommandEncoder* getComputeCommandEncoder();
+    gfx::IRenderCommandEncoder* getRenderCommandEncoder(
+        gfx::IRenderPassLayout* renderPassLayout,
+        gfx::IFramebuffer* framebuffer,
+        bool& newEncoder
+    );
+    gfx::IRayTracingCommandEncoder* getRayTracingCommandEncoder();
+    void closeEncoders();
+
+    void beginDebugEvent(const char* name);
+    void endDebugEvent();
+
+private:
+    Device* mpDevice;
+    gfx::ICommandQueue* mpGfxCommandQueue;
+    Slang::ComPtr<gfx::ICommandBuffer> mGfxCommandBuffer;
+    ref<Fence> mpFence;
+
+#if FALCOR_HAS_CUDA
+    ref<Fence> mpCudaFence;
+    ref<cuda_utils::ExternalSemaphore> mpCudaSemaphore;
+#endif
+
+    gfx::ICommandBuffer* mpCommandBuffer = nullptr;
+    bool mIsCommandBufferOpen = false;
+
+    gfx::IFramebuffer* mpFramebuffer = nullptr;
+    gfx::IRenderPassLayout* mpRenderPassLayout = nullptr;
+    gfx::IResourceCommandEncoder* mpResourceCommandEncoder = nullptr;
+    gfx::IComputeCommandEncoder* mpComputeCommandEncoder = nullptr;
+    gfx::IRenderCommandEncoder* mpRenderCommandEncoder = nullptr;
+    gfx::IRayTracingCommandEncoder* mpRayTracingCommandEncoder = nullptr;
 };
-
-inline std::string to_string(LowLevelContextData::CommandQueueType typ) {
-    switch (typ) {
-        case LowLevelContextData::CommandQueueType::Copy:
-            return "Copy";
-        case LowLevelContextData::CommandQueueType::Compute:
-            return "Compute";
-        case LowLevelContextData::CommandQueueType::Direct:
-            return "Direct";
-        default: 
-            should_not_get_here(); 
-            return "";
-    }
-}
-
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_

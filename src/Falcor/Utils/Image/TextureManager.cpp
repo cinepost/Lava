@@ -77,11 +77,7 @@ namespace {
 	static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
 }
 
-TextureManager::SharedPtr TextureManager::create(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount) {
-	return SharedPtr(new TextureManager(pDevice, maxTextureCount, threadCount));
-}
-
-TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount)
+TextureManager::TextureManager(Device* pDevice, size_t maxTextureCount, size_t threadCount)
 	: mpDevice(pDevice)
 	, mAsyncTextureLoader(mpDevice, threadCount)
 	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))

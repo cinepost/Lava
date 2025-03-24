@@ -12,6 +12,7 @@
 #include "types.h"
 #include "boost/variant.hpp"
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
@@ -303,7 +304,7 @@ inline std::string operator+(const char* str, const AOVName& name) {
   return str + boost::apply_visitor(aov_name_visitor(), name); 
 }
 
-enum_class_operators(AOVBuiltinName);
+ENUM_CLASS_OPERATORS(AOVBuiltinName);
 
 }  // namespace lava
 

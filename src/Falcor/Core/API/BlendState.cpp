@@ -25,29 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
 #include "BlendState.h"
 #include "FBO.h"
+#include "Falcor/Core/ObjectPython.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "lava_utils_lib/logging.h"
 
 namespace Falcor {
 
-BlendState::SharedPtr BlendState::create(const Desc& desc) {
-    return SharedPtr(new BlendState(desc));
+ref<BlendState> BlendState::create(const Desc& desc)
+{
+    return ref<BlendState>(new BlendState(desc));
 }
 
-BlendState::Desc::Desc(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+BlendState::Desc::Desc()
+{
     mRtDesc.resize(Fbo::getMaxColorTargetCount());
 }
 
 BlendState::~BlendState() = default;
 
-BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc) {
-    if(rtIndex >= mRtDesc.size()) {
-        LLOG_ERR << "Error when setting blend state RT parameters. Invalid render-target index " << std::to_string(rtIndex) << ". Must be smaller than " << std::to_string(mRtDesc.size()) << ".";
-        return *this;
-    }
+BlendState::Desc& BlendState::Desc::setRtParams(
+    uint32_t rtIndex,
+    BlendOp rgbOp,
+    BlendOp alphaOp,
+    BlendFunc srcRgbFunc,
+    BlendFunc dstRgbFunc,
+    BlendFunc srcAlphaFunc,
+    BlendFunc dstAlphaFunc)
+{
+    FALCOR_CHECK(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
     mRtDesc[rtIndex].rgbBlendOp = rgbOp;
     mRtDesc[rtIndex].alphaBlendOp = alphaOp;
     mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
@@ -57,11 +66,15 @@ BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp,
     return *this;
 }
 
-BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha) {
-    if(rtIndex >= mRtDesc.size()) {
-        LLOG_ERR << "Error when setting blend state RT write-mask. Invalid render-target index " << std::to_string(rtIndex) << ". Must be smaller than " << std::to_string(mRtDesc.size()) << ".";
-        return *this;
-    }
+BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(
+    uint32_t rtIndex,
+    bool writeRed,
+    bool writeGreen,
+    bool writeBlue,
+    bool writeAlpha)
+{
+    FALCOR_CHECK(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
     mRtDesc[rtIndex].writeMask.writeRed = writeRed;
     mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
     mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;
@@ -71,7 +84,7 @@ BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, b
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(BlendState) {
-    pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
+    pybind11::class_<BlendState, ref<BlendState>>(m, "BlendState");
 }
 #endif
 

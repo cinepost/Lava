@@ -25,19 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_
+#define SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_
 
 #include "ProgramReflection.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 
-namespace Falcor
-{
+
+namespace Falcor {
+
+    class Buffer;
     class ParameterBlock;
-    template<typename T>
-    class ParameterBlockSharedPtr;
 
     /** A "pointer" to a shader variable stored in some parameter block.
 
@@ -76,17 +76,13 @@ namespace Falcor
         */
         ShaderVar();
 
-        /** Create a null/invalid shader variable pointer.
-        */
-        ShaderVar(nullptr_t) : ShaderVar() {};
-
         /** Copy constructor.
         */
         ShaderVar(const ShaderVar& other);
 
         /** Create a shader variable pointer into `pObject` at the given `offset`.
         */
-        ShaderVar(ParameterBlock* pObject, const TypedShaderVarOffset& offset);
+        explicit ShaderVar(ParameterBlock* pObject, const TypedShaderVarOffset& offset);
 
         /** Create a shader variable pointer to the content of `pObject`.
         */
@@ -94,14 +90,14 @@ namespace Falcor
 
         /** Check if this shader variable pointer is valid/non-null.
         */
-        bool isValid() const;
+        bool isValid() const { return mOffset.isValid(); }
 
         /** Get the type data this shader variable points at.
 
         For an invalid/null shader variable the result will be null.
 
         */
-        ReflectionType::SharedConstPtr getType() const;
+        const ReflectionType* getType() const { return mOffset.getType(); }
 
         /** Get the offset that this shader variable points to inside the parameter block.
         */
@@ -111,35 +107,36 @@ namespace Falcor
             Note: If the type of the value being pointed at includes anything other than ordinary/uniform data, then this byte offset will not provide
             complete enough information to re-create the same `ShaderVar` later.
         */
-        size_t getByteOffset() const;
+        size_t getByteOffset() const { return mOffset.getUniform().getByteOffset(); }
 
-        /** Get a shader variable pointer to a sub-field.
+         /**
+         * Get a shader variable pointer to a sub-field.
+         *
+         * This shader variable must point to a value of `struct` type,
+         * with a field matching the given `name`.
+         *
+         * If this shader variable points at a constant buffer or parameter block,
+         * then the lookup will proceed in the contents of that block.
+         *
+         * If the above doesn't hold, an exception is thrown.
+         */
+        ShaderVar operator[](std::string_view name) const;
 
-            This shader variable must point to a value of `struct` type, with a field matching the given `name`.
-            If this shader variable points at a constant buffer or parameter block, then the lookup will proceed in the contents of that block.
-            Otherwise an error is logged and an invalid `ShaderVar` is returned.
-        */
-        ShaderVar operator[](const char* name) const;
-
-        /** Get a shader variable pointer to a sub-field.
-
-            This shader variable must point to a value of `struct` type, with a field matching the given `name`.
-            If this shader variable points at a constant buffer or parameter block, then the lookup will proceed in the contents of that block.
-            Otherwise an error is logged and an invalid `ShaderVar` is returned.
-        */
-        ShaderVar operator[](const std::string& name) const;
-
-        /** Get a shader variable pointer to an element or sub-field.
-
-            This operation is valid in two cases:
-            1) This shader variable points at a value of array type, and the `index` is in range for the array. The result
-               is a shader variable that points to a single array element.
-            2) This shader variable points at a value of `struct` type, and `index` is in range for the number of fields in
-               the `struct`. The result is a shader variable that points to a single `struct` field.
-            If this shader variable points at a constant buffer or parameter block, then the lookup will proceed in the contents of that block.
-
-            Otherwise an error is logged and an invalid `ShaderVar` is returned.
-        */
+        /**
+         * Get a shader variable pointer to an element or sub-field.
+         *
+         * This operation is valid in two cases:
+         * 1) This shader variable points at a value of array type, and the `index`
+         * is in range for the array.
+         * The result is a shader variable that points to a single array element.
+         * 2) This shader variable points at a value of `struct` type, and `index`
+         * is in range for the number of fields in the `struct`.
+         * The result is a shader variable that points to a single `struct` field.
+         * If this shader variable points at a constant buffer or parameter block,
+         * then the lookup will proceed in the contents of that block.
+         *
+         * If the above doesn't hold, an exception is thrown.
+         */
         ShaderVar operator[](size_t index) const;
 
         /** Try to get a variable for a member/field.
@@ -147,7 +144,13 @@ namespace Falcor
         Unlike `operator[]`, a `findMember` operation does not
         log an error if a member of the given name cannot be found.
         */
-        ShaderVar findMember(const std::string& name) const;
+        ShaderVar findMember(std::string_view name) const;
+
+        /**
+         * Returns true if a member/field exists.
+         */
+        bool hasMember(std::string_view name) const { return findMember(name).isValid(); }
+
 
         /** Try to get a variable for a member/field, by index.
 
@@ -156,13 +159,37 @@ namespace Falcor
         */
         ShaderVar findMember(uint32_t index) const;
 
+        /**
+         * Returns true if a member/field exists, by index.
+         */
+        bool hasMember(uint32_t index) const { return findMember(index).isValid(); }
+
+
         /** Set the value of the data pointed to by this shader variable.
             Returns `true` if successful. Logs and error and returns `false` if the given `val` does not have a suitable type for the value
             pointed to by this shader variable.
         */
-        template<typename T> bool set(const T& val) const
+        template<typename T> 
+        void set(const T& val) const
         {
             return setImpl<T>(val);
+        }
+
+        /**
+         * Set the value of the data pointed to by this shader variable.
+         *
+         * This operator allows assignment syntax to be used in place of
+         * the `set()` method. The following two statements are equivalent:
+         * myShaderVar["someField"].set(float4(0));
+         * myShaderVar["someField"] = float4(0);
+         *
+         * Throws an exception if the given `val` does not have a suitable type for
+         * the value pointed to by this shader variable.
+         */
+        template<typename T>
+        void operator=(const T& val) const
+        {
+            setImpl(val);
         }
 
         /** Assign raw binary data to the pointed-to value.
@@ -184,100 +211,94 @@ namespace Falcor
         /** Set a buffer into this variable
             Logs an error and returns `false` if this variable doesn't point at a buffer
         */
-        bool setBuffer(const Buffer::SharedPtr& pBuffer) const;
-
-        /** Set the texture that this variable points to.
-            Logs an error and returns `false` if this variable doesn't point at a texture.
-        */
-        bool setTexture(const Texture::SharedPtr& pTexture) const;
-
-        /** Get the texture that this variable points to.
-            Logs an error and returns null if this variable doesn't point at a texture.
-        */
-        Texture::SharedPtr getTexture() const;
-
-        /** Set the sampler that this variable points to.
-            Logs an error and returns `false` if this variable doesn't point at a sampler.
-        */
-        bool setSampler(const Sampler::SharedPtr& pSampler) const;
-
-        /** Get the sampler that this variable points to.
-            Logs an error and returns null if this variable doesn't point at a sampler.
-        */
-        Sampler::SharedPtr getSampler() const;
+        void setBuffer(const ref<Buffer>& pBuffer) const;
 
         /** Get the buffer that this variable points to.
             Logs an error and returns nullptr if this variable doesn't point at a buffer.
         */
-        Buffer::SharedPtr getBuffer() const;
+        ref<Buffer> getBuffer() const;
+
+        /**
+         * Implicit conversion from a shader variable to a buffer.
+         * This operation allows a bound buffer to be queried using the `[]` syntax:
+         * pBuffer = pVars["someBuffer"];
+         */
+        operator ref<Buffer>() const { return getBuffer(); }
+
+        /** Set the texture that this variable points to.
+            Logs an error and returns `false` if this variable doesn't point at a texture.
+        */
+        void setTexture(const ref<Texture>& pTexture) const;
+
+        /** Get the texture that this variable points to.
+            Logs an error and returns null if this variable doesn't point at a texture.
+        */
+        ref<Texture> getTexture() const;
+
+        /**
+         * Implicit conversion from a shader variable to a texture.
+         * This operation allows a bound texture to be queried using the `[]` syntax:
+         * pTexture = pVars["someTexture"];
+         */
+        operator ref<Texture>() const { return getTexture(); }
+
+        /** Set the sampler that this variable points to.
+            Logs an error and returns `false` if this variable doesn't point at a sampler.
+        */
+        void setSampler(const ref<Sampler>& pSampler) const;
+
+        /** Get the sampler that this variable points to.
+            Logs an error and returns null if this variable doesn't point at a sampler.
+        */
+        ref<Sampler> getSampler() const;
+
+        /**
+         * Implicit conversion from a shader variable to a sampler.
+         * This operation allows a bound sampler to be queried using the `[]` syntax:
+         * pSampler = pVars["someSampler"];
+         */
+        operator ref<Sampler>() const;
 
         /** Set the shader resource view that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at a shader resource view.
         */
-        bool setSrv(const ShaderResourceView::SharedPtr& pSrv) const;
+        void setSrv(const ref<ShaderResourceView>& pSrv) const;
 
         /** Get the shader resource view that this variable points to.
             Logs an error and returns null if this variable doesn't point at a shader resource view.
         */
-        ShaderResourceView::SharedPtr getSrv() const;
+        ref<ShaderResourceView> getSrv() const;
 
         /** Set the unordered access view that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at an unordered access view.
         */
-        bool setUav(const UnorderedAccessView::SharedPtr& pUav) const;
+        void setUav(const ref<UnorderedAccessView>& pUav) const;
 
         /** Get the unordered access view that this variable points to.
             Logs an error and returns null if this variable doesn't point at an unordered access view.
         */
-        UnorderedAccessView::SharedPtr getUav() const;
+        ref<UnorderedAccessView> getUav() const;
 
         /** Set the acceleration structure that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at an acceleration structure.
         */
-        bool setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const;
+        void setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const;
 
         /** Get the acceleration structure that this variable points to.
             Logs an error and returns null if this variable doesn't point at an acceleration structure.
         */
-        RtAccelerationStructure::SharedPtr getAccelerationStructure() const;
+        ref<RtAccelerationStructure> getAccelerationStructure() const;
 
         /** Set the parameter block that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at a parameter block.
         */
-        bool setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const;
+        void setParameterBlock(const ref<ParameterBlock>& pBlock) const;
 
         /** Get the parameter block that this variable points to.
             Logs an error and returns null if this variable doesn't point at a parameter block.
         */
-        std::shared_ptr<ParameterBlock> getParameterBlock() const;
+        ref<ParameterBlock> getParameterBlock() const;
 
-        /** Set the value of the data pointed to by this shader variable.
-
-            This operator allows assignment syntax to be used in place of
-            the `set()` method. The following two statements are equivalent:
-                myShaderVar["someField"].set(float4(0));
-                myShaderVar["someField"] = float4(0);
-        */
-        template<typename T>
-        void operator=(const T& val)
-        {
-            setImpl(val);
-        }
-
-        /** Set the value of the data pointed to by this shader variable.
-
-            This operator allows assignment syntax to be used in place of the `set()` method. The following two statements are equivalent:
-
-                myShaderVar["someField"].set(float4(0));
-                myShaderVar["someField"] = float4(0);
-
-            Note: because this operation modified the data "pointed at" by the shader variable, rather than the shader variable itself, assignment is allowed on a `const ShaderVar`.
-        */
-        template<typename T>
-        void operator=(const T& val) const
-        {
-            setImpl(val);
-        }
 
         /** Implicit conversion from a shader variable to its offset information.
 
@@ -312,7 +333,7 @@ namespace Falcor
                 ...
                 pVars[myVarLoc] = someValue; // CRASH!
         */
-        operator UniformShaderVarOffset() const;
+        operator UniformShaderVarOffset() const { return mOffset.getUniform(); }
 
         /** Create a shader variable that points to some pre-computed `offset` from this one.
 
@@ -330,33 +351,17 @@ namespace Falcor
         */
         ShaderVar operator[](UniformShaderVarOffset const& offset) const;
 
-        /** Implicit conversion from a shader variable to a texture.
-            This operation allows a bound texture to be queried using the `[]` syntax:
-                pTexture = pVars["someTexture"];
-        */
-        operator Texture::SharedPtr() const;
-
-        /** Implicit conversion from a shader variable to a sampler.
-            This operation allows a bound sampler to be queried using the `[]` syntax:
-                pSampler = pVars["someSampler"];
-        */
-        operator Sampler::SharedPtr() const;
-
-        /** Implicit conversion from a shader variable to a buffer.
-            This operation allows a bound buffer to be queried using the `[]` syntax:
-                pBuffer = pVars["someBuffer"];
-        */
-        operator Buffer::SharedPtr() const;
-
-        /** Get access to the underlying bytes of the variable.
-
-            This operation must be used with caution; the caller takes all responsibility for validation.
-
-            Note: if a caller uses the resulting pointer to write to the variable (e.g.,
-            by casting away the `const`-ness, then the underlying `ParameterBlock` will
-            not automatically be marked dirty, and it is possible that the effects of that
-            write will not be visible.
-        */
+        /**
+         * Get access to the underlying bytes of the variable.
+         *
+         * This operation must be used with caution,
+         * the caller takes all responsibility for validation.
+         *
+         * Note: if a caller uses the resulting pointer to write to the variable
+         * (e.g. by casting away the `const`-ness, then the underlying
+         * `ParameterBlock` will not automatically be marked dirty, and it is
+         * possible that the effects of that write will not be visible.
+         */
         void const* getRawData() const;
 
     private:
@@ -378,19 +383,16 @@ namespace Falcor
         */
         TypedShaderVarOffset    mOffset;
 
-        bool setImpl(const Texture::SharedPtr& pTexture) const;
-        bool setImpl(const Sampler::SharedPtr& pSampler) const;
-        bool setImpl(const Buffer::SharedPtr& pBuffer) const;
-        bool setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const;
+        void setImpl(const ref<Texture>& pTexture) const;
+        void setImpl(const ref<Sampler>& pSampler) const;
+        void setImpl(const ref<Buffer>& pBuffer) const;
+        void setImpl(const ref<ParameterBlock>& pBlock) const;
 
         template<typename T>
-        bool setImpl(const ParameterBlockSharedPtr<T>& pBlock) const
-        {
-            return setImpl(std::static_pointer_cast<ParameterBlock>(pBlock));
-        }
-
-        template<typename T> bool setImpl(const T& val) const;
+        void setImpl(const T& val) const;
     };
-}
+}  // namespace Falcor
 
-#include "Core/API/ParameterBlock.h"
+#include "Falcor/Core/API/ParameterBlock.h"
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_

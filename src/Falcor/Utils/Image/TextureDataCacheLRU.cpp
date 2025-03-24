@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
 #include "TextureDataCacheLRU.h"
+
+#include "Falcor/Core/API/Device.h"
 
 static const size_t kMinSystemMemoryLimit = 256;
 static const size_t kMinDeviceMemoryLimit = 128;
 
 namespace Falcor {
 
-TextureDataCacheLRU::SharedPtr TextureDataCacheLRU::create(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit) {
+ref<TextureDataCacheLRU> TextureDataCacheLRU::create(ref<Device> pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit) {
 	assert(pDevice);
 	assert((maxSystemMemoryLimit != 0) && (maxDeviceMemoryLimit != 0));
 

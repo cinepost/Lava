@@ -32,6 +32,7 @@
 #include <string>
 #include <cassert>
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 
 
@@ -57,7 +58,7 @@ class Device;
         RGBA = 0xf,
     };
 
-    enum_class_operators(TextureChannelFlags);
+    ENUM_CLASS_OPERATORS(TextureChannelFlags);
 
     /** These flags are hints the driver to what pipeline stages the resource will be bound to.
 */
@@ -79,7 +80,7 @@ class Device;
         AllDepthViews = ShaderResource | DepthStencil
     };
 
-    enum_class_operators(ResourceBindFlags);
+    ENUM_CLASS_OPERATORS(ResourceBindFlags);
 
     /** Resource formats
     */
@@ -142,6 +143,7 @@ class Device;
         RGBA32Int,
         RGBA32Uint,
 
+        BGRA4Unorm,
         BGRA8Unorm,
         BGRA8UnormSrgb,
 
@@ -153,6 +155,7 @@ class Device;
 
         // Depth-stencil
         D32Float,
+        D32FloatS8Uint,
         D16Unorm,
         D32FloatS8X24,
         D24UnormS8,
@@ -405,11 +408,6 @@ class Device;
                 return false;
         }
     }
-
-
-    /** Get the supported bind-flags for a specific format
-    */
-    ResourceBindFlags getFormatBindFlags(std::shared_ptr<Device> pDevice, ResourceFormat format);
 
     inline const std::string& to_string(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);

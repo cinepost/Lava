@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHSAMPLER_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHSAMPLER_H_
+
 #include "Utils/Math/AABB.h"
 #include "EmissiveLightSampler.h"
 #include "LightBVH.h"
@@ -121,4 +123,6 @@ namespace Falcor
         LightBVH::SharedPtr             mpBVH;                  ///< The light BVH.
         bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVHSAMPLER_H_

@@ -27,21 +27,20 @@
  **************************************************************************/
 #include "stdafx.h"
 
-#include <boost/algorithm/string.hpp>
+
+#include "LightLinker.h"
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
-
 #include "Falcor/Core/API/RenderContext.h"
-
 #include "LightCollectionShared.slang"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Scene/Lights/Light.h"
 
-#include <sstream>
+#include <boost/algorithm/string.hpp>
 
-#include "LightLinker.h"
+#include <sstream>
 
 
 namespace {
