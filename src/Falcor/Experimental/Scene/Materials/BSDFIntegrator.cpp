@@ -127,7 +127,7 @@ std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderCon
     mpFence->syncCpu();
 
     // Read back final results.
-    const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map(Buffer::MapType::Read));
+    const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map());
     std::vector<float3> output(finalResults, finalResults + gridCount);
     mpStagingBuffer->unmap();
 
@@ -160,21 +160,6 @@ void BSDFIntegrator::finalPass(RenderContext* pRenderContext, const uint32_t gri
     var["finalResults"] = mpFinalResultBuffer;
 
     mpFinalPass->execute(pRenderContext, uint3(mResultCount, gridCount, 1));
-
-#if 0
-    // DEBUG: Final accumulation on the CPU.
-    const float3* results = reinterpret_cast<const float3*>(mpResultBuffer->map(Buffer::MapType::Read));
-    for (uint32_t gridIdx = 0; gridIdx < gridCount; gridIdx++)
-    {
-        float3 sum = {};
-        for (size_t i = 0; i < mResultCount; i++)
-        {
-            sum += results[mResultCount * gridIdx + i];
-        }
-        float3 result = sum / (float)mResultCount;
-    }
-    mpResultBuffer->unmap();
-#endif
 }
 
 }  // namespace Falcor

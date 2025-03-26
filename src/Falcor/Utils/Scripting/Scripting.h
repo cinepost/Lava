@@ -132,12 +132,6 @@ class dlldecl Scripting {
             return var + "." + property + " = " + getArgString(arg) + "\n";
         }
 
-        static std::string getFilenameString(const std::string& s, bool stripDataDirs = true) {
-            std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
-            std::replace(filename.begin(), filename.end(), '\\', '/');
-            return filename;
-        }
-
 private:
     static bool sRunning;
 };

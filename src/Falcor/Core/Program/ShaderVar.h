@@ -197,15 +197,15 @@ namespace Falcor {
             This operation will only assign to the ordinary/"uniform" data pointed to by this shader variable, and will not affect any
             nested variables of texture/buffer/sampler types.
         */
-        bool setBlob(void const* data, size_t size) const;
+        void setBlob(void const* data, size_t size) const;
 
         /** Assign raw binary data to the pointed-to value.
             This is a convenience form for `setBlob(&val, sizeof(val)`.
         */
         template<typename T>
-        bool setBlob(const T& val) const
+        void setBlob(const T& val) const
         {
-            return setBlob(&val, sizeof(val));
+            setBlob(&val, sizeof(val));
         }
 
         /** Set a buffer into this variable

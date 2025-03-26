@@ -28,57 +28,57 @@
 #ifndef SRC_FALCOR_SCENE_ANIMATION_ANIMATABLE_H_
 #define SRC_FALCOR_SCENE_ANIMATION_ANIMATABLE_H_
 
-//#include "Falcor.h" 
-#include "Falcor/Core/Framework.h"
-#include "Animation.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Scene/SceneIDs.h"
+#include "Falcor/Utils/Math/Matrix.h"
+
+#include <memory>
+
 
 namespace Falcor {
     
 /** Represents an object that has a transform which can be animated using a scene graph node.
 */
-class dlldecl Animatable
-{
-public:
-    // While this is an abstract base class, we still need a holder type (shared_ptr)
-    // for pybind11 bindings to work on inherited types.
-    using SharedPtr = std::shared_ptr<Animatable>;
+class FALCOR_API Animatable : public Object {
+        FALCOR_OBJECT(Animatable)
+    public:
+        virtual ~Animatable() {}
 
-    static constexpr uint32_t kInvalidNode = -1;
+        /** Set if object has animation data.
+        */
+        void setHasAnimation(bool hasAnimation) { mHasAnimation = hasAnimation; }
 
-    /** Set if object has animation data.
-    */
-    void setHasAnimation(bool hasAnimation) { mHasAnimation = hasAnimation; }
+        /** Returns true if object has animation data.
+        */
+        bool hasAnimation() const { return mHasAnimation; }
 
-    /** Returns true if object has animation data.
-    */
-    bool hasAnimation() const { return mHasAnimation; }
+        /** Enable/disable object animation.
+        */
+        void setIsAnimated(bool isAnimated) { mIsAnimated = isAnimated; }
 
-    /** Enable/disable object animation.
-    */
-    void setIsAnimated(bool isAnimated) { mIsAnimated = isAnimated; }
+        /** Returns true if object animation is enabled.
+        */
+        bool isAnimated() const { return mIsAnimated; }
 
-    /** Returns true if object animation is enabled.
-    */
-    bool isAnimated() const { return mIsAnimated; }
+        /** Sets the node ID of the animated scene graph node.
+        */
+        void setNodeID(NodeID nodeID) { mNodeID = nodeID; }
 
-    /** Sets the node ID of the animated scene graph node.
-    */
-    void setNodeID(uint32_t nodeID) { mNodeID = nodeID; }
+        /** Gets the node ID of the animated scene graph node.
+        */
+        NodeID getNodeID() const { return mNodeID; }
 
-    /** Gets the node ID of the animated scene graph node.
-    */
-    uint32_t getNodeID() const { return mNodeID; }
+        /** Update the transform of the animatable object.
+        */
+        virtual void updateFromAnimation(const float4x4& transform) = 0;
 
-    /** Update the transform of the animatable object.
-    */
-    virtual void updateFromAnimation(const glm::mat4& transform) = 0;
+        virtual void updateFromAnimation(const std::vector<float4x4>& transformList) = 0;
 
-    virtual void updateFromAnimation(const std::vector<glm::mat4>& transformList) = 0;
-
-protected:
-    bool mHasAnimation = false;
-    bool mIsAnimated = true;
-    uint32_t mNodeID = uint32_t(-1);
+    protected:
+        bool mHasAnimation = false;
+        bool mIsAnimated = true;
+        NodeID mNodeID{ NodeID::Invalid() };
 };
 
 }  // namespace Falcor

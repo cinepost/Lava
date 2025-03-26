@@ -28,16 +28,28 @@
 #ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_ 
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 
-#include "Falcor/Core/Macros.h"
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-
 #include "MaterialData.slang"
 #include "TextureHandle.slang"
-#include "Falcor/Scene/Transform.h"
-
-#include "Falcor/Utils/Math/Float16.h"
+#include "MaterialTypeRegistry.h"
+#include "MaterialParamLayout.h"
+#include "SerializedMaterialParams.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Utils/Image/TextureAnalyzer.h"
+#include "Falcor/Utils/UI/Gui.h"
+#include "Falcor/Scene/Transform.h"
+#include "MaterialTypeRegistry.h"
+
+#include <array>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <string>
+
 
 namespace Falcor {
 
@@ -46,20 +58,19 @@ class BasicMaterial;
 
 /** Abstract base class for materials.
 */
-class dlldecl Material : public std::enable_shared_from_this<Material> {
+class FALCOR_API Material : public Object {
+		FALCOR_OBJECT(Material)
 	public:
-		// While this is an abstract base class, we still need a holder type (shared_ptr)
-		// for pybind11 bindings to work on inherited types.
-		using SharedPtr = std::shared_ptr<Material>;
-
 		/** Flags indicating if and what was updated in the material.
 		*/
 		enum class UpdateFlags : uint32_t {
 			None                = 0x0,  ///< Nothing updated.
-			DataChanged         = 0x1,  ///< Material data (parameters) changed.
-			ResourcesChanged    = 0x2,  ///< Material resources (textures, samplers) changed.
-			DisplacementChanged = 0x4,  ///< Displacement mapping parameters changed (only for materials that support displacement).
-		};
+      CodeChanged         = 0x1,  ///< Material shader code changed.
+      DataChanged         = 0x2,  ///< Material data (parameters) changed.
+      ResourcesChanged    = 0x4,  ///< Material resources (textures, buffers, samplers) changed.
+      DisplacementChanged = 0x8,  ///< Displacement mapping parameters changed (only for materials that support displacement).
+      EmissiveChanged     = 0x10, ///< Material emissive properties changed.
+    };
 
 		/** Texture slots available for use.
 			A material does not need to expose/bind all slots.
@@ -89,7 +100,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		};
 
 		struct TextureSlotData {
-			Texture::SharedPtr  pTexture;                           ///< Texture bound to texture slot.
+			ref<Texture>  pTexture;                           ///< Texture bound to texture slot.
 
 			bool hasData() const { return pTexture != nullptr; }
 			bool operator==(const TextureSlotData& rhs) const { return pTexture == rhs.pTexture; }
@@ -214,7 +225,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			\param[in] pTexture The texture.
 			\return True if the texture slot was changed, false otherwise.
 		*/
-		virtual bool setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture);
+		virtual bool setTexture(const TextureSlot slot, const ref<Texture>& pTexture);
 
 		/** Load one of the available texture slots.
 			The call is ignored with a warning if the slot doesn't exist.
@@ -234,7 +245,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			\param[in] The texture slot.
 			\return Texture object if bound, or nullptr if unbound or slot doesn't exist.
 		*/
-		virtual Texture::SharedPtr getTexture(const TextureSlot slot) const;
+		virtual ref<Texture> getTexture(const TextureSlot slot) const;
 
 		/** Optimize texture usage for the given texture slot.
 			This function may replace constant textures by uniform material parameters etc.
@@ -254,7 +265,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 
 		/** Get the default texture sampler for the material.
 		*/
-		virtual Sampler::SharedPtr getDefaultTextureSampler() const { return nullptr; }
+		virtual ref<Sampler> getDefaultTextureSampler() const { return nullptr; }
 
 		/** Set the material texture transform.
 		*/
@@ -279,7 +290,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		// Temporary convenience function to downcast Material to BasicMaterial.
 		// This is because a large portion of the interface hasn't been ported to the Material base class yet.
 		// TODO: Remove this helper later
-		std::shared_ptr<BasicMaterial> toBasicMaterial();
+		ref<BasicMaterial> toBasicMaterial();
 
 		/** Size of the material instance the material produces.
         Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.
@@ -298,15 +309,15 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		const UpdateFlags& getUpdates() const { return mUpdates; }
 
 	protected:
-		Material(Device::SharedPtr pDevice, const std::string& name, MaterialType type);
+		Material(ref<Device> pDevice, const std::string& name, MaterialType type);
 
 		using UpdateCallback = std::function<void(Material::UpdateFlags)>;
 		void registerUpdateCallback(const UpdateCallback& updateCallback) { mUpdateCallback = updateCallback; }
 		void markUpdates(UpdateFlags updates);
 		bool hasTextureSlotData(const TextureSlot slot) const;
-		void updateTextureHandle(MaterialSystem* pOwner, const Texture::SharedPtr& pTexture, TextureHandle& handle);
+		void updateTextureHandle(MaterialSystem* pOwner, const ref<Texture>& pTexture, TextureHandle& handle);
 		void updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle);
-		void updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler);
+		void updateDefaultTextureSamplerID(MaterialSystem* pOwner, const ref<Sampler>& pSampler);
 		bool isBaseEqual(const Material& other) const;
 
 		template<typename T>
@@ -319,7 +330,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			return blob;
 		}
 
-		Device::SharedPtr mpDevice = nullptr;
+		ref<Device> mpDevice;
 
 		std::string mName;                          ///< Name of the material.
 		MaterialHeader mHeader;                     ///< Material header data available in all material types.

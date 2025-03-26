@@ -25,14 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
 #include "VertexLayout.h"
+#include "Falcor/Core/ObjectPython.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor {
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(VertexLayout) {
-    pybind11::class_<VertexLayout, VertexLayout::SharedPtr>(m, "VertexLayout");
+    pybind11::class_<VertexLayout, ref<VertexLayout>>(m, "VertexLayout");
 }
 #endif
 

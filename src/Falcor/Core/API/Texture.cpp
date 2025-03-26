@@ -35,6 +35,9 @@
 #include "GFXAPI.h"
 #include "Falcor/Utils/Threading.h"
 
+#include <glm/glm.hpp>
+#include <glm/exponential.hpp>
+
 #include "Falcor/Utils/Debug/debug.h"
 #include "lava_utils_lib/logging.h"
 
@@ -153,7 +156,7 @@ ref<Texture> Texture::createUDIMFromFile(ref<Device> pDevice, const std::string&
 }
 
 ref<Texture> Texture::createUDIMFromFile(ref<Device> pDevice, const fs::path& path) {
-	ref<Texture> pTexture = make_ref<Texture>(pDevice, 1, 1, 1, 1, 1, 1, ResourceFormat::R8Unorm, Type::Texture2D, ResourceBindFlags::None);
+	ref<Texture> pTexture = make_ref<Texture>(pDevice, Type::Texture2D, ResourceFormat::R8Unorm, 1, 1, 1, 1, 1, 1, ResourceBindFlags::None, nullptr);
 	pTexture->mIsUDIMTexture = true;
 	pTexture->mSourceFilename = path.string();
 
@@ -434,7 +437,14 @@ ref<ShaderResourceView> Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCo
   return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
 
-void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags, bool async) {
+void Texture::captureToFile(
+    uint32_t mipLevel, 
+    uint32_t arraySlice, 
+    const fs::path& path, 
+    Bitmap::FileFormat format, 
+    Bitmap::ExportFlags exportFlags, 
+    bool async) 
+{
 	if(mIsUDIMTexture) {
 		LLOG_WRN << "Unable to capture UDIM texture !";
 		return;
@@ -447,7 +457,7 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
 	readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
 
 	auto func = [=]() {
-		Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
+		Bitmap::saveImage(path, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
 	};
 
 	if (async)
@@ -456,18 +466,19 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
     func();
 }
 
-void Texture::captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) {
+void Texture::captureToFileBlocking(
+    uint32_t mipLevel, 
+    uint32_t arraySlice, 
+    const fs::path& path, 
+    Bitmap::FileFormat format, 
+    Bitmap::ExportFlags exportFlags) 
+{
 	if(mIsUDIMTexture) {
 		LLOG_WRN << "Unable to capture UDIM texture !";
 		return;
 	}
 
-	uint32_t channels;
-	ResourceFormat resourceFormat;
-	std::vector<uint8_t> textureData;
-	
-	readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
-	Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
+    captureToFile(mipLevel, arraySlice, path, format, exportFlags, false);
 }
 
 void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData) {
@@ -500,17 +511,17 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 		std::vector<float> testData(getWidth(0) * getHeight(0) *3);
 		for (size_t i = 0; i < testData.size(); i+=3) testData[i]=1.0f;
 
-		Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+		ref<Buffer> pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::ReadBack);
 	
 		uint4 srcRect = {0, 0, getWidth(0), getHeight(0)};
 		uint4 dstRect = {0, 0, getWidth(0), getHeight(0)};
 		uint32_t bufferWidthPixels = getWidth(0);
 		
-		const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
+		const TextureReductionMode componentsReduction[] = { TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard };
     	const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
 		
-		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
-		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
+		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, TextureFilteringMode::Linear, componentsReduction, componentsTransform);
+		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map());
 
 		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
 
@@ -679,7 +690,7 @@ void Texture::addUDIMTileTexture(const UDIMTileInfo& udim_tile_info) {
 }
 
 bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer) {
-  auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer);
+  auto pPage = VirtualTexturePage::create(ref<Texture>(this), offset, extent, mipLevel, layer);
   if (!pPage) return false;
 
   pPage->mMemoryTypeBits = memoryTypeBits;
@@ -699,7 +710,7 @@ bool Texture::compareDesc(const Texture* pOther) const {
 		mArraySize == pOther->mArraySize &&
 		mFormat == pOther->mFormat &&
 		mIsSparse == pOther->mIsSparse &&
-		mSparsePageRes == pOther->mSparsePageRes &&
+		all(mSparsePageRes == pOther->mSparsePageRes) &&
 		mIsUDIMTexture == pOther->mIsUDIMTexture;
 }
 

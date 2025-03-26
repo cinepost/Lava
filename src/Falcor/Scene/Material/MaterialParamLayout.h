@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,38 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "DescriptorSet.h"
+#ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIALPARAMLAYOUT_H_ 
+#define SRC_FALCOR_SCENE_MATERIAL_MATERIALPARAMLAYOUT_H_
 
-#include "Falcor/Utils/Debug/debug.h"
+#include <vector>
+#include <cstdint>
 
-#if defined(FALCOR_VK)
 namespace Falcor {
 
-DescriptorSet::SharedPtr DescriptorSet::create(std::shared_ptr<Device> pDevice, const DescriptorPool::SharedPtr& pPool, const Layout& layout) {
-    return std::shared_ptr<DescriptorSet>(pDevice, pPool, layout);
-}
+struct MaterialParamLayoutEntry {
+    const char* name;
+    const char* pythonName;
+    uint32_t size;
+    uint32_t offset;
+};
 
-DescriptorSet::DescriptorSet(std::shared_ptr<Device> pDevice, DescriptorPool::SharedPtr pPool, const Layout& layout) : mpPool(pPool), mLayout(layout), mpDevice(pDevice) {
-    apiInit();
-}
+using MaterialParamLayout = std::vector<MaterialParamLayoutEntry>;
 
-DescriptorSet::~DescriptorSet() {
-    mpPool->releaseAllocation(mpApiData);
-}
+} // namespace Falcor
 
-DescriptorSet::Layout& DescriptorSet::Layout::addRange(DescriptorSet::Type type, uint32_t baseRegIndex, uint32_t descriptorCount, uint32_t regSpace) {
-    //LOG_DBG("addRange type %s baseRegIndex %u, regSpace %u, descriptorCount %u", to_string(type).c_str(), baseRegIndex, regSpace, descriptorCount);
-
-    Range r;
-    r.descCount = descriptorCount;
-    r.baseRegIndex = baseRegIndex;
-    r.regSpace = regSpace;
-    r.type = type;
-
-    mRanges.push_back(r);
-    return *this;
-}
-
-}  // namespace Falcor
-#endif  // FALCOR_VK
+#endif  // SRC_FALCOR_SCENE_MATERIAL_MATERIALPARAMLAYOUT_H_

@@ -28,16 +28,30 @@
 #ifndef FALCOR_SCENE_TRANSFORM_H_
 #define FALCOR_SCENE_TRANSFORM_H_
 
-//#include "Falcor.h"
-#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
+#include "Falcor/Utils/Math/Quaternion.h"
 
 namespace Falcor {
 
 /** Helper to create transformation matrices based on translation,
-    rotation and scaling.
+    rotation and scaling. These operations are applied in order of
+    scaling, rotation, and translation last.
 */
-class dlldecl Transform {
+class FALCOR_API Transform {
   public:
+    enum class CompositionOrder {
+        Unknown = 0,
+        ScaleRotateTranslate,
+        ScaleTranslateRotate,
+        RotateScaleTranslate,
+        RotateTranslateScale,
+        TranslateRotateScale,
+        TranslateScaleRotate,
+        Default = ScaleRotateTranslate
+    };
+
     Transform();
 
     const float3& getTranslation() const { return mTranslation; }
@@ -46,8 +60,8 @@ class dlldecl Transform {
     const float3& getScaling() const { return mScaling; }
     void setScaling(const float3& scaling);
 
-    const glm::quat& getRotation() const { return mRotation; }
-    void setRotation(const glm::quat& rotation);
+    const quatf& getRotation() const { return mRotation; }
+    void setRotation(const quatf& rotation);
 
     float3 getRotationEuler() const;
     void setRotationEuler(const float3& angles);
@@ -57,18 +71,24 @@ class dlldecl Transform {
 
     void lookAt(const float3& position, const float3& target, const float3& up);
 
-    const glm::float4x4& getMatrix() const;
+    CompositionOrder getCompositionOrder() const { return mCompositionOrder; } ;
+    void setCompositionOrder(const CompositionOrder& order) { mCompositionOrder = order; mDirty = true; }
+
+    const float4x4& getMatrix() const;
 
     bool operator==(const Transform& other) const;
     bool operator!=(const Transform& other) const { return !((*this) == other); }
 
+    static CompositionOrder getInverseOrder(const CompositionOrder& order);
+
   private:
     float3 mTranslation = float3(0.f);
     float3 mScaling = float3(1.f);
-    glm::quat mRotation = glm::identity<glm::quat>();
+    quatf mRotation = quatf::identity();
+    CompositionOrder mCompositionOrder = CompositionOrder::Default;
 
     mutable bool mDirty = true;
-    mutable glm::float4x4 mMatrix;
+    mutable float4x4 mMatrix;
 
     friend class SceneCache;
 };

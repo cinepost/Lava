@@ -128,6 +128,11 @@ class FALCOR_API Resource : public Object {
     virtual gfx::IResource* getGfxResource() const = 0;
 
     /**
+     * 
+     */
+    ref<Device> device() const;
+
+    /**
      * Returns the native API handle: VkBuffer or VkImage
      */
     NativeHandle getNativeHandle() const;
@@ -140,10 +145,8 @@ class FALCOR_API Resource : public Object {
      */
     SharedResourceApiHandle getSharedApiHandle() const;
 
-    struct ViewInfoHashFunc
-    {
-        std::size_t operator()(const ResourceViewInfo& v) const
-        {
+    struct ViewInfoHashFunc {
+        std::size_t operator()(const ResourceViewInfo& v) const {
             return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1) ^
                    (std::hash<uint32_t>()(v.mipCount) << 1) ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3) ^
                    (std::hash<uint32_t>()(v.offset) << 5) ^ (std::hash<uint32_t>()(v.size) << 7);

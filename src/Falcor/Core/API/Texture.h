@@ -387,27 +387,27 @@ class FALCOR_API Texture : public Resource {
 		*/
 		ref<UnorderedAccessView> getUAV(uint32_t mipLevel, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
-    /**
-     * Get the data layout of a subresource.
-     * @param[in] subresource The subresource index.
-     */
-    SubresourceLayout getSubresourceLayout(uint32_t subresource) const;
+	    /**
+	     * Get the data layout of a subresource.
+	     * @param[in] subresource The subresource index.
+	     */
+	    SubresourceLayout getSubresourceLayout(uint32_t subresource) const;
 
-    /**
-     * Set the data of a subresource.
-     * @param[in] subresource The subresource index.
-     * @param[in] pData The data to write.
-     * @param[in] size The size of the data (must match the actual subresource size).
-     */
-    void setSubresourceBlob(uint32_t subresource, const void* pData, size_t size);
+	    /**
+	     * Set the data of a subresource.
+	     * @param[in] subresource The subresource index.
+	     * @param[in] pData The data to write.
+	     * @param[in] size The size of the data (must match the actual subresource size).
+	     */
+	    void setSubresourceBlob(uint32_t subresource, const void* pData, size_t size);
 
-    /**
-     * Get the data of a subresource.
-     * @param[in] subresource The subresource index.
-     * @param[in] pData The data buffer to read to.
-     * @param[in] size The size of the data (must match the actual subresource size).
-     */
-    void getSubresourceBlob(uint32_t subresource, void* pData, size_t size) const;
+	    /**
+	     * Get the data of a subresource.
+	     * @param[in] subresource The subresource index.
+	     * @param[in] pData The data buffer to read to.
+	     * @param[in] size The size of the data (must match the actual subresource size).
+	     */
+	    void getSubresourceBlob(uint32_t subresource, void* pData, size_t size) const;
 
 		/** Capture the texture to an image file in asynchronous manner (using Falcor::Threading).
 			\param[in] mipLevel Requested mip-level
@@ -422,6 +422,13 @@ class FALCOR_API Texture : public Resource {
 	        Bitmap::FileFormat format = Bitmap::FileFormat::PngFile,
 	        Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None,
 	        bool async = true
+	    );
+
+	    void captureToFileBlocking(uint32_t mipLevel,
+	        uint32_t arraySlice,
+	        const fs::path& path,
+	        Bitmap::FileFormat format = Bitmap::FileFormat::PngFile,
+	        Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None
 	    );
 
 		/** Read the texture to an array.

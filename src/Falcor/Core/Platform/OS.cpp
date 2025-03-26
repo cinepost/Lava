@@ -37,9 +37,6 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "OS.h"
 
-#ifndef PROJECT_DIR
-#define PROJECT_DIR "/home/max/dev/Falcor/"
-#endif
 
 #ifndef LAVA_INSTALL_DIR
 #define LAVA_INSTALL_DIR "/opt/lava/"
@@ -65,42 +62,42 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "/../shaders",
+            fs::path(LAVA_INSTALL_DIR) / "shaders",
+            getExecutableDirectory() / "../shaders",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "/../shaders",
+            fs::path(LAVA_INSTALL_DIR) / "/shaders",
+            getExecutableDirectory() / "../shaders",
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
-            developmentDirectories.push_back(std::string(env_p) + "/shaders");
-            deploymentDirectories.push_back(std::string(env_p) + "/shaders");
+            developmentDirectories.push_back(fs::path(env_p) / "shaders");
+            deploymentDirectories.push_back(fs::path(env_p) / "shaders");
         }
     }
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 
-inline std::vector<std::string> getInitialRenderPassDirectories() {
-    static std::vector<std::string> developmentDirectories;
-    static std::vector<std::string> deploymentDirectories;
+inline std::vector<fs::path> getInitialRenderPassDirectories() {
+    static std::vector<fs::path> developmentDirectories;
+    static std::vector<fs::path> deploymentDirectories;
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
             // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-            std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "/../render_passes",
+            fs::path(LAVA_INSTALL_DIR) / "render_passes",
+            getExecutableDirectory() / "../render_passes",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "/../render_passes"
+            fs::path(LAVA_INSTALL_DIR) / "render_passes",
+            getExecutableDirectory() / "../render_passes"
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
-            developmentDirectories.push_back(std::string(env_p) + "/render_passes");
-            deploymentDirectories.push_back(std::string(env_p) + "/render_passes");
+            developmentDirectories.push_back(fs::path(env_p) / "render_passes");
+            deploymentDirectories.push_back(fs::path(env_p) / "render_passes");
         }
     }
 
@@ -108,36 +105,36 @@ inline std::vector<std::string> getInitialRenderPassDirectories() {
 }
 
 static std::vector<fs::path> gShaderDirectories = getInitialShaderDirectories();
-static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDirectories();
+static std::vector<fs::path> gRenderPassDirectories = getInitialRenderPassDirectories();
 
-inline std::vector<std::string> getInitialDataDirectories() {
-    static std::vector<std::string> developmentDirectories;
-    static std::vector<std::string> deploymentDirectories;
+inline std::vector<fs::path> getInitialDataDirectories() {
+    static std::vector<fs::path> developmentDirectories;
+    static std::vector<fs::path> deploymentDirectories;
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "/../data",
+            fs::path(LAVA_INSTALL_DIR) / "data",
+            getExecutableDirectory() / "../data",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "/../data"
+            fs::path(LAVA_INSTALL_DIR) / "data",
+            getExecutableDirectory() / "../data"
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
-            developmentDirectories.push_back(std::string(env_p) + "/data");
-            deploymentDirectories.push_back(std::string(env_p) + "/data");
+            developmentDirectories.push_back(fs::path(env_p) / "data");
+            deploymentDirectories.push_back(fs::path(env_p) / "data");
         }
     }
 
-    std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+    std::vector<fs::path> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 
     // Add development media folder.
 #ifdef _MSC_VER
-    directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
+    directories.push_back(getExecutableDirectory() / "../../../Media"); // Relative to Visual Studio output folder
 #else
-    directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
+    directories.push_back(getExecutableDirectory() / "../Media"); // Relative to Makefile output folder
 #endif
 
     // Add additional media folders.
@@ -150,15 +147,10 @@ inline std::vector<std::string> getInitialDataDirectories() {
     return directories;
 }
 
-static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
+static std::vector<fs::path> gDataDirectories = getInitialDataDirectories();
 
-const std::vector<std::string>& getDataDirectoriesList() {
+const std::vector<fs::path>& getDataDirectoriesList() {
     return gDataDirectories;
-}
-
-const fs::path& getProjectDirectory() {
-    static fs::path directory(FALCOR_PROJECT_DIR);
-    return directory;
 }
 
 const fs::path& getExecutableDirectory() {
@@ -166,13 +158,13 @@ const fs::path& getExecutableDirectory() {
     return directory;
 }
 
-void addDataDirectory(const std::string& dir) {
+void addDataDirectory(const fs::path& dir) {
     if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end()) {
         gDataDirectories.push_back(dir);
     }
 }
 
-void removeDataDirectory(const std::string& dir) {
+void removeDataDirectory(const fs::path& dir) {
     auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dir);
     if (it != gDataDirectories.end()) {
         gDataDirectories.erase(it);
@@ -196,12 +188,11 @@ bool isDevelopmentMode() {
     return devMode;
 }
 
-std::string canonicalizeFilename(const std::string& filename) {
-    fs::path path(replaceSubstring(filename, "\\", "/"));
-    return fs::exists(path) ? fs::canonical(path).string() : "";
+fs::path canonicalizeFilename(const fs::path& filename) {
+    return fs::exists(filename) ? fs::canonical(filename) : "";
 }
 
-bool findFileInDataDirectories(const std::string& filename, std::string& fullPath) {
+bool findFileInDataDirectories(const fs::path& filename, fs::path& fullPath) {
     // Check if this is an absolute path
     if (fs::path(filename).is_absolute()) {
         fullPath = canonicalizeFilename(filename);
@@ -209,7 +200,7 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
     }
 
     for (const auto& dir : gDataDirectories) {
-        fullPath = canonicalizeFilename(dir + '/' + filename);
+        fullPath = canonicalizeFilename(dir / filename);
         if (doesFileExist(fullPath)) {
             return true;
         }
@@ -218,18 +209,9 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
     return false;
 }
 
-bool findFileInDataDirectories(const fs::path& path, fs::path& fullPath) {
-    std::string file_path;
-    if (findFileInDataDirectories(path.string(), file_path)) {
-        fullPath = fs::path(file_path);
-        return true;
-    }
-    return false;
-}
-
-bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames) {
+bool findFilesInDataDirectories(const fs::path& searchPath, const std::regex& regex, std::vector<fs::path>& filenames) {
     // Check if searchPath exists
-    if (!fs::exists(fs::path(searchPath))) {
+    if (!fs::exists(searchPath)) {
         LLOG_WRN << "Search path '" << searchPath << "' does not exist !!!";
         return false;
     }
@@ -238,10 +220,10 @@ bool findFilesInDataDirectories(const std::string& searchPath, const std::regex&
     const fs::directory_iterator end;
     
     for (fs::directory_iterator iter{searchPath}; iter != end; iter++) {
-        const std::string fileName = iter->path().filename().string();
+        const fs::path fileName = iter->path().filename();
         if (fs::is_regular_file(*iter)) {
-            if (std::regex_match(fileName, regex)) {
-                filenames.push_back(iter->path().string());
+            if (std::regex_match(fileName.string(), regex)) {
+                filenames.push_back(iter->path());
                 result = true;
             }
         }
@@ -287,13 +269,6 @@ uint32_t getNextPowerOf2(uint32_t a) {
     return a;
 }
 
-bool findFileInShaderDirectories(const fs::path& path, std::string& fullPath) {
-    fs::path p;
-    bool result = findFileInShaderDirectories(path, p);
-    fullPath = p.string();
-    return result;
-}
-
 std::string getExtensionFromPath(const fs::path& path) {
     std::string ext;
     if (path.has_extension()) {
@@ -318,9 +293,9 @@ bool hasExtension(const fs::path& path, std::string_view ext) {
         [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
-bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath) {
+bool findFileInRenderPassDirectories(const fs::path& filename, fs::path& fullPath) {
     for (const auto& dir : gRenderPassDirectories) {
-        fullPath = canonicalizeFilename(dir + '/' + filename);
+        fullPath = canonicalizeFilename(dir / filename);
         if (doesFileExist(fullPath)) {
             LLOG_DBG << "RenderPass library: " << filename << " found as: " << fullPath;
             return true;
@@ -329,10 +304,10 @@ bool findFileInRenderPassDirectories(const std::string& filename, std::string& f
     return false;
 }
 
-bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename) {
+bool findAvailableFilename(const std::string& prefix, const fs::path& directory, const std::string_view extension, fs::path& filename) {
     for (uint32_t i = 0; i < (uint32_t)-1; i++) {
         std::string newPrefix = prefix + '.' + std::to_string(i);
-        filename = directory + '/' + newPrefix + "." + extension;
+        filename = directory / fs::path(newPrefix + "." + extension);
 
         if (doesFileExist(filename) == false) {
             return true;
@@ -343,44 +318,11 @@ bool findAvailableFilename(const std::string& prefix, const std::string& directo
     return false;
 }
 
-std::string stripDataDirectories(const std::string& filename) {
-    std::string stripped = filename;
-    std::string canonFile = canonicalizeFilename(filename);
-
-    for (const auto& dir : gDataDirectories) {
-        std::string canonDir = canonicalizeFilename(dir);
-
-        if (canonDir.size() && hasPrefix(canonFile, canonDir, false)) {
-            // canonicalizeFilename adds trailing \\ to drive letters and removes them from paths containing folders
-            // The entire prefix directory including the slash should be removed
-            bool trailingSlash = canonDir.back() == '\\' || canonDir.back() == '/';
-            size_t len = trailingSlash ? canonDir.length() : canonDir.length() + 1;
-            std::string tmp = canonFile.erase(0, len);
-            
-            if (tmp.length() < stripped.length()) {
-                stripped = tmp;
-            }
-        }
-    }
-
-    return stripped;
+fs::path getDirectoryFromFile(const fs::path& filename) {
+    return filename.has_filename() ? filename.parent_path() : filename;
 }
 
-std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension) {
-    if (hasSuffix(str, currentExtension)) {
-        std::string ret = str;
-        return (ret.erase(ret.rfind(currentExtension)) + newExtension);
-    } else {
-        return str;
-    }
-}
-
-std::string getDirectoryFromFile(const std::string& filename) {
-    fs::path path = filename;
-    return path.has_filename() ? path.parent_path().string() : filename;
-}
-
-std::string getExtensionFromFile(const std::string& filename) {
+std::string getExtensionFromFile(const fs::path& filename) {
     fs::path path = filename;
     std::string ext;
     if (path.has_extension()) {
@@ -391,12 +333,12 @@ std::string getExtensionFromFile(const std::string& filename) {
     return ext;
 }
 
-std::string getFilenameFromPath(const std::string& filename) {
-    return fs::path(filename).filename().string();
+fs::path getFilenameFromPath(const fs::path& filename) {
+    return fs::path(filename).filename();
 }
 
-std::string readFile(const std::string& filename) {
-    std::ifstream filestream(filename);
+std::string readFile(const fs::path& filename) {
+    std::ifstream filestream(filename.string());
     std::string str;
     filestream.seekg(0, std::ios::end);
     str.reserve(filestream.tellg());

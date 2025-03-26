@@ -40,11 +40,6 @@ namespace Falcor {
         std::quick_exit(1);
     }
 
-    void reportErrorAndAllowRetry(const std::string& msg) {
-        LLOG_ERR << msg;
-        std::quick_exit(1);
-    }
-
     [[noreturn]] void reportFatalError(const std::string& msg) {
         LLOG_FTL << msg;
         std::abort();

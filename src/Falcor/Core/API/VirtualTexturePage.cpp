@@ -9,7 +9,7 @@
 
 namespace Falcor {
 
-rev<VirtualTexturePage> VirtualTexturePage::create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer) {
+ref<VirtualTexturePage> VirtualTexturePage::create(const ref<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer) {
     return make_ref<VirtualTexturePage>(pTexture, offset, extent, mipLevel, layer);
 }
 

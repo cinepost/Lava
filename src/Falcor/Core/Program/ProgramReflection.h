@@ -1419,20 +1419,18 @@ namespace Falcor {
 
         /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
         */
-        struct ShaderVariable
-        {
+        struct ShaderVariable {
             uint32_t bindLocation = 0;      ///> The bind-location of the variable
             std::string semanticName;       ///> The semantic name of the variable
             ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown; ///> The type of the variable
         };
-        using VariableMap = std::unordered_map<std::string, ShaderVariable>;
+        using VariableMap =  std::map<std::string, ShaderVariable, std::less<>>;
 
         using BindLocation = ParameterBlockReflection::BindLocation;
 
         /** Data structure describing a hashed string used in the program.
         */
-        struct HashedString
-        {
+        struct HashedString {
             uint32_t hash;
             std::string string;
         };

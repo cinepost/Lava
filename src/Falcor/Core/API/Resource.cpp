@@ -197,6 +197,10 @@ void Resource::breakStrongReferenceToDevice() {
     mpDevice.breakStrongReference();
 }
 
+ref<Device> Resource::device() const {
+    return mpDevice;
+}
+
 #pragma GCC pop_options
 #pragma GCC diagnostic pop
 

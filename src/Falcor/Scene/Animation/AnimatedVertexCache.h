@@ -29,13 +29,17 @@
 #define SRC_FALCOR_SCENE_ANIMATED_VERTEX_CACHE_H_
 
 #include "Animation.h"
-#include "Falcor/Core/API/Device.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
-
-#include "Scene/Curves/CurveConfig.h"
-
-#include "Scene/SceneTypes.slang"
 #include "SharedTypes.slang"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/Pass/ComputePass.h"
+#include "Falcor/Scene/Curves/CurveConfig.h"
+#include "Falcor/Scene/SceneTypes.slang"
+#include "Falcor/Scene/SceneIDs.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+
+#include <algorithm>
+#include <limits>
+#include <vector>
 
 namespace Falcor {
 
@@ -45,12 +49,11 @@ class Model;
     class Scene;
     class Model;
 
-    struct CachedCurve
-    {
+    struct CachedCurve {
         static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
 
         CurveTessellationMode tessellationMode = CurveTessellationMode::LinearSweptSphere;  ///< Curve tessellation mode.
-        uint32_t geometryID = kInvalidID;                                                   ///< ID of the curve or mesh this data is animating.
+        CurveOrMeshID geometryID{ CurveOrMeshID::kInvalidID };                              ///< ID of the curve or mesh this data is animating.
 
         std::vector<double> timeSamples;
 
@@ -62,11 +65,8 @@ class Model;
         std::vector<std::vector<DynamicCurveVertexData>> vertexData;
     };
 
-    struct CachedMesh
-    {
-        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
-
-        uint32_t meshID = kInvalidID; ///< ID of the mesh this data is animating.
+    struct CachedMesh {
+        MeshID meshID{ MeshID::kInvalidID }; ///< ID of the mesh this data is animating.
 
         std::vector<double> timeSamples;
 
@@ -74,14 +74,11 @@ class Model;
         std::vector<std::vector<PackedStaticVertexData>> vertexData;
     };
 
-    class dlldecl AnimatedVertexCache
+    class FALCOR_API AnimatedVertexCache
     {
     public:
-        using UniquePtr = std::unique_ptr<AnimatedVertexCache>;
-        using UniqueConstPtr = std::unique_ptr<const AnimatedVertexCache>;
+        AnimatedVertexCache(ref<Device> pDevice, Scene* pScene, const ref<Buffer>& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
         ~AnimatedVertexCache() = default;
-
-        static UniquePtr create(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
         void setIsLooped(bool looped) { mLoopAnimations = looped; }
 
@@ -101,13 +98,11 @@ class Model;
 
         void copyToPrevVertices(RenderContext* pContext);
 
-        Buffer::SharedPtr getPrevCurveVertexData() const { return mpPrevCurveVertexBuffer; }
+        ref<Buffer> getPrevCurveVertexData() const { return mpPrevCurveVertexBuffer; }
 
         uint64_t getMemoryUsageInBytes() const;
 
     private:
-        AnimatedVertexCache(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
-
         void initCurveKeyframes();
         void bindCurveLSSBuffers();
         void bindCurvePolyTubeBuffers();
@@ -132,13 +127,13 @@ class Model;
 
         void executeCurvePolyTubeVertexUpdatePass(RenderContext* pContext, const InterpolationInfo& info, bool copyPrev = false);
 
-        Device::SharedPtr mpDevice = nullptr;
+        ref<Device> mpDevice;
 
         bool mLoopAnimations = true;
         double mGlobalCurveAnimationLength = 0;
         double mGlobalMeshAnimationLength = 0;
         Scene* mpScene = nullptr;
-        Buffer::SharedPtr mpPrevVertexData; ///< Owned by AnimationController
+        ref<Buffer> mpPrevVertexData; ///< Owned by AnimationController
         Animation::Behavior mPreInfinityBehavior = Animation::Behavior::Constant; // How the animation behaves before the first keyframe.
 
         std::vector<CachedCurve> mCachedCurves;
@@ -147,40 +142,40 @@ class Model;
         std::vector<double> mCurveKeyframeTimes;
 
         // Cached curve (LSS) animation.
-        ComputePass::SharedPtr mpCurveVertexUpdatePass;
-        ComputePass::SharedPtr mpCurveAABBUpdatePass;
+        ref<ComputePass> mpCurveVertexUpdatePass;
+        ref<ComputePass> mpCurveAABBUpdatePass;
 
         uint32_t mCurveVertexCount = 0;
         uint32_t mCurveIndexCount = 0;
         uint32_t mCurveAABBOffset = 0;
 
-        std::vector<Buffer::SharedPtr> mpCurveVertexBuffers;
-        Buffer::SharedPtr mpPrevCurveVertexBuffer;
-        Buffer::SharedPtr mpCurveIndexBuffer;
+        std::vector<ref<Buffer>> mpCurveVertexBuffers;
+        ref<Buffer> mpPrevCurveVertexBuffer;
+        ref<Buffer> mpCurveIndexBuffer;
 
         // Cached curve (poly-tube mesh) animation.
-        ComputePass::SharedPtr mpCurvePolyTubeVertexUpdatePass;
+        ref<ComputePass> mpCurvePolyTubeVertexUpdatePass;
 
         uint32_t mCurvePolyTubeVertexCount = 0;
         uint32_t mCurvePolyTubeIndexCount = 0;
         uint32_t mMaxCurvePolyTubeVertexCount = 0; ///< Greatest vertex count a curve has
 
-        std::vector<Buffer::SharedPtr> mpCurvePolyTubeVertexBuffers;
-        Buffer::SharedPtr mpCurvePolyTubeStrandIndexBuffer;
-        Buffer::SharedPtr mpCurvePolyTubeCurveMetadataBuffer;
-        Buffer::SharedPtr mpCurvePolyTubeMeshMetadataBuffer;
+        std::vector<ref<Buffer>> mpCurvePolyTubeVertexBuffers;
+        ref<Buffer> mpCurvePolyTubeStrandIndexBuffer;
+        ref<Buffer> mpCurvePolyTubeCurveMetadataBuffer;
+        ref<Buffer> mpCurvePolyTubeMeshMetadataBuffer;
 
         // Cached mesh animations
-        ComputePass::SharedPtr mpMeshVertexUpdatePass;
+        ref<ComputePass mpMeshVertexUpdatePass;
 
         std::vector<CachedMesh> mCachedMeshes;
         std::vector<InterpolationInfo> mMeshInterpolationInfo;
         uint32_t mMeshKeyframeCount = 0; ///< Total count of all keyframes for all meshes
         uint32_t mMaxMeshVertexCount = 0; ///< Greatest vertex count a mesh has
 
-        std::vector<Buffer::SharedPtr> mpMeshVertexBuffers;
-        Buffer::SharedPtr mpMeshInterpolationBuffer;
-        Buffer::SharedPtr mpMeshMetadataBuffer;
+        std::vector<ref<Buffer>> mpMeshVertexBuffers;
+        ref<Buffer> mpMeshInterpolationBuffer;
+        ref<Buffer> mpMeshMetadataBuffer;
     };
 }  // namespace Falcor
 

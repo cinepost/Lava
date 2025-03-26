@@ -61,6 +61,10 @@ FALCOR_ENUM_INFO(
 );
 FALCOR_ENUM_REGISTER(ShaderModel);
 
+inline const std::string& to_string(const ShaderModel& sm) {
+    return enumToString(sm);
+}
+
 inline uint32_t getShaderModelMajorVersion(ShaderModel sm)
 {
     return uint32_t(sm) / 10;
@@ -107,6 +111,10 @@ FALCOR_ENUM_INFO(
     }
 );
 FALCOR_ENUM_REGISTER(ShaderType);
+
+inline const std::string& to_string(const ShaderType& st) {
+    return enumToString(st);
+}
 
 enum class DataType
 {

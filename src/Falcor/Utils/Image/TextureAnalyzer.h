@@ -152,7 +152,8 @@ private:
     ref<ComputePass> mpAnalyzePass;
 };
 
-FALCOR_ENUM_CLASS_OPERATORS(TextureAnalyzer::Result::RangeFlags);
+ENUM_CLASS_OPERATORS(TextureAnalyzer::Result::RangeFlags);
+
 } // namespace Falcor
 
 #endif  // SRC_FALCOR_UTILS_IMAGE_TEXTUREANALYZER_H_

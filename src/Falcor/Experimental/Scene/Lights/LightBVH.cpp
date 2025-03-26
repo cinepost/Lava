@@ -277,7 +277,7 @@ void LightBVH::syncDataToCPU() const
 
     // TODO: This is slow because of the flush. We should copy to a staging buffer
     // after the data is updated on the GPU and map the staging buffer here instead.
-    const void* const ptr = mpBVHNodesBuffer->map(Buffer::MapType::Read);
+    const void* const ptr = mpBVHNodesBuffer->map();
     assert(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
     std::memcpy(mNodes.data(), ptr, mNodes.size() * sizeof(mNodes[0]));
     mpBVHNodesBuffer->unmap();

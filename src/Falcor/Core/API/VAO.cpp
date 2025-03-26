@@ -25,78 +25,48 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
 #include "VAO.h"
+#include "GFXAPI.h"
+#include "Falcor/Core/ObjectPython.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
-#include "Falcor/Core/API/Buffer.h"
 
 namespace Falcor {
 
-bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat) {
-	// TODO: Check number of vertex buffers match with pLayout.
-	if (pIB) {
-		if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint) {
-			LLOG_ERR << "Invalid index buffer format (" << to_string(ibFormat) << ")";
-			return false;
-		}
-	}
+Vao::Vao(const BufferVec& pVBs, ref<VertexLayout> pLayout, ref<Buffer> pIB, ResourceFormat ibFormat, Topology topology)
+    : mpVertexLayout(pLayout), mpVBs(pVBs), mpIB(pIB), mIbFormat(ibFormat), mTopology(topology)
+{}
 
-	return true;
-}
-
-Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology topology)
-	: mpVertexLayout(pLayout)
-	, mpVBs(pVBs)
-	, mpIB(pIB)
-	, mIbFormat(ibFormat) 
-	, mTopology(topology)
-{
-
-}
-
-Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat) {
-	if (pLayout != nullptr) {
-		if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false) {
-			throw std::runtime_error("Failed to create VAO");
-		}
-	}
-
-	SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
-	return pVao;
+ref<Vao> Vao::create(Topology topology, ref<VertexLayout> pLayout, const BufferVec& pVBs, ref<Buffer> pIB, ResourceFormat ibFormat) {
+    // TODO: Check number of vertex buffers match with pLayout.
+    FALCOR_CHECK(
+        !pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint."
+    );
+    return ref<Vao>(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
 }
 
 Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const {
-	ElementDesc desc;
+    ElementDesc desc;
 
-	for (uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId) {
-		const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
-		assert(pVbLayout);
+    for (uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId) {
+        const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
+        FALCOR_ASSERT(pVbLayout);
 
-		for (uint32_t i = 0; i < pVbLayout->getElementCount(); ++i) {
-			if (pVbLayout->getElementShaderLocation(i) == elementLocaion) {
-				desc.vbIndex = bufId;
-				desc.elementIndex = i;
-				return desc;
-			}
-		}
-	}
-	return desc;
+        for (uint32_t i = 0; i < pVbLayout->getElementCount(); ++i) {
+            if (pVbLayout->getElementShaderLocation(i) == elementLocaion) {
+                desc.vbIndex = bufId;
+                desc.elementIndex = i;
+                return desc;
+            }
+        }
+    }
+    return desc;
 }
 
-void Vao::updateVertexBufferData(uint32_t index, const void* pData, size_t offset, size_t size) {
-	assert(index < (uint32_t)mpVBs.size());
-
-	auto& pBuffer = mpVBs[index];
-	assert(pBuffer);
-
-	if(!pBuffer || !pData || (size == 0)) return;
-    
-  pBuffer->setBlob(pData, offset, size);
-}
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Vao) {
-	pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
+	pybind11::class_<Vao, ref<Vao>>(m, "Vao");
 }
 #endif
 

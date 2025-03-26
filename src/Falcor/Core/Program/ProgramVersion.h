@@ -275,7 +275,7 @@ namespace Falcor {
 
     protected:
         friend class Program;
-        friend class RtProgram;
+        friend class ProgramManager;
 
         static ref<ProgramVersion> createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 

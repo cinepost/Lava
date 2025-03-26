@@ -25,15 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-
-#include "Falcor/Core/API/RenderContext.h"
-
-#include "Falcor/Utils/Timing/Profiler.h"
-#include "Falcor/Scene/SceneBuilder.h"
-#include <fstream>
-
 #include "AnimationController.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Timing/Profiler.h"
+#include "Falcor/Scene/Scene.h"
+#include <fstream>
 
 namespace Falcor {
     
@@ -44,15 +40,15 @@ namespace {
     const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
 }
 
-AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
-    : mAnimations(animations)
+AnimationController::AnimationController(ref<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
+    : mpDevice(pDevice)
+    , mAnimations(animations)
     , mNodesEdited(pScene->mSceneGraph.size())
     , mLocalMatrixLists(pScene->mSceneGraph.size())
     , mGlobalMatrixLists(pScene->mSceneGraph.size())
     , mInvTransposeGlobalMatrixLists(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
     , mpScene(pScene)
-    , mpDevice(pScene->device())
 {
     // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
     // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
@@ -99,12 +95,6 @@ void AnimationController::createBuffers(size_t matrixCount) {
         mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
     }
-}
-
-AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations) {
-    assert(pScene);
-    if(!pScene) return nullptr;
-    return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
 }
 
 void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData) {

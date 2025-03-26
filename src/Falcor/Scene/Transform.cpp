@@ -25,10 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Transform.h"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/transform.hpp"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor {
 
@@ -44,62 +42,108 @@ void Transform::setScaling(const float3& scaling) {
     mDirty = true;
 }
 
-void Transform::setRotation(const glm::quat& rotation) {
+void Transform::setRotation(const quatf& rotation) {
     mRotation = rotation;
     mDirty = true;
 }
 
 float3 Transform::getRotationEuler() const {
-    return glm::eulerAngles(mRotation);
+    return math::eulerAngles(mRotation);
 }
 
 void Transform::setRotationEuler(const float3& angles) {
-    setRotation(glm::quat(angles));
+    setRotation(math::quatFromEulerAngles(angles));
 }
 
 float3 Transform::getRotationEulerDeg() const {
-    return glm::degrees(getRotationEuler());
+    return math::degrees(getRotationEuler());
 }
 
 void Transform::setRotationEulerDeg(const float3& angles) {
-    setRotationEuler(glm::radians(angles));
+    setRotationEuler(math::radians(angles));
 }
 
 void Transform::lookAt(const float3& position, const float3& target, const float3& up) {
     mTranslation = position;
     float3 dir = normalize(target - position);
-    mRotation = glm::quatLookAtLH(dir, up);
+    mRotation = math::quatFromLookAt(dir, up, math::Handedness::RightHanded);
 }
 
-const glm::float4x4& Transform::getMatrix() const {
+const float4x4& Transform::getMatrix() const {
     if (mDirty) {
-        glm::mat4 T = translate(mTranslation);
-        glm::mat4 R = mat4_cast(mRotation);
-        glm::mat4 S = scale(mScaling);
-        mMatrix = T * R * S;
+        float4x4 T = math::matrixFromTranslation(mTranslation);
+        float4x4 R = math::matrixFromQuat(mRotation);
+        float4x4 S = math::matrixFromScaling(mScaling);
+        switch (mCompositionOrder) {
+            case CompositionOrder::ScaleRotateTranslate:
+                mMatrix = mul(mul(T, R), S);
+                break;
+            case CompositionOrder::ScaleTranslateRotate:
+                mMatrix = mul(mul(R, T), S);
+                break;
+            case CompositionOrder::RotateScaleTranslate:
+                mMatrix = mul(mul(T, S), R);
+                break;
+            case CompositionOrder::RotateTranslateScale:
+                mMatrix = mul(mul(S, T), R);
+                break;
+            case CompositionOrder::TranslateRotateScale:
+                mMatrix = mul(mul(S, R), T);
+                break;
+            case CompositionOrder::TranslateScaleRotate:
+                mMatrix = mul(mul(R, S), T);
+                break;
+            case CompositionOrder::Unknown:
+                FALCOR_THROW("Unknown transform composition order.");
+                break;
+        }
         mDirty = false;
     }
 
     return mMatrix;
 }
 
+Transform::CompositionOrder Transform::getInverseOrder(const Transform::CompositionOrder& order) {
+    switch (order) {
+        case Transform::CompositionOrder::ScaleRotateTranslate:
+            return Transform::CompositionOrder::TranslateRotateScale;
+        case Transform::CompositionOrder::ScaleTranslateRotate:
+            return Transform::CompositionOrder::RotateTranslateScale;
+        case Transform::CompositionOrder::RotateScaleTranslate:
+            return Transform::CompositionOrder::TranslateScaleRotate;
+        case Transform::CompositionOrder::RotateTranslateScale:
+            return Transform::CompositionOrder::ScaleTranslateRotate;
+        case Transform::CompositionOrder::TranslateRotateScale:
+            return Transform::CompositionOrder::ScaleRotateTranslate;
+        case Transform::CompositionOrder::TranslateScaleRotate:
+            return Transform::CompositionOrder::RotateScaleTranslate;
+        case Transform::CompositionOrder::Unknown:
+            FALCOR_THROW("Cannot invert unknown transform composition order.");
+    }
+    return Transform::CompositionOrder::Unknown;
+}
+
 bool Transform::operator==(const Transform& other) const {
-    if (mTranslation != other.mTranslation) return false;
-    if (mScaling != other.mScaling) return false;
-    if (mRotation != other.mRotation) return false;
+    if (any(mTranslation != other.mTranslation)) return false;
+    if (any(mScaling != other.mScaling)) return false;
+    if (any(mRotation != other.mRotation)) return false;
     return true;
 }
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Transform) {
-    auto init = [](const pybind11::kwargs& args) {
+    using namespace pybind11::literals;
+
+    auto init = [](const pybind11::kwargs& args)
+    {
         Transform transform;
 
         std::optional<float3> position;
         std::optional<float3> target;
         std::optional<float3> up;
 
-        for (auto a : args) {
+        for (auto a : args)
+        {
             auto key = a.first.cast<std::string>();
             const auto& value = a.second;
 
@@ -141,21 +185,39 @@ SCRIPT_BINDING(Transform) {
             {
                 if (isFloat3) up = float3Value;
             }
+            else if (key == "order")
+            {
+                transform.setCompositionOrder(pybind11::cast<Transform::CompositionOrder>(value));
+            }
         }
 
-        if (position && target && up) {
+        if (position && target && up)
+        {
             transform.lookAt(*position, *target, *up);
         }
 
         return transform;
     };
 
+    pybind11::enum_<Transform::CompositionOrder> order(m, "CompositionOrder");
+    order.value("Default", Transform::CompositionOrder::Default);
+    order.value("SRT", Transform::CompositionOrder::ScaleRotateTranslate);
+    order.value("STR", Transform::CompositionOrder::ScaleTranslateRotate);
+    order.value("RST", Transform::CompositionOrder::RotateScaleTranslate);
+    order.value("RTS", Transform::CompositionOrder::RotateTranslateScale);
+    order.value("TRS", Transform::CompositionOrder::TranslateRotateScale);
+    order.value("TSR", Transform::CompositionOrder::TranslateScaleRotate);
+
     pybind11::class_<Transform> transform(m, "Transform");
     transform.def(pybind11::init(init));
+    // Dummy repr to generate correct python stub files.
+    auto repr = [](const Transform& t) { return "Transform()"; };
+    transform.def("__repr__", repr);
     transform.def_property("translation", &Transform::getTranslation, &Transform::setTranslation);
     transform.def_property("rotationEuler", &Transform::getRotationEuler, &Transform::setRotationEuler);
     transform.def_property("rotationEulerDeg", &Transform::getRotationEulerDeg, &Transform::setRotationEulerDeg);
     transform.def_property("scaling", &Transform::getScaling, &Transform::setScaling);
+    transform.def_property("order", &Transform::getCompositionOrder, &Transform::setCompositionOrder);
     transform.def_property_readonly("matrix", &Transform::getMatrix);
     transform.def("lookAt", &Transform::lookAt, "position"_a, "target"_a, "up"_a);
 }

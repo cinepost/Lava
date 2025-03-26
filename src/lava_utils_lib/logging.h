@@ -30,23 +30,36 @@
 // Logging macro or static inline to stay within namespace boundaries
 
 #ifdef _DEPLOY_BUILD
-#define LLOG_TRC if (false) BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
+#define _LLOG_TRC if (false) BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
 #else
-#define LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
+#define _LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
 #endif
 
-#define LLOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
-#define LLOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)
-#define LLOG_WRN BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::warning)
-#define LLOG_ERR BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::error)
-#define LLOG_FTL BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::fatal)
+#define _LLOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
+#define _LLOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)
+#define _LLOG_WRN BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::warning)
+#define _LLOG_ERR BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::error)
+#define _LLOG_FTL BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::fatal)
 
-#define LLOG_FN_DBG LLOG_DBG << boost::log::add_value("Function", __FUNCTION__)
-#define LLOG_FN_INF LLOG_INF << boost::log::add_value("Function", __FUNCTION__)
-#define LLOG_FN_WRN LLOG_WRN << boost::log::add_value("Function", __FUNCTION__)
-#define LLOG_FN_ERR LLOG_ERR << boost::log::add_value("Function", __FUNCTION__)
-#define LLOG_FN_FTL LLOG_FTL << boost::log::add_value("Function", __FUNCTION__)
-#define LLOG_FN_TRC LLOG_TRC << boost::log::add_value("Function", __FUNCTION__)
+#ifdef _DEBUG
+
+#define LLOG_DBG _LLOG_DBG << boost::log::add_value("Function", __FUNCTION__)
+#define LLOG_INF _LLOG_INF << boost::log::add_value("Function", __FUNCTION__)
+#define LLOG_WRN _LLOG_WRN << boost::log::add_value("Function", __FUNCTION__)
+#define LLOG_ERR _LLOG_ERR << boost::log::add_value("Function", __FUNCTION__)
+#define LLOG_FTL _LLOG_FTL << boost::log::add_value("Function", __FUNCTION__)
+#define LLOG_TRC _LLOG_TRC << boost::log::add_value("Function", __FUNCTION__)
+
+#else
+
+#define LLOG_DBG _LLOG_DBG
+#define LLOG_INF _LLOG_INF
+#define LLOG_WRN _LLOG_WRN
+#define LLOG_ERR _LLOG_ERR
+#define LLOG_FTL _LLOG_FTL
+#define LLOG_TRC _LLOG_TRC
+
+#endif
 
 namespace lava { 
 

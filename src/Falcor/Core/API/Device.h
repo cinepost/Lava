@@ -564,6 +564,14 @@ class FALCOR_API Device: public Object {
     */
     ShaderModel getSupportedShaderModel() const { return mSupportedShaderModel; }
 
+    /**
+     * Return the default shader model to use
+     */
+    ShaderModel getDefaultShaderModel() const { return mDefaultShaderModel; }
+
+    /// Returns the global slang session.
+    slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
+
     /* Return the GFX command queue.
     */
     gfx::IDevice* getGfxDevice() const { return mGfxDevice; }
@@ -571,7 +579,6 @@ class FALCOR_API Device: public Object {
     /* Return the GFX command queue.
     */
     gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
-
 
     /**
      * Get the supported bind-flags for a specific format.

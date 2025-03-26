@@ -34,15 +34,13 @@
 
 #include "Falcor/Scene/Material/BasicMaterial.h"
 #include "LightCollectionShared.slang"
-#include "Scene/Scene.h"
+#include "Falcor/Scene/Scene.h"
 
 #include <sstream>
 
 #include "LightCollection.h"
 
 namespace Falcor {
-
-const uint MeshLightData::kInvalidIndex;
 
 static_assert(sizeof(MeshLightData) % 16 == 0, "MeshLightData size should be a multiple of 16");
 static_assert(sizeof(PackedEmissiveTriangle) % 16 == 0, "PackedEmissiveTriangle size should be a multiple of 16");
@@ -53,42 +51,35 @@ namespace {
     const char kBuildTriangleListFile[] = "Scene/Lights/BuildTriangleList.cs.slang";
     const char kUpdateTriangleVerticesFile[] = "Scene/Lights/UpdateTriangleVertices.cs.slang";
     const char kFinalizeIntegrationFile[] = "Scene/Lights/FinalizeIntegration.cs.slang";
-}  // namespace
-
-LightCollection::SharedPtr LightCollection::create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {
-    return SharedPtr(new LightCollection(pRenderContext, pScene));
 }
 
-LightCollection::LightCollection(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene):mTriangleCount(0) {
-    mpDevice = pRenderContext->device();
-
-    assert(pScene);
-    mpScene = pScene;
+LightCollection::LightCollection(ref<Device> pDevice, RenderContext* pRenderContext, Scene* pScene)
+    : mpDevice(pDevice)
+    , mpScene(pScene)
+{
+    FALCOR_ASSERT(mpScene);
 
     // Setup the lights.
-    setupMeshLights(*pScene);
+    setupMeshLights(*mpScene);
 
     // Create program for integrating emissive textures.
     // This should be done after lights are setup, so that we know which sampler state etc. to use.
-    initIntegrator(*pScene);
+    initIntegrator(pRenderContext, *mpScene);
 
     // Create programs for building/updating the mesh lights.
-    Shader::DefineList defines = pScene->getSceneDefines();
+    DefineList defines = mpScene->getSceneDefines();
     mpTriangleListBuilder = ComputePass::create(mpDevice, kBuildTriangleListFile, "buildTriangleList", defines);
     mpTrianglePositionUpdater = ComputePass::create(mpDevice, kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
     mpFinalizeIntegration = ComputePass::create(mpDevice, kFinalizeIntegrationFile, "finalizeIntegration", defines);
 
-    mpStagingFence = GpuFence::create(mpDevice);
+    mpStagingFence = mpDevice->createFence();
 
     // Now build the mesh light data.
-    build(pRenderContext, *pScene);
+    build(pRenderContext, *mpScene);
 }
 
 bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus) {
-    PROFILE(mpDevice, "LightCollection::update()");
-
-    auto pScene = mpScene.lock();
-    if (!pScene) return false;
+    FALCOR_PROFILE(pRenderContext, "LightCollection::update()");
 
     if (pUpdateStatus) {
         pUpdateStatus->lightsUpdateInfo.clear();
@@ -101,11 +92,11 @@ bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdat
     updatedLights.reserve(mMeshLights.size());
 
     for (uint32_t lightIdx = 0; lightIdx < mMeshLights.size(); ++lightIdx) {
-        const GeometryInstanceData& instanceData = pScene->getGeometryInstance(mMeshLights[lightIdx].instanceID);
+        const GeometryInstanceData& instanceData = mpScene->getGeometryInstance(mMeshLights[lightIdx].instanceID);
         UpdateFlags updateFlags = UpdateFlags::None;
 
         // Check if instance transform changed.
-        if (pScene->getAnimationController()->isMatrixListChanged(instanceData.nodeID)) updateFlags |= UpdateFlags::MatrixChanged;
+        if (mpScene->getAnimationController()->isMatrixChanged(NodeID{ instanceData.globalMatrixID })) updateFlags |= UpdateFlags::MatrixChanged;
 
         // Store update status.
         if (updateFlags != UpdateFlags::None) updatedLights.push_back(lightIdx);
@@ -114,41 +105,41 @@ bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdat
 
     // Update light data if needed.
     if (!updatedLights.empty()) {
-        updateTrianglePositions(pRenderContext, *pScene, updatedLights);
+        updateTrianglePositions(pRenderContext, *mpScene, updatedLights);
+        mUpdateFlagsSignal(UpdateFlags::MatrixChanged);
         return true;
     }
 
     return false;
 }
 
-void LightCollection::initIntegrator(const Scene& scene) {
+void LightCollection::initIntegrator(RenderContext* pRenderContext, const Scene& scene) {
     // The current algorithm rasterizes emissive triangles in texture space,
     // and uses atomic operations to sum up the contribution from all covered texels.
     // We do this in a raster pass, so we get one thread per texel/triangle.
 
     // Check for required features.
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::ConservativeRasterizationTier3)) {
-        throw std::runtime_error("LightCollection requires conservative rasterization tier 3 support.");
+        FALCOR_THROW("LightCollection requires conservative rasterization tier 3 support.");
     }
-    if (!mpDevice->isShaderModelSupported(Device::ShaderModel::SM6_6)) {
-        throw std::runtime_error("LightCollection requires Shader Model 6.6 support.");
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6)) {
+        FALCOR_THROW("LightCollection requires Shader Model 6.6 support.");
     }
 
     // Create program.
     auto defines = scene.getSceneDefines();
     defines.add("INTEGRATOR_PASS", "1");
 
-    Program::Desc desc;
+    ProgramDesc desc;
     desc.addShaderLibrary(kEmissiveIntegratorFile).vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
-    desc.setShaderModel("6_6");
-    mIntegrator.pProgram = GraphicsProgram::create(mpDevice, desc, defines);
+    mIntegrator.pProgram = Program::create(mpDevice, desc, defines);
 
     // Create graphics state.
     mIntegrator.pState = GraphicsState::create(mpDevice);
 
     // Set state.
     mIntegrator.pState->setProgram(mIntegrator.pProgram);
-    mIntegrator.pState->setVao(Vao::create(Vao::Topology::TriangleList));
+    mIntegrator.pState->setVao(Vao::create(Vao::Topology::PointList));
 
     // Set viewport. Note we don't bind any render targets so the size just determines the dispatch limits.
     const uint32_t vpDim = 16384;       // 16K x 16K
@@ -170,8 +161,8 @@ void LightCollection::initIntegrator(const Scene& scene) {
 
     // Create sampler for texel fetch. This is identical to material sampler but uses point sampling.
     Sampler::Desc samplerDesc = mpSamplerState ? mpSamplerState->getDesc() : Sampler::Desc();
-    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    mIntegrator.pPointSampler = Sampler::create(mpDevice, samplerDesc);
+    samplerDesc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    mIntegrator.pPointSampler = mpDevice->createSampler(samplerDesc);
 }
 
 void LightCollection::setupMeshLights(const Scene& scene) {
@@ -186,10 +177,10 @@ void LightCollection::setupMeshLights(const Scene& scene) {
         // We only support triangle meshes.
         if (instanceData.getType() != GeometryType::TriangleMesh) continue;
 
-        const MeshDesc& meshData = scene.getMesh(instanceData.geometryID);
+        const MeshDesc& meshData = scene.getMesh(MeshID::fromSlang( instanceData.geometryID ));
 
         // Only mesh lights with basic materials are supported.
-        auto pMaterial = scene.getMaterial(instanceData.materialID)->toBasicMaterial();
+        auto pMaterial = scene.getMaterial(MaterialID::fromSlang( instanceData.materialID ))->toBasicMaterial();
 
         if (pMaterial && pMaterial->isEmissive()) {
             // We've found a mesh instance with an emissive material => Setup mesh light data.
@@ -207,9 +198,8 @@ void LightCollection::setupMeshLights(const Scene& scene) {
             if (pMaterial->getEmissiveTexture()) {
                 if (!mpSamplerState) {
                     mpSamplerState = pMaterial->getDefaultTextureSampler();
-                }
-                else if (mpSamplerState != pMaterial->getDefaultTextureSampler()) {
-                    throw std::runtime_error("Material '" + pMaterial->getName() + "' is using a different sampler.");
+                } else if (mpSamplerState != pMaterial->getDefaultTextureSampler()) {
+                    FALCOR_THROW("Material '{}' is using a different sampler.", pMaterial->getName());
                 }
             }
         }
@@ -246,44 +236,46 @@ void LightCollection::build(RenderContext* pRenderContext, const Scene& scene) {
         mStatsValid = false;
 
         prepareSyncCPUData(pRenderContext);
-        updateActiveTriangleList();
+        updateActiveTriangleList(pRenderContext);
 
         timeReport.measure("LightCollection::build finalize");
         timeReport.printToLog();
     }
+
+    mUpdateFlagsSignal(UpdateFlags::LayoutChanged);
 }
 
 void LightCollection::prepareTriangleData(RenderContext* pRenderContext, const Scene& scene) {
-    assert(mTriangleCount > 0);
+    FALCOR_ASSERT(mTriangleCount > 0);
 
     // Create GPU buffers.
-    mpTriangleData = Buffer::createStructured(mpDevice, mpTriangleListBuilder["gTriangleData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+    mpTriangleData = mpDevice->createStructuredBuffer(mpTriangleListBuilder->getRootVar()["gTriangleData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
     mpTriangleData->setName("LightCollection::mpTriangleData");
-    if (mpTriangleData->getStructSize() != sizeof(PackedEmissiveTriangle)) throw std::runtime_error("Struct PackedEmissiveTriangle size mismatch between CPU/GPU");
+    if (mpTriangleData->getStructSize() != sizeof(PackedEmissiveTriangle)) FALCOR_THROW("Struct PackedEmissiveTriangle size mismatch between CPU/GPU");
 
-    mpFluxData = Buffer::createStructured(mpDevice, mpFinalizeIntegration["gFluxData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+    mpFluxData = mpDevice->createStructuredBuffer(mpFinalizeIntegration->getRootVar()["gFluxData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
     mpFluxData->setName("LightCollection::mpFluxData");
-    if (mpFluxData->getStructSize() != sizeof(EmissiveFlux)) throw std::runtime_error("Struct EmissiveFlux size mismatch between CPU/GPU");
+    if (mpFluxData->getStructSize() != sizeof(EmissiveFlux)) FALCOR_THROW("Struct EmissiveFlux size mismatch between CPU/GPU");
 
     // Compute triangle data (vertices, uv-coordinates, materialID) for all mesh lights.
     buildTriangleList(pRenderContext, scene);
 }
 
-
 void LightCollection::prepareMeshData(const Scene& scene) {
     // Create buffer for the mesh data if needed.
     if (!mMeshLights.empty()) {
-        mpMeshData = Buffer::createStructured(mpDevice, 
-            mpTrianglePositionUpdater["gMeshData"],
+        mpMeshData = mpDevice->createStructuredBuffer(
+            mpTrianglePositionUpdater->getRootVar()["gMeshData"],
             uint32_t(mMeshLights.size()),
             ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None, nullptr, false);
+            MemoryType::DeviceLocal, nullptr, false);
         mpMeshData->setName("LightCollection::mpMeshData");
+
         if (mpMeshData->getStructSize() != sizeof(MeshLightData)) {
-            throw std::runtime_error("Size mismatch for structured buffer of MeshLightData");
+            FALCOR_THROW("Size mismatch for structured buffer of MeshLightData");
         }
         size_t meshDataSize = mMeshLights.size() * sizeof(mMeshLights[0]);
-        assert(mpMeshData->getSize() == meshDataSize);
+        FALCOR_ASSERT(mpMeshData->getSize() == meshDataSize);
         mpMeshData->setBlob(mMeshLights.data(), 0, meshDataSize);
     }
 
@@ -293,43 +285,47 @@ void LightCollection::prepareMeshData(const Scene& scene) {
     if (instanceCount > 0) {
         std::vector<uint32_t> triangleOffsets(instanceCount, MeshLightData::kInvalidIndex);
         for (const auto& it : mMeshLights) {
-            assert(it.instanceID < instanceCount);
+            FALCOR_ASSERT(it.instanceID < instanceCount);
             triangleOffsets[it.instanceID] = it.triangleOffset;
         }
 
-        mpPerMeshInstanceOffset = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)triangleOffsets.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, triangleOffsets.data(), false);
+        mpPerMeshInstanceOffset = mpDevice->createStructuredBuffer(sizeof(uint32_t), (uint32_t)triangleOffsets.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, triangleOffsets.data(), false);
         mpPerMeshInstanceOffset->setName("LightCollection::mpPerMeshInstanceOffset");
     }
 }
 
 void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Scene& scene) {
-    assert(mTriangleCount > 0);
-    assert(mMeshLights.size() > 0);
+    FALCOR_ASSERT(mTriangleCount > 0);
+    FALCOR_ASSERT(mMeshLights.size() > 0);
 
     // Prepare program vars.
-    mIntegrator.pVars = GraphicsVars::create(mpDevice, mIntegrator.pProgram.get());
-    mIntegrator.pVars["gScene"] = scene.getParameterBlock();
-    mIntegrator.pVars["gPointSampler"] = mIntegrator.pPointSampler;
-    setShaderData(mIntegrator.pVars["gLightCollection"]);
+    {
+        mIntegrator.pVars = ProgramVars::create(mpDevice, mIntegrator.pProgram.get());
+        auto var = mIntegrator.pVars->getRootVar();
+        scene.bindShaderData(var["gScene"]);
+        var["gPointSampler"] = mIntegrator.pPointSampler;
+        bindShaderData(var["gLightCollection"]);
+    }
 
     // 1st pass: Rasterize emissive triangles in texture space to find maximum texel value.
     // The maximum is needed to rescale the texels to fixed-point format in the accumulation pass.
-    Buffer::SharedPtr pTexelMax;
+    ref<Buffer> pTexelMax;
     {
         // Allocate intermediate buffer.
         // Move into a member variable if we're integrating multiple times to avoid re-allocation.
-        pTexelMax = Buffer::create(mpDevice, mTriangleCount * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        pTexelMax = mpDevice->createBuffer(mTriangleCount * sizeof(uint32_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal);
         pTexelMax->setName("LightCollection: pTexelMax");
 
         pRenderContext->clearUAV(pTexelMax->getUAV().get(), uint4(0));
 
         // Bind our resources.
-        mIntegrator.pVars["gTexelMax"] = pTexelMax;
-        mIntegrator.pVars["gTexelSum"].setUav(UnorderedAccessView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer));
+        auto var = mIntegrator.pVars->getRootVar();
+        var["gTexelMax"] = pTexelMax;
+        var["gTexelSum"].setUav(nullptr);
 
         // Execute.
         mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "1");
-        pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount * 3, 0);
+        pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount, 0);
     }
 
     // 2nd pass: Rasterize emissive triangles in texture space to sum up their texels.
@@ -339,48 +335,61 @@ void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Sce
         // Re-allocate result buffer if needed.
         const uint32_t bufSize = mTriangleCount * 4 * sizeof(uint64_t);
         if (!mIntegrator.pResultBuffer || mIntegrator.pResultBuffer->getSize() < bufSize) {
-            mIntegrator.pResultBuffer = Buffer::create(mpDevice, bufSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+            mIntegrator.pResultBuffer = mpDevice->createBuffer(bufSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal);
             mIntegrator.pResultBuffer->setName("LightCollection::mIntegrator::pResultBuffer");
         }
 
         pRenderContext->clearUAV(mIntegrator.pResultBuffer->getUAV().get(), uint4(0));
 
         // Bind our resources.
-        mIntegrator.pVars["gTexelSum"] = mIntegrator.pResultBuffer;
+        auto var = mIntegrator.pVars->getRootVar();
+        var["gTexelSum"] = mIntegrator.pResultBuffer;
 
         // Execute.
         mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "2");
-        pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount * 3, 0);
+        pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount, 0);
     }
 
     // 3rd pass: Finalize the per-triangle flux values.
     {
+        auto var = mpFinalizeIntegration->getRootVar();
+
         // Bind scene.
-        mpFinalizeIntegration["gScene"] = scene.getParameterBlock();
+        scene.bindShaderData(var["gScene"]);
 
-        mpFinalizeIntegration["gPointSampler"] = mIntegrator.pPointSampler;
-        mpFinalizeIntegration["gTexelMax"] = pTexelMax;
-        mpFinalizeIntegration["gTexelSum"] = mIntegrator.pResultBuffer;
-        mpFinalizeIntegration["gTriangleData"] = mpTriangleData;
-        mpFinalizeIntegration["gFluxData"] = mpFluxData;
+        var["gPointSampler"] = mIntegrator.pPointSampler;
+        var["gTexelMax"] = pTexelMax;
+        var["gTexelSum"] = mIntegrator.pResultBuffer;
+        var["gTriangleData"] = mpTriangleData;
+        var["gFluxData"] = mpFluxData;
 
-        mpFinalizeIntegration["CB"]["gTriangleCount"] = mTriangleCount;
+        var["CB"]["gTriangleCount"] = mTriangleCount;
 
         // Execute.
-        assert(mpFinalizeIntegration->getThreadGroupSize().y == 1);
+        FALCOR_ASSERT(mpFinalizeIntegration->getThreadGroupSize().y == 1);
         uint32_t rows = div_round_up(mTriangleCount, mpFinalizeIntegration->getThreadGroupSize().x);
         mpFinalizeIntegration->execute(pRenderContext, mpFinalizeIntegration->getThreadGroupSize().x, rows);
     }
+#if 0
+    // Output a list of per-triangle results to file for debugging purposes.
+    std::ofstream ofs("flux.txt");
+    std::vector<float> texelMax = pTexelMax->getElements<float>();
+    std::vector<float4> fluxData = mpFluxData->getElements<float4>();
+    std::vector<uint64_t> result = mIntegrator.pResultBuffer->getElements<uint64_t>();
+    for (uint32_t i = 0; i < mpFluxData->getElementCount(); i++)
+    {
+        uint64_t w = result[4 * i + 3];
+        float weight = w / (float)(1ull << 35);
+        ofs << std::setw(6) << i << " : max " << std::setw(12) << texelMax[i] << "  weight " << std::setw(12) << weight << "  value " << to_string(fluxData[i]) << std::endl;
+    }
+#endif
 }
 
-void LightCollection::computeStats() const {
+void LightCollection::computeStats(RenderContext* pRenderContext) const {
     if (mStatsValid) return;
 
-    auto pScene = mpScene.lock();
-    assert(pScene);
-
     // Read back the current data. This is potentially expensive.
-    syncCPUData();
+    syncCPUData(pRenderContext);
 
     // Stats on input data.
     MeshLightStats stats;
@@ -389,8 +398,8 @@ void LightCollection::computeStats() const {
 
     uint32_t trianglesTotal = 0;
     for (const auto& meshLight : mMeshLights) {
-        auto pMaterial = pScene->getMaterial(meshLight.materialID)->toBasicMaterial();
-        assert(pMaterial);
+        auto pMaterial = mpScene->getMaterial(MaterialID::fromSlang(meshLight.materialID))->toBasicMaterial();
+        FALCOR_ASSERT(pMaterial);
         bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 
         if (isTextured) {
@@ -399,18 +408,18 @@ void LightCollection::computeStats() const {
         }
         trianglesTotal += meshLight.triangleCount;
     }
-    assert(trianglesTotal == stats.triangleCount);
+    FALCOR_ASSERT(trianglesTotal == stats.triangleCount);
 
     // Stats on pre-processed data.
     for (const auto& tri : mMeshLightTriangles) {
-        assert(tri.flux >= 0.f);
+        FALCOR_ASSERT(tri.flux >= 0.f);
         if (tri.flux == 0.f) {
             stats.trianglesCulled++;
         } else {
             // TODO: Currently we don't detect uniform radiance for textured lights, so just look at whether the mesh light is textured or not.
             // This code will change when we tag individual triangles as textured vs non-textured.
-            auto pMaterial = pScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->toBasicMaterial();
-            assert(pMaterial);
+            auto pMaterial = mpScene->getMaterial(MaterialID::fromSlang(mMeshLights[tri.lightIdx].materialID))->toBasicMaterial();
+            FALCOR_ASSERT(pMaterial);
             bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 
             if (isTextured) stats.trianglesActiveTextured++;
@@ -424,24 +433,26 @@ void LightCollection::computeStats() const {
 }
 
 void LightCollection::buildTriangleList(RenderContext* pRenderContext, const Scene& scene) {
-    assert(mMeshLights.size() > 0);
+    FALCOR_ASSERT(mMeshLights.size() > 0);
+
+    auto var = mpTriangleListBuilder->getRootVar();
 
     // Bind scene.
-    mpTriangleListBuilder["gScene"] = scene.getParameterBlock();
+    scene.bindShaderData(var["gScene"]);
 
     // Bind our output buffer.
-    mpTriangleListBuilder["gTriangleData"] = mpTriangleData;
+    var["gTriangleData"] = mpTriangleData;
 
     // TODO: Single dispatch over all emissive triangles instead of per-mesh dispatches.
     // This code is not performance critical though, as it's currently only run once at init time.
     for (uint32_t lightIdx = 0; lightIdx < mMeshLights.size(); ++lightIdx) {
         const MeshLightData& meshLight = mMeshLights[lightIdx];
 
-        mpTriangleListBuilder["CB"]["gLightIdx"] = lightIdx;
-        mpTriangleListBuilder["CB"]["gMaterialID"] = meshLight.materialID;
-        mpTriangleListBuilder["CB"]["gInstanceID"] = meshLight.instanceID;
-        mpTriangleListBuilder["CB"]["gTriangleCount"] = meshLight.triangleCount;
-        mpTriangleListBuilder["CB"]["gTriangleOffset"] = meshLight.triangleOffset;
+        var["CB"]["gLightIdx"] = lightIdx;
+        var["CB"]["gMaterialID"] = meshLight.materialID;
+        var["CB"]["gInstanceID"] = meshLight.instanceID;
+        var["CB"]["gTriangleCount"] = meshLight.triangleCount;
+        var["CB"]["gTriangleOffset"] = meshLight.triangleOffset;
 
         // TODO: Disable automatic UAV barriers.
         // Each kernel writes to non-overlapping parts of the output buffers, but currently Falcor inserts barriers between each dispatch.
@@ -449,14 +460,14 @@ void LightCollection::buildTriangleList(RenderContext* pRenderContext, const Sce
     }
 }
 
-void LightCollection::updateActiveTriangleList() {
+void LightCollection::updateActiveTriangleList(RenderContext* pRenderContext) {
     // This function updates the list of active (non-culled) triangles based on the pre-integrated flux.
     // We currently run this as part of initialization. To support animated emissive textures and/or
     // dynamically changing emissive intensities, it should be run as part of update().
     // In that case, we may want to move it to the GPU to avoid syncing the data to the CPU first.
 
     // Read back the current data. This is potentially expensive.
-    syncCPUData();
+    syncCPUData(pRenderContext);
 
     const uint32_t triCount = (uint32_t)mMeshLightTriangles.size();
     const uint32_t kInvalidActiveIndex = ~0u;
@@ -474,13 +485,13 @@ void LightCollection::updateActiveTriangleList() {
         }
     }
 
-    assert(mActiveTriangleList.size() <= std::numeric_limits<uint32_t>::max());
+    FALCOR_ASSERT(mActiveTriangleList.size() <= std::numeric_limits<uint32_t>::max());
     const uint32_t activeCount = (uint32_t)mActiveTriangleList.size();
 
     // Update GPU buffer.
     if (activeCount > 0) {
         if (!mpActiveTriangleList || mpActiveTriangleList->getElementCount() < activeCount) {
-            mpActiveTriangleList = Buffer::createStructured(mpDevice, sizeof(uint32_t), activeCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mActiveTriangleList.data(), false);
+            mpActiveTriangleList = mpDevice->createStructuredBuffer(sizeof(uint32_t), activeCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mActiveTriangleList.data(), false);
             mpActiveTriangleList->setName("LightCollection::mpActiveTriangleList");
         } else {
             mpActiveTriangleList->setBlob(mActiveTriangleList.data(), 0, activeCount * sizeof(mActiveTriangleList[0]));
@@ -488,7 +499,7 @@ void LightCollection::updateActiveTriangleList() {
     }
 
     if (!mpTriToActiveList || mpTriToActiveList->getElementCount() < triCount) {
-        mpTriToActiveList = Buffer::createStructured(mpDevice, sizeof(uint32_t), triCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mTriToActiveList.data(), false);
+        mpTriToActiveList = mpDevice->createStructuredBuffer(sizeof(uint32_t), triCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mTriToActiveList.data(), false);
         mpTriToActiveList->setName("LightCollection::mpTriToActiveList");
     } else {
         mpTriToActiveList->setBlob(mTriToActiveList.data(), 0, triCount * sizeof(mTriToActiveList[0]));
@@ -501,16 +512,18 @@ void LightCollection::updateTrianglePositions(RenderContext* pRenderContext, con
     // that didn't move. However, due to the CPU overhead of doing per-mesh dispatches as before, it's still faster.
     // TODO: Test using ExecuteIndirect to do the dispatches on the GPU for only the updated meshes.
     // Alternatively, upload the list of updated meshes and early out unnecessary threads at runtime.
-    assert(!updatedLights.empty());
+    FALCOR_ASSERT(!updatedLights.empty());
+
+    auto var = mpTrianglePositionUpdater->getRootVar();
 
     // Bind scene.
-    mpTrianglePositionUpdater["gScene"] = scene.getParameterBlock();
+    scene.bindShaderData(var["gScene"]);
 
     // Bind our resources.
-    mpTrianglePositionUpdater["gTriangleData"] = mpTriangleData;
-    mpTrianglePositionUpdater["gMeshData"] = mpMeshData;
+    var["gTriangleData"] = mpTriangleData;
+    var["gMeshData"] = mpMeshData;
 
-    mpTrianglePositionUpdater["CB"]["gTriangleCount"] = mTriangleCount;
+    var["CB"]["gTriangleCount"] = mTriangleCount;
 
     // Run compute pass to update all triangles.
     mpTrianglePositionUpdater->execute(pRenderContext, mTriangleCount, 1u, 1u);
@@ -519,8 +532,8 @@ void LightCollection::updateTrianglePositions(RenderContext* pRenderContext, con
     mStagingBufferValid = false;
 }
 
-void LightCollection::setShaderData(const ShaderVar& var) const {
-    assert(var.isValid());
+void LightCollection::bindShaderData(const ShaderVar& var) const {
+    FALCOR_ASSERT(var.isValid());
 
     // Set variables.
     var["triangleCount"] = mTriangleCount;
@@ -532,19 +545,19 @@ void LightCollection::setShaderData(const ShaderVar& var) const {
 
     if (mTriangleCount > 0) {
         // These buffers must exist if triangle count is > 0.
-        assert(mpTriangleData && mpFluxData && mpMeshData);
+        FALCOR_ASSERT(mpTriangleData && mpFluxData && mpMeshData);
         var["triangleData"] = mpTriangleData;
         var["fluxData"] = mpFluxData;
         var["meshData"] = mpMeshData;
 
         if (!mActiveTriangleList.empty()) {
-            assert(mpActiveTriangleList);
+            FALCOR_ASSERT(mpActiveTriangleList);
             var["activeTriangles"] = mpActiveTriangleList;
         }
 
         var["triToActiveMapping"] = mpTriToActiveList;
     } else {
-        assert(mMeshLights.empty());
+        FALCOR_ASSERT(mMeshLights.empty());
     }
 }
 
@@ -554,7 +567,7 @@ void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) con
     // Allocate staging buffer for readback. The data from our different GPU buffers is stored consecutively.
     const size_t stagingSize = mpTriangleData->getSize() + mpFluxData->getSize();
     if (!mpStagingBuffer || mpStagingBuffer->getSize() < stagingSize) {
-        mpStagingBuffer = Buffer::create(mpDevice, stagingSize, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        mpStagingBuffer = mpDevice->createBuffer(stagingSize, ResourceBindFlags::None, MemoryType::ReadBack);
         mpStagingBuffer->setName("LightCollection::mpStagingBuffer");
         mCPUInvalidData = CPUOutOfDateFlags::All;
     }
@@ -563,7 +576,7 @@ void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) con
     // Note that the staging buffer is allocated for the worst-case encountered so far.
     // If the number of triangles ever decreases, we'll be copying unnecessary data. This currently doesn't happen as geometry is not added/removed from the scene.
     // TODO: Update this code if we start removing geometry dynamically.
-    assert(mCPUInvalidData != CPUOutOfDateFlags::None); // We shouldn't get here unless at least some data is out of date.
+    FALCOR_ASSERT(mCPUInvalidData != CPUOutOfDateFlags::None); // We shouldn't get here unless at least some data is out of date.
     bool copyTriangleData = is_set(mCPUInvalidData, CPUOutOfDateFlags::TriangleData);
     bool copyFluxData = is_set(mCPUInvalidData, CPUOutOfDateFlags::FluxData);
 
@@ -572,11 +585,11 @@ void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) con
     offset += mpTriangleData->getSize();
     if (copyFluxData) pRenderContext->copyBufferRegion(mpStagingBuffer.get(), offset, mpFluxData.get(), 0, mpFluxData->getSize());
     offset += mpFluxData->getSize();
-    assert(offset == stagingSize);
+    FALCOR_ASSERT(offset == stagingSize);
 
     // Submit command list and insert signal.
-    pRenderContext->flush(false);
-    mpStagingFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->submit(false);
+    pRenderContext->signal(mpStagingFence.get());
 
     // Resize the CPU-side triangle list (array-of-structs) buffer and mark the data as invalid.
     mMeshLightTriangles.resize(mTriangleCount);
@@ -584,22 +597,22 @@ void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) con
     mStagingBufferValid = true;
 }
 
-void LightCollection::syncCPUData() const {
+void LightCollection::syncCPUData(RenderContext* pRenderContext) const {
     if (mCPUInvalidData == CPUOutOfDateFlags::None) return;
 
     // If the data has not yet been copied to the staging buffer, we have to do that first.
     // This should normally have done by calling prepareSyncCPUData().
     if (!mStagingBufferValid) {
-        LLOG_WRN << "LightCollection::syncCPUData() performance warning - Call LightCollection::prepareSyncCPUData() ahead of time if possible";
-        prepareSyncCPUData(mpDevice->getRenderContext());
+        logWarning("LightCollection::syncCPUData() performance warning - Call LightCollection::prepareSyncCPUData() ahead of time if possible");
+        prepareSyncCPUData(pRenderContext);
     }
 
     // Wait for signal.
-    mpStagingFence->syncCpu();
+    mpStagingFence->wait();
 
-    assert(mStagingBufferValid);
-    assert(mpTriangleData && mpFluxData);
-    const void* mappedData = mpStagingBuffer->map(Buffer::MapType::Read);
+    FALCOR_ASSERT(mStagingBufferValid);
+    FALCOR_ASSERT(mpTriangleData && mpFluxData);
+    const void* mappedData = mpStagingBuffer->map();
 
     uint64_t offset = 0;
     const PackedEmissiveTriangle* triangleData = reinterpret_cast<const PackedEmissiveTriangle*>(reinterpret_cast<uintptr_t>(mappedData) + offset);
@@ -611,8 +624,8 @@ void LightCollection::syncCPUData() const {
     bool updateTriangleData = is_set(mCPUInvalidData, CPUOutOfDateFlags::TriangleData);
     bool updateFluxData = is_set(mCPUInvalidData, CPUOutOfDateFlags::FluxData);
 
-    assert(mTriangleCount > 0);
-    assert(mMeshLightTriangles.size() == (size_t)mTriangleCount);
+    FALCOR_ASSERT(mTriangleCount > 0);
+    FALCOR_ASSERT(mMeshLightTriangles.size() == (size_t)mTriangleCount);
     for (uint32_t triIdx = 0; triIdx < mTriangleCount; triIdx++) {
         const auto tri = triangleData[triIdx].unpack();
         auto& meshLightTri = mMeshLightTriangles[triIdx];

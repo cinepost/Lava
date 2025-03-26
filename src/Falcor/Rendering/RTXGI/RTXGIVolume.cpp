@@ -262,7 +262,7 @@ namespace Falcor
             widget.var("Debug thread ID", mDebug.threadID);
             widget.text("Probe ray data:");
 
-            UpdateProbesDebugData debugData = *static_cast<const UpdateProbesDebugData*>(mDebug.pData->map(Buffer::MapType::Read));
+            UpdateProbesDebugData debugData = *static_cast<const UpdateProbesDebugData*>(mDebug.pData->map());
             widget.var("rayOrigin", debugData.rayOrigin);
             widget.var("rayDir", debugData.rayDir);
             widget.var("hitT", debugData.hitT);

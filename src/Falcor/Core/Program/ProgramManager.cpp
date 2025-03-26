@@ -28,45 +28,49 @@
 #include "ProgramManager.h"
 #include "Core/API/Device.h"
 #include "Core/Platform/OS.h"
-#include "Utils/Logger.h"
 #include "Utils/Timing/CpuTimer.h"
 
-#include <slang.h>
+#include "lava_utils_lib/logging.h"
 
-namespace Falcor
-{
+#include <slang/slang.h>
 
-inline SlangStage getSlangStage(ShaderType type)
-{
-    switch (type)
-    {
-    case ShaderType::Vertex:
-        return SLANG_STAGE_VERTEX;
-    case ShaderType::Pixel:
-        return SLANG_STAGE_PIXEL;
-    case ShaderType::Geometry:
-        return SLANG_STAGE_GEOMETRY;
-    case ShaderType::Hull:
-        return SLANG_STAGE_HULL;
-    case ShaderType::Domain:
-        return SLANG_STAGE_DOMAIN;
-    case ShaderType::Compute:
-        return SLANG_STAGE_COMPUTE;
-    case ShaderType::RayGeneration:
-        return SLANG_STAGE_RAY_GENERATION;
-    case ShaderType::Intersection:
-        return SLANG_STAGE_INTERSECTION;
-    case ShaderType::AnyHit:
-        return SLANG_STAGE_ANY_HIT;
-    case ShaderType::ClosestHit:
-        return SLANG_STAGE_CLOSEST_HIT;
-    case ShaderType::Miss:
-        return SLANG_STAGE_MISS;
-    case ShaderType::Callable:
-        return SLANG_STAGE_CALLABLE;
-    default:
-        FALCOR_UNREACHABLE();
-        return SLANG_STAGE_NONE;
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+
+#include <fmt/core.h>
+
+
+namespace Falcor {
+
+inline SlangStage getSlangStage(ShaderType type) {
+    switch (type) {
+        case ShaderType::Vertex:
+            return SLANG_STAGE_VERTEX;
+        case ShaderType::Pixel:
+            return SLANG_STAGE_PIXEL;
+        case ShaderType::Geometry:
+            return SLANG_STAGE_GEOMETRY;
+        case ShaderType::Hull:
+            return SLANG_STAGE_HULL;
+        case ShaderType::Domain:
+            return SLANG_STAGE_DOMAIN;
+        case ShaderType::Compute:
+            return SLANG_STAGE_COMPUTE;
+        case ShaderType::RayGeneration:
+            return SLANG_STAGE_RAY_GENERATION;
+        case ShaderType::Intersection:
+            return SLANG_STAGE_INTERSECTION;
+        case ShaderType::AnyHit:
+            return SLANG_STAGE_ANY_HIT;
+        case ShaderType::ClosestHit:
+            return SLANG_STAGE_CLOSEST_HIT;
+        case ShaderType::Miss:
+            return SLANG_STAGE_MISS;
+        case ShaderType::Callable:
+            return SLANG_STAGE_CALLABLE;
+        default:
+            FALCOR_UNREACHABLE();
+            return SLANG_STAGE_NONE;
     }
 }
 
@@ -104,12 +108,7 @@ ProgramManager::ProgramManager(Device* pDevice) : mpDevice(pDevice)
 {
     // Set global shader defines
     DefineList globalDefines = {
-        {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && mpDevice->getType() == Device::Type::D3D12) ? "1" : "0"},
-#if FALCOR_NVAPI_AVAILABLE
-        {"NV_SHADER_EXTN_SLOT", "u999"},
-        {"__SHADER_TARGET_MAJOR", std::to_string(getShaderModelMajorVersion(mpDevice->getSupportedShaderModel()))},
-        {"__SHADER_TARGET_MINOR", std::to_string(getShaderModelMinorVersion(mpDevice->getSupportedShaderModel()))},
-#endif
+        {"FALCOR_NVAPI_AVAILABLE", "0"},
     };
 
     addGlobalDefines(globalDefines);
@@ -168,7 +167,7 @@ ref<const ProgramVersion> ProgramManager::createProgramVersion(const Program& pr
     for (int ii = 0; ii < depFileCount; ++ii)
     {
         std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
-        if (std::filesystem::exists(depFilePath))
+        if (fs::exists(depFilePath))
             program.mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
     }
 
@@ -212,7 +211,7 @@ ref<const ProgramVersion> ProgramManager::createProgramVersion(const Program& pr
     mCompilationStats.programVersionCount++;
     mCompilationStats.programVersionTotalTime += time;
     mCompilationStats.programVersionMaxTime = std::max(mCompilationStats.programVersionMaxTime, time);
-    logDebug("Created program version in {:.3f} s: {}", timer.delta(), descStr);
+    LLOG_DBG << "Created program version in " << fmt::format("{:.3f}", timer.delta()) << " s: " << descStr;
 
     return pVersion;
 }
@@ -503,7 +502,7 @@ ref<const ProgramKernels> ProgramManager::createProgramKernels(
     mCompilationStats.programKernelsCount++;
     mCompilationStats.programKernelsTotalTime += time;
     mCompilationStats.programKernelsMaxTime = std::max(mCompilationStats.programKernelsMaxTime, time);
-    logDebug("Created program kernels in {:.3f} s: {}", time, descStr);
+    LLOG_DBG << "Created program kernels in " << fmt::format("{:.3f}", timer.delta()) << " s: " << descStr;
 
     return pProgramKernels;
 }
@@ -647,7 +646,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     targetDesc.profile = pSlangGlobalSession->findProfile(getSlangProfileString(program.mDesc.shaderModel).c_str());
 
     if (targetDesc.profile == SLANG_PROFILE_UNKNOWN)
-        FALCOR_THROW("Can't find Slang profile for shader model {}", program.mDesc.shaderModel);
+        FALCOR_THROW("Can't find Slang profile for shader model {}", to_string(program.mDesc.shaderModel));
 
     // Get compiler flags and adjust with forced flags.
     SlangCompilerFlags compilerFlags = program.mDesc.compilerFlags;
@@ -657,12 +656,8 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     // Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
     bool flagFast = is_set(compilerFlags, SlangCompilerFlags::FloatingPointModeFast);
     bool flagPrecise = is_set(compilerFlags, SlangCompilerFlags::FloatingPointModePrecise);
-    if (flagFast && flagPrecise)
-    {
-        logWarning(
-            "Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring "
-            "'FloatingPointModeFast'."
-        );
+    if (flagFast && flagPrecise) {
+        LLOG_WRN << "Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring 'FloatingPointModeFast'.";
         flagFast = false;
     }
 
@@ -687,21 +682,9 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
 
     const char* targetMacroName;
 
-    // Pick the right target based on the current graphics API
-    switch (mpDevice->getType())
-    {
-    case Device::Type::D3D12:
-        targetDesc.format = SLANG_DXIL;
-        targetMacroName = "FALCOR_D3D12";
-        break;
-    case Device::Type::Vulkan:
-        targetDesc.format = SLANG_SPIRV;
-        targetMacroName = "FALCOR_VULKAN";
-        break;
-    default:
-        FALCOR_UNREACHABLE();
-    }
-
+    targetDesc.format = SLANG_SPIRV;
+    targetMacroName = "FALCOR_VULKAN";
+    
     // Pass any `#define` flags along to Slang, since we aren't doing our
     // own preprocessing any more.
     //
@@ -823,16 +806,13 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
                 const auto& path = source.path;
                 if (!(hasExtension(path, "hlsl") || hasExtension(path, "slang")))
                 {
-                    logWarning(
-                        "Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the "
-                        "file contains valid shaders"
-                    );
+                    LLOG_WRN << "Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders";
                 }
-                std::filesystem::path fullPath;
+                fs::path fullPath;
                 if (!findFileInShaderDirectories(path, fullPath))
                 {
                     spDestroyCompileRequest(pSlangRequest);
-                    FALCOR_THROW("Can't find shader file {}", path);
+                    FALCOR_THROW("Can't find shader file {}", path.string());
                 }
                 spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullPath.string().c_str());
             }

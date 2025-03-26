@@ -205,6 +205,11 @@ bool getEnvironmentVariable(const std::string& varName, std::string& value) {
     return true;
 }
 
+std::optional<std::string> getEnvironmentVariable(const std::string& varName) {
+    const char* val = ::getenv(varName.c_str());
+    return val != nullptr ? std::string(val) : std::optional<std::string>{};
+}
+
 template<bool bOpen>
 bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename) {
     bool success = false;

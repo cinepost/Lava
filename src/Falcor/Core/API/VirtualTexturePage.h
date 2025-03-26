@@ -67,7 +67,7 @@ class dlldecl VirtualTexturePage: public Object  {
 		const ref<Texture> texture() const { return mpTexture; }
 
   public:
-  	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+  	VirtualTexturePage(const ref<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
 
  	protected:
 		const ref<Device>   mpDevice;

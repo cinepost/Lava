@@ -42,6 +42,7 @@
 namespace Falcor {
 
 class Device;
+class VertexLayout;
 
 struct GraphicsStateObjectDesc {
     static constexpr uint32_t kSampleMaskAll = -1;

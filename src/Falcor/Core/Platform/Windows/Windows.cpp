@@ -237,23 +237,19 @@ namespace Falcor
         return path;
     }
 
-    const std::string getAppDataDirectory()
-    {
+    const std::string getAppDataDirectory() {
         PWSTR wpath;
         HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &wpath);
-        if (SUCCEEDED(result))
-        {
+        if (SUCCEEDED(result)) {
             _bstr_t path(wpath);
             return std::string((char*) path);
         }
         return std::string();
     }
 
-    const std::string& getExecutableName()
-    {
+    const std::string& getExecutableName() {
         static std::string filename;
-        if (filename.size() == 0)
-        {
+        if (filename.size() == 0) {
             CHAR exeName[MAX_PATH];
             GetModuleFileNameA(nullptr, exeName, ARRAYSIZE(exeName));
             const std::string tmp(exeName);
@@ -264,40 +260,40 @@ namespace Falcor
         return filename;
     }
 
-    bool getEnvironmentVariable(const std::string& varName, std::string& value)
-    {
+    bool getEnvironmentVariable(const std::string& varName, std::string& value) {
         static char buff[4096];
         int numChar = GetEnvironmentVariableA(varName.c_str(), buff, arraysize(buff)); //what is the best way to deal with wchar ?
         assert(numChar < arraysize(buff));
-        if (numChar == 0)
-        {
+        if (numChar == 0) {
             return false;
         }
         value = std::string(buff);
         return true;
     }
 
+    std::optional<std::string> getEnvironmentVariable(const std::string& varName) {
+        static char buff[4096];
+        DWORD numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)std::size(buff)); // what is the best way to deal with wchar ?
+        FALCOR_ASSERT(numChar < (DWORD)std::size(buff));
+        return numChar > 0 ? std::string(buff) : std::optional<std::string>{};
+    }
+
     template<bool open>
-    static std::string getExtensionsFilterString(const FileDialogFilterVec& filters)
-    {
+    static std::string getExtensionsFilterString(const FileDialogFilterVec& filters) {
         std::string s;
         std::string d;
         bool appendForOpen = open && filters.size() > 1;
         if (appendForOpen) s.append(1, 0);
 
-        for (size_t i = 0 ; i < filters.size() ; i++)
-        {
+        for (size_t i = 0 ; i < filters.size() ; i++) {
             const auto& f = filters[i];
-            if (appendForOpen)
-            {
+            if (appendForOpen) {
                 bool last = i == (filters.size() - 1);
                 std::string e = "*." + f.ext;
                 if (last == false) e += ';';
                 d += e;
                 s += e;
-            }
-            else
-            {
+            } else {
                 s += f.desc.empty() ? f.ext + " files" : f.desc + " (*." + f.ext + ')';
                 s.append(1, 0);
                 s += "*." + f.ext + ';';
@@ -309,10 +305,8 @@ namespace Falcor
         return s;
     };
 
-    struct FilterSpec
-    {
-        FilterSpec(const FileDialogFilterVec& filters, bool forOpen)
-        {
+    struct FilterSpec {
+        FilterSpec(const FileDialogFilterVec& filters, bool forOpen) {
             size_t size = forOpen ? filters.size() + 1 : filters.size();
             comDlg.reserve(size);
             descs.reserve(size);
@@ -320,16 +314,15 @@ namespace Falcor
 
             if (forOpen) comDlg.push_back({});
             std::wstring all;
-            for(const auto& f : filters)
-            {
+
+            for(const auto& f : filters) {
                 descs.push_back(string_2_wstring(f.desc));
                 ext.push_back(L"*." + string_2_wstring(f.ext));
                 comDlg.push_back({ descs.back().c_str(), ext.back().c_str() });
                 all += ext.back() + L";";
             }
 
-            if (forOpen)
-            {
+            if (forOpen) {
                 descs.push_back(L"Supported Formats");
                 ext.push_back(all);
                 comDlg[0] = { descs.back().c_str(), ext.back().c_str() };
@@ -345,66 +338,34 @@ namespace Falcor
     };
 
     template<typename DialogType>
-    static bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename, DWORD options, const CLSID clsid)
-    {
-        // FilterSpec fs(filters, typeid(DialogType) == typeid(IFileOpenDialog));
-
-        // DialogType* pDialog;
-        // d3d_call(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog)));
-        // pDialog->SetOptions(options | FOS_FORCEFILESYSTEM);
-        // pDialog->SetFileTypes((uint32_t)fs.size(), fs.data());
-        // pDialog->SetDefaultExtension(fs.data()->pszSpec);
-
-        // if (pDialog->Show(nullptr) == S_OK)
-        // {
-        //     IShellItem* pItem;
-        //     if (pDialog->GetResult(&pItem) == S_OK)
-        //     {
-        //         PWSTR path;
-        //         if (pItem->GetDisplayName(SIGDN_FILESYSPATH, &path) == S_OK)
-        //         {
-        //             filename = wstring_2_string(std::wstring(path));
-        //             CoTaskMemFree(path);
-        //             return true;
-        //         }
-        //     }
-        // }
-
+    static bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename, DWORD options, const CLSID clsid) {
         return false;
     }
 
-    bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename)
-    {
+    bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename) {
         return fileDialogCommon<IFileSaveDialog>(filters, filename, FOS_OVERWRITEPROMPT, CLSID_FileSaveDialog);
     }
 
-    bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename)
-    {
+    bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename) {
         return fileDialogCommon<IFileOpenDialog>(filters, filename, FOS_FILEMUSTEXIST, CLSID_FileOpenDialog);
     };
 
-    bool chooseFolderDialog(std::string& folder)
-    {
+    bool chooseFolderDialog(std::string& folder) {
         return fileDialogCommon<IFileOpenDialog>({}, folder, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST, CLSID_FileOpenDialog);
     }
 
-    void setWindowIcon(const std::string& iconFile, WindowHandle windowHandle)
-    {
+    void setWindowIcon(const std::string& iconFile, WindowHandle windowHandle) {
         std::string fullpath;
-        if (findFileInDataDirectories(iconFile, fullpath))
-        {
+        if (findFileInDataDirectories(iconFile, fullpath)) {
             HANDLE hIcon = LoadImageA(GetModuleHandle(NULL), fullpath.c_str(), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
             HWND hWnd = windowHandle ? windowHandle : GetActiveWindow();
             SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-        }
-        else
-        {
+        } else {
             LLOG_ERR << "Error when loading icon. Can't find the file " + iconFile + ".";
         }
     }
 
-    int getDisplayDpi()
-    {
+    int getDisplayDpi() {
         ::SetProcessDPIAware();
         HDC screen = GetDC(NULL);
         double hPixelsPerInch = GetDeviceCaps(screen, LOGPIXELSX);
@@ -413,59 +374,52 @@ namespace Falcor
         return int((hPixelsPerInch + vPixelsPerInch) * 0.5);
     }
 
-    float getDisplayScaleFactor()
-    {
+    float getDisplayScaleFactor() {
         float dpi = (float)getDisplayDpi();
         float scale = dpi / 96.0f;
         return scale;
 
         ::SetProcessDPIAware();
         DEVICE_SCALE_FACTOR factor;
-        if (GetScaleFactorForMonitor(nullptr, &factor) == S_OK)
-        {
-            switch (factor)
-            {
-            case SCALE_100_PERCENT: return 1.0f;
-            case SCALE_120_PERCENT: return 1.2f;
-            case SCALE_125_PERCENT: return 1.25f;
-            case SCALE_140_PERCENT: return 1.40f;
-            case SCALE_150_PERCENT: return 1.50f;
-            case SCALE_160_PERCENT: return 1.60f;
-            case SCALE_175_PERCENT: return 1.70f;
-            case SCALE_180_PERCENT: return 1.80f;
-            case SCALE_200_PERCENT: return 2.00f;
-            case SCALE_225_PERCENT: return 2.25f;
-            case SCALE_250_PERCENT: return 2.50f;
-            case SCALE_300_PERCENT: return 3.00f;
-            case SCALE_350_PERCENT: return 3.50f;
-            case SCALE_400_PERCENT: return 4.00f;
-            case SCALE_450_PERCENT: return 4.50f;
-            case SCALE_500_PERCENT: return 4.60f;
-            default:
-                should_not_get_here();
-                return 1.0f;
+        if (GetScaleFactorForMonitor(nullptr, &factor) == S_OK) {
+            switch (factor) {
+                case SCALE_100_PERCENT: return 1.0f;
+                case SCALE_120_PERCENT: return 1.2f;
+                case SCALE_125_PERCENT: return 1.25f;
+                case SCALE_140_PERCENT: return 1.40f;
+                case SCALE_150_PERCENT: return 1.50f;
+                case SCALE_160_PERCENT: return 1.60f;
+                case SCALE_175_PERCENT: return 1.70f;
+                case SCALE_180_PERCENT: return 1.80f;
+                case SCALE_200_PERCENT: return 2.00f;
+                case SCALE_225_PERCENT: return 2.25f;
+                case SCALE_250_PERCENT: return 2.50f;
+                case SCALE_300_PERCENT: return 3.00f;
+                case SCALE_350_PERCENT: return 3.50f;
+                case SCALE_400_PERCENT: return 4.00f;
+                case SCALE_450_PERCENT: return 4.50f;
+                case SCALE_500_PERCENT: return 4.60f;
+                default:
+                    should_not_get_here();
+                    return 1.0f;
             }
         }
         return 1.0f;
     }
 
-    bool isDebuggerPresent()
-    {
+    bool isDebuggerPresent() {
         return ::IsDebuggerPresent() == TRUE;
     }
 
-    void printToDebugWindow(const std::string& s)
-    {
+    void printToDebugWindow(const std::string& s) {
         OutputDebugStringA(s.c_str());
     }
 
-    void debugBreak()
-    {
+    void debugBreak() {
         __debugbreak();
     }
 
-    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
-    {
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs) {
         std::string commandLine = appName + ".exe " + commandLineArgs;
         STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
         if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
@@ -477,13 +431,10 @@ namespace Falcor
         return reinterpret_cast<size_t>(processInformation.hProcess);
     }
 
-    bool isProcessRunning(size_t processID)
-    {
+    bool isProcessRunning(size_t processID) {
         uint32_t exitCode = 0;
-        if (GetExitCodeProcess((HANDLE)processID, (LPDWORD)&exitCode))
-        {
-            if (exitCode != STILL_ACTIVE)
-            {
+        if (GetExitCodeProcess((HANDLE)processID, (LPDWORD)&exitCode)) {
+            if (exitCode != STILL_ACTIVE) {
                 return false;
             }
         }
@@ -491,16 +442,14 @@ namespace Falcor
         return true;
     }
 
-    void terminateProcess(size_t processID)
-    {
+    void terminateProcess(size_t processID) {
         TerminateProcess((HANDLE)processID, 0);
         CloseHandle((HANDLE)processID);
     }
 
     static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
 
-    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback)
-    {
+    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback) {
         std::string fileName = getFilenameFromPath(filePath);
         std::string dir = getDirectoryFromFile(filePath);
 
@@ -511,8 +460,7 @@ namespace Falcor
         // overlapped struct requires unique event handle to be valid
         OVERLAPPED overlapped{};
 
-        while (true)
-        {
+        while (true) {
             size_t offset = 0;
             uint32_t bytesReturned = 0;
             std::vector<uint32_t> buffer;
@@ -526,8 +474,7 @@ namespace Falcor
                 return;
             }
 
-            if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
-            {
+            if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true)) {
                 LLOG_ERR << "Failed to read directory changes for shared file.";
                 CloseHandle(hFile);
                 return;
@@ -535,22 +482,19 @@ namespace Falcor
             }
 
             // don't check for another overlapped result if main thread is closed
-            if (!fileThreads.at(filePath).second)
-            {
+            if (!fileThreads.at(filePath).second) {
                 break;
             }
 
             if (!bytesReturned) continue;
 
-            while (offset < buffer.size())
-            {
+            while (offset < buffer.size()) {
                 _FILE_NOTIFY_INFORMATION* pNotifyInformation = reinterpret_cast<_FILE_NOTIFY_INFORMATION*>(buffer.data());
                 std::string currentFileName;
                 currentFileName.resize(pNotifyInformation->FileNameLength / 2);
                 wcstombs(&currentFileName.front(), pNotifyInformation->FileName, pNotifyInformation->FileNameLength);
 
-                if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
-                {
+                if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED) {
                     callback();
                     break;
                 }
@@ -563,15 +507,12 @@ namespace Falcor
         CloseHandle(hFile);
     }
 
-    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
-    {
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback) {
         const auto& fileThreadsIt = fileThreads.find(filePath);
 
         // only have one thread waiting on file write
-        if(fileThreadsIt != fileThreads.end())
-        {
-            if (fileThreadsIt->second.first.joinable())
-            {
+        if(fileThreadsIt != fileThreads.end()) {
+            if (fileThreadsIt->second.first.joinable()) {
                 fileThreadsIt->second.first.join();
             }
         }
@@ -580,21 +521,18 @@ namespace Falcor
         fileThreads[filePath].second = true;
     }
 
-    void closeSharedFile(const std::string& filePath)
-    {
+    void closeSharedFile(const std::string& filePath) {
         const auto& fileThreadsIt = fileThreads.find(filePath);
 
         // only have one thread waiting on file write
-        if (fileThreadsIt != fileThreads.end())
-        {
+        if (fileThreadsIt != fileThreads.end()) {
             fileThreadsIt->second.second = false;
 
             fileThreadsIt->second.first.detach();
         }
     }
 
-    void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
-    {
+    void enumerateFiles(std::string searchString, std::vector<std::string>& filenames) {
         WIN32_FIND_DATAA ffd;
         HANDLE hFind = INVALID_HANDLE_VALUE;
 
@@ -603,32 +541,25 @@ namespace Falcor
 
         hFind = FindFirstFileA(szFile, &ffd);
 
-        if (INVALID_HANDLE_VALUE == hFind)
-        {
+        if (INVALID_HANDLE_VALUE == hFind) {
             return;
-        }
-        else
-        {
+        } else {
             do
             {
-                if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-                {
+                if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
                     filenames.push_back(std::string(ffd.cFileName));
                 }
             } while (FindNextFileA(hFind, &ffd) != 0);
         }
     }
 
-    std::thread::native_handle_type getCurrentThread()
-    {
+    std::thread::native_handle_type getCurrentThread() {
         return ::GetCurrentThread();
     }
 
-    void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinityMask)
-    {
+    void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinityMask) {
         ::SetThreadAffinityMask(thread, affinityMask);
-        if (DWORD dwError = GetLastError() != 0)
-        {
+        if (DWORD dwError = GetLastError() != 0) {
             LPVOID lpMsgBuf;
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
@@ -638,8 +569,7 @@ namespace Falcor
         }
     }
 
-    void setThreadPriority(std::thread::native_handle_type thread, ThreadPriorityType priority)
-    {
+    void setThreadPriority(std::thread::native_handle_type thread, ThreadPriorityType priority) {
         if (priority >= ThreadPriorityType::Lowest)
             ::SetThreadPriority(thread, THREAD_BASE_PRIORITY_MIN + (int32_t)priority);
         else if (priority == ThreadPriorityType::BackgroundBegin)
@@ -649,8 +579,7 @@ namespace Falcor
         else
             should_not_get_here();
 
-        if (DWORD dwError = GetLastError() != 0)
-        {
+        if (DWORD dwError = GetLastError() != 0) {
             LPVOID lpMsgBuf;
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
@@ -660,11 +589,9 @@ namespace Falcor
         }
     }
 
-    time_t getFileModifiedTime(const std::string& filename)
-    {
+    time_t getFileModifiedTime(const std::string& filename) {
         struct stat s;
-        if (stat(filename.c_str(), &s) != 0)
-        {
+        if (stat(filename.c_str(), &s) != 0) {
             LLOG_ERR << "Can't get file time for '" + filename + "'";
             return 0;
         }

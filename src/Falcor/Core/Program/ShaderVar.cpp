@@ -42,16 +42,14 @@ ShaderVar::ShaderVar(ParameterBlock* pObject) : mpBlock(pObject), mOffset(pObjec
 // Navigation
 //
 
-ShaderVar ShaderVar::operator[](std::string_view name) const
-{
+ShaderVar ShaderVar::operator[](std::string_view name) const {
     FALCOR_CHECK(isValid(), "Cannot lookup on invalid ShaderVar.");
     auto result = findMember(name);
     FALCOR_CHECK(result.isValid(), "No member named '{}' found.", name);
     return result;
 }
 
-ShaderVar ShaderVar::operator[](size_t index) const
-{
+ShaderVar ShaderVar::operator[](size_t index) const {
     FALCOR_CHECK(isValid(), "Cannot lookup on invalid ShaderVar.");
 
     const ReflectionType* pType = getType();
@@ -62,22 +60,18 @@ ShaderVar ShaderVar::operator[](size_t index) const
     // inside the buffer/block, and thus implicitly
     // dereference this `ShaderVar`.
     //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar()[index];
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar()[index];
+            default:
+                break;
         }
     }
 
-    if (auto pArrayType = pType->asArrayType())
-    {
+    if (auto pArrayType = pType->asArrayType()) {
         auto elementCount = pArrayType->getElementCount();
-        if (!elementCount || index < elementCount)
-        {
+        if (!elementCount || index < elementCount) {
             UniformShaderVarOffset elementUniformLocation = mOffset.getUniform() + index * pArrayType->getElementByteStride();
             ResourceShaderVarOffset elementResourceLocation(
                 mOffset.getResource().getRangeIndex(),
@@ -90,8 +84,7 @@ ShaderVar ShaderVar::operator[](size_t index) const
     }
     else if (auto pStructType = pType->asStructType())
     {
-        if (index < pStructType->getMemberCount())
-        {
+        if (index < pStructType->getMemberCount()) {
             auto pMember = pStructType->getMember(index);
             // Need to apply the offsets from member
             TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
@@ -102,10 +95,9 @@ ShaderVar ShaderVar::operator[](size_t index) const
     FALCOR_THROW("No element or member found at index {}", index);
 }
 
-ShaderVar ShaderVar::findMember(std::string_view name) const
-{
-    if (!isValid())
-        return *this;
+ShaderVar ShaderVar::findMember(std::string_view name) const {
+    if (!isValid()) return *this;
+    
     const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
@@ -114,21 +106,17 @@ ShaderVar ShaderVar::findMember(std::string_view name) const
     // inside the buffer/block, and thus implicitly
     // dereference this `ShaderVar`.
     //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().findMember(name);
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar().findMember(name);
+            default:
+                break;
         }
     }
 
-    if (auto pStructType = pType->asStructType())
-    {
-        if (auto pMember = pStructType->findMember(name))
-        {
+    if (auto pStructType = pType->asStructType()) {
+        if (auto pMember = pStructType->findMember(name)) {
             // Need to apply the offsets from member
             TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
             return ShaderVar(mpBlock, newOffset);
@@ -138,10 +126,9 @@ ShaderVar ShaderVar::findMember(std::string_view name) const
     return ShaderVar();
 }
 
-ShaderVar ShaderVar::findMember(uint32_t index) const
-{
-    if (!isValid())
-        return *this;
+ShaderVar ShaderVar::findMember(uint32_t index) const {
+    if (!isValid()) return *this;
+
     const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
@@ -150,21 +137,17 @@ ShaderVar ShaderVar::findMember(uint32_t index) const
     // inside the buffer/block, and thus implicitly
     // dereference this `ShaderVar`.
     //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().findMember(index);
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar().findMember(index);
+            default:
+                break;
         }
     }
 
-    if (auto pStructType = pType->asStructType())
-    {
-        if (index < pStructType->getMemberCount())
-        {
+    if (auto pStructType = pType->asStructType()) {
+        if (index < pStructType->getMemberCount()) {
             auto pMember = pStructType->getMember(index);
 
             // Need to apply the offsets from member
@@ -180,20 +163,17 @@ ShaderVar ShaderVar::findMember(uint32_t index) const
 // Variable assignment
 //
 
-void ShaderVar::setBlob(void const* data, size_t size) const
-{
+void ShaderVar::setBlob(void const* data, size_t size) const {
     // If the var is pointing at a constant buffer, then assume
     // the user actually means to write the blob *into* that buffer.
     //
     const ReflectionType* pType = getType();
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().setBlob(data, size);
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar().setBlob(data, size);
+            default:
+                break;
         }
     }
 
@@ -204,73 +184,59 @@ void ShaderVar::setBlob(void const* data, size_t size) const
 // Resource binding
 //
 
-void ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const
-{
+void ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const {
     mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-ref<Buffer> ShaderVar::getBuffer() const
-{
+ref<Buffer> ShaderVar::getBuffer() const {
     return mpBlock->getBuffer(mOffset);
 }
 
-void ShaderVar::setTexture(const ref<Texture>& pTexture) const
-{
+void ShaderVar::setTexture(const ref<Texture>& pTexture) const {
     mpBlock->setTexture(mOffset, pTexture);
 }
 
-ref<Texture> ShaderVar::getTexture() const
-{
+ref<Texture> ShaderVar::getTexture() const {
     return mpBlock->getTexture(mOffset);
 }
 
-void ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const
-{
+void ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const {
     mpBlock->setSrv(mOffset, pSrv);
 }
 
-ref<ShaderResourceView> ShaderVar::getSrv() const
-{
+ref<ShaderResourceView> ShaderVar::getSrv() const {
     return mpBlock->getSrv(mOffset);
 }
 
-void ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const
-{
+void ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const {
     mpBlock->setUav(mOffset, pUav);
 }
 
-ref<UnorderedAccessView> ShaderVar::getUav() const
-{
+ref<UnorderedAccessView> ShaderVar::getUav() const {
     return mpBlock->getUav(mOffset);
 }
 
-void ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const
-{
+void ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const {
     mpBlock->setAccelerationStructure(mOffset, pAccl);
 }
 
-ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const
-{
+ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const {
     return mpBlock->getAccelerationStructure(mOffset);
 }
 
-void ShaderVar::setSampler(const ref<Sampler>& pSampler) const
-{
+void ShaderVar::setSampler(const ref<Sampler>& pSampler) const {
     mpBlock->setSampler(mOffset, pSampler);
 }
 
-ref<Sampler> ShaderVar::getSampler() const
-{
+ref<Sampler> ShaderVar::getSampler() const {
     return mpBlock->getSampler(mOffset);
 }
 
-void ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const
-{
+void ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const {
     mpBlock->setParameterBlock(mOffset, pBlock);
 }
 
-ref<ParameterBlock> ShaderVar::getParameterBlock() const
-{
+ref<ParameterBlock> ShaderVar::getParameterBlock() const {
     return mpBlock->getParameterBlock(mOffset);
 }
 
@@ -278,10 +244,9 @@ ref<ParameterBlock> ShaderVar::getParameterBlock() const
 // Offset access
 //
 
-ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const
-{
-    if (!isValid())
-        return *this;
+ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const {
+    if (!isValid()) return *this;
+
     const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
@@ -289,22 +254,19 @@ ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const
     // then we assume they mean to look up an offset
     // inside the buffer/block, and thus implicitly
     // dereference this `ShaderVar`
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar()[offset];
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar()[offset];
+            default:
+                break;
         }
     }
 
     return ShaderVar(mpBlock, TypedShaderVarOffset(offset.getType(), mOffset + offset));
 }
 
-ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
-{
+ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const {
     if (!isValid())
         return *this;
     const ReflectionType* pType = getType();
@@ -315,14 +277,12 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
     // inside the buffer/block, and thus implicitly
     // dereference this `ShaderVar`.
     //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar()[loc];
-        default:
-            break;
+    if (auto pResourceType = pType->asResourceType()) {
+        switch (pResourceType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return getParameterBlock()->getRootVar()[loc];
+            default:
+                break;
         }
     }
 
@@ -330,8 +290,7 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
     if (byteOffset == 0)
         return *this;
 
-    if (auto pArrayType = pType->asArrayType())
-    {
+    if (auto pArrayType = pType->asArrayType()) {
         auto pElementType = pArrayType->getElementType();
         auto elementCount = pArrayType->getElementCount();
         auto elementStride = pArrayType->getElementByteStride();
@@ -352,8 +311,7 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
         // search here.
 
         auto memberCount = pStructType->getMemberCount();
-        for (uint32_t m = 0; m < memberCount; ++m)
-        {
+        for (uint32_t m = 0; m < memberCount; ++m) {
             auto pMember = pStructType->getMember(m);
             auto memberByteOffset = pMember->getByteOffset();
             auto memberByteSize = pMember->getType()->getByteSize();
@@ -373,28 +331,23 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
     FALCOR_THROW("No element or member found at offset {}", byteOffset);
 }
 
-void const* ShaderVar::getRawData() const
-{
+void const* ShaderVar::getRawData() const {
     return (uint8_t*)(mpBlock->getRawData()) + mOffset.getUniform().getByteOffset();
 }
 
-void ShaderVar::setImpl(const ref<Texture>& pTexture) const
-{
+void ShaderVar::setImpl(const ref<Texture>& pTexture) const {
     mpBlock->setTexture(mOffset, pTexture);
 }
 
-void ShaderVar::setImpl(const ref<Sampler>& pSampler) const
-{
+void ShaderVar::setImpl(const ref<Sampler>& pSampler) const {
     mpBlock->setSampler(mOffset, pSampler);
 }
 
-void ShaderVar::setImpl(const ref<Buffer>& pBuffer) const
-{
+void ShaderVar::setImpl(const ref<Buffer>& pBuffer) const {
     mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-void ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const
-{
+void ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const {
     mpBlock->setParameterBlock(mOffset, pBlock);
 }
 

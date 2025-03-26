@@ -33,13 +33,8 @@
 #include <string>
 #include <regex>
 
-// #ifdef _WIN32
-// #include <filesystem>
-// namespace fs = std::filesystem;
-// #else
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
-// #endif
 
 #include "Falcor/Core/Framework.h"
 
@@ -146,9 +141,7 @@ FALCOR_API void msgBoxTitle(const std::string& title);
     \param[in] fullPath If the file was found, the full path to the file. If the file wasn't found, this is invalid.
     \return true if the file was found, otherwise false
 */
-FALCOR_API bool findFileInDataDirectories(const std::string& filename, std::string& fullPath);
-
-FALCOR_API bool findFileInDataDirectories(const fs::path& path, fs::path& fullPath);
+FALCOR_API bool findFileInDataDirectories(const fs::path& filename, fs::path& fullPath);
 
 /** Finds all files in a directory. The arguments must not alias.
     \param[in] searchPath The directory path to search in
@@ -156,7 +149,7 @@ FALCOR_API bool findFileInDataDirectories(const fs::path& path, fs::path& fullPa
     \param[in] filenames List of found files
     \return true if files was found, otherwise false
 */
-FALCOR_API bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames);
+FALCOR_API bool findFilesInDataDirectories(const fs::path& searchPath, const std::regex& regex, std::vector<fs::path>& filenames);
 
 /** Finds a shader file. If in development mode (see isDevelopmentMode()), shaders are searched
     within the source directories. Otherwise, shaders are searched in the Shaders directory
@@ -166,7 +159,6 @@ FALCOR_API bool findFilesInDataDirectories(const std::string& searchPath, const 
     \return true if the file was found, otherwise false
 */
 FALCOR_API bool findFileInShaderDirectories(const fs::path& path, fs::path& fullPath);
-FALCOR_API bool findFileInShaderDirectories(const fs::path& path, std::string& fullPath);
 
 /** Check if a file path has a given file extension. Does a case-insensitive comparison.
     \param[in] path The file path.
@@ -187,16 +179,11 @@ FALCOR_API std::string getExtensionFromPath(const fs::path& path);
     \param[in] fullPath If the file was found, the full path to the file. If the file wasn't found, this is invalid.
     \return true if the file was found, otherwise false
 */
-FALCOR_API bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath);
+FALCOR_API bool findFileInRenderPassDirectories(const fs::path& filename, fs::path& fullPath);
 
 /** Get a list of all shader directories.
 */
 FALCOR_API const std::vector<fs::path>& getShaderDirectoriesList();
-
-/** Given a filename, returns the shortest possible path to the file relative to the data directories.
-    If the file is not relative to the data directories, return the original filename
-*/
-FALCOR_API std::string stripDataDirectories(const std::string& filename);
 
 /** Structure to help with file dialog file-extension filters
 */
@@ -213,43 +200,43 @@ using FileDialogFilterVec = std::vector<FileDialogFilter>;
     \param[in] filename On successful return, the name of the file selected by the user.
     \return true if a file was selected, otherwise false (if the user clicked 'Cancel').
 */
-FALCOR_API bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename);
+FALCOR_API bool openFileDialog(const FileDialogFilterVec& filters,fs::path& filename);
 
 /** Creates a 'save file' dialog box.
     \param[in] filters The file extensions filters
     \param[out] filename On successful return, the name of the file selected by the user.
     \return true if a file was selected, otherwise false (if the user clicked 'Cancel').
 */
-FALCOR_API bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename);
+FALCOR_API bool saveFileDialog(const FileDialogFilterVec& filters, fs::path& filename);
 
 /** Creates a dialog box for browsing and selecting folders
     \param[out] folder On successful return, the name of the folder selected by the user.
     \return true if a folder was selected, otherwise false (if the user clicked 'Cancel').
 */
-FALCOR_API bool chooseFolderDialog(std::string& folder);
+FALCOR_API bool chooseFolderDialog(fs::path& folder);
 
 /** Checks if a file exists in the file system. This function doesn't look in the common directories.
     \param[in] filename The file to look for
     \return true if the file was found, otherwise false
 */
-FALCOR_API bool doesFileExist(const std::string& filename);
+FALCOR_API bool doesFileExist(const fs::path& filename);
 
 /** Checks if a directory exists in the file system.
     \param[in] filename The directory to look for
     \return true if the directory was found, otherwise false
 */
-FALCOR_API bool isDirectoryExists(const std::string& filename);
+FALCOR_API bool isDirectoryExists(const fs::path& filename);
 
 /** Open watch thread for file changes and call callback when the file is written to.
     \param[in] full path to the file to watch for changes
     \param[in] callback function
 */
-FALCOR_API void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback = {});
+FALCOR_API void monitorFileUpdates(const fs::path& filePath, const std::function<void()>& callback = {});
 
 /** Close watch thread for file changes
     \param[in] full path to the file that was being watched for changes
 */
-FALCOR_API void closeSharedFile(const std::string& filePath);
+FALCOR_API void closeSharedFile(const fs::path& filePath);
 
 /** Creates a file in the temperary directory and returns the path.
     \return pathName Absolute path to unique temp file.
@@ -258,7 +245,7 @@ FALCOR_API std::string getTempFilename();
 
 /** Create a directory from path.
 */
-FALCOR_API bool createDirectory(const std::string& path);
+FALCOR_API bool createDirectory(const fs::path& path);
 
 /** Run simple shell command
 */
@@ -275,13 +262,6 @@ FALCOR_API bool isProcessRunning(size_t processID);
 /** Terminate process
  */
 FALCOR_API void terminateProcess(size_t processID);
-
-/**
- * Get the full path to the Falcor project directory.
- * Note: This is only useful during development.
- * @return The full path of the project directory.
- */
-FALCOR_API const fs::path& getProjectDirectory();
 
 /**
  * Get the full path to the current executable.
@@ -314,19 +294,26 @@ FALCOR_API const std::string getAppDataDirectory();
 */
 FALCOR_API bool getEnvironmentVariable(const std::string& varName, std::string& value);
 
+/**
+ * Get the content of a system environment variable.
+ * @param[in] varName Name of the environment variable
+ * @return The environment variable's value or nullopt if not found.
+ */
+FALCOR_API std::optional<std::string> getEnvironmentVariable(const std::string& varName);
+
 /** Get a list of all recorded data directories.
 */
-FALCOR_API const std::vector<std::string>& getDataDirectoriesList();
+FALCOR_API const std::vector<fs::path>& getDataDirectoriesList();
 
 /** Adds a folder into the search directory. Once added, calls to FindFileInCommonDirs() will seach that directory as well
     \param[in] dir The new directory to add to the common directories.
 */
-FALCOR_API void addDataDirectory(const std::string& dir);
+FALCOR_API void addDataDirectory(const fs::path& dir);
 
 /** Removes a folder from the search directories
     \param[in] dir The directory name to remove from the common directories.
 */
-FALCOR_API void removeDataDirectory(const std::string& dir);
+FALCOR_API void removeDataDirectory(const fs::path& dir);
 
 /** Find a new filename based on the supplied parameters. This function doesn't actually create the file, just find an available file name.
     \param[in] prefix Requested file prefix.
@@ -335,7 +322,7 @@ FALCOR_API void removeDataDirectory(const std::string& dir);
     \param[out] filename On success, will hold a valid unused filename in the following format - 'Directory\\Prefix.<index>.Extension'.
     \return true if an available filename was found, otherwise false.
 */
-FALCOR_API bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename);
+FALCOR_API bool findAvailableFilename(const std::string& prefix, const fs::path& directory, const std::string_view extension, fs::path& filename);
 
 /** Check if a debugger session is attached.
     \return true if debugger is attached to the Falcor process.
@@ -350,7 +337,7 @@ FALCOR_API bool isDevelopmentMode();
 
 /** Remove navigational elements ('.', '..) from a given path/filename and make slash direction consistent.
 */
-FALCOR_API std::string canonicalizeFilename(const std::string& filename);
+FALCOR_API fs::path canonicalizeFilename(const fs::path& filename);
 
 /** Breaks in debugger (int 3 functionality)
 */
@@ -365,33 +352,25 @@ FALCOR_API void printToDebugWindow(const std::string& s);
     \param[in] filename File path to strip directory from
     \return Stripped directory path
 */
-FALCOR_API std::string getDirectoryFromFile(const std::string& filename);
+FALCOR_API fs::path getDirectoryFromFile(const fs::path& filename);
 
 /** Get  extension tag from filename.
     \param[in] filename File path to strip extension name from
     \return Stripped extension name.
 */
-FALCOR_API std::string getExtensionFromFile(const std::string& filename);
+FALCOR_API std::string getExtensionFromFile(const fs::path& filename);
 
 /** Strip path from a full filename
     \param[in] filename File path
     \return Stripped filename
 */
-FALCOR_API std::string getFilenameFromPath(const std::string& filename);
-
-/** Swap file extension (very simple implementation)
-    \param[in] str File name or full path
-    \param[in] currentExtension Current extension to look for
-    \param[in] newExtension Extension to replace the current with
-    \return If end of str matches currentExtension, returns the file name replaced with the new extension, otherwise returns the original file name.
-*/
-FALCOR_API std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension);
+FALCOR_API fs::path getFilenameFromPath(const fs::path& filename);
 
 /** Enumerate files using search string
     \param[in] searchString String to use in file search
     \param[out] filenames Vector of found filenames
 */
-FALCOR_API void enumerateFiles(std::string searchString, std::vector<std::string>& filenames);
+FALCOR_API void enumerateFiles(std::string searchString, std::vector<fs::path>& filenames);
 
 /** Return current thread handle
 */
@@ -405,7 +384,7 @@ FALCOR_API void setThreadAffinity(std::thread::native_handle_type thread, uint32
     \param[in] filename The file to look for
     \return Epoch timestamp of when the file was last modified
 */
-FALCOR_API time_t getFileModifiedTime(const std::string& filename);
+FALCOR_API time_t getFileModifiedTime(const fs::path& filename);
 
 enum class ThreadPriorityType : int32_t {
     BackgroundBegin     = -2,   //< Indicates I/O-intense thread
@@ -455,11 +434,11 @@ FALCOR_API uint32_t popcount(uint32_t a);
 
 /** Load the content of a file into a string
 */
-FALCOR_API std::string readFile(const std::string& filename);
+FALCOR_API std::string readFile(const fs::path& filename);
 
 /** Load a shared-library
 */
-FALCOR_API DllHandle loadDll(const std::string& libPath);
+FALCOR_API DllHandle loadDll(const fs::path& libPath);
 
 /** Release a shared-library
 */
