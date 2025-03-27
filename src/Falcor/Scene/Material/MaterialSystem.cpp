@@ -206,11 +206,13 @@ const Material::SharedPtr& MaterialSystem::getMaterial(const uint32_t materialID
 	return mMaterials[materialID];
 }
 
-Material::SharedPtr MaterialSystem::getMaterialByName(const std::string& name) const {
+const ref<Material>& MaterialSystem::getMaterialByName(const std::string& name) const {
 	for (const auto& pMaterial : mMaterials) {
 		if (pMaterial->getName() == name) return pMaterial;
 	}
-	return nullptr;
+
+	static const ref<Material> pNullMaterial;
+	return pNullMaterial;
 }
 
 bool MaterialSystem::getMaterialIDByName(const std::string& name, uint32_t& materialID) const {

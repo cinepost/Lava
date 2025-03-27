@@ -81,13 +81,13 @@ class FALCOR_API LightLinker {
             This is the minimal set of defines needed for a program to compile that imports the material system module.
             Note that the actual defines need to be set at runtime, call getDefines() to query them.
         */
-        static Shader::DefineList getDefaultDefines();
+        static DefineList getDefaultDefines();
 
         /** Get shader defines.
             These need to be set before binding the material system parameter block.
             \return List of shader defines.
         */
-        Shader::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Updates the light collection to the current state of the scene.
         */
@@ -197,7 +197,7 @@ class FALCOR_API LightLinker {
 
         // Internal state
         ref<Device>                                 mpDevice;
-        std::weak_ptr<Scene>                        mpScene;                        ///< Weak pointer to scene (scene owns LightLinker).
+        Scene*                                      mpScene;                        ///< Weak pointer to scene (scene owns LightLinker).
         
         mutable CPUOutOfDateFlags                   mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                                mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.

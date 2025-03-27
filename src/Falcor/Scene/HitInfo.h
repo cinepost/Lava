@@ -28,8 +28,9 @@
 #ifndef SRC_FALCOR_SCENE_HITINFO_H_
 #define SRC_FALCOR_SCENE_HITINFO_H_
 
-#include "Falcor.h"
-#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/Program/DefineList.h"
 
 namespace Falcor {
 
@@ -56,7 +57,7 @@ class dlldecl HitInfo {
 
 		/** Returns defines needed packing/unpacking a HitInfo struct.
 		*/
-		Shader::DefineList getDefines() const;
+		DefineList getDefines() const;
 
 		/** Returns the resource format required for encoding packed hit information.
 		*/

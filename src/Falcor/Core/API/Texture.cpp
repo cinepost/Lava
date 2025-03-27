@@ -150,26 +150,16 @@ ref<Texture> Texture::createFromResource(
 
 //----------------------------------------------------------
 
-ref<Texture> Texture::createUDIMFromFile(ref<Device> pDevice, const std::string& filename) {
-	fs::path fullPath(filename);
-	return createUDIMFromFile(pDevice, fullPath);
-}
-
 ref<Texture> Texture::createUDIMFromFile(ref<Device> pDevice, const fs::path& path) {
 	ref<Texture> pTexture = make_ref<Texture>(pDevice, Type::Texture2D, ResourceFormat::R8Unorm, 1, 1, 1, 1, 1, 1, ResourceBindFlags::None, nullptr);
 	pTexture->mIsUDIMTexture = true;
-	pTexture->mSourceFilename = path.string();
+	pTexture->mSourcePath = path;
 
 	for(uint i = 0; i < 100; ++i) {
 		pTexture->mUDIMTileInfos[i].pTileTexture = nullptr;
 	}
 
 	return pTexture;
-}
-
-ref<Texture> Texture::createFromFile(ref<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, ResourceBindFlags bindFlags, Bitmap::ImportFlags importFlags) {
-	const fs::path fullPath(filename);
-	return createFromFile(pDevice, fullPath, generateMipLevels, loadAsSrgb, bindFlags, importFlags);
 }
 
 ref<Texture> Texture::createFromFile(ref<Device> pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, ResourceBindFlags bindFlags, Bitmap::ImportFlags importFlags) {
@@ -200,7 +190,7 @@ ref<Texture> Texture::createFromFile(ref<Device> pDevice, const fs::path& path, 
 		}
 	}
 
-	if (pTex) pTex->mSourceFilename = fullPath.string();
+	if (pTex) pTex->mSourcePath = fullPath;
 
 	return pTex;
 }

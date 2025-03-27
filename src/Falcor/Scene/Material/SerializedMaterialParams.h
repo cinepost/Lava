@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,53 +25,45 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_SERIALIZEDMATERIALPARAMS_H_
+#define SRC_FALCOR_SCENE_MATERIAL_SERIALIZEDMATERIALPARAMS_H_
 
-#include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
+#include "Falcor/Core/Error.h"
+#include "Falcor/Utils/Math/Vector.h"
+
+#include <array>
+
 
 namespace Falcor {
 
-/** A single SDF Sparse Voxel Set. Can only be utilized on the GPU.
-*/
-class FALCOR_API SDFSVS : public SDFGrid {
-    public:
-        static ref<SDFSVS> create(ref<Device> pDevice) { return make_ref<SDFSVS>(pDevice); }
+struct SerializedMaterialParams : public std::array<float, 20> {
+    static constexpr size_t kParamCount = 20;
 
-        /// Create am empty SDF sparse voxel set.
-        SDFSVS(ref<Device> pDevice) : SDFGrid(pDevice) {}
+    void write(float value, size_t offset) {
+        FALCOR_ASSERT(offset <= size());
+        (*this)[offset] = value;
+    }
 
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const override { return Type::SparseVoxelSet; }
+    template<int N>
+    void write(math::vector<float, N> value, size_t offset) {
+        FALCOR_ASSERT(offset + N <= size());
+        for (size_t i = 0; i < N; ++i)
+            (*this)[offset + i] = value[i];
+    }
 
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+    void read(float& value, size_t offset) const {
+        FALCOR_ASSERT(offset <= size());
+        value = (*this)[offset];
+    }
 
-        virtual const ref<Buffer>& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return mVoxelCount; }
-
-        virtual void bindShaderData(const ShaderVar& var) const override;
-
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
-
-    private:
-        // CPU data.
-        std::vector<int8_t> mValues;
-
-        // Specs.
-        ref<Buffer> mpVoxelAABBBuffer;
-        ref<Buffer> mpVoxelBuffer;
-        uint32_t mVoxelCount = 0;
-
-        // Compute passes used to build the SVS.
-        ref<ComputePass> mpCountSurfaceVoxelsPass;
-        ref<ComputePass> mpSDFSVSVoxelizerPass;
-
-        // Scratch data used for building.
-        ref<Buffer> mpSurfaceVoxelCounter;
-        ref<Texture> mpSDFGridTexture;
+    template<int N>
+    void read(math::vector<float, N>& value, size_t offset) const {
+        FALCOR_ASSERT(offset + N <= size());
+        for (size_t i = 0; i < N; ++i)
+            value[i] = (*this)[offset + i];
+    }
 };
 
 } // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_MATERIAL_SERIALIZEDMATERIALPARAMS_H_

@@ -48,9 +48,6 @@ static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size shoul
 
 constexpr float M_2PI = 2.0f * M_PI;
 
-// Default dimensions of full frame cameras and 35mm film
-const float Camera::kDefaultFrameHeight = 24.0f;
-
 Camera::Camera(): mpDevice(nullptr) {
 	mXformList.resize(1);
 	mPrevXformList.resize(1);

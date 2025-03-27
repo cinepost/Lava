@@ -305,6 +305,8 @@ struct PackedStaticVertexData {
         texU = v.texCrd[0];
         texV = v.texCrd[1];
 
+        uint3 n = f32tof16(v.normal);
+
         float packedTangentSignCurveRadius = v.tangent.w;
 
         if (v.curveRadius > 0.f) {
@@ -312,10 +314,11 @@ struct PackedStaticVertexData {
             assert(v.tangent.w != 0.f);
             packedTangentSignCurveRadius *= v.curveRadius;
         }
+        uint t_w = f32tof16(packedTangentSignCurveRadius);
 
-        packedNormalTangentCurveRadius.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
-        packedNormalTangentCurveRadius.y = asfloat(glm::packHalf2x16({ v.normal.z, packedTangentSignCurveRadius }));
-        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
+        packedNormalTangentCurveRadius.x = asfloat((n.y << 16) | n.x);
+        packedNormalTangentCurveRadius.y = asfloat((t_w << 16) | n.z);
+        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz()));
     }
 
 #else // !HOST_CODE

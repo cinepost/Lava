@@ -17,7 +17,7 @@ class RenderContext;
 class FALCOR_API PhysicalSkySampler {
  public:
     PhysicalSkySampler(RenderContext* pRenderContext);
-    virtual ~EnvMapSampler() = default;
+    virtual ~PhysicalSkySampler() = default;
 
     /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
@@ -27,8 +27,6 @@ class FALCOR_API PhysicalSkySampler {
     const ref<Texture>& getImportanceMap();
 
  protected:
-    PhysicalSkySampler(RenderContext* pRenderContext);
-
     bool createSunTransmittanceLUT(RenderContext* pRenderContext);
     bool createMultipleScatteringLUT(RenderContext* pRenderContext);
     bool createSkyViewLUT(RenderContext* pRenderContext);

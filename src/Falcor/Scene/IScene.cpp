@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,51 +27,18 @@
  **************************************************************************/
 #pragma once
 
-#include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
+#include "IScene.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 
 namespace Falcor {
 
-/** A single SDF Sparse Voxel Set. Can only be utilized on the GPU.
-*/
-class FALCOR_API SDFSVS : public SDFGrid {
-    public:
-        static ref<SDFSVS> create(ref<Device> pDevice) { return make_ref<SDFSVS>(pDevice); }
-
-        /// Create am empty SDF sparse voxel set.
-        SDFSVS(ref<Device> pDevice) : SDFGrid(pDevice) {}
-
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const override { return Type::SparseVoxelSet; }
-
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
-
-        virtual const ref<Buffer>& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return mVoxelCount; }
-
-        virtual void bindShaderData(const ShaderVar& var) const override;
-
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
-
-    private:
-        // CPU data.
-        std::vector<int8_t> mValues;
-
-        // Specs.
-        ref<Buffer> mpVoxelAABBBuffer;
-        ref<Buffer> mpVoxelBuffer;
-        uint32_t mVoxelCount = 0;
-
-        // Compute passes used to build the SVS.
-        ref<ComputePass> mpCountSurfaceVoxelsPass;
-        ref<ComputePass> mpSDFSVSVoxelizerPass;
-
-        // Scratch data used for building.
-        ref<Buffer> mpSurfaceVoxelCounter;
-        ref<Texture> mpSDFGridTexture;
-};
+/// Convenience function when the Scene wants to do something besides just calling raytrace.
+/// TODO: Remove when no longer useful
+void IScene::raytrace(RenderContext* renderContext, Program* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims) {
+    bindShaderDataForRaytracing(renderContext, pVars->getRootVar()["gScene"], pVars->getRayTypeCount());
+    renderContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
+}
 
 } // namespace Falcor

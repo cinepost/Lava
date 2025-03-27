@@ -27,39 +27,43 @@
  **************************************************************************/
 #pragma once
 
-#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
+
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 #include <memory>
 #include <string>
 #include <vector>
 
+
 namespace Falcor {
 
 struct ShaderVar;
 
-class FALCOR_API LightProfile {
-public:
-    using SharedPtr = std::shared_ptr<LightProfile>;
+class FALCOR_API LightProfile : public Object {
+        FALCOR_OBJECT(LightProfile)
+    public:
+        static ref<LightProfile> createFromIesProfile(ref<Device> pDevice, const fs::path& path, bool normalize);
 
-    static SharedPtr createFromIesProfile(std::shared_ptr<Device> pDevice, const fs::path& filename, bool normalize);
+        void bake(RenderContext* pRenderContext);
 
-    void bake(RenderContext* pRenderContext);
+        /** Set the light profile into a shader var.
+        */
+        void bindShaderData(const ShaderVar& var) const;
 
-    /** Set the light profile into a shader var.
-    */
-    void setShaderData(const ShaderVar& var) const;
+    private:
+        LightProfile(ref<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
 
-private:
-    LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
-
-    std::shared_ptr<Device> mpDevice;
-    std::string mName;
-    std::vector<float> mRawData;
-    Texture::SharedPtr mpTexture;
-    Sampler::SharedPtr mpSampler;
-    float mFluxFactor = 0.f;
+        ref<Device> mpDevice;
+        std::string mName;
+        std::vector<float> mRawData;
+        ref<Texture> mpTexture;
+        ref<Sampler> mpSampler;
+        float mFluxFactor = 0.f;
 };
 
 }  // namespace Falcor

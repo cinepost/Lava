@@ -25,247 +25,258 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "GridVolume.h"
+#include "Grid.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "GlobalState.h"
 
 #include <set>
 
 namespace Falcor {
-    namespace {
-        // Constants.
-        const float kMaxAnisotropy = 0.99f;
-        const double kMinFrameRate = 1.0;
-        const double kMaxFrameRate = 1000.0;
+
+namespace {
+    // Constants.
+    const float kMaxAnisotropy = 0.99f;
+    const double kMinFrameRate = 1.0;
+    const double kMaxFrameRate = 1000.0;
+}
+
+static_assert(sizeof(GridVolumeData) % 16 == 0, "GridVolumeData size should be a multiple of 16");
+
+GridVolume::GridVolume(ref<Device> pDevice, const std::string& name): mpDevice(pDevice), mName(name) {
+    mData.transform = float4x4::identity();
+    mData.invTransform = float4x4::identity();
+}
+
+bool GridVolume::loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname) {
+    auto grid = Grid::createFromFile(mpDevice, path, gridname);
+    if (grid) setGrid(slot, grid);
+    return grid != nullptr;
+}
+
+GridVolume::GridSequence GridVolume::createGridSequence(ref<Device> pDevice, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty) {
+    GridSequence grids;
+    for (const auto& path : paths) {
+        auto grid = Grid::createFromFile(pDevice, path, gridname);
+        if (keepEmpty || grid) grids.push_back(grid);
     }
 
-    static_assert(sizeof(GridVolumeData) % 16 == 0, "GridVolumeData size should be a multiple of 16");
+    return grids;
+}
 
-    GridVolume::GridVolume(Device::SharedPtr pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
-        mData.transform = glm::identity<glm::mat4>();
-        mData.invTransform = glm::identity<glm::mat4>();
+uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty) {
+    GridVolume::GridSequence grids = GridVolume::createGridSequence(mpDevice, paths, gridname, keepEmpty);
+    setGridSequence(slot, grids);
+    return (uint32_t)grids.size();
+}
+
+uint32_t GridVolume::loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty) {
+    if (!fs::exists(path)) {
+        logWarning("'{}' does not exist.", path);
+        return 0;
     }
 
-    GridVolume::SharedPtr GridVolume::create(Device::SharedPtr pDevice, const std::string& name) {
-        return SharedPtr(new GridVolume(pDevice, name));
+    if (!fs::is_directory(path)) {
+        logWarning("'{}' is not a directory.", path);
+        return 0;
     }
 
-    bool GridVolume::loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname) {
-        auto grid = Grid::createFromFile(mpDevice, path, gridname);
-        if (grid) setGrid(slot, grid);
-        return grid != nullptr;
+    // Enumerate grid files.
+    std::vector<fs::path> paths;
+    for (auto it : fs::directory_iterator(path)) {
+        if (hasExtension(it.path(), "nvdb") || hasExtension(it.path(), "vdb")) paths.push_back(it.path());
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty) {
-        GridSequence grids;
-        for (const auto& path : paths) {
-            auto grid = Grid::createFromFile(mpDevice, path, gridname);
-            if (keepEmpty || grid) grids.push_back(grid);
-        }
-        setGridSequence(slot, grids);
-        return (uint32_t)grids.size();
+    // Sort by length first, then alpha-numerically.
+    auto cmp = [](const fs::path& a, const fs::path& b) {
+        auto sa = a.string();
+        auto sb = b.string();
+        return sa.length() != sb.length() ? sa.length() < sb.length() : sa < sb;
+    };
+    std::sort(paths.begin(), paths.end(), cmp);
+
+    return loadGridSequence(slot, paths, gridname, keepEmpty);
+}
+
+void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids) {
+    uint32_t slotIndex = (uint32_t)slot;
+    FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+
+    if (mGrids[slotIndex] != grids) {
+        mGrids[slotIndex] = grids;
+        updateSequence();
+        updateBounds();
+        markUpdates(UpdateFlags::GridsChanged);
     }
+}
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty) {
-        fs::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath)) {
-            LLOG_WRN << "Cannot find directory " << path;
-            return 0;
-        }
-        if (!fs::is_directory(fullPath)) {
-            LLOG_WRN << path << " is not a directory.";
-            return 0;
-        }
+const GridVolume::GridSequence& GridVolume::getGridSequence(GridSlot slot) const {
+    uint32_t slotIndex = (uint32_t)slot;
+    FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
-        // Enumerate grid files.
-        std::vector<fs::path> paths;
-        for (auto p : fs::directory_iterator(fullPath)) {
-            const auto& path = p.path();
-            if (hasExtension(path, "nvdb") || hasExtension(path, "vdb")) paths.push_back(path);
-        }
+    return mGrids[slotIndex];
+}
 
-        // Sort by length first, then alpha-numerically.
-        auto cmp = [](const fs::path& a, const fs::path& b) {
-            auto sa = a.string();
-            auto sb = b.string();
-            return sa.length() != sb.length() ? sa.length() < sb.length() : sa < sb;
-        };
-        std::sort(paths.begin(), paths.end(), cmp);
+void GridVolume::setGrid(GridSlot slot, const ref<Grid>& grid) {
+    setGridSequence(slot, grid ? GridSequence{grid} : GridSequence{});
+}
 
-        return loadGridSequence(slot, paths, gridname, keepEmpty);
+const ref<Grid>& GridVolume::getGrid(GridSlot slot) const {
+    static const ref<Grid> kNullGrid;
+
+    uint32_t slotIndex = (uint32_t)slot;
+    FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+
+    const auto& gridSequence = mGrids[slotIndex];
+    uint32_t gridIndex = std::min(mGridFrame, (uint32_t)gridSequence.size() - 1);
+    return gridSequence.empty() ? kNullGrid : gridSequence[gridIndex];
+}
+
+std::vector<ref<Grid>> GridVolume::getAllGrids() const {
+    std::set<ref<Grid>> uniqueGrids;
+    for (const auto& grids : mGrids) {
+        std::copy_if(grids.begin(), grids.end(), std::inserter(uniqueGrids, uniqueGrids.begin()), [] (const auto& grid) { return grid != nullptr; });
     }
+    return std::vector<ref<Grid>>(uniqueGrids.begin(), uniqueGrids.end());
+}
 
-    void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids) {
-        uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
-
-        if (mGrids[slotIndex] != grids) {
-            mGrids[slotIndex] = grids;
-            updateSequence();
-            updateBounds();
-            markUpdates(UpdateFlags::GridsChanged);
-        }
+void GridVolume::setGridFrame(uint32_t gridFrame) {
+    if (mGridFrame != gridFrame) {
+        mGridFrame = gridFrame;
+        markUpdates(UpdateFlags::GridsChanged);
+        updateBounds();
     }
+}
 
-    const GridVolume::GridSequence& GridVolume::getGridSequence(GridSlot slot) const {
-        uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+void GridVolume::setFrameRate(double frameRate) {
+    mFrameRate = math::clamp(frameRate, kMinFrameRate, kMaxFrameRate);
+}
 
-        return mGrids[slotIndex];
+void GridVolume::setPlaybackEnabled(bool enabled) {
+    mPlaybackEnabled = enabled;
+}
+
+void GridVolume::updatePlayback(double currentTime) {
+    if (mPlaybackEnabled && mGridFrameCount > 0) {
+        uint32_t frameIndex = (mStartFrame + (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate)) % mGridFrameCount;
+        setGridFrame(frameIndex);
     }
+}
 
-    void GridVolume::setGrid(GridSlot slot, const Grid::SharedPtr& grid) {
-        setGridSequence(slot, grid ? GridSequence{grid} : GridSequence{});
+void GridVolume::setDensityScale(float densityScale) {
+    if (mData.densityScale != densityScale) {
+        mData.densityScale = densityScale;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    const Grid::SharedPtr& GridVolume::getGrid(GridSlot slot) const {
-        static const Grid::SharedPtr kNullGrid;
-
-        uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
-
-        const auto& gridSequence = mGrids[slotIndex];
-        uint32_t gridIndex = std::min(mGridFrame, (uint32_t)gridSequence.size() - 1);
-        return gridSequence.empty() ? kNullGrid : gridSequence[gridIndex];
+void GridVolume::setEmissionScale(float emissionScale) {
+    if (mData.emissionScale != emissionScale) {
+        mData.emissionScale = emissionScale;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    std::vector<Grid::SharedPtr> GridVolume::getAllGrids() const {
-        std::set<Grid::SharedPtr> uniqueGrids;
-        for (const auto& grids : mGrids) {
-            std::copy_if(grids.begin(), grids.end(), std::inserter(uniqueGrids, uniqueGrids.begin()), [] (const auto& grid) { return grid != nullptr; });
-        }
-        return std::vector<Grid::SharedPtr>(uniqueGrids.begin(), uniqueGrids.end());
+void GridVolume::setAlbedo(const float3& albedo) {
+    auto clampedAlbedo = clamp(albedo, float3(0.f), float3(1.f));
+    if (any(mData.albedo != clampedAlbedo)) {
+        mData.albedo = clampedAlbedo;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    void GridVolume::setGridFrame(uint32_t gridFrame) {
-        if (mGridFrame != gridFrame) {
-            mGridFrame = gridFrame;
-            markUpdates(UpdateFlags::GridsChanged);
-            updateBounds();
-        }
+void GridVolume::setAnisotropy(float anisotropy) {
+    auto clampedAnisotropy = math::clamp(anisotropy, -kMaxAnisotropy, kMaxAnisotropy);
+    if (mData.anisotropy != clampedAnisotropy) {
+        mData.anisotropy = clampedAnisotropy;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    void GridVolume::setFrameRate(double frameRate) {
-        mFrameRate = clamp(frameRate, kMinFrameRate, kMaxFrameRate);
+void GridVolume::setEmissionMode(EmissionMode emissionMode) {
+    if (mData.flags != (uint32_t)emissionMode) {
+        mData.flags = (uint32_t)emissionMode;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    void GridVolume::setPlaybackEnabled(bool enabled) {
-        mPlaybackEnabled = enabled;
+GridVolume::EmissionMode GridVolume::getEmissionMode() const {
+    return (EmissionMode)mData.flags;
+}
+
+void GridVolume::setEmissionTemperature(float emissionTemperature) {
+    if (mData.emissionTemperature != emissionTemperature) {
+        mData.emissionTemperature = emissionTemperature;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    void GridVolume::updatePlayback(double currentTime) {
-        uint32_t frameCount = getGridFrameCount();
-        if (mPlaybackEnabled && frameCount > 0) {
-            uint32_t frameIndex = (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate) % frameCount;
-            setGridFrame(frameIndex);
-        }
+void GridVolume::updateFromAnimation(const float4x4& transform) {
+    if (mData.transform != transform) {
+        mData.transform = transform;
+        mData.invTransform = inverse(transform);
+        markUpdates(UpdateFlags::TransformChanged);
+        updateBounds();
     }
+}
 
-    void GridVolume::setDensityScale(float densityScale) {
-        if (mData.densityScale != densityScale) {
-            mData.densityScale = densityScale;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
+void GridVolume::updateSequence() {
+    mGridFrameCount = 1;
+    for (const auto& grids : mGrids) mGridFrameCount = std::max(mGridFrameCount, (uint32_t)grids.size());
+    setGridFrame(std::min(mGridFrame, mGridFrameCount - 1));
+}
+
+void GridVolume::updateBounds() {
+    AABB bounds;
+    for (uint32_t slotIndex = 0; slotIndex < (uint32_t)GridSlot::Count; ++slotIndex) {
+        const auto& grid = getGrid((GridSlot)slotIndex);
+        if (grid && grid->getVoxelCount() > 0) bounds.include(grid->getWorldBounds());
     }
+    bounds = bounds.transform(mData.transform);
 
-    void GridVolume::setEmissionScale(float emissionScale) {
-        if (mData.emissionScale != emissionScale) {
-            mData.emissionScale = emissionScale;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
+    if (mBounds != bounds) {
+        mBounds = bounds;
+        mData.boundsMin = mBounds.valid() ? mBounds.minPoint : float3(0.f);
+        mData.boundsMax = mBounds.valid() ? mBounds.maxPoint : float3(0.f);
+        markUpdates(UpdateFlags::BoundsChanged);
     }
+}
 
-    void GridVolume::setAlbedo(const float3& albedo) {
-        auto clampedAlbedo = clamp(albedo, float3(0.f), float3(1.f));
-        if (mData.albedo != clampedAlbedo) {
-            mData.albedo = clampedAlbedo;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
+void GridVolume::markUpdates(UpdateFlags updates) {
+    mUpdates |= updates;
+}
+
+void GridVolume::setFlags(uint32_t flags) {
+    if (mData.flags != flags) {
+        mData.flags = flags;
+        markUpdates(UpdateFlags::PropertiesChanged);
     }
+}
 
-    void GridVolume::setAnisotropy(float anisotropy) {
-        auto clampedAnisotropy = clamp(anisotropy, -kMaxAnisotropy, kMaxAnisotropy);
-        if (mData.anisotropy != clampedAnisotropy)
-        {
-            mData.anisotropy = clampedAnisotropy;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
-    }
-
-    void GridVolume::setEmissionMode(EmissionMode emissionMode) {
-        if (mData.flags != (uint32_t)emissionMode) {
-            mData.flags = (uint32_t)emissionMode;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
-    }
-
-    GridVolume::EmissionMode GridVolume::getEmissionMode() const {
-        return (EmissionMode)mData.flags;
-    }
-
-    void GridVolume::setEmissionTemperature(float emissionTemperature) {
-        if (mData.emissionTemperature != emissionTemperature) {
-            mData.emissionTemperature = emissionTemperature;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
-    }
-
-    void GridVolume::updateFromAnimation(const glm::mat4& transform) {
-        if (mData.transform != transform) {
-            mData.transform = transform;
-            mData.invTransform = glm::inverse(transform);
-            markUpdates(UpdateFlags::TransformChanged);
-            updateBounds();
-        }
-    }
-
-    void GridVolume::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
-        if(transformList.empty()) return;
-        updateFromAnimation(transformList[0]);
-    }
-
-    void GridVolume::updateSequence() {
-        mGridFrameCount = 1;
-        for (const auto& grids : mGrids) mGridFrameCount = std::max(mGridFrameCount, (uint32_t)grids.size());
-        setGridFrame(std::min(mGridFrame, mGridFrameCount - 1));
-    }
-
-    void GridVolume::updateBounds() {
-        AABB bounds;
-        for (uint32_t slotIndex = 0; slotIndex < (uint32_t)GridSlot::Count; ++slotIndex) {
-            const auto& grid = getGrid((GridSlot)slotIndex);
-            if (grid && grid->getVoxelCount() > 0) bounds.include(grid->getWorldBounds());
-        }
-        bounds = bounds.transform(mData.transform);
-
-        if (mBounds != bounds) {
-            mBounds = bounds;
-            mData.boundsMin = mBounds.valid() ? mBounds.minPoint : float3(0.f);
-            mData.boundsMax = mBounds.valid() ? mBounds.maxPoint : float3(0.f);
-            markUpdates(UpdateFlags::BoundsChanged);
-        }
-    }
-
-    void GridVolume::markUpdates(UpdateFlags updates) {
-        mUpdates |= updates;
-    }
-
-    void GridVolume::setFlags(uint32_t flags) {
-        if (mData.flags != flags) {
-            mData.flags = flags;
-            markUpdates(UpdateFlags::PropertiesChanged);
-        }
-    }
 
 #ifdef SCRIPTING
     SCRIPT_BINDING(GridVolume) {
+        using namespace pybind11::literals;
+
         SCRIPT_BINDING_DEPENDENCY(Animatable)
         SCRIPT_BINDING_DEPENDENCY(Grid)
 
-        pybind11::class_<GridVolume, Animatable, GridVolume::SharedPtr> volume(m, "GridVolume");
+        pybind11::class_<GridVolume, Animatable, ref<GridVolume>> volume(m, "GridVolume");
+
+        pybind11::enum_<GridVolume::GridSlot> gridSlot(volume, "GridSlot");
+        gridSlot.value("Density", GridVolume::GridSlot::Density);
+        gridSlot.value("Emission", GridVolume::GridSlot::Emission);
+
+        pybind11::enum_<GridVolume::EmissionMode> emissionMode(volume, "EmissionMode");
+        emissionMode.value("Direct", GridVolume::EmissionMode::Direct);
+        emissionMode.value("Blackbody", GridVolume::EmissionMode::Blackbody);
+
         volume.def_property("name", &GridVolume::getName, &GridVolume::setName);
         volume.def_property("gridFrame", &GridVolume::getGridFrame, &GridVolume::setGridFrame);
         volume.def_property_readonly("gridFrameCount", &GridVolume::getGridFrameCount);
         volume.def_property("frameRate", &GridVolume::getFrameRate, &GridVolume::setFrameRate);
+        volume.def_property("startFrame", &GridVolume::getStartFrame, &GridVolume::setStartFrame);
         volume.def_property("playbackEnabled", &GridVolume::isPlaybackEnabled, &GridVolume::setPlaybackEnabled);
         volume.def_property("densityGrid", &GridVolume::getDensityGrid, &GridVolume::setDensityGrid);
         volume.def_property("densityScale", &GridVolume::getDensityScale, &GridVolume::setDensityScale);
@@ -275,22 +286,31 @@ namespace Falcor {
         volume.def_property("anisotropy", &GridVolume::getAnisotropy, &GridVolume::setAnisotropy);
         volume.def_property("emissionMode", &GridVolume::getEmissionMode, &GridVolume::setEmissionMode);
         volume.def_property("emissionTemperature", &GridVolume::getEmissionTemperature, &GridVolume::setEmissionTemperature);
-        volume.def(pybind11::init(&GridVolume::create), "name"_a);
-        volume.def("loadGrid", &GridVolume::loadGrid, "slot"_a, "path"_a, "gridname"_a);
+        auto create = [] (const std::string& name)
+        {
+            return GridVolume::create(accessActivePythonSceneBuilder().getDevice(), name);
+        };
+        volume.def(pybind11::init(create), "name"_a); // PYTHONDEPRECATED
+        volume.def("loadGrid",
+            [](GridVolume& self, GridVolume::GridSlot slot, const fs::path& path, const std::string& gridname)
+            { return self.loadGrid(slot, getActiveAssetResolver().resolvePath(path), gridname); },
+            "slot"_a, "path"_a, "gridname"_a
+        ); // PYTHONDEPRECATED
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::vector<std::filesystem::path>&, const std::string&, bool>(&GridVolume::loadGridSequence),
-            "slot"_a, "paths"_a, "gridname"_a, "keepEmpty"_a = true);
+            [](GridVolume& self, GridVolume::GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty)
+            {
+                std::vector<fs::path> resolvedPaths;
+                for (const auto& path : paths)
+                    resolvedPaths.push_back(getActiveAssetResolver().resolvePath(path));
+                return self.loadGridSequence(slot, resolvedPaths, gridname, keepEmpty);
+            },
+            "slot"_a, "paths"_a, "gridname"_a, "keepEmpty"_a = true
+        ); // PYTHONDEPRECATED
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::filesystem::path&, const std::string&, bool>(&GridVolume::loadGridSequence),
-            "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true);
-
-        pybind11::enum_<GridVolume::GridSlot> gridSlot(volume, "GridSlot");
-        gridSlot.value("Density", GridVolume::GridSlot::Density);
-        gridSlot.value("Emission", GridVolume::GridSlot::Emission);
-
-        pybind11::enum_<GridVolume::EmissionMode> emissionMode(volume, "EmissionMode");
-        emissionMode.value("Direct", GridVolume::EmissionMode::Direct);
-        emissionMode.value("Blackbody", GridVolume::EmissionMode::Blackbody);
+            [](GridVolume& self, GridVolume::GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty)
+            { return self.loadGridSequence(slot, getActiveAssetResolver().resolvePath(path), gridname, keepEmpty); },
+            "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true
+        ); // PYTHONDEPRECATED
 
         m.attr("Volume") = m.attr("GridVolume"); // PYTHONDEPRECATED
     }

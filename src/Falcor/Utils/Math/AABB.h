@@ -28,8 +28,11 @@
 #ifndef FALCOR_UTILS_MATH_AABB_H_
 #define FALCOR_UTILS_MATH_AABB_H_
 
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/API/Raytracing.h"
+#include "Matrix.h"
 #include "Vector.h"
+
 #include <limits>
 
 namespace Falcor {
@@ -96,8 +99,8 @@ namespace Falcor {
         /** Make the box be the intersection between this and another box.
         */
         AABB& intersection(const AABB& b) {
-            minPoint = glm::max(minPoint, b.minPoint);
-            maxPoint = glm::min(maxPoint, b.maxPoint);
+            minPoint = max(minPoint, b.minPoint);
+            maxPoint = min(maxPoint, b.maxPoint);
             return *this;
         }
 
@@ -135,46 +138,47 @@ namespace Falcor {
             \return Radius of minimal bounding sphere, or undefined if box is invalid.
         */
         float radius() const {
-            return 0.5f * glm::length(extent());
+            return 0.5f * length(extent());
         }
 
-        /** Calculates the bounding box transformed by a matrix.
-            \param[in] mat Transform matrix
-            \return Bounding box after transformation.
-        */
-        AABB transform(const glm::mat4& mat) const {
-            float3 xa = float3(mat[0] * minPoint.x);
-            float3 xb = float3(mat[0] * maxPoint.x);
-            float3 xMin = glm::min(xa, xb);
-            float3 xMax = glm::max(xa, xb);
+        /**
+         * Calculates the bounding box transformed by a matrix.
+         * @param[in] mat Transform matrix
+         * @return Bounding box after transformation.
+         */
+        [[nodiscard]] AABB transform(const float4x4& mat) const
+        {
+            if (!valid())
+                return {};
 
-            float3 ya = float3(mat[1] * minPoint.y);
-            float3 yb = float3(mat[1] * maxPoint.y);
-            float3 yMin = glm::min(ya, yb);
-            float3 yMax = glm::max(ya, yb);
+            float3 xa = mat.getCol(0).xyz() * minPoint.x;
+            float3 xb = mat.getCol(0).xyz() * maxPoint.x;
+            float3 xMin = min(xa, xb);
+            float3 xMax = max(xa, xb);
 
-            float3 za = float3(mat[2] * minPoint.z);
-            float3 zb = float3(mat[2] * maxPoint.z);
-            float3 zMin = glm::min(za, zb);
-            float3 zMax = glm::max(za, zb);
+            float3 ya = mat.getCol(1).xyz() * minPoint.y;
+            float3 yb = mat.getCol(1).xyz() * maxPoint.y;
+            float3 yMin = min(ya, yb);
+            float3 yMax = max(ya, yb);
 
-            float3 newMin = xMin + yMin + zMin + float3(mat[3]);
-            float3 newMax = xMax + yMax + zMax + float3(mat[3]);
+            float3 za = mat.getCol(2).xyz() * minPoint.z;
+            float3 zb = mat.getCol(2).xyz() * maxPoint.z;
+            float3 zMin = min(za, zb);
+            float3 zMax = max(za, zb);
+
+            float3 newMin = xMin + yMin + zMin + mat.getCol(3).xyz();
+            float3 newMax = xMax + yMax + zMax + mat.getCol(3).xyz();
 
             return AABB(newMin, newMax);
         }
 
         /** Checks whether two bounding boxes are equal.
         */
-        bool operator== (const AABB& rhs) const {
-            return minPoint == rhs.minPoint && maxPoint == rhs.maxPoint;
-        }
+        bool operator== (const AABB& rhs) const { return all(minPoint == rhs.minPoint) && all(maxPoint == rhs.maxPoint); }
 
         /** Checks whether two bounding boxes are not equal.
         */
-        bool operator!= (const AABB& rhs) const {
-            return minPoint != rhs.minPoint || maxPoint != rhs.maxPoint;
-        }
+        bool operator!= (const AABB& rhs) const { return any(minPoint != rhs.minPoint) || any(maxPoint != rhs.maxPoint); }
 
         /** Union of two boxes.
         */

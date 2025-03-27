@@ -140,6 +140,8 @@
     inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
     inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
     inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
+
+#define FALCOR_ENUM_CLASS_OPERATORS(e) ENUM_CLASS_OPERATORS(e)
 // clang-format on
 
 #endif  // SRC_FALCOR_CORE_MACROS_H_

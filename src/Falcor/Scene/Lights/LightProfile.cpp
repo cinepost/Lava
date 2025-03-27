@@ -26,25 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "LightProfile.h"
-
 #include "Falcor/Core/Platform/OS.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Logger.h"
 #include "Falcor/Utils/Algorithm/ParallelReduction.h"
+#include "Falcor/Core/Pass/ComputePass.h"
 
-#include "lava_utils_lib/logging.h"
-
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 #include <fstream>
 
 namespace Falcor {
 
 namespace {
-
     const uint32_t kBakeResolution = 256;
 
     const char kBakeIesProfileFile[] = "Scene/Lights/BakeIesProfile.cs.slang";
-    ComputePass::SharedPtr pBakePass;
 
     const char* kSupportedProfiles[] = {
         "IESNA:LM-63-1986",
@@ -102,7 +100,8 @@ namespace {
         // count whitespace to get a rough estimate of the number of floats stored
         int numWhitespace = 0;
         for (char* p = fileData; *p; p++) {
-            if (*p == ' ') ++numWhitespace;
+            if (*p == ' ')
+                ++numWhitespace;
         }
 
         // parse the header line by line
@@ -114,6 +113,7 @@ namespace {
         while (line) {
             if (lineNumber == 1) {
                 bool profileFound = false;
+
                 for (const char* profile : kSupportedProfiles) {
                     if (strstr(line, profile)) {
                         profileFound = true;
@@ -125,12 +125,9 @@ namespace {
                     return IesStatus::UnsupportedProfile;
                 }
             } else {
-                if (strstr(line, "TILT=NONE") == line)
-                {
+                if (strstr(line, "TILT=NONE") == line) {
                     break;
-                }
-                else if (strstr(line, "TILT=") == line)
-                {
+                } else if (strstr(line, "TILT=") == line) {
                     return IesStatus::UnsupportedTilt;
                 }
             }
@@ -140,22 +137,25 @@ namespace {
         }
 
         numericData.reserve(numWhitespace);
-        while ((line = strtok(NULL, dataDelimiters))) {
+        line = strtok(NULL, dataDelimiters);
+        while (line) {
             float value = 0.f;
             if (sscanf(line, "%f", &value) == 1) numericData.push_back(value);
+            
+            line = strtok(NULL, dataDelimiters);
         }
 
         if (numericData.size() < 16) {
             return IesStatus::WrongDataSize;
         }
 
-        //int numLamps = int(numericData[0]);
+        int numLamps = int(numericData[0]);
         int numVerticalAngles = int(numericData[3]);
         int numHorizontalAngles = int(numericData[4]);
         int headerSize = 13;
 
         int expectedDataSize = headerSize + numHorizontalAngles + numVerticalAngles + numHorizontalAngles * numVerticalAngles;
-        if ((int)numericData.size() != expectedDataSize) {
+        if (numericData.size() != expectedDataSize) {
             return IesStatus::WrongDataSize;
         }
 
@@ -165,24 +165,23 @@ namespace {
 
         return IesStatus::Success;
     }
+}
 
-}  // namespace
 
-
-LightProfile::LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
-    : mpDevice(std::move(pDevice))
+LightProfile::LightProfile(ref<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
+    : mpDevice(pDevice)
     , mName(name)
     , mRawData(rawData)
 {}
 
-LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Device> pDevice, const fs::path& filename, bool normalize) {
-    fs::path fullpath;
-    if (!findFileInDataDirectories(filename, fullpath)) {
-        LLOG_WRN << "Error when loading light profile. Can't find file \'" << filename << "\'";
+ref<LightProfile> LightProfile::createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& path, bool normalize) {
+    std::ifstream ifs(path);
+    
+    if (!ifs.good()) {
+        logWarning("Error when loading light profile. Can't open file '{}'", path);
         return nullptr;
     }
 
-    std::ifstream ifs(fullpath.string());
     std::string str;
     ifs.seekg(0, std::ios::end);
     str.reserve(ifs.tellg());
@@ -194,32 +193,27 @@ LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Devic
     IesStatus status = parseIesFile(str.data(), numericData, maxCandelas);
     
     switch (status) {
-        case IesStatus::Success:
-            break;
         case IesStatus::UnsupportedProfile:
         case IesStatus::UnsupportedTilt:
         case IesStatus::WrongDataSize:
         case IesStatus::InvalidData:
-            LLOG_WRN  << "Error while loading IES profile from \'" << fullpath << "\'";
+            logWarning("Error while loading IES profile from '{}'.", path);
             return nullptr;
     }
 
     // Stash the normalization factor in data[0], we don't use that anyway
     numericData[0] = normalize ? (1.f / maxCandelas) : 1.f;
 
-    std::string name = fullpath.filename().string();
+    std::string name = path.filename().string();
 
-    return SharedPtr(new LightProfile(std::move(pDevice), name, numericData));
+    return ref<LightProfile>(new LightProfile(pDevice, name, numericData));
 }
 
 void LightProfile::bake(RenderContext* pRenderContext) {
-    if (!pBakePass) {
-        pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
-    }
-
-    auto pBuffer = Buffer::createTyped<float>(mpDevice, (uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
-    mpTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-    auto pFluxTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+    auto pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
+    auto pBuffer = mpDevice->createTypedBuffer<float>((uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mRawData.data());
+    mpTexture = mpDevice->createTexture2D(kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+    auto pFluxTexture = mpDevice->createTexture2D(kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
     auto var = pBakePass->getRootVar();
     var["gIesData"] = pBuffer;
@@ -234,11 +228,11 @@ void LightProfile::bake(RenderContext* pRenderContext) {
     mFluxFactor = fluxFactor.x;
 
     Sampler::Desc desc;
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpSampler = Sampler::create(mpDevice, desc);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+    mpSampler = mpDevice->createSampler(desc);
 }
 
-void LightProfile::setShaderData(const ShaderVar& var) const {
+void LightProfile::bindShaderData(const ShaderVar& var) const {
     var["fluxFactor"] = mFluxFactor;
     var["texture"] = mpTexture;
     var["sampler"] = mpSampler;

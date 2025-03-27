@@ -40,12 +40,12 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Utils/Image/TextureAnalyzer.h"
-#include "Falcor/Utils/UI/Gui.h"
 #include "Falcor/Scene/Transform.h"
-#include "MaterialTypeRegistry.h"
+
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 #include <array>
-#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -122,7 +122,7 @@ class FALCOR_API Material : public Object {
 		*/
 		virtual Material::UpdateFlags update(MaterialSystem* pOwner) = 0;
 
-		virtual void update(const Material::SharedPtr& pMaterial) = 0;
+		virtual void update(const ref<Material>& pMaterial) = 0;
 
 		/** Set the material name.
 		*/
@@ -152,7 +152,7 @@ class FALCOR_API Material : public Object {
 			\param[in] pOther Other material.
 			\return true if all materials properties *except* the name are identical.
 		*/
-		virtual bool isEqual(const Material::SharedPtr& pOther) const = 0;
+		virtual bool isEqual(const ref<Material>& pOther) const = 0;
 
 		/**
 		*/
@@ -261,7 +261,7 @@ class FALCOR_API Material : public Object {
 
 		/** Set the default texture sampler for the material.
 		*/
-		virtual void setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {}
+		virtual void setDefaultTextureSampler(const ref<Sampler>& pSampler) {}
 
 		/** Get the default texture sampler for the material.
 		*/
@@ -298,13 +298,13 @@ class FALCOR_API Material : public Object {
     */
     virtual size_t getMaterialInstanceByteSize() { return 128; }
 
-		inline Device::SharedPtr device() const { return mpDevice; }
+		ref<Device> device() const { return mpDevice; }
 
 		size_t getTextureCount() const;
 
-		std::vector<Texture::SharedPtr> getTextures() const;
+		std::vector<ref<Texture>> getTextures() const;
 
-		void getTextures(std::vector<Texture::SharedPtr>& textures, bool append = true) const;
+		void getTextures(std::vector<ref<Texture>>& textures, bool append = true) const;
 
 		const UpdateFlags& getUpdates() const { return mUpdates; }
 

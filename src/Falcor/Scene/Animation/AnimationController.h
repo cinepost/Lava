@@ -65,7 +65,7 @@ public:
 
     /** Add animated vertex caches (curves and meshes) to the controller.
     */
-    void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData);
+    void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
     /** Returns true if controller contains animations.
     */
@@ -89,7 +89,7 @@ public:
 
     /** Returns a list of all animations.
     */
-    std::vector<Animation::SharedPtr>& getAnimations() { return mAnimations; }
+    std::vector<ref<Animation>>& getAnimations() { return mAnimations; }
 
     /** Enable/disable animations.
     */
@@ -164,7 +164,7 @@ private:
     ref<Device> mpDevice;
 
     // Animation
-    std::vector<Animation::SharedPtr> mAnimations;
+    std::vector<ref<Animation>> mAnimations;
     std::vector<bool> mNodesEdited;
     std::vector<std::vector<float4x4>> mLocalMatrixLists;
     std::vector<std::vector<float4x4>> mGlobalMatrixLists;

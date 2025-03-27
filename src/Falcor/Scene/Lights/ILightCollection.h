@@ -169,7 +169,7 @@ namespace Falcor
         virtual UpdateFlagsSignal::Interface getUpdateFlagsSignal() = 0;
     };
 
-    FALCOR_ENUM_CLASS_OPERATORS(ILightCollection::UpdateFlags);
+    ENUM_CLASS_OPERATORS(ILightCollection::UpdateFlags);
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_SCENE_LIGHTS_ILIGHTCOLLECTION_H_

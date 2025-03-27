@@ -28,14 +28,23 @@
 #ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_ 
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_
 
-#include <set>
-#include <mutex>
-
 #include "Material.h"
-
-#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+#include "Falcor/Core/API/ParameterBlock.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/Program/DefineList.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/Device.h"
+
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+
+#include <memory>
+#include <vector>
+#include <set>
+
 
 namespace Falcor {
 
@@ -53,8 +62,6 @@ namespace Falcor {
 */
 class dlldecl MaterialSystem {
 	public:
-		using SharedPtr = std::shared_ptr<MaterialSystem>;
-
 		struct MaterialStats {
 			uint64_t materialTypeCount = 0;             ///< Number of material types.
 			uint64_t materialCount = 0;                 ///< Number of materials.
@@ -67,16 +74,15 @@ class dlldecl MaterialSystem {
 			uint64_t textureMemoryInBytes = 0;          ///< Total memory in bytes used by the textures.
 		};
 
-		/** Create a material system.
-			\return New object, or throws an exception if creation failed.
-		*/
-		static SharedPtr create(Device::SharedPtr pDevice);
+		/** Constructor. Throws an exception if creation failed.
+    */
+    MaterialSystem(ref<Device> pDevice);
 
 		/** Get default shader defines.
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
 			Note that the actual defines need to be set at runtime, call getDefines() to query them.
 		*/
-		static Shader::DefineList getDefaultDefines();
+		static DefineList getDefaultDefines();
 
 		/** Finalize material system before use.
 			This function will be removed when unbounded descriptor arrays are supported (see #1321).
@@ -91,37 +97,63 @@ class dlldecl MaterialSystem {
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
-		Shader::DefineList getDefines() const;
+		void getDefines(DefineList& defines) const;
+		DefineList getDefines() const {
+      DefineList result;
+      getDefines(result);
+      return result;
+    }
 
-		/** Get type conformances for all material types used.
-			These need to be set on a program before using the material system in shaders
-			that need to create a material of *any* type, such as compute or raygen shaders.
-			The update() function must have been called before calling this function.
-			\return List of type conformances.
-		*/
-		Program::TypeConformanceList getTypeConformances() const;
+    /** Get type conformances for all material types used.
+        These need to be set on a program before using the material system in shaders
+        that need to create a material of *any* type, such as compute or raygen shaders.
+        \param[in,out] conformances List of type conformances.
+    */
+    void getTypeConformances(TypeConformanceList& conformances) const;
+    TypeConformanceList getTypeConformances() const {
+      TypeConformanceList typeConformances;
+      getTypeConformances(typeConformances);
+      return typeConformances;
+    }
+
 
 		/** Get type conformances for a given material type.
 			\param[in] type Material type.
 			\return List of type conformances.
 		*/
-		Program::TypeConformanceList getTypeConformances(const MaterialType type) const;
+		TypeConformanceList getTypeConformances(const MaterialType type) const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
+		const ref<ParameterBlock>& getParameterBlock() const { return mpMaterialsBlock; }
+
+		/** Get shader modules for all materials in use.
+      The shader modules must be added to any program using the material system.
+      \param[in,out] shaderModuleList List of shader modules.
+    */
+    void getShaderModules(ProgramDesc::ShaderModuleList& shaderModuleList) const;
+
+    /** Get shader modules for all materials in use.
+      The shader modules must be added to any program using the material system.
+      \return List of shader modules.
+    */
+    ProgramDesc::ShaderModuleList getShaderModules() const;
+
+    /** Bind the material system to a shader var.
+      */
+    void bindShaderData(const ShaderVar& var) const;
 
 		/** Set a default texture sampler to use for all materials.
 		*/
-		void setDefaultTextureSampler(const Sampler::SharedPtr& pSampler);
+		void setDefaultTextureSampler(const ref<Sampler>& pSampler);
 
 		/** Add a texture sampler.
 			If an identical sampler already exists, the sampler is not added and the existing ID returned.
 			\param[in] pSampler The sampler.
 			\return The ID of the sampler.
 		*/
-		uint32_t addTextureSampler(const Sampler::SharedPtr& pSampler);
+		uint32_t addTextureSampler(const ref<Sampler>& pSampler);
 
 		/** Get the total number of texture samplers.
 		*/
@@ -129,28 +161,56 @@ class dlldecl MaterialSystem {
 
 		/** Get a texture sampler by ID.
 		*/
-		const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
+		const ref<Sampler>& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
 
 		/** Add a buffer resource to be managed.
 			\param[in] pBuffer The buffer.
 			\return The ID of the buffer.
 		*/
-		uint32_t addBuffer(const Buffer::SharedPtr& pBuffer);
+		uint32_t addBuffer(const ref<Buffer>& pBuffer);
+
+    /** Replace a previously managed buffer by a new buffer.
+      \param[in] id The ID of the buffer.
+      \param[in] pBuffer The buffer.
+    */
+    void replaceBuffer(uint32_t id, const ref<Buffer>& pBuffer);
 
 		/** Get the total number of managed buffers.
 		*/
 		uint32_t getBufferCount() const { return (uint32_t)mBuffers.size(); }
+
+    /** Add a 3D texture resource to be managed.
+      \param[in] pTexture The texture.
+      \return The ID of the texture.
+    */
+    uint32_t addTexture3D(const ref<Texture>& pTexture);
+
+    /** Get the total number of 3D textures.
+    */
+    uint32_t getTexture3DCount() const { return (uint32_t)mTextures3D.size(); }
 
 		/** Add a material.
 			If an identical material already exists, the material is not added and the existing ID returned.
 			\param[in] pMaterial The material.
 			\return The ID of the material.
 		*/
-		uint32_t addMaterial(const Material::SharedPtr& pMaterial);
+		MaterialID addMaterial(const ref<Material>& pMaterial);
+
+    /** Remove a material.
+      \param[in] materialID The ID of the material to remove.
+    */
+    void removeMaterial(const MaterialID materialID);
+
+    /** Replace a material.
+      \param materialID The ID of the material to replace.
+      \param pReplacement The material to replace it with.
+    */
+    void replaceMaterial(const MaterialID materialID, const ref<Material>& pReplacement);
+    void replaceMaterial(const ref<Material>& pMaterial, const ref<Material>& pReplacement);
 
 		/** Get a list of all materials.
 		*/
-		const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
+		const std::vector<ref<Material>>& getMaterials() const { return mMaterials; }
 
 		/** Get the total number of materials.
 		*/
@@ -164,14 +224,24 @@ class dlldecl MaterialSystem {
 		*/
 		std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
 
+    /** Check if material of the given type is used.
+    */
+    bool hasMaterialType(MaterialType type) const;
+
+    /** Check if a material with the given ID exists.
+      \param[in] materialID The material ID.
+      \return True if the material exists.
+    */
+    bool hasMaterial(const MaterialID materialID) const;
+
 		/** Get a material by ID.
 		*/
-		const Material::SharedPtr& getMaterial(const uint32_t materialID) const;
+		const ref<Material>& getMaterial(const MaterialID materialID) const;
 
 		/** Get a material by name.
 			\return The material, or nullptr if material doesn't exist.
 		*/
-		Material::SharedPtr getMaterialByName(const std::string& name) const;
+		const ref<Material>& getMaterialByName(const std::string& name) const;
 
 		/** Get a material id by name.
 			\return True if material found , or false if material doesn't exist.
@@ -206,15 +276,24 @@ class dlldecl MaterialSystem {
 		bool hasUDIMTextures() const;
 		bool hasSparseTextures() const;
 
-	private:
-		MaterialSystem(Device::SharedPtr pDevice);
+		void loadLightProfile(const fs::path& absoluteFilename, bool normalize);
 
+    const LightProfile* getLightProfile() const { return mpLightProfile.get(); }
+
+	private:
+		void updateMetadata();
 		void createParameterBlock();
 		void uploadMaterial(const uint32_t materialID);
 
-		Device::SharedPtr mpDevice = nullptr;
+		ref<Device> mpDevice;
 
-		std::vector<Material::SharedPtr> mMaterials;                ///< List of all materials.
+		std::vector<ref<Material>> mMaterials;                			///< List of all materials.
+		std::vector<Material::UpdateFlags> mMaterialsUpdateFlags;   ///< List of all material update flags, after the update() calls
+		ProgramDesc::ShaderModuleList mShaderModules;               ///< Shader modules for all materials in use.
+		std::map<MaterialType, TypeConformanceList> mTypeConformances; 	///< Type conformances for each material type in use.
+		ref<LightProfile> mpLightProfile;                        		///< Global light profile.
+		bool mLightProfileBaked = true;
+
 		std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
 		std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
 		uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
@@ -229,15 +308,16 @@ class dlldecl MaterialSystem {
 		Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
 		// GPU resources
-		GpuFence::SharedPtr mpFence;
-		ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
-		Buffer::SharedPtr mpMaterialDataBuffer;                     ///< GPU buffer holding all material data.
+		ref<Fence> mpFence;
+		ref<ParameterBlock> mpMaterialsBlock;                 			///< Parameter block for binding all material resources.
+		ref<Buffer> mpMaterialDataBuffer;                     			///< GPU buffer holding all material data.
 		
-		Sampler::SharedPtr mpDefaultTextureSampler;                 ///< Default texture sampler to use for all materials.
-		Sampler::SharedPtr mpUDIMTileSampler;                       ///< Texture sampler used to sample individual UDIM texture tiles.
+		ref<Sampler> mpDefaultTextureSampler;                 			///< Default texture sampler to use for all materials.
+		ref<Sampler> mpUDIMTileSampler;                       			///< Texture sampler used to sample individual UDIM texture tiles.
 
-		std::vector<Sampler::SharedPtr> mTextureSamplers;           ///< Texture sampler states. These are indexed by ID in the materials.
-		std::vector<Buffer::SharedPtr> mBuffers;                    ///< Buffers used by the materials. These are indexed by ID in the materials.
+		std::vector<ref<Sampler>> mTextureSamplers;           			///< Texture sampler states. These are indexed by ID in the materials.
+		std::vector<ref<Buffer>> mBuffers;                    			///< Buffers used by the materials. These are indexed by ID in the materials.
+		std::vector<ref<Texture>> mTextures3D;                      ///< 3D textures used by the materials. These are indexed by ID in the materials.
 
 		// UI variables
 		std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.

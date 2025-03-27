@@ -28,9 +28,11 @@
 #ifndef SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 #define SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 
+#include "Vector.h"
+#include "FormatConversion.h"
+
 #include <cmath>
 #include <algorithm>
-#include "Falcor/Utils/Math/Vector.h"
 
 /** Host-side utility functions for format conversion.
 
@@ -74,13 +76,13 @@ inline float3 oct_to_ndir_snorm(float2 p) {
 */
 inline uint encodeNormal2x16(float3 normal) {
     float2 octNormal = ndir_to_oct_snorm(normal);
-    return glm::packSnorm2x16(octNormal);
+    return packSnorm2x16(octNormal);
 }
 
 /** Decode a normal packed as 2x 16-bit snorms in the octahedral mapping.
 */
 inline float3 decodeNormal2x16(uint packedNormal) {
-    float2 octNormal = glm::unpackSnorm2x16(packedNormal);
+    float2 octNormal = unpackSnorm2x16(packedNormal);
     return oct_to_ndir_snorm(octNormal);
 }
 

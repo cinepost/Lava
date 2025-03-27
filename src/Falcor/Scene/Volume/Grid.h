@@ -25,7 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_VOLUME_GRID_H_ 
+#define SRC_FALCOR_SCENE_VOLUME_GRID_H_
+
+#include "BrickedGrid.h"
+#include "Core/Macros.h"
+#include "Core/Object.h"
+#include "Core/API/Buffer.h"
+#include "Utils/Math/AABB.h"
+#include "Utils/Math/Matrix.h"
 
 #ifdef _WIN32
 #pragma warning(push)
@@ -40,119 +48,120 @@
 #pragma warning(pop)
 #endif
 
-#include "BrickedGrid.h"
-
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Buffer.h"
-#include "Falcor/Utils/Math/AABB.h"
-
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-namespace Falcor
-{
-    /** Voxel grid based on NanoVDB.
+#include <memory>
+#include <string>
+
+namespace Falcor {
+
+struct ShaderVar;
+
+/** Voxel grid based on NanoVDB.
+*/
+class FALCOR_API Grid : public Object {
+    FALCOR_OBJECT(Grid)
+public:
+    /** Create a sphere voxel grid.
+        \param[in] pDevice GPU device.
+        \param[in] radius Radius of the sphere in world units.
+        \param[in] voxelSize Size of a voxel in world units.
+        \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
+        \return A new grid.
     */
-    class dlldecl Grid
-    {
-    public:
-        using SharedPtr = std::shared_ptr<Grid>;
+    static ref<Grid> createSphere(ref<Device> pDevice, float radius, float voxelSize, float blendRange = 3.f);
 
-        /** Create a sphere voxel grid.
-            \param[in] radius Radius of the sphere in world units.
-            \param[in] voxelSize Size of a voxel in world units.
-            \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
-            \return A new grid.
-        */
-        static SharedPtr createSphere(Device::SharedPtr pDevice, float radius, float voxelSize, float blendRange = 2.f);
+    /** Create a box voxel grid.
+        \param[in] pDevice GPU device.
+        \param[in] width Width of the box in world units.
+        \param[in] height Height of the box in world units.
+        \param[in] depth Depth of the box in world units.
+        \param[in] voxelSize Size of a voxel in world units.
+        \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
+        \return A new grid.
+    */
+    static ref<Grid> createBox(ref<Device> pDevice, float width, float height, float depth, float voxelSize, float blendRange = 3.f);
 
-        /** Create a box voxel grid.
-            \param[in] width Width of the box in world units.
-            \param[in] height Height of the box in world units.
-            \param[in] depth Depth of the box in world units.
-            \param[in] voxelSize Size of a voxel in world units.
-            \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
-            \return A new grid.
-        */
-        static SharedPtr createBox(Device::SharedPtr pDevice, float width, float height, float depth, float voxelSize, float blendRange = 2.f);
+    /** Create a grid from a file.
+        Currently only OpenVDB and NanoVDB grids of type float are supported.
+        \param[in] pDevice GPU device.
+        \param[in] path File path of the grid (absolute or relative to working directory).
+        \param[in] gridname Name of the grid to load.
+        \return A new grid, or nullptr if the grid failed to load.
+    */
+    static ref<Grid> createFromFile(ref<Device> pDevice, const fs::path& path, const std::string& gridname);
 
-        /** Create a grid from a file.
-            Currently only OpenVDB and NanoVDB grids of type float are supported.
-            \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
-            \param[in] gridname Name of the grid to load.
-            \return A new grid, or nullptr if the grid failed to load.
-        */
-        static SharedPtr createFromFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname);
+    /** Bind the grid to a given shader var.
+        \param[in] var The shader variable to set the data into.
+    */
+    void bindShaderData(const ShaderVar& var);
 
-        /** Bind the grid to a given shader var.
-            \param[in] var The shader variable to set the data into.
-        */
-        void setShaderData(const ShaderVar& var);
+    /** Get the minimum index stored in the grid.
+    */
+    int3 getMinIndex() const;
 
-        /** Get the minimum index stored in the grid.
-        */
-        int3 getMinIndex() const;
+    /** Get the maximum index stored in the grid.
+    */
+    int3 getMaxIndex() const;
 
-        /** Get the maximum index stored in the grid.
-        */
-        int3 getMaxIndex() const;
+    /** Get the minimum value stored in the grid.
+    */
+    float getMinValue() const;
 
-        /** Get the minimum value stored in the grid.
-        */
-        float getMinValue() const;
+    /** Get the maximum value stored in the grid.
+    */
+    float getMaxValue() const;
 
-        /** Get the maximum value stored in the grid.
-        */
-        float getMaxValue() const;
+    /** Get the total number of active voxels in the grid.
+    */
+    uint64_t getVoxelCount() const;
 
-        /** Get the total number of active voxels in the grid.
-        */
-        uint64_t getVoxelCount() const;
+    /** Get the size of the grid in bytes as allocated in GPU memory.
+    */
+    uint64_t getGridSizeInBytes() const;
 
-        /** Get the size of the grid in bytes as allocated in GPU memory.
-        */
-        uint64_t getGridSizeInBytes() const;
+    /** Get the grid's bounds in world space.
+    */
+    AABB getWorldBounds() const;
 
-        /** Get the grid's bounds in world space.
-        */
-        AABB getWorldBounds() const;
+    /** Get a value stored in the grid.
+        Note: This function is not safe for access from multiple threads.
+        \param[in] ijk The index-space position to access the data from.
+    */
+    float getValue(const int3& ijk) const;
 
-        /** Get a value stored in the grid.
-            Note: This function is not safe for access from multiple threads.
-            \param[in] ijk The index-space position to access the data from.
-        */
-        float getValue(const int3& ijk) const;
+    /** Get the raw NanoVDB grid handle.
+    */
+    const nanovdb::GridHandle<nanovdb::HostBuffer>& getGridHandle() const;
 
-        /** Get the raw NanoVDB grid handle.
-        */
-        const nanovdb::GridHandle<nanovdb::HostBuffer>& getGridHandle() const;
+    /** Get the (affine) NanoVDB transformation matrix.
+    */
+    float4x4 getTransform() const;
 
-        /** Get the (affine) NanoVDB transformation matrix.
-        */
-        glm::mat4 getTransform() const;
+    /** Get the inverse (affine) NanoVDB transformation matrix.
+    */
+    float4x4 getInvTransform() const;
 
-        /** Get the inverse (affine) NanoVDB transformation matrix.
-        */
-        glm::mat4 getInvTransform() const;
+private:
+    Grid(ref<Device> pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
 
-    private:
-        Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
+    static ref<Grid> createFromNanoVDBFile(ref<Device>, const fs::path& path, const std::string& gridname);
+    static ref<Grid> createFromOpenVDBFile(ref<Device>, const fs::path& path, const std::string& gridname);
 
-        static SharedPtr createFromNanoVDBFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname);
-        static SharedPtr createFromOpenVDBFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname);
+    ref<Device> mpDevice;
 
-        Device::SharedPtr mpDevice = nullptr;
+    // Host data.
+    nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;
+    nanovdb::FloatGrid* mpFloatGrid;
+    nanovdb::FloatGrid::AccessorType mAccessor;
+    // Device data.
+    ref<Buffer> mpBuffer;
+    BrickedGrid mBrickedGrid;
 
-        // Host data.
-        nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;
-        nanovdb::FloatGrid* mpFloatGrid;
-        nanovdb::FloatGrid::AccessorType mAccessor;
-        
-        // Device data.
-        Buffer::SharedPtr mpBuffer;
-        BrickedGrid mBrickedGrid;
+    friend class SceneCache;
+};
 
-        friend class SceneCache;
-    };
-}
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_VOLUME_GRID_H_

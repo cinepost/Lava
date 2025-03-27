@@ -328,23 +328,7 @@ class FALCOR_API Texture : public Resource {
 		/** Create UDIM pseudo texture.
 			This is just a placeholder. No actual data uploaded and no graphics API code executed.
 		*/ 
-		static ref<Texture> createUDIMFromFile(ref<Device> pDevice, const std::string& filename);
 		static ref<Texture> createUDIMFromFile(ref<Device> pDevice, const fs::path& path);
-
-		/** Create a new texture object from a file.
-			\param[in] filename Filename of the image. Can also include a full path or relative path from a data directory.
-			\param[in] generateMipLevels Whether the mip-chain should be generated.
-			\param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
-			\param[in] bindFlags The bind flags to create the texture with.
-			\return A new texture, or nullptr if the texture failed to load.
-		*/
-		static ref<Texture> createFromFile(
-			ref<Device> pDevice, 
-			const std::string& filename, 
-			bool generateMipLevels, 
-			bool loadAsSrgb, 
-			ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
-			Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None);
 
 		gfx::ITextureResource* getGfxTextureResource() const { return mGfxTextureResource; }
 
@@ -450,19 +434,11 @@ class FALCOR_API Texture : public Resource {
 
 		/** In case the texture was loaded from a file, use this to set the file path
 		*/
-		void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
+		void setSourcePath(const fs::path& path) { mSourcePath = path; }
 
 		/** In case the texture was loaded from a file, get the source file path
 		*/
-		const std::string& getSourceFilename() const { return mSourceFilename; }
-
-		/** In case the texture was loaded from a file, use this to set the file path
-		*/
-		void setSourcePath(const fs::path& path) { mSourceFilename = path.string(); }
-
-		/** In case the texture was loaded from a file, get the source file path
-		*/
-		fs::path getSourcePath() const { return fs::path(mSourceFilename); }
+		fs::path getSourcePath() const { return mSourcePath; }
 
 		/** Returns the total number of texels across all mip levels and array slices.
 		*/
@@ -525,7 +501,7 @@ class FALCOR_API Texture : public Resource {
 		Slang::ComPtr<gfx::ITextureResource> mGfxTextureResource;
 
 		bool mReleaseRtvsAfterGenMips = true;
-		std::string mSourceFilename;
+		fs::path mSourcePath;
 
 		uint32_t mWidth = 0;
 		uint32_t mHeight = 0;
@@ -583,7 +559,7 @@ class FALCOR_API Texture : public Resource {
 
 inline std::string to_string(const ref<Texture>& pTex) {
 	std::string s = "Texture: " + std::to_string(pTex->getWidth()) + "x" + std::to_string(pTex->getHeight());
-	s += " source " + pTex->getSourceFilename();
+	s += " source " + pTex->getSourcePath().string();
 	return s;
 }
 

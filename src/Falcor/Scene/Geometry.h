@@ -1,11 +1,7 @@
 #ifndef SRC_FALCOR_SCENE_GEOMETRY_H_
 #define SRC_FALCOR_SCENE_GEOMETRY_H_
 
-#include <map>
-#include <bitset>
-#include <string>
-#include <unordered_map>
-
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Macros.h"
 #include "Falcor/Core/API/VAO.h"
 #include "Falcor/Scene/Animation/Animatable.h"
@@ -16,13 +12,20 @@
 
 #include "SceneTypes.slang"
 
+#include <algorithm>
+#include <map>
+#include <bitset>
+#include <string>
+#include <unordered_map>
+
+
 namespace Falcor {
 
 namespace Geometry {
 
 static const uint32_t kInvalidAttribIndex = 0xffffffff;
-static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;    ///< Largest uint32 value (-1)
-static const uint32_t kInvalidNodeID = Animatable::kInvalidNode;
+static const uint32_t kInvalidExportedID = std::numeric_limits<uint32_t>::max();    ///< Largest uint32 value (-1)
+static const uint32_t kInvalidNodeID = std::numeric_limits<uint32_t>::max();
 
 struct InstanceShadingSpec {
     bool        isMatte = false;
@@ -55,7 +58,7 @@ struct MeshInstanceCreationSpec {
     InstanceExportedDataSpec*   pExportedDataSpec = nullptr;
     InstanceVisibilitySpec*     pVisibilitySpec = nullptr;
     InstanceShadingSpec*        pShadingSpec = nullptr;
-    Material::SharedPtr         pMaterialOverride = nullptr;
+    ref<Material>               pMaterialOverride = nullptr;
 
     LightLinker::StringList     isolatedLightNames;   ///< Light names list that illuminates this instance. If empty then instance illuinated by all active scene lights. 
 };
@@ -296,7 +299,7 @@ struct Mesh {
     uint32_t indexCount = 0;                    ///< The number of indices the mesh has.
     const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
     Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
-    Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
+    ref<Material> pMaterial;                    ///< The mesh's material. Can't be nullptr.
 
     Attribute<uint32_t> pointIndices;           ///< Array of per vertex point indices. This field is optional.
     Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
@@ -314,7 +317,7 @@ struct Mesh {
     bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
     bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
     bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
-    uint32_t skeletonNodeId = Animatable::kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
+    NodeID skeletonNodeId{ NodeID::Invalid() }; ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
 
     template<typename T>
     uint32_t getAttributeIndex(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const {

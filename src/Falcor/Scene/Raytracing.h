@@ -8,9 +8,8 @@ namespace Falcor {
 
 // Ray tracing acceleration structure
 struct TlasData {
-    RtAccelerationStructure::SharedPtr pTlasObject;
-    Buffer::SharedPtr pTlasBuffer;
-    Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
+    ref<RtAccelerationStructure> pTlasObject;
+    ref<Buffer> pTlasBuffer;
     RtAccelerationStructure::UpdateMode updateMode = RtAccelerationStructure::UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
 };
 

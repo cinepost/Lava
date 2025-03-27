@@ -192,7 +192,7 @@ protected:
     mutable CPUOutOfDateFlags               mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
     mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
 
-     UpdateFlagsSignal mUpdateFlagsSignal;
+    UpdateFlagsSignal mUpdateFlagsSignal;
 };
 
 ENUM_CLASS_OPERATORS(LightCollection::CPUOutOfDateFlags);

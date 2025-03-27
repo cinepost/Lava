@@ -97,7 +97,7 @@ void AnimationController::createBuffers(size_t matrixCount) {
     }
 }
 
-void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData) {
+void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes) {
     size_t totalAnimatedMeshVertexCount = 0;
 
     for (auto& cache : cachedMeshes) {
@@ -114,6 +114,7 @@ void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cac
         // Initialize remaining previous position data
         std::vector<PrevVertexData> prevVertexData;
         prevVertexData.reserve(totalAnimatedMeshVertexCount);
+        const SplitVertexBuffer& staticVertexData = mpScene->getMeshStaticData();
 
         for (auto& cache : cachedMeshes) {
             uint32_t offset = mpScene->getMesh(cache.meshID).vbOffset;

@@ -31,11 +31,16 @@
 #include "CameraData.slang"
 
 #include "Falcor/Core/Macros.h"
-#include "Falcor/Core/Framework.h" 
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Scene/Animation/Animatable.h"
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
+#include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/Ray.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
+#include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Core/API/ParameterBlock.h"
+
+#include <string>
+
 
 namespace Falcor {
 
@@ -45,18 +50,17 @@ class ParameterBlock;
 /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
 */
 class dlldecl Camera : public Animatable {
+    FALCOR_OBJECT(Camera)
   public:
-    using SharedPtr = std::shared_ptr<Camera>;
-    using SharedConstPtr = std::shared_ptr<const Camera>;
-
     // Default dimensions of full frame cameras and 35mm film
-    static const float kDefaultFrameHeight;
+    static constexpr float kDefaultFrameHeight = 24.f;
 
     /** Create a new camera object.
     */
-    static SharedPtr create();
-    static SharedPtr create(const Device::SharedPtr& pDevice);
-    ~Camera();
+    static ref<Camera> create(const std::string& name = "") { return make_ref<Camera>(name); }
+
+    Camera(const std::string& name);
+    ~Camera() = default;
 
     /** Name the camera.
     */
@@ -184,7 +188,7 @@ class dlldecl Camera : public Animatable {
 
     /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
     */
-    void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1.f));
+    void setPatternGenerator(const ref<CPUSampleGenerator>& pGenerator, const float2& scale = float2(1.f));
 
     /** Set/Get camera film background image file name.
     */
@@ -201,7 +205,7 @@ class dlldecl Camera : public Animatable {
 
     /** Get the bound pattern generator
     */
-    const CPUSampleGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
+    const ref<CPUSampleGenerator>& getPatternGenerator() const { return mJitterPattern.pGenerator; }
 
     float2 getPatternGeneratorScale() const { return mJitterPattern.scale; }
 
@@ -233,37 +237,37 @@ class dlldecl Camera : public Animatable {
 
     /** Get the view matrix.
     */
-    const glm::mat4& getViewMatrix() const;
-    const std::vector<glm::mat4> getViewMatrixList() const;
+    const float4x4& getViewMatrix() const;
+    const std::vector<float4x4> getViewMatrixList() const;
 
     /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
     */
-    const glm::mat4& getPrevViewMatrix() const;
+    const float4x4& getPrevViewMatrix() const;
 
     /** Get the projection matrix.
     */
-    const glm::mat4& getProjMatrix() const;
+    const float4x4& getProjMatrix() const;
 
     /** Get the inverse projection matrix.
     */
-    const glm::mat4& getInvProjMatrix() const;
+    const float4x4& getInvProjMatrix() const;
 
     /** Get the view-projection matrix.
     */
-    const glm::mat4& getViewProjMatrix() const;
+    const float4x4& getViewProjMatrix() const;
 
     /** Get the inverse of the view-projection matrix.
     */
-    const glm::mat4& getInvViewProjMatrix() const;
+    const float4x4& getInvViewProjMatrix() const;
 
     /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
-    void setProjectionMatrix(const glm::mat4& proj);
+    void setProjectionMatrix(const float4x4& proj);
 
     /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
-    void setViewMatrix(const glm::mat4& view);
-    void setViewMatrixList(const std::vector<glm::mat4>& views);
+    void setViewMatrix(const float4x4& view);
+    void setViewMatrixList(const std::vector<float4x4>& views);
 
     /** Enable or disable usage of persistent projection matrix
         \param[in] persistent whether to set it persistent
@@ -286,8 +290,8 @@ class dlldecl Camera : public Animatable {
 
     const CameraXformData& getXformData() const { calculateCameraParameters(); return  mXformList[0]; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
     std::vector<std::string> getDataFormattedDebugStrings() const;
 
@@ -315,17 +319,15 @@ class dlldecl Camera : public Animatable {
     std::string getScript(const std::string& cameraVar);
 
   private:
-    Camera();
-    Camera(const Device::SharedPtr& pDevice);
     Changes mChanges = Changes::None;
 
-    Device::SharedPtr mpDevice;
+    ref<Device> mpDevice;
 
     mutable bool mDirty = true;
     mutable bool mEnablePersistentProjMat = false;
     mutable bool mEnablePersistentViewMat = false;
-    mutable glm::mat4 mPersistentProjMat;
-    mutable std::vector<glm::mat4> mPersistentViewMatList;
+    mutable float4x4 mPersistentProjMat;
+    mutable std::vector<float4x4> mPersistentViewMatList;
 
     mutable float3 mPosW;
     mutable float3 mUp;
@@ -342,7 +344,7 @@ class dlldecl Camera : public Animatable {
     CameraData mPrevData;
     std::vector<CameraXformData> mPrevXformList;
 
-    mutable Buffer::SharedPtr mpXformListBuffer;
+    mutable ref<Buffer> mpXformListBuffer;
 
     struct {
         float3 xyz;     ///< Camera frustum plane position
@@ -351,7 +353,7 @@ class dlldecl Camera : public Animatable {
     } mutable mFrustumPlanes[6];
 
     struct {
-        CPUSampleGenerator::SharedPtr pGenerator;
+        ref<CPUSampleGenerator> pGenerator;
         float2 scale;
     } mJitterPattern;
 

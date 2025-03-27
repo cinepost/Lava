@@ -27,263 +27,277 @@
  **************************************************************************/
 #pragma once
 
-#include "Falcor/Core/Macros.h"
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-
 #include "Grid.h"
 #include "GridVolumeData.slang"
-#include "Scene/Animation/Animatable.h"
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/Matrix.h"
+#include "Falcor/Scene/Animation/Animatable.h"
 
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-namespace Falcor
-{
-    /** Describes a grid volume (heterogeneous) in the scene.
-        The absorbing/scattering medium is defined by a density voxel grid and additional parameters.
-        The emission is defined by an emission voxel grid and additional parameters.
-        Grids are stored in grid slots (density, emission) and can either be static, using one grid per slot,
-        or dynamic, using a sequence of grids per slot.
+#include <array>
+#include <memory>
+#include <string>
+#include <vector>
+#include <algorithm>
+
+
+namespace Falcor {
+/** Describes a grid volume (heterogeneous) in the scene.
+    The absorbing/scattering medium is defined by a density voxel grid and additional parameters.
+    The emission is defined by an emission voxel grid and additional parameters.
+    Grids are stored in grid slots (density, emission) and can either be static, using one grid per slot,
+    or dynamic, using a sequence of grids per slot.
+*/
+class FALCOR_API GridVolume : public Animatable {
+    FALCOR_OBJECT(GridVolume)
+public:
+    using GridSequence = std::vector<ref<Grid>>;
+
+    /** Flags indicating if and what was updated in the volume.
     */
-    class dlldecl GridVolume : public Animatable
-    {
-    public:
-        using SharedPtr = std::shared_ptr<GridVolume>;
-
-        using GridSequence = std::vector<Grid::SharedPtr>;
-
-        /** Flags indicating if and what was updated in the volume.
-        */
-        enum class UpdateFlags
-        {
-            None                = 0x0,  ///< Nothing updated.
-            PropertiesChanged   = 0x1,  ///< Volume properties changed.
-            GridsChanged        = 0x2,  ///< Volume grids changed.
-            TransformChanged    = 0x4,  ///< Volume transform changed.
-            BoundsChanged       = 0x8,  ///< Volume world-space bounds changed.
-        };
-
-        /** Grid slots available in the volume.
-        */
-        enum class GridSlot
-        {
-            Density,
-            Emission,
-
-            Count // Must be last
-        };
-
-        /** Specifies how emission is rendered.
-        */
-        enum class EmissionMode
-        {
-            Direct,
-            Blackbody,
-        };
-
-        /** Create a new volume.
-            \param[in] name The volume name.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice, const std::string& name);
-
-        /** Returns the updates since the last call to clearUpdates.
-        */
-        UpdateFlags getUpdates() const { return mUpdates; }
-
-        /** Clears the updates.
-        */
-        void clearUpdates() { mUpdates = UpdateFlags::None; }
-
-        /** Set the volume name.
-        */
-        void setName(const std::string& name) { mName = name; }
-
-        /** Get the volume name.
-        */
-        const std::string& getName() const { return mName; }
-
-        /** Load a single grid from a file to a grid slot.
-            Note: This will replace any existing grid sequence for that slot with just a single grid.
-            \param[in] slot Grid slot.
-            \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
-            \param[in] gridname Name of the grid to load.
-            \return Returns true if grid was loaded successfully.
-        */
-        bool loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname);
-
-        /** Load a sequence of grids from files to a grid slot.
-            Note: This will replace any existing grid sequence for that slot.
-            \param[in] slot Grid slot.
-            \param[in] paths File paths of the grids. Can also include a full path or relative path from a data directory.
-            \param[in] gridname Name of the grid to load.
-            \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
-            \return Returns the length of the loaded sequence.
-        */
-        uint32_t loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty = true);
-
-        /** Load a sequence of grids from a directory to a grid slot.
-            Note: This will replace any existing grid sequence for that slot.
-            \param[in] slot Grid slot.
-            \param[in] path Directory containing grid files. Can also include a full path or relative path from a data directory.
-            \param[in] gridname Name of the grid to load.
-            \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
-            \return Returns the length of the loaded sequence.
-        */
-        uint32_t loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty = true);
-
-        /** Set the grid sequence for the specified slot.
-        */
-        void setGridSequence(GridSlot slot, const GridSequence& grids);
-
-        /** Get the grid sequence for the specified slot.
-        */
-        const GridSequence& getGridSequence(GridSlot slot) const;
-
-        /** Set the grid for the specified slot.
-            Note: This will replace any existing grid sequence for that slot with just a single grid.
-        */
-        void setGrid(GridSlot slot, const Grid::SharedPtr& grid);
-
-        /** Get the current grid from the specified slot.
-        */
-        const Grid::SharedPtr& getGrid(GridSlot slot) const;
-
-        /** Get a list of all grids used for this volume.
-        */
-        std::vector<Grid::SharedPtr> getAllGrids() const;
-
-        /** Sets the current frame of the grid sequence to use.
-        */
-        void setGridFrame(uint32_t gridFrame);
-
-        /** Get the current frame of the grid sequence.
-        */
-        uint32_t getGridFrame() const { return mGridFrame; }
-
-        /** Get the number of frames in the grid sequence.
-            Note: This returns 1 even if there are no grids loaded.
-        */
-        uint32_t getGridFrameCount() const { return mGridFrameCount; }
-
-        /** Set the frame rate for grid playback.
-        */
-        void setFrameRate(double frameRate);
-
-        /** Get the frame rate for grid playback.
-        */
-        double getFrameRate() const { return mFrameRate; }
-
-        /** Enable/disable grid playback.
-        */
-        void setPlaybackEnabled(bool enabled);
-
-        /** Check if grid playback is enabled.
-        */
-        bool isPlaybackEnabled() const { return mPlaybackEnabled; }
-
-        /** Update the selected grid frame based on global time in seconds.
-        */
-        void updatePlayback(double curentTime);
-
-        /** Set the density grid.
-        */
-        void setDensityGrid(const Grid::SharedPtr& densityGrid) { setGrid(GridSlot::Density, densityGrid); };
-
-        /** Get the density grid.
-        */
-        const Grid::SharedPtr& getDensityGrid() const { return getGrid(GridSlot::Density); }
-
-        /** Set the density scale factor.
-        */
-        void setDensityScale(float densityScale);
-
-        /** Get the density scale factor.
-        */
-        float getDensityScale() const { return mData.densityScale; }
-
-        /** Set the emission grid.
-        */
-        void setEmissionGrid(const Grid::SharedPtr& emissionGrid) { setGrid(GridSlot::Emission, emissionGrid); }
-
-        /** Get the emission grid.
-        */
-        const Grid::SharedPtr& getEmissionGrid() const { return getGrid(GridSlot::Emission); }
-
-        /** Set the emission scale factor.
-        */
-        void setEmissionScale(float emissionScale);
-
-        /** Get the emission scale factor.
-        */
-        float getEmissionScale() const { return mData.emissionScale; }
-
-        /** Set the scattering albedo.
-        */
-        void setAlbedo(const float3& albedo);
-
-        /** Get the scattering albedo.
-        */
-        const float3& getAlbedo() const { return mData.albedo; }
-
-        /** Set the phase function anisotropy (forward or backward scattering).
-        */
-        void setAnisotropy(float anisotropy);
-
-        /** Get the phase function anisotropy.
-        */
-        float getAnisotropy() const { return mData.anisotropy; }
-
-        /** Set the emission mode.
-        */
-        void setEmissionMode(EmissionMode emissionMode);
-
-        /** Get the emission mode.
-        */
-        EmissionMode getEmissionMode() const;
-
-        /** Set the emission base temperature (K).
-        */
-        void setEmissionTemperature(float emissionTemperature);
-
-        /** Get the emission base temperature (K).
-        */
-        float getEmissionTemperature() const { return mData.emissionTemperature; }
-
-        /** Returns the grid volume data struct.
-        */
-        const GridVolumeData& getData() const { return mData; }
-
-        /** Returns the volume bounds in world space.
-        */
-        const AABB& getBounds() const { return mBounds; }
-
-        void updateFromAnimation(const glm::mat4& transform) override;
-        void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
-
-    private:
-        GridVolume(Device::SharedPtr pDevice, const std::string& name);
-
-        void updateSequence();
-        void updateBounds();
-
-        void markUpdates(UpdateFlags updates);
-        void setFlags(uint32_t flags);
-
-        Device::SharedPtr mpDevice = nullptr;
-        std::string mName;
-        std::array<GridSequence, (size_t)GridSlot::Count> mGrids;
-        uint32_t mGridFrame = 0;
-        uint32_t mGridFrameCount = 1;
-        double mFrameRate = 30.f;
-        bool mPlaybackEnabled = false;
-        AABB mBounds;
-        GridVolumeData mData;
-        mutable UpdateFlags mUpdates = UpdateFlags::None;
-
-        friend class SceneCache;
+    enum class UpdateFlags {
+        None                = 0x0,  ///< Nothing updated.
+        PropertiesChanged   = 0x1,  ///< Volume properties changed.
+        GridsChanged        = 0x2,  ///< Volume grids changed.
+        TransformChanged    = 0x4,  ///< Volume transform changed.
+        BoundsChanged       = 0x8,  ///< Volume world-space bounds changed.
     };
 
-    ENUM_CLASS_OPERATORS(GridVolume::UpdateFlags);
+    /** Grid slots available in the volume.
+    */
+    enum class GridSlot {
+        Density,
+        Emission,
+
+        Count // Must be last
+    };
+
+    /** Specifies how emission is rendered.
+    */
+    enum class EmissionMode {
+        Direct,
+        Blackbody,
+    };
+
+    static ref<GridVolume> create(ref<Device> pDevice, const std::string& name) { return make_ref<GridVolume>(pDevice, name); }
+
+    GridVolume(ref<Device> pDevice, const std::string& name);
+
+    /** Returns the updates since the last call to clearUpdates.
+    */
+    UpdateFlags getUpdates() const { return mUpdates; }
+
+    /** Clears the updates.
+    */
+    void clearUpdates() { mUpdates = UpdateFlags::None; }
+
+    /** Set the volume name.
+    */
+    void setName(const std::string& name) { mName = name; }
+
+    /** Get the volume name.
+    */
+    const std::string& getName() const { return mName; }
+
+    /** Load a single grid from a file to a grid slot.
+        Note: This will replace any existing grid sequence for that slot with just a single grid.
+        \param[in] slot Grid slot.
+        \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
+        \param[in] gridname Name of the grid to load.
+        \return Returns true if grid was loaded successfully.
+    */
+    bool loadGrid(GridSlot slot, const fs::path& path, const std::string& gridname);
+
+    /** Create a GridSequence from a list of files.
+        \param[in] pDevice GPU device
+        \param[in] paths File paths of the grids. Can also include a full path or relative path from a data directory.
+        \param[in] gridname Name of the grid to load.
+        \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
+        \return Returns the resulting GridSequence
+    */
+    static GridSequence createGridSequence(ref<Device> pDevice, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty = true);
+
+    /** Load a sequence of grids from files to a grid slot.
+        Note: This will replace any existing grid sequence for that slot.
+        \param[in] slot Grid slot.
+        \param[in] paths File paths of the grids. Can also include a full path or relative path from a data directory.
+        \param[in] gridname Name of the grid to load.
+        \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
+        \return Returns the length of the loaded sequence.
+    */
+    uint32_t loadGridSequence(GridSlot slot, const std::vector<fs::path>& paths, const std::string& gridname, bool keepEmpty = true);
+
+    /** Load a sequence of grids from a directory to a grid slot.
+        Note: This will replace any existing grid sequence for that slot.
+        \param[in] slot Grid slot.
+        \param[in] path Directory containing grid files. Can also include a full path or relative path from a data directory.
+        \param[in] gridname Name of the grid to load.
+        \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
+        \return Returns the length of the loaded sequence.
+    */
+    uint32_t loadGridSequence(GridSlot slot, const fs::path& path, const std::string& gridname, bool keepEmpty = true);
+
+    /** Set the grid sequence for the specified slot.
+    */
+    void setGridSequence(GridSlot slot, const GridSequence& grids);
+
+    /** Get the grid sequence for the specified slot.
+    */
+    const GridSequence& getGridSequence(GridSlot slot) const;
+
+    /** Set the grid for the specified slot.
+        Note: This will replace any existing grid sequence for that slot with just a single grid.
+    */
+    void setGrid(GridSlot slot, const ref<Grid>& grid);
+
+    /** Get the current grid from the specified slot.
+    */
+    const ref<Grid>& getGrid(GridSlot slot) const;
+
+    /** Get a list of all grids used for this volume.
+    */
+    std::vector<ref<Grid>> getAllGrids() const;
+
+    /** Sets the current frame of the grid sequence to use.
+    */
+    void setGridFrame(uint32_t gridFrame);
+
+    /** Get the current frame of the grid sequence.
+    */
+    uint32_t getGridFrame() const { return mGridFrame; }
+
+    /** Get the number of frames in the grid sequence.
+        Note: This returns 1 even if there are no grids loaded.
+    */
+    uint32_t getGridFrameCount() const { return mGridFrameCount; }
+
+    /** Set the frame rate for grid playback.
+    */
+    void setFrameRate(double frameRate);
+
+    /** Get the frame rate for grid playback.
+    */
+    double getFrameRate() const { return mFrameRate; }
+
+    /** Set the grid playback start frame.
+    */
+    void setStartFrame(uint32_t frame) { mStartFrame = mGridFrameCount > 0 ? std::clamp(frame, (uint32_t)0, mGridFrameCount - 1) : 0; }
+
+    /** Get the grid playback start frame
+    */
+    uint32_t getStartFrame() const { return mStartFrame; }
+
+    /** Enable/disable grid playback.
+    */
+    void setPlaybackEnabled(bool enabled);
+
+    /** Check if grid playback is enabled.
+    */
+    bool isPlaybackEnabled() const { return mPlaybackEnabled; }
+
+    /** Update the selected grid frame based on global time in seconds.
+    */
+    void updatePlayback(double curentTime);
+
+    /** Set the density grid.
+    */
+    void setDensityGrid(const ref<Grid>& densityGrid) { setGrid(GridSlot::Density, densityGrid); };
+
+    /** Get the density grid.
+    */
+    const ref<Grid>& getDensityGrid() const { return getGrid(GridSlot::Density); }
+
+    /** Set the density scale factor.
+    */
+    void setDensityScale(float densityScale);
+
+    /** Get the density scale factor.
+    */
+    float getDensityScale() const { return mData.densityScale; }
+
+    /** Set the emission grid.
+    */
+    void setEmissionGrid(const ref<Grid>& emissionGrid) { setGrid(GridSlot::Emission, emissionGrid); }
+
+    /** Get the emission grid.
+    */
+    const ref<Grid>& getEmissionGrid() const { return getGrid(GridSlot::Emission); }
+
+    /** Set the emission scale factor.
+    */
+    void setEmissionScale(float emissionScale);
+
+    /** Get the emission scale factor.
+    */
+    float getEmissionScale() const { return mData.emissionScale; }
+
+    /** Set the scattering albedo.
+    */
+    void setAlbedo(const float3& albedo);
+
+    /** Get the scattering albedo.
+    */
+    const float3& getAlbedo() const { return mData.albedo; }
+
+    /** Set the phase function anisotropy (forward or backward scattering).
+    */
+    void setAnisotropy(float anisotropy);
+
+    /** Get the phase function anisotropy.
+    */
+    float getAnisotropy() const { return mData.anisotropy; }
+
+    /** Set the emission mode.
+    */
+    void setEmissionMode(EmissionMode emissionMode);
+
+    /** Get the emission mode.
+    */
+    EmissionMode getEmissionMode() const;
+
+    /** Set the emission base temperature (K).
+    */
+    void setEmissionTemperature(float emissionTemperature);
+
+    /** Get the emission base temperature (K).
+    */
+    float getEmissionTemperature() const { return mData.emissionTemperature; }
+
+    /** Returns the grid volume data struct.
+    */
+    const GridVolumeData& getData() const { return mData; }
+
+    /** Returns the volume bounds in world space.
+    */
+    const AABB& getBounds() const { return mBounds; }
+
+    void updateFromAnimation(const float4x4& transform) override;
+
+private:
+    void updateSequence();
+    void updateBounds();
+
+    void markUpdates(UpdateFlags updates);
+    void setFlags(uint32_t flags);
+
+    ref<Device> mpDevice;
+    std::string mName;
+    std::array<GridSequence, (size_t)GridSlot::Count> mGrids;
+    uint32_t mGridFrame = 0;
+    uint32_t mGridFrameCount = 1;
+    double mFrameRate = 30.f;
+    uint32_t mStartFrame = 0;
+    bool mPlaybackEnabled = false;
+    AABB mBounds;
+    GridVolumeData mData;
+    mutable UpdateFlags mUpdates = UpdateFlags::None;
+
+    friend class Scene;
+    friend class SceneCache;
+};
+
+ENUM_CLASS_OPERATORS(GridVolume::UpdateFlags);
 }

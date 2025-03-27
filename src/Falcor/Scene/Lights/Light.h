@@ -28,9 +28,6 @@
 #ifndef SRC_FALCOR_SCENE_LIGHTS_LIGHT_H_ 
 #define SRC_FALCOR_SCENE_LIGHTS_LIGHT_H_
 
-#include <memory>
-#include <string>
-
 #include "Falcor/Core/Macros.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
@@ -42,6 +39,11 @@
 #include "Falcor/Experimental/Scene/Lights/EnvMapSampler.h"
 #include "Falcor/Experimental/Scene/Lights/PhysicalSkySampler.h"
 
+#include <memory>
+#include <string>
+#include <algorithm>
+
+
 namespace Falcor {
 
 class ShaderVar;
@@ -50,11 +52,9 @@ class Scene;
 /** Base class for light sources. All light sources should inherit from this.
 */
 class dlldecl Light : public Animatable {
+    FALCOR_OBJECT(Light)
   public:
-    using SharedPtr = std::shared_ptr<Light>;
-    using SharedConstPtr = std::shared_ptr<const Light>;
-
-    static const size_t kInvalidSamplerID = LightData::kInvalidSamplerID;
+    static const uint32_t kInvalidSamplerID = std::numeric_limits<uint32_t>::max();
 
     virtual ~Light() = default;
 
@@ -95,15 +95,15 @@ class dlldecl Light : public Animatable {
 
     /** Set device
     */
-    virtual void setDevice(Device::SharedPtr pDevice);
+    virtual void setDevice(ref<Device> pDevice);
 
     /** Set light projection texture
     */
-    virtual void setTexture(Texture::SharedPtr pTexture);
+    virtual void setTexture(ref<Texture> pTexture);
 
     /** Get light projection texture
     */
-    Texture::SharedPtr getTexture() const { return mpTexture; } 
+    const ref<Texture>& getTexture() const { return mpTexture; } 
 
     /** Gets the size of a single light data struct in bytes
     */
@@ -197,8 +197,8 @@ class dlldecl Light : public Animatable {
     */
     Changes getChanges() const { return mChanges; }
 
-    void updateFromAnimation(const glm::mat4& transform) override {}
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override {};
+    void updateFromAnimation(const float4x4& transform) override {}
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override {};
 
   protected:
     virtual void update();
@@ -206,18 +206,18 @@ class dlldecl Light : public Animatable {
 
     static const size_t kDataSize = sizeof(LightData);
 
+    ref<Device> mpDevice;
+
     std::string mName;
     bool mActive = true;
     bool mActiveChanged = false;
 
     float3 mIntensity;
 
-    Texture::SharedPtr mpTexture = nullptr;
+    ref<Texture> mpTexture = nullptr;
 
     LightData mData, mPrevData;
     Changes mChanges = Changes::None;
-
-    Device::SharedPtr mpDevice = nullptr;
 
     friend class SceneCache;
 };
@@ -227,10 +227,7 @@ class dlldecl Light : public Animatable {
 */
 class dlldecl PointLight : public Light {
   public:
-    using SharedPtr = std::shared_ptr<PointLight>;
-    using SharedConstPtr = std::shared_ptr<const PointLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<PointLight> create(const std::string& name = "");
     ~PointLight() = default;
 
     void update(const Light& light) override;
@@ -284,8 +281,8 @@ class dlldecl PointLight : public Light {
     */
     float getOpeningAngle() const { return mData.openingAngle; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     virtual void update() override;
@@ -297,10 +294,7 @@ class dlldecl PointLight : public Light {
 */
 class dlldecl DirectionalLight : public Light {
   public:
-    using SharedPtr = std::shared_ptr<DirectionalLight>;
-    using SharedConstPtr = std::shared_ptr<const DirectionalLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<DirectionalLight> create(const std::string& name = "");
     ~DirectionalLight() = default;
 
     void update(const Light& light) override;
@@ -322,8 +316,8 @@ class dlldecl DirectionalLight : public Light {
     */
     float getPower() const override { return 0.f; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     DirectionalLight(const std::string& name);
@@ -335,10 +329,7 @@ class dlldecl DirectionalLight : public Light {
 */
 class dlldecl DistantLight : public Light {
   public:
-    using SharedPtr = std::shared_ptr<DistantLight>;
-    using SharedConstPtr = std::shared_ptr<const DistantLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<DistantLight> create(const std::string& name = "");
     ~DistantLight() = default;
 
     void update(const Light& light) override;
@@ -366,8 +357,8 @@ class dlldecl DistantLight : public Light {
     */
     float getPower() const override { return 0.f; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     DistantLight(const std::string& name);
@@ -382,10 +373,7 @@ class dlldecl DistantLight : public Light {
 
 class dlldecl EnvironmentLight: public Light {
   public:
-    using SharedPtr = std::shared_ptr<EnvironmentLight>;
-    using SharedConstPtr = std::shared_ptr<const EnvironmentLight>;
-
-    static SharedPtr create(const std::string& name = "", Texture::SharedPtr pTexture = nullptr);
+    static ref<EnvironmentLight> create(const std::string& name = "", ref<Texture> pTexture = nullptr);
     ~EnvironmentLight() = default;
 
     void update(const Light& light) override;
@@ -394,32 +382,32 @@ class dlldecl EnvironmentLight: public Light {
     */
     float getPower() const override;
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
     /** Set transform matrix
       \param[in] mtx object to world space transform matrix
     */
-    void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
+    void setTransformMatrix(const float4x4& mtx) { mTransformMatrix = mtx; update();  }
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    float4x4 getTransformMatrix() const { return mTransformMatrix; }
 
     /** Set light projection texture
     */
-    virtual void setTexture(Texture::SharedPtr pTexture) override;
+    virtual void setTexture(ref<Texture> pTexture) override;
 
-    const EnvMapSampler::SharedPtr& getLightSampler() const { return mpEnvMapSampler; }
+    const ref<EnvMapSampler>& getLightSampler() const { return mpEnvMapSampler; }
 
   private:
     virtual void update();
 
-    glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    float4x4 mTransformMatrix;     ///< Transform matrix minus scaling component
 
-    EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
+    EnvironmentLight(const std::string& name, ref<Texture> pTexture);
 
-    EnvMapSampler::SharedPtr mpEnvMapSampler;
+    ref<EnvMapSampler> mpEnvMapSampler;
 
     friend class SceneCache;  
 };
@@ -429,10 +417,7 @@ class dlldecl EnvironmentLight: public Light {
 
 class dlldecl PhysicalSunSkyLight: public Light {
   public:
-    using SharedPtr = std::shared_ptr<PhysicalSunSkyLight>;
-    using SharedConstPtr = std::shared_ptr<const PhysicalSunSkyLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<PhysicalSunSkyLight> create(const std::string& name = "");
     ~PhysicalSunSkyLight() = default;
 
     void update(const Light& light) override;
@@ -441,9 +426,9 @@ class dlldecl PhysicalSunSkyLight: public Light {
     */
     float getPower() const override;
 
-    virtual void setDevice(Device::SharedPtr pDevice) override;
+    virtual void setDevice(ref<Device> pDevice) override;
 
-    const PhysicalSkySampler::SharedPtr& getLightSampler() const { return mpPhysicalSkySampler; }
+    const ref<PhysicalSkySampler>& getLightSampler() const { return mpPhysicalSkySampler; }
 
   public:
     bool buildTest();
@@ -453,7 +438,7 @@ class dlldecl PhysicalSunSkyLight: public Light {
 
     PhysicalSunSkyLight(const std::string& name);
 
-    PhysicalSkySampler::SharedPtr mpPhysicalSkySampler;
+    ref<PhysicalSkySampler> mpPhysicalSkySampler;
 
     friend class SceneCache; 
 };
@@ -462,9 +447,6 @@ class dlldecl PhysicalSunSkyLight: public Light {
 */
 class dlldecl AnalyticAreaLight : public Light {
   public:
-    using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
-    using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
-
     enum class LightSamplingMode {
       MONTE_CARLO,
       SOLID_ANGLE,
@@ -492,7 +474,7 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix
     */
-    void setTransformMatrix(const glm::mat4& mtx);
+    void setTransformMatrix(const float4x4& mtx);
     void setSingleSided(bool value);
 
     bool isSingleSided() const { return mData.isSingleSided(); }
@@ -503,10 +485,10 @@ class dlldecl AnalyticAreaLight : public Light {
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    float4x4 getTransformMatrix() const { return mTransformMatrix; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   protected:
     AnalyticAreaLight(const std::string& name, LightType type);
@@ -514,7 +496,7 @@ class dlldecl AnalyticAreaLight : public Light {
     virtual void update();
 
     float3 mScaling;                ///< Scaling, controls the size of the light
-    glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    float4x4 mTransformMatrix;     ///< Transform matrix minus scaling component
     float3 mUnnormalizedIntensity;
     bool mNormalizeArea = false;    ///< Normalize light area
 
@@ -525,10 +507,7 @@ class dlldecl AnalyticAreaLight : public Light {
 */
 class dlldecl RectLight : public AnalyticAreaLight {
   public:
-    using SharedPtr = std::shared_ptr<RectLight>;
-    using SharedConstPtr = std::shared_ptr<const RectLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<RectLight> create(const std::string& name = "");
     ~RectLight() = default;
 
     void update(const Light& light) override;
@@ -543,10 +522,7 @@ class dlldecl RectLight : public AnalyticAreaLight {
 */
 class dlldecl DiscLight : public AnalyticAreaLight {
   public:
-    using SharedPtr = std::shared_ptr<DiscLight>;
-    using SharedConstPtr = std::shared_ptr<const DiscLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<DiscLight> create(const std::string& name = "");
     ~DiscLight() = default;
 
     void update(const Light& light) override;
@@ -561,10 +537,7 @@ class dlldecl DiscLight : public AnalyticAreaLight {
 */
 class dlldecl SphereLight : public AnalyticAreaLight {
   public:
-    using SharedPtr = std::shared_ptr<SphereLight>;
-    using SharedConstPtr = std::shared_ptr<const SphereLight>;
-
-    static SharedPtr create(const std::string& name = "");
+    static ref<SphereLight> create(const std::string& name = "");
     ~SphereLight() = default;
 
     void update(const Light& light) override;

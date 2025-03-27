@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,53 +25,35 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_MATH_RAY_H_
+#define SRC_FALCOR_UTILS_MATH_RAY_H_
 
-#include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
+#include "Vector.h"
 
 namespace Falcor {
+/**
+ * Ray type.
+ * This should match the layout of DXR RayDesc.
+ */
+struct Ray {
+    float3 origin;
+    float tMin;
+    float3 dir;
+    float tMax;
 
-/** A single SDF Sparse Voxel Set. Can only be utilized on the GPU.
-*/
-class FALCOR_API SDFSVS : public SDFGrid {
-    public:
-        static ref<SDFSVS> create(ref<Device> pDevice) { return make_ref<SDFSVS>(pDevice); }
-
-        /// Create am empty SDF sparse voxel set.
-        SDFSVS(ref<Device> pDevice) : SDFGrid(pDevice) {}
-
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const override { return Type::SparseVoxelSet; }
-
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
-
-        virtual const ref<Buffer>& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return mVoxelCount; }
-
-        virtual void bindShaderData(const ShaderVar& var) const override;
-
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
-
-    private:
-        // CPU data.
-        std::vector<int8_t> mValues;
-
-        // Specs.
-        ref<Buffer> mpVoxelAABBBuffer;
-        ref<Buffer> mpVoxelBuffer;
-        uint32_t mVoxelCount = 0;
-
-        // Compute passes used to build the SVS.
-        ref<ComputePass> mpCountSurfaceVoxelsPass;
-        ref<ComputePass> mpSDFSVSVoxelizerPass;
-
-        // Scratch data used for building.
-        ref<Buffer> mpSurfaceVoxelCounter;
-        ref<Texture> mpSDFGridTexture;
+    Ray() = default;
+    explicit Ray(float3 origin, float3 dir, float tMin = 0.f, float tMax = std::numeric_limits<float>::max())
+        : origin(origin), tMin(tMin), dir(dir), tMax(tMax)
+    {}
 };
 
+// These are to ensure that the struct Ray match DXR RayDesc.
+static_assert(offsetof(Ray, origin) == 0);
+static_assert(offsetof(Ray, tMin) == sizeof(float3));
+static_assert(offsetof(Ray, dir) == offsetof(Ray, tMin) + sizeof(float));
+static_assert(offsetof(Ray, tMax) == offsetof(Ray, dir) + sizeof(float3));
+static_assert(sizeof(Ray) == 32);
+
 } // namespace Falcor
+
+#endif // SRC_FALCOR_UTILS_MATH_RAY_H_

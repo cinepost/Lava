@@ -166,7 +166,7 @@ class Model;
         ref<Buffer> mpCurvePolyTubeMeshMetadataBuffer;
 
         // Cached mesh animations
-        ref<ComputePass mpMeshVertexUpdatePass;
+        ref<ComputePass> mpMeshVertexUpdatePass;
 
         std::vector<CachedMesh> mCachedMeshes;
         std::vector<InterpolationInfo> mMeshInterpolationInfo;

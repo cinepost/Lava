@@ -152,8 +152,8 @@ class dlldecl SceneBuilder {
     struct ProcessedMesh {
         std::string name;
         Vao::Topology topology = Vao::Topology::Undefined;
-        Material::SharedPtr pMaterial;
-        uint32_t skeletonNodeId = kInvalidNodeID; ///< Forwarded from Mesh struct.
+        ref<Material> pMaterial;
+        NodeID skeletonNodeId{ NodeID::Invalid() }; ///< Forwarded from Mesh struct.
 
         uint64_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
         bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.

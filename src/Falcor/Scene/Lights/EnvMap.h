@@ -36,28 +36,31 @@
 
 #include "Falcor/Core/Program/ShaderVar.h"
 
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+
 #include "EnvMapData.slang"
+
 
 namespace Falcor {
 
 /** Environment map based radiance probe.
     Utily class for evaluating radiance stored in an lat-long environment map.
 */
-class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
+class dlldecl EnvMap : public Object {
+    FALCOR_OBJECT(EnvMap)
   public:
-    using SharedPtr = std::shared_ptr<EnvMap>;
-
     virtual ~EnvMap() = default;
 
     /** Create a new object.
         \param[in] texture The environment map texture.
     */
-    static SharedPtr create(Device::SharedPtr pDevice, const Texture::SharedPtr& texture);
+    static ref<EnvMap> create(ref<Device> pDevice, const ref<Texture>& texture);
 
     /** Create a new object.
         \param[in] filename The environment map texture filename.
     */
-    static SharedPtr create(Device::SharedPtr pDevice, const std::string& filename);
+    static ref<EnvMap> createFromFile(ref<Device> pDevice, const fs::path& path);
 
     /** Set rotation angles.
         Rotation is applied as rotation around Z, Y and X axes, in that order.
@@ -66,6 +69,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
         \param[in] degreesXYZ Rotation angles in degrees for XYZ.
     */
     void setRotation(float3 degreesXYZ);
+    void setTransform(const float4x4& matrix);
 
     /** Get rotation angles.
     */
@@ -97,11 +101,11 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
 
     /** Get the filename of the environment map texture.
     */
-    const std::string& getFilename() const { return mpEnvMap->getSourceFilename(); }
+    const fs::path& getPath() const { return mpEnvMap->getSourcePath(); }
 
-    const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
-    const Texture::SharedPtr& getTexture() const { return mpEnvMap; }
-    const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
+    const ref<Texture>& getEnvMap() const { return mpEnvMap; }
+    const ref<Texture>& getTexture() const { return mpEnvMap; }
+    const ref<Sampler>& getEnvSampler() const { return mpEnvSampler; }
 
     /** Bind the environment map to a given shader variable.
         \param[in] var Shader variable.
@@ -127,11 +131,11 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     uint64_t getMemoryUsageInBytes() const;
 
   protected:
-    EnvMap(Device::SharedPtr pDevice, const Texture::SharedPtr& texture);
+    EnvMap(ref<Device> pDevice, const ref<Texture>& texture);
 
-    Device::SharedPtr       mpDevice = nullptr;
-    Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
-    Sampler::SharedPtr      mpEnvSampler;
+    ref<Device>             mpDevice;
+    ref<Texture>            mpEnvMap;           ///< Loaded environment map (RGB).
+    ref<Sampler>            mpEnvSampler;       ///< Texture sampler for the environment map.
 
     EnvMapData              mData;
     EnvMapData              mPrevData;
@@ -142,6 +146,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
 
     Changes                 mChanges = Changes::None;
 
+    friend class Scene;
     friend class SceneCache;
 };
 

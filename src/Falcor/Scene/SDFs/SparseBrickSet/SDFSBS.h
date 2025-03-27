@@ -27,24 +27,26 @@
  **************************************************************************/
 #pragma once
 
+#include "Core/Pass/ComputePass.h"
 #include "Scene/SDFs/SDFGrid.h"
 #include "Utils/Algorithm/PrefixSum.h"
 
-namespace Falcor
-{
+namespace Falcor {
     /** A single SDF Sparse Brick Set. Can only be utilized on the GPU.
     */
-    class dlldecl SDFSBS : public SDFGrid
+    class FALCOR_API SDFSBS : public SDFGrid
     {
     public:
-        using SharedPtr = std::shared_ptr<SDFSBS>;
+        struct SharedData;
 
-        /** Create a new, empty SDF sparse brick set.
+        static ref<SDFSBS> create(ref<Device> pDevice, uint32_t brickWidth = 7, bool compressed = false, uint32_t defaultGridWidth = 256) { return make_ref<SDFSBS>(pDevice, brickWidth, compressed, defaultGridWidth); }
+
+        /** Create an empty SDF sparse brick set.
             \param[in] brickWidth The width of a brick in voxels.
             \param[in] compressed Selects if bricks should be compressed using lossy BC4 compression. brickWidth + 1 must be a multiple of 4 to enable compression.
-            \return SDFSBS object, or nullptr if errors occurred.
+            \param[in] defaultGridWidth The grid width used if the data was not loaded from a file (it is empty).
         */
-        static SharedPtr create(Device::SharedPtr pDevice, uint32_t brickWidth = 7, bool compressed = false);
+        SDFSBS(ref<Device> pDevice, uint32_t brickWidth, bool compressed, uint32_t defaultGridWidth);
 
         virtual UpdateFlags update(RenderContext* pRenderContext) override;
 
@@ -58,26 +60,37 @@ namespace Falcor
 
         virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
-        virtual const Buffer::SharedPtr& getAABBBuffer() const override { return mpBrickAABBsBuffer; }
+        virtual const ref<Buffer>& getAABBBuffer() const override { return mpBrickAABBsBuffer; }
         virtual uint32_t getAABBCount() const override { return mBrickCount; }
 
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
+
+        virtual float getResolutionScalingFactor() const override { return mResolutionScalingFactor; };
+        virtual void resetResolutionScalingFactor() override { mResolutionScalingFactor = 1.0f; };
 
     protected:
-        UpdateFlags createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData);
-        void createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData);
+        void createResourcesFromSDField(RenderContext* pRenderContext, bool deleteScratchData);
+        SDFGrid::UpdateFlags createResourcesFromPrimitivesAndSDField(RenderContext* pRenderContext, bool deleteScratchData);
+
+        void expandSDFGridTexture(RenderContext* pRenderContext, bool deleteScratchData, uint32_t oldGridWidthInSDField, uint32_t gridWidthInSDField);
+        void createIntervalSDFieldTextures(RenderContext* pRenderContext, bool deleteScratchData, uint32_t chunkWidth, uint32_t subdivisionCount);
 
         void allocatePrimitiveBits();
 
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
-    private:
-        SDFSBS(Device::SharedPtr pDevice, uint32_t brickWidth, bool compressed);
+        void createSDFGridTexture(RenderContext* pRenderContext, const std::vector<int8_t>& sdField);
 
+        uint32_t fetchCount(RenderContext* pRenderContext, const ref<Buffer>& pBuffer);
+
+        void compactifyChunks(RenderContext* pRenderContext, uint32_t chunkCount);
+
+    private:
         // CPU data.
-        std::vector<int8_t> mValues;
+        std::vector<int8_t> mSDField;
 
         // Specs.
+        uint32_t mDefaultGridWidth = 0;                 ///< The grid width used if the grid was not loaded from a file (it is empty).
         uint32_t mVirtualBricksPerAxis = 0;
         uint32_t mVoxelCount = 0;
         uint32_t mBrickCount = 0;
@@ -87,44 +100,60 @@ namespace Falcor
         uint32_t mBrickLocalVoxelCoordsBitCount = 0;
         uint32_t mBrickWidth = 0;
         bool mCompressed = false;
+        bool mSDFieldUpdated = false;
+        float mResolutionScalingFactor = 1.0f;
+        uint32_t mCurrentBakedPrimitiveCount = 0;
+        bool mWasEmpty = false;
+        bool mBuildEmptyGrid = false;
 
         // GPU data.
-        Buffer::SharedPtr mpBrickAABBsBuffer;           ///< A compact buffer containing AABBs for each brick.
-        Texture::SharedPtr mpIndirectionTexture;        ///< An indirection texture to map from virtual brick coords to actual brick ID.
-        Texture::SharedPtr mpBrickTexture;              ///< A texture of SDF bricks with data at corners.
+        ref<Buffer> mpBrickAABBsBuffer;                 ///< A compact buffer containing AABBs for each brick.
+        ref<Texture> mpIndirectionTexture;              ///< An indirection texture to map from virtual brick coords to actual brick ID.
+        ref<Texture> mpBrickTexture;                    ///< A texture of SDF bricks with data at corners.
+        std::shared_ptr<SharedData> mpSharedData;       ///< Shared data among all instances.
 
-        // Sampler, shared among all SDFSBS instances.
-        static Sampler::SharedPtr spSDFSBSSampler;
+        // Compute passes used to build the SBS from signed distance field.
+        ref<ComputePass> mpAssignBrickValidityPass;
+        ref<ComputePass> mpResetBrickValidityPass;
+        ref<ComputePass> mpCopyIndirectionBufferPass;
+        ref<ComputePass> mpCreateBricksFromSDFieldPass;
 
-        // Compute passes used to build the SBS from values.
-        ComputePass::SharedPtr mpAssignBrickValidityPass;
-        ComputePass::SharedPtr mpResetBrickValidityPass;
-        ComputePass::SharedPtr mpCopyIndirectionBufferPass;
-        ComputePass::SharedPtr mpCreateBricksFromValuesPass;
+        // Compute passes used to build the SBS from primitives.
+        ref<ComputePass> mpCreateRootChunksFromPrimitives;
+        ref<ComputePass> mpSubdivideChunksUsingPrimitives;
+        ref<ComputePass> mpCompactifyChunks;
+        ref<ComputePass> mpCoarselyPruneEmptyBricks;
+        ref<ComputePass> mpFinelyPruneEmptyBricks;
+        ref<ComputePass> mpCreateBricksFromChunks;
 
-        // Compute passes used to build the SBS from values.
-        ComputePass::SharedPtr mpCreateRootChunksFromPrimitives;
-        ComputePass::SharedPtr mpSubdivideChunksUsingPrimitives;
-        ComputePass::SharedPtr mpCompactifyChunks;
-        ComputePass::SharedPtr mpCoarselyPruneEmptyBricks;
-        ComputePass::SharedPtr mpFinelyPruneEmptyBricks;
-        ComputePass::SharedPtr mpCreateBricksFromChunks;
+        // Compute passes used to build the SBS from signed distance field and primitives.
+        ref<ComputePass> mpComputeRootIntervalSDFieldFromGridPass;
+        ref<ComputePass> mpComputeIntervalSDFieldFromGridPass;
+        ref<ComputePass> mpExpandSDFieldPass;
 
-        // Compute passes used to build the SBS from both values and primitives.
-        PrefixSum::SharedPtr mpPrefixSumPass;
+        // Compute passes used to build the SBS from both the SD Field and primitives.
+        std::unique_ptr<PrefixSum> mpPrefixSumPass;
 
-        // Scratch data used for building from values.
-        Texture::SharedPtr mpBrickScratchTexture;
-        Buffer::SharedPtr mpIndirectionBuffer;
-        Buffer::SharedPtr mpValidityBuffer;
-        Texture::SharedPtr mpSDFGridTexture;
+        // Scratch data used for building from signed distance field.
+        ref<Texture> mpBrickScratchTexture;
+        ref<Buffer> mpIndirectionBuffer;
+        ref<Buffer> mpValidityBuffer;
+
+        ref<Buffer> mpCountBuffer;
 
         // Scratch data used for building from primitives.
-        Buffer::SharedPtr mpChunkIndirectionBuffer;
-        Buffer::SharedPtr mpChunkCoordsBuffer;
-        Buffer::SharedPtr mpSubChunkValidityBuffer;
-        Buffer::SharedPtr mpSubChunkCoordsBuffer;
-        Buffer::SharedPtr mpSubdivisionArgBuffer;
-        GpuFence::SharedPtr mpReadbackFence;
+        ref<Buffer> mpChunkIndirectionBuffer;
+        ref<Buffer> mpChunkCoordsBuffer;
+        ref<Buffer> mpSubChunkValidityBuffer;
+        ref<Buffer> mpSubChunkCoordsBuffer;
+        ref<Buffer> mpSubdivisionArgBuffer;
+        ref<Fence> mpReadbackFence;
+
+        // Scratch data used for building from the SD Field and primitives.
+        ref<Texture> mpOldSDFGridTexture;
+        ref<Texture> mpSDFGridTextureModified;
+        std::vector<ref<Texture>> mIntervalSDFieldMaps;
+        ref<Buffer> mpCountStagingBuffer;
     };
-}
+
+} // namespace Falcor

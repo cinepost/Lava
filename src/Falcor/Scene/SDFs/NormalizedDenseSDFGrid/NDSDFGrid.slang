@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -128,6 +128,9 @@ struct NDSDFGrid : SDFGridBase, ISDFGrid
 
     bool intersectSDF(const float3 rayOrigin, const float3 rayDir, const float tMin, const float tMax, const uint primitiveID, out float t, out SDFGridHitData hitData)
     {
+        t = {};
+        hitData = {};
+
         // Add 0.5f to origin so that it is in [0, 1] instead of [-0.5, 0.5].
         float3 rayOrigLocal = rayOrigin + 0.5f;
 
