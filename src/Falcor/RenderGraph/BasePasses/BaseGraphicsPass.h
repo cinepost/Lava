@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
 #define SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
 
-#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "Falcor/Core/State/GraphicsState.h"
 
@@ -51,7 +51,7 @@ class dlldecl BaseGraphicsPass {
 
     /** Get the program
     */
-    GraphicsProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
+    Program::SharedPtr getProgram() const { return mpState->getProgram(); }
 
     /** Get the state
     */
@@ -59,14 +59,14 @@ class dlldecl BaseGraphicsPass {
 
     /** Get the vars
     */
-    const GraphicsVars::SharedPtr& getVars() const { return mpVars; }
+    const ProgramVars::SharedPtr& getVars() const { return mpVars; }
 
     ShaderVar getRootVar() const { return mpVars->getRootVar(); }
 
     /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
-        \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new GraphicsVars object
+        \param[in] pVars The new ProgramVars object. If this is nullptr, then the pass will automatically create a new ProgramVars object
     */
-    void setVars(const GraphicsVars::SharedPtr& pVars);
+    void setVars(const ProgramVars::SharedPtr& pVars);
 
  protected:
     /** Create a new object.
@@ -76,7 +76,7 @@ class dlldecl BaseGraphicsPass {
     */
     BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
 
-    GraphicsVars::SharedPtr mpVars;
+    ProgramVars::SharedPtr mpVars;
     GraphicsState::SharedPtr mpState;
     std::shared_ptr<Device> mpDevice;
 };

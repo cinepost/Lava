@@ -289,7 +289,7 @@ void ShaderObjectImpl::writeBufferDescriptor(
     Offset bufferOffset,
     Size bufferSize)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     VkDescriptorBufferInfo bufferInfo = {};
     
@@ -328,7 +328,7 @@ void ShaderObjectImpl::writePlainBufferDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<RefPtr<ResourceViewInternalBase>> resourceViews)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = resourceViews.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -364,7 +364,7 @@ void ShaderObjectImpl::writeTexelBufferDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<RefPtr<ResourceViewInternalBase>> resourceViews)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = resourceViews.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -394,7 +394,7 @@ void ShaderObjectImpl::writeTextureSamplerDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<CombinedTextureSamplerSlot> slots)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = slots.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -431,7 +431,7 @@ void ShaderObjectImpl::writeAccelerationStructureDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<RefPtr<ResourceViewInternalBase>> resourceViews)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = resourceViews.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -464,7 +464,7 @@ void ShaderObjectImpl::writeTextureDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<RefPtr<ResourceViewInternalBase>> resourceViews)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = resourceViews.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -498,7 +498,7 @@ void ShaderObjectImpl::writeSamplerDescriptor(
     VkDescriptorType descriptorType,
     ArrayView<RefPtr<SamplerStateImpl>> samplers)
 {
-    auto descriptorSet = context.descriptorSets[offset.bindingSet];
+    auto descriptorSet = (*context.descriptorSets)[offset.bindingSet];
 
     Index count = samplers.getCount();
     for (Index i = 0; i < count; ++i) {
@@ -786,11 +786,8 @@ Result ShaderObjectImpl::allocateDescriptorSets(
     // as part of the shader object layout, so we use that information here.
     //
     for (auto descriptorSetInfo : specializedLayout->getOwnDescriptorSets()) {
-        auto descriptorSetHandle = context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
-
-        #ifdef _DEBUG
-        LLOG_TRC << "allocated descriptor set " << descriptorSetHandle;
-        #endif // _DEBUG
+        auto descriptorSetHandle =
+            context.descriptorSetAllocator->allocate(descriptorSetInfo.descriptorSetLayout).handle;
 
         // For each set, we need to write it into the set of descriptor sets
         // being used for binding. This is done both so that other steps
@@ -798,8 +795,7 @@ Result ShaderObjectImpl::allocateDescriptorSets(
         // we can bind all the descriptor sets to the pipeline when the
         // time comes.
         //
-        context.descriptorSets[context.descriptorSetCounter] = descriptorSetHandle;
-        context.descriptorSetCounter++;
+        (*context.descriptorSets).add(descriptorSetHandle);
     }
 
     return SLANG_OK;
@@ -817,7 +813,7 @@ Result ShaderObjectImpl::bindAsParameterBlock(
     // not the sets for any parent object(s).
     //
     BindingOffset offset = inOffset;
-    offset.bindingSet = context.descriptorSetCounter;
+    offset.bindingSet = (uint32_t)context.descriptorSets->getCount();
     offset.binding = 0;
 
     // TODO: We should also be writing to `offset.pending` here,
@@ -834,7 +830,7 @@ Result ShaderObjectImpl::bindAsParameterBlock(
     //
     SLANG_RETURN_ON_FAIL(allocateDescriptorSets(encoder, context, offset, specializedLayout));
 
-    assert(offset.bindingSet < context.descriptorSetCounter);
+    assert(offset.bindingSet < (uint32_t)context.descriptorSets->getCount());
     SLANG_RETURN_ON_FAIL(bindAsConstantBuffer(encoder, context, offset, specializedLayout));
 
     return SLANG_OK;
@@ -854,14 +850,8 @@ Result ShaderObjectImpl::bindOrdinaryDataBufferIfNeeded(
     // the given `descriptorSet` and update the base range index for
     // subsequent binding operations to account for it.
     //
-
-    VkDeviceSize constBufferSize = m_constantBufferSize;
-    if(constBufferSize == 0) {
-        const VkPhysicalDeviceProperties& props = context.device->getPhysicalDeviceProperties();
-        constBufferSize = props.limits.maxUniformBufferRange;
-    }
-
-    if (m_constantBuffer) {
+    if (m_constantBuffer && m_constantBufferSize > 0)
+    {
         auto bufferImpl = static_cast<BufferResourceImpl*>(m_constantBuffer);
         writeBufferDescriptor(
             context,
@@ -869,7 +859,7 @@ Result ShaderObjectImpl::bindOrdinaryDataBufferIfNeeded(
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             bufferImpl,
             m_constantBufferOffset,
-            constBufferSize);
+            m_constantBufferSize);
         ioOffset.binding++;
     }
 
@@ -906,13 +896,15 @@ Result ShaderObjectImpl::_getSpecializedLayout(ShaderObjectLayoutImpl** outLayou
     return SLANG_OK;
 }
 
-Result ShaderObjectImpl::_createSpecializedLayout(ShaderObjectLayoutImpl** outLayout) {
+Result ShaderObjectImpl::_createSpecializedLayout(ShaderObjectLayoutImpl** outLayout)
+{
     ExtendedShaderObjectType extendedType;
     SLANG_RETURN_ON_FAIL(getSpecializedShaderObjectType(&extendedType));
 
     auto device = getDevice();
     RefPtr<ShaderObjectLayoutImpl> layout;
     SLANG_RETURN_ON_FAIL(device->getShaderObjectLayout(
+        m_layout->m_slangSession,
         extendedType.slangType,
         m_layout->getContainerType(),
         (ShaderObjectLayoutBase**)layout.writeRef()));

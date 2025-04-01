@@ -125,7 +125,7 @@ Buffer::SharedPtr Buffer::createStructured(
 	const void* pInitData,
 	bool createCounter)
 {
-	return createStructuredFromType(pDevice, shaderVar.getType().get(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	return createStructuredFromType(pDevice, shaderVar.getType(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Buffer::createStructured(
@@ -143,7 +143,7 @@ Buffer::SharedPtr Buffer::createStructured(
 	if (pVar == nullptr) {
 		throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
 	}
-	return createStructuredFromType(pDevice, pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	return createStructuredFromType(pDevice, pVar->getType(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags) {

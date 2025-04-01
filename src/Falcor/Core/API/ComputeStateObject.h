@@ -51,8 +51,8 @@ class dlldecl ComputeStateObject {
 #endif
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
 
-            inline const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-            inline ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+            const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
+            //ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
             bool operator==(const Desc& other) const;
         private:
             friend class ComputeStateObject;
@@ -70,8 +70,8 @@ class dlldecl ComputeStateObject {
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
-    inline const ApiHandle& getApiHandle() { return mApiHandle; }
-    inline const Desc& getDesc() const { return mDesc; }
+    const ApiHandle& getApiHandle() { return mApiHandle; }
+    const Desc& getDesc() const { return mDesc; }
 
   public:
     ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);

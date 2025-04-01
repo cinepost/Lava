@@ -189,15 +189,9 @@ const std::string& getExecutableName() {
     return filename;
 }
 
-bool getEnvironmentVariable(const std::string& varName, std::string& value) {
+std::optional<std::string> getEnvironmentVariable(const std::string& varName) {
     const char* val = ::getenv(varName.c_str());
-    if (val == 0)
-    {
-        return false;
-    }
-    static std::string strvar(val);
-    value = strvar;
-    return true;
+    return val != nullptr ? std::string(val) : std::optional<std::string>{};
 }
 
 template<bool bOpen>

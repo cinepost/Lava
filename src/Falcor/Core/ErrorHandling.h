@@ -52,7 +52,7 @@ namespace Falcor
         If message boxes are disabled, this will terminate the application after logging the error.
         \param msg Error message.
     */
-    FALCOR_API void reportErrorAndAllowRetry(const std::string& msg);
+    FALCOR_API bool reportErrorAndAllowRetry(const std::string& msg);
 
     /** Report a fatal error by logging it and showing a message box with the option to abort
         or enter the debugger (if one is attached).

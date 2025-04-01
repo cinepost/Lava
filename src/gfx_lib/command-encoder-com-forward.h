@@ -1,6 +1,19 @@
 #pragma once
 
 #define SLANG_GFX_FORWARD_RESOURCE_COMMAND_ENCODER_IMPL(ResourceCommandEncoderBase)                     \
+    virtual SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(                                      \
+        SlangUUID const& uuid, void** outObject) override                                               \
+    {                                                                                                   \
+        return ResourceCommandEncoderBase::queryInterface(uuid, outObject);                             \
+    }                                                                                                   \
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override                                       \
+    {                                                                                                   \
+        return ResourceCommandEncoderBase::addRef();                                                    \
+    }                                                                                                   \
+    virtual SLANG_NO_THROW uint32_t SLANG_MCALL release() override                                      \
+    {                                                                                                   \
+        return ResourceCommandEncoderBase::release();                                                   \
+    }                                                                                                   \
     virtual SLANG_NO_THROW void SLANG_MCALL copyBuffer(                                                 \
         IBufferResource* dst,                                                                           \
         Offset dstOffset,                                                                               \

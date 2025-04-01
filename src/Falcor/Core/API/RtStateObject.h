@@ -33,43 +33,47 @@
 
 namespace Falcor {
 
-class dlldecl RtStateObject {
+class Device;
+
+struct RtStateObjectDesc {
+    ProgramKernels::SharedConstPtr pProgramKernels;
+    uint32_t maxTraceRecursionDepth = 0;
+    RtPipelineFlags pipelineFlags = RtPipelineFlags::None;
+
+    bool operator==(const RtStateObjectDesc& other) const {
+        bool result = true;
+        result = result && (pProgramKernels == other.pProgramKernels);
+        result = result && (maxTraceRecursionDepth == other.maxTraceRecursionDepth);
+        result = result && (pipelineFlags == other.pipelineFlags);
+        return result;
+    }
+};
+
+class FALCOR_API RtStateObject: public std::enable_shared_from_this<RtStateObject> {
 	public:
 		using SharedPtr = std::shared_ptr<RtStateObject>;
 		using SharedConstPtr = std::shared_ptr<const RtStateObject>;
 		using ApiHandle = RaytracingStateHandle;
-		using lala = RasterizerStateHandle;
+		
+		using Desc = RtStateObjectDesc;
 
-		class dlldecl Desc {
-			public:
-				Desc& setKernels(const ProgramKernels::SharedConstPtr& pKernels) { mpKernels = pKernels; return *this; }
-				Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
-				Desc& setPipelineFlags(RtPipelineFlags flags) { mPipelineFlags = flags; return *this; }
-
-				bool operator==(const Desc& other) const;
-
-			private:
-				ProgramKernels::SharedConstPtr mpKernels;
-				uint32_t mMaxTraceRecursionDepth = 0;
-				RtPipelineFlags mPipelineFlags = RtPipelineFlags::None;
-				friend RtStateObject;
-		};
-
-		static SharedPtr create(Device::SharedPtr pDevice, const Desc& desc);
+		static RtStateObject::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 		const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-		const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.mpKernels; };
-		uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
+		const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.pProgramKernels; };
+		uint32_t getMaxTraceRecursionDepth() const { return mDesc.maxTraceRecursionDepth; }
 
 		void const* getShaderIdentifier(uint32_t index) const { return mEntryPointGroupExportNames[index].c_str(); }
 
 		const Desc& getDesc() const { return mDesc; }
 	
+	public:
+		RtStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+
 	private:
-		RtStateObject(Device::SharedPtr pDevice, const Desc& desc);
 		void apiInit();
 
-		Device::SharedPtr mpDevice = nullptr;
+		std::shared_ptr<Device> mpDevice;
 		Desc mDesc;
 		ApiHandle mApiHandle;
 

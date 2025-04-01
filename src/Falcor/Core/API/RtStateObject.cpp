@@ -27,23 +27,18 @@
  **************************************************************************/
 #include "stdafx.h"
 
-
 #include "RtStateObject.h"
+#include "Device.h"
+
 
 namespace Falcor {
-	bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const {
-		bool b = true;
-		b = b && (mMaxTraceRecursionDepth == other.mMaxTraceRecursionDepth);
-		b = b && (mpKernels == other.mpKernels);
-		return b;
-	}
 
-	RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const Desc& desc) {
-		return SharedPtr(new RtStateObject(pDevice, desc));
-	}
-
-	RtStateObject::RtStateObject(Device::SharedPtr pDevice, const Desc& desc): mpDevice(pDevice), mDesc(desc) {
-		apiInit();
-	}
-
+RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const Desc& desc) {
+	return std::make_shared<RtStateObject>(pDevice, desc);
 }
+
+RtStateObject::RtStateObject(Device::SharedPtr pDevice, const Desc& desc): mpDevice(pDevice), mDesc(desc) {
+	apiInit();
+}
+
+} // namespace Falcor

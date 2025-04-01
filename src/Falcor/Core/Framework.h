@@ -29,6 +29,13 @@
 #define SRC_FALCOR_CORE_FRAMEWORK_H_
 
 #include "FalcorPlatform.h"
+#include "Enum.h"
+
+#include <fstd/source_location.h> // TODO C++20: Replace with <source_location>
+#include <fmt/format.h>           // TODO C++20: Replace with <format>
+
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 #if FALCOR_GCC
 // save compiler switches
@@ -200,26 +207,84 @@ namespace Falcor {
 *  @{
 */
 
-/** Falcor shader types
-*/
-enum class ShaderType {
-    Vertex,         ///< Vertex shader
-    Pixel,          ///< Pixel shader
-    Geometry,       ///< Geometry shader
-    Hull,           ///< Hull shader (AKA Tessellation control shader)
-    Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
-    Compute,        ///< Compute shader
-
-    RayGeneration,  ///< Ray generation shader
-    Intersection,   ///< Intersection shader
-    AnyHit,         ///< Any hit shader
-    ClosestHit,     ///< Closest hit shader
-    Miss,           ///< Miss shader
-    Callable,       ///< Callable shader
-
-    Count           ///< Shader Type count
+enum class ShaderModel : uint32_t {
+    Unknown = 0,
+    SM6_0 = 60,
+    SM6_1 = 61,
+    SM6_2 = 62,
+    SM6_3 = 63,
+    SM6_4 = 64,
+    SM6_5 = 65,
+    SM6_6 = 66,
+    SM6_7 = 67,
 };
+FALCOR_ENUM_INFO(
+    ShaderModel, {
+        {ShaderModel::Unknown, "Unknown"},
+        {ShaderModel::SM6_0, "SM6_0"},
+        {ShaderModel::SM6_1, "SM6_1"},
+        {ShaderModel::SM6_2, "SM6_2"},
+        {ShaderModel::SM6_3, "SM6_3"},
+        {ShaderModel::SM6_4, "SM6_4"},
+        {ShaderModel::SM6_5, "SM6_5"},
+        {ShaderModel::SM6_6, "SM6_6"},
+        {ShaderModel::SM6_7, "SM6_7"},
+    }
+);
+FALCOR_ENUM_REGISTER(ShaderModel);
 
+inline const std::string& to_string(const ShaderModel& sm) {
+    return enumToString(sm);
+}
+
+inline uint32_t getShaderModelMajorVersion(ShaderModel sm)
+{
+    return uint32_t(sm) / 10;
+}
+inline uint32_t getShaderModelMinorVersion(ShaderModel sm)
+{
+    return uint32_t(sm) % 10;
+}
+
+/**
+ * Falcor shader types
+ */
+enum class ShaderType {
+    Vertex,        ///< Vertex shader
+    Pixel,         ///< Pixel shader
+    Geometry,      ///< Geometry shader
+    Hull,          ///< Hull shader (AKA Tessellation control shader)
+    Domain,        ///< Domain shader (AKA Tessellation evaluation shader)
+    Compute,       ///< Compute shader
+    RayGeneration, ///< Ray generation shader
+    Intersection,  ///< Intersection shader
+    AnyHit,        ///< Any hit shader
+    ClosestHit,    ///< Closest hit shader
+    Miss,          ///< Miss shader
+    Callable,      ///< Callable shader
+    Count          ///< Shader Type count
+};
+FALCOR_ENUM_INFO(
+    ShaderType, {
+        {ShaderType::Vertex, "Vertex"},
+        {ShaderType::Pixel, "Pixel"},
+        {ShaderType::Geometry, "Geometry"},
+        {ShaderType::Hull, "Hull"},
+        {ShaderType::Domain, "Domain"},
+        {ShaderType::Compute, "Compute"},
+        {ShaderType::RayGeneration, "RayGeneration"},
+        {ShaderType::Intersection, "Intersection"},
+        {ShaderType::AnyHit, "AnyHit"},
+        {ShaderType::ClosestHit, "ClosestHit"},
+        {ShaderType::Miss, "Miss"},
+        {ShaderType::Callable, "Callable"},
+    }
+);
+FALCOR_ENUM_REGISTER(ShaderType);
+
+inline const std::string& to_string(const ShaderType& st) {
+    return enumToString(st);
+}
 
 /** Shading languages. Used for shader cross-compilation.
 */
@@ -244,18 +309,66 @@ enum class FboAttachmentType {
 
 enum_class_operators(FboAttachmentType);
 
+enum class DataType {
+    int8,
+    int16,
+    int32,
+    int64,
+    uint8,
+    uint16,
+    uint32,
+    uint64,
+    float16,
+    float32,
+    float64,
+};
+FALCOR_ENUM_INFO(
+    DataType, {
+        {DataType::int8, "int8"},
+        {DataType::int16, "int16"},
+        {DataType::int32, "int32"},
+        {DataType::int64, "int64"},
+        {DataType::uint8, "uint8"},
+        {DataType::uint16, "uint16"},
+        {DataType::uint32, "uint32"},
+        {DataType::uint64, "uint64"},
+        {DataType::float16, "float16"},
+        {DataType::float32, "float32"},
+        {DataType::float64, "float64"},
+    }
+);
+FALCOR_ENUM_REGISTER(DataType);
 
 enum class ComparisonFunc {
-    Disabled,       ///< Comparison is disabled
-    Never,          ///< Comparison always fails
-    Always,         ///< Comparison always succeeds
-    Less,           ///< Passes if source is less than the destination
-    Equal,          ///< Passes if source is equal to the destination
-    NotEqual,       ///< Passes if source is not equal to the destination
-    LessEqual,      ///< Passes if source is less than or equal to the destination
-    Greater,        ///< Passes if source is greater than to the destination
-    GreaterEqual,   ///< Passes if source is greater than or equal to the destination
+    Disabled,     ///< Comparison is disabled
+    Never,        ///< Comparison always fails
+    Always,       ///< Comparison always succeeds
+    Less,         ///< Passes if source is less than the destination
+    Equal,        ///< Passes if source is equal to the destination
+    NotEqual,     ///< Passes if source is not equal to the destination
+    LessEqual,    ///< Passes if source is less than or equal to the destination
+    Greater,      ///< Passes if source is greater than to the destination
+    GreaterEqual, ///< Passes if source is greater than or equal to the destination
 };
+
+FALCOR_ENUM_INFO(
+    ComparisonFunc, {
+        {ComparisonFunc::Disabled, "Disabled"},
+        {ComparisonFunc::Never, "Never"},
+        {ComparisonFunc::Always, "Always"},
+        {ComparisonFunc::Less, "Less"},
+        {ComparisonFunc::Equal, "Equal"},
+        {ComparisonFunc::NotEqual, "NotEqual"},
+        {ComparisonFunc::LessEqual, "LessEqual"},
+        {ComparisonFunc::Greater, "Greater"},
+        {ComparisonFunc::GreaterEqual, "GreaterEqual"},
+    }
+);
+FALCOR_ENUM_REGISTER(ComparisonFunc);
+
+inline std::string to_string(const ComparisonFunc& f) {
+   return enumToString(f);
+}
 
 /** Flags indicating what hot-reloadable resources have changed
 */
@@ -323,6 +436,65 @@ public:
 
 }  // namespace Falcor
 
+namespace Falcor {
+
+//
+// Exception helpers.
+//
+
+/// Throw a RuntimeError exception.
+/// If ErrorDiagnosticFlags::AppendStackTrace is set, a stack trace will be appended to the exception message.
+/// If ErrorDiagnosticFlags::BreakOnThrow is set, the debugger will be broken into (if attached).
+[[noreturn]] FALCOR_API void throwException(const fstd::source_location& loc, std::string_view msg);
+
+namespace detail {
+/// Overload to allow FALCOR_THROW to be called with a message only.
+[[noreturn]] inline void throwException(const fstd::source_location& loc, std::string_view msg) {
+    ::Falcor::throwException(loc, msg);
+}
+
+/// Overload to allow FALCOR_THROW to be called with a format string and arguments.
+template<typename... Args>
+[[noreturn]] inline void throwException(const fstd::source_location& loc, fmt::format_string<Args...> fmt, Args&&... args) {
+    ::Falcor::throwException(loc, fmt::format(fmt, std::forward<Args>(args)...));
+}
+
+}  // namespace detail
+
+/// Flags controlling the error diagnostic behavior.
+enum class ErrorDiagnosticFlags{
+    None = 0,
+    /// Break into debugger (if attached) when calling FALCOR_THROW.
+    BreakOnThrow,
+    /// Break into debugger (if attached) when calling FALCOR_ASSERT.
+    BreakOnAssert,
+    /// Append a stack trace to the exception error message when using FALCOR_THROW and FALCOR_ASSERT.
+    AppendStackTrace = 2,
+    /// Show a message box when reporting errors using the reportError() functions.
+    ShowMessageBoxOnError = 4,
+};
+enum_class_operators(ErrorDiagnosticFlags);
+
+}  // namespace Falcor
+
+/// Helper for throwing a RuntimeError exception.
+/// Accepts either a string or a format string and arguments:
+/// FALCOR_THROW("This is an error message.");
+/// FALCOR_THROW("Expected {} items, got {}.", expectedCount, actualCount);
+#define FALCOR_THROW(...) ::Falcor::detail::throwException(fstd::source_location::current(), __VA_ARGS__)
+
+/// Helper for throwing a RuntimeError exception if condition isn't met.
+/// Accepts either a string or a format string and arguments.
+/// FALCOR_CHECK(device != nullptr, "Device is null.");
+/// FALCOR_CHECK(count % 3 == 0, "Count must be a multiple of 3, got {}.", count);
+#define FALCOR_CHECK(cond, ...)        \
+    do                                 \
+    {                                  \
+        if (!(cond))                   \
+            FALCOR_THROW(__VA_ARGS__); \
+    } while (0)
+
+
 // Remove defines from XLib.h (included by vulkan.h) that cause conflicts
 #ifndef _WIN32
 #undef None
@@ -341,64 +513,6 @@ struct WindowHandle {
 #endif
 
 namespace Falcor {
-
-/** Converts ShaderType enum elements to a string.
-    \param[in] type Type to convert to string
-    \return Shader type as a string
-*/
-inline const std::string to_string(ShaderType Type) {
-    switch (Type) {
-        case ShaderType::Vertex:
-            return "vertex";
-        case ShaderType::Pixel:
-            return "pixel";
-        case ShaderType::Hull:
-            return "hull";
-        case ShaderType::Domain:
-            return "domain";
-        case ShaderType::Geometry:
-            return "geometry";
-        case ShaderType::Compute:
-            return "compute";
-#ifdef FALCOR_D3D12
-        case ShaderType::RayGeneration:
-            return "raygeneration";
-        case ShaderType::Intersection:
-            return "intersection";
-        case ShaderType::AnyHit:
-            return "anyhit";
-        case ShaderType::ClosestHit:
-            return "closesthit";
-        case ShaderType::Miss:
-            return "miss";
-        case ShaderType::Callable:
-            return "callable";
-#endif
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-
-
-#define compare_str(a) case ComparisonFunc::a: return #a
-inline std::string to_string(ComparisonFunc f) {
-    switch (f) {
-        compare_str(Disabled);
-        compare_str(LessEqual);
-        compare_str(GreaterEqual);
-        compare_str(Less);
-        compare_str(Greater);
-        compare_str(Equal);
-        compare_str(NotEqual);
-        compare_str(Always);
-        compare_str(Never);
-        default:
-            should_not_get_here();
-            return "";
-    }
-}
-#undef compare_str
 
 // Required to_string functions
 using std::to_string;

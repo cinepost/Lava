@@ -59,6 +59,7 @@ class Sampler;
 class CopyContext;
 class RenderContext;
 class TextureManager;
+class ProgramManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
@@ -115,18 +116,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         AtomicFloat = 0x800,
     };
 
-    enum class ShaderModel : uint32_t {
-        Unknown,
-        SM6_0,
-        SM6_1,
-        SM6_2,
-        SM6_3,
-        SM6_4,
-        SM6_5,
-        SM6_6,
-        SM6_7,
-    };
-
     using MemoryType = GpuMemoryHeap::Type;
 
     /** Device unique id.
@@ -138,7 +127,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     void cleanup();
 
-    TextureManager* textureManager() { return mpTextureManager.get(); }
+    TextureManager* getTextureManager() { return mpTextureManager.get(); }
+
+    ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
 
     /** Enable/disable vertical sync
     */
@@ -148,7 +139,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get physical device name
     */
-    std::string& getPhysicalDeviceName();
+    const std::string& getPhysicalDeviceName() const;
 
     const VmaAllocator& allocator() const { return mApiHandle->getVmaAllocator(); }
 
@@ -232,6 +223,14 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint32_t subgroupSize() const;
 
     void releaseResource(ApiObjectHandle pResource);
+
+    /**
+     * Return the default shader model to use
+     */
+    ShaderModel getDefaultShaderModel() const { return mDefaultShaderModel; }
+
+    /// Returns the global slang session.
+    slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
 
 #ifdef FALCOR_GFX
     void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
@@ -317,6 +316,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     Desc mDesc;
     ApiHandle mApiHandle;
     GpuMemoryHeap::SharedPtr mpUploadHeap;
+    Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
 
     bool mIsWindowOccluded = false;
     GpuFence::SharedPtr mpFrameFence;
@@ -346,6 +346,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
     ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
+    ShaderModel mDefaultShaderModel = ShaderModel::Unknown;
 
     // API specific functions
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle);
@@ -413,7 +414,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     NullResourceViews mNullViews;
 
-    std::shared_ptr<TextureManager>  mpTextureManager = nullptr;
+    std::shared_ptr<TextureManager>  mpTextureManager;
+    std::unique_ptr<ProgramManager>  mpProgramManager;
 
     friend class DeviceManager;
     friend class ResourceManager;

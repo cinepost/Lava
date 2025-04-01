@@ -52,6 +52,10 @@ namespace Falcor {
 
 static const uint32_t kInvalidBackbufferIndex = -1;
 
+/// The default Shader Model to use when compiling programs.
+/// If not supported, the highest supported shader model will be used instead.
+static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
+
 #if FALCOR_NVAPI_AVAILABLE
 	// To use NVAPI, we intercept the API calls in the gfx layer and dispatch into the NVAPI_Create*PipelineState
 	// functions instead if the shader uses NVAPI functionalities.
@@ -393,7 +397,9 @@ static const uint32_t kInvalidBackbufferIndex = -1;
 		desc.deviceType = DeviceType::Vulkan;
 #endif
 		
-		desc.slang.slangGlobalSession = getSlangGlobalSession();
+		// Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
+    slang::createGlobalSession(mSlangGlobalSession.writeRef());
+		desc.slang.slangGlobalSession = mSlangGlobalSession;
 
 		gfx::D3D12DeviceExtendedDesc extDesc = {};
 		extDesc.rootParameterShaderAttributeName = "root";
@@ -425,6 +431,7 @@ static const uint32_t kInvalidBackbufferIndex = -1;
 		mGpuTimestampFrequency = 1000.0 / (double)mApiHandle->getDeviceInfo().timestampFrequency;
 		mSupportedFeatures = querySupportedFeatures(mApiHandle);
 		mSupportedShaderModel = querySupportedShaderModel(mApiHandle);
+		mDefaultShaderModel = std::min(kDefaultShaderModel, mSupportedShaderModel);
 
 		if( !mHeadless ) {
 			for (uint32_t i = 0; i < kSwapChainBuffersCount; ++i) {

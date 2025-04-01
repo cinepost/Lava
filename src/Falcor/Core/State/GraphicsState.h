@@ -34,11 +34,10 @@
 #include "Core/API/GraphicsStateObject.h"
 #include "StateGraph.h"
 #include "Core/API/FBO.h"
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 
-namespace Falcor
-{
+namespace Falcor {
     class GraphicsVars;
     class Vao;
     class GraphicsProgram;
@@ -47,8 +46,7 @@ namespace Falcor
         This class contains the entire state required by a single draw-call. It's not an immutable object - you can change it dynamically during rendering.
         The recommended way to use it is to create multiple PipelineState objects (ideally, a single object per render-pass)
     */
-    class FALCOR_API GraphicsState
-    {
+    class FALCOR_API GraphicsState {
     public:
         using SharedPtr = std::shared_ptr<GraphicsState>;
         using SharedConstPtr = std::shared_ptr<const GraphicsState>;
@@ -56,11 +54,9 @@ namespace Falcor
 
         /** Defines the region to render to.
         */
-        struct Viewport
-        {
+        struct Viewport {
             Viewport() = default;
-            Viewport(float x, float y, float w, float h, float minZ, float maxZ)
-                : originX(x), originY(y), width(w), height(h), minDepth(minZ), maxDepth(maxZ) {}
+            Viewport(float x, float y, float w, float h, float minZ, float maxZ): originX(x), originY(y), width(w), height(h), minDepth(minZ), maxDepth(maxZ) {}
 
             float originX = 0;      ///< Top left X position
             float originY = 0;      ///< Top left Y position
@@ -72,11 +68,9 @@ namespace Falcor
 
         /** Defines a region to clip render results to.
         */
-        struct Scissor
-        {
+        struct Scissor {
             Scissor() = default;
-            Scissor(int32_t l, int32_t t, int32_t r, int32_t b)
-                : left(l), top(t), right(r), bottom(b) {}
+            Scissor(int32_t l, int32_t t, int32_t r, int32_t b): left(l), top(t), right(r), bottom(b) {}
 
             int32_t left = 0;
             int32_t top = 0;
@@ -188,11 +182,11 @@ namespace Falcor
 
         /** Bind a program to the pipeline.
         */
-        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { FALCOR_ASSERT(pProgram); mpProgram = pProgram; return *this; }
+        GraphicsState& setProgram(const Program::SharedPtr& pProgram) { FALCOR_ASSERT(pProgram); mpProgram = pProgram; return *this; }
 
         /** Get the currently bound program.
         */
-        GraphicsProgram::SharedPtr getProgram() const { return mpProgram; }
+        Program::SharedPtr getProgram() const { return mpProgram; }
 
         /** Set a blend-state.
         */
@@ -240,7 +234,7 @@ namespace Falcor
         Device::SharedPtr mpDevice = nullptr;
         Vao::SharedConstPtr mpVao;
         Fbo::SharedPtr mpFbo;
-        GraphicsProgram::SharedPtr mpProgram;
+        Program::SharedPtr mpProgram;
         GraphicsStateObject::Desc mDesc;
         uint8_t mStencilRef = 0;
         std::vector<Viewport> mViewports;
@@ -250,8 +244,7 @@ namespace Falcor
         std::vector<std::stack<Viewport>> mVpStack;
         std::vector<std::stack<Scissor>> mScStack;
 
-        struct CachedData
-        {
+        struct CachedData {
             const ProgramKernels* pProgramKernels = nullptr;
             const Fbo::Desc* pFboDesc = nullptr;
         };

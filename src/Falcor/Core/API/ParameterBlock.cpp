@@ -34,7 +34,7 @@
 
 namespace Falcor {
 
-ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
+ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
     if (!pElementType) throw std::runtime_error("Can't create a parameter block without type information");
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
     return create(pDevice, pReflection);
@@ -42,10 +42,10 @@ ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, cons
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
     assert(pReflection);
-    return std::make_shared<ParameterBlock>(pDevice, pReflection->getProgramVersion(), pReflection);
+    return std::make_shared<ParameterBlock>(pDevice, ProgramVersion::SharedConstPtr(pReflection->getProgramVersion()), pReflection);
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
+ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const std::string& typeName) {
     assert(pProgramVersion);
     return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
 }

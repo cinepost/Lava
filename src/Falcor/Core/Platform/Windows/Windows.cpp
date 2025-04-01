@@ -256,17 +256,11 @@ namespace Falcor
         return filename;
     }
 
-    bool getEnvironmentVariable(const std::string& varName, std::string& value)
-    {
+    std::optional<std::string> getEnvironmentVariable(const std::string& varName) {
         static char buff[4096];
-        int numChar = GetEnvironmentVariableA(varName.c_str(), buff, arraysize(buff)); //what is the best way to deal with wchar ?
-        assert(numChar < arraysize(buff));
-        if (numChar == 0)
-        {
-            return false;
-        }
-        value = std::string(buff);
-        return true;
+        DWORD numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)std::size(buff)); // what is the best way to deal with wchar ?
+        FALCOR_ASSERT(numChar < (DWORD)std::size(buff));
+        return numChar > 0 ? std::string(buff) : std::optional<std::string>{};
     }
 
     template<bool open>

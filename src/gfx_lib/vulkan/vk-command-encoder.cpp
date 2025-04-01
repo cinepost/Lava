@@ -25,12 +25,6 @@ using namespace Slang;
 
 namespace vk {
 
-PipelineCommandEncoder::~PipelineCommandEncoder() {
-	if(m_currentPipeline) {
-		m_currentPipeline->destroy();
-	}
-}
-
 int PipelineCommandEncoder::getBindPointIndex(VkPipelineBindPoint bindPoint) {
 	switch (bindPoint) {
 		case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -104,104 +98,96 @@ void PipelineCommandEncoder::uploadBufferDataImpl(IBufferResource* buffer, Offse
 		data);
 }
 
-Result PipelineCommandEncoder::bindRootShaderObjectImpl(VkPipelineBindPoint bindPoint) {
-	// Obtain specialized root layout.
-	auto rootObjectImpl = &m_commandBuffer->m_rootObject;
+Result PipelineCommandEncoder::bindRootShaderObjectImpl(RootShaderObjectImpl* rootShaderObject, VkPipelineBindPoint bindPoint) {
+  // Obtain specialized root layout.
+  auto specializedLayout = rootShaderObject->getSpecializedLayout();
+  if (!specializedLayout)
+      return SLANG_FAIL;
 
-	auto specializedLayout = rootObjectImpl->getSpecializedLayout();
-	if (!specializedLayout) return SLANG_FAIL;
+  // We will set up the context required when binding shader objects
+  // to the pipeline. Note that this is mostly just being packaged
+  // together to minimize the number of parameters that have to
+  // be dealt with in the complex recursive call chains.
+  //
+  RootBindingContext context;
+  context.pipelineLayout = specializedLayout->m_pipelineLayout;
+  context.device = m_device;
+  context.descriptorSetAllocator = &m_commandBuffer->m_transientHeap->m_descSetAllocator;
+  context.pushConstantRanges = specializedLayout->getAllPushConstantRanges().getArrayView();
 
-	// We will set up the context required when binding shader objects
-	// to the pipeline. Note that this is mostly just being packaged
-	// together to minimize the number of parameters that have to
-	// be dealt with in the complex recursive call chains.
-	//
-	RootBindingContext context;
-	context.pipelineLayout = specializedLayout->m_pipelineLayout;
-	context.device = m_device;
-	context.descriptorSetAllocator = &m_commandBuffer->m_transientHeap->m_descSetAllocator;
-	context.pushConstantRanges = specializedLayout->getAllPushConstantRanges().getArrayView();
+  // The context includes storage for the descriptor sets we will bind,
+  // and the number of sets we need to make space for is determined
+  // by the specialized program layout.
+  //
+  List<VkDescriptorSet> descriptorSetsStorage;
 
-	// The context includes storage for the descriptor sets we will bind,
-	// and the number of sets we need to make space for is determined
-	// by the specialized program layout.
-	//
-	List<VkDescriptorSet> descriptorSetsStorage;
-	auto descriptorSetCount = specializedLayout->getTotalDescriptorSetCount();
+  context.descriptorSets = &descriptorSetsStorage;
 
-	descriptorSetsStorage.setCount(descriptorSetCount);
-	auto descriptorSets = descriptorSetsStorage.getBuffer();
+  // We kick off recursive binding of shader objects to the pipeline (plus
+  // the state in `context`).
+  //
+  // Note: this logic will directly write any push-constant ranges needed,
+  // and will also fill in any descriptor sets. Currently it does not
+  // *bind* the descriptor sets it fills in.
+  //
+  // TODO: It could probably bind the descriptor sets as well.
+  //
+  rootShaderObject->bindAsRoot(this, context, specializedLayout);
 
-	context.descriptorSets = descriptorSets;
+  // Once we've filled in all the descriptor sets, we bind them
+  // to the pipeline at once.
+  //
+  if (descriptorSetsStorage.getCount() > 0) {
+    m_device->m_api.vkCmdBindDescriptorSets(
+      m_commandBuffer->m_commandBuffer,
+      bindPoint,
+      specializedLayout->m_pipelineLayout,
+      0,
+      (uint32_t)descriptorSetsStorage.getCount(),
+      descriptorSetsStorage.getBuffer(),
+      0,
+      nullptr);
+}
 
-	// We kick off recursive binding of shader objects to the pipeline (plus
-	// the state in `context`).
-	//
-	// Note: this logic will directly write any push-constant ranges needed,
-	// and will also fill in any descriptor sets. Currently it does not
-	// *bind* the descriptor sets it fills in.
-	//
-	// TODO: It could probably bind the descriptor sets as well.
-	//
-	rootObjectImpl->bindAsRoot(this, context, specializedLayout);
-
-	// Once we've filled in all the descriptor sets, we bind them
-	// to the pipeline at once.
-	//
-	if (descriptorSetCount > 0) {
-		m_device->m_api.vkCmdBindDescriptorSets(
-			m_commandBuffer->m_commandBuffer,
-			bindPoint,
-			specializedLayout->m_pipelineLayout,
-			0,
-			(uint32_t)descriptorSetCount,
-			descriptorSets,
-			0,
-			nullptr);
-	}
-
-	return SLANG_OK;
+  return SLANG_OK;
 }
 
 Result PipelineCommandEncoder::setPipelineStateImpl(IPipelineState* state, IShaderObject** outRootObject) {
-	m_currentPipeline.setNull();
 	m_currentPipeline = static_cast<PipelineStateImpl*>(state);
-	SLANG_RETURN_ON_FAIL(m_commandBuffer->m_rootObject.init(
-		m_commandBuffer->m_renderer,
-		m_currentPipeline->getProgram<ShaderProgramImpl>()->m_rootObjectLayout));
-	*outRootObject = &m_commandBuffer->m_rootObject;
-	return SLANG_OK;
+  m_commandBuffer->m_mutableRootShaderObject = nullptr;
+  SLANG_RETURN_ON_FAIL(m_commandBuffer->m_rootObject.init(m_commandBuffer->m_renderer, m_currentPipeline->getProgram<ShaderProgramImpl>()->m_rootObjectLayout));
+  *outRootObject = &m_commandBuffer->m_rootObject;
+  return SLANG_OK;
 }
 
-Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(IPipelineState* state, IShaderObject* inObject) {
-	IShaderObject* rootObject = nullptr;
-	SLANG_RETURN_ON_FAIL(setPipelineStateImpl(state, &rootObject));
-	static_cast<ShaderObjectBase*>(rootObject)->copyFrom(inObject, m_commandBuffer->m_transientHeap);
-	return SLANG_OK;
+Result PipelineCommandEncoder::setPipelineStateWithRootObjectImpl(IPipelineState* state, IShaderObject* rootObject) {
+  m_currentPipeline = static_cast<PipelineStateImpl*>(state);
+  m_commandBuffer->m_mutableRootShaderObject = static_cast<MutableRootShaderObjectImpl*>(rootObject);
+  return SLANG_OK;
 }
 
-void PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoint) {
-	auto& api = *m_api;
+Result PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindPoint) {
+  auto& api = *m_api;
 
-	// Get specialized pipeline state and bind it.
-	//
-	RefPtr<PipelineStateBase> newPipeline;
-	m_device->maybeSpecializePipeline(m_currentPipeline, &m_commandBuffer->m_rootObject, newPipeline);
-	PipelineStateImpl* newPipelineImpl = static_cast<PipelineStateImpl*>(newPipeline.Ptr());
+  // Get specialized pipeline state and bind it.
+  //
+  RootShaderObjectImpl* rootObjectImpl = m_commandBuffer->m_mutableRootShaderObject ? m_commandBuffer->m_mutableRootShaderObject.Ptr() : &m_commandBuffer->m_rootObject;
+  RefPtr<PipelineStateBase> newPipeline;
+  SLANG_RETURN_ON_FAIL(m_device->maybeSpecializePipeline(m_currentPipeline, rootObjectImpl, newPipeline));
+  PipelineStateImpl* newPipelineImpl = static_cast<PipelineStateImpl*>(newPipeline.Ptr());
 
-	newPipelineImpl->ensureAPIPipelineStateCreated();
+  SLANG_RETURN_ON_FAIL(newPipelineImpl->ensureAPIPipelineStateCreated());
+  m_currentPipeline = newPipelineImpl;
 
-	m_currentPipeline = newPipelineImpl;
+  bindRootShaderObjectImpl(rootObjectImpl, pipelineBindPoint);
 
-	bindRootShaderObjectImpl(pipelineBindPoint);
-
-	auto pipelineBindPointId = getBindPointIndex(pipelineBindPoint);
-
-	VkPipeline pipeline = newPipelineImpl->getPipeline();
-	if (m_boundPipelines[pipelineBindPointId] != pipeline) {
-		api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, pipeline);
-		m_boundPipelines[pipelineBindPointId] = pipeline;
-	}
+  auto pipelineBindPointId = getBindPointIndex(pipelineBindPoint);
+  if (m_boundPipelines[pipelineBindPointId] != newPipelineImpl->m_pipeline) {
+      api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, newPipelineImpl->m_pipeline);
+      m_boundPipelines[pipelineBindPointId] = newPipelineImpl->m_pipeline;
+  }
+  
+  return SLANG_OK;
 }
 
 void ResourceCommandEncoder::copyBuffer(IBufferResource* dst, Offset dstOffset, IBufferResource* src, Offset srcOffset, Size size){
@@ -707,90 +693,86 @@ void ResourceCommandEncoder::_clearDepthImage(TextureResourceViewImpl* viewImpl,
 }
 
 void ResourceCommandEncoder::_clearBuffer(VkBuffer buffer, uint64_t bufferSize, const IResourceView::Desc& desc, uint32_t clearValue) {
-	auto& api = m_commandBuffer->m_renderer->m_api;
-
-	FormatInfo info = {};
-	gfxGetFormatInfo(desc.format, &info);
-	auto texelSize = info.blockSizeInBytes;
-	auto elementCount = desc.bufferRange.elementCount;
-	auto clearStart = (uint64_t)desc.bufferRange.firstElement * texelSize;
-	auto clearSize = bufferSize - clearStart;
-	if (elementCount != 0) {
-		clearSize = (uint64_t)elementCount * texelSize;
-	}
-	api.vkCmdFillBuffer(m_commandBuffer->m_commandBuffer, buffer, clearStart, clearSize, clearValue);
+    auto& api = m_commandBuffer->m_renderer->m_api;
+    auto clearOffset = desc.bufferRange.offset;
+    auto clearSize = desc.bufferRange.size == 0 ? bufferSize - clearOffset : desc.bufferRange.size;
+    api.vkCmdFillBuffer(m_commandBuffer->m_commandBuffer, buffer, clearOffset, clearSize, clearValue);
 }
 
-void ResourceCommandEncoder::clearResourceView(IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags) {
-	auto& api = m_commandBuffer->m_renderer->m_api;
-	switch (view->getViewDesc()->type) {
-		case IResourceView::Type::RenderTarget:
-			{
-				auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
-				_clearColorImage(viewImpl, clearValue);
-			}
-			break;
-		case IResourceView::Type::DepthStencil:
-			{
-				auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
-				_clearDepthImage(viewImpl, clearValue, flags);
-			}
-			break;
-		case IResourceView::Type::UnorderedAccess:
-			{
-				auto viewImplBase = static_cast<ResourceViewImpl*>(view);
-				switch (viewImplBase->m_type) {
-					case ResourceViewImpl::ViewType::Texture:
-						{
-							auto viewImpl = static_cast<TextureResourceViewImpl*>(viewImplBase);
-							if ((flags & ClearResourceViewFlags::ClearDepth) || (flags & ClearResourceViewFlags::ClearStencil)) {
-								_clearDepthImage(viewImpl, clearValue, flags);
-							} else {
-								_clearColorImage(viewImpl, clearValue);
-							}
-						}
-						break;
-					case ResourceViewImpl::ViewType::PlainBuffer:
-						{
-							assert(
-								clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
-								clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
-								clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
-							auto viewImpl = static_cast<PlainBufferResourceViewImpl*>(viewImplBase);
-							uint64_t clearStart = viewImpl->m_desc.bufferRange.firstElement;
-							uint64_t clearSize = viewImpl->m_desc.bufferRange.elementCount;
-
-							if (clearSize == 0) clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
-							if (viewImpl->m_desc.bufferElementSize != 0) clearSize *= viewImpl->m_desc.bufferElementSize;
-							api.vkCmdFillBuffer(
-								m_commandBuffer->m_commandBuffer,
-								viewImpl->m_buffer->m_buffer.m_buffer,
-								clearStart,
-								clearSize,
-								clearValue->color.uintValues[0]);
-						}
-						break;
-					case ResourceViewImpl::ViewType::TexelBuffer:
-						{
-							assert(
-								clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
-								clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
-								clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
-							auto viewImpl = static_cast<TexelBufferResourceViewImpl*>(viewImplBase);
-							_clearBuffer(
-								viewImpl->m_buffer->m_buffer.m_buffer,
-								viewImpl->m_buffer->getDesc()->sizeInBytes,
-								viewImpl->m_desc,
-								clearValue->color.uintValues[0]);
-						}
-						break;
-				}
-			}
-			break;
-		default:
-		//	throw std::runtime_error("Unsupported IResourceView::Type in esourceCommandEncoder::_clearBuffer(...)");
-			break;
-	}
+void ResourceCommandEncoder::clearResourceView(
+    IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags)
+{
+    auto& api = m_commandBuffer->m_renderer->m_api;
+    switch (view->getViewDesc()->type)
+    {
+    case IResourceView::Type::RenderTarget:
+        {
+            auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
+            _clearColorImage(viewImpl, clearValue);
+        }
+        break;
+    case IResourceView::Type::DepthStencil:
+        {
+            auto viewImpl = static_cast<TextureResourceViewImpl*>(view);
+            _clearDepthImage(viewImpl, clearValue, flags);
+        }
+        break;
+    case IResourceView::Type::UnorderedAccess:
+        {
+            auto viewImplBase = static_cast<ResourceViewImpl*>(view);
+            switch (viewImplBase->m_type)
+            {
+            case ResourceViewImpl::ViewType::Texture:
+                {
+                    auto viewImpl = static_cast<TextureResourceViewImpl*>(viewImplBase);
+                    if ((flags & ClearResourceViewFlags::ClearDepth) ||
+                        (flags & ClearResourceViewFlags::ClearStencil))
+                    {
+                        _clearDepthImage(viewImpl, clearValue, flags);
+                    }
+                    else
+                    {
+                        _clearColorImage(viewImpl, clearValue);
+                    }
+                }
+                break;
+            case ResourceViewImpl::ViewType::PlainBuffer:
+                {
+                    assert(
+                        clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
+                        clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
+                        clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
+                    auto viewImpl = static_cast<PlainBufferResourceViewImpl*>(viewImplBase);
+                    uint64_t clearStart = viewImpl->m_desc.bufferRange.offset;
+                    uint64_t clearSize = viewImpl->m_desc.bufferRange.size;
+                    if (clearSize == 0)
+                        clearSize = viewImpl->m_buffer->getDesc()->sizeInBytes - clearStart;
+                    api.vkCmdFillBuffer(
+                        m_commandBuffer->m_commandBuffer,
+                        viewImpl->m_buffer->m_buffer.m_buffer,
+                        clearStart,
+                        clearSize,
+                        clearValue->color.uintValues[0]);
+                }
+                break;
+            case ResourceViewImpl::ViewType::TexelBuffer:
+                {
+                    assert(
+                        clearValue->color.uintValues[1] == clearValue->color.uintValues[0] &&
+                        clearValue->color.uintValues[2] == clearValue->color.uintValues[0] &&
+                        clearValue->color.uintValues[3] == clearValue->color.uintValues[0]);
+                    auto viewImpl = static_cast<TexelBufferResourceViewImpl*>(viewImplBase);
+                    _clearBuffer(
+                        viewImpl->m_buffer->m_buffer.m_buffer,
+                        viewImpl->m_buffer->getDesc()->sizeInBytes,
+                        viewImpl->m_desc,
+                        clearValue->color.uintValues[0]);
+                }
+                break;
+            }
+        }
+        break;
+    }
 }
 
 void ResourceCommandEncoder::resolveResource(
@@ -1089,25 +1071,25 @@ void RenderCommandEncoder::setIndexBuffer(IBufferResource* buffer, Format indexF
 	m_api->vkCmdBindIndexBuffer(m_vkCommandBuffer, bufferImpl->m_buffer.m_buffer, (VkDeviceSize)offset, indexType);
 }
 
-void RenderCommandEncoder::prepareDraw() {
+Result RenderCommandEncoder::prepareDraw() {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
 	if (!pipeline) {
-		assert(!"Invalid render pipeline");
-		return;
+		return SLANG_FAIL;
 	}
-	bindRenderState(VK_PIPELINE_BIND_POINT_GRAPHICS);
+	SLANG_RETURN_ON_FAIL(bindRenderState(VK_PIPELINE_BIND_POINT_GRAPHICS));
+  return SLANG_OK;
 }
 
-void RenderCommandEncoder::draw(GfxCount vertexCount, GfxIndex startVertex) {
-	prepareDraw();
-	auto& api = *m_api;
-	api.vkCmdDraw(m_vkCommandBuffer, vertexCount, 1, 0, 0);
+Result RenderCommandEncoder::draw(GfxCount vertexCount, GfxIndex startVertex) {
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+  m_api->vkCmdDraw(m_vkCommandBuffer, vertexCount, 1, 0, 0);
+  return SLANG_OK;
 }
 
-void RenderCommandEncoder::drawIndexed(GfxCount indexCount, GfxIndex startIndex, GfxIndex baseVertex) {
-	prepareDraw();
-	auto& api = *m_api;
-	api.vkCmdDrawIndexed(m_vkCommandBuffer, indexCount, 1, startIndex, baseVertex, 0);
+Result RenderCommandEncoder::drawIndexed(GfxCount indexCount, GfxIndex startIndex, GfxIndex baseVertex) {
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+  m_api->vkCmdDrawIndexed(m_vkCommandBuffer, indexCount, 1, startIndex, baseVertex, 0);
+  return SLANG_OK;
 }
 
 void RenderCommandEncoder::setStencilReference(uint32_t referenceValue) {
@@ -1115,7 +1097,7 @@ void RenderCommandEncoder::setStencilReference(uint32_t referenceValue) {
 	api.vkCmdSetStencilReference(m_vkCommandBuffer, VK_STENCIL_FRONT_AND_BACK, referenceValue);
 }
 
-void RenderCommandEncoder::drawIndirect(
+Result RenderCommandEncoder::drawIndirect(
 	GfxCount maxDrawCount,
 	IBufferResource* argBuffer,
 	Offset argOffset,
@@ -1123,43 +1105,53 @@ void RenderCommandEncoder::drawIndirect(
 	Offset countOffset)
 {
 	// Vulkan does not support sourcing the count from a buffer.
-	assert(!countBuffer);
+  if (countBuffer) return SLANG_FAIL;
 
-	prepareDraw();
-	auto& api = *m_api;
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+	
 	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
-	api.vkCmdDrawIndirect(
+	m_api->vkCmdDrawIndirect(
 		m_vkCommandBuffer,
 		argBufferImpl->m_buffer.m_buffer,
 		argOffset,
 		maxDrawCount,
 		sizeof(VkDrawIndirectCommand));
+	return SLANG_OK;
 }
 
-void RenderCommandEncoder::drawIndexedIndirect(GfxCount maxDrawCount, IBufferResource* argBuffer, Offset argOffset) {
-	prepareDraw();
-	auto& api = *m_api;
+Result RenderCommandEncoder::drawIndexedIndirect(GfxCount maxDrawCount,
+    IBufferResource* argBuffer,
+    Offset argOffset,
+    IBufferResource* countBuffer,
+    Offset countOffset)
+{
+	// Vulkan does not support sourcing the count from a buffer.
+  if (countBuffer) return SLANG_FAIL;
+
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+
 	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
-	api.vkCmdDrawIndexedIndirect(
+	m_api->vkCmdDrawIndexedIndirect(
 		m_vkCommandBuffer,
 		argBufferImpl->m_buffer.m_buffer,
 		argOffset,
 		maxDrawCount,
 		sizeof(VkDrawIndexedIndirectCommand));
+	return SLANG_OK;
 }
 
-void RenderCommandEncoder::drawIndexedIndirectCount(
+Result RenderCommandEncoder::drawIndexedIndirectCount(
 	GfxCount maxDrawCount,
 	IBufferResource* argBuffer,
 	Offset argOffset,
 	IBufferResource* countBuffer,
 	Offset countOffset)
 {
-	prepareDraw();
-	auto& api = *m_api;
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+
 	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
 	auto countBufferImpl = static_cast<BufferResourceImpl*>(countBuffer);
-	api.vkCmdDrawIndexedIndirectCountKHR(
+	m_api->vkCmdDrawIndexedIndirectCountKHR(
     m_vkCommandBuffer,
     argBufferImpl->m_buffer.m_buffer,
     argOffset,
@@ -1167,6 +1159,7 @@ void RenderCommandEncoder::drawIndexedIndirectCount(
     countOffset,
     maxDrawCount,
     sizeof(VkDrawIndexedIndirectCommand));
+	return SLANG_OK;
 }
 
 Result RenderCommandEncoder::setSamplePositions(GfxCount samplesPerPixel, GfxCount pixelCount, const SamplePosition* samplePositions) {
@@ -1181,33 +1174,33 @@ Result RenderCommandEncoder::setSamplePositions(GfxCount samplesPerPixel, GfxCou
 	return SLANG_E_NOT_AVAILABLE;
 }
 
-void RenderCommandEncoder::drawInstanced(
+Result RenderCommandEncoder::drawInstanced(
 	GfxCount vertexCount,
 	GfxCount instanceCount,
 	GfxIndex startVertex,
 	GfxIndex startInstanceLocation)
 {
-	prepareDraw();
-	auto& api = *m_api;
-	api.vkCmdDraw(m_vkCommandBuffer, vertexCount, instanceCount, startVertex, startInstanceLocation);
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+	m_api->vkCmdDraw(m_vkCommandBuffer, vertexCount, instanceCount, startVertex, startInstanceLocation);
+	return SLANG_OK;
 }
 
-void RenderCommandEncoder::drawIndexedInstanced(
+Result RenderCommandEncoder::drawIndexedInstanced(
 	GfxCount indexCount,
 	GfxCount instanceCount,
 	GfxIndex startIndexLocation,
 	GfxIndex baseVertexLocation,
 	GfxIndex startInstanceLocation)
 {
-	prepareDraw();
-	auto& api = *m_api;
-	api.vkCmdDrawIndexed(
+	SLANG_RETURN_ON_FAIL(prepareDraw());
+	m_api->vkCmdDrawIndexed(
 		m_vkCommandBuffer,
 		indexCount,
 		instanceCount,
 		startIndexLocation,
 		baseVertexLocation,
 		startInstanceLocation);
+	return SLANG_OK;
 }
 
 void ComputeCommandEncoder::endEncoding() { endEncodingImpl(); }
@@ -1220,29 +1213,29 @@ Result ComputeCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipelin
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
-void ComputeCommandEncoder::dispatchCompute(uint32_t x, uint32_t y, uint32_t z) {
+Result ComputeCommandEncoder::dispatchCompute(uint32_t x, uint32_t y, uint32_t z) {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
 	if (!pipeline) {
-		assert(!"Invalid compute pipeline");
-		return;
+		return SLANG_FAIL;
 	}
 
 	// Also create descriptor sets based on the given pipeline layout
 	bindRenderState(VK_PIPELINE_BIND_POINT_COMPUTE);
 	m_api->vkCmdDispatch(m_vkCommandBuffer, x, y, z);
+	return SLANG_OK;
 }
 
-void ComputeCommandEncoder::dispatchComputeIndirect(IBufferResource* argBuffer, Offset offset) {
+Result ComputeCommandEncoder::dispatchComputeIndirect(IBufferResource* argBuffer, Offset offset) {
 	auto pipeline = static_cast<PipelineStateImpl*>(m_currentPipeline.Ptr());
 	if (!pipeline) {
-		assert(!"Invalid compute pipeline");
-		return;
+		return SLANG_FAIL;
 	}
 
 	//SLANG_UNIMPLEMENTED_X("dispatchComputeIndirect");
 	bindRenderState(VK_PIPELINE_BIND_POINT_COMPUTE);
 	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
 	m_api->vkCmdDispatchIndirect(m_vkCommandBuffer, argBufferImpl->m_buffer.m_buffer, offset);
+	return SLANG_OK;
 }
 
 void RayTracingCommandEncoder::_memoryBarrier(
@@ -1427,55 +1420,60 @@ Result RayTracingCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipe
 	return setPipelineStateWithRootObjectImpl(pipelineState, rootObject);
 }
 
-void RayTracingCommandEncoder::dispatchRays(
+Result RayTracingCommandEncoder::dispatchRays(
 	GfxIndex raygenShaderIndex,
 	IShaderTable* shaderTable,
 	GfxCount width,
 	GfxCount height,
 	GfxCount depth)
 {
-	auto vkApi = m_commandBuffer->m_renderer->m_api;
-	auto vkCommandBuffer = m_commandBuffer->m_commandBuffer;
+  auto vkApi = m_commandBuffer->m_renderer->m_api;
+  auto vkCommandBuffer = m_commandBuffer->m_commandBuffer;
 
-	bindRenderState(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+  SLANG_RETURN_ON_FAIL(bindRenderState(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR));
 
-	auto rtProps = vkApi.m_rtProperties;
-	auto shaderTableImpl = (ShaderTableImpl*)shaderTable;
-	auto alignedHandleSize = VulkanUtil::calcAligned(rtProps.shaderGroupHandleSize, rtProps.shaderGroupHandleAlignment);
+  auto rtProps = vkApi.m_rtProperties;
+  auto shaderTableImpl = (ShaderTableImpl*)shaderTable;
+  auto alignedHandleSize =
+    VulkanUtil::calcAligned(rtProps.shaderGroupHandleSize, rtProps.shaderGroupHandleAlignment);
 
-	auto shaderTableBuffer = shaderTableImpl->getOrCreateBuffer(m_currentPipeline, m_commandBuffer->m_transientHeap, static_cast<ResourceCommandEncoder*>(this));
-	auto shaderTableAddr = shaderTableBuffer->getDeviceAddress();
+  auto shaderTableBuffer = shaderTableImpl->getOrCreateBuffer(
+    m_currentPipeline,
+    m_commandBuffer->m_transientHeap,
+    static_cast<ResourceCommandEncoder*>(this));
+  auto shaderTableAddr = shaderTableBuffer->getDeviceAddress();
 
-	VkStridedDeviceAddressRegionKHR raygenSBT;
-	raygenSBT.stride = VulkanUtil::calcAligned(alignedHandleSize, rtProps.shaderGroupBaseAlignment);
-	raygenSBT.deviceAddress = shaderTableAddr + raygenShaderIndex * raygenSBT.stride;
-	raygenSBT.size = raygenSBT.stride;
+  VkStridedDeviceAddressRegionKHR raygenSBT;
+  raygenSBT.stride = VulkanUtil::calcAligned(alignedHandleSize, rtProps.shaderGroupBaseAlignment);
+  raygenSBT.deviceAddress = shaderTableAddr + raygenShaderIndex * raygenSBT.stride;
+  raygenSBT.size = raygenSBT.stride;
 
-	VkStridedDeviceAddressRegionKHR missSBT;
-	missSBT.deviceAddress = shaderTableAddr + shaderTableImpl->m_raygenTableSize;
-	missSBT.stride = alignedHandleSize;
-	missSBT.size = shaderTableImpl->m_missTableSize;
+  VkStridedDeviceAddressRegionKHR missSBT;
+  missSBT.deviceAddress = shaderTableAddr + shaderTableImpl->m_raygenTableSize;
+  missSBT.stride = alignedHandleSize;
+  missSBT.size = shaderTableImpl->m_missTableSize;
 
-	VkStridedDeviceAddressRegionKHR hitSBT;
-	hitSBT.deviceAddress = missSBT.deviceAddress + missSBT.size;
-	hitSBT.stride = alignedHandleSize;
-	hitSBT.size = shaderTableImpl->m_hitTableSize;
+  VkStridedDeviceAddressRegionKHR hitSBT;
+  hitSBT.deviceAddress = missSBT.deviceAddress + missSBT.size;
+  hitSBT.stride = alignedHandleSize;
+  hitSBT.size = shaderTableImpl->m_hitTableSize;
 
-	// TODO: Are callable shaders needed?
-	VkStridedDeviceAddressRegionKHR callableSBT;
-	callableSBT.deviceAddress = 0;
-	callableSBT.stride = 0;
-	callableSBT.size = 0;
+  VkStridedDeviceAddressRegionKHR callableSBT;
+  callableSBT.deviceAddress = hitSBT.deviceAddress + hitSBT.size;
+  callableSBT.stride = alignedHandleSize;
+  callableSBT.size = shaderTableImpl->m_callableTableSize;
 
-	vkApi.vkCmdTraceRaysKHR(
-		vkCommandBuffer,
-		&raygenSBT,
-		&missSBT,
-		&hitSBT,
-		&callableSBT,
-		(uint32_t)width,
-		(uint32_t)height,
-		(uint32_t)depth);
+  vkApi.vkCmdTraceRaysKHR(
+    vkCommandBuffer,
+    &raygenSBT,
+    &missSBT,
+    &hitSBT,
+    &callableSBT,
+    (uint32_t)width,
+    (uint32_t)height,
+    (uint32_t)depth);
+
+  return SLANG_OK;
 }
 
 void RayTracingCommandEncoder::endEncoding() { endEncodingImpl(); }

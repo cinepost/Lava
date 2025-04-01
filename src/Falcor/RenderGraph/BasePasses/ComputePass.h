@@ -82,29 +82,27 @@ class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass> {
 
     /** Get the vars
     */
-    const ComputeVars::SharedPtr& getVars() const { assert(mpVars); return mpVars; };
+    const ProgramVars::SharedPtr& getVars() const { assert(mpVars); return mpVars; };
 
     ShaderVar getRootVar() const { return mpVars->getRootVar(); }
 
     /** Add a define
     */
     void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
-    void addDefines(const Shader::DefineList& dl, bool updateVars = false);
 
     /** Remove a define
     */
     void removeDefine(const std::string& name, bool updateVars = false);
-    void removeDefines(const Shader::DefineList& dl, bool updateVars = false);
 
     /** Get the program
     */
-    ComputeProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
+    Program::SharedPtr getProgram() const { return mpState->getProgram(); }
 
     /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
         The function throws an exception on error.
         \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new vars object.
     */
-    void setVars(const ComputeVars::SharedPtr& pVars);
+    void setVars(const ProgramVars::SharedPtr& pVars);
 
     /** Get the thread group size from the program
     */
@@ -112,7 +110,7 @@ class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass> {
 
 protected:
     ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
-    ComputeVars::SharedPtr mpVars;
+    ProgramVars::SharedPtr mpVars;
     ComputeState::SharedPtr mpState;
 
 //private:

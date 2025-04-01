@@ -371,6 +371,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isMipTailFilled() const { return (mIsSparse && mMipTailFilled); }
 
+	gfx::ITextureResource* getGfxTextureResource() const { return static_cast<gfx::ITextureResource*>(mApiHandle.get()); }
+
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
   	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);

@@ -270,5 +270,12 @@ protected:
     List<RefPtr<EntryPointShaderObject>> m_entryPoints;
 };
 
+class MutableRootShaderObjectImpl : public RootShaderObjectImpl {
+public:
+    // Enable reference counting.
+    SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override { return ShaderObjectImpl::addRef(); }
+    SLANG_NO_THROW uint32_t SLANG_MCALL release() override { return ShaderObjectImpl::release(); }
+};
+
 } // namespace vk
 } // namespace gfx

@@ -16,7 +16,7 @@ namespace vk
 Index ShaderObjectLayoutImpl::Builder::findOrAddDescriptorSet(Index space)
 {
     Index index;
-    if (m_mapSpaceToDescriptorSetIndex.TryGetValue(space, index))
+    if (m_mapSpaceToDescriptorSetIndex.tryGetValue(space, index))
         return index;
 
     DescriptorSetInfo info = {};
@@ -25,7 +25,7 @@ Index ShaderObjectLayoutImpl::Builder::findOrAddDescriptorSet(Index space)
     index = m_descriptorSetBuildInfos.getCount();
     m_descriptorSetBuildInfos.add(info);
 
-    m_mapSpaceToDescriptorSetIndex.Add(space, index);
+    m_mapSpaceToDescriptorSetIndex.add(space, index);
     return index;
 }
 
@@ -392,7 +392,7 @@ void ShaderObjectLayoutImpl::Builder::addBindingRanges(slang::TypeLayoutReflecti
         bindingRangeInfo.count = count;
         bindingRangeInfo.baseIndex = baseIndex;
         bindingRangeInfo.subObjectIndex = subObjectIndex;
-
+        bindingRangeInfo.isSpecializable = typeLayout->isBindingRangeSpecializable(r);
         // We'd like to extract the information on the GLSL/SPIR-V
         // `binding` that this range should bind into (or whatever
         // other specific kind of offset/index is appropriate to it).
@@ -447,7 +447,7 @@ void ShaderObjectLayoutImpl::Builder::addBindingRanges(slang::TypeLayoutReflecti
                 auto varLayout = slangLeafTypeLayout->getElementVarLayout();
                 auto subTypeLayout = varLayout->getTypeLayout();
                 ShaderObjectLayoutImpl::createForElementType(
-                    m_renderer, subTypeLayout, subObjectLayout.writeRef());
+                    m_renderer, m_session, subTypeLayout, subObjectLayout.writeRef());
             }
             break;
 
@@ -455,7 +455,7 @@ void ShaderObjectLayoutImpl::Builder::addBindingRanges(slang::TypeLayoutReflecti
             if (auto pendingTypeLayout = slangLeafTypeLayout->getPendingDataTypeLayout())
             {
                 ShaderObjectLayoutImpl::createForElementType(
-                    m_renderer, pendingTypeLayout, subObjectLayout.writeRef());
+                    m_renderer, m_session, pendingTypeLayout, subObjectLayout.writeRef());
             }
             break;
         }
@@ -549,10 +549,11 @@ SlangResult ShaderObjectLayoutImpl::Builder::build(ShaderObjectLayoutImpl** outL
 
 Result ShaderObjectLayoutImpl::createForElementType(
     DeviceImpl* renderer,
+    slang::ISession* session,
     slang::TypeLayoutReflection* elementType,
     ShaderObjectLayoutImpl** outLayout)
 {
-    Builder builder(renderer);
+    Builder builder(renderer, session);
     builder.setElementTypeLayout(elementType);
 
     // When constructing a shader object layout directly from a reflected
@@ -744,7 +745,7 @@ Result RootShaderObjectLayout::create(
     {
         auto slangEntryPoint = programLayout->getEntryPointByIndex(e);
 
-        EntryPointLayout::Builder entryPointBuilder(renderer);
+        EntryPointLayout::Builder entryPointBuilder(renderer, program->getSession());
         entryPointBuilder.addEntryPointParams(slangEntryPoint);
 
         RefPtr<EntryPointLayout> entryPointLayout;

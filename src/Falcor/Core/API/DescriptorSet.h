@@ -32,6 +32,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Program/ProgramManager.h"
 #include "DescriptorPool.h"
 
 #if defined(FALCOR_VK)

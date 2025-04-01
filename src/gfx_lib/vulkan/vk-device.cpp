@@ -23,7 +23,8 @@
 
 #include "Falcor/Core/API/Resource.h"
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Utils/Image/TextureManager.h"
+//#include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -43,8 +44,8 @@ namespace vk {
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
-static glm::uvec3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
-	glm::uvec3 res;
+static Falcor::uint3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
+	Falcor::uint3 res;
 	res.x = extent.width / granularity.width + ((extent.width % granularity.width) ? 1u : 0u);
 	res.y = extent.height / granularity.height + ((extent.height % granularity.height) ? 1u : 0u);
 	res.z = extent.depth / granularity.depth + ((extent.depth % granularity.depth) ? 1u : 0u);
@@ -313,39 +314,31 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	}
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	Index selectedDeviceIndex = 0;
 	if (handles[1].handleValue == 0) {
 		uint32_t numPhysicalDevices = 0;
 		SLANG_VK_RETURN_ON_FAIL( m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, nullptr));
 
 		List<VkPhysicalDevice> physicalDevices;
 		physicalDevices.setCount(numPhysicalDevices);
-		SLANG_VK_RETURN_ON_FAIL(m_api.vkEnumeratePhysicalDevices(
-			instance, &numPhysicalDevices, physicalDevices.getBuffer()));
+		SLANG_VK_RETURN_ON_FAIL(m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, physicalDevices.getBuffer()));
 
-		if (m_desc.adapter) {
-			selectedDeviceIndex = -1;
+		// Use first physical device by default.
+    Index selectedDeviceIndex = 0;
 
-			String lowerAdapter = String(m_desc.adapter).toLower();
+		// Search for requested adapter.
+    if (m_desc.adapterLUID) {
+      selectedDeviceIndex = -1;
+      for (Index i = 0; i < physicalDevices.getCount(); ++i) {
+        if (vk::getAdapterLUID(m_api, physicalDevices[i]) == *m_desc.adapterLUID) {
+          selectedDeviceIndex = i;
+          break;
+        }
+      }
 
-			for (Index i = 0; i < physicalDevices.getCount(); ++i) {
-				auto physicalDevice = physicalDevices[i];
+      if (selectedDeviceIndex < 0) return SLANG_E_NOT_FOUND;
+    }
 
-				VkPhysicalDeviceProperties basicProps = {};
-				m_api.vkGetPhysicalDeviceProperties(physicalDevice, &basicProps);
-
-				String lowerName = String(basicProps.deviceName).toLower();
-
-				if (lowerName.indexOf(lowerAdapter) != Index(-1)) {
-					selectedDeviceIndex = i;
-					break;
-				}
-			}
-			if (selectedDeviceIndex < 0) {
-				// Device not found
-				return SLANG_FAIL;
-			}
-		}
+    if (selectedDeviceIndex >= physicalDevices.getCount()) return SLANG_FAIL;
 
 		physicalDevice = physicalDevices[selectedDeviceIndex];
 	} else {
@@ -388,6 +381,40 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 	// Compute timestamp frequency.
 	m_info.timestampFrequency = uint64_t(1e9 / basicProps.limits.timestampPeriod);
+
+	// Get device limits.
+  {
+    DeviceLimits limits = {};
+    limits.maxTextureDimension1D = basicProps.limits.maxImageDimension1D;
+    limits.maxTextureDimension2D = basicProps.limits.maxImageDimension2D;
+    limits.maxTextureDimension3D = basicProps.limits.maxImageDimension3D;
+    limits.maxTextureDimensionCube = basicProps.limits.maxImageDimensionCube;
+    limits.maxTextureArrayLayers = basicProps.limits.maxImageArrayLayers;
+
+    limits.maxVertexInputElements = basicProps.limits.maxVertexInputAttributes;
+    limits.maxVertexInputElementOffset = basicProps.limits.maxVertexInputAttributeOffset;
+    limits.maxVertexStreams = basicProps.limits.maxVertexInputBindings;
+    limits.maxVertexStreamStride = basicProps.limits.maxVertexInputBindingStride;
+
+    limits.maxComputeThreadsPerGroup = basicProps.limits.maxComputeWorkGroupInvocations;
+    limits.maxComputeThreadGroupSize[0] = basicProps.limits.maxComputeWorkGroupSize[0];
+    limits.maxComputeThreadGroupSize[1] = basicProps.limits.maxComputeWorkGroupSize[1];
+    limits.maxComputeThreadGroupSize[2] = basicProps.limits.maxComputeWorkGroupSize[2];
+    limits.maxComputeDispatchThreadGroups[0] = basicProps.limits.maxComputeWorkGroupCount[0];
+    limits.maxComputeDispatchThreadGroups[1] = basicProps.limits.maxComputeWorkGroupCount[1];
+    limits.maxComputeDispatchThreadGroups[2] = basicProps.limits.maxComputeWorkGroupCount[2];
+
+    limits.maxViewports = basicProps.limits.maxViewports;
+    limits.maxViewportDimensions[0] = basicProps.limits.maxViewportDimensions[0];
+    limits.maxViewportDimensions[1] = basicProps.limits.maxViewportDimensions[1];
+    limits.maxFramebufferDimensions[0] = basicProps.limits.maxFramebufferWidth;
+    limits.maxFramebufferDimensions[1] = basicProps.limits.maxFramebufferHeight;
+    limits.maxFramebufferDimensions[2] = basicProps.limits.maxFramebufferLayers;
+
+    limits.maxShaderVisibleSamplers = basicProps.limits.maxPerStageDescriptorSamplers;
+
+    m_info.limits = limits;
+  }
 
 	// Get the API version
 	const uint32_t majorVersion = VK_VERSION_MAJOR(basicProps.apiVersion);
@@ -653,14 +680,14 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		HashSet<String> extensionNames;
 		for (const auto& e : extensions) {
-			extensionNames.Add(e.extensionName);
+			extensionNames.add(e.extensionName);
 		}
 
-		if (extensionNames.Contains("VK_KHR_external_memory")) {
+		if (extensionNames.contains("VK_KHR_external_memory")) {
 			deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
 
 #if SLANG_WINDOWS_FAMILY
-			if (extensionNames.Contains("VK_KHR_external_memory_win32")) {
+			if (extensionNames.contains("VK_KHR_external_memory_win32")) {
 				deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
 			}
 #endif
@@ -668,62 +695,62 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		}
 
 		// New stuff
-		if(extensionNames.Contains(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
 			m_features.add("sample_locations");
 		}
 
-		if(extensionNames.Contains(VK_IMG_FILTER_CUBIC_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_IMG_FILTER_CUBIC_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_IMG_FILTER_CUBIC_EXTENSION_NAME);
 			m_features.add("sampler_filter_cubic");
 		}
 
-		if(extensionNames.Contains(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
 		}
 
-		if(extensionNames.Contains(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
 			m_features.add("sampler_filter_minmax");
 		}
 
-		if(extensionNames.Contains(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
 			m_features.add("draw_inidirect_count");
 		}
 
-		if(extensionNames.Contains(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME);
 			m_features.add("image_footprint");
 		}
 
-		if(extensionNames.Contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) || extensionNames.Contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) {
-			if(extensionNames.Contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
-			if(extensionNames.Contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);	
+		if(extensionNames.contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) || extensionNames.contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) {
+			if(extensionNames.contains(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
+			if(extensionNames.contains(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) deviceExtensions.add(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);	
 			m_features.add("fragment-shader-barycentrics");	
 		}
 
-		if(extensionNames.Contains(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)) {
+		if(extensionNames.contains(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
 			m_features.add("fragment-shader-interlock");	
 		}
 
-		if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
+		if (extensionNames.contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
 			m_features.add("conservative-rasterization-3");
 			m_features.add("conservative-rasterization-2");
 			m_features.add("conservative-rasterization-1");
 		}
 		
-		if (extensionNames.Contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
+		if (extensionNames.contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
-		if (extensionNames.Contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
+		if (extensionNames.contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 		}
 
-		if (extensionNames.Contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
+		if (extensionNames.contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
 		}
 	}
@@ -821,6 +848,8 @@ SlangResult DeviceImpl::initialize(const Desc& desc) {
 
 	SLANG_RETURN_ON_FAIL(slangContext.initialize(
 		desc.slang,
+		desc.extendedDescCount,
+    desc.extendedDescs,
 		SLANG_SPIRV,
 		"sm_5_1",
 		makeArray(slang::PreprocessorMacroDesc{ "__VK__", "1" }).getView()));
@@ -932,7 +961,7 @@ SlangResult DeviceImpl::readTextureResource(
 	Size* outPixelSize)
 {
 	auto textureImpl = static_cast<TextureResourceImpl*>(texture);
-	RefPtr<ListBlob> blob = new ListBlob();
+	List<uint8_t> blobData;
 
 	auto desc = textureImpl->getDesc();
 	auto width = desc->size.width;
@@ -962,8 +991,8 @@ SlangResult DeviceImpl::readTextureResource(
 	}
 	// Calculate the total size taking into account the array
 	bufferSize *= arraySize;
-	// TODO: Change Index to Count?
-	blob->m_data.setCount(Index(bufferSize));
+	
+	blobData.setCount(Count(bufferSize));
 
 	VKBufferHandleRAII staging;
 	SLANG_RETURN_ON_FAIL(staging.init(
@@ -1010,13 +1039,16 @@ SlangResult DeviceImpl::readTextureResource(
 	//SLANG_RETURN_ON_FAIL(m_api.vkMapMemory(m_device, staging.m_memory, 0, bufferSize, 0, &mappedData));
 	SLANG_RETURN_ON_FAIL(vmaMapMemory(m_api.mVmaAllocator, textureImpl->mAllocation, &mappedData));
 
-	::memcpy(blob->m_data.getBuffer(), mappedData, bufferSize);
+	::memcpy(blobData.getBuffer(), mappedData, bufferSize);
 
 	//m_api.vkUnmapMemory(m_device, staging.m_memory);
 	vmaUnmapMemory(m_api.mVmaAllocator, textureImpl->mAllocation);
 
 	*outPixelSize = pixelSize;
 	*outRowPitch = rowPitch;
+
+	auto blob = ListBlob::moveCreate(blobData);
+
 	returnComPtr(outBlob, blob);
 	return SLANG_OK;
 }
@@ -1024,8 +1056,8 @@ SlangResult DeviceImpl::readTextureResource(
 SlangResult DeviceImpl::readBufferResource(IBufferResource* inBuffer, Offset offset, Size size, ISlangBlob** outBlob) {
 	BufferResourceImpl* buffer = static_cast<BufferResourceImpl*>(inBuffer);
 
-	RefPtr<ListBlob> blob = new ListBlob();
-	blob->m_data.setCount(size);
+	List<uint8_t> blobData;
+	blobData.setCount(size);
 
 	// create staging buffer
 	VKBufferHandleRAII staging;
@@ -1051,8 +1083,10 @@ SlangResult DeviceImpl::readBufferResource(IBufferResource* inBuffer, Offset off
 
 	SLANG_VK_RETURN_ON_FAIL(vmaMapMemory(m_api.mVmaAllocator, staging.mAllocation, &mappedData));
 	
-	::memcpy(blob->m_data.getBuffer(), mappedData, size);
+	::memcpy(blobData.getBuffer(), mappedData, size);
 	vmaUnmapMemory(m_api.mVmaAllocator, staging.mAllocation);
+
+	auto blob = ListBlob::moveCreate(blobData);
 
 	returnComPtr(outBlob, blob);
 	return SLANG_OK;
@@ -1268,7 +1302,7 @@ SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() con
 
 Result DeviceImpl::createTextureResource( 
 	const ITextureResource::Desc& descIn, 
-	const std::shared_ptr<Falcor::Texture>& pTexture, 
+	Falcor::Texture* pTexture, 
 	const ITextureResource::SubresourceData* initData, 
 	ITextureResource** outResource) 
 {
@@ -1367,25 +1401,9 @@ Result DeviceImpl::createTextureResource(
 		vmaCreateImage(m_api.mVmaAllocator, &imageInfo, &allocCreateInfo, &texture->m_image, &texture->mAllocation, nullptr);
 	}
 
-	//printf("Texture %s handle %p", pTexture->getSourceFilename().c_str(), texture->m_image);
-
-  	///////// texture barrier /////////////
 	if (pTexture && sparse) {
-    	// transition layout
-		//_transitionImageLayout(
-		//	texture->m_image,
-		//	format,
-		//	*texture->getDesc(),
-		//	VK_IMAGE_LAYOUT_UNDEFINED,
-		//	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		//m_deviceQueue.flushAndWait();
-
-		//pTexture->mState.global = Falcor::Resource::State::ShaderResource;
-  		pTexture->mState.global = Falcor::Resource::State::Undefined;
-  	}
-
-
+  	pTexture->mState.global = Falcor::Resource::State::Undefined;
+  }
 
   	///////////////////////////////////////
 
@@ -1484,8 +1502,8 @@ Result DeviceImpl::createTextureResource(
 
 				// Aligned sizes by image granularity
 				VkExtent3D imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
-				glm::uvec3 sparseBindCounts = alignedDivision(extent, imageGranularity);
-				glm::uvec3 lastBlockExtent;
+				Falcor::uint3 sparseBindCounts = alignedDivision(extent, imageGranularity);
+				Falcor::uint3 lastBlockExtent;
 				lastBlockExtent.x = (extent.width % imageGranularity.width) ? extent.width % imageGranularity.width : imageGranularity.width;
 				lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
 				lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
@@ -1549,9 +1567,9 @@ Result DeviceImpl::createTextureResource(
 		//	return SLANG_FAIL;
 		//}
 
-		allocateTailMemory(pTexture.get(), texture, false /* don't force*/);
+		allocateTailMemory(pTexture, texture, false /* don't force*/);
 
-		updateSparseBindInfo(pTexture.get(), texture->m_image);
+		updateSparseBindInfo(pTexture, texture->m_image);
 
 		m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, VK_NULL_HANDLE);
 		m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
@@ -1738,7 +1756,7 @@ void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 	assert(pTexture);
 	if(!pTexture->isSparse()) return;
 
-	gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
 	auto texture = static_cast<TextureResourceImpl*>(textureResource);
 
 	for(auto& allocation: texture->mTailAllocations) {
@@ -1750,7 +1768,7 @@ void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 bool DeviceImpl::tailMemoryAllocated(const Falcor::Texture* pTexture) {
 	assert(pTexture);
 	if(!pTexture->isSparse()) return false;
-	gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
 	auto texture = static_cast<TextureResourceImpl*>(textureResource);
 	return texture ? texture->mTailMemoryAllocated : false;
 }
@@ -1839,7 +1857,7 @@ Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 
 	if(!pTexture->isSparse()) return SLANG_FAIL;
 
-	gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
 	return allocateTailMemory(pTexture, static_cast<TextureResourceImpl*>(textureResource), force);
 }
 
@@ -1891,7 +1909,7 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 		return;
 	}
 
-	TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getApiHandle().get());
+	TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
 	
 	updateSparseBindInfo(pTexture, texture->m_image);
 	return;
@@ -1903,7 +1921,7 @@ void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textu
 	for(Falcor::Texture* pTexture: textures) {
 		if(!pTexture) continue;
 
-		TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getApiHandle().get());
+		TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
 		assert(texture->m_image != VK_NULL_HANDLE);
 
 		if(texture->m_image == VK_NULL_HANDLE) continue;
@@ -1913,13 +1931,22 @@ void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textu
 }
 
 Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource) {
+    return createBufferResourceImpl(descIn, 0, initData, outResource);
+}
+
+Result DeviceImpl::createBufferResourceImpl(
+    const IBufferResource::Desc& descIn,
+    VkBufferUsageFlags additionalUsageFlag,
+    const void* initData,
+    IBufferResource** outResource) 
+{
 	BufferResource::Desc desc = fixupBufferDesc(descIn);
 
 	const Size bufferSize = desc.sizeInBytes;
 
 	VkMemoryPropertyFlags reqMemoryProperties = 0;
 
-	VkBufferUsageFlags usage = _calcBufferUsageFlags(desc.allowedStates);
+	VkBufferUsageFlags usage = _calcBufferUsageFlags(desc.allowedStates) | additionalUsageFlag;
 	
 	if (m_api.m_extendedFeatures.vulkan12Features.bufferDeviceAddress) {
 		usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -2157,15 +2184,15 @@ Result DeviceImpl::getFormatSupportedResourceStates(Format format, ResourceState
 	m_api.vkGetPhysicalDeviceSurfaceFormatsKHR(m_api.m_physicalDevice, VK_NULL_HANDLE, &surfaceFormatCount, surfaceFormats.getBuffer());
 	for (auto surfaceFormat : surfaceFormats)
 	{
-		presentableFormats.Add(surfaceFormat.format);
+		presentableFormats.add(surfaceFormat.format);
 	}
 #else
 // Until we have a solution to query presentable formats without needing a surface,
 // hard code presentable formats that is supported by most drivers.
-	presentableFormats.Add(VK_FORMAT_R8G8B8A8_UNORM);
-	presentableFormats.Add(VK_FORMAT_B8G8R8A8_UNORM);
-	presentableFormats.Add(VK_FORMAT_R8G8B8A8_SRGB);
-	presentableFormats.Add(VK_FORMAT_B8G8R8A8_SRGB);
+	presentableFormats.add(VK_FORMAT_R8G8B8A8_UNORM);
+	presentableFormats.add(VK_FORMAT_B8G8R8A8_UNORM);
+	presentableFormats.add(VK_FORMAT_R8G8B8A8_SRGB);
+	presentableFormats.add(VK_FORMAT_B8G8R8A8_SRGB);
 #endif
 
 	ResourceStateSet allowedStates;
@@ -2219,7 +2246,7 @@ Result DeviceImpl::getFormatSupportedResourceStates(Format format, ResourceState
 	}
 	
 	// Present
-	if (presentableFormats.Contains(vkFormat))
+	if (presentableFormats.contains(vkFormat))
 		allowedStates.add(ResourceState::Present);
 	
 	// IndirectArgument
@@ -2266,10 +2293,10 @@ Result DeviceImpl::createBufferView(
 			assert(info.pixelsPerBlock == 1);
 		}
 	}
-	VkDeviceSize offset = (VkDeviceSize)desc.bufferRange.firstElement * stride;
-	VkDeviceSize size = desc.bufferRange.elementCount == 0
-		? (buffer ? resourceImpl->getDesc()->sizeInBytes : 0)
-		: (VkDeviceSize)desc.bufferRange.elementCount * stride;
+	VkDeviceSize offset = (VkDeviceSize)desc.bufferRange.offset;
+  VkDeviceSize size = desc.bufferRange.size == 0
+    ? (buffer ? resourceImpl->getDesc()->sizeInBytes : 0)
+    : (VkDeviceSize)desc.bufferRange.size;
 
 	// There are two different cases we need to think about for buffers.
 	//
@@ -2404,13 +2431,18 @@ Result DeviceImpl::createProgram(const IShaderProgram::Desc& desc, IShaderProgra
 	return SLANG_OK;
 }
 
-Result DeviceImpl::createShaderObjectLayout(slang::TypeLayoutReflection* typeLayout, ShaderObjectLayoutBase** outLayout) {
-	RefPtr<ShaderObjectLayoutImpl> layout;
-	SLANG_RETURN_ON_FAIL(
-		ShaderObjectLayoutImpl::createForElementType(this, typeLayout, layout.writeRef()));
-	returnRefPtrMove(outLayout, layout);
-	return SLANG_OK;
+Result DeviceImpl::createShaderObjectLayout(
+    slang::ISession* session,
+    slang::TypeLayoutReflection* typeLayout,
+    ShaderObjectLayoutBase** outLayout)
+{
+    RefPtr<ShaderObjectLayoutImpl> layout;
+    SLANG_RETURN_ON_FAIL(
+        ShaderObjectLayoutImpl::createForElementType(this, session, typeLayout, layout.writeRef()));
+    returnRefPtrMove(outLayout, layout);
+    return SLANG_OK;
 }
+
 
 Result DeviceImpl::createShaderObject(ShaderObjectLayoutBase* layout, IShaderObject** outObject) {
 	RefPtr<ShaderObjectImpl> shaderObject;

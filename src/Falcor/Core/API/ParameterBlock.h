@@ -346,46 +346,6 @@ public:
     */
     const Buffer::SharedPtr& getUnderlyingConstantBuffer() const;
 
-#if FALCOR_ENABLE_CUDA
-    /** Get a host-memory pointer that represents the contents of this shader object
-        as a CUDA-compatible buffer.
-
-        In the case where this parameter block represents a `ProgramVars`, the resulting
-        buffer can be passed as argument data for a kernel launch.
-
-        \return Host-memory pointer to a copy of the block, or throws on error
-        (e.g., parameter types that are unsupported on CUDA).
-
-        The lifetime of the returned pointer is tied to the `ParameterBlock`,
-        and does not need to be explicitly deleted by the caller. The pointer
-        may become invalid if:
-
-        * The parameter block is deleted
-        * A call to `getCUDADeviceBuffer()` is made on the same parameter block
-        * Another call it made to `getCUDAHostBuffer()` after changes have been made to parameters in the block
-    */
-    void* getCUDAHostBuffer(size_t& outSize);
-
-    /** Get a device-memory pointer that represents the contents of this shader object
-        as a CUDA-compatible buffer.
-
-        The resulting buffer can be used to represent this shader object when it
-        is used as a constant buffer or parameter block.
-
-        \return Device-memory pointer to a copy of the block, or throws on error
-        (e.g., parameter types that are unsupported on CUDA).
-
-        The lifetime of the returned pointer is tied to the `ParameterBlock`,
-        and does not need to be explicitly deleted by the caller. The pointer
-        may become invalid if:
-
-        * The parameter block is deleted
-        * A call to `getCUDAHostBuffer()` is made on the same parameter block
-        * Another call it made to `getCUDADeviceBuffer()` after changes have been made to parameters in the block
-    */
-    void* getCUDADeviceBuffer(size_t& outSize);
-#endif
-
     typedef uint64_t ChangeEpoch;
 
 public:
@@ -418,8 +378,8 @@ protected:
 #endif // FALCOR_GFX
 };
 
-template<typename T> bool ShaderVar::setImpl(const T& val) const {
-    return mpBlock->setVariable(mOffset, val);
+template<typename T> void ShaderVar::setImpl(const T& val) const {
+    mpBlock->setVariable(mOffset, val);
 }
 
 }  // namespace Falcor

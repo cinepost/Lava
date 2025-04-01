@@ -31,7 +31,7 @@
 
 #include "StateGraph.h"
 #include "Core/API/ComputeStateObject.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 
 namespace Falcor
 {
@@ -59,11 +59,11 @@ namespace Falcor
 
         /** Bind a program to the pipeline
         */
-        ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
+        ComputeState& setProgram(const Program::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
 
         /** Get the currently bound program
         */
-        ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
+        Program::SharedPtr getProgram() const { return mpProgram; }
 
         /** Get the active compute state object
         */
@@ -73,11 +73,10 @@ namespace Falcor
         ComputeState(Device::SharedPtr pDevice);
 
         Device::SharedPtr mpDevice = nullptr;
-        ComputeProgram::SharedPtr mpProgram;
+        Program::SharedPtr mpProgram;
         ComputeStateObject::Desc mDesc;
 
-        struct CachedData
-        {
+        struct CachedData {
             const ProgramKernels* pProgramKernels = nullptr;
         };
         CachedData mCachedData;

@@ -114,7 +114,7 @@ ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const ProgramReflecti
 }
 
 ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,
-    const std::shared_ptr<const ProgramVersion>& pProgramVersion,
+    const ProgramVersion* pProgramVersion,
     const ParameterBlockReflection::SharedConstPtr& pReflection)
     : mpDevice(pDevice)
     , mpProgramVersion(pProgramVersion)

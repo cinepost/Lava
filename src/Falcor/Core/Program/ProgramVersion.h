@@ -25,29 +25,109 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+#define SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
 
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Shader.h"
+#include "ProgramReflection.h"
+#include "DefineList.h"
+//#include "Falcor/Core/Macros.h"
+//#include "Falcor/Core/Object.h"
+//#include "Falcor/Core/API/Types.h"
+//#include "Falcor/Core/API/Handles.h"
 
-#if defined(FALCOR_VK)
-#include "Falcor/Core/API/RootSignature.h"
-#endif
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <slang/slang.h>
 
-#include "Falcor/Core/Program/ProgramReflection.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
+    class Device;
+
     class FALCOR_API Program;
     class FALCOR_API ProgramVars;
     class FALCOR_API ProgramVersion;
 
+    /**
+     * Represents a single program entry point and its associated kernel code.
+     *
+     * In GFX, we do not generate actual shader code at program creation.
+     * The actual shader code will only be generated and cached when all specialization arguments
+     * are known, which is right before a draw/dispatch command is issued, and this is done
+     * internally within GFX.
+     * The `EntryPointKernel` implementation here serves as a helper utility for application code that
+     * uses raw graphics API to get shader kernel code from an ordinary slang source.
+     * Since most users/render-passes do not need to get shader kernel code, we defer
+     * the call to slang's `getEntryPointCode` function until it is actually needed.
+     * to avoid redundant shader compiler invocation.
+     */
+    class FALCOR_API EntryPointKernel : public std::enable_shared_from_this<EntryPointKernel> {
+    public:
+
+        using SharedPtr = std::shared_ptr<EntryPointKernel>;
+
+        struct BlobData {
+            const void* data;
+            size_t size;
+        };
+
+        /**
+         * Create a shader object
+         * @param[in] linkedSlangEntryPoint The Slang IComponentType that defines the shader entry point.
+         * @param[in] type The Type of the shader
+         * @return If success, a new shader object, otherwise nullptr
+         */
+        static EntryPointKernel::SharedPtr create(
+            Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint,
+            ShaderType type,
+            const std::string& entryPointName)
+        {
+            return std::make_shared<EntryPointKernel>(linkedSlangEntryPoint, type, entryPointName);
+        }
+
+        /**
+         * Get the shader Type
+         */
+        ShaderType getType() const { return mType; }
+
+        /**
+         * Get the name of the entry point.
+         */
+        const std::string& getEntryPointName() const { return mEntryPointName; }
+
+        BlobData getBlobData() const {
+            if (!mpBlob) {
+                Slang::ComPtr<ISlangBlob> pDiagnostics;
+                if (SLANG_FAILED(mLinkedSlangEntryPoint->getEntryPointCode(0, 0, mpBlob.writeRef(), pDiagnostics.writeRef()))) {
+                    FALCOR_THROW(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
+                }
+            }
+
+            BlobData result;
+            result.data = mpBlob->getBufferPointer();
+            result.size = mpBlob->getBufferSize();
+            return result;
+        }
+
+    public:
+        EntryPointKernel(Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint, ShaderType type, const std::string& entryPointName)
+            : mLinkedSlangEntryPoint(linkedSlangEntryPoint), mType(type), mEntryPointName(entryPointName)
+        {}
+
+    protected:
+        Slang::ComPtr<slang::IComponentType> mLinkedSlangEntryPoint;
+        ShaderType mType;
+        std::string mEntryPointName;
+        mutable Slang::ComPtr<ISlangBlob> mpBlob;
+    };
+
+
     /** A collection of one or more entry points in a program kernels object.
     */
-    class FALCOR_API EntryPointGroupKernels
-    {
+    class FALCOR_API EntryPointGroupKernels : public std::enable_shared_from_this<EntryPointGroupKernels> {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupKernels>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupKernels>;
@@ -62,64 +142,39 @@ namespace Falcor
             RtHitGroup,         ///< A ray tracing "hit group"
         };
 
-        using Shaders = std::vector<Shader::SharedPtr>;
-
-        static SharedPtr create(Type type, const Shaders& shaders);
+        static EntryPointGroupKernels::SharedConstPtr create(
+            Type type,
+            const std::vector<EntryPointKernel::SharedPtr>& kernels,
+            const std::string& exportName
+        );
 
         virtual ~EntryPointGroupKernels() = default;
 
         Type getType() const { return mType; }
-        const Shader* getShader(ShaderType type) const;
-        const Shader* getShaderByIndex(int32_t index) const { return mShaders[index].get(); }
+        const EntryPointKernel* getKernel(ShaderType type) const;
+        const EntryPointKernel* getKernelByIndex(size_t index) const { return mKernels[index].get(); }
+        const std::string& getExportName() const { return mExportName; }
 
     protected:
-        EntryPointGroupKernels(Type type, const Shaders& shaders);
+        EntryPointGroupKernels(Type type, const std::vector<EntryPointKernel::SharedPtr>& shaders, const std::string& exportName);
         EntryPointGroupKernels() = default;
         EntryPointGroupKernels(const EntryPointGroupKernels&) = delete;
         EntryPointGroupKernels& operator=(const EntryPointGroupKernels&) = delete;
 
         Type mType;
-        Shaders mShaders;
-    };
-
-    class FALCOR_API RtEntryPointGroupKernels : public EntryPointGroupKernels
-    {
-    public:
-        static SharedPtr create(
-            Type type,
-            const Shaders& shaders,
-            std::string const& exportName,
-            uint32_t maxPayloadSize,
-            uint32_t maxAttributeSize);
-
-        const std::string& getExportName() const { return mExportName; }
-
-        uint32_t getMaxPayloadSize() const { return mMaxPayloadSize; }
-        uint32_t getMaxAttributesSize() const { return mMaxAttributesSize; }
-
-    protected:
-        RtEntryPointGroupKernels(
-            Type type,
-            const Shaders& shaders,
-            std::string const& exportName,
-            uint32_t maxPayloadSize,
-            uint32_t maxAttributeSize);
-
+        std::vector<EntryPointKernel::SharedPtr> mKernels;
         std::string mExportName;
-        uint32_t mMaxPayloadSize;
-        uint32_t mMaxAttributesSize;
     };
 
     /** Low-level program object
         This class abstracts the API's program creation and management
     */
-    class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels>
-    {
+    class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels> {
     public:
         using SharedPtr = std::shared_ptr<ProgramKernels>;
         using SharedConstPtr = std::shared_ptr<const ProgramKernels>;
 
-        typedef std::vector<EntryPointGroupKernels::SharedPtr> UniqueEntryPointGroups;
+        typedef std::vector<EntryPointGroupKernels::SharedConstPtr> UniqueEntryPointGroups;
 
         /** Create a new program object for graphics.
             \param[in] The program reflection object
@@ -132,21 +187,22 @@ namespace Falcor
             \param[in] DebugName Optional. A meaningful name to use with log messages
             \return New object in case of success, otherwise nullptr
         */
-        static SharedPtr create(
-            Device::SharedPtr pDevice, 
+        static ProgramKernels::SharedPtr create(
+            Device* pDevice,
             const ProgramVersion* pVersion,
             slang::IComponentType* pSpecializedSlangGlobalScope,
             const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
-            const ProgramReflection::SharedPtr& pReflector,
+            const ProgramReflection::SharedConstPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
-            const std::string& name = "");
+            const std::string& name = ""
+        );
 
         virtual ~ProgramKernels() = default;
 
         /** Get an attached shader object, or nullptr if no shader is attached to the slot.
         */
-        const Shader* getShader(ShaderType type) const;
+        const EntryPointKernel* getKernel(ShaderType type) const;
 
         /** Get the program name
         */
@@ -154,59 +210,47 @@ namespace Falcor
 
         /** Get the reflection object
         */
-        const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
+        const ProgramReflection::SharedConstPtr& getReflector() const { return mpReflector; }
 
-#if defined(FALCOR_VK)
-        RootSignature::SharedPtr const& getRootSignature() const { return mpRootSignature; }
-#endif
-
-        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
+        ProgramVersion const* getProgramVersion() const { return mpVersion; }
 
         const UniqueEntryPointGroups& getUniqueEntryPointGroups() const { return mUniqueEntryPointGroups; }
 
-        const EntryPointGroupKernels::SharedPtr& getUniqueEntryPointGroup(uint32_t index) const { return mUniqueEntryPointGroups[index]; }
+        const EntryPointGroupKernels::SharedConstPtr& getUniqueEntryPointGroup(uint32_t index) const { return mUniqueEntryPointGroups[index]; }
 
-        ProgramHandle getApiHandle() const { return mApiHandle; }
+        gfx::IShaderProgram* getGfxProgram() const { return mGfxProgram; }
 
     protected:
         ProgramKernels(
-            Device::SharedPtr pDevice, 
             const ProgramVersion* pVersion,
-            const ProgramReflection::SharedPtr& pReflector,
+            const ProgramReflection::SharedConstPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
-            const std::string& name = "");
+            const std::string& name = ""
+        );
 
-        Device::SharedPtr mpDevice = nullptr; 
-
-        ProgramHandle mApiHandle = ProgramHandle();
+        Slang::ComPtr<gfx::IShaderProgram> mGfxProgram;
         const std::string mName;
 
         UniqueEntryPointGroups mUniqueEntryPointGroups;
 
         void* mpPrivateData;
-        const ProgramReflection::SharedPtr mpReflector;
+        const ProgramReflection::SharedConstPtr mpReflector;
 
         ProgramVersion const* mpVersion = nullptr;
-
-#if defined(FALCOR_VK)
-        RootSignature::SharedPtr mpRootSignature;
-#endif
     };
 
-    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion>
-    {
+    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
     public:
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
-        using DefineList = Shader::DefineList;
 
         /** Get the program that this version was created from
         */
-        std::shared_ptr<Program> getProgram() const { return mpProgram; }
+        Program* getProgram() const { return mpProgram; }
 
         /** Get the defines that were used to create this version
         */
-        DefineList const& getDefines() const { return mDefines; }
+        const DefineList& getDefines() const { return mDefines; }
 
         /** Get the program name
         */
@@ -215,38 +259,44 @@ namespace Falcor
         /** Get the reflection object.
             \return A program reflection object.
         */
-        const ProgramReflection::SharedPtr& getReflector() const { FALCOR_ASSERT(mpReflector); return mpReflector; }
-
+        const ProgramReflection::SharedConstPtr& getReflector() const {
+            FALCOR_ASSERT(mpReflector);
+            return mpReflector;
+        }
         /** Get executable kernels based on state in a `ProgramVars`
         */
-        ProgramKernels::SharedConstPtr getKernels(ProgramVars const* pVars) const;
+        ProgramKernels::SharedConstPtr getKernels(Device* pDevice, ProgramVars const* pVars) const;
 
         slang::ISession* getSlangSession() const;
         slang::IComponentType* getSlangGlobalScope() const;
         slang::IComponentType* getSlangEntryPoint(uint32_t index) const;
+        const std::vector<Slang::ComPtr<slang::IComponentType>>& getSlangEntryPoints() const { return mpSlangEntryPoints; }
 
     protected:
         friend class Program;
-        friend class RtProgram;
+        friend class ProgramManager;
 
-        static SharedPtr createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
+        static ProgramVersion::SharedPtr createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 
         ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 
         void init(
-            const DefineList&                                   defineList,
-            const ProgramReflection::SharedPtr&                 pReflector,
-            const std::string&                                  name,
-            std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints);
+            const DefineList& defineList,
+            const ProgramReflection::SharedConstPtr& pReflector,
+            const std::string& name,
+            const std::vector<Slang::ComPtr<slang::IComponentType>>& pSlangEntryPoints
+        );
 
-        std::shared_ptr<Program>        mpProgram;
-        DefineList                      mDefines;
-        ProgramReflection::SharedPtr    mpReflector;
-        std::string                     mName;
-        ComPtr<slang::IComponentType>   mpSlangGlobalScope;
-        std::vector<ComPtr<slang::IComponentType>> mpSlangEntryPoints;
+        mutable Program*                    mpProgram;
+        DefineList                          mDefines;
+        ProgramReflection::SharedConstPtr   mpReflector;
+        std::string                         mName;
+        Slang::ComPtr<slang::IComponentType> mpSlangGlobalScope;
+        std::vector<Slang::ComPtr<slang::IComponentType>> mpSlangEntryPoints;
 
         // Cached version of compiled kernels for this program version
-        mutable std::unordered_map<std::string, ProgramKernels::SharedPtr> mpKernels;
+        mutable std::unordered_map<std::string, ProgramKernels::SharedConstPtr> mpKernels;
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_

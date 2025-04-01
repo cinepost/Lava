@@ -80,7 +80,7 @@ class dlldecl GraphicsStateObject {
 			RasterizerState::SharedPtr getRasterizerState() const { return mpRasterizerState; }
 			DepthStencilState::SharedPtr getDepthStencilState() const { return mpDepthStencilState; }
 			ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-			ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+			//ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
 			uint32_t getSampleMask() const { return mSampleMask; }
 			VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
 			PrimitiveType getPrimitiveType() const { return mPrimType; }

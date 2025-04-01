@@ -25,183 +25,175 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ComputeProgram.h"
-#include "Core/API/ComputeContext.h"
-#include "Core/API/RenderContext.h"
-
+#include "ProgramVars.h"
+#include "Program.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/GFXAPI.h"
 #include <slang/slang.h>
+
+#include "lava_utils_lib/logging.h"
 
 #include <set>
 
-namespace Falcor
+namespace Falcor {
+
+ProgramVars::ProgramVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector)
+    : ParameterBlock(pDevice, pReflector), mpReflector(pReflector)
 {
-    void ProgramVars::addSimpleEntryPointGroups()
-    {
-#ifdef FALCOR_D3D12
-        auto& entryPointGroups = mpReflector->getEntryPointGroups();
-        auto groupCount = entryPointGroups.size();
-        for( size_t gg = 0; gg < groupCount; ++gg )
-        {
-            auto pGroup = entryPointGroups[gg];
-            auto pGroupVars = EntryPointGroupVars::create(pGroup, uint32_t(gg));
-            mpEntryPointGroupVars.push_back(pGroupVars);
-        }
-#endif
-    }
-
-    GraphicsVars::GraphicsVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(pDevice, pReflector)
-    {
-        addSimpleEntryPointGroups();
-    }
-
-    GraphicsVars::SharedPtr GraphicsVars::create(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
-    {
-        if (pReflector == nullptr) throw std::runtime_error("Can't create a GraphicsVars object without a program reflector");
-        return SharedPtr(new GraphicsVars(pDevice, pReflector));
-    }
-
-    GraphicsVars::SharedPtr GraphicsVars::create(Device::SharedPtr pDevice, const GraphicsProgram* pProg)
-    {
-        if (pProg == nullptr) throw std::runtime_error("Can't create a GraphicsVars object without a program");
-        return create(pDevice, pProg->getReflector());
-    }
-
-    ComputeVars::SharedPtr ComputeVars::create(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
-    {
-        if (pReflector == nullptr) throw std::runtime_error("Can't create a ComputeVars object without a program reflector");
-        return SharedPtr(new ComputeVars(pDevice, pReflector));
-    }
-
-    ComputeVars::SharedPtr ComputeVars::create(Device::SharedPtr pDevice, const ComputeProgram* pProg)
-    {
-        if (pProg == nullptr) throw std::runtime_error("Can't create a ComputeVars object without a program");
-        return create(pDevice, pProg->getReflector());
-    }
-
-    ComputeVars::ComputeVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(pDevice, pReflector)
-    {
-        addSimpleEntryPointGroups();
-    }
-
-
-    RtProgramVars::RtProgramVars(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable)
-        : ProgramVars(pDevice, pProgram->getReflector())
-    {
-        if (pProgram == nullptr)
-        {
-            throw std::runtime_error("RtProgramVars must have a raytracing program attached to it");
-        }
-        if (pBindingTable == nullptr || !pBindingTable->getRayGen().isValid())
-        {
-            throw std::runtime_error("RtProgramVars must have a raygen program attached to it");
-        }
-
-        init(pBindingTable);
-    }
-
-    RtProgramVars::SharedPtr RtProgramVars::create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable)
-    {
-        return SharedPtr(new RtProgramVars(pDevice, pProgram, pBindingTable));
-    }
-
-    void RtProgramVars::init(const RtBindingTable::SharedPtr& pBindingTable)
-    {
-        mRayTypeCount = pBindingTable->getRayTypeCount();
-        mGeometryCount = pBindingTable->getGeometryCount();
-
-        // We must create sub-shader-objects for all the entry point
-        // groups that are used by the supplied binding table.
-        //
-        FALCOR_ASSERT(mpProgramVersion);
-        FALCOR_ASSERT(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
-        auto pReflector = mpProgramVersion->getReflector();
-
-        std::set<int32_t> entryPointGroupIndices;
-
-        // Ray generation and miss programs are easy: we just allocate space
-        // for one parameter block per entry-point of the given type in the binding table.
-        //
-        const auto& info = pBindingTable->getRayGen();
-        FALCOR_ASSERT(info.isValid());
-        mRayGenVars.resize(1);
-#if defined(FALCOR_GFX)
-        mRayGenVars[0].entryPointGroupIndex = info.groupIndex;
-#endif
-        entryPointGroupIndices.insert(info.groupIndex);
-
-        uint32_t missCount = pBindingTable->getMissCount();
-        mMissVars.resize(missCount);
-
-        for (uint32_t i = 0; i < missCount; ++i)
-        {
-            const auto& info = pBindingTable->getMiss(i);
-            if (!info.isValid())
-            {
-                LLOG_WRN << "Raytracing binding table has no shader at miss index " << std::to_string(i) << ". Is that intentional?";
-                continue;
-            }
-
-#if defined(FALCOR_GFX)
-            mMissVars[i].entryPointGroupIndex = info.groupIndex;
-#endif
-            entryPointGroupIndices.insert(info.groupIndex);
-        }
-
-        // Hit groups are more complicated than ray generation and miss shaders.
-        // We typically want a distinct parameter block per declared hit group
-        // and per geometry in the scene.
-        //
-        // We need to take this extra complexity into account when allocating
-        // space for the hit group parameter blocks.
-        //
-        uint32_t hitCount = mRayTypeCount * mGeometryCount;
-        mHitVars.resize(hitCount);
-
-        for (uint32_t rayType = 0; rayType < mRayTypeCount; rayType++)
-        {
-            for (uint32_t geometryID = 0; geometryID < mGeometryCount; geometryID++)
-            {
-                const auto& info = pBindingTable->getHitGroup(rayType, geometryID);
-                if (!info.isValid()) continue;
-
-#if defined(FALCOR_D3D12)
-                mHitVars[mRayTypeCount * geometryID + rayType].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-#elif defined(FALCOR_GFX)
-                mHitVars[mRayTypeCount * geometryID + rayType].entryPointGroupIndex = info.groupIndex;
-#endif
-                entryPointGroupIndices.insert(info.groupIndex);
-            }
-        }
-
-        mUniqueEntryPointGroupIndices.assign(entryPointGroupIndices.begin(), entryPointGroupIndices.end());
-        FALCOR_ASSERT(!mUniqueEntryPointGroupIndices.empty());
-
-        // Build list of vars for all entry point groups.
-        // Note that there may be nullptr entries, as not all hit groups need to be assigned.
-        FALCOR_ASSERT(mRayGenVars.size() == 1);
-#if defined(FALCOR_D3D12)
-        mpEntryPointGroupVars.push_back(mRayGenVars[0].pVars);
-        for (auto entryPointGroupInfo : mMissVars)
-        {
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-        }
-        for (auto entryPointGroupInfo : mHitVars)
-        {
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-        }
-#endif
-    }
-
-    RtEntryPointGroupKernels* RtProgramVars::getUniqueRtEntryPointGroupKernels(const ProgramKernels::SharedConstPtr& pKernels, int32_t uniqueEntryPointGroupIndex)
-    {
-        if (uniqueEntryPointGroupIndex < 0) return nullptr;
-        auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(uniqueEntryPointGroupIndex);
-        FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
-        return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
-    }
+    FALCOR_ASSERT(pReflector);
 }
+
+ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector) {
+    FALCOR_CHECK(pReflector, "Can't create a ProgramVars object without a program reflector");
+    return ref<ProgramVars>(new ProgramVars(pDevice, pReflector));
+}
+
+ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const Program* pProg) {
+    FALCOR_CHECK(pProg, "Can't create a ProgramVars object without a program");
+    return create(pDevice, pProg->getReflector());
+}
+
+RtProgramVars::RtProgramVars(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
+    : ProgramVars(pDevice, pProgram->getReflector()), mpShaderTable(pDevice)
+{
+    FALCOR_CHECK(pProgram, "RtProgramVars must have a raytracing program attached to it");
+    FALCOR_CHECK(pBindingTable && pBindingTable->getRayGen().isValid(), "RtProgramVars must have a raygen program attached to it");
+
+    init(pBindingTable);
+}
+
+ref<RtProgramVars> RtProgramVars::create(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
+{
+    return ref<RtProgramVars>(new RtProgramVars(pDevice, pProgram, pBindingTable));
+}
+
+void RtProgramVars::init(const ref<RtBindingTable>& pBindingTable) {
+    mRayTypeCount = pBindingTable->getRayTypeCount();
+    mGeometryCount = pBindingTable->getGeometryCount();
+
+    // We must create sub-shader-objects for all the entry point
+    // groups that are used by the supplied binding table.
+    //
+    FALCOR_ASSERT(mpProgramVersion);
+    auto pProgram = dynamic_cast<Program*>(mpProgramVersion->getProgram());
+    FALCOR_ASSERT(pProgram);
+    auto pReflector = mpProgramVersion->getReflector();
+
+    std::set<int32_t> entryPointGroupIndices;
+
+    // Ray generation and miss programs are easy: we just allocate space
+    // for one parameter block per entry-point of the given type in the binding table.
+    //
+    const auto& rayGenInfo = pBindingTable->getRayGen();
+    FALCOR_ASSERT(rayGenInfo.isValid());
+    mRayGenVars.resize(1);
+    mRayGenVars[0].entryPointGroupIndex = rayGenInfo.groupIndex;
+    entryPointGroupIndices.insert(rayGenInfo.groupIndex);
+
+    uint32_t missCount = pBindingTable->getMissCount();
+    mMissVars.resize(missCount);
+
+    for (uint32_t i = 0; i < missCount; ++i) {
+        const auto& missInfo = pBindingTable->getMiss(i);
+        if (!missInfo.isValid()) {
+            LLOG_WRN << "Raytracing binding table has no shader at miss index " << i << ". Is that intentional?";
+            continue;
+        }
+
+        mMissVars[i].entryPointGroupIndex = missInfo.groupIndex;
+
+        entryPointGroupIndices.insert(missInfo.groupIndex);
+    }
+
+    // Hit groups are more complicated than ray generation and miss shaders.
+    // We typically want a distinct parameter block per declared hit group
+    // and per geometry in the scene.
+    //
+    // We need to take this extra complexity into account when allocating
+    // space for the hit group parameter blocks.
+    //
+    uint32_t hitCount = mRayTypeCount * mGeometryCount;
+    mHitVars.resize(hitCount);
+
+    for (uint32_t rayType = 0; rayType < mRayTypeCount; rayType++) {
+        for (uint32_t geometryID = 0; geometryID < mGeometryCount; geometryID++) {
+            const auto& hitGroupInfo = pBindingTable->getHitGroup(rayType, geometryID);
+            if (!hitGroupInfo.isValid())
+                continue;
+
+            mHitVars[mRayTypeCount * geometryID + rayType].entryPointGroupIndex = hitGroupInfo.groupIndex;
+
+            entryPointGroupIndices.insert(hitGroupInfo.groupIndex);
+        }
+    }
+
+    mUniqueEntryPointGroupIndices.assign(entryPointGroupIndices.begin(), entryPointGroupIndices.end());
+    FALCOR_ASSERT(!mUniqueEntryPointGroupIndices.empty());
+
+    // Build list of vars for all entry point groups.
+    // Note that there may be nullptr entries, as not all hit groups need to be assigned.
+    FALCOR_ASSERT(mRayGenVars.size() == 1);
+}
+
+bool RtProgramVars::prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso) {
+    auto& pKernels = pRtso->getKernels();
+
+    bool needShaderTableUpdate = false;
+    if (!mpShaderTable) {
+        needShaderTableUpdate = true;
+    }
+
+    if (!needShaderTableUpdate) {
+        if (pRtso != mpCurrentRtStateObject) {
+            needShaderTableUpdate = true;
+        }
+    }
+
+    if (needShaderTableUpdate) {
+        auto getShaderNames = [&](VarsVector& varsVec, std::vector<const char*>& shaderNames) {
+            for (uint32_t i = 0; i < (uint32_t)varsVec.size(); i++) {
+                auto& varsInfo = varsVec[i];
+
+                auto uniqueGroupIndex = varsInfo.entryPointGroupIndex;
+
+                auto pGroupKernels = uniqueGroupIndex >= 0 ? pKernels->getUniqueEntryPointGroup(uniqueGroupIndex) : nullptr;
+                if (!pGroupKernels) {
+                    shaderNames.push_back(nullptr);
+                    continue;
+                }
+
+                shaderNames.push_back(static_cast<const char*>(pRtso->getShaderIdentifier(uniqueGroupIndex)));
+            }
+        };
+
+        std::vector<const char*> rayGenShaders;
+        getShaderNames(mRayGenVars, rayGenShaders);
+
+        std::vector<const char*> missShaders;
+        getShaderNames(mMissVars, missShaders);
+
+        std::vector<const char*> hitgroupShaders;
+        getShaderNames(mHitVars, hitgroupShaders);
+
+        gfx::IShaderTable::Desc desc = {};
+        desc.rayGenShaderCount = (uint32_t)rayGenShaders.size();
+        desc.rayGenShaderEntryPointNames = rayGenShaders.data();
+        desc.missShaderCount = (uint32_t)missShaders.size();
+        desc.missShaderEntryPointNames = missShaders.data();
+        desc.hitGroupCount = (uint32_t)hitgroupShaders.size();
+        desc.hitGroupNames = hitgroupShaders.data();
+        desc.program = pRtso->getKernels()->getGfxProgram();
+
+        if (SLANG_FAILED(mpDevice->getGfxDevice()->createShaderTable(desc, mpShaderTable.writeRef()))) {
+            return false;
+        }
+        
+        mpCurrentRtStateObject = pRtso;
+    }
+
+    return true;
+}
+
+}  // namespace Falcor

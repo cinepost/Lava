@@ -28,8 +28,14 @@
 #ifndef SRC_FALCOR_CORE_PROGRAM_RTBINDINGTABLE_H_
 #define SRC_FALCOR_CORE_PROGRAM_RTBINDINGTABLE_H_
 
-#include "Falcor/Core/Framework.h"
-#include "RtProgram.h"
+
+#include "Program.h"
+//#include "Falcor/Core/Macros.h"
+//#include "Falcor/Core/Object.h"
+//#include "Falcor/Scene/SceneIDs.h"
+
+#include <memory>
+#include <vector>
 
 namespace Falcor {
 
@@ -42,18 +48,20 @@ namespace Falcor {
 	The user is responsible for creating a binding table for use with a particular
 	RtProgram and Scene before creating an RtProgramVars object.
 */
-class dlldecl RtBindingTable {
+class FALCOR_API RtBindingTable : public std::enable_shared_from_this<RtBindingTable> {
 	public:
 		using SharedPtr = std::shared_ptr<RtBindingTable>;
-		using ShaderID = RtProgram::ShaderID;
+		using SharedConstPtr = std::shared_ptr<const RtBindingTable>;
 
+		using ShaderID = ProgramDesc::ShaderID;
+		
 		/** Create a new binding table.
 			\param[in] missCount Number of miss shaders.
 			\param[in] rayTypeCount Number of ray types.
 			\param[in] geometryCount Number of geometries.
 			\return A new object, or throws an exception on error.
 		*/
-		static SharedPtr create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount);
+		static RtBindingTable::SharedPtr create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount);
 
 		/** Set the raygen shader ID.
 			\param[in] shaderID The shader ID in the program.
@@ -66,20 +74,22 @@ class dlldecl RtBindingTable {
 		*/
 		void setMiss(uint32_t missIndex, ShaderID shaderID);
 
-		/** Set a hit group shader ID.
-			\param[in] rayType The ray type.
-			\param[in] geometryID The geometry ID in the scene.
-			\param[in] shaderID The shader ID in the program.
-		*/
+		/**
+    	 * Set a hit group shader ID.
+    	 * @param[in] rayType The ray type.
+    	 * @param[in] geometryID The geometry ID in the scene.
+    	 * @param[in] shaderID The shader ID in the program.
+		 */
 		void setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID);
 
-
-		/** Set hit group shader ID.
-			\param[in] rayType The ray type.
-			\param[in] geometryIDs The geometry IDs in the scene.
-			\param[in] shaderID The shader ID in the program.
-		*/
-		void setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID);
+	    /**
+	     * Set hit group shader ID.
+	     * @param[in] rayType The ray type.
+	     * @param[in] geometryIDs The geometry IDs in the scene.
+	     * @param[in] shaderID The shader ID in the program.
+	     */
+	    void setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID);
+	    
 
 		/** Get the raygen shader ID.
 			\return The shader ID in the program.

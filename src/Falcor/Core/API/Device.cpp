@@ -32,6 +32,7 @@
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/ProgramManager.h"
 
 #include "Device.h"
 #include "Sampler.h"
@@ -111,6 +112,8 @@ bool Device::init() {
     mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
     assert(mpTextureManager);
 
+    mpProgramManager = std::make_unique<ProgramManager>(this);
+
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
     // create default sampler
@@ -138,7 +141,7 @@ bool Device::init() {
     return true;
 }
 
-std::string& Device::getPhysicalDeviceName() {
+const std::string& Device::getPhysicalDeviceName() const {
     return mPhysicalDeviceName;
 }
 

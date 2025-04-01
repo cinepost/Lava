@@ -127,14 +127,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-#ifdef FALCOR_GFX
     /** Get a shared resource API handle.
 
         The handle will be created on-demand if it does not already exist.
         Throws if a shared handle cannot be created for this resource.
     */
     SharedResourceApiHandle getSharedApiHandle() const;
-#endif
 
     struct ViewInfoHashFunc {
         std::size_t operator()(const ResourceViewInfo& v) const {

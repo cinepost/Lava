@@ -46,7 +46,7 @@ public:
 		const IRenderPassLayout::Desc& desc, IRenderPassLayout** outRenderPassLayout) override;
 	virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
 		const ITextureResource::Desc& desc,
-		const std::shared_ptr<Falcor::Texture>& pTexture,
+		Falcor::Texture* pTexture,
 		const ITextureResource::SubresourceData* initData,
 		ITextureResource** outResource) override;
 
@@ -66,7 +66,11 @@ public:
 		const IBufferResource::Desc& desc,
 		const void* initData,
 		IBufferResource** outResource) override;
-	
+	SLANG_NO_THROW Result SLANG_MCALL createBufferResourceImpl(
+        const IBufferResource::Desc& desc,
+        VkBufferUsageFlags additionalUsageFlag,
+        const void* initData,
+        IBufferResource** outResource);
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferFromNativeHandle(
 		InteropHandle handle,
 		const IBufferResource::Desc& srcDesc,
@@ -90,7 +94,9 @@ public:
 		createInputLayout(IInputLayout::Desc const& desc, IInputLayout** outLayout) override;
 
 	virtual Result createShaderObjectLayout(
-		slang::TypeLayoutReflection* typeLayout, ShaderObjectLayoutBase** outLayout) override;
+		slang::ISession* session,
+		slang::TypeLayoutReflection* typeLayout,
+		ShaderObjectLayoutBase** outLayout) override;
 	
 	virtual Result createShaderObject(
 		ShaderObjectLayoutBase* layout, IShaderObject** outObject) override;

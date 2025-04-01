@@ -28,20 +28,13 @@
 #ifndef SRC_FALCOR_CORE_PLATFORM_OS_H_
 #define SRC_FALCOR_CORE_PLATFORM_OS_H_
 
+#include "Falcor/Core/Framework.h"
+
 #include <thread>
 #include <functional>
 #include <string>
 #include <regex>
-
-// #ifdef _WIN32
-// #include <filesystem>
-// namespace fs = std::filesystem;
-// #else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-// #endif
-
-#include "Falcor/Core/Framework.h"
+#include <optional>
 
 
 // #pragma warning (disable : 4251)
@@ -294,12 +287,12 @@ dlldecl const std::string getWorkingDirectory();
 */
 dlldecl const std::string getAppDataDirectory();
 
-/** Get the content of a system environment variable.
-    \param[in] varName Name of the environment variable
-    \param[out] value On success, will hold the value of the environment variable.
-    \return true if environment variable was found, otherwise false.
-*/
-dlldecl bool getEnvironmentVariable(const std::string& varName, std::string& value);
+/**
+ * Get the content of a system environment variable.
+ * @param[in] varName Name of the environment variable
+ * @return The environment variable's value or nullopt if not found.
+ */
+FALCOR_API std::optional<std::string> getEnvironmentVariable(const std::string& varName);
 
 /** Get a list of all recorded data directories.
 */
