@@ -28,12 +28,10 @@
 #include "stdafx.h"
 #include "GraphicsState.h"
 
-namespace Falcor
-{
-    static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t)
-    {
-        switch (t)
-        {
+namespace Falcor {
+
+static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t) {
+    switch (t) {
         case Vao::Topology::PointList:
             return GraphicsStateObject::PrimitiveType::Point;
         case Vao::Topology::LineList:
@@ -45,221 +43,196 @@ namespace Falcor
         default:
             FALCOR_UNREACHABLE();
             return GraphicsStateObject::PrimitiveType::Undefined;
-        }
+    }
+}
+
+GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDesc(pDevice) {
+    uint32_t vpCount = getMaxViewportCount(pDevice);
+
+    // Create the viewports
+    mViewports.resize(vpCount);
+    mScissors.resize(vpCount);
+    mVpStack.resize(vpCount);
+    mScStack.resize(vpCount);
+    for (uint32_t i = 0; i < vpCount; i++) {
+        setViewport(i, mViewports[i], true);
     }
 
-    GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDesc(pDevice)
+    mpGsoGraph = _StateGraph::create();
+}
+
+GraphicsState::~GraphicsState() = default;
+
+GraphicsStateObject::SharedPtr GraphicsState::getGSO(const ProgramVars* pVars) {
+    auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice.get(), pVars) : nullptr;
+    bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
+    if (newProgVersion) {
+        mCachedData.pProgramKernels = pProgramKernels.get();
+        mpGsoGraph->walk((void*)pProgramKernels.get());
+    }
+
+    const Fbo::Desc* pFboDesc = mpFbo ? &mpFbo->getDesc() : nullptr;
+    if(mCachedData.pFboDesc != pFboDesc) {
+        mpGsoGraph->walk((void*)pFboDesc);
+        mCachedData.pFboDesc = pFboDesc;
+    }
+
+    GraphicsStateObject::SharedPtr pGso = mpGsoGraph->getCurrentNode();
+    if(pGso == nullptr) {
+        mDesc.setProgramKernels(pProgramKernels);
+        mDesc.setFboFormats(mpFbo ? mpFbo->getDesc() : Fbo::Desc(mpDevice));
+        mDesc.setVertexLayout(mpVao->getVertexLayout());
+        mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
+
+        _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool {
+            return pGso && (desc == pGso->getDesc());
+        };
+
+        if (mpGsoGraph->scanForMatchingNode(cmpFunc)) {
+            pGso = mpGsoGraph->getCurrentNode();
+        } else {
+            pGso = GraphicsStateObject::create(mpDevice, mDesc);
+            mpGsoGraph->setCurrentNodeData(pGso);
+        }
+    }
+    return pGso;
+}
+
+GraphicsState& GraphicsState::setFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0) {
+    mpFbo = pFbo;
+
+    if (setVp0Sc0 && pFbo) {
+        uint32_t w = pFbo->getWidth();
+        uint32_t h = pFbo->getHeight();
+        GraphicsState::Viewport vp(0, 0, float(w), float(h), 0, 1);
+        setViewport(0, vp, true);
+    }
+    return *this;
+}
+
+void GraphicsState::pushFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0) {
+    mFboStack.push(mpFbo);
+    setFbo(pFbo, setVp0Sc0);
+}
+
+void GraphicsState::popFbo(bool setVp0Sc0) {
+    if(mFboStack.empty()) {
+        throw std::runtime_error("Empty stack.");
+    }
+
+    setFbo(mFboStack.top(), setVp0Sc0);
+    mFboStack.pop();
+}
+
+GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao) {
+    if(mpVao != pVao) {
+        mpVao = pVao;
+        mpGsoGraph->walk(pVao ? (void*)pVao->getVertexLayout().get() : nullptr);
+    }
+    return *this;
+}
+
+GraphicsState& GraphicsState::setBlendState(BlendState::SharedPtr pBlendState) {
+    if(mDesc.getBlendState() != pBlendState) {
+        mDesc.setBlendState(pBlendState);
+        mpGsoGraph->walk((void*)pBlendState.get());
+    }
+    return *this;
+}
+
+GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState) {
+    if (mDesc.getRasterizerState() != pRasterizerState) {
+        mDesc.setRasterizerState(pRasterizerState);
+        mpGsoGraph->walk((void*)pRasterizerState.get());
+    }
+    return *this;
+}
+
+GraphicsState& GraphicsState::setSampleMask(uint32_t sampleMask) {
+    if(mDesc.getSampleMask() != sampleMask) {
+        mDesc.setSampleMask(sampleMask);
+        mpGsoGraph->walk((void*)(uint64_t)sampleMask);
+    }
+    return *this;
+}
+
+GraphicsState& GraphicsState::setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState)
+{
+    if(mDesc.getDepthStencilState() != pDepthStencilState)
     {
-        uint32_t vpCount = getMaxViewportCount(pDevice);
+        mDesc.setDepthStencilState(pDepthStencilState);
+        mpGsoGraph->walk((void*)pDepthStencilState.get());
+    }
+    return *this;
+}
 
-        // Create the viewports
-        mViewports.resize(vpCount);
-        mScissors.resize(vpCount);
-        mVpStack.resize(vpCount);
-        mScStack.resize(vpCount);
-        for (uint32_t i = 0; i < vpCount; i++)
-        {
-            setViewport(i, mViewports[i], true);
-        }
-
-        mpGsoGraph = _StateGraph::create();
+void GraphicsState::pushViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors) {
+    if(!(index < mVpStack.size())) {
+         throw std::runtime_error("'index' is out of range.");
     }
 
-    GraphicsState::~GraphicsState() = default;
+    mVpStack[index].push(mViewports[index]);
+    setViewport(index, vp, setScissors);
+}
 
-    GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
-    {
-        auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
-        bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
-        if (newProgVersion)
-        {
-            mCachedData.pProgramKernels = pProgramKernels.get();
-            mpGsoGraph->walk((void*)pProgramKernels.get());
-        }
-
-        const Fbo::Desc* pFboDesc = mpFbo ? &mpFbo->getDesc() : nullptr;
-        if(mCachedData.pFboDesc != pFboDesc)
-        {
-            mpGsoGraph->walk((void*)pFboDesc);
-            mCachedData.pFboDesc = pFboDesc;
-        }
-
-        GraphicsStateObject::SharedPtr pGso = mpGsoGraph->getCurrentNode();
-        if(pGso == nullptr)
-        {
-            mDesc.setProgramKernels(pProgramKernels);
-            mDesc.setFboFormats(mpFbo ? mpFbo->getDesc() : Fbo::Desc(mpDevice));
-            mDesc.setVertexLayout(mpVao->getVertexLayout());
-            mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
-
-            _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool
-            {
-                return pGso && (desc == pGso->getDesc());
-            };
-
-            if (mpGsoGraph->scanForMatchingNode(cmpFunc))
-            {
-                pGso = mpGsoGraph->getCurrentNode();
-            }
-            else
-            {
-                pGso = GraphicsStateObject::create(mpDevice, mDesc);
-                mpGsoGraph->setCurrentNodeData(pGso);
-            }
-        }
-        return pGso;
+void GraphicsState::popViewport(uint32_t index, bool setScissors) {
+    if(!(index < mVpStack.size())) {
+         throw std::runtime_error("'index' is out of range.");
+    }
+    
+    if(mVpStack[index].empty()) {
+        throw std::runtime_error("Empty stack.");
     }
 
-    GraphicsState& GraphicsState::setFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0)
-    {
-        mpFbo = pFbo;
+    const auto& VP = mVpStack[index].top();
+    setViewport(index, VP, setScissors);
+    mVpStack[index].pop();
+}
 
-        if (setVp0Sc0 && pFbo)
-        {
-            uint32_t w = pFbo->getWidth();
-            uint32_t h = pFbo->getHeight();
-            GraphicsState::Viewport vp(0, 0, float(w), float(h), 0, 1);
-            setViewport(0, vp, true);
-        }
-        return *this;
+void GraphicsState::pushScissors(uint32_t index, const GraphicsState::Scissor& sc) {
+    if(!(index < mScStack.size())) {
+        throw std::runtime_error("'index' is out of range.");
     }
 
-    void GraphicsState::pushFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0)
-    {
-        mFboStack.push(mpFbo);
-        setFbo(pFbo, setVp0Sc0);
+    mScStack[index].push(mScissors[index]);
+    setScissors(index, sc);
+}
+
+void GraphicsState::popScissors(uint32_t index) {
+    if(!(index < mScStack.size())) {
+        throw std::runtime_error("'index' is out of range.");
+    }
+    
+    if(mScStack[index].empty()) {
+        throw std::runtime_error("Empty stack.");
     }
 
-    void GraphicsState::popFbo(bool setVp0Sc0)
-    {
-        if(mFboStack.empty()) {
-            throw std::runtime_error("Empty stack.");
-        }
+    const auto& sc = mScStack[index].top();
+    setScissors(index, sc);
+    mScStack[index].pop();
+}
 
-        setFbo(mFboStack.top(), setVp0Sc0);
-        mFboStack.pop();
+void GraphicsState::setViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors) {
+    mViewports[index] = vp;
+
+    if (setScissors) {
+        GraphicsState::Scissor sc;
+        sc.left = (int32_t)vp.originX;
+        sc.right = sc.left + (int32_t)vp.width;
+        sc.top = (int32_t)vp.originY;
+        sc.bottom = sc.top + (int32_t)vp.height;
+        this->setScissors(index, sc);
     }
+}
 
-    GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao) {
-        if(mpVao != pVao) {
-            mpVao = pVao;
-            mpGsoGraph->walk(pVao ? (void*)pVao->getVertexLayout().get() : nullptr);
-        }
-        return *this;
-    }
-
-    GraphicsState& GraphicsState::setBlendState(BlendState::SharedPtr pBlendState)
-    {
-        if(mDesc.getBlendState() != pBlendState)
-        {
-            mDesc.setBlendState(pBlendState);
-            mpGsoGraph->walk((void*)pBlendState.get());
-        }
-        return *this;
-    }
-
-    GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState) {
-        if (mDesc.getRasterizerState() != pRasterizerState) {
-            mDesc.setRasterizerState(pRasterizerState);
-            mpGsoGraph->walk((void*)pRasterizerState.get());
-        }
-        return *this;
-    }
-
-    GraphicsState& GraphicsState::setSampleMask(uint32_t sampleMask)
-    {
-        if(mDesc.getSampleMask() != sampleMask)
-        {
-            mDesc.setSampleMask(sampleMask);
-            mpGsoGraph->walk((void*)(uint64_t)sampleMask);
-        }
-        return *this;
-    }
-
-    GraphicsState& GraphicsState::setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState)
-    {
-        if(mDesc.getDepthStencilState() != pDepthStencilState)
-        {
-            mDesc.setDepthStencilState(pDepthStencilState);
-            mpGsoGraph->walk((void*)pDepthStencilState.get());
-        }
-        return *this;
-    }
-
-    void GraphicsState::pushViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors)
-    {
-        if(!(index < mVpStack.size())) {
-             throw std::runtime_error("'index' is out of range.");
-        }
-
-        mVpStack[index].push(mViewports[index]);
-        setViewport(index, vp, setScissors);
-    }
-
-    void GraphicsState::popViewport(uint32_t index, bool setScissors)
-    {
-        if(!(index < mVpStack.size())) {
-             throw std::runtime_error("'index' is out of range.");
-        }
-        
-        if(mVpStack[index].empty()) {
-            throw std::runtime_error("Empty stack.");
-        }
-
-        const auto& VP = mVpStack[index].top();
-        setViewport(index, VP, setScissors);
-        mVpStack[index].pop();
-    }
-
-    void GraphicsState::pushScissors(uint32_t index, const GraphicsState::Scissor& sc)
-    {
-        if(!(index < mScStack.size())) {
-            throw std::runtime_error("'index' is out of range.");
-        }
-
-        mScStack[index].push(mScissors[index]);
-        setScissors(index, sc);
-    }
-
-    void GraphicsState::popScissors(uint32_t index)
-    {
-        if(!(index < mScStack.size())) {
-            throw std::runtime_error("'index' is out of range.");
-        }
-        
-        if(mScStack[index].empty()) {
-            throw std::runtime_error("Empty stack.");
-        }
-
-        const auto& sc = mScStack[index].top();
-        setScissors(index, sc);
-        mScStack[index].pop();
-    }
-
-    void GraphicsState::setViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors)
-    {
-        mViewports[index] = vp;
-
-        if (setScissors)
-        {
-            GraphicsState::Scissor sc;
-            sc.left = (int32_t)vp.originX;
-            sc.right = sc.left + (int32_t)vp.width;
-            sc.top = (int32_t)vp.originY;
-            sc.bottom = sc.top + (int32_t)vp.height;
-            this->setScissors(index, sc);
-        }
-    }
-
-    void GraphicsState::setScissors(uint32_t index, const GraphicsState::Scissor& sc)
-    {
-        mScissors[index] = sc;
-    }
+void GraphicsState::setScissors(uint32_t index, const GraphicsState::Scissor& sc) {
+    mScissors[index] = sc;
+}
 
 #ifdef SCRIPTING
-    SCRIPT_BINDING(GraphicsState)
-    {
-        pybind11::class_<GraphicsState, GraphicsState::SharedPtr>(m, "GraphicsState");
-    }
-#endif
+SCRIPT_BINDING(GraphicsState) {
+    pybind11::class_<GraphicsState, GraphicsState::SharedPtr>(m, "GraphicsState");
 }
+#endif
+
+}  // namespace Falcor

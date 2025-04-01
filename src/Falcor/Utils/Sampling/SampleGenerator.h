@@ -58,7 +58,7 @@ public:
     /** Get macro definitions for this sample generator.
         \return Macro definitions that must be set on the shader program that uses this sampler.
     */
-    virtual Shader::DefineList getDefines() const;
+    virtual DefineList getDefines() const;
 
     /** Binds the data to a program vars object.
         \param[in] pVars ProgramVars of the program to set data into.

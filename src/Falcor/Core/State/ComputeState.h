@@ -30,19 +30,18 @@
 #include "Falcor/Core/API/Device.h"
 
 #include "StateGraph.h"
-#include "Core/API/ComputeStateObject.h"
-#include "Core/Program/Program.h"
+#include "Falcor/Core/API/ComputeStateObject.h"
+#include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 
-namespace Falcor
-{
-    class ComputeVars;
 
-    /** Compute state.
-        This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
-        The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
-    */
-    class FALCOR_API ComputeState
-    {
+namespace Falcor {
+
+/** Compute state.
+    This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
+    The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
+*/
+class FALCOR_API ComputeState {
     public:
         using SharedPtr = std::shared_ptr<ComputeState>;
         using SharedConstPtr = std::shared_ptr<const ComputeState>;
@@ -67,12 +66,12 @@ namespace Falcor
 
         /** Get the active compute state object
         */
-        ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
+        ComputeStateObject::SharedPtr getCSO(const ProgramVars* pVars);
 
     private:
         ComputeState(Device::SharedPtr pDevice);
 
-        Device::SharedPtr mpDevice = nullptr;
+        Device::SharedPtr mpDevice;
         Program::SharedPtr mpProgram;
         ComputeStateObject::Desc mDesc;
 
@@ -83,5 +82,6 @@ namespace Falcor
 
         using _StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
         _StateGraph::SharedPtr mpCsoGraph;
-    };
-}
+};
+
+}  // namespace Falcor

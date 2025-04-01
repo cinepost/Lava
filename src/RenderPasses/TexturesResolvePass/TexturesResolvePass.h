@@ -31,6 +31,7 @@
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -86,17 +87,17 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 
 		Fbo::SharedPtr              mpFbo;
 		GraphicsState::SharedPtr    mpState;
-		GraphicsVars::SharedPtr     mpVars;
+		ProgramVars::SharedPtr      mpVars;
 		RasterizerState::SharedPtr  mpRsState;
 		Scene::SharedPtr            mpScene;
 
-		std::vector<int8_t> 			 mPagesInitDataVetcor;
+		std::vector<int8_t> 			  mPagesInitDataVetcor;
 
 		Sampler::SharedPtr          mpSampler = nullptr;
 		Sampler::SharedPtr          mpMinSampler = nullptr;
 		Sampler::SharedPtr          mpMaxSampler = nullptr;
 
-		GraphicsProgram::SharedPtr      mpProgram;
+		Program::SharedPtr      		mpProgram;
 		DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
 		ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;

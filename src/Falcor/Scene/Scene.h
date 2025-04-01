@@ -141,21 +141,21 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         Note that the actual defines need to be set at runtime, call getSceneDefines() to query them.
         \return List of shader defines.
     */
-    static Shader::DefineList getDefaultSceneDefines();
+    static DefineList getDefaultSceneDefines();
 
     /** Get scene defines.
         These defines must be set on all programs that access the scene.
         The defines are static and it's sufficient to set them once after loading.
         \return List of shader defines.
     */
-    Shader::DefineList getSceneDefines() const;
+    DefineList getSceneDefines() const;
 
     /** Get type conformances.
         These need to be set on a program before using the scene's material system.
         The update() function must have been called before calling this function.
         \return List of type conformances.
     */
-    Program::TypeConformanceList getTypeConformances() const;
+    TypeConformanceList getTypeConformances() const;
 
     /** Render settings determining how the scene is rendered.
         This is used primarily by the path tracer renderers.
@@ -836,7 +836,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] pVars Graphics vars.
         \param[in] cullMode Optional rasterizer cull mode. The default is to cull back-facing primitives.
     */
-    void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
+    void rasterize(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
 
     /** Render the scene using the rasterizer. MaterialX shading mode
         Note the rasterizer state bound to 'pState' is ignored.
@@ -845,7 +845,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] pVars Graphics vars.
         \param[in] cullMode Optional rasterizer cull mode. The default is to cull back-facing primitives.
     */
-    void rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
+    void rasterizeX(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
 
     /** Render the scene using the rasterizer.
         This overload uses the supplied rasterizer states.
@@ -855,7 +855,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
         \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
     */
-    void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+    void rasterize(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
 
     /** Render the scene using the rasterizer. MaterialX shading mode
         This overload uses the supplied rasterizer states.
@@ -865,7 +865,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
         \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
     */
-    void rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+    void rasterizeX(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
 
 
     /** Get the required raytracing maximum attribute size for this scene.
@@ -1114,9 +1114,9 @@ public:
     
     void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
-    Shader::DefineList getSceneSDFGridDefines() const;
+    DefineList getSceneSDFGridDefines() const;
 
-    Shader::DefineList getSceneLightSamplersDefines() const;
+    DefineList getSceneLightSamplersDefines() const;
 
     /** Set the SDF grid config if this scene contains any SDF grid geometry.
     */

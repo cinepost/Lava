@@ -32,7 +32,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/State/GraphicsState.h"
-#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/Program.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "MeshLightData.slang"
 
@@ -195,7 +195,7 @@ protected:
     void syncCPUData() const;
 
     // Internal state
-    Device::SharedPtr                       mpDevice = nullptr;
+    Device::SharedPtr                       mpDevice;
     std::weak_ptr<Scene>                    mpScene;                ///< Weak pointer to scene (scene owns LightCollection).
     
     std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.
@@ -222,10 +222,9 @@ protected:
     Sampler::SharedPtr                      mpSamplerState;         ///< Material sampler for emissive textures.
 
     // Shader programs.
-    struct
-    {
-        GraphicsProgram::SharedPtr          pProgram;
-        GraphicsVars::SharedPtr             pVars;
+    struct {
+        Program::SharedPtr                  pProgram;
+        ProgramVars::SharedPtr             pVars;
         GraphicsState::SharedPtr            pState;
         Sampler::SharedPtr                  pPointSampler;      ///< Point sampler for fetching individual texels in integrator. Must use same wrap mode etc. as material sampler.
         Buffer::SharedPtr                   pResultBuffer;      ///< The output of the integration pass is written here. Using raw buffer for fp32 compatibility.

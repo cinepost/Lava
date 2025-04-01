@@ -100,7 +100,7 @@ public:
 */
 class FALCOR_API ParameterBlock {
 public:
-    using SharedPtr = ParameterBlockSharedPtr<ParameterBlock>;
+    using SharedPtr = std::shared_ptr<ParameterBlock>;
     using SharedConstPtr = std::shared_ptr<const ParameterBlock>;
     ~ParameterBlock();
 

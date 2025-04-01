@@ -27,7 +27,40 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 
+#include "Framework.h"
+#include <backward/backward.hpp> // TODO: Replace with C++20 <stacktrace> when available.
+
+
 namespace Falcor {
+
+/// Global error diagnostic flags.
+static ErrorDiagnosticFlags gErrorDiagnosticFlags = ErrorDiagnosticFlags::BreakOnThrow | ErrorDiagnosticFlags::BreakOnAssert;
+
+void throwException(const fstd::source_location& loc, std::string_view msg) {
+    std::string fullMsg = fmt::format("{}\n\n{}:{} ({})", msg, loc.file_name(), loc.line(), loc.function_name());
+
+    if (is_set(gErrorDiagnosticFlags, ErrorDiagnosticFlags::AppendStackTrace))
+        fullMsg += fmt::format("\n\nStacktrace:\n{}", getStackTrace(1));
+
+    if (is_set(gErrorDiagnosticFlags, ErrorDiagnosticFlags::BreakOnThrow) && isDebuggerPresent())
+        debugBreak();
+
+    throw RuntimeError(fullMsg);
+}
+
+void reportAssertion(const fstd::source_location& loc, std::string_view cond, std::string_view msg) {
+    std::string fullMsg = fmt::format(
+        "Assertion failed: {}\n{}{}\n{}:{} ({})", cond, msg, msg.empty() ? "" : "\n", loc.file_name(), loc.line(), loc.function_name()
+    );
+
+    if (is_set(gErrorDiagnosticFlags, ErrorDiagnosticFlags::AppendStackTrace))
+        fullMsg += fmt::format("\n\nStacktrace:\n{}", getStackTrace(1));
+
+    if (is_set(gErrorDiagnosticFlags, ErrorDiagnosticFlags::BreakOnAssert) && isDebuggerPresent())
+        debugBreak();
+
+    throw AssertionError(fullMsg);
+}
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(ComparisonFunc) {

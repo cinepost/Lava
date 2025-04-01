@@ -443,8 +443,8 @@ MaterialSystem::MaterialStats MaterialSystem::getStats() const {
 	return s;
 }
 
-Shader::DefineList MaterialSystem::getDefaultDefines() {
-	Shader::DefineList defines;
+DefineList MaterialSystem::getDefaultDefines() {
+	DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", "0");
@@ -455,12 +455,12 @@ Shader::DefineList MaterialSystem::getDefaultDefines() {
 	return defines;
 }
 
-Shader::DefineList MaterialSystem::getDefines() const {
+DefineList MaterialSystem::getDefines() const {
 	size_t materialInstanceByteSize = 0;
 	for (auto& it : mMaterials)
 		materialInstanceByteSize = std::max(materialInstanceByteSize, it->getMaterialInstanceByteSize());
 
-	Shader::DefineList defines;
+	DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
 	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", std::to_string(mUDIMTextureCount));
@@ -471,15 +471,15 @@ Shader::DefineList MaterialSystem::getDefines() const {
 	return defines;
 }
 
-Program::TypeConformanceList MaterialSystem::getTypeConformances() const {
-	Program::TypeConformanceList typeConformances;
+TypeConformanceList MaterialSystem::getTypeConformances() const {
+	TypeConformanceList typeConformances;
 	for (const auto type : mMaterialTypes) {
 		typeConformances.add(getTypeConformances(type));
 	}
 	return typeConformances;
 }
 
-Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const {
+TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const {
 	switch (type) {
 		case MaterialType::Standard: return Program::TypeConformanceList{ {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
 		case MaterialType::Hair: return Program::TypeConformanceList{ {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
@@ -490,7 +490,7 @@ Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialT
 
 void MaterialSystem::createParameterBlock() {
 	// Create parameter block.
-	Program::DefineList defines = getDefines();
+	DefineList defines = getDefines();
 	defines.add("MATERIAL_SYSTEM_PARAMETER_BLOCK");
 	auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
 	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gMaterialsBlock");

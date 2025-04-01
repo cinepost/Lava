@@ -8,9 +8,10 @@ file( GLOB SOURCES
     ./*.cpp
 )
 
-include_directories(
-  ${HOUDINI_ROOT}/toolkit/include
-)
+#include_directories(
+#  ${HOUDINI_ROOT}/toolkit/include
+#)
+
 if(WIN32)
 add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL)
 else()

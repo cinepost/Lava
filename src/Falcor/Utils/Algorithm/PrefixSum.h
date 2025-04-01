@@ -30,7 +30,7 @@
 
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/State/ComputeState.h"
-#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
 namespace Falcor {
@@ -68,11 +68,11 @@ class Device;
 
         ComputeState::SharedPtr     mpComputeState;
 
-        ComputeProgram::SharedPtr   mpPrefixSumGroupProgram;
-        ComputeVars::SharedPtr      mpPrefixSumGroupVars;
+        Program::SharedPtr          mpPrefixSumGroupProgram;
+        ProgramVars::SharedPtr      mpPrefixSumGroupVars;
 
-        ComputeProgram::SharedPtr   mpPrefixSumFinalizeProgram;
-        ComputeVars::SharedPtr      mpPrefixSumFinalizeVars;
+        Program::SharedPtr          mpPrefixSumFinalizeProgram;
+        ProgramVars::SharedPtr      mpPrefixSumFinalizeVars;
 
         Buffer::SharedPtr           mpPrefixGroupSums;              ///< Temporary buffer for prefix sum computation.
         

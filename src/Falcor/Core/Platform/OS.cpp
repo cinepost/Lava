@@ -25,13 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <fstream>
-#include <regex>
-
 #include "stdafx.h"
+
+#include "OS.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
-#include "OS.h"
+
+#include <backward/backward.hpp>    // TODO: Replace with C++20 <stacktrace> when available.
+#include <fmt/format.h>             // TODO C++20: Replace with <format>
+
+#include <fstream>
+#include <regex>
 
 #ifndef PROJECT_DIR
 #define PROJECT_DIR "/home/max/dev/Falcor/"
@@ -137,9 +141,8 @@ inline std::vector<std::string> getInitialDataDirectories() {
 #endif
 
     // Add additional media folders.
-    std::string mediaFolders;
-    if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", mediaFolders)) {
-        auto folders = splitString(mediaFolders, ";");
+    if (auto mediaFolders = getEnvironmentVariable("FALCOR_MEDIA_FOLDERS")) {
+        auto folders = splitString(*mediaFolders, ";");
         directories.insert(directories.end(), folders.begin(), folders.end());
     }
 
@@ -166,18 +169,10 @@ void removeDataDirectory(const std::string& dir) {
 }
 
 bool isDevelopmentMode() {
-    static bool initialized = false;
-    static bool devMode = false;
-
-    if (!initialized) {
-        std::string value;
-        #ifdef DEBUG
-        devMode = true;
-        #else
-        devMode = getEnvironmentVariable("FALCOR_DEVMODE", value) && value == "1";
-        #endif
-        initialized = true;
-    }
+    static bool devMode = []() {
+        auto value = getEnvironmentVariable("FALCOR_DEVMODE");
+        return value && *value == "1";
+    }();
 
     return devMode;
 }
@@ -389,6 +384,37 @@ std::string readFile(const std::string& filename) {
     filestream.seekg(0, std::ios::beg);
     str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
     return str;
+}
+
+std::string getStackTrace(size_t skip, size_t maxDepth) {
+    // We need to initialize the resolver before taking the stack trace,
+    // otherwise we get invalid stack traces.
+    backward::TraceResolver resolver;
+
+    // Capture stack trace.
+    backward::StackTrace st;
+    st.load_here(maxDepth == 0 ? 1000 : maxDepth);
+    st.skip_n_firsts(skip);
+
+    // We implement our own stack trace formatting here as the default printer in backward is not printing
+    // source locations in a way that is parsable by typical IDEs (file:line).
+    resolver.load_stacktrace(st);
+    std::string result;
+    for (size_t i = 0; i < st.size(); ++i) {
+        auto trace = resolver.resolve(st[i]);
+
+        result += fmt::format(" {}#", i);
+        if (!trace.source.filename.empty()) {
+            result += fmt::format(" {} at {}:{}", trace.source.function, trace.source.filename, trace.source.line);
+        } else {
+            result += fmt::format(" 0x{:016x} ({})", reinterpret_cast<uintptr_t>(trace.addr), trace.object_function);
+            if (!trace.object_filename.empty())
+                result += fmt::format(" in {}", trace.object_filename);
+        }
+        result += "\n";
+    }
+
+    return result;
 }
 
 }  // namespace Falcor

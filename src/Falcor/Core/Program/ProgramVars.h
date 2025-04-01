@@ -48,34 +48,35 @@ class ComputeContext;
     It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
 */
 class FALCOR_API ProgramVars : public ParameterBlock, public inherit_shared_from_this<ParameterBlock, ProgramVars> {
-public:
-    using SharedPtr = std::shared_ptr<ProgramVars>;
+    public:
+        using SharedPtr = std::shared_ptr<ProgramVars>;
 
-    /**
-     * Create a new graphics vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pReflector A program reflection object containing the requested declarations.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+        /**
+         * Create a new graphics vars object.
+         * @param[in] pDevice GPU device.
+         * @param[in] pReflector A program reflection object containing the requested declarations.
+         * @return A new object, or an exception is thrown if creation failed.
+         */
+        static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-    /**
-     * Create a new graphics vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program* pProg);
+        /**
+         * Create a new graphics vars object.
+         * @param[in] pDevice GPU device.
+         * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
+         * @return A new object, or an exception is thrown if creation failed.
+         */
+        static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program* pProg);
 
-    /**
-     * Get the program reflection interface
-     */
-    const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
+        /**
+         * Get the program reflection interface
+         */
+        const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
-protected:
-    ProgramVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+    public:
+        ProgramVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-    ProgramReflection::SharedConstPtr mpReflector;
+    protected:
+        ProgramReflection::SharedConstPtr mpReflector;
 };
 
 class RtStateObject;
@@ -84,49 +85,50 @@ class RtStateObject;
  * This class manages a raytracing program's reflection and variable assignment.
  */
 class FALCOR_API RtProgramVars : public ProgramVars, public inherit_shared_from_this<ProgramVars, RtProgramVars> {
-public:
-    using SharedPtr = std::shared_ptr<RtProgramVars>;
+    public:
+        using SharedPtr = std::shared_ptr<RtProgramVars>;
 
-    /**
-     * Create a new ray tracing vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pProgram The ray tracing program.
-     * @param[in] pBindingTable The raytracing binding table.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static RtProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+        /**
+         * Create a new ray tracing vars object.
+         * @param[in] pDevice GPU device.
+         * @param[in] pProgram The ray tracing program.
+         * @param[in] pBindingTable The raytracing binding table.
+         * @return A new object, or an exception is thrown if creation failed.
+         */
+        static RtProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-    bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
+        bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
 
-    ShaderTablePtr getShaderTable() const { return mpShaderTable; }
-    uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
-    uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
-    uint32_t getRayTypeCount() const { return mRayTypeCount; }
-    uint32_t getGeometryCount() const { return mGeometryCount; }
+        ShaderTablePtr getShaderTable() const { return mpShaderTable; }
+        uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
+        uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+        uint32_t getRayTypeCount() const { return mRayTypeCount; }
+        uint32_t getGeometryCount() const { return mGeometryCount; }
 
-    const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
+        const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
 
-private:
-    struct EntryPointGroupInfo {
-        int32_t entryPointGroupIndex = -1;
-    };
+    public:
+        RtProgramVars(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-    using VarsVector = std::vector<EntryPointGroupInfo>;
+    private:
+        struct EntryPointGroupInfo {
+            int32_t entryPointGroupIndex = -1;
+        };
 
-    RtProgramVars(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+        using VarsVector = std::vector<EntryPointGroupInfo>;
 
-    void init(const RtBindingTable::SharedPtr& pBindingTable);
+        void init(const RtBindingTable::SharedPtr& pBindingTable);
 
-    uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
-    uint32_t mGeometryCount = 0;                        ///< Number of geometries.
-    std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
+        uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
+        uint32_t mGeometryCount = 0;                        ///< Number of geometries.
+        std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
 
-    mutable ShaderTablePtr mpShaderTable;                    ///< GPU shader table.
-    mutable RtStateObject* mpCurrentRtStateObject = nullptr; ///< The RtStateObject used to create the current shader table.
+        mutable ShaderTablePtr mpShaderTable;                    ///< GPU shader table.
+        mutable RtStateObject* mpCurrentRtStateObject = nullptr; ///< The RtStateObject used to create the current shader table.
 
-    VarsVector mRayGenVars;
-    VarsVector mMissVars;
-    VarsVector mHitVars;
+        VarsVector mRayGenVars;
+        VarsVector mMissVars;
+        VarsVector mHitVars;
 };
 
 }  // namespace Falcor

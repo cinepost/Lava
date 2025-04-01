@@ -47,54 +47,54 @@ using namespace Falcor;
 #endif
 
 class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass> {
- public:
-    using SharedPtr = std::shared_ptr<DepthPass>;
-    using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
-    static const Info kInfo;
+   public:
+      using SharedPtr = std::shared_ptr<DepthPass>;
+      using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
+      static const Info kInfo;
 
-    /** Create a new object
-    */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+      /** Create a new object
+      */
+      static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual Dictionary getScriptingDictionary() override;
+      virtual RenderPassReflection reflect(const CompileData& compileData) override;
+      virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+      virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+      virtual Dictionary getScriptingDictionary() override;
 
-    DepthPass& setDepthBufferFormat(ResourceFormat format);
-    DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-    void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
+      DepthPass& setDepthBufferFormat(ResourceFormat format);
+      DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+      void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
-    void setAlphaTestDisabled(bool value);
-    void setOutputSize(const uint2& outputSize);
+      void setAlphaTestDisabled(bool value);
+      void setOutputSize(const uint2& outputSize);
 
- private:
-    DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
-    void parseDictionary(const Dictionary& dict);
+   private:
+      DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
+      void parseDictionary(const Dictionary& dict);
 
-    uint32_t mFrameSampleCount = 16;
-    uint32_t mSuperSampleCount = 1;  // MSAA stuff
+      uint32_t mFrameSampleCount = 16;
+      uint32_t mSuperSampleCount = 1;  // MSAA stuff
 
-    uint32_t mSampleNumber = 0;
+      uint32_t mSampleNumber = 0;
 
-    Sampler::SharedPtr                  mpDepthSampler;
-    SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
+      Sampler::SharedPtr                  mpDepthSampler;
+      SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
 
 
-    // Common stuff
-    bool        mAlphaTestDisabled = true;
+      // Common stuff
+      bool        mAlphaTestDisabled = true;
 
-    Fbo::SharedPtr              mpFbo;
-    GraphicsState::SharedPtr    mpState;
-    GraphicsVars::SharedPtr     mpVars;
-    RasterizerState::SharedPtr  mpRsState;
-    ResourceFormat              mDepthFormat = ResourceFormat::D32Float; //ResourceFormat::D32FloatS8X24
-    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
-    Scene::SharedPtr            mpScene;
-    uint2 mOutputSize = {};
-    bool mUseAlphaTest = false;
+      Fbo::SharedPtr               mpFbo;
+      GraphicsState::SharedPtr     mpState;
+      ProgramVars::SharedPtr       mpVars;
+      RasterizerState::SharedPtr   mpRsState;
+      ResourceFormat               mDepthFormat = ResourceFormat::D32Float; //ResourceFormat::D32FloatS8X24
+      RasterizerState::CullMode    mCullMode = RasterizerState::CullMode::None;
+      Scene::SharedPtr             mpScene;
+      uint2 mOutputSize = {};
+      bool mUseAlphaTest = false;
 
-    bool mDirty = true;
+      bool mDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_

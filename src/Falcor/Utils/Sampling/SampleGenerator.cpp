@@ -30,46 +30,37 @@
 
 namespace Falcor {
 
-    static std::map<uint32_t, std::function<SampleGenerator::SharedPtr()>> sFactory;
+static std::map<uint32_t, std::function<SampleGenerator::SharedPtr()>> sFactory;
 
-    SampleGenerator::SharedPtr SampleGenerator::create(uint32_t type)
-    {
-        if (auto it = sFactory.find(type); it != sFactory.end())
-        {
-            return it->second();
-        }
-        else
-        {
-            throw std::runtime_error("Can't create SampleGenerator. Unknown type");
-        }
+SampleGenerator::SharedPtr SampleGenerator::create(uint32_t type) {
+    if (auto it = sFactory.find(type); it != sFactory.end()) {
+        return it->second();
+    } else {
+        throw std::runtime_error("Can't create SampleGenerator. Unknown type");
     }
+}
 
-    Shader::DefineList SampleGenerator::getDefines() const
-    {
-        Shader::DefineList defines;
-        defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
-        return defines;
-    }
+DefineList SampleGenerator::getDefines() const {
+    DefineList defines;
+    defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
+    return defines;
+}
 
-    void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc)
-    {
-        sFactory[type] = createFunc;
-    }
+void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc) {
+    sFactory[type] = createFunc;
+}
 
-    void SampleGenerator::registerAll()
-    {
-        registerType(SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_TINY_UNIFORM)); });
-        registerType(SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_UNIFORM)); });
-    }
+void SampleGenerator::registerAll() {
+    registerType(SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_TINY_UNIFORM)); });
+    registerType(SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_UNIFORM)); });
+}
 
-    // Automatically register basic sampler types.
-    static struct RegisterSampleGenerators
-    {
-        RegisterSampleGenerators()
-        {
-            SampleGenerator::registerAll();
-        }
+// Automatically register basic sampler types.
+static struct RegisterSampleGenerators {
+    RegisterSampleGenerators() {
+        SampleGenerator::registerAll();
     }
-    sRegisterSampleGenerators;
+}
+sRegisterSampleGenerators;
 
 }  // namespace Falcor

@@ -128,7 +128,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] vertexCount Number of vertices to draw
         \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
     */
-    void draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation);
+    void draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation);
 
     /** Ordered instanced draw call.
         \param[in] vertexCount Number of vertices to draw
@@ -136,14 +136,14 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
         \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
     */
-    void drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation);
+    void drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation);
 
     /** Indexed draw call.
         \param[in] indexCount Number of indices to draw
         \param[in] startIndexLocation The location of the first index to read from the index buffer (offset in indices)
         \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
     */
-    void drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
+    void drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
     /** Indexed instanced draw call.
         \param[in] indexCount Number of indices to draw per instance
@@ -152,7 +152,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
         \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
     */
-    void drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
+    void drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
 
     /** Executes an indirect draw call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
@@ -161,14 +161,14 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have to be a dedicated buffer
         \param[in] countBufferOffset Offset into pCountBuffer to read the value from
     */
-    void drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
+    void drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
     /** Executes an indirect draw-indexed call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
         \param[in] pArgBuffer Buffer containing draw arguments
         \param[in] argBufferOffset Offset into buffer to read arguments from
     */
-    void drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset);
+    void drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset);
 
     /** Executes an indirect draw-indexed call.
         \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
@@ -177,7 +177,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have to be a dedicated buffer
         \param[in] countBufferOffset Offset into pCountBuffer to read the value from
     */
-    void drawIndexedIndirectCount(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
+    void drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
 
     /** Blits (low-level copy) an SRV into an RTV.
@@ -244,11 +244,11 @@ private:
     Falcor::BlitToBufferContext& getBlitToBufferContext();
 
 #if defined(FALCOR_VK)
-        bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
-        bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
+        bool applyGraphicsVars(ProgramVars* pVars, RootSignature* pRootSignature);
+        bool prepareForDraw(GraphicsState* pState, ProgramVars* pVars);
 #endif
         StateBindFlags mBindFlags = StateBindFlags::All;
-        GraphicsVars* mpLastBoundGraphicsVars = nullptr;
+        ProgramVars* mpLastBoundGraphicsVars = nullptr;
 };
 
 enum_class_operators(RenderContext::StateBindFlags);

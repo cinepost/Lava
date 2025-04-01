@@ -32,7 +32,6 @@
 #include "Enum.h"
 
 #include <fstd/source_location.h> // TODO C++20: Replace with <source_location>
-#include <fmt/format.h>           // TODO C++20: Replace with <format>
 
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
@@ -437,6 +436,61 @@ public:
 }  // namespace Falcor
 
 namespace Falcor {
+
+//
+// Exceptions.
+//
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4275) // allow dllexport on classes dervied from STL
+#endif
+
+/**
+ * Base class for all Falcor exceptions.
+ */
+class FALCOR_API Exception : public std::exception
+{
+public:
+    Exception() noexcept {}
+    Exception(std::string_view what) : mpWhat(std::make_shared<std::string>(what)) {}
+    Exception(const Exception& other) noexcept { mpWhat = other.mpWhat; }
+    virtual ~Exception() override {}
+    virtual const char* what() const noexcept override { return mpWhat ? mpWhat->c_str() : ""; }
+
+protected:
+    // Message is stored as a reference counted string in order to allow copy constructor to be noexcept.
+    std::shared_ptr<std::string> mpWhat;
+};
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+/**
+ * Exception to be thrown when an error happens at runtime.
+ */
+class FALCOR_API RuntimeError : public Exception
+{
+public:
+    RuntimeError() noexcept {}
+    RuntimeError(std::string_view what) : Exception(what) {}
+    RuntimeError(const RuntimeError& other) noexcept { mpWhat = other.mpWhat; }
+    virtual ~RuntimeError() override {}
+};
+
+/**
+ * Exception to be thrown on FALCOR_ASSERT.
+ */
+class FALCOR_API AssertionError : public Exception
+{
+public:
+    AssertionError() noexcept {}
+    AssertionError(std::string_view what) : Exception(what) {}
+    AssertionError(const AssertionError& other) noexcept { mpWhat = other.mpWhat; }
+    virtual ~AssertionError() override {}
+};
+
 
 //
 // Exception helpers.

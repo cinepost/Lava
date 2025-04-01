@@ -184,59 +184,59 @@ void ShaderVar::setBlob(void const* data, size_t size) const {
 // Resource binding
 //
 
-void ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const {
+void ShaderVar::setBuffer(const Buffer::SharedPtr& pBuffer) const {
     mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-ref<Buffer> ShaderVar::getBuffer() const {
+Buffer::SharedPtr ShaderVar::getBuffer() const {
     return mpBlock->getBuffer(mOffset);
 }
 
-void ShaderVar::setTexture(const ref<Texture>& pTexture) const {
+void ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const {
     mpBlock->setTexture(mOffset, pTexture);
 }
 
-ref<Texture> ShaderVar::getTexture() const {
+Texture::SharedPtr ShaderVar::getTexture() const {
     return mpBlock->getTexture(mOffset);
 }
 
-void ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const {
+void ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const {
     mpBlock->setSrv(mOffset, pSrv);
 }
 
-ref<ShaderResourceView> ShaderVar::getSrv() const {
+ShaderResourceView::SharedPtr ShaderVar::getSrv() const {
     return mpBlock->getSrv(mOffset);
 }
 
-void ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const {
+void ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const {
     mpBlock->setUav(mOffset, pUav);
 }
 
-ref<UnorderedAccessView> ShaderVar::getUav() const {
+UnorderedAccessView::SharedPtr ShaderVar::getUav() const {
     return mpBlock->getUav(mOffset);
 }
 
-void ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const {
+void ShaderVar::setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const {
     mpBlock->setAccelerationStructure(mOffset, pAccl);
 }
 
-ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const {
+RtAccelerationStructure::SharedPtr ShaderVar::getAccelerationStructure() const {
     return mpBlock->getAccelerationStructure(mOffset);
 }
 
-void ShaderVar::setSampler(const ref<Sampler>& pSampler) const {
+void ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const {
     mpBlock->setSampler(mOffset, pSampler);
 }
 
-ref<Sampler> ShaderVar::getSampler() const {
+Sampler::SharedPtr ShaderVar::getSampler() const {
     return mpBlock->getSampler(mOffset);
 }
 
-void ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const {
+void ShaderVar::setParameterBlock(const ParameterBlock::SharedPtr& pBlock) const {
     mpBlock->setParameterBlock(mOffset, pBlock);
 }
 
-ref<ParameterBlock> ShaderVar::getParameterBlock() const {
+ParameterBlock::SharedPtr ShaderVar::getParameterBlock() const {
     return mpBlock->getParameterBlock(mOffset);
 }
 
@@ -335,19 +335,19 @@ void const* ShaderVar::getRawData() const {
     return (uint8_t*)(mpBlock->getRawData()) + mOffset.getUniform().getByteOffset();
 }
 
-void ShaderVar::setImpl(const ref<Texture>& pTexture) const {
+void ShaderVar::setImpl(const Texture::SharedPtr& pTexture) const {
     mpBlock->setTexture(mOffset, pTexture);
 }
 
-void ShaderVar::setImpl(const ref<Sampler>& pSampler) const {
+void ShaderVar::setImpl(const Sampler::SharedPtr& pSampler) const {
     mpBlock->setSampler(mOffset, pSampler);
 }
 
-void ShaderVar::setImpl(const ref<Buffer>& pBuffer) const {
+void ShaderVar::setImpl(const Buffer::SharedPtr& pBuffer) const {
     mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-void ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const {
+void ShaderVar::setImpl(const ParameterBlock::SharedPtr& pBlock) const {
     mpBlock->setParameterBlock(mOffset, pBlock);
 }
 

@@ -454,6 +454,14 @@ dlldecl void* getDllProcAddress(DllHandle dll, const std::string& funcName);
 dlldecl void postQuitMessage(int32_t exitCode);
 /*! @} */
 
+/**
+ * Get a stack trace as a string.
+ * @param[in] skip Number of stack frames to skip.
+ * @param[in] maxDepth Maximum number of frames (0 = unlimited).
+ * @return The stack trace.
+ */
+FALCOR_API std::string getStackTrace(size_t skip = 0, size_t maxDepth = 0);
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_PLATFORM_OS_H_

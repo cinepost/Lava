@@ -35,10 +35,9 @@
 #include <type_traits>
 #include <algorithm>
 #include <vector>
-#include <fmt/core.h>
 
-namespace Falcor
-{
+namespace Falcor {
+
 // Helper using ADL to find EnumInfo in other namespaces.
 template<typename T>
 using EnumInfo = decltype(falcorFindEnumInfoADL(std::declval<T>()));
@@ -59,8 +58,7 @@ inline constexpr bool has_enum_info_v = has_enum_info<T>::value;
  * Throws if the enum value is not found in the registered enum information.
  */
 template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
-inline const std::string& enumToString(T value)
-{
+inline const std::string& enumToString(T value) {
     const auto& items = EnumInfo<T>::items();
     auto it = std::find_if(items.begin(), items.end(), [value](const auto& item) { return item.first == value; });
     if (it == items.end()) {
@@ -75,8 +73,7 @@ inline const std::string& enumToString(T value)
  * Throws if the string is not found in the registered enum information.
  */
 template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
-inline T stringToEnum(std::string_view name)
-{
+inline T stringToEnum(std::string_view name) {
     const auto& items = EnumInfo<T>::items();
     auto it = std::find_if(items.begin(), items.end(), [name](const auto& item) { return item.second == name; });
     if (it == items.end()) {
@@ -90,8 +87,7 @@ inline T stringToEnum(std::string_view name)
  * Check if an enum has a value with the given name.
  */
 template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
-inline bool enumHasValue(std::string_view name)
-{
+inline bool enumHasValue(std::string_view name) {
     const auto& items = EnumInfo<T>::items();
     auto it = std::find_if(items.begin(), items.end(), [name](const auto& item) { return item.second == name; });
     return it != items.end();
@@ -102,14 +98,11 @@ inline bool enumHasValue(std::string_view name)
  * Throws if any of the flags are not found in the registered enum information.
  */
 template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
-inline std::vector<std::string> flagsToStringList(T flags)
-{
+inline std::vector<std::string> flagsToStringList(T flags) {
     std::vector<std::string> list;
     const auto& items = EnumInfo<T>::items();
-    for (const auto& item : items)
-    {
-        if (is_set(flags, item.first))
-        {
+    for (const auto& item : items) {
+        if (is_set(flags, item.first)) {
             list.push_back(item.second);
             flip_bit(flags, item.first);
         }
@@ -124,8 +117,7 @@ inline std::vector<std::string> flagsToStringList(T flags)
  * Throws if any of the strings are not found in the registered enum information.
  */
 template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
-inline T stringListToFlags(const std::vector<std::string>& list)
-{
+inline T stringListToFlags(const std::vector<std::string>& list) {
     T flags = T(0);
     for (const auto& name : list)
         flags |= stringToEnum<T>(name);
@@ -179,16 +171,5 @@ inline T stringListToFlags(const std::vector<std::string>& list)
     {                                                                      \
         return T##_info{};                                                 \
     }
-
-/// Enum formatter.
-template<typename T>
-struct fmt::formatter<T, std::enable_if_t<Falcor::has_enum_info_v<T>, char>> : formatter<std::string>
-{
-    template<typename FormatContext>
-    auto format(const T& e, FormatContext& ctx)
-    {
-        return formatter<std::string>::format(Falcor::enumToString(e), ctx);
-    }
-};
 
 #endif  // FALCOR_CORE_ENUM_H_

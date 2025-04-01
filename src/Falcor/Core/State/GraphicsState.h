@@ -38,9 +38,7 @@
 #include "Core/Program/ProgramVars.h"
 
 namespace Falcor {
-    class GraphicsVars;
     class Vao;
-    class GraphicsProgram;
 
     /** Pipeline state.
         This class contains the entire state required by a single draw-call. It's not an immutable object - you can change it dynamically during rendering.
@@ -222,7 +220,7 @@ namespace Falcor {
 
         /** Get the active graphics state object.
         */
-        virtual GraphicsStateObject::SharedPtr getGSO(const GraphicsVars* pVars);
+        virtual GraphicsStateObject::SharedPtr getGSO(const ProgramVars* pVars);
 
         /** Get the desc
         */
@@ -231,7 +229,7 @@ namespace Falcor {
     private:
         GraphicsState(Device::SharedPtr pDevice);
 
-        Device::SharedPtr mpDevice = nullptr;
+        Device::SharedPtr mpDevice;
         Vao::SharedConstPtr mpVao;
         Fbo::SharedPtr mpFbo;
         Program::SharedPtr mpProgram;

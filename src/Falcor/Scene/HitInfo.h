@@ -56,7 +56,7 @@ class dlldecl HitInfo {
 
 		/** Returns defines needed packing/unpacking a HitInfo struct.
 		*/
-		Shader::DefineList getDefines() const;
+		DefineList getDefines() const;
 
 		/** Returns the resource format required for encoding packed hit information.
 		*/

@@ -30,6 +30,7 @@
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Utils/Math/MathConstants.slangh"
@@ -64,7 +65,7 @@ class PASS_API AccumulatePass : public RenderPass {
 
     struct FilterPass {
         ComputePass::SharedPtr      pPass;
-        ComputeVars::SharedPtr      pVars;
+        ProgramVars::SharedPtr      pVars;
         ComputeState::SharedPtr     pState;
     };
 
@@ -110,8 +111,8 @@ class PASS_API AccumulatePass : public RenderPass {
     // Internal state
     Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
     Camera::SharedPtr           mpCamera;                       ///< Current scene camera.
-    std::map<Precision, ComputeProgram::SharedPtr> mpProgram;   ///< Accumulation programs, one per mode.
-    ComputeVars::SharedPtr      mpVars;                         ///< Program variables.
+    std::map<Precision, Program::SharedPtr> mpProgram;          ///< Accumulation programs, one per mode.
+    ProgramVars::SharedPtr      mpVars;                         ///< Program variables.
     ComputeState::SharedPtr     mpState;
     std::array<FilterPass, 2>   mFilterPasses;                  ///< Horizontal and vertical sample plane filtering passes data.
     SampleGenerator::SharedPtr  mpSampleGenerator;              ///< GPU random sample generator.

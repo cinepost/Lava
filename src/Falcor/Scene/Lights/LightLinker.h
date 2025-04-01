@@ -38,7 +38,7 @@
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/State/GraphicsState.h"
-#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/Program.h"
 
 #include "Falcor/Scene/Raytracing.h"
 
@@ -98,13 +98,13 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
             This is the minimal set of defines needed for a program to compile that imports the material system module.
             Note that the actual defines need to be set at runtime, call getDefines() to query them.
         */
-        static Shader::DefineList getDefaultDefines();
+        static DefineList getDefaultDefines();
 
         /** Get shader defines.
             These need to be set before binding the material system parameter block.
             \return List of shader defines.
         */
-        Shader::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Updates the light collection to the current state of the scene.
         */
@@ -215,7 +215,7 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         void syncCPUData() const;
 
         // Internal state
-        Device::SharedPtr                           mpDevice = nullptr;
+        Device::SharedPtr                           mpDevice;
         std::weak_ptr<Scene>                        mpScene;                        ///< Weak pointer to scene (scene owns LightLinker).
         
         mutable CPUOutOfDateFlags                   mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.

@@ -82,13 +82,13 @@ class FALCOR_API RtBindingTable : public std::enable_shared_from_this<RtBindingT
 		 */
 		void setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID);
 
-	    /**
-	     * Set hit group shader ID.
-	     * @param[in] rayType The ray type.
-	     * @param[in] geometryIDs The geometry IDs in the scene.
-	     * @param[in] shaderID The shader ID in the program.
-	     */
-	    void setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID);
+    /**
+     * Set hit group shader ID.
+     * @param[in] rayType The ray type.
+     * @param[in] geometryIDs The geometry IDs in the scene.
+     * @param[in] shaderID The shader ID in the program.
+     */
+    void setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID);
 	    
 
 		/** Get the raygen shader ID.
@@ -109,18 +109,17 @@ class FALCOR_API RtBindingTable : public std::enable_shared_from_this<RtBindingT
 		*/
 		ShaderID getHitGroup(uint32_t rayType, uint32_t geometryID) const { return mShaderTable[getHitGroupOffset(rayType, geometryID)]; }
 
-
 		uint32_t getMissCount() const { return mMissCount; }
 		uint32_t getRayTypeCount() const { return mRayTypeCount; }
 		uint32_t getGeometryCount() const { return mGeometryCount; }
 
-	private:
+	public:
 		RtBindingTable() = delete;
 		RtBindingTable(const RtBindingTable&) = delete;
 		RtBindingTable& operator=(const RtBindingTable&) = delete;
-
 		RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount);
 
+	private:
 		uint32_t getMissOffset(uint32_t missIndex) const {
 			assert(missIndex < mMissCount);
 			uint32_t offset = 1 + missIndex;

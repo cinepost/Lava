@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RtBindingTable.h"
-#include "Falcor/Core/Error.h"
+
 
 namespace Falcor {
 
@@ -39,8 +39,8 @@ const uint32_t kMaxRayTypeCount = (1 << 4);
 
 } // namespace
 
-ref<RtBindingTable> RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount) {
-    return ref<RtBindingTable>(new RtBindingTable(missCount, rayTypeCount, geometryCount));
+RtBindingTable::SharedPtr RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount) {
+    return std::make_shared<RtBindingTable>(missCount, rayTypeCount, geometryCount);
 }
 
 RtBindingTable::RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
@@ -73,13 +73,6 @@ void RtBindingTable::setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID
 void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID) {
     for (uint32_t geometryID : geometryIDs) {
         setHitGroup(rayType, geometryID, shaderID);
-    }
-}
-
-void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<GlobalGeometryID>& geometryIDs, ShaderID shaderID) {
-    static_assert(std::is_same_v<GlobalGeometryID::IntType, uint32_t>);
-    for (GlobalGeometryID geometryID : geometryIDs) {
-        setHitGroup(rayType, geometryID.get(), shaderID);
     }
 }
 

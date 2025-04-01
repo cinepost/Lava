@@ -30,10 +30,6 @@
 
 #include "ProgramReflection.h"
 #include "DefineList.h"
-//#include "Falcor/Core/Macros.h"
-//#include "Falcor/Core/Object.h"
-//#include "Falcor/Core/API/Types.h"
-//#include "Falcor/Core/API/Handles.h"
 
 #include <memory>
 #include <string>
@@ -45,26 +41,26 @@
 
 namespace Falcor {
 
-    class Device;
+class Device;
 
-    class FALCOR_API Program;
-    class FALCOR_API ProgramVars;
-    class FALCOR_API ProgramVersion;
+class FALCOR_API Program;
+class FALCOR_API ProgramVars;
+class FALCOR_API ProgramVersion;
 
-    /**
-     * Represents a single program entry point and its associated kernel code.
-     *
-     * In GFX, we do not generate actual shader code at program creation.
-     * The actual shader code will only be generated and cached when all specialization arguments
-     * are known, which is right before a draw/dispatch command is issued, and this is done
-     * internally within GFX.
-     * The `EntryPointKernel` implementation here serves as a helper utility for application code that
-     * uses raw graphics API to get shader kernel code from an ordinary slang source.
-     * Since most users/render-passes do not need to get shader kernel code, we defer
-     * the call to slang's `getEntryPointCode` function until it is actually needed.
-     * to avoid redundant shader compiler invocation.
-     */
-    class FALCOR_API EntryPointKernel : public std::enable_shared_from_this<EntryPointKernel> {
+/**
+ * Represents a single program entry point and its associated kernel code.
+ *
+ * In GFX, we do not generate actual shader code at program creation.
+ * The actual shader code will only be generated and cached when all specialization arguments
+ * are known, which is right before a draw/dispatch command is issued, and this is done
+ * internally within GFX.
+ * The `EntryPointKernel` implementation here serves as a helper utility for application code that
+ * uses raw graphics API to get shader kernel code from an ordinary slang source.
+ * Since most users/render-passes do not need to get shader kernel code, we defer
+ * the call to slang's `getEntryPointCode` function until it is actually needed.
+ * to avoid redundant shader compiler invocation.
+ */
+class FALCOR_API EntryPointKernel : public std::enable_shared_from_this<EntryPointKernel> {
     public:
 
         using SharedPtr = std::shared_ptr<EntryPointKernel>;
@@ -122,12 +118,12 @@ namespace Falcor {
         ShaderType mType;
         std::string mEntryPointName;
         mutable Slang::ComPtr<ISlangBlob> mpBlob;
-    };
+};
 
 
-    /** A collection of one or more entry points in a program kernels object.
-    */
-    class FALCOR_API EntryPointGroupKernels : public std::enable_shared_from_this<EntryPointGroupKernels> {
+/** A collection of one or more entry points in a program kernels object.
+*/
+class FALCOR_API EntryPointGroupKernels : public std::enable_shared_from_this<EntryPointGroupKernels> {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupKernels>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupKernels>;
@@ -155,21 +151,23 @@ namespace Falcor {
         const EntryPointKernel* getKernelByIndex(size_t index) const { return mKernels[index].get(); }
         const std::string& getExportName() const { return mExportName; }
 
-    protected:
+    public:
         EntryPointGroupKernels(Type type, const std::vector<EntryPointKernel::SharedPtr>& shaders, const std::string& exportName);
         EntryPointGroupKernels() = default;
         EntryPointGroupKernels(const EntryPointGroupKernels&) = delete;
+    
+    protected:
         EntryPointGroupKernels& operator=(const EntryPointGroupKernels&) = delete;
 
         Type mType;
         std::vector<EntryPointKernel::SharedPtr> mKernels;
         std::string mExportName;
-    };
+};
 
-    /** Low-level program object
-        This class abstracts the API's program creation and management
-    */
-    class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels> {
+/** Low-level program object
+    This class abstracts the API's program creation and management
+*/
+class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels> {
     public:
         using SharedPtr = std::shared_ptr<ProgramKernels>;
         using SharedConstPtr = std::shared_ptr<const ProgramKernels>;
@@ -220,7 +218,7 @@ namespace Falcor {
 
         gfx::IShaderProgram* getGfxProgram() const { return mGfxProgram; }
 
-    protected:
+    public:
         ProgramKernels(
             const ProgramVersion* pVersion,
             const ProgramReflection::SharedConstPtr& pReflector,
@@ -228,6 +226,7 @@ namespace Falcor {
             const std::string& name = ""
         );
 
+    protected:
         Slang::ComPtr<gfx::IShaderProgram> mGfxProgram;
         const std::string mName;
 
@@ -237,9 +236,9 @@ namespace Falcor {
         const ProgramReflection::SharedConstPtr mpReflector;
 
         ProgramVersion const* mpVersion = nullptr;
-    };
+};
 
-    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
+class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
     public:
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
@@ -272,13 +271,14 @@ namespace Falcor {
         slang::IComponentType* getSlangEntryPoint(uint32_t index) const;
         const std::vector<Slang::ComPtr<slang::IComponentType>>& getSlangEntryPoints() const { return mpSlangEntryPoints; }
 
+    public:
+        ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
+
     protected:
         friend class Program;
         friend class ProgramManager;
 
         static ProgramVersion::SharedPtr createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
-
-        ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 
         void init(
             const DefineList& defineList,
@@ -296,7 +296,8 @@ namespace Falcor {
 
         // Cached version of compiled kernels for this program version
         mutable std::unordered_map<std::string, ProgramKernels::SharedConstPtr> mpKernels;
-    };
+};
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_

@@ -27,18 +27,15 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "HitInfo.h"
 #include "HitInfoType.slang"
 #include "Scene.h"
 
 #include "lava_utils_lib/logging.h"
 
-#include "HitInfo.h"
 
-
-namespace Falcor
-{
-    namespace
-    {
+namespace Falcor {
+    namespace {
         const uint32_t kCompressedTypeBits = 2; ///< Number of bits used for type when using compression.
 
         // Make sure hit types used in compressed hit info fit into compressed type field.
@@ -46,16 +43,14 @@ namespace Falcor
         static_assert((uint32_t)HitType::Triangle < (1 << kCompressedTypeBits));
         static_assert((uint32_t)HitType::Volume < (1 << kCompressedTypeBits));
 
-        uint32_t allocateBits(const uint32_t count)
-        {
+        uint32_t allocateBits(const uint32_t count) {
             if (count <= 1) return 0;
             uint32_t maxValue = count - 1;
             return bitScanReverse(maxValue) + 1;
         }
     }
 
-    void HitInfo::init(const Scene& scene, bool useCompression)
-    {
+    void HitInfo::init(const Scene& scene, bool useCompression) {
         // Setup bit allocations for encoding the hit information.
         // By default the shader code will use a 128-bit format.
         // If compression is requested and the hit info is small enough, a 64-bit format is used instead.
@@ -67,27 +62,25 @@ namespace Falcor
 
         uint32_t maxPrimitiveCount = 0;
 
-        for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++)
-        {
+        for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++) {
             uint32_t triangleCount = scene.getMesh(meshID).getTriangleCount();
             maxPrimitiveCount = std::max(maxPrimitiveCount, triangleCount);
         }
-        for (uint32_t curveID = 0; curveID < scene.getCurveCount(); curveID++)
-        {
+
+        for (uint32_t curveID = 0; curveID < scene.getCurveCount(); curveID++) {
             uint32_t curveSegmentCount = scene.getCurve(curveID).getSegmentCount();
             maxPrimitiveCount = std::max(maxPrimitiveCount, curveSegmentCount);
         }
 
         mPrimitiveIndexBits = allocateBits(maxPrimitiveCount);
-        for (uint32_t sdfID = 0; sdfID < scene.getSDFGridCount(); sdfID++)
-        {
+
+        for (uint32_t sdfID = 0; sdfID < scene.getSDFGridCount(); sdfID++) {
             uint32_t sdfGridMaxPrimitiveIDBits = scene.getSDFGrid(sdfID)->getMaxPrimitiveIDBits();
             mPrimitiveIndexBits = std::max(mPrimitiveIndexBits, sdfGridMaxPrimitiveIDBits);
         }
 
         // Check that the final bit allocation fits.
-        if (mPrimitiveIndexBits > 32 || (mTypeBits + mInstanceIDBits) > 32)
-        {
+        if (mPrimitiveIndexBits > 32 || (mTypeBits + mInstanceIDBits) > 32) {
             throw std::runtime_error("Scene requires > 64 bits for encoding hit info header. This is currently not supported.");
         }
 
@@ -110,8 +103,7 @@ namespace Falcor
 
     }
 
-    Shader::DefineList HitInfo::getDefines() const
-    {
+    DefineList HitInfo::getDefines() const {
         assert((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
         Shader::DefineList defines;
         defines.add("HIT_INFO_DEFINES", "1");

@@ -789,7 +789,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			bool generateMipLevels = true;
 			Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
 			std::string udimMask = "<UDIM>";	
-    	pEnvMapTexture = pDevice->textureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
+    	pEnvMapTexture = pDevice->getTextureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
     }
     	
   	// New EnvironmentLight test

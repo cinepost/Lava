@@ -36,6 +36,7 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Program/Program.h"
 
 namespace Falcor {
 
@@ -76,7 +77,7 @@ class dlldecl MaterialSystem {
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
 			Note that the actual defines need to be set at runtime, call getDefines() to query them.
 		*/
-		static Shader::DefineList getDefaultDefines();
+		static DefineList getDefaultDefines();
 
 		/** Finalize material system before use.
 			This function will be removed when unbounded descriptor arrays are supported (see #1321).
@@ -91,7 +92,7 @@ class dlldecl MaterialSystem {
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
-		Shader::DefineList getDefines() const;
+		DefineList getDefines() const;
 
 		/** Get type conformances for all material types used.
 			These need to be set on a program before using the material system in shaders
@@ -99,13 +100,13 @@ class dlldecl MaterialSystem {
 			The update() function must have been called before calling this function.
 			\return List of type conformances.
 		*/
-		Program::TypeConformanceList getTypeConformances() const;
+		TypeConformanceList getTypeConformances() const;
 
 		/** Get type conformances for a given material type.
 			\param[in] type Material type.
 			\return List of type conformances.
 		*/
-		Program::TypeConformanceList getTypeConformances(const MaterialType type) const;
+		TypeConformanceList getTypeConformances(const MaterialType type) const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
@@ -201,7 +202,7 @@ class dlldecl MaterialSystem {
 
 		/** Get texture manager. This holds all textures.
 		*/
-		TextureManager* textureManager() const { return mpDevice->textureManager(); }
+		TextureManager* getTextureManager() const { return mpDevice ? mpDevice->getTextureManager() : nullptr; }
 
 		bool hasUDIMTextures() const;
 		bool hasSparseTextures() const;

@@ -37,14 +37,14 @@ class dlldecl VisibilitySamplesContainer {
 			This is the minimal set of defines needed for a program to compile that imports the material system module.
 			Note that the actual defines need to be set at runtime, call getDefines() to query them.
 		*/
-		static Shader::DefineList getDefaultDefines();
+		static DefineList getDefaultDefines();
 
 
 		/** Get shader defines.
 			These need to be set before binding the material system parameter block.
 			\return List of shader defines.
 		*/
-		Shader::DefineList getDefines() const;
+		DefineList getDefines() const;
 
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
@@ -144,7 +144,7 @@ class dlldecl VisibilitySamplesContainer {
     float mAlphaThresholdMax;
     bool  mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
-		Device::SharedPtr mpDevice = nullptr;
+		Device::SharedPtr mpDevice;
 		Scene::SharedPtr  mpScene;
 
 		VisibilitySamplesContainerFlags mFlags;

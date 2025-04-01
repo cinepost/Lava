@@ -41,7 +41,7 @@ ComputeContext::ComputeContext(Device::SharedPtr pDevice, LowLevelContextData::C
 
 ComputeContext::~ComputeContext() {}
 
-void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
+void ComputeContext::dispatch(ComputeState* pState, ProgramVars* pVars, const uint3& dispatchSize) {
     SimpleProfiler profile("ComputeContext::dispatch(...)");
 
     pVars->prepareDescriptorSets(this);
@@ -84,7 +84,7 @@ void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t 
     }
 }
 
-void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+void ComputeContext::dispatchIndirect(ComputeState* pState, ProgramVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
     SimpleProfiler profile("ComputeContext::dispatchIndirect(...)");
 
     pVars->prepareDescriptorSets(this);

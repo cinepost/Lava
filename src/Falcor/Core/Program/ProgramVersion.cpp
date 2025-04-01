@@ -29,7 +29,6 @@
 #include "Program.h"
 #include "ProgramManager.h"
 #include "ProgramVars.h"
-#include "Falcor/Core/Error.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ParameterBlock.h"
 
@@ -37,6 +36,7 @@
 
 #include <slang/slang.h>
 
+#include <fmt/format.h>           // TODO C++20: Replace with <format>
 #include <set>
 
 namespace Falcor {
@@ -45,15 +45,15 @@ namespace Falcor {
 // EntryPointGroupKernels
 //
 
-ref<const EntryPointGroupKernels> EntryPointGroupKernels::create(
+EntryPointGroupKernels::SharedConstPtr EntryPointGroupKernels::create(
     EntryPointGroupKernels::Type type,
-    const std::vector<ref<EntryPointKernel>>& kernels,
+    const std::vector<EntryPointKernel::SharedPtr>& kernels,
     const std::string& exportName)
 {
-    return ref<EntryPointGroupKernels>(new EntryPointGroupKernels(type, kernels, exportName));
+    return std::make_shared<EntryPointGroupKernels>(type, kernels, exportName);
 }
 
-EntryPointGroupKernels::EntryPointGroupKernels(Type type, const std::vector<ref<EntryPointKernel>>& kernels, const std::string& exportName)
+EntryPointGroupKernels::EntryPointGroupKernels(Type type, const std::vector<EntryPointKernel::SharedPtr>& kernels, const std::string& exportName)
     : mType(type), mKernels(kernels), mExportName(exportName)
 {}
 
@@ -71,24 +71,24 @@ const EntryPointKernel* EntryPointGroupKernels::getKernel(ShaderType type) const
 
 ProgramKernels::ProgramKernels(
     const ProgramVersion* pVersion,
-    const ref<const ProgramReflection>& pReflector,
+    const ProgramReflection::SharedConstPtr& pReflector,
     const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
     const std::string& name
 )
     : mName(name), mUniqueEntryPointGroups(uniqueEntryPointGroups), mpReflector(pReflector), mpVersion(pVersion)
 {}
 
-ref<ProgramKernels> ProgramKernels::create(
+ProgramKernels::SharedPtr ProgramKernels::create(
     Device* pDevice,
     const ProgramVersion* pVersion,
     slang::IComponentType* pSpecializedSlangGlobalScope,
     const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
-    const ref<const ProgramReflection>& pReflector,
+    const ProgramReflection::SharedConstPtr& pReflector,
     const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
     std::string& log,
     const std::string& name)
 {
-    ref<ProgramKernels> pProgram = ref<ProgramKernels>(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
+    ProgramKernels::SharedPtr pProgram = std::make_shared<ProgramKernels>(pVersion, pReflector, uniqueEntryPointGroups, name);
 
     gfx::IShaderProgram::Desc programDesc = {};
     programDesc.linkingStyle = gfx::IShaderProgram::LinkingStyle::SeparateEntryPointCompilation;
@@ -157,7 +157,7 @@ ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangG
 
 void ProgramVersion::init(
     const DefineList& defineList,
-    const ref<const ProgramReflection>& pReflector,
+    const ProgramReflection::SharedConstPtr& pReflector,
     const std::string& name,
     const std::vector<Slang::ComPtr<slang::IComponentType>>& pSlangEntryPoints)
 {
@@ -168,11 +168,11 @@ void ProgramVersion::init(
     mpSlangEntryPoints = pSlangEntryPoints;
 }
 
-ref<ProgramVersion> ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
-    return ref<ProgramVersion>(new ProgramVersion(pProgram, pSlangGlobalScope));
+ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
+    return std::make_shared<ProgramVersion>(pProgram, pSlangGlobalScope);
 }
 
-ref<const ProgramKernels> ProgramVersion::getKernels(Device* pDevice, ProgramVars const* pVars) const {
+ProgramKernels::SharedConstPtr ProgramVersion::getKernels(Device* pDevice, ProgramVars const* pVars) const {
     // We need are going to look up or create specialized kernels
     // based on how parameters are bound in `pVars`.
     //
@@ -218,7 +218,6 @@ ref<const ProgramKernels> ProgramVersion::getKernels(Device* pDevice, ProgramVar
         } else {
             // Failure
             std::string msg = fmt::format("Failed to link program:\n{}\n\n{}", getName(), log);
-            bool showMessageBox = is_set(getErrorDiagnosticFlags(), ErrorDiagnosticFlags::ShowMessageBoxOnError);
             if (reportErrorAndAllowRetry(msg)) continue;
             FALCOR_THROW(msg);
         }

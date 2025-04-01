@@ -30,32 +30,30 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ComputeContext.h"
 #include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/Core/API/GFXAPI.h"
-#include <slang/slang.h>
 
 #include "lava_utils_lib/logging.h"
+
+#include <slang/slang.h>
 
 #include <set>
 
 namespace Falcor {
 
-ProgramVars::ProgramVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector)
-    : ParameterBlock(pDevice, pReflector), mpReflector(pReflector)
-{
+ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): ParameterBlock(pDevice, pReflector), mpReflector(pReflector) {
     FALCOR_ASSERT(pReflector);
 }
 
-ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector) {
+ProgramVars::SharedPtr ProgramVars::create(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
     FALCOR_CHECK(pReflector, "Can't create a ProgramVars object without a program reflector");
-    return ref<ProgramVars>(new ProgramVars(pDevice, pReflector));
+    return std::make_shared<ProgramVars>(pDevice, pReflector);
 }
 
-ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const Program* pProg) {
+ProgramVars::SharedPtr ProgramVars::create(Device::SharedPtr pDevice, const Program* pProg) {
     FALCOR_CHECK(pProg, "Can't create a ProgramVars object without a program");
     return create(pDevice, pProg->getReflector());
 }
 
-RtProgramVars::RtProgramVars(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
+RtProgramVars::RtProgramVars(Device::SharedPtr pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable)
     : ProgramVars(pDevice, pProgram->getReflector()), mpShaderTable(pDevice)
 {
     FALCOR_CHECK(pProgram, "RtProgramVars must have a raytracing program attached to it");
@@ -64,12 +62,11 @@ RtProgramVars::RtProgramVars(ref<Device> pDevice, const ref<Program>& pProgram, 
     init(pBindingTable);
 }
 
-ref<RtProgramVars> RtProgramVars::create(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
-{
-    return ref<RtProgramVars>(new RtProgramVars(pDevice, pProgram, pBindingTable));
+RtProgramVars::SharedPtr RtProgramVars::create(Device::SharedPtr pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable) {
+    return std::make_shared<RtProgramVars>(pDevice, pProgram, pBindingTable);
 }
 
-void RtProgramVars::init(const ref<RtBindingTable>& pBindingTable) {
+void RtProgramVars::init(const RtBindingTable::SharedPtr& pBindingTable) {
     mRayTypeCount = pBindingTable->getRayTypeCount();
     mGeometryCount = pBindingTable->getGeometryCount();
 

@@ -29,7 +29,7 @@
 #define SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_
 
 #include "Falcor/Core/State/ComputeState.h"
-#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
 namespace Falcor {
@@ -72,8 +72,8 @@ class Device;
 
         struct {
             ComputeState::SharedPtr pState;
-            ComputeProgram::SharedPtr pProgram;
-            ComputeVars::SharedPtr pVars;
+            Program::SharedPtr      pProgram;
+            ProgramVars::SharedPtr  pVars;
         } mSort;
 
         std::shared_ptr<Device> mpDevice;        

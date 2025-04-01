@@ -51,11 +51,11 @@ class dlldecl ComputeContext : public CopyContext {
     /** Dispatch a compute task
         \param[in] dispatchSize 3D dispatch group size
     */
-    void dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize);
+    void dispatch(ComputeState* pState, ProgramVars* pVars, const uint3& dispatchSize);
 
     /** Executes a dispatch call. Args to the dispatch call are contained in pArgBuffer
     */
-    void dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
+    void dispatchIndirect(ComputeState* pState, ProgramVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
 
     /** Clear an unordered-access view
         \param[in] pUav The UAV to clear
@@ -82,7 +82,7 @@ class dlldecl ComputeContext : public CopyContext {
  protected:
     ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
 
-    const ComputeVars* mpLastBoundComputeVars = nullptr;
+    const ProgramVars* mpLastBoundComputeVars = nullptr;
 };
 
 }  // namespace Falcor

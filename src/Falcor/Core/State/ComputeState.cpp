@@ -32,45 +32,43 @@
 
 namespace Falcor {
 
-    ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
-        mpCsoGraph = _StateGraph::create();
+ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
+    mpCsoGraph = _StateGraph::create();
+}
+
+ComputeStateObject::SharedPtr ComputeState::getCSO(const ProgramVars* pVars) {
+    SimpleProfiler profile("ComputeState::getCSO()");
+
+    auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice.get(), pVars) : nullptr;
+    bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
+    if (newProgram) {
+        mCachedData.pProgramKernels = pProgramKernels.get();
+        mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
     }
 
-    ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
-        SimpleProfiler profile("ComputeState::getCSO()");
+    ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
 
-        auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
-        bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
-        if (newProgram) {
-            mCachedData.pProgramKernels = pProgramKernels.get();
-            mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
+    if(pCso == nullptr) {
+        mDesc.setProgramKernels(pProgramKernels);
+
+        _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool {
+            return pCso && (desc == pCso->getDesc());
+        };
+
+        if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
+            pCso = mpCsoGraph->getCurrentNode();
+        } else {
+            pCso = ComputeStateObject::create(mpDevice, mDesc);
+            mpCsoGraph->setCurrentNodeData(pCso);
         }
-
-        ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
-
-        if(pCso == nullptr) {
-            mDesc.setProgramKernels(pProgramKernels);
-
-            _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
-            {
-                return pCso && (desc == pCso->getDesc());
-            };
-
-            if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
-                pCso = mpCsoGraph->getCurrentNode();
-            } else {
-                pCso = ComputeStateObject::create(mpDevice, mDesc);
-                mpCsoGraph->setCurrentNodeData(pCso);
-            }
-        }
-
-        return pCso;
     }
+
+    return pCso;
+}
 
 #ifdef SCRIPTING
-    SCRIPT_BINDING(ComputeState)
-    {
-        pybind11::class_<ComputeState, ComputeState::SharedPtr>(m, "ComputeState");
-    }
+SCRIPT_BINDING(ComputeState) {
+    pybind11::class_<ComputeState, ComputeState::SharedPtr>(m, "ComputeState");
+}
 #endif
 }
