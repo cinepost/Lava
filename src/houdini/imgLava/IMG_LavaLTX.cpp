@@ -158,7 +158,7 @@ int IMG_LavaLTX::create(const IMG_Stat &stat) {
 	// course.
 	for (int i = 0; theTextureOptions[i]; ++i) {
 		const char	*value;
-		value = getOption(theTextureOptions[i]);
+		value = getFileOption(theTextureOptions[i]);
 		if (value) writeTextureOption(theTextureOptions[i], value);
 	}
 	return true;
