@@ -296,7 +296,7 @@ else()
                 OpenSSL::SSL
                 OpenImageIO::OpenImageIO
                 OpenVDB::openvdb
-                OpenEXR::IlmImf
+                OpenEXR::OpenEXR
                 ${ASSIMP_LIBRARY}
                 ${SLANG_LIBRARY}
                 Boost::system
@@ -326,7 +326,7 @@ else()
             OpenSSL::SSL
             OpenImageIO::OpenImageIO
             OpenVDB::openvdb
-            OpenEXR::IlmImf
+            OpenEXR::OpenEXR
             ${assimp_LIBRARIES}
             ${SLANG_LIBRARY}
             Boost::system

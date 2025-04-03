@@ -55,7 +55,7 @@ bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 
 	// Request texture to be loaded.
 	TextureManager::TextureHandle handle;
-	if(!mpDevice->textureManager()->loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse)) {
+	if(!mpDevice->getTextureManager()->loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse)) {
 		return false;
 	}
 
@@ -67,12 +67,12 @@ bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 }
 
 void MaterialTextureLoader::assignTextures() {
-	mpDevice->textureManager()->waitForAllTexturesLoading();
+	mpDevice->getTextureManager()->waitForAllTexturesLoading();
 
 	// Assign textures to materials.
 	for (const auto& assignment : mTextureAssignments) {
 	  // Assign generic handle
-		auto pTexture = mpDevice->textureManager()->getTexture(assignment.handle);
+		auto pTexture = mpDevice->getTextureManager()->getTexture(assignment.handle);
 		assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
 	}
 }

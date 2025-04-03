@@ -480,7 +480,7 @@ namespace Falcor {
         mpMeshVertexUpdatePass = ComputePass::create(mpDevice, "Scene/Animation/UpdateMeshVertices.slang", "main", defines);
 
         // Bind data
-        auto block = mpMeshVertexUpdatePass->getVars()["gMeshVertexUpdater"];
+        auto block = mpMeshVertexUpdatePass->getRootVar()["gMeshVertexUpdater"];
         auto keyframesVar = block["meshPerKeyframe"];
         for (size_t i = 0; i < mpMeshVertexBuffers.size(); i++) keyframesVar[i]["vertexData"] = mpMeshVertexBuffers[i];
 
@@ -497,7 +497,7 @@ namespace Falcor {
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurveVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurveVerticesFilename, "main", defines);
 
-        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        auto block = mpCurveVertexUpdatePass->getRootVar()["gCurveVertexUpdater"];
         auto var = block["curvePerKeyframe"];
 
         // Bind curve vertex data.
@@ -510,7 +510,7 @@ namespace Falcor {
 
         mpCurveAABBUpdatePass = ComputePass::create(mpDevice, kUpdateCurveAABBsFilename);
 
-        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        auto block = mpCurveAABBUpdatePass->getRootVar()["gCurveAABBUpdater"];
         block["curveIndexData"] = mpCurveIndexBuffer;
     }
 
@@ -522,7 +522,7 @@ namespace Falcor {
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurvePolyTubeVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurvePolyTubeVerticesFilename, "main", defines);
 
-        auto block = mpCurvePolyTubeVertexUpdatePass->getVars()["gCurvePolyTubeVertexUpdater"];
+        auto block = mpCurvePolyTubeVertexUpdatePass->getRootVar()["gCurvePolyTubeVertexUpdater"];
         block["perCurveData"] = mpCurvePolyTubeCurveMetadataBuffer;
         block["curveStrandIndexData"] = mpCurvePolyTubeStrandIndexBuffer;
 
@@ -547,7 +547,7 @@ namespace Falcor {
 
         mpMeshInterpolationBuffer->setBlob(mMeshInterpolationInfo.data(), 0, mpMeshInterpolationBuffer->getSize());
 
-        auto block = mpMeshVertexUpdatePass->getVars()["gMeshVertexUpdater"];
+        auto block = mpMeshVertexUpdatePass->getRootVar()["gMeshVertexUpdater"];
         block["sceneVertexData"] = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
         block["copyPrev"] = copyPrev;
 
@@ -560,7 +560,7 @@ namespace Falcor {
 
         PROFILE(mpDevice, "update curve vertices");
 
-        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        auto block = mpCurveVertexUpdatePass->getRootVar()["gCurveVertexUpdater"];
         block["keyframeIndices"] = info.keyframeIndices;
         block["t"] = info.t;
         block["copyPrev"] = copyPrev;
@@ -581,7 +581,7 @@ namespace Falcor {
 
         PROFILE(mpDevice, "update curve AABBs");
 
-        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        auto block = mpCurveAABBUpdatePass->getRootVar()["gCurveAABBUpdater"];
         block["curveVertices"] = mpScene->mpCurveVao->getVertexBuffer(0);
         block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(0, mCurveIndexCount));
 
@@ -599,7 +599,7 @@ namespace Falcor {
 
         PROFILE(mpDevice, "Update curve poly-tube vertices");
 
-        auto block = mpCurvePolyTubeVertexUpdatePass->getVars()["gCurvePolyTubeVertexUpdater"];
+        auto block = mpCurvePolyTubeVertexUpdatePass->getRootVar()["gCurvePolyTubeVertexUpdater"];
         block["keyframeIndices"] = info.keyframeIndices;
         block["t"] = info.t;
         block["copyPrev"] = copyPrev;

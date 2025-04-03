@@ -791,7 +791,7 @@ endif()
 #######################
 
 if( NOT EXTERNAL_OIIO_VERSION )
-  set(EXTERNAL_OIIO_VERSION 2.2.18.0)
+  set(EXTERNAL_OIIO_VERSION 2.5.18.0)
 endif()
 
 set(OPENIMAGEIO_ROOT ${EXTERNALS_INSTALL_DIR})

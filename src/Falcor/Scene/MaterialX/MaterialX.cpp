@@ -40,7 +40,7 @@ namespace fs = boost::filesystem;
 #include "stdafx.h"
 #include "MaterialX.h"
 
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
 #include "Falcor/Utils/Debug/debug.h"

@@ -73,7 +73,7 @@ LightCollection::LightCollection(RenderContext* pRenderContext, const std::share
     initIntegrator(*pScene);
 
     // Create programs for building/updating the mesh lights.
-    Shader::DefineList defines = pScene->getSceneDefines();
+    DefineList defines = pScene->getSceneDefines();
     mpTriangleListBuilder = ComputePass::create(mpDevice, kBuildTriangleListFile, "buildTriangleList", defines);
     mpTrianglePositionUpdater = ComputePass::create(mpDevice, kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
     mpFinalizeIntegration = ComputePass::create(mpDevice, kFinalizeIntegrationFile, "finalizeIntegration", defines);
@@ -130,7 +130,7 @@ void LightCollection::initIntegrator(const Scene& scene) {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::ConservativeRasterizationTier3)) {
         throw std::runtime_error("LightCollection requires conservative rasterization tier 3 support.");
     }
-    if (!mpDevice->isShaderModelSupported(Device::ShaderModel::SM6_6)) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6)) {
         throw std::runtime_error("LightCollection requires Shader Model 6.6 support.");
     }
 
@@ -140,8 +140,7 @@ void LightCollection::initIntegrator(const Scene& scene) {
 
     Program::Desc desc;
     desc.addShaderLibrary(kEmissiveIntegratorFile).vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
-    desc.setShaderModel("6_6");
-    mIntegrator.pProgram = GraphicsProgram::create(mpDevice, desc, defines);
+    mIntegrator.pProgram = Program::create(mpDevice, desc, defines);
 
     // Create graphics state.
     mIntegrator.pState = GraphicsState::create(mpDevice);
@@ -307,10 +306,11 @@ void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Sce
     assert(mMeshLights.size() > 0);
 
     // Prepare program vars.
-    mIntegrator.pVars = GraphicsVars::create(mpDevice, mIntegrator.pProgram.get());
-    mIntegrator.pVars["gScene"] = scene.getParameterBlock();
-    mIntegrator.pVars["gPointSampler"] = mIntegrator.pPointSampler;
-    setShaderData(mIntegrator.pVars["gLightCollection"]);
+    mIntegrator.pVars = ProgramVars::create(mpDevice, mIntegrator.pProgram.get());
+    auto var = mIntegrator.pVars->getRootVar();
+    var["gScene"] = scene.getParameterBlock();
+    var["gPointSampler"] = mIntegrator.pPointSampler;
+    setShaderData(var["gLightCollection"]);
 
     // 1st pass: Rasterize emissive triangles in texture space to find maximum texel value.
     // The maximum is needed to rescale the texels to fixed-point format in the accumulation pass.
@@ -324,8 +324,8 @@ void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Sce
         pRenderContext->clearUAV(pTexelMax->getUAV().get(), uint4(0));
 
         // Bind our resources.
-        mIntegrator.pVars["gTexelMax"] = pTexelMax;
-        mIntegrator.pVars["gTexelSum"].setUav(UnorderedAccessView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer));
+        var["gTexelMax"] = pTexelMax;
+        var["gTexelSum"].setUav(UnorderedAccessView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer));
 
         // Execute.
         mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "1");
@@ -346,7 +346,7 @@ void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Sce
         pRenderContext->clearUAV(mIntegrator.pResultBuffer->getUAV().get(), uint4(0));
 
         // Bind our resources.
-        mIntegrator.pVars["gTexelSum"] = mIntegrator.pResultBuffer;
+        var["gTexelSum"] = mIntegrator.pResultBuffer;
 
         // Execute.
         mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "2");

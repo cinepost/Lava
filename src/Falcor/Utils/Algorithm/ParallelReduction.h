@@ -71,9 +71,9 @@ private:
     std::shared_ptr<Device>             mpDevice;
 
     ComputeState::SharedPtr             mpState;
-    ComputeProgram::SharedPtr           mpInitialProgram;
-    ComputeProgram::SharedPtr           mpFinalProgram;
-    ComputeVars::SharedPtr              mpVars;
+    Program::SharedPtr                  mpInitialProgram;
+    Program::SharedPtr                  mpFinalProgram;
+    ProgramVars::SharedPtr              mpVars;
 
     Buffer::SharedPtr                   mpBuffers[2];       ///< Intermediate buffers for reduction iterations.
 };

@@ -47,18 +47,25 @@ const uint32_t kGroupSize = 1024;
 PrefixSum::PrefixSum(std::shared_ptr<Device> pDevice) {
     // Create shaders and state.
     Program::DefineList defines = { {"GROUP_SIZE", std::to_string(kGroupSize)} };
-    mpPrefixSumGroupProgram = ComputeProgram::createFromFile(pDevice, kShaderFile, "groupScan", defines);
-    mpPrefixSumGroupVars = ComputeVars::create(pDevice, mpPrefixSumGroupProgram.get());
-    mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(pDevice, kShaderFile, "finalizeGroups", defines);
-    mpPrefixSumFinalizeVars = ComputeVars::create(pDevice, mpPrefixSumFinalizeProgram.get());
+    mpPrefixSumGroupProgram = Program::createCompute(pDevice, kShaderFile, "groupScan", defines);
+    mpPrefixSumGroupVars = ProgramVars::create(pDevice, mpPrefixSumGroupProgram.get());
+    mpPrefixSumFinalizeProgram = Program::createCompute(pDevice, kShaderFile, "finalizeGroups", defines);
+    mpPrefixSumFinalizeVars = ProgramVars::create(pDevice, mpPrefixSumFinalizeProgram.get());
 
     mpComputeState = ComputeState::create(pDevice);
 
     // Create and bind buffer for per-group sums.
     mpPrefixGroupSums = Buffer::create(pDevice, kGroupSize * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
 
-    mpPrefixSumGroupVars["gPrefixGroupSums"] = mpPrefixGroupSums;
-    mpPrefixSumFinalizeVars["gPrefixGroupSums"] = mpPrefixGroupSums;
+    {
+        auto var = mpPrefixSumGroupVars->getRootVar();
+        var["gPrefixGroupSums"] = mpPrefixGroupSums;
+    }
+
+    {
+        auto var = mpPrefixSumFinalizeVars->getRootVar();
+        var["gPrefixGroupSums"] = mpPrefixGroupSums;
+    }
 }
 
 PrefixSum::SharedPtr PrefixSum::create(std::shared_ptr<Device> pDevice) {
@@ -92,9 +99,10 @@ bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, 
         pRenderContext->clearUAV(mpPrefixGroupSums->getUAV().get(), uint4(0));
 
         // Set constants and data.
-        mpPrefixSumGroupVars["CB"]["gNumGroups"] = numPrefixGroups;
-        mpPrefixSumGroupVars["CB"]["gNumElems"] = elementCount;
-        mpPrefixSumGroupVars["gData"] = pData;
+        auto var = mpPrefixSumGroupVars->getRootVar();
+        var["CB"]["gNumGroups"] = numPrefixGroups;
+        var["CB"]["gNumElems"] = elementCount;
+        var["gData"] = pData;
 
         mpComputeState->setProgram(mpPrefixSumGroupProgram);
         pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumGroupVars.get(), { numPrefixGroups, 1, 1 });
@@ -120,9 +128,10 @@ bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, 
         assert(dispatchSizeX > 0);
 
         // Set constants and data.
-        mpPrefixSumFinalizeVars["CB"]["gNumGroups"] = numPrefixGroups;
-        mpPrefixSumFinalizeVars["CB"]["gNumElems"] = elementCount;
-        mpPrefixSumFinalizeVars["gData"] = pData;
+        auto var = mpPrefixSumFinalizeVars->getRootVar();
+        var["CB"]["gNumGroups"] = numPrefixGroups;
+        var["CB"]["gNumElems"] = elementCount;
+        var["gData"] = pData;
 
         mpComputeState->setProgram(mpPrefixSumFinalizeProgram);
         pRenderContext->dispatch(mpComputeState.get(), mpPrefixSumFinalizeVars.get(), { dispatchSizeX, 1, 1 });

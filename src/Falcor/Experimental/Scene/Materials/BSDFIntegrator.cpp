@@ -41,18 +41,18 @@ namespace {
     const uint2 kGridSize = { 512, 512 };
 }
 
-BSDFIntegrator::SharedPtr BSDFIntegrator::create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    return SharedPtr(new BSDFIntegrator(pRenderContext, pScene));
+BSDFIntegrator::SharedPtr BSDFIntegrator::create(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene) {
+    return SharedPtr(new BSDFIntegrator(pDevice, pScene));
 }
 
-BSDFIntegrator::BSDFIntegrator(RenderContext* pRenderContext, const Scene::SharedPtr& pScene): mpScene(pScene) {
+BSDFIntegrator::BSDFIntegrator(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene): mpDevice(pDevice), mpScene(pScene) {
     assert((pScene != nullptr) && "'pScene' must be a valid scene");
 
-    mpDevice = mpScene->device();
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6))
+        FALCOR_THROW("BSDFIntegrator requires Shader Model 6.6 support");
 
     // Create programs.
     Program::Desc desc;
-    desc.setShaderModel("6_5");
     desc.addShaderLibrary(kShaderFile);
     desc.addTypeConformances(pScene->getTypeConformances());
     auto defines = pScene->getSceneDefines();

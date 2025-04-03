@@ -310,7 +310,7 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
-    void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
+    void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
         auto pRtso = pProgram->getRtso(pVars);
 
         pVars->prepareShaderTable(this, pRtso.get());

@@ -29,7 +29,7 @@
 
 #include "Falcor/Core/API/RenderContext.h"
 
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
 

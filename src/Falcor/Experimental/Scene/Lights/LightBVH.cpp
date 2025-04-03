@@ -53,7 +53,7 @@ void LightBVH::refit(RenderContext* pRenderContext)
 
     // Update all leaf nodes.
     {
-        auto var = mLeafUpdater->getVars()["CB"];
+        auto var = mLeafUpdater->getRootVar()["CB"];
         mpLightCollection->setShaderData(var["gLights"]);
         setShaderData(var["gLightBVH"]);
         var["gNodeIndices"] = mpNodeIndicesBuffer;
@@ -68,7 +68,7 @@ void LightBVH::refit(RenderContext* pRenderContext)
 
     // Update all internal nodes.
     {
-        auto var = mInternalUpdater->getVars()["CB"];
+        auto var = mInternalUpdater->getRootVar()["CB"];
         mpLightCollection->setShaderData(var["gLights"]);
         setShaderData(var["gLightBVH"]);
         var["gNodeIndices"] = mpNodeIndicesBuffer;

@@ -412,7 +412,7 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
         mMeshBindMatrices.resize(mpScene->mSceneGraph.size());
 
         mpSkinningPass = ComputePass::create(mpDevice, "Scene/Animation/Skinning.slang");
-        auto block = mpSkinningPass->getVars()["gData"];
+        auto block = mpSkinningPass->getRootVar()["gData"];
 
         // Initialize mesh bind transforms
         std::vector<float4x4> meshInvBindMatrices(mMeshBindMatrices.size());
@@ -459,7 +459,7 @@ void AnimationController::executeSkinningPass(RenderContext* pContext, bool init
     if (!mpSkinningPass) return;
     mpSkinningMatricesBuffer->setBlob(mSkinningMatrices.data(), 0, mpSkinningMatricesBuffer->getSize());
     mpInvTransposeSkinningMatricesBuffer->setBlob(mInvTransposeSkinningMatrices.data(), 0, mpInvTransposeSkinningMatricesBuffer->getSize());
-    auto vars = mpSkinningPass->getVars()["gData"];
+    auto vars = mpSkinningPass->getRootVar()["gData"];
     vars["inverseTransposeWorldMatrices"].setBuffer(mpInvTransposeWorldMatricesBuffer);
     vars["worldMatrices"].setBuffer(mpWorldMatricesBuffer);
     vars["initPrev"] = initPrev;

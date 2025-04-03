@@ -876,7 +876,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Render the scene using raytracing
     */
-    void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
+    void raytrace(RenderContext* pContext, Program* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
 
     /** Get the scene's VAO for meshes.
         The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.

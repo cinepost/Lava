@@ -35,87 +35,90 @@
 
 
 namespace Falcor {
-    namespace {
-        const uint32_t kCompressedTypeBits = 2; ///< Number of bits used for type when using compression.
 
-        // Make sure hit types used in compressed hit info fit into compressed type field.
-        static_assert((uint32_t)HitType::None < (1 << kCompressedTypeBits));
-        static_assert((uint32_t)HitType::Triangle < (1 << kCompressedTypeBits));
-        static_assert((uint32_t)HitType::Volume < (1 << kCompressedTypeBits));
+namespace {
 
-        uint32_t allocateBits(const uint32_t count) {
-            if (count <= 1) return 0;
-            uint32_t maxValue = count - 1;
-            return bitScanReverse(maxValue) + 1;
-        }
-    }
+const uint32_t kCompressedTypeBits = 2; ///< Number of bits used for type when using compression.
 
-    void HitInfo::init(const Scene& scene, bool useCompression) {
-        // Setup bit allocations for encoding the hit information.
-        // By default the shader code will use a 128-bit format.
-        // If compression is requested and the hit info is small enough, a 64-bit format is used instead.
+// Make sure hit types used in compressed hit info fit into compressed type field.
+static_assert((uint32_t)HitType::None < (1 << kCompressedTypeBits));
+static_assert((uint32_t)HitType::Triangle < (1 << kCompressedTypeBits));
+static_assert((uint32_t)HitType::Volume < (1 << kCompressedTypeBits));
 
-        uint32_t typeCount = (uint32_t)HitType::Count;
-        mTypeBits = allocateBits(typeCount);
-
-        mInstanceIDBits = allocateBits(scene.getGeometryInstanceCount());
-
-        uint32_t maxPrimitiveCount = 0;
-
-        for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++) {
-            uint32_t triangleCount = scene.getMesh(meshID).getTriangleCount();
-            maxPrimitiveCount = std::max(maxPrimitiveCount, triangleCount);
-        }
-
-        for (uint32_t curveID = 0; curveID < scene.getCurveCount(); curveID++) {
-            uint32_t curveSegmentCount = scene.getCurve(curveID).getSegmentCount();
-            maxPrimitiveCount = std::max(maxPrimitiveCount, curveSegmentCount);
-        }
-
-        mPrimitiveIndexBits = allocateBits(maxPrimitiveCount);
-
-        for (uint32_t sdfID = 0; sdfID < scene.getSDFGridCount(); sdfID++) {
-            uint32_t sdfGridMaxPrimitiveIDBits = scene.getSDFGrid(sdfID)->getMaxPrimitiveIDBits();
-            mPrimitiveIndexBits = std::max(mPrimitiveIndexBits, sdfGridMaxPrimitiveIDBits);
-        }
-
-        // Check that the final bit allocation fits.
-        if (mPrimitiveIndexBits > 32 || (mTypeBits + mInstanceIDBits) > 32) {
-            throw std::runtime_error("Scene requires > 64 bits for encoding hit info header. This is currently not supported.");
-        }
-
-        // Compute size of compressed header in bits.
-        const uint32_t compressedHeaderBits = kCompressedTypeBits + mInstanceIDBits + mPrimitiveIndexBits;
-
-        // Check if compression is supported (small header and triangle meshes only).
-        const bool compressionSupported = compressedHeaderBits <= 32 && scene.getGeometryTypes() == Scene::GeometryTypeFlags::TriangleMesh;
-
-        // Use compression if supported and requested.
-        mUseCompression = compressionSupported && useCompression;
-
-        // Switch to using fewer bits for the type if compression is used.
-        if (mUseCompression) mTypeBits = kCompressedTypeBits;
-
-        LLOG_INF    << "HitInfo: Total size is " << std::to_string(mUseCompression ? 64 : 128)
-                    << "bits (type:" << std::to_string(mTypeBits) << " bits, "
-                    << "instanceID: " << std::to_string(mInstanceIDBits) << " bits, "
-                    << "primitiveIndex: " << std::to_string(mPrimitiveIndexBits) << " bits)";
-
-    }
-
-    DefineList HitInfo::getDefines() const {
-        assert((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
-        Shader::DefineList defines;
-        defines.add("HIT_INFO_DEFINES", "1");
-        defines.add("HIT_INFO_USE_COMPRESSION", mUseCompression ? "1" : "0");
-        defines.add("HIT_INFO_TYPE_BITS", std::to_string(mTypeBits));
-        defines.add("HIT_INFO_INSTANCE_ID_BITS", std::to_string(mInstanceIDBits));
-        defines.add("HIT_INFO_PRIMITIVE_INDEX_BITS", std::to_string(mPrimitiveIndexBits));
-        return defines;
-    }
-
-    ResourceFormat HitInfo::getFormat() const
-    {
-        return mUseCompression ? ResourceFormat::RG32Uint : ResourceFormat::RGBA32Uint;
-    }
+uint32_t allocateBits(const uint32_t count) {
+    if (count <= 1) return 0;
+    uint32_t maxValue = count - 1;
+    return bitScanReverse(maxValue) + 1;
 }
+
+} // namespace
+
+void HitInfo::init(const Scene& scene, bool useCompression) {
+    // Setup bit allocations for encoding the hit information.
+    // By default the shader code will use a 128-bit format.
+    // If compression is requested and the hit info is small enough, a 64-bit format is used instead.
+
+    uint32_t typeCount = (uint32_t)HitType::Count;
+    mTypeBits = allocateBits(typeCount);
+
+    mInstanceIDBits = allocateBits(scene.getGeometryInstanceCount());
+
+    uint32_t maxPrimitiveCount = 0;
+
+    for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++) {
+        uint32_t triangleCount = scene.getMesh(meshID).getTriangleCount();
+        maxPrimitiveCount = std::max(maxPrimitiveCount, triangleCount);
+    }
+
+    for (uint32_t curveID = 0; curveID < scene.getCurveCount(); curveID++) {
+        uint32_t curveSegmentCount = scene.getCurve(curveID).getSegmentCount();
+        maxPrimitiveCount = std::max(maxPrimitiveCount, curveSegmentCount);
+    }
+
+    mPrimitiveIndexBits = allocateBits(maxPrimitiveCount);
+
+    for (uint32_t sdfID = 0; sdfID < scene.getSDFGridCount(); sdfID++) {
+        uint32_t sdfGridMaxPrimitiveIDBits = scene.getSDFGrid(sdfID)->getMaxPrimitiveIDBits();
+        mPrimitiveIndexBits = std::max(mPrimitiveIndexBits, sdfGridMaxPrimitiveIDBits);
+    }
+
+    // Check that the final bit allocation fits.
+    if (mPrimitiveIndexBits > 32 || (mTypeBits + mInstanceIDBits) > 32) {
+        throw std::runtime_error("Scene requires > 64 bits for encoding hit info header. This is currently not supported.");
+    }
+
+    // Compute size of compressed header in bits.
+    const uint32_t compressedHeaderBits = kCompressedTypeBits + mInstanceIDBits + mPrimitiveIndexBits;
+
+    // Check if compression is supported (small header and triangle meshes only).
+    const bool compressionSupported = compressedHeaderBits <= 32 && scene.getGeometryTypes() == Scene::GeometryTypeFlags::TriangleMesh;
+
+    // Use compression if supported and requested.
+    mUseCompression = compressionSupported && useCompression;
+
+    // Switch to using fewer bits for the type if compression is used.
+    if (mUseCompression) mTypeBits = kCompressedTypeBits;
+
+    LLOG_INF    << "HitInfo: Total size is " << std::to_string(mUseCompression ? 64 : 128)
+                << "bits (type:" << std::to_string(mTypeBits) << " bits, "
+                << "instanceID: " << std::to_string(mInstanceIDBits) << " bits, "
+                << "primitiveIndex: " << std::to_string(mPrimitiveIndexBits) << " bits)";
+
+}
+
+DefineList HitInfo::getDefines() const {
+    assert((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
+    DefineList defines;
+    defines.add("HIT_INFO_DEFINES", "1");
+    defines.add("HIT_INFO_USE_COMPRESSION", mUseCompression ? "1" : "0");
+    defines.add("HIT_INFO_TYPE_BITS", std::to_string(mTypeBits));
+    defines.add("HIT_INFO_INSTANCE_ID_BITS", std::to_string(mInstanceIDBits));
+    defines.add("HIT_INFO_PRIMITIVE_INDEX_BITS", std::to_string(mPrimitiveIndexBits));
+    return defines;
+}
+
+ResourceFormat HitInfo::getFormat() const {
+    return mUseCompression ? ResourceFormat::RG32Uint : ResourceFormat::RGBA32Uint;
+}
+
+} // namespace Falcor

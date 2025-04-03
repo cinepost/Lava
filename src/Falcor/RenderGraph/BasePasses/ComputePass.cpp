@@ -33,10 +33,10 @@
 namespace Falcor {
 
 ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {
-    auto pProg = ComputeProgram::create(pDevice, desc, defines);
+    auto pProg = Program::create(mpDevice, desc, defines);
     mpState = ComputeState::create(pDevice);
     mpState->setProgram(pProg);
-    if (createVars) mpVars = ComputeVars::create(pDevice, pProg.get());
+    if (createVars) mpVars = ProgramVars::create(pDevice, pProg.get());
     assert(pProg && mpState && (!createVars || mpVars));
 }
 
@@ -66,26 +66,16 @@ void ComputePass::executeIndirect(ComputeContext* pContext, const Buffer* pArgBu
 
 void ComputePass::addDefine(const std::string& name, const std::string& value, bool updateVars) {
     mpState->getProgram()->addDefine(name, value);
-    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
+    if (updateVars) mpVars = ProgramVars::create(mpDevice, mpState->getProgram().get());
 }
 
 void ComputePass::removeDefine(const std::string& name, bool updateVars) {
     mpState->getProgram()->removeDefine(name);
-    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
+    if (updateVars) mpVars = ProgramVars::create(mpDevice, mpState->getProgram().get());
 }
 
-void ComputePass::addDefines(const Shader::DefineList& dl, bool updateVars) {
-    for (const auto& it : dl) mpState->getProgram()->addDefine(it.first, it.second);
-    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
-}
-
-void ComputePass::removeDefines(const Shader::DefineList& dl, bool updateVars) {
-    for (const auto& it : dl) mpState->getProgram()->removeDefine(it.first);
-    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
-}
-
-void ComputePass::setVars(const ComputeVars::SharedPtr& pVars) {
-    mpVars = pVars ? pVars : ComputeVars::create(mpDevice, mpState->getProgram().get());
+void ComputePass::setVars(const ProgramVars::SharedPtr& pVars) {
+    mpVars = pVars ? pVars : ProgramVars::create(mpDevice, mpState->getProgram().get());
     assert(mpVars);
 }
 

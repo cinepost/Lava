@@ -354,15 +354,15 @@ uint64_t LightLinker::getMemoryUsageInBytes() const {
     return m;
 }
 
-Shader::DefineList LightLinker::getDefaultDefines() {
-    Shader::DefineList defines;
+DefineList LightLinker::getDefaultDefines() {
+    DefineList defines;
     defines.add("SCENE_HAS_LIGHT_LINKER", "0");
 
     return defines;
 }
 
-Shader::DefineList LightLinker::getDefines() const {
-    Shader::DefineList defines;
+DefineList LightLinker::getDefines() const {
+    DefineList defines;
     defines.add("SCENE_HAS_LIGHT_LINKER", "1");
 
     return defines;

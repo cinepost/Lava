@@ -30,6 +30,8 @@
 
 #include "Falcor.h"
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/Program/DefineList.h"
 
 namespace Falcor {
 

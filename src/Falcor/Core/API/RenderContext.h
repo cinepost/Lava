@@ -227,7 +227,7 @@ class dlldecl RenderContext : public ComputeContext {
 
     /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same.
     */
-    void raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
+    void raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
 
     /** Build an acceleration structure.
     */

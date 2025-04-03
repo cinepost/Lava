@@ -41,9 +41,9 @@ ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice): mpDevice(
     // Create the programs.
     // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
     Program::DefineList defines = { { "REDUCTION_TYPE", "1" }, { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
-    mpInitialProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "initialPass", defines, Shader::CompilerFlags::None);
-    mpFinalProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalPass", defines, Shader::CompilerFlags::None);
-    mpVars = ComputeVars::create(mpDevice, mpInitialProgram.get());
+    mpInitialProgram = Program::createCompute(mpDevice, kShaderFile, "initialPass", defines);
+    mpFinalProgram = Program::createCompute(mpDevice, kShaderFile, "finalPass", defines);
+    mpVars = ProgramVars::create(mpDevice, mpInitialProgram.get());
 
     // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
     FALCOR_ASSERT(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
@@ -141,31 +141,39 @@ void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::Sh
     mpFinalProgram->addDefines(defines);
 
     // Initial pass: Reduction over tiles of pixels in input texture.
-    mpVars["PerFrameCB"]["gResolution"] = resolution;
-    mpVars["PerFrameCB"]["gNumTiles"] = numTiles;
-    mpVars["gInput"] = pInput;
-    mpVars->setBuffer("gInputBuffer", nullptr); // Unbind previously bound buffer from last call to execute()
-    mpVars->setBuffer("gResult", mpBuffers[0]);
+    {
+        auto var = mpVars->getRootVar();
+        var["PerFrameCB"]["gResolution"] = resolution;
+        var["PerFrameCB"]["gNumTiles"] = numTiles;
+        var["gInput"] = pInput;
+        
+        var["gInputBuffer"].setBuffer(nullptr); // Unbind previously bound buffer from last call to execute()
+        var["gResult"].setBuffer( mpBuffers[0]);
 
-    mpState->setProgram(mpInitialProgram);
-    uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
-    pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
+        mpState->setProgram(mpInitialProgram);
+        uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
+        pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
+    }
 
-    // Final pass(es): Reduction by a factor N for each pass.
-    uint32_t elems = numTiles.x * numTiles.y;
     uint32_t inputsBufferIndex = 0;
 
-    while (elems > 1) {
-        mpVars["PerFrameCB"]["gElems"] = elems;
-        mpVars->setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
-        mpVars->setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
+    // Final pass(es): Reduction by a factor N for each pass.
+    {
+        uint32_t elems = numTiles.x * numTiles.y;
 
-        mpState->setProgram(mpFinalProgram);
-        uint32_t numGroups = div_round_up(elems, mpFinalProgram->getReflector()->getThreadGroupSize().x);
-        pRenderContext->dispatch(mpState.get(), mpVars.get(), { numGroups, 1, 1 });
+        while (elems > 1) {
+            auto var = mpVars->getRootVar();
+            var["PerFrameCB"]["gElems"] = elems;
+            var->setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
+            var->setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
 
-        inputsBufferIndex = 1 - inputsBufferIndex;
-        elems = numGroups;
+            mpState->setProgram(mpFinalProgram);
+            uint32_t numGroups = div_round_up(elems, mpFinalProgram->getReflector()->getThreadGroupSize().x);
+            pRenderContext->dispatch(mpState.get(), mpVars.get(), { numGroups, 1, 1 });
+
+            inputsBufferIndex = 1 - inputsBufferIndex;
+            elems = numGroups;
+        }
     }
 
     size_t resultSize = elementSize * 16;

@@ -32,6 +32,7 @@
 #include "Enum.h"
 
 #include <fstd/source_location.h> // TODO C++20: Replace with <source_location>
+#include <fmt/format.h>
 
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;

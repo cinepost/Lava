@@ -222,7 +222,7 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
 
     // Update the given texture handle.
     if (pTexture) {
-        auto h = pOwner->textureManager()->addTexture(pTexture);
+        auto h = pOwner->getTextureManager()->addTexture(pTexture);
         assert(h);
         handle.setTextureID(h.getID());
         if (pTexture->isUDIMTexture()) {

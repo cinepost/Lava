@@ -40,15 +40,15 @@ namespace Falcor {
 #if !(_ENABLE_NVAPI == true)
         throw std::runtime_error("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
 #endif
-        mSort.pState = ComputeState::create(pDevice);
+        mSort.pState = ComputeState::create(mpDevice);
 
         // Create shaders
         Program::DefineList defines;
         defines.add("CHUNK_SIZE", "256");   // Dummy values just so we can get reflection data. We'll set the actual values in execute().
         defines.add("GROUP_SIZE", "256");
-        mSort.pProgram = ComputeProgram::createFromFile(pDevice, kShaderFilename, "main", defines);
+        mSort.pProgram = Program::createCompute(mpDevice, kShaderFilename, "main", defines);
         mSort.pState->setProgram(mSort.pProgram);
-        mSort.pVars = ComputeVars::create(pDevice, mSort.pProgram.get());
+        mSort.pVars = ProgramVars::create(mpDevice, mSort.pProgram.get());
     }
 
     BitonicSort::SharedPtr BitonicSort::create(std::shared_ptr<Device> pDevice) {
@@ -79,8 +79,9 @@ namespace Falcor {
         assert(groupsX * groupsY * groupSize >= totalSize);
 
         // Constants. The buffer size as a runtime constant as it may be variable and we don't want to recompile each time it changes.
-        mSort.pVars["CB"]["gTotalSize"] = totalSize;
-        mSort.pVars["CB"]["gDispatchX"] = groupsX;
+        auto var = mSort.pVars->getRootVar();
+        var["CB"]["gTotalSize"] = totalSize;
+        var["CB"]["gDispatchX"] = groupsX;
 
         // Bind the data.
         #ifdef _DEBUG

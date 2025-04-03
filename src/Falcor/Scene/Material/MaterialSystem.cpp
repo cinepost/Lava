@@ -95,20 +95,20 @@ void MaterialSystem::finalize() {
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 
-	mTextureDescCount = textureManager()->getUDIMTextureTilesCount();;
+	mTextureDescCount = getTextureManager()->getUDIMTextureTilesCount();;
 	for(const auto& pMaterial: mMaterials) {
 		mTextureDescCount += pMaterial->getTextureCount();
 	}
 
-	mTextureDescCount = textureManager()->getTextureDescCount(); // TODO: make it scene dependent!
+	mTextureDescCount = getTextureManager()->getTextureDescCount(); // TODO: make it scene dependent!
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
-	mUDIMTextureCount = textureManager()->getUDIMTexturesCount();
+	mUDIMTextureCount = getTextureManager()->getUDIMTexturesCount();
 
 	LLOG_DBG << "MaterialSystem::finalize-------------";
 
 	LLOG_DBG << "MaterialSystem: materials count " << std::to_string(getMaterialCount());
 	LLOG_DBG << "MaterialSystem: udim texture count " << std::to_string(mUDIMTextureCount);
-	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(textureManager()->getUDIMTextureTilesCount());
+	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(getTextureManager()->getUDIMTextureTilesCount());
 	LLOG_DBG << "MaterialSystem: mTextureDescCount: " << std::to_string(mTextureDescCount);
 }
 
@@ -255,11 +255,11 @@ size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {
 }
 
 bool MaterialSystem::hasUDIMTextures() const {
-	return textureManager()->hasUDIMTextures(); // TODO: Calculate udim textures for this system only
+	return getTextureManager()->hasUDIMTextures(); // TODO: Calculate udim textures for this system only
 }
 
 bool MaterialSystem::hasSparseTextures() const {
-	return textureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
+	return getTextureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
 }
 
 bool MaterialSystem::hasTransparentMaterials() const {
@@ -372,30 +372,32 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 		}
 	}
 
+	auto blockVar = mpMaterialsBlock->getRootVar();
+
 	// Update samplers.
 	if (forceUpdate || mSamplersChanged) {
-		auto var = mpMaterialsBlock[kMaterialSamplersName];
+		auto var = blockVar[kMaterialSamplersName];
 		for (size_t i = 0; i < mTextureSamplers.size(); i++) var[i] = mTextureSamplers[i];
 	}
 
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
-		textureManager()->finalize();
+		getTextureManager()->finalize();
 
 		std::vector<Texture::SharedPtr> textures;
 		for(const auto& pMaterial: mMaterials) {
 			pMaterial->getTextures(textures, true); // true to append instead of erasing vector
 		}
 
-		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
-		textureManager()->setExtendedTexturesShaderData(mpMaterialsBlock[kExtendedTexturesDataName], mTextureDescCount);
-		textureManager()->setVirtualTexturesShaderData(mpMaterialsBlock[kVirtualTexturesDataName],mpMaterialsBlock[kVirtualPagesResidencyDataName], mTextureDescCount);
-		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableBufferName], mUDIMTextureCount * 100);
+		getTextureManager()->setShaderData(blockVar[kMaterialTexturesName], mTextureDescCount);
+		getTextureManager()->setExtendedTexturesShaderData(blockVar[kExtendedTexturesDataName], mTextureDescCount);
+		getTextureManager()->setVirtualTexturesShaderData(blockVar[kVirtualTexturesDataName], blockVar[kVirtualPagesResidencyDataName], mTextureDescCount);
+		getTextureManager()->setUDIMTableShaderData(blockVar[kMaterialUDIMTilesTableBufferName], mUDIMTextureCount * 100);
 	}
 
 	// Update buffers.
 	if (forceUpdate || mBuffersChanged) {
-		auto var = mpMaterialsBlock[kMaterialBuffersName];
+		auto var = blockVar[kMaterialBuffersName];
 		for (size_t i = 0; i < mBuffers.size(); i++) var[i] = mBuffers[i];
 	}
 
@@ -510,18 +512,20 @@ void MaterialSystem::createParameterBlock() {
 		throw std::runtime_error("MaterialSystem material data buffer has unexpected struct size");
 	}
 
+	auto blockVar = mpMaterialsBlock->getRootVar();
+
 	// Create materials data buffer.
 	if (!mMaterials.empty() && (!mpMaterialDataBuffer || mpMaterialDataBuffer->getElementCount() < mMaterials.size())) {
-		mpMaterialDataBuffer = Buffer::createStructured(mpDevice, mpMaterialsBlock[kMaterialDataName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpMaterialDataBuffer = Buffer::createStructured(mpDevice, blockVar[kMaterialDataName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 		mpMaterialDataBuffer->setName("MaterialSystem::mpMaterialDataBuffer");
 	}
 
 	// Bind resources to parameter block.
-	mpMaterialsBlock[kMaterialDataName] = !mMaterials.empty() ? mpMaterialDataBuffer : nullptr;
-	mpMaterialsBlock["materialCount"] = getMaterialCount();
+	blockVar[kMaterialDataName] = !mMaterials.empty() ? mpMaterialDataBuffer : nullptr;
+	blockVar["materialCount"] = getMaterialCount();
 
 	// Samplers
-	mpMaterialsBlock["udimTileSampler"] = mpUDIMTileSampler;
+	blockVar["udimTileSampler"] = mpUDIMTileSampler;
 }
 
 void MaterialSystem::uploadMaterial(const uint32_t materialID) {

@@ -542,6 +542,7 @@ public:
 
     using Desc = ProgramDesc;
     using DefineList = Falcor::DefineList;
+    using TypeConformanceList = Falcor::TypeConformanceList;
 
 	Program(Device::SharedPtr pDevice, ProgramDesc desc, DefineList programDefines);
 	virtual ~Program();

@@ -46,6 +46,10 @@
 #
 ###########################################################################
 
+if(NOT DEFINED OIIO_LIBNAME_SUFFIX)
+    set(OIIO_LIBNAME_SUFFIX "_d") # need this on Linux. Not sure about Win !
+endif()
+
 unset(OpenImageIO_FOUND)
 unset(OPENIMAGEIO_LIBRARY)
 
