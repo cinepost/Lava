@@ -188,6 +188,13 @@ void ShaderVar::setBuffer(const Buffer::SharedPtr& pBuffer) const {
     mpBlock->setBuffer(mOffset, pBuffer);
 }
 
+void ShaderVar::setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer) const {
+    FALCOR_CHECK(isValid(), "Cannot lookup on invalid ShaderVar.");
+    auto result = findMember(name);
+    FALCOR_CHECK(result.isValid(), "No member named '{}' found.", name);
+    result.setBuffer(pBuffer);
+}
+
 Buffer::SharedPtr ShaderVar::getBuffer() const {
     return mpBlock->getBuffer(mOffset);
 }

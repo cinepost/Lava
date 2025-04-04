@@ -51,10 +51,10 @@ struct dlldecl ResourceViewInfo {
     ResourceViewInfo(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : mostDetailedMip(mostDetailedMip), mipCount(mipCount), firstArraySlice(firstArraySlice), arraySize(arraySize) {}
 
-    ResourceViewInfo(uint32_t firstElement, uint32_t elementCount)
-        : firstElement(firstElement), elementCount(elementCount) {}
+    ResourceViewInfo(uint64_t offset, uint64_t size) : offset(offset), size(size) {}
 
-    static const uint32_t kMaxPossible = -1;
+    static constexpr uint32_t kMaxPossible = -1;
+    static constexpr uint64_t kEntireBuffer = -1;
 
     // Textures
     uint32_t mostDetailedMip = 0;
@@ -63,16 +63,12 @@ struct dlldecl ResourceViewInfo {
     uint32_t arraySize = kMaxPossible;
 
     // Buffers
-    uint32_t firstElement = 0;
-    uint32_t elementCount = kMaxPossible;
+    uint64_t offset = 0;
+    uint64_t size = kEntireBuffer;
 
     bool operator==(const ResourceViewInfo& other) const {
-        return (firstArraySlice == other.firstArraySlice)
-            && (arraySize == other.arraySize)
-            && (mipCount == other.mipCount)
-            && (mostDetailedMip == other.mostDetailedMip)
-            && (firstElement == other.firstElement)
-            && (elementCount == other.elementCount);
+        return (firstArraySlice == other.firstArraySlice) && (arraySize == other.arraySize) && (mipCount == other.mipCount) &&
+               (mostDetailedMip == other.mostDetailedMip) && (offset == other.offset) && (size == other.size);
     }
 };
 
@@ -89,11 +85,13 @@ class dlldecl ResourceView {
     ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-    ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(firstElement, elementCount) {}
+    ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint64_t offset, uint64_t size)
+        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(offset, size) {}
 
     ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle)
         : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource) {}
+
+    gfx::IResourceView* getGfxResourceView() const { return mApiHandle; }
 
     /** Get the raw API handle.
     */
@@ -107,16 +105,6 @@ class dlldecl ResourceView {
     */
     ResourceSharedPtr getResource() const { return mpResource.lock(); }
    // Resource* getResource() const { return mpResource.lock().get(); }
-
-#if FALCOR_ENABLE_CUDA
-    /** Get the CUDA device address for this view.
-    */
-    void* getCUDADeviceAddress() const
-    {
-        return mpResource.lock()->getCUDADeviceAddress(mViewInfo);
-    }
-#endif
-
 
  protected:
     ApiHandle mApiHandle;
@@ -134,7 +122,7 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint64_t offset, uint64_t size);
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
 
@@ -143,8 +131,8 @@ private:
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-    ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
+    ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint64_t offset, uint64_t size)
+        : ResourceView(pDevice, pResource, handle, offset, size) {}
 
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle)
         : ResourceView(pDevice, pResource, handle) {}
@@ -170,7 +158,7 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint64_t offset, uint64_t size);
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
@@ -179,8 +167,8 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 
-    UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
+    UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint64_t offset, uint64_t size)
+        : ResourceView(pDevice, pResource, handle, offset, size) {}
 };
 
 class dlldecl RenderTargetView : public ResourceView<RtvHandle> {

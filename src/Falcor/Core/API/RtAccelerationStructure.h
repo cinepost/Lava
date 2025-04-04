@@ -243,6 +243,8 @@ public:
 
 	ApiHandle getApiHandle() const;
 
+	gfx::IAccelerationStructure* getGfxAccelerationStructure() const { return mApiHandle; }
+
 protected:
 	RtAccelerationStructure(Device::SharedPtr pDevice, const Desc& desc);
 

@@ -49,14 +49,13 @@ class dlldecl ComputeStateObject {
 #if defined(FALCOR_VK)
             Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
 #endif
-            Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
+            Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgramKernels) { mpProgramKernels = pProgramKernels; return *this; }
 
-            const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-            //ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+            const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgramKernels; }
             bool operator==(const Desc& other) const;
         private:
             friend class ComputeStateObject;
-            ProgramKernels::SharedConstPtr mpProgram;
+            ProgramKernels::SharedConstPtr mpProgramKernels;
 #if defined(FALCOR_VK)
          RootSignature::SharedPtr mpRootSignature;
 #endif

@@ -84,8 +84,8 @@ void STBNGenerator::uploadNoiseData() const {
     mDirty = false;
 }
 
-Shader::DefineList STBNGenerator::getDefines() const {
-    Shader::DefineList defines;
+DefineList STBNGenerator::getDefines() const {
+    DefineList defines;
 
     return defines;
 }

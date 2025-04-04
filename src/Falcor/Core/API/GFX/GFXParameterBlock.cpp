@@ -55,10 +55,12 @@ gfx::ShaderOffset getGFXShaderOffset(const ParameterBlock::BindLocation& bindLoc
     return gfxOffset;
 }
 
-bool isSrvType(const ReflectionType::SharedConstPtr& pType) {
+bool isSrvType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
     auto resourceType = pType->unwrapArray()->asResourceType();
-    if (resourceType->getType() == ReflectionResourceType::Type::Sampler ||
-        resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer) return false;
+    if (!resourceType || resourceType->getType() == ReflectionResourceType::Type::Sampler || resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer) {
+        return false;
+    }
 
     switch (resourceType->getShaderAccess()) {
         case ReflectionResourceType::ShaderAccess::Read:
@@ -66,15 +68,17 @@ bool isSrvType(const ReflectionType::SharedConstPtr& pType) {
         case ReflectionResourceType::ShaderAccess::ReadWrite:
             return false;
         default:
-            assert(false);
+            FALCOR_UNREACHABLE();
             return false;
     }
 }
 
-bool isUavType(const ReflectionType::SharedConstPtr& pType) {
+bool isUavType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
     auto resourceType = pType->unwrapArray()->asResourceType();
-    if (resourceType->getType() == ReflectionResourceType::Type::Sampler ||
-        resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer) return false;
+    if (!resourceType || resourceType->getType() == ReflectionResourceType::Type::Sampler || resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer) {
+        return false;
+    }
 
     switch (resourceType->getShaderAccess()) {
         case ReflectionResourceType::ShaderAccess::Read:
@@ -82,7 +86,7 @@ bool isUavType(const ReflectionType::SharedConstPtr& pType) {
         case ReflectionResourceType::ShaderAccess::ReadWrite:
             return true;
         default:
-            assert(false);
+            FALCOR_UNREACHABLE();
             return false;
     }
 }
@@ -98,6 +102,32 @@ bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
 }
 */
 
+bool isSamplerType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::Sampler);
+}
+
+bool isAccelerationStructureType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::AccelerationStructure);
+}
+
+bool isParameterBlockType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    // Parameter blocks are currently classified as constant buffers.
+    // See getResourceType() in ProgramReflection.cpp
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer);
+}
+
+bool isConstantBufferType(const ReflectionType* pType) {
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer);
+}
+
 }  // namespace
 
 ParameterBlock::~ParameterBlock() {}
@@ -109,12 +139,12 @@ ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const ProgramReflecti
     assert(pDevice);
     assert(pReflector);
     
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(), mpShaderObject.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(pReflector->getProgramVersion()->getKernels(mpDevice.get(), nullptr)->getGfxProgram(), mpShaderObject.writeRef()));
     createConstantBuffers(getRootVar());
 }
 
 ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,
-    const ProgramVersion* pProgramVersion,
+    const ProgramVersion::SharedConstPtr& pProgramVersion,
     const ParameterBlockReflection::SharedConstPtr& pReflection)
     : mpDevice(pDevice)
     , mpProgramVersion(pProgramVersion)
@@ -136,12 +166,12 @@ bool ParameterBlock::setBlob(const void* pSrc, size_t offset, size_t size) {
     return SLANG_SUCCEEDED(mpShaderObject->setData(gfxOffset, pSrc, size));
 }
 
-bool ParameterBlock::setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer) {
+void ParameterBlock::setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer) {
     auto var = getRootVar()[name];
-    return var.setBuffer(pBuffer);
+    var.setBuffer(pBuffer);
 }
 
-bool ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::SharedPtr& pResource) {
+void ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::SharedPtr& pResource) {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLoc);
     if (isUavType(bindLoc.getType())) {
         auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer);
@@ -152,10 +182,8 @@ bool ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::Shared
         mpShaderObject->setResource(gfxOffset, pSRV->getApiHandle());
         mSRVs[gfxOffset] = pSRV;
     } else {
-        LLOG_ERR << "Error trying to bind resource to non SRV/UAV variable. Ignoring call.";
-        return false;
+        FALCOR_THROW("Error trying to bind buffer to a non SRV/UAV variable.");
     }
-    return true;
 }
 
 Buffer::SharedPtr ParameterBlock::getBuffer(const std::string& name) const {
@@ -179,15 +207,19 @@ Buffer::SharedPtr ParameterBlock::getBuffer(const BindLocation& bindLoc) const {
     }
 }
 
-bool ParameterBlock::setParameterBlock(const std::string& name, const ParameterBlock::SharedPtr& pBlock) {
+void ParameterBlock::setParameterBlock(const std::string& name, const ParameterBlock::SharedPtr& pBlock) {
     auto var = getRootVar()[name];
-    return var.setParameterBlock(pBlock);
+    var.setParameterBlock(pBlock);
 }
 
-bool ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const ParameterBlock::SharedPtr& pBlock) {
-    auto gfxOffset = getGFXShaderOffset(bindLocation);
-    mParameterBlocks[gfxOffset] = pBlock;
-    return SLANG_SUCCEEDED(mpShaderObject->setObject(gfxOffset, pBlock ? pBlock->mpShaderObject : nullptr));
+void ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const ParameterBlock::SharedPtr& pBlock) {
+    if (isParameterBlockType(bindLocation.getType())) {
+        auto gfxOffset = getGFXShaderOffset(bindLocation);
+        mParameterBlocks[gfxOffset] = pBlock;
+        FALCOR_GFX_CALL(mpShaderObject->setObject(gfxOffset, pBlock ? pBlock->mpShaderObject : nullptr));
+    } else {
+        FALCOR_THROW("Error trying to bind a parameter block to a non parameter block variable.");
+    }
 }
 
 ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const std::string& name) const {
@@ -245,34 +277,35 @@ set_constant_by_offset(uint64_t);
 
 #undef set_constant_by_offset
 
-bool ParameterBlock::setTexture(const std::string& name, const Texture::SharedPtr& pTexture) {
-    auto var = getRootVar()[name];
-    return var.setTexture(pTexture);
+void ParameterBlock::setTexture(const std::string& name, const Texture::SharedPtr& pTexture) {
+    getRootVar()[name].setTexture(pTexture);
 }
 
-bool ParameterBlock::setTexture(const BindLocation& bindLocation, const Texture::SharedPtr& pTexture) {
-    const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+void ParameterBlock::setTexture(const BindLocation& bindLocation, const Texture::SharedPtr& pTexture) {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
     if (isUavType(bindLocation.getType())) {
-        auto pUAV = pTexture ? pTexture->getUAV() : UnorderedAccessView::getNullView(mpDevice, bindingInfo.dimension);
-        mpShaderObject->setResource(gfxOffset, pUAV->getApiHandle());
+        if (pTexture && !is_set(pTexture->getBindFlags(), ResourceBindFlags::UnorderedAccess)) {
+            FALCOR_THROW("Trying to bind texture '{}' created without UnorderedAccess flag as a UAV.", pTexture->getName());
+        }
+        auto pUAV = pTexture ? pTexture->getUAV() : nullptr;
+        mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
         mResources[gfxOffset] = pTexture;
     } else if (isSrvType(bindLocation.getType())) {
-        auto pSRV = pTexture ? pTexture->getSRV() : ShaderResourceView::getNullView(mpDevice, bindingInfo.dimension);
-        mpShaderObject->setResource(gfxOffset, pSRV->getApiHandle());
+        if (pTexture && !is_set(pTexture->getBindFlags(), ResourceBindFlags::ShaderResource)) {
+            FALCOR_THROW("Trying to bind texture '{}' created without ShaderResource flag as an SRV.", pTexture->getName());
+        }
+        auto pSRV = pTexture ? pTexture->getSRV() : nullptr;
+        mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
         mResources[gfxOffset] = pTexture;
     } else {
-        LLOG_ERR << "Error trying to bind resource to non SRV/UAV variable. Ignoring call.";
-        return false;
+        FALCOR_THROW("Error trying to bind texture to a non SRV/UAV variable.");
     }
-    return true;
 }
 
 Texture::SharedPtr ParameterBlock::getTexture(const std::string& name) const {
-    auto var = getRootVar()[name];
-    return var.getTexture();
+    getRootVar()[name].getTexture();
 }
 
 Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) const {
@@ -291,36 +324,38 @@ Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) 
     }
 }
 
-bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv) {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+void ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv) {
     if (isSrvType(bindLocation.getType())) {
-        mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getApiHandle() : nullptr);
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSrv;
-        mResources[gfxOffset] = pSrv ? pSrv->getResource() : nullptr;
+        // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
+        mResources[gfxOffset] = Resource::SharedPtr(pSrv ? pSrv->getResource() : nullptr);
     } else {
-        LLOG_ERR << "Error trying to bind SRV to a non SRV variable. Ignoring call.";
-        return false;
+        FALCOR_THROW("Error trying to bind an SRV to a non SRV variable.");
     }
-    return true;
 }
 
-bool ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav) {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+void ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav) {
     if (isUavType(bindLocation.getType())) {
-        mpShaderObject->setResource(gfxOffset, pUav ? pUav->getApiHandle() : nullptr);
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        mpShaderObject->setResource(gfxOffset, pUav ? pUav->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUav;
-        mResources[gfxOffset] = pUav ? pUav->getResource() : nullptr;
+        // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
+        mResources[gfxOffset] = Resource::SharedPtr(pUav ? pUav->getResource() : nullptr);
     } else {
-        LLOG_ERR << "Error trying to bind UAV to a non UAV variable. Ignoring call.";
-        return false;
+        FALCOR_THROW("Error trying to bind a UAV to a non UAV variable.");
     }
-    return true;
 }
 
-bool ParameterBlock::setAccelerationStructure(const BindLocation& bindLocation, const RtAccelerationStructure::SharedPtr& pAccl) {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    mAccelerationStructures[gfxOffset] = pAccl;
-    return SLANG_SUCCEEDED(mpShaderObject->setResource(gfxOffset, pAccl ? pAccl->getApiHandle() : nullptr));
+void ParameterBlock::setAccelerationStructure(const BindLocation& bindLocation, const RtAccelerationStructure::SharedPtr& pAccl) {
+    if (isAccelerationStructureType(bindLocation.getType())) {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        mAccelerationStructures[gfxOffset] = pAccl;
+        FALCOR_GFX_CALL(mpShaderObject->setResource(gfxOffset, pAccl ? pAccl->getGfxAccelerationStructure() : nullptr));
+    } else {
+        FALCOR_THROW("Error trying to bind an acceleration structure to a non acceleration structure variable.");
+    }
 }
 
 ShaderResourceView::SharedPtr ParameterBlock::getSrv(const BindLocation& bindLocation) const {
@@ -344,16 +379,19 @@ RtAccelerationStructure::SharedPtr ParameterBlock::getAccelerationStructure(cons
     return iter->second;
 }
 
-bool ParameterBlock::setSampler(const std::string& name, const Sampler::SharedPtr& pSampler) {
-    auto var = getRootVar()[name];
-    return var.setSampler(pSampler);
+void ParameterBlock::setSampler(const std::string& name, const Sampler::SharedPtr& pSampler) {
+    getRootVar()[name].setSampler(pSampler);
 }
 
-bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler) {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    auto pBoundSampler = pSampler ? pSampler : Sampler::getDefault(mpDevice);
-    mSamplers[gfxOffset] = pBoundSampler;
-    return SLANG_SUCCEEDED(mpShaderObject->setSampler(gfxOffset, pBoundSampler->getApiHandle()));
+void ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler) {
+    if (isSamplerType(bindLocation.getType())) {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        const Sampler::SharedPtr& pBoundSampler = pSampler ? pSampler : mpDevice->getDefaultSampler();
+        mSamplers[gfxOffset] = pBoundSampler;
+        FALCOR_GFX_CALL(mpShaderObject->setSampler(gfxOffset, pBoundSampler->getGfxSamplerState()));
+    } else {
+        FALCOR_THROW("Error trying to bind a sampler to a non sampler variable.");
+    }
 }
 
 const Sampler::SharedPtr& ParameterBlock::getSampler(const BindLocation& bindLocation) const {
@@ -420,15 +458,5 @@ void const* ParameterBlock::getRawData() const {
 const Buffer::SharedPtr& ParameterBlock::getUnderlyingConstantBuffer() const {
     throw std::runtime_error("unimplemented");
 }
-
-#if FALCOR_ENABLE_CUDA
-void* ParameterBlock::getCUDAHostBuffer(size_t& outSize) {
-    return nullptr;
-}
-
-void* ParameterBlock::getCUDADeviceBuffer(size_t& outSize) {
-    return nullptr;
-}
-#endif
 
 }  // namespace Falcor

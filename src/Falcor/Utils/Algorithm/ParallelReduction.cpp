@@ -147,9 +147,11 @@ void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::Sh
         var["PerFrameCB"]["gNumTiles"] = numTiles;
         var["gInput"] = pInput;
         
-        var["gInputBuffer"].setBuffer(nullptr); // Unbind previously bound buffer from last call to execute()
-        var["gResult"].setBuffer( mpBuffers[0]);
-
+        var.setBuffer("gInputBuffer", nullptr); // Unbind previously bound buffer from last call to execute()
+        //var["gInputBuffer"].setBuffer(nullptr); // Unbind previously bound buffer from last call to execute()
+        var.setBuffer("gResult", mpBuffers[0]);
+        //var["gResult"].setBuffer( mpBuffers[0]);
+        
         mpState->setProgram(mpInitialProgram);
         uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
         pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
@@ -164,8 +166,8 @@ void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::Sh
         while (elems > 1) {
             auto var = mpVars->getRootVar();
             var["PerFrameCB"]["gElems"] = elems;
-            var->setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
-            var->setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
+            var.setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
+            var.setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
 
             mpState->setProgram(mpFinalProgram);
             uint32_t numGroups = div_round_up(elems, mpFinalProgram->getReflector()->getThreadGroupSize().x);

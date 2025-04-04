@@ -159,6 +159,11 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
+    /**
+     * Get the sampler state.
+     */
+    gfx::ISamplerState* getGfxSamplerState() const { return mApiHandle; }
+
     /** Get the API handle
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }

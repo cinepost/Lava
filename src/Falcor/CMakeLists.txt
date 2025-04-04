@@ -2,6 +2,7 @@ set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
 
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include/slang
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 

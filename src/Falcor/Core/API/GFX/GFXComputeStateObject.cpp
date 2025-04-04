@@ -27,13 +27,14 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ComputeStateObject.h"
 
 namespace Falcor {
 
 void ComputeStateObject::apiInit() {
 	gfx::ComputePipelineStateDesc computePipelineDesc = {};
-	computePipelineDesc.program = mDesc.mpProgram->getApiHandle();
+	computePipelineDesc.program = mDesc.mpProgramKernels->getGfxProgram();
 	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
 }
 

@@ -91,7 +91,7 @@ namespace Falcor {
             }
         }
 
-        gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars) {
+        gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars) {
             static GraphicsStateObject* spLastGso = nullptr;
 
             // Insert barriers for bound resources.
@@ -247,31 +247,31 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
-    void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
+    void RenderContext::drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
         mCommandsPending = true;
     }
 
-    void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
+    void RenderContext::draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->draw(vertexCount, startVertexLocation);
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
+    void RenderContext::drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
+    void RenderContext::drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    void RenderContext::drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndirect(
@@ -283,7 +283,7 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+    void RenderContext::drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
         
@@ -298,7 +298,7 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndexedIndirectCount(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    void RenderContext::drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndexedIndirectCount(

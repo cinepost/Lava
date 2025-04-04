@@ -93,16 +93,16 @@ void CryptomatteSystem::addMaterials(const MaterialSystem* pMaterials) {
 	}
 }
 
-Shader::DefineList CryptomatteSystem::getDefaultDefines() {
-	Shader::DefineList defines;
+DefineList CryptomatteSystem::getDefaultDefines() {
+	DefineList defines;
 	defines.add("CRYPTOMATTE_SYSTEM_MATERIALS_COUNT", "0");
 	defines.add("CRYPTOMATTE_SYSTEM_INSTANCES_COUNT", "0");
 
 	return defines;
 }
 
-Shader::DefineList CryptomatteSystem::getDefines() const {
-	Shader::DefineList defines;
+DefineList CryptomatteSystem::getDefines() const {
+	DefineList defines;
 	defines.add("CRYPTOMATTE_SYSTEM_MATERIALS_COUNT", std::to_string(mMaterialHashes.size()));
 	defines.add("CRYPTOMATTE_SYSTEM_INSTANCES_COUNT", std::to_string(mInstanceHashes.size()));
 	return defines;

@@ -85,17 +85,16 @@ void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
         case ReflectionType::Kind::Resource:
         {
             auto pResourceType = pType->asResourceType();
-            switch (pResourceType->getType())
-            {
-            case ReflectionResourceType::Type::ConstantBuffer:
-            {
-                auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
-                var.setParameterBlock(pCB);
-            }
-            break;
-
-            default:
+            switch (pResourceType->getType()) {
+                case ReflectionResourceType::Type::ConstantBuffer:
+                {
+                    auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
+                    var.setParameterBlock(pCB);
+                }
                 break;
+
+                default:
+                    break;
             }
         }
         break;

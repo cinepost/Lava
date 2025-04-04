@@ -33,7 +33,7 @@
 #include "Falcor/Core/Framework.h"
 
 #include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/Core/Program/RtProgram.h"
+#include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
 namespace Falcor {

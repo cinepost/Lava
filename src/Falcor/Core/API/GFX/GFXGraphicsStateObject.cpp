@@ -358,7 +358,7 @@ void GraphicsStateObject::apiInit() {
   }
 
   desc.primitiveType = getGFXPrimitiveType(mDesc.getPrimitiveType());
-  desc.program = mDesc.getProgramKernels()->getApiHandle().get();
+  desc.program = mDesc.getProgramKernels()->getGfxProgram();
 
   FALCOR_GFX_CALL(mpDevice->getApiHandle()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
 }

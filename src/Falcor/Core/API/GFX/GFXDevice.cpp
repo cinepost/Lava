@@ -30,6 +30,7 @@
 #include "GFXDeviceApiData.h"
 #include "GFXFormats.h"
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/Program/ProgramManager.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/RenderContext.h"
 
@@ -273,7 +274,7 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 	// clear value
 	gfx::ClearValue clearValue;
 	clearValue.depthStencil.depth = 1.0f;
-	desc.optimalClearValue = clearValue;
+	desc.optimalClearValue = &clearValue;
 	desc.isShared = false;
 
 	// validate description
@@ -282,7 +283,7 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 	// create resource
 	std::shared_ptr<Falcor::Texture> pTexture;
-	apiHandle = mpApiData->pDevice->createTextureResource(desc, pTexture, nullptr);
+	apiHandle = mpApiData->pDevice->createTextureResource(desc, pTexture.get(), nullptr);
 	FALCOR_ASSERT(apiHandle);
 
 	return true;
@@ -364,17 +365,17 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 		return result;
 	}
 
-	Device::ShaderModel querySupportedShaderModel(DeviceHandle pDevice) {
-		struct SMLevel { const char* name; Device::ShaderModel level; };
+	ShaderModel querySupportedShaderModel(DeviceHandle pDevice) {
+		struct SMLevel { const char* name; ShaderModel level; };
 		const SMLevel levels[] = {
-			{"sm_6_7", Device::ShaderModel::SM6_7},
-			{"sm_6_6", Device::ShaderModel::SM6_6},
-			{"sm_6_5", Device::ShaderModel::SM6_5},
-			{"sm_6_4", Device::ShaderModel::SM6_4},
-			{"sm_6_3", Device::ShaderModel::SM6_3},
-			{"sm_6_2", Device::ShaderModel::SM6_2},
-			{"sm_6_1", Device::ShaderModel::SM6_1},
-			{"sm_6_0", Device::ShaderModel::SM6_0}
+			{"sm_6_7", ShaderModel::SM6_7},
+			{"sm_6_6", ShaderModel::SM6_6},
+			{"sm_6_5", ShaderModel::SM6_5},
+			{"sm_6_4", ShaderModel::SM6_4},
+			{"sm_6_3", ShaderModel::SM6_3},
+			{"sm_6_2", ShaderModel::SM6_2},
+			{"sm_6_1", ShaderModel::SM6_1},
+			{"sm_6_0", ShaderModel::SM6_0}
 		};
 
 		for (auto level : levels) {
@@ -382,7 +383,7 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 				return level.level;
 			}
 		}
-		return Device::ShaderModel::Unknown;
+		return ShaderModel::Unknown;
 	}
 
 	bool Device::apiInit(const std::string& validationLayerOuputFilename) {

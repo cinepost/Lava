@@ -64,7 +64,7 @@ void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim
         // Prepare log buffers.
         if (!mpPixelLog || mpPixelLog->getElementCount() != mLogSize) {
             // Create program for type reflection.
-            if (!mpReflectProgram) mpReflectProgram = ComputeProgram::createFromFile(mpDevice, kReflectPixelDebugTypesFile, "main");
+            if (!mpReflectProgram) mpReflectProgram = Program::createCompute(mpDevice, kReflectPixelDebugTypesFile, "main");
 
             // Allocate GPU buffers.
             mpPixelLog = Buffer::createStructured(mpDevice, mpReflectProgram.get(), "gPixelLog", mLogSize);

@@ -99,17 +99,16 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     virtual ~Resource();
 
-    inline std::shared_ptr<Device> device() const { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
 
-    inline size_t id() { return mID; }
-    inline size_t id() const { return mID; }
+    size_t id() const { return mID; }
 
 
     /** Get the bind flags
     */
-    inline BindFlags getBindFlags() const { return mBindFlags; }
+    BindFlags getBindFlags() const { return mBindFlags; }
 
-    inline bool isStateGlobal() const { return mState.isGlobal; }
+    bool isStateGlobal() const { return mState.isGlobal; }
 
     /** Get the current state. This is only valid if isStateGlobal() returns true
     */
@@ -136,17 +135,15 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     struct ViewInfoHashFunc {
         std::size_t operator()(const ResourceViewInfo& v) const {
-            return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1)
-                ^ (std::hash<uint32_t>()(v.mipCount) << 1)
-                ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3)
-                ^ (std::hash<uint32_t>()(v.firstElement) << 5)
-                ^ (std::hash<uint32_t>()(v.elementCount) << 7);
+            return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1) ^
+                   (std::hash<uint32_t>()(v.mipCount) << 1) ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3) ^
+                   (std::hash<uint32_t>()(v.offset) << 5) ^ (std::hash<uint32_t>()(v.size) << 7);
         }
     };
 
     /** Get the size of the resource
     */
-    inline size_t getSize() const { return mSize; }
+    size_t getSize() const { return mSize; }
 
     /** Invalidate and release all of the resource views
     */
@@ -154,7 +151,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Set the resource name
     */
-    inline void setName(const std::string& name) { mName = name; apiSetName(); }
+    void setName(const std::string& name) { mName = name; apiSetName(); }
 
     /** Get the resource name
     */
@@ -171,18 +168,6 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     std::shared_ptr<Texture> asTexture();
     std::shared_ptr<const Texture> asTexture() const;
     std::shared_ptr<Buffer> asBuffer();
-
-#if FALCOR_ENABLE_CUDA
-    /** Get the CUDA device address for this resource.
-        \return CUDA device address.
-        Throws an exception if the resource is not shared.
-    */
-    virtual void* getCUDADeviceAddress() const = 0;
-
-    /** Get the CUDA device address for a view of this resource.
-    */
-    virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const = 0;
-#endif
 
  private:
     static std::atomic<size_t> newResourceID;

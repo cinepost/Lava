@@ -84,11 +84,8 @@ namespace Falcor {
         var["CB"]["gDispatchX"] = groupsX;
 
         // Bind the data.
-        #ifdef _DEBUG
-        bool success = mSort.pVars->setBuffer("gData", pData);
-        assert(success);
-        #endif // _DEBUG
-
+        var.setBuffer("gData", pData);
+        
         // Execute.
         pRenderContext->dispatch(mSort.pState.get(), mSort.pVars.get(), {groupsX, groupsY, 1});
 

@@ -208,6 +208,7 @@ namespace Falcor {
             Logs an error and returns `false` if this variable doesn't point at a buffer
         */
         void setBuffer(const Buffer::SharedPtr& pBuffer) const;
+        void setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer) const;
 
         /** Get the buffer that this variable points to.
             Logs an error and returns nullptr if this variable doesn't point at a buffer.

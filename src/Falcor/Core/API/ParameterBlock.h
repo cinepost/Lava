@@ -160,7 +160,7 @@ public:
         \param[in] pBuffer The buffer object
         \return false is the call failed, otherwise true
     */
-    bool setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer);
+    void setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer);
 
     /** Bind a buffer object by index
         If the no buffer exists in the specified index or the bind flags don't match the shader requirements or the size doesn't match the required size, the call will fail.
@@ -168,7 +168,7 @@ public:
         \param[in] pBuffer The buffer object
         \return false is the call failed, otherwise true
     */
-    bool setBuffer(const BindLocation& bindLocation, const Buffer::SharedPtr& pBuffer);
+    void setBuffer(const BindLocation& bindLocation, const Buffer::SharedPtr& pBuffer);
 
     /** Get a buffer
         \param[in] name The name of the buffer
@@ -188,7 +188,7 @@ public:
         \param[in] pBlock The parameter block
         \return false is the call failed, otherwise true
     */
-    bool setParameterBlock(const std::string& name, const ParameterBlock::SharedPtr& pBlock);
+    void setParameterBlock(const std::string& name, const ParameterBlock::SharedPtr& pBlock);
 
     /** Bind a parameter block by index.
         If the no parameter block exists in the specified index or the parameter block size doesn't match the required size, the call will fail.
@@ -196,7 +196,7 @@ public:
         \param[in] pBlock The parameter block
         \return false is the call failed, otherwise true
     */
-    bool setParameterBlock(const BindLocation& bindLocation, const ParameterBlock::SharedPtr& pBlock);
+    void setParameterBlock(const BindLocation& bindLocation, const ParameterBlock::SharedPtr& pBlock);
 
     /** Get a parameter block.
         \param[in] name The name of the parameter block
@@ -214,8 +214,8 @@ public:
         \param[in] name The name of the texture object in the shader
         \param[in] pTexture The texture object to bind
     */
-    bool setTexture(const std::string& name, const Texture::SharedPtr& pTexture);
-    bool setTexture(const BindLocation& bindLocation, const Texture::SharedPtr& pTexture);
+    void setTexture(const std::string& name, const Texture::SharedPtr& pTexture);
+    void setTexture(const BindLocation& bindLocation, const Texture::SharedPtr& pTexture);
 
     /** Get a texture object.
         \param[in] name The name of the texture
@@ -228,20 +228,20 @@ public:
         \param[in] bindLocation The bind-location in the block
         \param[in] pSrv The shader-resource-view object to bind
     */
-    bool setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv);
+    void setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv);
 
     /** Bind a UAV.
         \param[in] bindLocation The bind-location in the block
         \param[in] pSrv The unordered-access-view object to bind
     */
-    bool setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav);
+    void setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav);
 
     /** Bind an acceleration structure.
         \param[in] bindLocation The bind-location in the block
         \param[in] pAccl The acceleration structure object to bind
         \return false if the binding location does not accept an acceleration structure, true otherwise.
     */
-    bool setAccelerationStructure(const BindLocation& bindLocation, const RtAccelerationStructure::SharedPtr& pAccl);
+    void setAccelerationStructure(const BindLocation& bindLocation, const RtAccelerationStructure::SharedPtr& pAccl);
 
     /** Get an SRV object.
         \param[in] bindLocation The bind-location in the block
@@ -266,14 +266,14 @@ public:
         \param[in] pSampler The sampler object to bind
         \return false if the sampler was not found in the program, otherwise true
     */
-    bool setSampler(const std::string& name, const Sampler::SharedPtr& pSampler);
+    void setSampler(const std::string& name, const Sampler::SharedPtr& pSampler);
 
     /** Bind a sampler to the program in the global namespace.
         \param[in] bindLocation The bind-location in the block
         \param[in] pSampler The sampler object to bind
         \return false if the sampler was not found in the program, otherwise true
     */
-    bool setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler);
+    void setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler);
 
     /** Gets a sampler object.
         \param[in] bindLocation The bind-location in the block

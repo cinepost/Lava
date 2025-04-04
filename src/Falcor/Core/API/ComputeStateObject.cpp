@@ -32,7 +32,7 @@
 namespace Falcor {
 
 bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
-    return mpProgram == other.mpProgram;
+    return mpProgramKernels == other.mpProgramKernels;
 }
 
 ComputeStateObject::~ComputeStateObject() {

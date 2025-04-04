@@ -39,7 +39,7 @@ class dlldecl STBNGenerator {
         /** Get macro definitions for this sample generator.
             \return Macro definitions that must be set on the shader program that uses this sampler.
         */
-        Shader::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Binds the data to a program vars object.
             \param[in] pVars ProgramVars of the program to set data into.
