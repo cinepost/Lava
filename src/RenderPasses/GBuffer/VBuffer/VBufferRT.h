@@ -79,9 +79,8 @@ private:
 
     uint32_t mSampleNumber = 0;
 
-    struct
-    {
-        RtProgram::SharedPtr pProgram;
+    struct {
+        Program::SharedPtr pProgram;
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 

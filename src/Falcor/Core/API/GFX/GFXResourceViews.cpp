@@ -93,7 +93,7 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(Device::SharedPtr pDevi
     //fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
     desc.format = getGFXFormat(pBuffer->getFormat());
     desc.bufferRange.offset = offset;
-    desc.bufferRange.size = size == kEntireBuffer ? 0 : size;
+    desc.bufferRange.size = size == ResourceViewInfo::kEntireBuffer ? 0 : size;
 
     FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), nullptr, desc, handle.writeRef()));
     return SharedPtr(new ShaderResourceView(pDevice, pBuffer, handle, offset, size));
@@ -144,14 +144,14 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDe
     desc.type = gfx::IResourceView::Type::UnorderedAccess;
     desc.format = getGFXFormat(pBuffer->getFormat());
     desc.bufferRange.offset = offset;
-    desc.bufferRange.size = size == kEntireBuffer ? 0 : size;
+    desc.bufferRange.size = size == ResourceViewInfo::kEntireBuffer ? 0 : size;
     //fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
     FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferView(
         static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()),
         pBuffer->getUAVCounter() ? static_cast<gfx::IBufferResource*>(pBuffer->getUAVCounter()->getApiHandle().get()) : nullptr,
         desc,
         handle.writeRef()));
-    return SharedPtr(new UnorderedAccessView(pDevice, pBuffer, handle, firstElement, elementCount));
+    return SharedPtr(new UnorderedAccessView(pDevice, pBuffer, handle, offset, size));
 }
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDevice, Dimension dimension) {

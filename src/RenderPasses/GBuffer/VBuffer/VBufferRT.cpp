@@ -160,7 +160,7 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         defines.add("FALCOR_NVAPI_AVAILABLE", "0");
 
         // Create ray tracing program.
-        RtProgram::Desc desc;
+        Program::Desc desc;
         desc.addShaderLibrary(kProgramRaytraceFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
@@ -189,7 +189,7 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Add hit groups for for other procedural primitives here.
 
-        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pProgram = Program::create(mpDevice, desc, defines);
         mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
 
         // Bind static resources.
@@ -207,14 +207,10 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 }
 
 void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
-        throw std::runtime_error("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
     // Create compute pass.
     if (!mpComputePass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addShaderLibrary(kProgramComputeFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;
@@ -286,6 +282,14 @@ void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
 }
 
 VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("VBufferRT: requires Shader Model 6.5 support.");
+    }
+
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
+        FALCOR_THROW("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create sample generator

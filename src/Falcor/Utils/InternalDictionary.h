@@ -106,7 +106,7 @@ namespace Falcor {
         /** Get value by key. Throws an exception if key does not exist.
         */
         template<typename T>
-        T getValue(const std::string& key) {
+        T getValue(const std::string& key) const {
             auto it = mContainer.find(key);
             if (it == mContainer.end()) throw std::runtime_error(("Key '" + key + "' does not exist !").c_str());
             return it->second;
@@ -115,7 +115,7 @@ namespace Falcor {
         /** Get value by key. Returns the specified default value if key does not exist.
         */
         template<typename T>
-        T getValue(const std::string& key, const T& defaultValue) {
+        T getValue(const std::string& key, const T& defaultValue) const {
             auto it = mContainer.find(key);
             return it != mContainer.end() ? it->second : defaultValue;
         }

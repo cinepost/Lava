@@ -71,7 +71,7 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 	Program::Desc desc;
 	desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
 
-	mpProgram = GraphicsProgram::create(pDevice, desc);
+	mpProgram = Program::create(pDevice, desc);
 
 	mpFbo = Fbo::create(pDevice);
 
@@ -110,7 +110,7 @@ void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::S
 		mpState->getProgram()->addDefines(mpScene->getSceneDefines());
 		//updateTexturesResolveData();
 	}
-	mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+	mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
 void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& renderData) {
@@ -143,7 +143,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	auto exec_started = std::chrono::high_resolution_clock::now();
 
-	auto pTextureManager = mpScene->materialSystem()->textureManager();
+	TextureManager* pTextureManager = mpScene->materialSystem()->getTextureManager();
 
 	createMipCalibrationTexture(pContext);
 
@@ -198,21 +198,23 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	//	totalPagesToUpdateCountAligned = (dv.quot + 1) * 4;
 	//}
 
-	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-	mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
-	mpVars["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
-	mpVars["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
+	auto var = mpVars->getRootVar();
 
-	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
+	var["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+	var["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
+	var["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
+	var["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
+
+	var["mipCalibrationTexture"] = mpMipCalibrationTexture;
 
 	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); ++i) {
-		mpVars["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
+		var["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
 	}
 
 	setDefaultSampler();
-	mpVars["gCalibrationSampler"] = mpSampler;
-	mpVars["gCalibrationMinSampler"] = mpMinSampler;
-	mpVars["gCalibrationMaxSampler"] = mpMaxSampler;
+	var["gCalibrationSampler"] = mpSampler;
+	var["gCalibrationMinSampler"] = mpMinSampler;
+	var["gCalibrationMaxSampler"] = mpMaxSampler;
 
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
 	pContext->flush(true);

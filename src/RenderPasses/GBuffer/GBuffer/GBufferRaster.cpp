@@ -77,11 +77,11 @@ GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, co
 
 GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice, kInfo) {
     // Check for required features.
-    if (!pDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
-        throw std::runtime_error("Pixel shader barycentrics are not supported by the current device");
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
+        FALCOR_THROW("GBufferRaster: Pixel shader barycentrics are not supported by the current device");
     }
-    if (!pDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews)) {
-        throw std::runtime_error("Rasterizer ordered views (ROVs) are not supported by the current device");
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews)) {
+        FALCOR_THROW("GBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
     parseDictionary(dict);
@@ -90,8 +90,7 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
     Program::DefineList defines = { { "_DEFAULT_ALPHA_TEST", "" }, {"DISABLE_RAYTRACING", ""} };
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-    desc.setShaderModel(shaderModel);
-    mRaster.pProgram = GraphicsProgram::create(mpDevice, desc, defines);
+    mRaster.pProgram = Program::create(mpDevice, desc, defines);
 
     // Initialize graphics state
     mRaster.pState = GraphicsState::create(mpDevice);
@@ -193,7 +192,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Create program vars.
     if (!mRaster.pVars) {
-        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
+        mRaster.pVars = ProgramVars::create(mpDevice, mRaster.pProgram.get());
     }
 
     // Setup depth pass to use same culling mode.
@@ -205,13 +204,15 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mpFbo->attachDepthStencilTarget(mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture());
     pRenderContext->copyResource(renderData[kDepthName].get(), mpDepthPrePassGraph->getOutput("DepthPrePass.depth").get());
 
+    auto var = mRaster.pVars->getRootVar();
+
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kGBufferExtraChannels) {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        mRaster.pVars[channel.texname] = pTex;
+        var[channel.texname] = pTex;
     }
 
-    mRaster.pVars["PerFrameCB"]["gParams"].setBlob(mGBufferParams);
+    var["PerFrameCB"]["gParams"].setBlob(mGBufferParams);
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
     // Rasterize the scene.

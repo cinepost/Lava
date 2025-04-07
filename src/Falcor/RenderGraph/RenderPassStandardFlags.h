@@ -29,10 +29,7 @@
 #define FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_
 
 #include "Falcor/Core/Framework.h"
-
-#if defined(FALCOR_GFX)
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
-#endif
 
 namespace Falcor {
 

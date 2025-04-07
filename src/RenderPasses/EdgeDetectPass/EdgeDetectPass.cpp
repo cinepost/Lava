@@ -69,7 +69,6 @@ namespace {
 
     const char kShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.cs.slang";
     const char kLowPassShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.lowpass.cs.slang";
-    const std::string kShaderModel = "6_5";
 
     const char kOutputChannel[]      = "output";
     
@@ -139,7 +138,9 @@ EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, 
 }
 
 EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
-    mpDevice = pDevice;
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("EdgeDetectPass requires Shader Model 6.5 support.");
+    }
 }
 
 Dictionary EdgeDetectPass::getScriptingDictionary() {
@@ -191,7 +192,7 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
     // Low-pass
     if( (!mpLowPass || mDirty) && pSrcVBuffer && mpTmpVBuffer && (mLowPassFilterSize != 0)) {
         Program::Desc desc;
-        desc.addShaderLibrary(kLowPassShaderFile).setShaderModel(kShaderModel).csEntry("lowPass");
+        desc.addShaderLibrary(kLowPassShaderFile).csEntry("lowPass");
         auto defines = Program::DefineList();
         defines.add("_FILTER_SIZE", std::to_string(mLowPassFilterSize));
 
@@ -210,7 +211,7 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
     // U pass
     if(!mpPassU || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("passU");
+        desc.addShaderLibrary(kShaderFile).csEntry("passU");
         if (mpScene) desc.addTypeConformances(mpScene->getTypeConformances());
 
         auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();
@@ -273,7 +274,7 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
     // V pass
     if(!mpPassV || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("passV");
+        desc.addShaderLibrary(kShaderFile).csEntry("passV");
         if (mpScene) desc.addTypeConformances(mpScene->getTypeConformances());
 
         auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();

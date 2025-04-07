@@ -93,14 +93,15 @@ VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, co
     return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
 }
 VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice, kInfo) {
-    parseDictionary(dict);
-
     // Check for required features.
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_2)) {
+        FALCOR_THROW("VBufferRaster requires Shader Model 6.2 support.");
+    }
     if (!pDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
-        throw std::runtime_error("Pixel shader barycentrics are not supported by the current device");
+        FALCOR_THROW("Pixel shader barycentrics are not supported by the current device");
     }
     if (!pDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews)) {
-        throw std::runtime_error("Rasterizer ordered views (ROVs) are not supported by the current device");
+        FALCOR_THROW("Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
     parseDictionary(dict);
@@ -111,8 +112,7 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
     // Create raster program
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-    desc.setShaderModel(kShaderModel);
-    mRaster.pProgram = GraphicsProgram::create(pDevice, desc);
+    mRaster.pProgram = Program::create(pDevice, desc);
 
     // Initialize graphics state
     mRaster.pState = GraphicsState::create(pDevice);
@@ -243,7 +243,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Create program vars.
-    if (!mRaster.pVars) mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
+    if (!mRaster.pVars) mRaster.pVars = ProgramVars::create(mpDevice, mRaster.pProgram.get());
 
     if(mPerPixelJitterRaster) {
         // 4 quads jittered rendering
@@ -259,19 +259,23 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         //CPUSampleGenerator::SharedPtr pTmpSampleGenerator = std::make_shared<CPUSampleGenerator>(*pSamplePatternGenerator);
 
         uint32_t i = 0;
+        
+        auto var = mRaster.pVars->getRootVar();
+
         for(auto& subPass: mSubPasses) {
             LLOG_DBG << "VBufferRaster rasterizing jittered quad " << i++;
             subPass.pFbo->attachColorTarget(subPass.pVBuff, 0);
             subPass.pFbo->attachDepthStencilTarget(subPass.pDepth);
             mRaster.pState->setFbo(subPass.pFbo);
-            mRaster.pVars["PerFrameCB"]["gFrameDim"] = mQuarterFrameDim;
-            mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
-            mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
+           
+            var["PerFrameCB"]["gFrameDim"] = mQuarterFrameDim;
+            var["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+            var["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
                 Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-                mRaster.pVars[channel.texname] = pTex;
+                var[channel.texname] = pTex;
             }
 
             // Adjust camera.
@@ -291,36 +295,41 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
         if(mDirty) {
             if(!mpCombineQuadsProgram) {
-                mpCombineQuadsProgram = ComputeProgram::createFromFile(mpDevice, kQuadCombineFile, "combine", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
+                mpCombineQuadsProgram = Program::createCompute(mpDevice, kQuadCombineFile, "combine", Program::DefineList(), SlangCompilerFlags::TreatWarningsAsErrors);
                 assert(mpCombineQuadsProgram);
 
-                mpCombineQuadsVars = ComputeVars::create(mpDevice, mpCombineQuadsProgram->getReflector());
+                mpCombineQuadsVars = ProgramVars::create(mpDevice, mpCombineQuadsProgram->getReflector());
                 mpCombineQuadsState = ComputeState::create(mpDevice);
                 mpCombineQuadsState->setProgram(mpCombineQuadsProgram);
             }
         }
 
-        mpCombineQuadsVars["PerFrameCB"]["gOutputResolution"] = mFrameDim;
-        mpCombineQuadsVars["PerFrameCB"]["gQuadResolution"] = mQuarterFrameDim;
+        {
+            auto var = mpCombineQuadsVars->getRootVar();
 
-        mpCombineQuadsVars["gVBuff1"] = mSubPasses[0].pVBuff;
-        mpCombineQuadsVars["gVBuff2"] = mSubPasses[1].pVBuff;
-        mpCombineQuadsVars["gVBuff3"] = mSubPasses[2].pVBuff;
-        mpCombineQuadsVars["gVBuff4"] = mSubPasses[3].pVBuff;
+            var["PerFrameCB"]["gOutputResolution"] = mFrameDim;
+            var["PerFrameCB"]["gQuadResolution"] = mQuarterFrameDim;
 
-        mpCombineQuadsVars["gDepth1"] = mSubPasses[0].pDepth;
-        mpCombineQuadsVars["gDepth2"] = mSubPasses[1].pDepth;
-        mpCombineQuadsVars["gDepth3"] = mSubPasses[2].pDepth;
-        mpCombineQuadsVars["gDepth4"] = mSubPasses[3].pDepth;
+            var["gVBuff1"] = mSubPasses[0].pVBuff;
+            var["gVBuff2"] = mSubPasses[1].pVBuff;
+            var["gVBuff3"] = mSubPasses[2].pVBuff;
+            var["gVBuff4"] = mSubPasses[3].pVBuff;
 
-        mpCombineQuadsVars["gOutputVBuff"] = pOutput;
-        mpCombineQuadsVars["gOutputDepth"] = pDepthInternal;
+            var["gDepth1"] = mSubPasses[0].pDepth;
+            var["gDepth2"] = mSubPasses[1].pDepth;
+            var["gDepth3"] = mSubPasses[2].pDepth;
+            var["gDepth4"] = mSubPasses[3].pDepth;
+
+            var["gOutputVBuff"] = pOutput;
+            var["gOutputDepth"] = pDepthInternal;
+        }
 
         uint3 numGroups = div_round_up(uint3(mQuarterFrameDim.x, mQuarterFrameDim.y, 1u), mpCombineQuadsProgram->getReflector()->getThreadGroupSize());
         pRenderContext->dispatch(mpCombineQuadsState.get(), mpCombineQuadsVars.get(), numGroups);
 
     } else {
         // Conventional rendering
+        auto var = mRaster.pVars->getRootVar();
 
         if(mDirty) {
             mpFbo->attachColorTarget(pOutput, 0);
@@ -331,15 +340,15 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             // Bind extra outpu channels as UAV buffers.
             for (const auto& channel : kVBufferExtraOutputChannels) {
                 Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-                mRaster.pVars[channel.texname] = pTex;
+                var[channel.texname] = pTex;
             }
         }
 
-        mRaster.pVars["gVBuffer"] = pOutput;
-        mRaster.pVars["gHighpDepth"] = mpHighpDepth;
-        mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
-        mRaster.pVars["PerFrameCB"]["sampleNumber"] = mSampleNumber;
-        mRaster.pVars["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
+        var["gVBuffer"] = pOutput;
+        var["gHighpDepth"] = mpHighpDepth;
+        var["PerFrameCB"]["gFrameDim"] = mFrameDim;
+        var["PerFrameCB"]["sampleNumber"] = mSampleNumber;
+        var["PerFrameCB"]["tj"] = mpTJSampleGenerator->next().x + 0.5f;
 
         // Rasterize the scene.
         mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), mForceCullMode ? mCullMode : kDefaultCullMode);

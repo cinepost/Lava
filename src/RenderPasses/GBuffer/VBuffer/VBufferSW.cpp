@@ -121,6 +121,10 @@ VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dict
 }
 
 VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("VBufferSW: requires Shader Model 6.5 support.");
+    }
+
     LLOG_DBG << "subgroupSize " << mpDevice->subgroupSize();
     mSubgroupSize = mpDevice->subgroupSize();
     setMaxSubdivLevel(3u);
@@ -296,7 +300,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     if( !mpComputeJitterPass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeJitterGenFile).csEntry("build").setShaderModel("6_5");
+        desc.addShaderLibrary(kProgramComputeJitterGenFile).csEntry("build");
 
         Program::DefineList defines;
         
@@ -306,7 +310,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Create rasterization pass.
     if (!mpComputeRasterizerPass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeRasterizerFile).csEntry("rasterize").setShaderModel("6_5");
+        desc.addShaderLibrary(kProgramComputeRasterizerFile).csEntry("rasterize");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;

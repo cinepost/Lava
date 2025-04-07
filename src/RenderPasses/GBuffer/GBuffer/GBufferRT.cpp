@@ -33,8 +33,7 @@
 
 const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
 
-namespace
-{
+namespace {
     const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
     const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
 
@@ -67,13 +66,11 @@ namespace
     };
 };
 
-GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new GBufferRT(pRenderContext->device(), dict));
 }
 
-RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
-{
+RenderPassReflection GBufferRT::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     // Add all outputs as UAVs. These are all optional.
@@ -84,8 +81,7 @@ RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBuffer::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
@@ -121,7 +117,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
     if (mUseDOF) {
-        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
+        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0;
     }
 
     if (mLODMode == TexLODMode::RayDiffs) {
@@ -142,31 +138,26 @@ Dictionary GBufferRT::getScriptingDictionary() {
     return dict;
 }
 
-void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBuffer::setScene(pRenderContext, pScene);
-
     recreatePrograms();
 }
 
-void GBufferRT::recreatePrograms()
-{
+void GBufferRT::recreatePrograms() {
     mRaytrace.pProgram = nullptr;
     mRaytrace.pVars = nullptr;
     mpComputePass = nullptr;
 }
 
-void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    if (!mRaytrace.pProgram || !mRaytrace.pVars)
-    {
+void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData) {
+    if (!mRaytrace.pProgram || !mRaytrace.pVars) {
         Program::DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
 
         // Create ray tracing program.
-        RtProgram::Desc desc;
+        Program::Desc desc;
         desc.addShaderLibrary(kProgramRaytraceFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
@@ -179,26 +170,23 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
 
         // Add hit group with intersection shader for displaced meshes.
-        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
         }
 
         // Add hit group with intersection shader for curves (represented as linear swept spheres).
-        if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::Curve)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
         }
 
         // Add hit group with intersection shader for SDF grids.
-        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid)) {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
         }
 
         // Add hit groups for for other procedural primitives here.
 
-        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pProgram = Program::create(mpDevice, desc, defines);
         mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
 
         // Bind static resources.
@@ -215,18 +203,11 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
 }
 
-void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw std::runtime_error("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
+void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Create compute pass.
-    if (!mpComputePass)
-    {
+    if (!mpComputePass) {
         Program::Desc desc;
-        desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addShaderLibrary(kProgramComputeFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;
@@ -250,8 +231,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
 
-Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
-{
+Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const {
     Program::DefineList defines;
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
@@ -271,16 +251,14 @@ Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) co
     return defines;
 }
 
-void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData)
-{
+void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData) {
     var["gGBufferRT"]["frameDim"] = mFrameDim;
     var["gGBufferRT"]["invFrameDim"] = mInvFrameDim;
     var["gGBufferRT"]["frameCount"] = mFrameCount;
     var["gGBufferRT"]["screenSpacePixelSpreadAngle"] = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(mFrameDim.y);
 
     // Bind output channels as UAV buffers.
-    auto bind = [&](const ChannelDesc& channel)
-    {
+    auto bind = [&](const ChannelDesc& channel) {
         Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
@@ -288,21 +266,25 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
 }
 
-GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict)
-    : GBuffer(pDevice, kInfo)
-{
+GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict) : GBuffer(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("GBufferRT: requires Shader Model 6.5 support.");
+    }
+
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
+        FALCOR_THROW("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create random engine
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 }
 
-void GBufferRT::parseDictionary(const Dictionary& dict)
-{
+void GBufferRT::parseDictionary(const Dictionary& dict) {
     GBuffer::parseDictionary(dict);
 
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kLODMode) mLODMode = value;
         else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
         else if (key == kUseDOF) mUseDOF = value;

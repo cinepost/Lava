@@ -73,8 +73,6 @@ namespace {
     const char kShaderFile[] = "RenderPasses/AccumulatePass/Accumulate.cs.slang";
     const char kFilterFile[] = "RenderPasses/AccumulatePass/Accumulate.SeparableFilter.cs.slang";
 
-    const std::string kShaderModel = "6_5";
-
     const char kInputChannel[] = "input";
     const char kOutputChannel[] = "output";
     const char kInputDepthChannel[] = "depth";
@@ -113,6 +111,10 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
 }
 
 AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("AccumulatePass requires Shader Model 6.5 support.");
+    }
+
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict) {
         if (key == kEnableAccumulation) mEnableAccumulation = value;
@@ -129,16 +131,16 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
 
     // Create accumulation programs.
     // Note only compensated summation needs precise floating-point mode.
-    mpProgram[Precision::Double] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateDouble", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpProgram[Precision::Single] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
+    mpProgram[Precision::Double] = Program::createCompute(pDevice, kShaderFile, "accumulateDouble", Program::DefineList(), SlangCompilerFlags::TreatWarningsAsErrors);
+    mpProgram[Precision::Single] = Program::createCompute(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), SlangCompilerFlags::TreatWarningsAsErrors);
+    mpProgram[Precision::SingleCompensated] = Program::createCompute(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), SlangCompilerFlags::FloatingPointModePrecise | SlangCompilerFlags::TreatWarningsAsErrors);
     
     for(auto& entry: mpProgram) {
         auto& pProgram = entry.second;
         pProgram->addDefine("is_valid_gDepth", "0");
     }
 
-    mpVars = ComputeVars::create(pDevice, mpProgram[mPrecisionMode]->getReflector());
+    mpVars = ProgramVars::create(pDevice, mpProgram[mPrecisionMode]->getReflector());
     mpState = ComputeState::create(pDevice);
 }
 
@@ -260,7 +262,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
         if(!filterPass.pPass || mDirty) {
             Program::Desc desc;
-            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterH");
+            desc.addShaderLibrary(kFilterFile).csEntry("filterH");
 
             auto defines = Program::DefineList();
 
@@ -308,7 +310,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
         if(!filterPass.pPass || mDirty) {
             Program::Desc desc;
-            desc.addShaderLibrary(kFilterFile).setShaderModel(kShaderModel).csEntry("filterV");
+            desc.addShaderLibrary(kFilterFile).csEntry("filterV");
 
             auto defines = Program::DefineList();
 
@@ -359,25 +361,28 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     }
 
     // Accumulation
+    {
+        auto var = mpVars->getRootVar();
 
-    // Set shader parameters.
-    mpVars["PerFrameCB"]["gResolution"] = resolution;
-    mpVars["PerFrameCB"]["gAccumCount"] = mFrameCount++;
-    mpVars["PerFrameCB"]["gSampleDistanceUniform"] = sampleDistanceUniform;
-    mpVars["PerFrameCB"]["gLastSampleDistaceUniform"] = mLastSampleDistanceUniform;
-    mpVars["gCurFrame"] = pFilteredImage;
-    mpVars["gOutputFrame"] = pDst;
+        // Set shader parameters.
+        var["PerFrameCB"]["gResolution"] = resolution;
+        var["PerFrameCB"]["gAccumCount"] = mFrameCount++;
+        var["PerFrameCB"]["gSampleDistanceUniform"] = sampleDistanceUniform;
+        var["PerFrameCB"]["gLastSampleDistaceUniform"] = mLastSampleDistanceUniform;
+        var["gCurFrame"] = pFilteredImage;
+        var["gOutputFrame"] = pDst;
 
-    // Additional channels /samplers
-    mpVars["gDepth"] = pSrcDepth;
-    mpVars["gSampleOffsets"] = pSrcOffsets;
+        // Additional channels /samplers
+        var["gDepth"] = pSrcDepth;
+        var["gSampleOffsets"] = pSrcOffsets;
 
-    // Bind accumulation buffers. Some of these may be nullptr's.
-    mpVars["gLastFrameSum"] = mpLastFrameSum;
-    mpVars["gLastFrameCorr"] = mpLastFrameCorr;
-    mpVars["gLastFrameSumLo"] = mpLastFrameSumLo;
-    mpVars["gLastFrameSumHi"] = mpLastFrameSumHi;
-    mpVars["gLastFrameDepth"] = mpLastFrameDepth;
+        // Bind accumulation buffers. Some of these may be nullptr's.
+        var["gLastFrameSum"] = mpLastFrameSum;
+        var["gLastFrameCorr"] = mpLastFrameCorr;
+        var["gLastFrameSumLo"] = mpLastFrameSumLo;
+        var["gLastFrameSumHi"] = mpLastFrameSumHi;
+        var["gLastFrameDepth"] = mpLastFrameDepth;
+    }
 
     // Run the accumulation program.
     auto pAccProgram = mpProgram[mPrecisionMode];

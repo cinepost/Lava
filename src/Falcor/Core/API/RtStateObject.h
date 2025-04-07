@@ -58,7 +58,9 @@ class FALCOR_API RtStateObject: public std::enable_shared_from_this<RtStateObjec
 		using Desc = RtStateObjectDesc;
 
 		static RtStateObject::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
-		const ApiHandle& getApiHandle() const { return mApiHandle; }
+		
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
+        gfx::IPipelineState* getGfxPipelineState() const { return mApiHandle; }
 
 		const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.pProgramKernels; };
 		uint32_t getMaxTraceRecursionDepth() const { return mDesc.maxTraceRecursionDepth; }
@@ -69,7 +71,8 @@ class FALCOR_API RtStateObject: public std::enable_shared_from_this<RtStateObjec
 	
 	public:
 		RtStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
-
+        ~RtStateObject();
+        
 	private:
 		void apiInit();
 

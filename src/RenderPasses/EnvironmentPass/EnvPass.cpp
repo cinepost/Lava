@@ -60,7 +60,6 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 namespace {
     const char kShaderFile[] = "RenderPasses/EnvironmentPass/EnvPass.cs.slang";
-    const std::string kShaderModel = "6_5";
 
     const std::string kBackdropTexture = "gBackdropTexture";
 
@@ -80,7 +79,9 @@ namespace {
 }
 
 EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
-    assert(pDevice);
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("EnvPass: requires Shader Model 6.5 support.");
+    }
 
     setFilter((uint32_t)mFilter);
     setupCamera();
@@ -139,7 +140,7 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
     if (!mpComputePass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
         
         //auto defines = Program::DefineList();

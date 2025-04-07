@@ -42,8 +42,6 @@ namespace {
     const std::string kInputMotionVectors = "mvec";
     const std::string kUseDOF = "useDOF";
 
-    const std::string kShaderModel = "6_5";
-
     const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
     const ChannelList kExtraInputChannels = {
@@ -131,6 +129,14 @@ Dictionary DeferredLightingPass::getScriptingDictionary() {
 }
 
 DeferredLightingPass::DeferredLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("DeferredLightingPass requires Shader Model 6.5 support.");
+    }
+
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
+        FALCOR_THROW("DeferredLightingPass: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     
@@ -193,10 +199,6 @@ bool DeferredLightingPass::beginFrame(RenderContext *pContext, const RenderData&
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
-
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
-        throw std::runtime_error("DeferredLightingPass: Raytracing Tier 1.1 is not supported by the current device");
-    }
 
     mUseVariance = false;
 
@@ -299,7 +301,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     // The program should have all necessary defines set at this point.
     if (!mpShadingPass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         mpShadingPass = createShadingPass(desc);

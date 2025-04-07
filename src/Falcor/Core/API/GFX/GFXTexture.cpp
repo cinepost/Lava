@@ -128,7 +128,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 			clearValue.depthStencil.depth = 1.0f;
 		}
 	}
-	desc.optimalClearValue = clearValue;
+	desc.optimalClearValue = &clearValue;
 
 	// shared resource
 	if (is_set(mBindFlags, Resource::BindFlags::Shared)) {
@@ -140,7 +140,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 	assert(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getApiHandle()->createTextureResource(desc, shared_from_this(), nullptr);
+	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getApiHandle()->createTextureResource(desc, this, nullptr);
 	assert(textureResource);
 
 	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);

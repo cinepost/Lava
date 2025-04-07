@@ -65,8 +65,8 @@ class GBufferRaster : public GBuffer {
     // Rasterization resources
     struct {
         GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
+        Program::SharedPtr pProgram;
+        ProgramVars::SharedPtr pVars;
     } mRaster;
 
     static const char* kDesc;

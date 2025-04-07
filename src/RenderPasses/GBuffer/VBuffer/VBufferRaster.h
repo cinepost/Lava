@@ -88,16 +88,16 @@ class PASS_API VBufferRaster : public GBufferBase {
     bool mPerPixelJitterRaster    = false;
     uint2  mQuarterFrameDim       = {0, 0};
     std::array<SubPass, 4>        mSubPasses;
-    ComputeProgram::SharedPtr     mpCombineQuadsProgram;
-    ComputeVars::SharedPtr        mpCombineQuadsVars;
+    Program::SharedPtr            mpCombineQuadsProgram;
+    ProgramVars::SharedPtr        mpCombineQuadsVars;
     ComputeState::SharedPtr       mpCombineQuadsState;
     CPUSampleGenerator::SharedPtr mpSampleGenerator;
     CPUSampleGenerator::SharedPtr mpTJSampleGenerator;
 
     struct {
-      GraphicsState::SharedPtr pState;
-      GraphicsProgram::SharedPtr pProgram;
-      GraphicsVars::SharedPtr pVars;
+      GraphicsState::SharedPtr  pState;
+      Program::SharedPtr        pProgram;
+      ProgramVars::SharedPtr    pVars;
     } mRaster;
 
     static const char* kDesc;

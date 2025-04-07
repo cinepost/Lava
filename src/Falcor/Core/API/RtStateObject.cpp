@@ -41,4 +41,8 @@ RtStateObject::RtStateObject(Device::SharedPtr pDevice, const Desc& desc): mpDev
 	apiInit();
 }
 
+RtStateObject::~RtStateObject() {
+    mpDevice->releaseResource(mApiHandle);
+}
+
 } // namespace Falcor

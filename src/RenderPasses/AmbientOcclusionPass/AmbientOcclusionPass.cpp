@@ -61,8 +61,6 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 namespace {
 
     const char kShaderFile[] = "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.raytrace.cs.slang";
-    const std::string kShaderModel = "6_5";
-
     const char kOutputChannel[]         = "output";
     
     const char kInputDepthChannel[]     = "depth";
@@ -96,7 +94,10 @@ AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRen
 }
 
 AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
-    mpDevice = pDevice;
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("AmbientOcclusionPass requires Shader Model 6.5 support.");
+    }
+
     mSampleNumber = 0;
 
     // Create a GPU sample generator.
@@ -137,7 +138,7 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
     {
         if(!mpPassRayTrace || mDirty) {
             Program::Desc desc;
-            desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("passRayQuery");
+            desc.addShaderLibrary(kShaderFile).csEntry("passRayQuery");
             if (mpScene) desc.addTypeConformances(mpScene->getTypeConformances());
 
             auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();

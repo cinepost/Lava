@@ -46,7 +46,7 @@ using ResourceSharedPtr = std::shared_ptr<Resource>;
 using ConstTextureSharedPtrRef = const std::shared_ptr<Texture>&;
 using ConstBufferSharedPtrRef = const std::shared_ptr<Buffer>&;
 
-struct dlldecl ResourceViewInfo {
+struct FALCOR_API ResourceViewInfo {
     ResourceViewInfo() = default;
     ResourceViewInfo(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : mostDetailedMip(mostDetailedMip), mipCount(mipCount), firstArraySlice(firstArraySlice), arraySize(arraySize) {}
@@ -75,7 +75,7 @@ struct dlldecl ResourceViewInfo {
 /** Abstracts API resource views.
 */
 template<typename ApiHandleType>
-class dlldecl ResourceView {
+class FALCOR_API ResourceView {
  public:
     using ApiHandle = ApiHandleType;
     using Dimension = ReflectionResourceType::Dimensions;
@@ -116,7 +116,7 @@ class dlldecl ResourceView {
 template<>
 ResourceView<CbvHandle>::~ResourceView<CbvHandle>();
 
-class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
+class FALCOR_API ShaderResourceView : public ResourceView<SrvHandle> {
   public:
     using SharedPtr = std::shared_ptr<ShaderResourceView>;
     using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
@@ -138,7 +138,7 @@ private:
         : ResourceView(pDevice, pResource, handle) {}
 };
 
-class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
+class FALCOR_API DepthStencilView : public ResourceView<DsvHandle> {
  public:
     using SharedPtr = std::shared_ptr<DepthStencilView>;
     using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
@@ -152,7 +152,7 @@ class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
-class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
+class FALCOR_API UnorderedAccessView : public ResourceView<UavHandle> {
  public:
     using SharedPtr = std::shared_ptr<UnorderedAccessView>;
     using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
@@ -171,7 +171,7 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
         : ResourceView(pDevice, pResource, handle, offset, size) {}
 };
 
-class dlldecl RenderTargetView : public ResourceView<RtvHandle> {
+class FALCOR_API RenderTargetView : public ResourceView<RtvHandle> {
  public:
     using SharedPtr = std::shared_ptr<RenderTargetView>;
     using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
@@ -187,7 +187,7 @@ class dlldecl RenderTargetView : public ResourceView<RtvHandle> {
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
-class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
+class FALCOR_API ConstantBufferView : public ResourceView<CbvHandle> {
  public:
     using SharedPtr = std::shared_ptr<ConstantBufferView>;
     using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;

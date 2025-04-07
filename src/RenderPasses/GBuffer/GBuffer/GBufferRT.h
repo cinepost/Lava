@@ -80,7 +80,7 @@ class GBufferRT : public GBuffer {
 
     // Ray tracing resources
     struct {
-      RtProgram::SharedPtr pProgram;
+      Program::SharedPtr pProgram;
       RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 

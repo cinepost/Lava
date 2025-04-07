@@ -41,8 +41,6 @@ namespace {
     const std::string kInputVBuffer = "vbuffer";
     const std::string kPreviewColorOutput = "preview_color";
     
-    const std::string kShaderModel = "6_5";
-
     const ChannelList kExtraOutputChannels = {
         { kPreviewColorOutput,   "gPreviewColor",          "Cryptomatte preview false color",         true /* optional */, ResourceFormat::RGBA32Float },
     };
@@ -79,6 +77,10 @@ Dictionary CryptomattePass::getScriptingDictionary() {
 }
 
 CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("CryptomattePass requires Shader Model 6.5 support.");
+    }
+
     setTypeName();
 }
 
@@ -130,7 +132,7 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
     // The program should have all necessary defines set at this point.
     if (!mpPass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         auto defines = mpScene->getSceneDefines();

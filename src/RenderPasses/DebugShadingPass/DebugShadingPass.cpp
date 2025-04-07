@@ -56,8 +56,6 @@ namespace {
     const std::string kOutputTimeFalseColor     = "time_color";
     const std::string kOutputMeshletDrawColor   = "meshlet_draw";
 
-    const std::string kShaderModel = "6_5";
-
     const ChannelList kExtraInputChannels = {
         { kInputVBuffer,            "gVBuffer",             "Visibility buffer in packed format",       true /* optional */, ResourceFormat::RGBA32Uint     },
         { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
@@ -104,6 +102,10 @@ Dictionary DebugShadingPass::getScriptingDictionary() {
 }
 
 DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("DebugShadingPass requires Shader Model 6.5 support.");
+    }
+
     mpFalseColorGenerator = nullptr;
 }
 
@@ -228,7 +230,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
     // The program should have all necessary defines set at this point.
     if (!mpShadingPass || mDirty) {
         Program::Desc desc;
-        desc.addShaderLibrary(kShaderFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         mpShadingPass = createShadingPass(desc);

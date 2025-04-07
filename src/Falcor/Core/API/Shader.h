@@ -28,14 +28,17 @@
 #ifndef SRC_FALCOR_CORE_API_SHADER_H_
 #define SRC_FALCOR_CORE_API_SHADER_H_
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Program/Program.h"
+
+#include <slang/slang.h>
+
 #include <map>
 #include <string>
 #include <utility>
 #include <memory>
 #include <initializer_list>
 
-#include "Falcor/Core/Framework.h"
-#include <slang/slang.h>
 
 struct ISlangBlob;
 
@@ -46,7 +49,7 @@ class Device;
 /** Minimal smart pointer for working with COM objects.
 */
 template<typename T>
-struct dlldecl ComPtr {
+struct FALCOR_API ComPtr {
  public:
 	/// Type of the smart pointer itself
 	typedef ComPtr ThisType;
@@ -140,23 +143,13 @@ struct ShaderData;
 /** Low-level shader object
 	This class abstracts the API's shader creation and management
 */
-class dlldecl Shader : public std::enable_shared_from_this<Shader> {
+class FALCOR_API Shader : public std::enable_shared_from_this<Shader> {
  public:
 	using SharedPtr = std::shared_ptr<Shader>;
 	using SharedConstPtr = std::shared_ptr<const Shader>;
 	using ApiHandle = ShaderHandle;
 
 	typedef ComPtr<ISlangBlob> Blob;
-
-	enum class CompilerFlags {
-		None                        = 0x0,
-		TreatWarningsAsErrors       = 0x1,
-		DumpIntermediates           = 0x2,
-		FloatingPointModeFast       = 0x4,
-		FloatingPointModePrecise    = 0x8,
-		GenerateDebugInfo           = 0x10,
-		MatrixLayoutColumnMajor     = 0x20, // Falcor is using row-major, use this only to compile external shaders that have no Falcor dependencies.
-	};
 
 	struct BlobData {
 		const void* data;
@@ -169,7 +162,7 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 		\param[out] log This string will contain the error log message in case shader compilation failed
 		\return If success, a new shader object, otherwise nullptr
 	*/
-	static SharedPtr create(std::shared_ptr<Device> pDevice, ComPtr<slang::IComponentType> linkedSlangEntryPoint, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log) {
+	static SharedPtr create(std::shared_ptr<Device> pDevice, ComPtr<slang::IComponentType> linkedSlangEntryPoint, ShaderType type, std::string const&  entryPointName, SlangCompilerFlags flags, std::string& log) {
 		SharedPtr pShader = SharedPtr(new Shader(pDevice, type));
 		pShader->mEntryPointName = entryPointName;
 		return pShader->init(linkedSlangEntryPoint, entryPointName, flags, log) ? pShader : nullptr;
@@ -189,7 +182,7 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 
  protected:
 	// API handle depends on the shader Type, so it stored be stored as part of the private data
-	bool init(ComPtr<slang::IComponentType> linkedSlangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log);
+	bool init(ComPtr<slang::IComponentType> linkedSlangEntryPoint, const std::string& entryPointName, SlangCompilerFlags flags, std::string& log);
 	Shader(std::shared_ptr<Device> pDevice, ShaderType Type);
 	
 	std::shared_ptr<Device> mpDevice;
@@ -198,8 +191,6 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 	std::unique_ptr<ShaderData> mpPrivateData;
 
 };
-
-enum_class_operators(Shader::CompilerFlags);
 
 }  // namespace Falcor
 

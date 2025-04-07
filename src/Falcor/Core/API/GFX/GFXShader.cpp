@@ -58,7 +58,7 @@ Shader::Shader(Device::SharedPtr pDevice, ShaderType type) : mpDevice(pDevice), 
 
 Shader::~Shader() {}
 
-bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, SlangCompilerFlags flags, std::string& log) {
     // In GFX, we do not generate actual shader code at program creation.
     // The actual shader code will only be generated and cached when all specialization arguments
     // are known, which is right before a draw/dispatch command is issued, and this is done

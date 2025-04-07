@@ -63,8 +63,6 @@ namespace {
     const char kLuminanceShaderFile[] = "RenderPasses/ToneMapperPass/Luminance.cs.slang";
     const char kToneMappingShaderFile[] = "RenderPasses/ToneMapperPass/ToneMapping.cs.slang";
 
-    const std::string kShaderModel = "6_5";
-
     const float kExposureCompensationMin = -12.f;
     const float kExposureCompensationMax = 12.f;
 
@@ -89,6 +87,10 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 }
 
 ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operator op, ResourceFormat outputFormat) : RenderPass(pDevice, kInfo), mOutputFormat(outputFormat), mOperator(op) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("ToneMapperPass requires Shader Model 6.5 support.");
+    }
+
     createLuminancePass(pDevice);
     createToneMapPass(pDevice);
 
@@ -289,7 +291,7 @@ void ToneMapperPass::setWhiteScale(float whiteScale) {
 
 void ToneMapperPass::createLuminancePass(std::shared_ptr<Device> pDevice) {
     Program::Desc desc;
-    desc.addShaderLibrary(kLuminanceShaderFile).setShaderModel(kShaderModel).csEntry("main");
+    desc.addShaderLibrary(kLuminanceShaderFile).csEntry("main");
 
     Program::DefineList defines;
     mpLuminancePass = ComputePass::create(pDevice, desc, defines, true);
@@ -297,7 +299,7 @@ void ToneMapperPass::createLuminancePass(std::shared_ptr<Device> pDevice) {
 
 void ToneMapperPass::createToneMapPass(std::shared_ptr<Device> pDevice) {
     Program::Desc desc;
-    desc.addShaderLibrary(kToneMappingShaderFile).setShaderModel(kShaderModel).csEntry("main");
+    desc.addShaderLibrary(kToneMappingShaderFile).csEntry("main");
 
     Program::DefineList defines;
     defines.add("_TONE_MAPPER_OPERATOR", std::to_string(static_cast<uint32_t>(mOperator)));

@@ -74,7 +74,7 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     
-    auto pProgram = GraphicsProgram::create(pDevice, desc);
+    auto pProgram = Program::create(pDevice, desc);
 
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -127,7 +127,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
         pProgram->addDefines(mpSampleGenerator->getDefines());
         pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         pProgram->setTypeConformances(mpScene->getTypeConformances());            
-        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+        mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
     }
 
     mpState->setFbo(mpFbo);
