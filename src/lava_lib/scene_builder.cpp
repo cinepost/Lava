@@ -39,13 +39,14 @@
 #include "scene_builder.h"
 #include "lava_utils_lib/logging.h"
 
+#include "reader_bgeo/bgeo/parser/ReadError.h"
 #include "reader_bgeo/bgeo/Run.h"
 #include "reader_bgeo/bgeo/Poly.h"
 #include "reader_bgeo/bgeo/PrimType.h"
-#include "reader_bgeo/bgeo/parser/types.h"
-#include "reader_bgeo/bgeo/parser/Attribute.h"
-#include "reader_bgeo/bgeo/parser/Detail.h"
-#include "reader_bgeo/bgeo/parser/ReadError.h"
+//#include "reader_bgeo/bgeo/parser/types.h"
+//#include "reader_bgeo/bgeo/parser/Attribute.h"
+//#include "reader_bgeo/bgeo/parser/Detail.h"
+//#include "reader_bgeo/bgeo/parser/ReadError.h"
 
 namespace lava {    
 
@@ -118,14 +119,15 @@ static inline uint32_t tesselatePolySimple(const std::vector<float3>& positions,
 bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name, SceneBuilder::ProcessedMesh& processedMesh) {
     assert(pBgeo);
 
-    const auto pDetail = pBgeo->getDetail();
-    if(!pDetail) {
-        LLOG_ERR << "Bgeo " << name << " has no geometry !!!";
-        return false;
-    }
+    //const auto pDetail = pBgeo->getDetail();
+    //if(!pDetail) {
+    //    LLOG_ERR << "Bgeo " << name << " has no geometry !!!";
+    //    return false;
+    //}
 
     const size_t bgeo_point_count = pBgeo->getPointCount();
     const size_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
+    assert(bgeo_vertex_count > 0); 
 
     auto pPrimitiveMatrialAttribute =  pBgeo->getPrimitiveAttributeByName("shop_materialpath");
     const bool hasPerPrimitiveMaterial = pPrimitiveMatrialAttribute != nullptr;
@@ -176,15 +178,16 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
     pBgeo->getVertexUV(vUV);
     LLOG_TRC << "vUV<float2> size: " << vUV.size();
 
-    auto const& vt_map = pDetail->getVertexMap();
-    assert(vt_map.vertexCount >= 0);
-    if(vt_map.vertexCount != bgeo_vertex_count) {
-        LLOG_ERR << "Bgeo " << name << " detail vertices count not equal to the number of bgeo vertices count !!!";
-        return false;
-    }
+    //auto const& vt_map = pDetail->getVertexMap();
+    const auto& vt_map = pBgeo->getVertexMap();
+    //assert(vt_map.vertexCount >= 0);
+    //if(vt_map.vertexCount != bgeo_vertex_count) {
+    //    LLOG_ERR << "Bgeo " << name << " detail vertices count not equal to the number of bgeo vertices count !!!";
+    //    return false;
+    //}
 
     const bool hasVertexN = !vN.empty() && (vN.size() == bgeo_vertex_count);
-    const bool hasVertexUV  = !vUV.empty() && (vUV.size() == bgeo_vertex_count);
+    const bool hasVertexUV = !vUV.empty() && (vUV.size() == bgeo_vertex_count);
 
     // vertex attribs
     std::vector<float3> vP;

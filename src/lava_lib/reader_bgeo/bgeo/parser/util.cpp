@@ -100,7 +100,7 @@ void parseBeginMap(UT_JSONParser& parser)
     }
     if (error)
     {
-        throw ReadError(parser.getErrors());
+        throw ReadError(toStrings(parser.getErrors()));
     }
 }
 
@@ -116,7 +116,7 @@ void parseEndMap(UT_JSONParser& parser)
     }
     if (error)
     {
-        throw ReadError(parser.getErrors());
+        throw ReadError(toStrings(parser.getErrors()));
     }
 }
 
@@ -132,7 +132,7 @@ void parseBeginArray(UT_JSONParser& parser)
     }
     if (error)
     {
-        throw ReadError(parser.getErrors());
+        throw ReadError(toStrings(parser.getErrors()));
     }
 }
 
@@ -148,8 +148,16 @@ void parseEndArray(UT_JSONParser& parser)
     }
     if (error)
     {
-        throw ReadError(parser.getErrors());
+        throw ReadError(toStrings(parser.getErrors()));
     }
+}
+
+std::vector<std::string> toStrings(const UT_StringArray& strings) {
+    std::vector<std::string> out;
+    for(size_t i = 0; i < strings.size(); ++i) {
+        out.push_back(strings[i].c_str());
+    }
+    return out;
 }
 
 } // namespace parser

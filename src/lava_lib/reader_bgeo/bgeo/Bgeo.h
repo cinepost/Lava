@@ -16,6 +16,7 @@
 
 #include "Primitive.h"
 #include "Attribute.h"
+#include "parser/VertexMap.h"
 
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -24,6 +25,7 @@ namespace bgeo {
 
 namespace parser {
 class Detail;
+//class VertexMap;
 }
 
 class Bgeo: public std::enable_shared_from_this<Bgeo> {
@@ -61,6 +63,8 @@ class Bgeo: public std::enable_shared_from_this<Bgeo> {
 
     // detail //////
     std::shared_ptr<parser::Detail> getDetail() const;
+
+    const parser::VertexMap& getVertexMap() const;
 
     // attributes ///////
 

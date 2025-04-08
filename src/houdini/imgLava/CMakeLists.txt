@@ -6,7 +6,7 @@ list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_ROOT}/toolkit/cmake" )
 find_package( Houdini REQUIRED )
 
 include_directories(
-  ${HOUDINI_ROOT}/toolkit/include
+	${HOUDINI_ROOT}/toolkit/include
 )
 
 if(WIN32)

@@ -336,6 +336,10 @@ std::shared_ptr<parser::Detail> Bgeo::getDetail() const {
     return m_pimpl->detail;
 }
 
+const parser::VertexMap& Bgeo::getVertexMap() const { 
+    return m_pimpl->detail->getVertexMap(); 
+};
+
 size_t Bgeo::getDetailAttributeCount() const {
     return m_pimpl->detail->detailAttributes.size();
 }

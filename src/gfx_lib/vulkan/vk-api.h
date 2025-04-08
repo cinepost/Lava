@@ -225,6 +225,15 @@ namespace gfx {
     x(vkDebugMarkerSetObjectNameEXT) \
     /* */
 
+#if VK_MESH_SHADERS_ENABLED
+    #define VK_API_DEVICE_MESH_SHADERS_PROCS(x) \
+    VK_API_DEVICE_PLATFORM_OPT_PROCS(x) \
+    x(vkCmdDrawMeshTasksEXT) \
+    /* */
+#else
+    #define VK_API_DEVICE_MESH_SHADERS_PROCS(x)
+#endif // VK_MESH_SHADERS_ENABLED
+
 #define VK_API_ALL_GLOBAL_PROCS(x) \
     VK_API_GLOBAL_PROCS(x)
 
@@ -235,7 +244,8 @@ namespace gfx {
 #define VK_API_ALL_DEVICE_PROCS(x) \
     VK_API_DEVICE_PROCS(x) \
     VK_API_DEVICE_KHR_PROCS(x) \
-    VK_API_DEVICE_OPT_PROCS(x)
+    VK_API_DEVICE_OPT_PROCS(x) \
+    VK_API_DEVICE_MESH_SHADERS_PROCS(x)
 
 #define VK_API_ALL_PROCS(x) \
     VK_API_ALL_GLOBAL_PROCS(x) \
@@ -250,21 +260,21 @@ namespace gfx {
 
 struct VulkanExtendedFeatureProperties
 {
-    // Float16 features
-    //VkPhysicalDeviceFloat16Int8FeaturesKHR float16Features = {
-    //    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR};
-    
     // 16 bit storage features
     VkPhysicalDevice16BitStorageFeatures storage16BitFeatures = {
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR};
-    
-    // AtomicInt64 features
-    //VkPhysicalDeviceShaderAtomicInt64FeaturesKHR atomicInt64Features = {
-    //    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR};
-    
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
+    };
     // Atomic Float features
     VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFloatFeatures = {
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT
+    };
+    VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT atomicFloat2Features = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT
+    };
+    // Image int64 atomic features
+    VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT imageInt64AtomicFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT
+    };
     
     // Timeline Semaphore features
     //VkPhysicalDeviceTimelineSemaphoreFeatures timelineFeatures = {
@@ -313,9 +323,41 @@ struct VulkanExtendedFeatureProperties
     VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fragmentShaderInterlockFeatures = {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT};
 
+    VkPhysicalDeviceVariablePointerFeaturesKHR variablePointersFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR
+    };
+
+    // Clock features
+    VkPhysicalDeviceShaderClockFeaturesKHR clockFeatures = { 
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR
+    };
+
+#if VK_MESH_SHADERS_ENABLED
+    // Mesh shader features
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
+    };
+#endif // VK_MESH_SHADERS_ENABLED
+
+    // Multiview features
+    VkPhysicalDeviceMultiviewFeaturesKHR multiviewFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR 
+    };
+
+    // Fragment shading rate features
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR fragmentShadingRateFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR 
+    };
+
     // Vulkan1.2 features
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
+    };
+
+    // Ray tracing validation features
+    //VkPhysicalDeviceRayTracingValidationFeaturesNV rayTracingValidationFeatures = {
+    //    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV
+    //};
 };
 
 struct VulkanApi

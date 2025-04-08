@@ -29,6 +29,8 @@
 #include "Program.h"
 #include "ProgramManager.h"
 #include "ProgramVars.h"
+
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ParameterBlock.h"
 

@@ -1162,6 +1162,18 @@ Result RenderCommandEncoder::drawIndexedIndirectCount(
 	return SLANG_OK;
 }
 
+Result RenderCommandEncoder::drawMeshTasks(int x, int y, int z) {
+#if VK_MESH_SHADERS_ENABLED
+    SLANG_RETURN_ON_FAIL(prepareDraw());
+    auto& api = *m_api;
+    api.vkCmdDrawMeshTasksEXT(m_vkCommandBuffer, x, y, z);
+#else
+    assert(!"Mesh shaders not implemented !!!");
+#endif // VK_MESH_SHADERS_ENABLED
+    
+    return SLANG_OK;
+}
+
 Result RenderCommandEncoder::setSamplePositions(GfxCount samplesPerPixel, GfxCount pixelCount, const SamplePosition* samplePositions) {
 	if (m_api->vkCmdSetSampleLocationsEXT) {
 		VkSampleLocationsInfoEXT sampleLocInfo = {};
@@ -1412,8 +1424,8 @@ void RayTracingCommandEncoder::deserializeAccelerationStructure(IAccelerationStr
 	m_commandBuffer->m_renderer->m_api.vkCmdCopyMemoryToAccelerationStructureKHR(m_commandBuffer->m_commandBuffer, &copyInfo);
 }
 
-void RayTracingCommandEncoder::bindPipeline(IPipelineState* pipeline, IShaderObject** outRootObject) {
-	setPipelineStateImpl(pipeline, outRootObject);
+Result RayTracingCommandEncoder::bindPipeline(IPipelineState* pipeline, IShaderObject** outRootObject) {
+	return setPipelineStateImpl(pipeline, outRootObject);
 }
 
 Result RayTracingCommandEncoder::bindPipelineWithRootObject(IPipelineState* pipelineState, IShaderObject* rootObject) {

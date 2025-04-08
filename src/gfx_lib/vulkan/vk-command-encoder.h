@@ -12,8 +12,6 @@ namespace vk {
 
 class PipelineCommandEncoder : public RefObject {
 public:
-    ~PipelineCommandEncoder();
-
     CommandBufferImpl* m_commandBuffer;
     VkCommandBuffer m_vkCommandBuffer;
     VkCommandBuffer m_vkPreCommandBuffer = VK_NULL_HANDLE;
@@ -338,7 +336,7 @@ public:
     virtual SLANG_NO_THROW void SLANG_MCALL deserializeAccelerationStructure(
         IAccelerationStructure* dest, DeviceAddress source) override;
 
-    virtual SLANG_NO_THROW void SLANG_MCALL
+    virtual SLANG_NO_THROW Result SLANG_MCALL
         bindPipeline(IPipelineState* pipeline, IShaderObject** outRootObject) override;
 
     virtual SLANG_NO_THROW Result SLANG_MCALL bindPipelineWithRootObject(

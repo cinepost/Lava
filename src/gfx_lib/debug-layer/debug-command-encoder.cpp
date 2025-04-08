@@ -46,7 +46,7 @@ Result DebugComputeCommandEncoder::bindPipelineWithRootObject(
     return baseObject->bindPipelineWithRootObject(getInnerObj(state), getInnerObj(rootObject));
 }
 
-Result DebugComputeCommandEncoder::dispatchCompute(int x, int y, int z)
+Result DebugComputeCommandEncoder::dispatchCompute(uint32_t x, uint32_t y, uint32_t z)
 {
     SLANG_GFX_API_FUNC;
     return baseObject->dispatchCompute(x, y, z);
@@ -166,6 +166,17 @@ Result DebugRenderCommandEncoder::drawIndexedIndirect(
     return baseObject->drawIndexedIndirect(
         maxDrawCount, getInnerObj(argBuffer), argOffset, getInnerObj(countBuffer), countOffset);
 }
+Result  DebugRenderCommandEncoder::drawIndexedIndirectCount(
+    GfxCount maxDrawCount,
+    IBufferResource* argBuffer,
+    Offset argOffset,
+    IBufferResource* countBuffer,
+    Offset countOffset)
+{
+    SLANG_GFX_API_FUNC;
+    return baseObject->drawIndexedIndirectCount(
+        maxDrawCount, getInnerObj(argBuffer), argOffset, getInnerObj(countBuffer), countOffset);
+}
 
 void DebugRenderCommandEncoder::setStencilReference(uint32_t referenceValue)
 {
@@ -220,6 +231,19 @@ void DebugResourceCommandEncoderImpl::writeTimestamp(IQueryPool* pool, GfxIndex 
 {
     SLANG_GFX_API_FUNC;
     getBaseResourceEncoder()->writeTimestamp(static_cast<DebugQueryPool*>(pool)->baseObject, index);
+}
+
+void DebugResourceCommandEncoderImpl::uploadTexturePageData(
+    ITextureResource* dst,
+    ITextureResource::Offset3D offset,
+    ITextureResource::Extents extent,
+    uint32_t mipLevel,
+    ITextureResource::SubresourceData* subResourceData)
+{
+    SLANG_GFX_API_FUNC;
+    auto dstImpl = static_cast<DebugTextureResource*>(dst);
+    getBaseResourceEncoder()->uploadTexturePageData(
+        dstImpl->baseObject, offset, extent, mipLevel, subResourceData);
 }
 
 void DebugResourceCommandEncoderImpl::copyBuffer(

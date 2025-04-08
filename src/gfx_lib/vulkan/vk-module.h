@@ -17,6 +17,8 @@
 
 #include <vulkan/vulkan.h>
 
+#define VK_MESH_SHADERS_ENABLED 0
+
 #if VK_USE_PLATFORM_XLIB_KHR
 #include <X11/Xlib.h>
 #include <vulkan/vulkan_xlib.h>

@@ -1880,7 +1880,7 @@ public:
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		deserializeAccelerationStructure(IAccelerationStructure* dest, DeviceAddress source) = 0;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL
+	virtual SLANG_NO_THROW Result SLANG_MCALL
 		bindPipeline(IPipelineState* state, IShaderObject** outRootObject) = 0;
 	// Sets the current pipeline state along with a pre-created mutable root shader object.
 	virtual SLANG_NO_THROW Result SLANG_MCALL
@@ -1960,6 +1960,7 @@ class ICommandBufferD3D12 : public ICommandBuffer
 {
 public:
 	virtual SLANG_NO_THROW void SLANG_MCALL invalidateDescriptorHeapBinding() = 0;
+	virtual SLANG_NO_THROW void SLANG_MCALL ensureInternalDescriptorHeapsBound() = 0;
 };
 #define SLANG_UUID_ICommandBufferD3D12                                                 \
 	{                                                                                  \
@@ -2058,18 +2059,18 @@ public:
 		0xcd48bd29, 0xee72, 0x41b8, { 0xbc, 0xff, 0xa, 0x2b, 0x3a, 0xaa, 0x6d, 0xeb } \
 	}
 
-class ID3D12TransientResourceHeap : public ISlangUnknown
+class ITransientResourceHeapD3D12 : public ISlangUnknown
 {
 public:
-	enum class DescriptorType
-	{
-		ResourceView, Sampler
-	};
-	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTransientDescriptorTable(
-		DescriptorType type,
-		GfxCount count,
-		Offset& outDescriptorOffset,
-		void** outD3DDescriptorHeapHandle) = 0;
+    enum class DescriptorType
+    {
+        ResourceView, Sampler
+    };
+    virtual SLANG_NO_THROW Result SLANG_MCALL allocateTransientDescriptorTable(
+        DescriptorType type,
+        GfxCount count,
+        Offset& outDescriptorOffset,
+        void** outD3DDescriptorHeapHandle) = 0;
 };
 #define SLANG_UUID_ITransientResourceHeapD3D12                                             \
     {                                                                                  \

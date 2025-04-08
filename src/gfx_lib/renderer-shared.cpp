@@ -419,6 +419,18 @@ SLANG_NO_THROW Result SLANG_MCALL RendererBase::getSlangSession(slang::ISession*
     return SLANG_OK;
 }
 
+SlangResult RendererBase::queryInterface(SlangUUID const& uuid, void** outObject) {
+    // Only return the shader cache interface if it is enabled.
+    if (uuid == GfxGUID::IID_IShaderCache && persistentShaderCache) {
+        *outObject = static_cast<IShaderCache*>(this);
+        addRef();
+        return SLANG_OK;
+    }
+
+    *outObject = getInterface(uuid);
+    return SLANG_OK;
+}
+
 SLANG_NO_THROW Result SLANG_MCALL RendererBase::createTextureFromNativeHandle(
     InteropHandle handle,
     const ITextureResource::Desc& srcDesc,

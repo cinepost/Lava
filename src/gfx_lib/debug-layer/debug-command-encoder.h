@@ -129,7 +129,7 @@ public:
         bindPipeline(IPipelineState* state, IShaderObject** outRootShaderObject) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL
         bindPipelineWithRootObject(IPipelineState* state, IShaderObject* rootObject) override;
-    virtual SLANG_NO_THROW Result SLANG_MCALL dispatchCompute(int x, int y, int z) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL dispatchCompute(uint32_t x, uint32_t y, uint32_t z) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL
         dispatchComputeIndirect(IBufferResource* cmdBuffer, Offset offset) override;
 
@@ -214,6 +214,12 @@ public:
         IBufferResource* countBuffer,
         Offset countOffset) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL drawIndexedIndirect(
+        GfxCount maxDrawCount,
+        IBufferResource* argBuffer,
+        Offset argOffset,
+        IBufferResource* countBuffer,
+        Offset countOffset) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL drawIndexedIndirectCount(
         GfxCount maxDrawCount,
         IBufferResource* argBuffer,
         Offset argOffset,

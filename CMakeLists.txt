@@ -1,8 +1,8 @@
 cmake_minimum_required( VERSION 3.21 )
 
 if(UNIX)
-set(CMAKE_C_COMPILER gcc-7)
-set(CMAKE_CXX_COMPILER g++-7)
+set(CMAKE_C_COMPILER gcc-9)
+set(CMAKE_CXX_COMPILER g++-9)
 endif()
 
 set( CMAKE_CXX_STANDARD 17 )
@@ -200,7 +200,6 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}
   ${FALCOR_INCLUDE_ROOT}/Falcor
   ${FALCOR_INCLUDE_ROOT}/Falcor/Core
-  ${FALCOR_INCLUDE_ROOT}/Externals
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm

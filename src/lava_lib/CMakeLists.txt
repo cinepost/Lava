@@ -8,9 +8,10 @@ file( GLOB SOURCES
     ./*.cpp
 )
 
-#include_directories(
+include_directories(
 #  ${HOUDINI_ROOT}/toolkit/include
-#)
+#    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/hfs19.5/toolkit/include
+)
 
 if(WIN32)
 add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL)

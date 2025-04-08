@@ -11,44 +11,43 @@
 #define BGEO_PARSER_READ_ERROR_H
 
 #include <stdexcept>
+#include <vector>
+#include <string>
 
-#include "../houdini_inc.h"
+//#include "../houdini_inc.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+static std::string join(const std::vector<std::string>& v, const std::string& delimiter = " ") {
+    std::string out;
+    if (auto i = v.begin(), e = v.end(); i != e) {
+        out += *i++;
+        for (; i != e; ++i) out.append(delimiter).append(*i);
+    }
+    return out;
+}
 
-class ReadError : public std::runtime_error
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class ReadError : public std::runtime_error {
 public:
-    explicit ReadError(const char* message)
-        : std::runtime_error("")
-    {
-        errorString.harden(message);
+    explicit ReadError(const char* message) : std::runtime_error("") {
+        errorString = std::string(message);
     }
 
-    explicit ReadError(UT_StringArray errors)
-        : std::runtime_error("")
-    {
-        errors.join(" ", errorString);
+    explicit ReadError(const std::vector<std::string>& errors) : std::runtime_error("") {
+        errorString = join(errors);
         errorString.insert(0, "Bgeo read error: ");
-        errorString.hardenIfNeeded();
     }
 
-    ~ReadError() noexcept(true)
-    {
-    }
+    ~ReadError() noexcept(true) { }
 
-    /*virtual*/ const char* what() const noexcept(true)
-    {
-        return errorString.buffer();
+    /*virtual*/ const char* what() const noexcept(true) {
+        return errorString.c_str();
     }
 
 private:
-    UT_String errorString;
+    std::string errorString;
 };
 
 } // namespace parser

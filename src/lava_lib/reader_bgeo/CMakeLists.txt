@@ -4,7 +4,8 @@ file( GLOB SOURCES
 )
 
 include_directories(
-  ${HOUDINI_ROOT}/toolkit/include
+    ${HOUDINI_ROOT}/toolkit/include
+#    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/hfs19.5/toolkit/include
 )
 
 if(WIN32)

@@ -26,9 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ProgramManager.h"
-#include "Core/API/Device.h"
-#include "Core/Platform/OS.h"
-#include "Utils/Timing/CpuTimer.h"
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Platform/OS.h"
+#include "Falcor/Utils/Timing/CpuTimer.h"
 
 #include "lava_utils_lib/logging.h"
 

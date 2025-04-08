@@ -28,6 +28,7 @@
 #include "stdafx.h"
 
 #include "OS.h"
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 

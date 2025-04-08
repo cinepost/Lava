@@ -11,22 +11,22 @@
 #define BGEO_PARSER_UTIL_H
 
 #include <string>
+#include <vector>
 
 #include "../houdini_inc.h"
 
 #include "ReadError.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+std::vector<std::string> toStrings(const UT_StringArray& strings);
 
 #define BGEO_CHECK(statement) \
     if (!(statement)) \
     { \
-        throw ReadError(parser.getErrors()); \
+        throw ReadError(toStrings(parser.getErrors())); \
     }
 
 void parseMapKey(UT_JSONParser& parser, const char* key);
