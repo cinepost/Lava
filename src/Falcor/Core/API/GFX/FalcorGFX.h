@@ -158,8 +158,6 @@ using DepthStencilStateHandle = void*;
 using RasterizerStateHandle = void*;
 using BlendStateHandle = void*;
 
-inline uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) { return 8; }
-
 #if FALCOR_GFX_VK
 
 inline std::string to_string(VkResult result) {

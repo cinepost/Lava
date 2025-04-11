@@ -197,12 +197,13 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
         defines.add("_FILTER_SIZE", std::to_string(mLowPassFilterSize));
 
         mpLowPass = ComputePass::create(mpDevice, desc, defines, true);
-        mpLowPass["gVBuffer"] = pSrcVBuffer;
-        mpLowPass["gOutputVBuffer"] = mpTmpVBuffer;
+        auto var = mpLowPass->getRootVar();
+        var["gVBuffer"] = pSrcVBuffer;
+        var["gOutputVBuffer"] = mpTmpVBuffer;
     }
 
     if(mpLowPass) {
-        auto cb_vars = mpLowPass["PerFrameCB"];
+        auto cb_vars = mpLowPass->getRootVar()["PerFrameCB"];
         cb_vars["gResolution"] = resolution;
 
         mpLowPass->execute(pRenderContext, resolution.x, resolution.y);
@@ -232,34 +233,38 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
 
         mpPassU = ComputePass::create(mpDevice, desc, defines, true);
     
-        if (mpScene) mpPassU["gScene"] = mpScene->getParameterBlock();
-        mpPassU["gVBuffer"] = pSrcVBuffer;
-        mpPassU["gDepth"] = pSrcDepth;
-        mpPassU["gNormal"] = pSrcNormal;
-        mpPassU["gMaterialID"] = pSrcMaterialID;
-        mpPassU["gInstanceID"] = pSrcInstanceID;
+        auto var = mpPassU->getRootVar();
+
+        if (mpScene) {
+            var["gScene"] = mpScene->getParameterBlock();
+        }
+        var["gVBuffer"] = pSrcVBuffer;
+        var["gDepth"] = pSrcDepth;
+        var["gNormal"] = pSrcNormal;
+        var["gMaterialID"] = pSrcMaterialID;
+        var["gInstanceID"] = pSrcInstanceID;
         
         // Kernel textures
-        mpPassU["gDepthKernelU"] = mpDepthKernelU;
-        mpPassU["gDepthKernelV"] = mpDepthKernelV;
+        var["gDepthKernelU"] = mpDepthKernelU;
+        var["gDepthKernelV"] = mpDepthKernelV;
 
-        mpPassU["gNormalKernelU"] = mpNormalKernelU;
-        mpPassU["gNormalKernelV"] = mpNormalKernelV;
+        var["gNormalKernelU"] = mpNormalKernelU;
+        var["gNormalKernelV"] = mpNormalKernelV;
         
-        mpPassU["gMaterialKernelU"] = mpMaterialKernelU;
-        mpPassU["gMaterialKernelV"] = mpMaterialKernelV;
+        var["gMaterialKernelU"] = mpMaterialKernelU;
+        var["gMaterialKernelV"] = mpMaterialKernelV;
         
-        mpPassU["gInstanceKernelU"] = mpInstanceKernelU;
-        mpPassU["gInstanceKernelV"] = mpInstanceKernelV;
+        var["gInstanceKernelU"] = mpInstanceKernelU;
+        var["gInstanceKernelV"] = mpInstanceKernelV;
 
         // Output
-        mpPassU["gTmpDepth"] = mpTmpDepth;
-        mpPassU["gTmpNormal"] = mpTmpNormal;
-        mpPassU["gTmpMaterialID"] = mpTmpMaterialID;
-        mpPassU["gTmpInstanceID"] = mpTmpInstanceID;
+        var["gTmpDepth"] = mpTmpDepth;
+        var["gTmpNormal"] = mpTmpNormal;
+        var["gTmpMaterialID"] = mpTmpMaterialID;
+        var["gTmpInstanceID"] = mpTmpInstanceID;
     }
 
-    auto cb_vars_u = mpPassU["PerFrameCB"];
+    auto cb_vars_u = mpPassU->getRootVar()["PerFrameCB"];
     cb_vars_u["gResolution"] = resolution;
     cb_vars_u["gDepthKernelCenter"] = depthKernelHalfSize;
     cb_vars_u["gNormalKernelCenter"] = normalKernelHalfSize;
@@ -295,31 +300,36 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
 
         mpPassV = ComputePass::create(mpDevice, desc, defines, true);
 
-        if (mpScene) mpPassV["gScene"] = mpScene->getParameterBlock();
-        mpPassV["gVBuffer"] = pSrcVBuffer;
-        mpPassV["gTmpDepth"] = mpTmpDepth;
-        mpPassV["gTmpNormal"] = mpTmpNormal;
-        mpPassU["gTmpMaterialID"] = mpTmpMaterialID;
-        mpPassU["gTmpInstanceID"] = mpTmpInstanceID;
+        auto var = mpPassV->getRootVar();
+
+        if (mpScene) {
+            var["gScene"] = mpScene->getParameterBlock();
+        }
+
+        var["gVBuffer"] = pSrcVBuffer;
+        var["gTmpDepth"] = mpTmpDepth;
+        var["gTmpNormal"] = mpTmpNormal;
+        var["gTmpMaterialID"] = mpTmpMaterialID;
+        var["gTmpInstanceID"] = mpTmpInstanceID;
 
         // Kernel textures
-        mpPassV["gDepthKernelU"] = mpDepthKernelU;
-        mpPassV["gDepthKernelV"] = mpDepthKernelV;
+        var["gDepthKernelU"] = mpDepthKernelU;
+        var["gDepthKernelV"] = mpDepthKernelV;
 
-        mpPassV["gNormalKernelU"] = mpNormalKernelU;
-        mpPassV["gNormalKernelV"] = mpNormalKernelV;
+        var["gNormalKernelU"] = mpNormalKernelU;
+        var["gNormalKernelV"] = mpNormalKernelV;
         
-        mpPassU["gMaterialKernelU"] = mpMaterialKernelU;
-        mpPassU["gMaterialKernelV"] = mpMaterialKernelV;
+        var["gMaterialKernelU"] = mpMaterialKernelU;
+        var["gMaterialKernelV"] = mpMaterialKernelV;
         
-        mpPassU["gInstanceKernelU"] = mpInstanceKernelU;
-        mpPassU["gInstanceKernelV"] = mpInstanceKernelV;
+        var["gInstanceKernelU"] = mpInstanceKernelU;
+        var["gInstanceKernelV"] = mpInstanceKernelV;
 
         // Output
-        mpPassV["gOutput"] = pDst;
+        var["gOutput"] = pDst;
     }
 
-    auto cb_vars_v = mpPassV["PerFrameCB"];
+    auto cb_vars_v = mpPassV->getRootVar()["PerFrameCB"];
     cb_vars_v["gResolution"] = resolution;
     cb_vars_v["gDepthKernelCenter"] = depthKernelHalfSize;
     cb_vars_v["gNormalKernelCenter"] = normalKernelHalfSize;

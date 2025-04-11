@@ -31,11 +31,14 @@
 #include "BaseGraphicsPass.h"
 #include "../RenderPass.h"
 
+#include <memory>
+
+
 namespace Falcor {
     
-class dlldecl FullScreenPass : public BaseGraphicsPass {
+class FALCOR_API FullScreenPass : public BaseGraphicsPass, public std::enable_shared_from_this<FullScreenPass>  {
  public:
-    using SharedPtr = ParameterBlockSharedPtr<FullScreenPass>;
+   using SharedPtr = std::shared_ptr<FullScreenPass>;
 
     virtual ~FullScreenPass();
 

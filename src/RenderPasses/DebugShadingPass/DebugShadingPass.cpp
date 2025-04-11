@@ -184,31 +184,33 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
         ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, desc, defines, true);
 
-        pPass["gScene"] = mpScene->getParameterBlock();
-        pPass["gFalseColorBuffer"] = mpMeshletColorBuffer;
+        auto var = pPass->getRootVar();
+
+        var["gScene"] = mpScene->getParameterBlock();
+        var["gFalseColorBuffer"] = mpMeshletColorBuffer;
 
         // Bind mandatory input channels
-        pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
+        var["gInOutColor"] = renderData[kInputColor]->asTexture();
 
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
         // Bind extra input-output channels
         for (const auto& channel : kExtraInputOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
         // Bind extra output channels as UAV buffers.
         for (const auto& channel : kExtraOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
-        pPass["gTextureGrads"] = pTextureGradsTex;        
+        var["gTextureGrads"] = pTextureGradsTex;        
 
         if (!mpFalseColorGenerator && 
             (   
@@ -221,7 +223,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         }
 
         if (!mpHeatMapColorGenerator && (renderData[kOutputMeshletDrawColor]->asTexture() && renderData[kInputDrawCount]->asTexture())) mpHeatMapColorGenerator = HeatMapColorGenerator::create(mpDevice);
-        if (mpVisibilitySamplesContainer) pPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+        if (mpVisibilitySamplesContainer) var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
     
         return pPass;
     };
@@ -237,10 +239,12 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
         mpTransparentShadingPass = createShadingPass(desc, true);
     }
 
-    if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(mpShadingPass["gFalseColorGenerator"]);
-    if(mpHeatMapColorGenerator) mpHeatMapColorGenerator->setShaderData(mpShadingPass["gHeatMapColorGenerator"]);
+    auto var = mpShadingPass->getRootVar();
 
-    auto cb_var = mpShadingPass["PerFrameCB"];
+    if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(var["gFalseColorGenerator"]);
+    if(mpHeatMapColorGenerator) mpHeatMapColorGenerator->setShaderData(var["gHeatMapColorGenerator"]);
+
+    auto cb_var = var["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
 
     if(mpVisibilitySamplesContainer) {
@@ -254,7 +258,7 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     if(mpTransparentShadingPass) {
         // Visibility container mode transparent samples shading
-        auto cb_var = mpTransparentShadingPass["PerFrameCB"];
+        auto cb_var = mpTransparentShadingPass->getRootVar()["PerFrameCB"];
         cb_var["gFrameDim"] = mFrameDim;
 
         mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());

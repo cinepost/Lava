@@ -28,7 +28,7 @@ class VertexMap {
     void load(UT_JSONParser& parser, int64 vertexCount);
 
     const int32* getVertices() const { return vertices; };
-    const uint64  getVertexCount() const { return vertexCount; };
+    uint64  getVertexCount() const { return vertexCount; };
 
     int32* vertices;
     uint64 vertexCount;

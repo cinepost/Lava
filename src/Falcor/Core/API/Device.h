@@ -65,7 +65,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
-    using ApiHandle = DeviceHandle;
     using DeviceLocalUID = uint32_t;
     
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
@@ -139,9 +138,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get physical device name
     */
-    const std::string& getPhysicalDeviceName() const;
+    const std::string& getPhysicalDeviceName() const { return mPhysicalDeviceName; } 
 
-    const VmaAllocator& allocator() const { return mApiHandle->getVmaAllocator(); }
+    const VmaAllocator& allocator() const { return mGfxDevice->getVmaAllocator(); }
 
     /** Check if the window is occluded
     */
@@ -173,10 +172,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     ApiCommandQueueType getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const;
 
-    /** Get the native API handle
-    */
-    const DeviceHandle& getApiHandle() { return mApiHandle; }
-
     VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
 
     /** Present the back-buffer to the window
@@ -202,7 +197,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get default sampler object
     */
-    std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
+    const std::shared_ptr<Sampler>& getDefaultSampler() const;
 
     /** Create a new query heap.
         \param[in] type Type of queries.
@@ -314,7 +309,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
 
     Desc mDesc;
-    ApiHandle mApiHandle;
+    Slang::ComPtr<gfx::IDevice> mGfxDevice;
     GpuMemoryHeap::SharedPtr mpUploadHeap;
     Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
 
@@ -331,7 +326,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 #endif
 
     Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
-    Slang::ComPtr<gfx::IDevice> mGfxDevice;
 
     Window::SharedPtr mpWindow = nullptr;
     DeviceApiData* mpApiData;
@@ -436,6 +430,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceHostQueryResetFeatures              mEnabledHostQueryResetFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
 #endif
 };
+
+inline constexpr uint32_t getMaxViewportCount() {
+    return 8;
+}
+
 
 enum_class_operators(Device::SupportedFeatures);
 

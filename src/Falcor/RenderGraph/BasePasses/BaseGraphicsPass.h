@@ -37,7 +37,7 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl BaseGraphicsPass {
+class FALCOR_API BaseGraphicsPass {
  public:
     virtual ~BaseGraphicsPass() = default;
 

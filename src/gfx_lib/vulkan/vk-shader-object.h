@@ -205,9 +205,9 @@ public:
     RefPtr<ShaderObjectLayoutImpl> m_specializedLayout;
 };
 
-class MutableShaderObjectImpl
-    : public MutableShaderObject<MutableShaderObjectImpl, ShaderObjectLayoutImpl>
-{};
+//class MutableShaderObjectImpl
+//    : public MutableShaderObject<MutableShaderObjectImpl, ShaderObjectLayoutImpl>
+//{};
 
 class EntryPointShaderObject : public ShaderObjectImpl
 {

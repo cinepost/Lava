@@ -162,11 +162,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     /**
      * Get the sampler state.
      */
-    gfx::ISamplerState* getGfxSamplerState() const { return mApiHandle; }
-
-    /** Get the API handle
-    */
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
+    gfx::ISamplerState* getGfxSamplerState() const { return mGfxSamplerState; }
 
     /** Get the magnification filter
     */
@@ -233,8 +229,8 @@ private:
 
     std::shared_ptr<Device> mpDevice = nullptr; 
     Desc mDesc;
-    ApiHandle mApiHandle = {};
-    static uint32_t getApiMaxAnisotropy(std::shared_ptr<Device> pDevice);
+    Slang::ComPtr<gfx::ISamplerState> mGfxSamplerState;
+    static uint32_t getApiMaxAnisotropy();
 
 };
 

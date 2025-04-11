@@ -62,7 +62,14 @@ namespace {
 
 static std::chrono::high_resolution_clock::time_point gExecTimeStart;
 
-void signalHandler( int signum ){
+#ifdef _WIN32
+  // traceback not implemented
+#else
+
+struct sigaction gOldSigtermHandler;
+struct sigaction gOldSigsegvHandler;
+
+void signalTermHandler( int signum ){
   // ok, lock-free atomics
   do_shutdown = 1;
   shutdown_requested = true;
@@ -74,11 +81,10 @@ void signalHandler( int signum ){
   if(nbytes != write_size) {
     fprintf(stderr, "Error: signal %d:\n", signum);
   }
+
+  sigaction(SIGSEGV, &gOldSigtermHandler, NULL);
 }
 
-#ifdef _WIN32
-  // traceback not implemented
-#else
 void signalTraceHandler( int signum ){
   lava::ut::log::shutdown_log();
 #ifdef PRE_RELEASE_TRACEBACK_HANDLER
@@ -95,7 +101,7 @@ void signalTraceHandler( int signum ){
   // print out all the frames to stderr
   backtrace_symbols_fd(array, size, STDERR_FILENO);
 #endif
-  exit(signum);
+  sigaction(SIGSEGV, &gOldSigsegvHandler, NULL);
 }
 #endif
 
@@ -158,14 +164,20 @@ int main(int argc, char** argv){
     // setup signal handlers
     {
       struct sigaction action;
-      action.sa_handler = signalHandler;
+      action.sa_handler = signalTermHandler;
       sigemptyset(&action.sa_mask);
       action.sa_flags = 0;
-      sigaction(SIGTERM, &action, NULL);
+      sigaction(SIGTERM, &action, &gOldSigtermHandler);
     }
 
-    signal(SIGABRT, signalTraceHandler);
-    signal(SIGSEGV, signalTraceHandler);
+    {
+      struct sigaction action={0};
+      action.sa_handler = signalTraceHandler;
+      sigaction(SIGSEGV, &action, &gOldSigsegvHandler);
+    }
+
+    //signal(SIGABRT, signalTraceHandler);
+    //signal(SIGSEGV, signalTraceHandler);
     #endif
 
 

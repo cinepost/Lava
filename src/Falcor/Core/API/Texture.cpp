@@ -594,7 +594,7 @@ Texture::~Texture() {
 				pPage.reset();
 			}
 			mSparseDataPages.clear();
-			mpDevice->getApiHandle()->releaseTailMemory(this);
+			mpDevice->getGfxDevice()->releaseTailMemory(this);
 		}
 
 		//ApiObjectHandle objectHandle;

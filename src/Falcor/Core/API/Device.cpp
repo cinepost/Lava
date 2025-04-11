@@ -103,18 +103,21 @@ bool Device::init() {
     if (!apiInit(mDesc.validationLayerOuputFilename)) return false;
 
     mpFrameFence = GpuFence::create(shared_from_this());
+    FALCOR_ASSERT(mpFrameFence);
+
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    FALCOR_ASSERT(mpUploadHeap);
 
     createNullViews();
 
     size_t maxTextureCount = 1024 * 10;
     size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
+    
     mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
-    assert(mpTextureManager);
+    FALCOR_ASSERT(mpTextureManager);
 
     mpProgramManager = std::make_unique<ProgramManager>(this);
-
-    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    FALCOR_ASSERT(mpProgramManager);
 
     // create default sampler
     Sampler::Desc desc;
@@ -122,7 +125,12 @@ bool Device::init() {
     desc.setLodParams(0.0f, 1000.0f, -0.0f);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
+    FALCOR_ASSERT(mpDefaultSampler);
+
+    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    FALCOR_ASSERT(mpRenderContext);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
@@ -141,8 +149,9 @@ bool Device::init() {
     return true;
 }
 
-const std::string& Device::getPhysicalDeviceName() const {
-    return mPhysicalDeviceName;
+const std::shared_ptr<Sampler>& Device::getDefaultSampler() const { 
+    FALCOR_ASSERT(mpDefaultSampler);
+    return mpDefaultSampler; 
 }
 
 void Device::releaseFboData() {

@@ -189,6 +189,16 @@ if ( MSVC )
   ADD_DEFINITIONS(/W3 /std:c++17 /MP /wd4005 /wd4068)
   add_compile_options($<$<CONFIG:DEBUG>:/bigobj>)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
+
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+  
+  set(CMAKE_C_FLAGS_DEBUG "-g -O0")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+
+  set(CMAKE_C_FLAGS_RELEASE "-O3")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+
   ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
@@ -277,7 +287,7 @@ install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
 endif()
 
 # third additional shaders and dependencies
-install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
+#install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
 
 
 #------------------------------------------

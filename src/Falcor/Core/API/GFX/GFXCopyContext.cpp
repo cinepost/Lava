@@ -122,7 +122,7 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 	auto mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
 	pThis->mActualRowSize = (pTexture->getWidth(mipLevel) + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
 	size_t rowAlignment = 1;
-	pDevice->getApiHandle()->getTextureRowAlignment(&rowAlignment);
+	pDevice->getGfxDevice()->getTextureRowAlignment(&rowAlignment);
 	pThis->mRowSize = align_to(static_cast<uint32_t>(rowAlignment), pThis->mActualRowSize);
 	uint64_t rowCount =  (pTexture->getHeight(mipLevel) + formatInfo.blockHeight - 1) / formatInfo.blockHeight;
 	uint64_t size = pTexture->getDepth(mipLevel) * rowCount * pThis->mRowSize;
@@ -404,8 +404,8 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 	assert(pData);
 	if(!pData) return;
 
-	if(!mpDevice->getApiHandle()->tailMemoryAllocated(pTexture)) {
-		mpDevice->getApiHandle()->allocateTailMemory(pTexture);
+	if(!mpDevice->getGfxDevice()->tailMemoryAllocated(pTexture)) {
+		mpDevice->getGfxDevice()->allocateTailMemory(pTexture);
 	}
 
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();

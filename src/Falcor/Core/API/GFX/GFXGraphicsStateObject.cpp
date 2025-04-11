@@ -299,7 +299,7 @@ void GraphicsStateObject::apiInit() {
       inputLayoutDesc.inputElements = inputElements.data();
       inputLayoutDesc.vertexStreamCount = vertexStreams.size();
       inputLayoutDesc.vertexStreams = vertexStreams.data();
-      FALCOR_GFX_CALL(mpDevice->getApiHandle()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
+      FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
     }
     desc.inputLayout = mpGFXInputLayout;
   }
@@ -324,7 +324,7 @@ void GraphicsStateObject::apiInit() {
       }
     }
     gfxFbDesc.renderTargets = attachments.data();
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebufferLayout(gfxFbDesc, mpGFXFramebufferLayout.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFramebufferLayout(gfxFbDesc, mpGFXFramebufferLayout.writeRef()));
     desc.framebufferLayout = mpGFXFramebufferLayout;
   }
 
@@ -354,13 +354,13 @@ void GraphicsStateObject::apiInit() {
       colorAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
     }
     renderPassDesc.renderTargetAccess = colorAccesses.data();
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));
   }
 
   desc.primitiveType = getGFXPrimitiveType(mDesc.getPrimitiveType());
   desc.program = mDesc.getProgramKernels()->getGfxProgram();
 
-  FALCOR_GFX_CALL(mpDevice->getApiHandle()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
+  FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
 }
 
 }  // namespace Falcor

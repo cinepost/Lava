@@ -44,7 +44,7 @@ QueryHeap::QueryHeap(Device::SharedPtr pDevice, Type type, uint32_t count) : mCo
             assert(false);
             break;
     }
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createQueryPool(desc, mApiHandle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createQueryPool(desc, mApiHandle.writeRef()));
 }
 
 }  // namespace Falcro

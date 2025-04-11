@@ -105,10 +105,10 @@ void VisibilitySamplesContainer::sortOpaqueSamples(RenderContext* pRenderContext
 		Program::DefineList defines;
 		defines.add(getDefines());
 		mpOpaqueSortingPass = ComputePass::create(mpDevice, kOpaqueSortShaderFilename, "main", defines);
-		mpOpaqueSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+		mpOpaqueSortingPass->getRootVar()[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
-	mpOpaqueSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+	mpOpaqueSortingPass->getRootVar()[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 	mpOpaqueSortingPass->execute(pRenderContext, mResolution.x * mResolution.y, 1, 1);
 
 	mFlags |= VisibilitySamplesContainerFlags::OpaqueSamplesSorted;
@@ -123,10 +123,10 @@ void VisibilitySamplesContainer::sortTransparentSamplesRoots(RenderContext* pRen
 		Program::DefineList defines;
 		defines.add(getDefines());
 		mpTransparentRootsSortingPass = ComputePass::create(mpDevice, kTransparentRootsSortShaderFilename, "main", defines);
-		mpTransparentRootsSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+		mpTransparentRootsSortingPass->getRootVar()[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
-	mpTransparentRootsSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+	mpTransparentRootsSortingPass->getRootVar()[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 	mpTransparentRootsSortingPass->execute(pRenderContext, mResolution.x * mResolution.y, 1, 1);
 	
 	mFlags |= VisibilitySamplesContainerFlags::TransparentRootsSorted;
@@ -142,10 +142,10 @@ void VisibilitySamplesContainer::sortTransparentSamplesOrder(RenderContext* pRen
 		defines.add(getDefines());
 		defines.add("GROUP_SIZE_X", to_string(getShadingThreadGroupSize().x));
 		mpTransparentOrderSortingPass = ComputePass::create(mpDevice, kTransparentOrderSortShaderFilename, "main", defines);
-		mpTransparentOrderSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+		mpTransparentOrderSortingPass->getRootVar()[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
 	}
 
-	mpTransparentOrderSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+	mpTransparentOrderSortingPass->getRootVar()[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
 	mpTransparentOrderSortingPass->executeIndirect(pRenderContext, mpTransparentPassIndirectionArgsBuffer.get());
 
 	mFlags |= VisibilitySamplesContainerFlags::TransparentListsSorted;
@@ -158,15 +158,20 @@ void VisibilitySamplesContainer::sortFinalizeIndirectArgs(RenderContext* pRender
 		Program::DefineList defines;
 		defines.add(getDefines());
 		mpFinalizeSortingPass = ComputePass::create(mpDevice, kFinalizeIndirectArgsShaderFilename, "main", defines);
-		mpFinalizeSortingPass[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+		
+		auto var = mpFinalizeSortingPass->getRootVar();
 
-		mpFinalizeSortingPass["gOpaqueIndirectionBuffer"] = mpOpaquePassIndirectionArgsBuffer;
-		mpFinalizeSortingPass["gTransparentIndirectionBuffer"] = mpTransparentPassIndirectionArgsBuffer;
+		var[kVisibilityContainerParameterBlockName].setParameterBlock(getParameterBlock());
+
+		var["gOpaqueIndirectionBuffer"] = mpOpaquePassIndirectionArgsBuffer;
+		var["gTransparentIndirectionBuffer"] = mpTransparentPassIndirectionArgsBuffer;
 	}
 
-	mpFinalizeSortingPass[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+	auto var = mpFinalizeSortingPass->getRootVar();
 
-	auto cb = mpFinalizeSortingPass["CB"];
+	var[kVisibilityContainerParameterBlockName]["flags"] = static_cast<uint32_t>(mFlags);
+
+	auto cb = var["CB"];
   cb["shadingThreadGroupSize"] = mShadingThreadGroupSize;
 
 	mpFinalizeSortingPass->execute(pRenderContext, 1, 1, 1);

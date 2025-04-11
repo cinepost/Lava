@@ -25,150 +25,153 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_UTILS_MATH_FLOAT16_H_
+#define SRC_UTILS_MATH_FLOAT16_H_
+
 #include "Core/Framework.h"
 #include "Vector.h"
 #include "glm/detail/type_half.hpp"
 
-namespace Falcor
+namespace Falcor {
+
+/** Represents a IEEE 754-2008 compatible binary16 type (half precision).
+    Numbers outside the representable range +-65504 are stored as +-inf.
+*/
+class float16_t {
+public:
+    float16_t() = default;
+
+    // hdata conversion
+    float16_t(glm::detail::hdata b) : bits(b) {}
+
+    // Float conversion
+    float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
+    float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
+
+    //explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
+    //explicit float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
+    
+    explicit operator float() const { return glm::detail::toFloat32(bits); }
+    explicit operator double() const { return static_cast<double>(glm::detail::toFloat32(bits)); }
+
+    float16_t operator-(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) - glm::detail::toFloat32(other.bits)); }
+    float16_t operator+(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) + glm::detail::toFloat32(other.bits)); }
+
+    bool operator>(const float16_t& other) const { return glm::detail::toFloat32(bits) > glm::detail::toFloat32(other.bits); }
+    bool operator<(const float16_t& other) const { return glm::detail::toFloat32(bits) < glm::detail::toFloat32(other.bits); }
+    bool operator==(const float16_t& other) const { return bits == other.bits; }
+    bool operator!=(const float16_t& other) const { return bits != other.bits; }
+
+    float16_t& operator= (const float& v) { bits = glm::detail::toFloat16(v); return *this; }
+    float16_t& operator= (const double& v) { bits = glm::detail::toFloat16(static_cast<float>(v)); return *this; }
+
+//protected:
+    glm::detail::hdata bits;
+};
+
+inline std::string to_string(const float16_t& v) { return std::to_string((float)v); }
+
+
+// Vector types
+
+template<size_t N>
+struct tfloat16_vec
 {
-    /** Represents a IEEE 754-2008 compatible binary16 type (half precision).
-        Numbers outside the representable range +-65504 are stored as +-inf.
-    */
-    class float16_t
-    {
-    public:
-        float16_t() = default;
+};
 
-        // hdata conversion
-        float16_t(glm::detail::hdata b) : bits(b) {}
+template<>
+struct tfloat16_vec<2>
+{
+    using value_type = float16_t;
 
-        // Float conversion
-        float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
-        float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
+    float16_t x, y;
 
-        //explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
-        //explicit float16_t(double v) : bits(glm::detail::toFloat16(static_cast<float>(v))) {}
-        
-        explicit operator float() const { return glm::detail::toFloat32(bits); }
-        explicit operator double() const { return static_cast<double>(glm::detail::toFloat32(bits)); }
+    // Constructors
+    tfloat16_vec() = default;
+    tfloat16_vec(const float16_t& v) : x(v), y(v) {}
+    tfloat16_vec(const float16_t& v1, const float16_t& v2) : x(v1), y(v2) {}
 
-        float16_t operator-(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) - glm::detail::toFloat32(other.bits)); }
-        float16_t operator+(const float16_t& other) const { return glm::detail::toFloat16(glm::detail::toFloat32(bits) + glm::detail::toFloat32(other.bits)); }
+    // Float conversion
+    explicit tfloat16_vec(float v) : x(v), y(v) {}
+    explicit tfloat16_vec(const float2& v) : x(v.x), y(v.y) {}
+    explicit tfloat16_vec(float v1, float v2) : x(v1), y(v2) {}
+    explicit operator float2() const { return float2(float(x), float(y)); }
 
-        bool operator>(const float16_t& other) const { return glm::detail::toFloat32(bits) > glm::detail::toFloat32(other.bits); }
-        bool operator<(const float16_t& other) const { return glm::detail::toFloat32(bits) < glm::detail::toFloat32(other.bits); }
-        bool operator==(const float16_t& other) const { return bits == other.bits; }
-        bool operator!=(const float16_t& other) const { return bits != other.bits; }
+    // Access
+    float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
+    const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
 
-        float16_t& operator= (const float& v) { bits = glm::detail::toFloat16(v); return *this; }
-        float16_t& operator= (const double& v) { bits = glm::detail::toFloat16(static_cast<float>(v)); return *this; }
+    bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y; }
+    bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y; }
 
-    private:
-        glm::detail::hdata bits;
-    };
+    static constexpr size_t length() { return 2; }
+};
 
-    inline std::string to_string(const float16_t& v) { return std::to_string((float)v); }
+template<>
+struct tfloat16_vec<3>
+{
+    using value_type = float16_t;
 
+    float16_t x, y, z;
 
-    // Vector types
+    // Constructors
+    tfloat16_vec() = default;
+    tfloat16_vec(const float16_t& v) : x(v), y(v), z(v) {}
+    tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3) : x(v1), y(v2), z(v3) {}
 
-    template<size_t N>
-    struct tfloat16_vec
-    {
-    };
+    // Float conversion
+    explicit tfloat16_vec(float v) : x(v), y(v), z(v) {}
+    explicit tfloat16_vec(const float3& v) : x(v.x), y(v.y), z(v.z) {}
+    explicit tfloat16_vec(float v1, float v2, float v3) : x(v1), y(v2), z(v3) {}
+    explicit operator float3() const { return float3(float(x), float(y), float(z)); }
 
-    template<>
-    struct tfloat16_vec<2>
-    {
-        using value_type = float16_t;
+    // Access
+    float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
+    const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
 
-        float16_t x, y;
+    bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z; }
+    bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z; }
 
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2) : x(v1), y(v2) {}
+    static constexpr size_t length() { return 3; }
+};
 
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v) {}
-        explicit tfloat16_vec(const float2& v) : x(v.x), y(v.y) {}
-        explicit tfloat16_vec(float v1, float v2) : x(v1), y(v2) {}
-        explicit operator float2() const { return float2(float(x), float(y)); }
+template<>
+struct tfloat16_vec<4>
+{
+    using value_type = float16_t;
 
-        // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
+    float16_t x, y, z, w;
 
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y; }
+    // Constructors
+    tfloat16_vec() = default;
+    tfloat16_vec(const float16_t& v) : x(v), y(v), z(v), w(v) {}
+    tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3, const float16_t& v4) : x(v1), y(v2), z(v3), w(v4) {}
 
-        static constexpr size_t length() { return 2; }
-    };
+    // Float conversion
+    explicit tfloat16_vec(float v) : x(v), y(v), z(v), w(v) {}
+    explicit tfloat16_vec(const float4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
+    tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
+    //explicit tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
+    explicit operator float4() const { return float4(float(x), float(y), float(z), float(w)); }
 
-    template<>
-    struct tfloat16_vec<3>
-    {
-        using value_type = float16_t;
+    // Access
+    float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
+    const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
 
-        float16_t x, y, z;
+    bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z && w == other.w; }
+    bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z || w != other.w; }
 
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v), z(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3) : x(v1), y(v2), z(v3) {}
+    static constexpr size_t length() { return 4; }
+};
 
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v), z(v) {}
-        explicit tfloat16_vec(const float3& v) : x(v.x), y(v.y), z(v.z) {}
-        explicit tfloat16_vec(float v1, float v2, float v3) : x(v1), y(v2), z(v3) {}
-        explicit operator float3() const { return float3(float(x), float(y), float(z)); }
+using float16_t2 = tfloat16_vec<2>;
+using float16_t3 = tfloat16_vec<3>;
+using float16_t4 = tfloat16_vec<4>;
 
-        // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
-
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z; }
-
-        static constexpr size_t length() { return 3; }
-    };
-
-    template<>
-    struct tfloat16_vec<4>
-    {
-        using value_type = float16_t;
-
-        float16_t x, y, z, w;
-
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v), z(v), w(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3, const float16_t& v4) : x(v1), y(v2), z(v3), w(v4) {}
-
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v), z(v), w(v) {}
-        explicit tfloat16_vec(const float4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
-        tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
-        //explicit tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
-        explicit operator float4() const { return float4(float(x), float(y), float(z), float(w)); }
-
-        // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
-
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z && w == other.w; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z || w != other.w; }
-
-        static constexpr size_t length() { return 4; }
-    };
-
-    using float16_t2 = tfloat16_vec<2>;
-    using float16_t3 = tfloat16_vec<3>;
-    using float16_t4 = tfloat16_vec<4>;
-
-    inline std::string to_string(const float16_t2& v) { return "float16_t2(" + to_string(v.x) + "," + to_string(v.y) + ")"; }
-    inline std::string to_string(const float16_t3& v) { return "float16_t3(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + ")"; }
-    inline std::string to_string(const float16_t4& v) { return "float16_t4(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + "," + to_string(v.w) + ")"; }
+inline std::string to_string(const float16_t2& v) { return "float16_t2(" + to_string(v.x) + "," + to_string(v.y) + ")"; }
+inline std::string to_string(const float16_t3& v) { return "float16_t3(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + ")"; }
+inline std::string to_string(const float16_t4& v) { return "float16_t4(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + "," + to_string(v.w) + ")"; }
 
 }  // namespace Falcor
+
+#endif  // SRC_UTILS_MATH_FLOAT16_H_

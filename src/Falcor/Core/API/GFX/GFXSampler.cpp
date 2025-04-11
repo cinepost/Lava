@@ -86,7 +86,7 @@ gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode) {
 
 gfx::ComparisonFunc getGFXComparisonFunc(ComparisonFunc func);
 
-uint32_t Sampler::getApiMaxAnisotropy(Device::SharedPtr pDevice) {
+uint32_t Sampler::getApiMaxAnisotropy() {
     return 16;
 }
 
@@ -128,7 +128,7 @@ Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) 
     gfxDesc.reductionOp = (desc.mComparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.mReductionMode);
 
     Sampler::SharedPtr result = Sampler::SharedPtr(new Sampler(pDevice, desc));
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createSamplerState(gfxDesc, result->mGfxSamplerState.writeRef()));
     return result;
 }
 

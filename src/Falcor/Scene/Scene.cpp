@@ -3467,12 +3467,15 @@ void Scene::nullTracePass(RenderContext* pContext, const uint2& dim) {
 
     Program::Desc desc;
     desc.addShaderLibrary("Scene/NullTrace.cs.slang").csEntry("main");
-    auto pass = ComputePass::create(pDevice, desc);
-    pass["gOutput"] = Texture::create2D(pDevice, dim.x, dim.y, ResourceFormat::R8Uint, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
-    pass["gTlas"].setAccelerationStructure(tlasObject);
+    auto pPass = ComputePass::create(pDevice, desc);
+
+    auto var = pPass->getRootVar();
+
+    var["gOutput"] = Texture::create2D(pDevice, dim.x, dim.y, ResourceFormat::R8Uint, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
+    var["gTlas"].setAccelerationStructure(tlasObject);
 
     for (size_t i = 0; i < 100; i++) {
-        pass->execute(pContext, uint3(dim, 1));
+        pPass->execute(pContext, uint3(dim, 1));
     }
 }
 

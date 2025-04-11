@@ -52,23 +52,21 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
 		const VkExtent3D& extentVK() const { return mExtent; }
 
-#if defined(FALCOR_GFX)
 		gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
 		gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
-#endif
 
 		size_t usedMemSize() const;
 
-		const uint32_t width() const { return mExtent.width; }
-		const uint32_t height() const { return mExtent.height; }
-		const uint32_t depth() const { return mExtent.depth; }
+		uint32_t width() const { return mExtent.width; }
+		uint32_t height() const { return mExtent.height; }
+		uint32_t depth() const { return mExtent.depth; }
 
-		const uint32_t mipLevel() const { return mMipLevel; }
-		const uint32_t index() const { return mIndex; }
+		uint32_t mipLevel() const { return mMipLevel; }
+		uint32_t index() const { return mIndex; }
 
-		const uint32_t id() const { return mID; }
+		uint32_t id() const { return mID; }
 
-		const std::shared_ptr<Texture> texture() const { return mpTexture; }
+		const std::shared_ptr<Texture>& texture() const { return mpTexture; }
 
   public:
   	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);

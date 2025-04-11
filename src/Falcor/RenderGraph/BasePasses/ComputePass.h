@@ -38,9 +38,9 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass> {
+class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> {
  public:
-    using SharedPtr = ParameterBlockSharedPtr<ComputePass>;
+    using SharedPtr = std::shared_ptr<ComputePass>;
 
     /** Create a new compute pass from file.
         \param[in] filename Compute program filename.
@@ -108,8 +108,10 @@ class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass> {
     */
     uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
 
-protected:
+public:
     ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
+
+protected:
     ProgramVars::SharedPtr mpVars;
     ComputeState::SharedPtr mpState;
 

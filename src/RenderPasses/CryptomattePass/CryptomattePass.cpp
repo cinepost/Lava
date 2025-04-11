@@ -159,31 +159,32 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
 
         mpPass = ComputePass::create(mpDevice, desc, defines, true);
 
-        mpPass["gScene"] = mpScene->getParameterBlock();
+        auto var = mpPass->getRootVar();
+
+        var["gScene"] = mpScene->getParameterBlock();
 
         // Bind mandatory input channels
-        mpPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
+        var["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
 
         // Bind hash buffers
-        mpPass["gFloatHashBuffer"] = mpFloatHashBuffer;
-        mpPass["gHashBuffer"] = mpHashBuffer;
-        mpPass["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
+        var["gFloatHashBuffer"] = mpFloatHashBuffer;
+        var["gHashBuffer"] = mpHashBuffer;
+        var["gPreviewHashColorBuffer"] = mpPreviewHashColorBuffer;
 
         // Bind crypto data output layers as UAV buffers.
         for (size_t i = 0; i < dataLayersCount(); i++) {
-            mpPass["gDataLayers"][i] = dataTextures[i];
+            var["gDataLayers"][i] = dataTextures[i];
         }
 
         for (size_t i = 0; i < mRank; i++) {
-            mpPass["gSortBuffers"][i] = mDataSortingBuffers[i];
+            var["gSortBuffers"][i] = mDataSortingBuffers[i];
         }
 
         // Bind preview output
-        mpPass["gPreviewColor"] = pOutputPreviewTex;
+        var["gPreviewColor"] = pOutputPreviewTex;
     }
 
-    mSampleNumber++;
-    auto cb_var = mpPass["PerFrameCB"];
+    auto cb_var = mpPass->getRootVar()["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;
     cb_var["gRanksCount"] = mRank;
     cb_var["gDataLayersCount"] = dataLayersCount();
@@ -192,7 +193,8 @@ void CryptomattePass::execute(RenderContext* pContext, const RenderData& renderD
     cb_var["gSamplesPerFrame"] = mSamplesPerFrame;
 
     mpPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-
+    mSampleNumber++;
+    
     mDirty = false;
 }
 

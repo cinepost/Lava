@@ -277,7 +277,9 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
             filterPass.pPass = ComputePass::create(mpDevice, desc, defines, true);
         }
         
-        auto cb_var = filterPass.pPass["PerFrameCB"];
+        auto var = filterPass.pPass->getRootVar();
+
+        auto cb_var = var["PerFrameCB"];
         cb_var["gResolution"] = resolution;
         cb_var["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
         cb_var["gSampleOffsetUniform"] = sampleOffsetUniform;
@@ -286,22 +288,21 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         cb_var["gMaxSampleOffset"] = maxSampleOffset;
         cb_var["gSampleNumber"] = mFrameCount;
 
-        auto& pPass = filterPass.pPass;
-        pPass["gInput"] = pSrc;
-        pPass["gDepth"] = pSrcDepth;
+        var["gInput"] = pSrc;
+        var["gDepth"] = pSrcDepth;
 
         // Optional textures
-        pPass["gSampleOffsets"] = pSrcOffsets;
-        pPass["gKernelTexture"] = mpKernelTexture;
-        pPass["gKernelSampler"] = mpKernelSampler;
-        pPass["gImageSampler"] = mpImageSampler;
+        var["gSampleOffsets"] = pSrcOffsets;
+        var["gKernelTexture"] = mpKernelTexture;
+        var["gKernelSampler"] = mpKernelSampler;
+        var["gImageSampler"] = mpImageSampler;
 
         pFilteredImage = mDoVerticalFiltering ? mpTmpFilteredImage : mpFilteredImage;
         pFilteredDepth = mDoVerticalFiltering ? mpTmpFilteredDepth : mpFilteredDepth;
-        pPass["gOutputFilteredImage"] = pFilteredImage;
-        pPass["gOutputFilteredDepth"] = pFilteredDepth;
+        var["gOutputFilteredImage"] = pFilteredImage;
+        var["gOutputFilteredDepth"] = pFilteredDepth;
 
-        pPass->execute(pRenderContext, resolution.x, resolution.y);
+        filterPass.pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
     
     // Horizontal filtering pass
@@ -325,7 +326,9 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
             filterPass.pPass = ComputePass::create(mpDevice, desc, defines, true);
         }
 
-        auto cb_var = filterPass.pPass["PerFrameCB"];
+        auto var = filterPass.pPass->getRootVar();
+
+        auto cb_var = var["PerFrameCB"];
         cb_var["gResolution"] = resolution;
         cb_var["gKernelTextureSize"] = mpKernelTexture ? uint2({mpKernelTexture->getWidth(0), mpKernelTexture->getHeight(0)}) : uint2({0, 0});
         cb_var["gSampleOffsetUniform"] = sampleOffsetUniform;
@@ -334,23 +337,22 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         cb_var["gMaxSampleOffset"] = maxSampleOffset;
         cb_var["gSampleNumber"] = mFrameCount;
 
-        auto& pPass = filterPass.pPass;
-        pPass["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
-        pPass["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
+        var["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
+        var["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
         
         // Optional textures
-        pPass["gSampleOffsets"] = pSrcOffsets;
-        pPass["gKernelTexture"] = mpKernelTexture;
-        pPass["gKernelSampler"] = mpKernelSampler;
-        pPass["gImageSampler"] = mpImageSampler;
+        var["gSampleOffsets"] = pSrcOffsets;
+        var["gKernelTexture"] = mpKernelTexture;
+        var["gKernelSampler"] = mpKernelSampler;
+        var["gImageSampler"] = mpImageSampler;
 
 
         pFilteredImage = mpFilteredImage;
         pFilteredDepth = mpFilteredDepth;
-        pPass["gOutputFilteredImage"] = pFilteredImage;
-        pPass["gOutputFilteredDepth"] = pFilteredDepth;
+        var["gOutputFilteredImage"] = pFilteredImage;
+        var["gOutputFilteredDepth"] = pFilteredDepth;
 
-        pPass->execute(pRenderContext, resolution.x, resolution.y);
+        filterPass.pPass->execute(pRenderContext, resolution.x, resolution.y);
     }
 
     // If accumulation is disabled, just blit the source to the destination and return.

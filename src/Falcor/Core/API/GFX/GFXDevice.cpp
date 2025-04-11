@@ -393,10 +393,7 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 		mpApiData = pData;
 
 		IDevice::Desc desc = {};
-
-#if FALCOR_GFX_VK
 		desc.deviceType = DeviceType::Vulkan;
-#endif
 		
 		// Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
     slang::createGlobalSession(mSlangGlobalSession.writeRef());
@@ -408,30 +405,26 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 		desc.extendedDescCount = 1;
 		desc.extendedDescs = &pExtDesc;
 
-#ifdef FALCOR_GFX
 		if (mUseIDesc) {
 			desc.existingDeviceHandles = mIDesc.existingDeviceHandles;
 		}
-#endif
 
 		desc.validationLayerOuputFilename = validationLayerOuputFilename;
 
 		if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
 
-		mApiHandle = pData->pDevice;
+		mGfxDevice = pData->pDevice;
 
-#if FALCOR_GFX_VK
 		gfx::IDevice::InteropHandles interopHandles = {};
-		mApiHandle->getNativeDeviceHandles(&interopHandles);
+		mGfxDevice->getNativeDeviceHandles(&interopHandles);
 
 		mVkInstance = reinterpret_cast<VkInstance>(interopHandles.handles[0].handleValue);
 		mVkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(interopHandles.handles[1].handleValue);
 		mVkDevice = reinterpret_cast<VkDevice>(interopHandles.handles[2].handleValue);
-#endif
 
-		mGpuTimestampFrequency = 1000.0 / (double)mApiHandle->getDeviceInfo().timestampFrequency;
-		mSupportedFeatures = querySupportedFeatures(mApiHandle);
-		mSupportedShaderModel = querySupportedShaderModel(mApiHandle);
+		mGpuTimestampFrequency = 1000.0 / (double)mGfxDevice->getDeviceInfo().timestampFrequency;
+		mSupportedFeatures = querySupportedFeatures(mGfxDevice);
+		mSupportedShaderModel = querySupportedShaderModel(mGfxDevice);
 		mDefaultShaderModel = std::min(kDefaultShaderModel, mSupportedShaderModel);
 
 		if( !mHeadless ) {
@@ -470,23 +463,18 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 			queue.push_back(pData->pQueue);
 		}
 
-#if FALCOR_GFX_VK
 		for (auto& queue : mCmdNativeQueues) {
 		  gfx::InteropHandle handle = {};
     	FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
     	//assert(handle.api == gfx::InteropHandleAPI::Vulkan);
     	queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
 		}
-#endif
 
-
-#if FALCOR_GFX_VK
 		if (!mHeadless && mpWindow) {
 			if (mpWindow->getClientAreaSize().x == 0 || mpWindow->getClientAreaSize().y == 0) {
 				LLOG_WRN << "Attempting to initialize Vulkan device on a 0-sized window. The swapchain will be invalid and using it could lead to error.";
 			}
 		}
-#endif
 
 		if (!mHeadless && mpWindow) {
 			return createSwapChain(mDesc.colorFormat);
@@ -538,21 +526,21 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 	}
 
 	const VkPhysicalDeviceProperties& Device::getPhysicalDeviceProperties() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 
 		return pDevice->getPhysicalDeviceProperties();
 	}
 
 	uint32_t Device::getMaxComputeWorkgroupSubgroups() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 
 		return pDevice->getSubgroupSizeControlProperties().maxComputeWorkgroupSubgroups;
 	}
 
 	uint32_t Device::subgroupSize() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mApiHandle.get());
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 
 		auto& vk_api = pDevice->vkAPI();
@@ -561,8 +549,8 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 	Device::~Device() {
 		//cleanup();
-		mApiHandle->cleanup();
-    mApiHandle.setNull();
+		mGfxDevice->cleanup();
+    mGfxDevice.setNull();
 	}
 
 } // namespace Falcor

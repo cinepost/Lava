@@ -53,7 +53,7 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(Device::SharedPtr pDevi
     desc.subresourceRange.layerCount = arraySize;
     desc.subresourceRange.mipLevel = mostDetailedMip;
     desc.subresourceRange.mipLevelCount = mipCount;
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
     return SharedPtr(new ShaderResourceView(pDevice, pTexture, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
 }
 
@@ -95,7 +95,7 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(Device::SharedPtr pDevi
     desc.bufferRange.offset = offset;
     desc.bufferRange.size = size == ResourceViewInfo::kEntireBuffer ? 0 : size;
 
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), nullptr, desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), nullptr, desc, handle.writeRef()));
     return SharedPtr(new ShaderResourceView(pDevice, pBuffer, handle, offset, size));
 }
 
@@ -117,7 +117,7 @@ DepthStencilView::SharedPtr DepthStencilView::create(Device::SharedPtr pDevice, 
     desc.subresourceRange.mipLevelCount = 1;
     desc.subresourceRange.aspectMask = gfx::TextureAspect::Depth;
     desc.renderTarget.shape = gfxTexture->getDesc()->type;
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
     return SharedPtr(new DepthStencilView(pDevice, pTexture, handle, mipLevel, firstArraySlice, arraySize));
 }
 
@@ -134,7 +134,7 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDe
     desc.subresourceRange.layerCount = arraySize;
     desc.subresourceRange.mipLevel = mipLevel;
     desc.subresourceRange.mipLevelCount = 1;
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
     return SharedPtr(new UnorderedAccessView(pDevice, pTexture, handle, mipLevel, firstArraySlice, arraySize));
 }
 
@@ -146,7 +146,7 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDe
     desc.bufferRange.offset = offset;
     desc.bufferRange.size = size == ResourceViewInfo::kEntireBuffer ? 0 : size;
     //fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferView(
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferView(
         static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()),
         pBuffer->getUAVCounter() ? static_cast<gfx::IBufferResource*>(pBuffer->getUAVCounter()->getApiHandle().get()) : nullptr,
         desc,
@@ -172,7 +172,7 @@ RenderTargetView::SharedPtr RenderTargetView::create(Device::SharedPtr pDevice, 
     desc.subresourceRange.mipLevelCount = 1;
     desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
     desc.renderTarget.shape = gfxTexture->getDesc()->type;
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createTextureView(gfxTexture, desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(gfxTexture, desc, handle.writeRef()));
     return SharedPtr(new RenderTargetView(pDevice, pTexture, handle, mipLevel, firstArraySlice, arraySize));
 }
 
@@ -210,7 +210,7 @@ RenderTargetView::SharedPtr RenderTargetView::create(Device::SharedPtr pDevice, 
     desc.subresourceRange.mipLevelCount = 1;
     desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
     desc.renderTarget.shape = getGFXResourceType(dimension);
-    FALCOR_GFX_CALL(pDevice->getApiHandle()->createTextureView(nullptr, desc, handle.writeRef()));
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(nullptr, desc, handle.writeRef()));
     return SharedPtr(new RenderTargetView(pDevice, std::weak_ptr<Resource>(), handle, 0, 0, 0));
 }
 

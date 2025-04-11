@@ -21,7 +21,7 @@ static inline std::ostream& indentStream(std::ostream& os, uint indent = 0) {
     return os;
 }
 
-const void ScopeBase::printSummary(std::ostream& os, uint indent) const {
+void ScopeBase::printSummary(std::ostream& os, uint indent) const {
 	indentStream(os, indent) << this->type() << " {\n";
 	PropertiesContainer::printSummary(os, indent);
 
@@ -366,7 +366,7 @@ void Node::addDataSocketTemplate(const std::string& name, Falcor::MxSocketDataTy
 	mSocketTemplates.push_back(tmpl);
 }
 
-const void Node::printSummary(std::ostream& os, uint indent) const {
+void Node::printSummary(std::ostream& os, uint indent) const {
 	indentStream(os, indent) << this->type() << " {\n";
 	PropertiesContainer::printSummary(os, indent);
 

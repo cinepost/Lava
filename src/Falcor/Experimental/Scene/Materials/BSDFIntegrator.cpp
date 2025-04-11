@@ -72,9 +72,9 @@ BSDFIntegrator::BSDFIntegrator(Device::SharedPtr pDevice, const Scene::SharedPtr
 
     #ifdef _DEBUG
     uint3 finalGroupSize = mpFinalPass->getThreadGroupSize();
-    #endif // _DEBUG
     assert(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
     assert(finalGroupSize.x == mResultCount);
+    #endif // _DEBUG
 
     mpFence = GpuFence::create(mpDevice);
 }
@@ -147,7 +147,7 @@ void BSDFIntegrator::integrationPass(RenderContext* pRenderContext, const uint32
     var["cosThetas"] = mpCosThetaBuffer;
     var["results"] = mpResultBuffer;
 
-    mpIntegrationPass["gScene"] = mpScene->getParameterBlock();
+    mpIntegrationPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
     mpIntegrationPass->execute(pRenderContext, uint3(kGridSize, gridCount));
 }
 

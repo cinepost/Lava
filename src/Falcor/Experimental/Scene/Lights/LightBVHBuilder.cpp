@@ -352,7 +352,10 @@ uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuri
 		#endif // _DEBUG
 		uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
 
+		#ifdef _DEBUG
 		assert(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.
+		#endif // _DEBUG
+		
 		node.rightChildIdx = rightIndex;
 
 		data.nodes[nodeIndex].setInternalNode(node);

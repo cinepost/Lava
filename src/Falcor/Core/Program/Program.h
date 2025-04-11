@@ -545,7 +545,8 @@ public:
     using TypeConformanceList = Falcor::TypeConformanceList;
 
 	Program(Device::SharedPtr pDevice, ProgramDesc desc, DefineList programDefines);
-	virtual ~Program();
+	//virtual ~Program();
+    ~Program();
 
 	/**
    * Create a new program.

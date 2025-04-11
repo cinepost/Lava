@@ -1136,56 +1136,56 @@ enum class ShaderObjectContainerType
 class IShaderObject : public ISlangUnknown
 {
 public:
-	SLANG_NO_THROW ComPtr<IShaderObject> SLANG_MCALL getObject(ShaderOffset const& offset)
-	{
-		ComPtr<IShaderObject> object = nullptr;
-		SLANG_RETURN_NULL_ON_FAIL(getObject(offset, object.writeRef()));
-		return object;
-	}
+    virtual SLANG_NO_THROW slang::TypeLayoutReflection* SLANG_MCALL getElementTypeLayout() = 0;
+    virtual SLANG_NO_THROW ShaderObjectContainerType SLANG_MCALL getContainerType() = 0;
+    virtual SLANG_NO_THROW GfxCount SLANG_MCALL getEntryPointCount() = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        getEntryPoint(GfxIndex index, IShaderObject** entryPoint) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        setData(ShaderOffset const& offset, void const* data, Size size) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        getObject(ShaderOffset const& offset, IShaderObject** object) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        setObject(ShaderOffset const& offset, IShaderObject* object) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        setResource(ShaderOffset const& offset, IResourceView* resourceView) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL
+        setSampler(ShaderOffset const& offset, ISamplerState* sampler) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL setCombinedTextureSampler(
+        ShaderOffset const& offset, IResourceView* textureView, ISamplerState* sampler) = 0;
 
-	virtual SLANG_NO_THROW slang::TypeLayoutReflection* SLANG_MCALL getElementTypeLayout() = 0;
-	virtual SLANG_NO_THROW ShaderObjectContainerType SLANG_MCALL getContainerType() = 0;
-	virtual SLANG_NO_THROW GfxCount SLANG_MCALL getEntryPointCount() = 0;
+        /// Manually overrides the specialization argument for the sub-object binding at `offset`.
+        /// Specialization arguments are passed to the shader compiler to specialize the type
+        /// of interface-typed shader parameters.
+    virtual SLANG_NO_THROW Result SLANG_MCALL setSpecializationArgs(
+        ShaderOffset const& offset,
+        const slang::SpecializationArg* args,
+        GfxCount count) = 0;
 
-	ComPtr<IShaderObject> getEntryPoint(GfxIndex index)
-	{
-		ComPtr<IShaderObject> entryPoint = nullptr;
-		SLANG_RETURN_NULL_ON_FAIL(getEntryPoint(index, entryPoint.writeRef()));
-		return entryPoint;
-	}
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		getEntryPoint(GfxIndex index, IShaderObject** entryPoint) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		setData(ShaderOffset const& offset, void const* data, Size size) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		getObject(ShaderOffset const& offset, IShaderObject** object) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		setObject(ShaderOffset const& offset, IShaderObject* object) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		setResource(ShaderOffset const& offset, IResourceView* resourceView) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL
-		setSampler(ShaderOffset const& offset, ISamplerState* sampler) = 0;
-	virtual SLANG_NO_THROW Result SLANG_MCALL setCombinedTextureSampler(
-		ShaderOffset const& offset, IResourceView* textureView, ISamplerState* sampler) = 0;
+    virtual SLANG_NO_THROW Result SLANG_MCALL getCurrentVersion(
+        ITransientResourceHeap* transientHeap,
+        IShaderObject** outObject) = 0;
 
-		/// Manually overrides the specialization argument for the sub-object binding at `offset`.
-		/// Specialization arguments are passed to the shader compiler to specialize the type
-		/// of interface-typed shader parameters.
-	virtual SLANG_NO_THROW Result SLANG_MCALL setSpecializationArgs(
-		ShaderOffset const& offset,
-		const slang::SpecializationArg* args,
-		GfxCount count) = 0;
+    virtual SLANG_NO_THROW const void* SLANG_MCALL getRawData() = 0;
 
-	virtual SLANG_NO_THROW Result SLANG_MCALL getCurrentVersion(
-		ITransientResourceHeap* transientHeap,
-		IShaderObject** outObject) = 0;
+    virtual SLANG_NO_THROW Size SLANG_MCALL getSize() = 0;
 
-	virtual SLANG_NO_THROW const void* SLANG_MCALL getRawData() = 0;
+        /// Use the provided constant buffer instead of the internally created one.
+    virtual SLANG_NO_THROW Result SLANG_MCALL setConstantBufferOverride(IBufferResource* constantBuffer) = 0;
 
-	virtual SLANG_NO_THROW Size SLANG_MCALL getSize() = 0;
 
-		/// Use the provided constant buffer instead of the internally created one.
-	virtual SLANG_NO_THROW Result SLANG_MCALL setConstantBufferOverride(IBufferResource* constantBuffer) = 0;
+    inline ComPtr<IShaderObject> getObject(ShaderOffset const& offset)
+    {
+        ComPtr<IShaderObject> object = nullptr;
+        SLANG_RETURN_NULL_ON_FAIL(getObject(offset, object.writeRef()));
+        return object;
+    }
+    inline ComPtr<IShaderObject> getEntryPoint(GfxIndex index)
+    {
+        ComPtr<IShaderObject> entryPoint = nullptr;
+        SLANG_RETURN_NULL_ON_FAIL(getEntryPoint(index, entryPoint.writeRef()));
+        return entryPoint;
+    }
 };
 #define SLANG_UUID_IShaderObject                                                       \
 	{                                                                                 \

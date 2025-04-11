@@ -35,7 +35,7 @@ namespace Falcor {
 void ComputeStateObject::apiInit() {
 	gfx::ComputePipelineStateDesc computePipelineDesc = {};
 	computePipelineDesc.program = mDesc.mpProgramKernels->getGfxProgram();
-	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
+	FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
 }
 
 }  // namespace Falcor

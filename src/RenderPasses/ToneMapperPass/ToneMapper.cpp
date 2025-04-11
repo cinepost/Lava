@@ -172,11 +172,13 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
 
     // Run luminance pass if auto exposure is enabled
     if (mAutoExposure) {
-        mpLuminancePass["gColorTex"] = pSrc;
-        mpLuminancePass["gColorSampler"] = mpLinearSampler;
-        mpLuminancePass["gLuminanceOutColor"] = pLuminanceTex;
+        auto var = mpLuminancePass->getRootVar();
 
-        auto cb_var = mpLuminancePass["PerFrameCB"];
+        var["gColorTex"] = pSrc;
+        var["gColorSampler"] = mpLinearSampler;
+        var["gLuminanceOutColor"] = pLuminanceTex;
+
+        auto cb_var = var["PerFrameCB"];
         cb_var["gFrameDim"] = dims;
 
         mpLuminancePass->execute(pRenderContext, dims.x, dims.y);
@@ -190,6 +192,8 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
         mRecreateToneMapPass = false;
     }
 
+    auto var = mpToneMapPass->getRootVar();
+
     if (mUpdateToneMapPass) {
         updateWhiteBalanceTransform();
         updateColorTransform();
@@ -199,20 +203,20 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
         params.whiteMaxLuminance = mWhiteMaxLuminance;
         params.colorTransform = static_cast<float3x4>(mColorTransform);
         
-        auto cb_var = mpToneMapPass["PerFrameCB"];
+        auto cb_var = var["PerFrameCB"];
         cb_var["gFrameDim"] = dims;
         cb_var["gParams"].setBlob(&params, sizeof(params));
 
         mUpdateToneMapPass = false;
     }
 
-    mpToneMapPass["gColorTex"] = pSrc;
-    mpToneMapPass["gDstColorTex"] = pDst;
-    mpToneMapPass["gColorSampler"] = mpPointSampler;
+    var["gColorTex"] = pSrc;
+    var["gDstColorTex"] = pDst;
+    var["gColorSampler"] = mpPointSampler;
 
     if (mAutoExposure) {
-        mpToneMapPass["gLuminanceTexSampler"] = mpLinearSampler;
-        mpToneMapPass["gLuminanceTex"] = pLuminanceTex;
+        var["gLuminanceTexSampler"] = mpLinearSampler;
+        var["gLuminanceTex"] = pLuminanceTex;
     }
 
     mpToneMapPass->execute(pRenderContext, dims.x, dims.y);

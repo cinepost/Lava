@@ -181,13 +181,13 @@ class PropertiesContainer: public std::enable_shared_from_this<PropertiesContain
 
     const PropertiesContainer filterProperties(ast::Style style, const std::regex& re) const;
     const PropertiesContainer filterProperties(ast::Style style) const;
-    inline const PropertiesMap& properties() const { return mPropertiesMap; };
+    const PropertiesMap& properties() const { return mPropertiesMap; };
 
     Falcor::Dictionary to_dict(ast::Style style, bool recursive = true) const;
 
-    inline size_t size() const { return mPropertiesMap.size(); };
+    size_t size() const { return mPropertiesMap.size(); };
 
-    virtual const void printSummary(std::ostream& os, uint indent = 0) const;
+    virtual void printSummary(std::ostream& os, uint indent = 0) const;
 
  private:
     const Property::Value& _getPropertyValue(ast::Style style, const std::string& name, const Property::Value& default_value) const;

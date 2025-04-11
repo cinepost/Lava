@@ -66,13 +66,13 @@ uint64_t Texture::getTextureSizeInBytes() const {
 	// get allocation info for resource description
 	size_t outSizeBytes = 0, outAlignment = 0;
 
-	Slang::ComPtr<gfx::IDevice> iDevicePtr = mpDevice->getApiHandle();
+	//Slang::ComPtr<gfx::IDevice> iDevicePtr = mpDevice->getApiHandle();
 	gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(getApiHandle().get());
 	FALCOR_ASSERT(textureResource);
 
 	gfx::ITextureResource::Desc *desc = textureResource->getDesc();
 
-	mpDevice->getApiHandle()->getTextureAllocationInfo(*desc, &outSizeBytes, &outAlignment);
+	mpDevice->getGfxDevice()->getTextureAllocationInfo(*desc, &outSizeBytes, &outAlignment);
 	FALCOR_ASSERT(outSizeBytes > 0);
 
 	return outSizeBytes;
@@ -140,7 +140,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 	assert(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getApiHandle()->createTextureResource(desc, this, nullptr);
+	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getGfxDevice()->createTextureResource(desc, this, nullptr);
 	assert(textureResource);
 
 	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);
@@ -158,9 +158,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 }
 
 void Texture::updateSparseBindInfo() {
-
-	mpDevice->getApiHandle()->updateSparseBindInfo(this);
-	return;
+	mpDevice->getGfxDevice()->updateSparseBindInfo(this);
 }
 
 }  // namespace Falcor

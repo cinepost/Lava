@@ -148,19 +148,21 @@ void AmbientOcclusionPass::execute(RenderContext* pRenderContext, const RenderDa
             defines.add(mpSampleGenerator->getDefines());
 
             mpPassRayTrace = ComputePass::create(mpDevice, desc, defines, true);
-        
-            if (mpScene) mpPassRayTrace["gScene"] = mpScene->getParameterBlock();
+            
+            auto var = mpPassRayTrace->getRootVar();
+
+            if (mpScene) var["gScene"] = mpScene->getParameterBlock();
 
             // Optional textures
-            mpPassRayTrace["gDepth"] = pSrcDepth;
-            mpPassRayTrace["gNormal"] = pSrcNormal;
-            mpPassRayTrace["gVBuffer"] = pSrcVBuffer;
+            var["gDepth"] = pSrcDepth;
+            var["gNormal"] = pSrcNormal;
+            var["gVBuffer"] = pSrcVBuffer;
 
             // Output
-            mpPassRayTrace["gOutput"] = pDst;
+            var["gOutput"] = pDst;
         }
 
-        auto cb_vars = mpPassRayTrace["PerFrameCB"];
+        auto cb_vars = mpPassRayTrace->getRootVar()["PerFrameCB"];
         cb_vars["gSampleNumber"] = mSampleNumber++;
         cb_vars["gResolution"] = resolution;
         cb_vars["gFalloffRange"] = mDistanceRange;

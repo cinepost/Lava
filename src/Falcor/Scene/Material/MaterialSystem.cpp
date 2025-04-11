@@ -357,7 +357,7 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 
 		forceUpdate = true; // Trigger full upload of all materials
 	}
-
+	
 	// Update all materials.
 	if (forceUpdate || mMaterialUpdates != Material::UpdateFlags::None) {
 		for (uint32_t materialID = 0; materialID < (uint32_t)mMaterials.size(); ++materialID) {
@@ -371,9 +371,9 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 			}
 		}
 	}
-
+	
 	auto blockVar = mpMaterialsBlock->getRootVar();
-
+	
 	// Update samplers.
 	if (forceUpdate || mSamplersChanged) {
 		auto var = blockVar[kMaterialSamplersName];
@@ -494,6 +494,7 @@ void MaterialSystem::createParameterBlock() {
 	// Create parameter block.
 	DefineList defines = getDefines();
 	defines.add("MATERIAL_SYSTEM_PARAMETER_BLOCK");
+	
 	auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
 	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gMaterialsBlock");
 	assert(pReflector);

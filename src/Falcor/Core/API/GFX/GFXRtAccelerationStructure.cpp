@@ -50,10 +50,8 @@ RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(Dev
     gfxBuildInputs = translator.translate(inputs);
 
     assert(pDevice);
-    Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
-
     gfx::IAccelerationStructure::PrebuildInfo gfxPrebuildInfo;
-    iDevice->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo);
+    pDevice->getGfxDevice()->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo);
 
     RtAccelerationStructurePrebuildInfo result = {};
     result.resultDataMaxSize = gfxPrebuildInfo.resultDataMaxSize;
@@ -80,7 +78,7 @@ bool RtAccelerationStructure::apiInit() {
     createDesc.kind = getGFXAccelerationStructureKind(mDesc.mKind);
     createDesc.offset = mDesc.getOffset();
     createDesc.size = mDesc.getSize();
-    SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getApiHandle()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
+    SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getGfxDevice()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
     return true;
 }
 

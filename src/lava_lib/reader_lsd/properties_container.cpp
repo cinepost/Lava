@@ -484,7 +484,7 @@ Falcor::Dictionary PropertiesContainer::to_dict(ast::Style style, bool recursive
     return dict;
 }
 
-const void PropertiesContainer::printSummary(std::ostream& os, uint indent) const { 
+void PropertiesContainer::printSummary(std::ostream& os, uint indent) const { 
     for( auto const& [key, prop]: mPropertiesMap) {
         indentStream(os, indent) << (prop.isUserProperty() ? "user" : "sys ") << " property " << to_string(key) << " type: " << to_string(prop.type()) << " value: " << to_string(prop.value()) << "\n";
         if (prop.hasSubContainer()) {

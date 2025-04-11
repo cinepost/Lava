@@ -38,67 +38,17 @@
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 
-
 #include <slang/slang.h>
+
 
 namespace Falcor {
 
 class ProgramVersion;
 class CopyContext;
 
-/** Shared pointer class for `ParameterBlock` and derived classes.
-    This smart pointer type adds syntax sugar for `operator[]` so that it implicitly operates on a `ShaderVar` derived from the contents of the buffer.
-*/
-template<typename T>
-class ParameterBlockSharedPtr : public std::shared_ptr<T> {
-public:
-    ParameterBlockSharedPtr() : std::shared_ptr<T>() {}
-    explicit ParameterBlockSharedPtr(T* pObject) : std::shared_ptr<T>(pObject) {}
-    constexpr ParameterBlockSharedPtr(nullptr_t) : std::shared_ptr<T>(nullptr) {}
-    ParameterBlockSharedPtr(const std::shared_ptr<T>& pObject) : std::shared_ptr<T>(pObject) {}
-
-    /** Implicitly convert a `ShaderVar` to a `ParameterBlock` pointer.
-    */
-    ParameterBlockSharedPtr(const ShaderVar& var) : std::shared_ptr<T>(var.getParameterBlock()) {}
-
-    /** Get a shader variable that points to the root/contents of the parameter block.
-    */
-    ShaderVar getRootVar() const {
-        return std::shared_ptr<T>::get()->getRootVar();
-    }
-
-    /** Get a shader variable that points at the field with the given `name`.
-        This is an alias for `getRootVar()[name]`.
-    */
-    ShaderVar operator[](const std::string& name) const {
-        return getRootVar()[name];
-    }
-
-    /** Get a shader variable that points at the field with the given `name`.
-        This is an alias for `getRootVar()[name]`.
-    */
-    ShaderVar operator[](const char* name) const {
-        return getRootVar()[name];
-    }
-
-    /** Get a shader variable that points at the field/element with the given `index`.
-        This is an alias for `getRootVar()[index]`.
-    */
-    ShaderVar operator[](size_t index) const {
-        return getRootVar()[index];
-    }
-
-    /** Get a shader variable that points at the field/element with the given `offset`.
-        This is an alias for `getRootVar()[offset]`.
-    */
-    ShaderVar operator[](UniformShaderVarOffset offset) const {
-        return getRootVar()[offset];
-    }
-};
-
 /** A parameter block. This block stores all the parameter data associated with a specific type in shader code
 */
-class FALCOR_API ParameterBlock {
+class FALCOR_API ParameterBlock: public std::enable_shared_from_this<ParameterBlock> {
 public:
     using SharedPtr = std::shared_ptr<ParameterBlock>;
     using SharedConstPtr = std::shared_ptr<const ParameterBlock>;
@@ -109,20 +59,21 @@ public:
     /** Create a new object that holds a value of the given type.
     */
     static SharedPtr create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
+    static SharedPtr create(Device* pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
 
     /** Create a new object that holds a value described by the given reflector.
     */
     static SharedPtr create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection);
+    static SharedPtr create(Device* pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection);
 
     /** Create a new object that holds a value of the type with the given name in the given program.
         \param[in] pProgramVersion Program version object.
         \param[in] typeName Name of the type. If the type does not exist an exception is thrown.
     */
     static SharedPtr create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
+    static SharedPtr create(Device* pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
 
-#ifdef FALCOR_GFX
     gfx::IShaderObject* getShaderObject() const { return mpShaderObject.get(); }
-#endif
 
     /** Set a variable into the block.
         The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
@@ -288,11 +239,11 @@ public:
 
     /** Get the parameter block's reflection interface
     */
-    inline ParameterBlockReflection::SharedConstPtr getReflection() const { return mpReflector; }
+    ParameterBlockReflection::SharedConstPtr getReflection() const { return mpReflector; }
 
     /** Get the block reflection type
     */
-    inline ReflectionType::SharedConstPtr getElementType() const { return mpReflector->getElementType(); }
+    ReflectionType::SharedConstPtr getElementType() const { return mpReflector->getElementType(); }
 
     /** Get the size of the reflection type
     */
@@ -323,7 +274,7 @@ public:
     size_t getSize() const;
 
     bool updateSpecialization() const;
-    inline ParameterBlockReflection::SharedConstPtr getSpecializedReflector() const { return mpSpecializedReflector; }
+    ParameterBlockReflection::SharedConstPtr getSpecializedReflector() const { return mpSpecializedReflector; }
 
     bool prepareDescriptorSets(CopyContext* pCopyContext);
 
@@ -336,8 +287,6 @@ public:
     using SpecializationArgs = std::vector<slang::SpecializationArg>;
     void collectSpecializationArgs(SpecializationArgs& ioArgs) const;
 
-    void markUniformDataDirty() const;
-
     void const* getRawData() const;
 
     /** Get the underlying constant buffer that holds the ordinary/uniform data for this block.
@@ -349,25 +298,28 @@ public:
     typedef uint64_t ChangeEpoch;
 
 public:
-    ParameterBlock(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
+    ParameterBlock(Device* pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
+    ParameterBlock(Device* pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-#ifdef FALCOR_GFX
-    ParameterBlock(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector);
-#endif
+    //ParameterBlock(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection) {
+    //    ParameterBlock(pDevice.get(), pProgramVersion, pReflection);
+    //}
+    //ParameterBlock(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
+    //    ParameterBlock(pDevice.get(), pReflector);
+    //}
 
 protected:
-    friend class VariablesBufferUI;
+    void initializeResourceBindings();
+    void createConstantBuffers(const ShaderVar& var);
+    void checkForNestedTextureArrayResources();
 
-    Device::SharedPtr mpDevice = nullptr;
+    static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav);
+
+    Device* mpDevice;
     std::shared_ptr<const ProgramVersion> mpProgramVersion;
     ParameterBlockReflection::SharedConstPtr mpReflector;
     mutable ParameterBlockReflection::SharedConstPtr mpSpecializedReflector;
 
-    void createConstantBuffers(const ShaderVar& var);
-
-    static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav);
-
-#ifdef FALCOR_GFX
     Slang::ComPtr<gfx::IShaderObject> mpShaderObject;
     std::map<gfx::ShaderOffset, ParameterBlock::SharedPtr> mParameterBlocks;
     std::map<gfx::ShaderOffset, ShaderResourceView::SharedPtr> mSRVs;
@@ -375,7 +327,6 @@ protected:
     std::map<gfx::ShaderOffset, Resource::SharedPtr> mResources;
     std::map<gfx::ShaderOffset, Sampler::SharedPtr> mSamplers;
     std::map<gfx::ShaderOffset, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
-#endif // FALCOR_GFX
 };
 
 template<typename T> void ShaderVar::setImpl(const T& val) const {

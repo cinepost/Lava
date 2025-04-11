@@ -340,7 +340,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 
   if(allocationChanged) {
 	  {
-	  	auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
+	  	auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getGfxDevice());
 			auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 			auto& vk_api = pDevice->vkAPI();
 			VkDevice device = pDevice->vkDevice();
@@ -509,7 +509,7 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 		fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
   	VkFence fence;
 
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getApiHandle().get());
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getGfxDevice());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 		auto& vk_api = pDevice->vkAPI();
 		VkDevice device = pDevice->vkDevice();

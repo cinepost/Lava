@@ -261,37 +261,39 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
         ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, desc, defines, true);
 
-        pPass["gScene"] = mpScene->getParameterBlock();
+        auto var = pPass->getRootVar();
 
-        pPass["gNoiseSampler"] = mpNoiseSampler;
-        pPass["gNoiseTex"]     = mpBlueNoiseTexture;
+        var["gScene"] = mpScene->getParameterBlock();
+
+        var["gNoiseSampler"] = mpNoiseSampler;
+        var["gNoiseTex"]     = mpBlueNoiseTexture;
 
         // Bind mandatory input channels
-        pPass["gInOutColor"] = renderData[kInputColor]->asTexture();
-        pPass["gLastFrameSum"] = mpLastFrameSum;
+        var["gInOutColor"] = renderData[kInputColor]->asTexture();
+        var["gLastFrameSum"] = mpLastFrameSum;
 
         // Bind extra input channels
         for (const auto& channel : kExtraInputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
         // Bind extra output channels as UAV buffers.
         for (const auto& channel : kExtraOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
         // Bind extra input-output channels as UAV buffers.
         for (const auto& channel : kExtraInputOutputChannels) {
             Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-            pPass[channel.texname] = pTex;
+            var[channel.texname] = pTex;
         }
 
-        pPass["gTextureGrads"] = pTextureGradsTex;      
+        var["gTextureGrads"] = pTextureGradsTex;      
 
         if(mpVisibilitySamplesContainer) {
-            pPass[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
+            var[kVisibilityContainerParameterBlockName].setParameterBlock(mpVisibilitySamplesContainer->getParameterBlock());
         }
 
         return pPass;
@@ -327,8 +329,8 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         var["gRussRouletteLevel"] = mRussRouletteLevel;
     };
 
-    setVar(mpShadingPass["PerFrameCB"]);
-    if(mpTransparentShadingPass) setVar(mpTransparentShadingPass["PerFrameCB"], true);
+    setVar(mpShadingPass->getRootVar()["PerFrameCB"]);
+    if(mpTransparentShadingPass) setVar(mpTransparentShadingPass->getRootVar()["PerFrameCB"], true);
 
     if(mpVisibilitySamplesContainer) mpVisibilitySamplesContainer->beginFrame();
 
@@ -346,13 +348,15 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
             if(mpVisibilitySamplesContainer) {
                 mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
                 mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
-                mpTransparentShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
-                mpTransparentShadingPass["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
+                auto cb_var = mpTransparentShadingPass->getRootVar()["PerFrameCB"];
+                cb_var["gSampleNumber"] = mSampleNumber;
+                cb_var["gRandomSeed"] = mRandomSeed;
             } else {
                 // Legacy (visibility buffer) mode shading
                 mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
-                mpShadingPass["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
-                mpShadingPass["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
+                auto cb_var = mpShadingPass->getRootVar()["PerFrameCB"];
+                cb_var["gSampleNumber"] = mSampleNumber;
+                cb_var["gRandomSeed"] = mRandomSeed;
             }
         }
     }

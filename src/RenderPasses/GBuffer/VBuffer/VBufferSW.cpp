@@ -386,7 +386,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
     
         if(mpSTBNGenerator) {
-            mpSTBNGenerator->setShaderData(mpComputeRasterizerPass["gNoiseGenerator"]);
+            mpSTBNGenerator->setShaderData(mpComputeRasterizerPass->getRootVar()["gNoiseGenerator"]);
         }
     }
 
@@ -394,30 +394,31 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     const uint32_t dispatchX = kMaxGroupThreads;
 
     {
-        ShaderVar var = mpComputeRasterizerPass->getRootVar();
-        
-        var["gVBufferSW"]["frameDim"] = mFrameDim;
-        var["gVBufferSW"]["frameDimInv"] = mInvFrameDim;
-        var["gVBufferSW"]["frameDimInv2"] = mInvFrameDim * 2.0f;
-        var["gVBufferSW"]["sampleNumber"] = mSampleNumber;
-        var["gVBufferSW"]["randomSeed"] = mRandomSeed;
-        var["gVBufferSW"]["dispatchX"] = dispatchX;
-        var["gVBufferSW"]["meshletDrawsCount"] = meshletDrawsCount;
-        var["gVBufferSW"]["minScreenEdgeLen"] = mMinScreenEdgeLen;
-        var["gVBufferSW"]["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
-        var["gVBufferSW"]["rnd"] = rnd;
-        var["gVBufferSW"]["jitterTextureDim"] = jitterTexDim;
-        var["gVBufferSW"]["transparencySamplesCount"] = mTransparencySamplesCount;
-        var["gVBufferSW"]["drawableIndex"] = kInvalidIndex;
-        var["gVBufferSW"]["opacityLimit"] = mOpacityLimit;
+        auto var = mpComputeRasterizerPass->getRootVar();
+        auto cb_var = var["gVBufferSW"];
+
+        cb_var["frameDim"] = mFrameDim;
+        cb_var["frameDimInv"] = mInvFrameDim;
+        cb_var["frameDimInv2"] = mInvFrameDim * 2.0f;
+        cb_var["sampleNumber"] = mSampleNumber;
+        cb_var["randomSeed"] = mRandomSeed;
+        cb_var["dispatchX"] = dispatchX;
+        cb_var["meshletDrawsCount"] = meshletDrawsCount;
+        cb_var["minScreenEdgeLen"] = mMinScreenEdgeLen;
+        cb_var["minScreenEdgeLenSquared"] = mMinScreenEdgeLen * mMinScreenEdgeLen;
+        cb_var["rnd"] = rnd;
+        cb_var["jitterTextureDim"] = jitterTexDim;
+        cb_var["transparencySamplesCount"] = mTransparencySamplesCount;
+        cb_var["drawableIndex"] = kInvalidIndex;
+        cb_var["opacityLimit"] = mOpacityLimit;
         
         // Stbn XY offset to get more values along Z axis
         if(!mpSTBNGenerator) {
-            var["gVBufferSW"]["stbnOffset"] = uint2(0, 0);
+            cb_var["stbnOffset"] = uint2(0, 0);
         } else {
             uint3 stbn_dims = mpSTBNGenerator->getDims();
             uint wrap_iter = mSampleNumber / stbn_dims[2];
-            var["gVBufferSW"]["stbnOffset"] = mSTBNOffsets[wrap_iter % mSTBNOffsets.size()];
+            cb_var["stbnOffset"] = mSTBNOffsets[wrap_iter % mSTBNOffsets.size()];
         }
 
         var["gLocalDepthBuffer"] = mpLocalDepthBuffer;
@@ -458,10 +459,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Jitter generation pass
     if(mpComputeJitterPass && mpJitterTexture) {
         ShaderVar var = mpComputeJitterPass->getRootVar();
+        auto cb_var = var["PerFrameCB"];
 
-        var["PerFrameCB"]["gJitterTextureDim"] = jitterTexDim;
-        var["PerFrameCB"]["gSampleNumber"] = mSampleNumber;
-        var["PerFrameCB"]["gRandomSeed"] = mRandomSeed;
+        cb_var["gJitterTextureDim"] = jitterTexDim;
+        cb_var["gSampleNumber"] = mSampleNumber;
+        cb_var["gRandomSeed"] = mRandomSeed;
 
         // Bind resources.
         var["gJitterTexture"] = mpJitterTexture;
@@ -472,21 +474,21 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Frustum culling pass
 
     // Meshlets rasterization pass
-    ShaderVar var = mpComputeRasterizerPass->getRootVar();
+    ShaderVar cb_var = mpComputeRasterizerPass->getRootVar()["gVBufferSW"];
     if(mTransparentMeshletsCount == 0) {
         
-        var["gVBufferSW"]["drawableOffset"] = 0;
-        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        cb_var["drawableOffset"] = 0;
+        cb_var["meshletDrawsCount"] = mOpaqueMeshletsCount;
         mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
     } else {
         // Rasterize opaque meshlets first
-        var["gVBufferSW"]["drawableOffset"] = 0;
-        var["gVBufferSW"]["meshletDrawsCount"] = mOpaqueMeshletsCount;
+        cb_var["drawableOffset"] = 0;
+        cb_var["meshletDrawsCount"] = mOpaqueMeshletsCount;
         mpComputeRasterizerPass->execute(pRenderContext, uint3(mOpaqueMeshletsCount, 1, 1));
 
         // Rasterize potentially transparent meshlets second
-        var["gVBufferSW"]["drawableOffset"] = mOpaqueMeshletsCount;
-        var["gVBufferSW"]["meshletDrawsCount"] = mTransparentMeshletsCount;
+        cb_var["drawableOffset"] = mOpaqueMeshletsCount;
+        cb_var["meshletDrawsCount"] = mTransparentMeshletsCount;
         mpComputeRasterizerPass->execute(pRenderContext, uint3(mTransparentMeshletsCount, 1, 1));
     }
 

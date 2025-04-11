@@ -38,7 +38,7 @@ RtAccelerationStructurePostBuildInfoPool::RtAccelerationStructurePostBuildInfoPo
     gfx::IQueryPool::Desc queryPoolDesc = {};
     queryPoolDesc.count = desc.elementCount;
     queryPoolDesc.type = getGFXAccelerationStructurePostBuildQueryType(desc.queryType);
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createQueryPool(queryPoolDesc, mpGFXQueryPool.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createQueryPool(queryPoolDesc, mpGFXQueryPool.writeRef()));
 }
 
 RtAccelerationStructurePostBuildInfoPool::~RtAccelerationStructurePostBuildInfoPool() {}

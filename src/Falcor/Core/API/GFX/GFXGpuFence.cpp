@@ -53,7 +53,7 @@ GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice) {
 	pFence->mpApiData = new FenceApiData;
 	gfx::IFence::Desc fenceDesc = {};
 
-	if (SLANG_FAILED(pDevice->getApiHandle()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef()))) {
+	if (SLANG_FAILED(pDevice->getGfxDevice()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef()))) {
 		throw std::runtime_error("Failed to create a fence object");
 	}
 
@@ -80,7 +80,7 @@ void GpuFence::syncCpu(std::optional<uint64_t> val) {
 	uint64_t currentValue = 0;
 	gfxFence->getCurrentValue(&currentValue);
 	if (currentValue < waitValue) {
-		mpDevice->getApiHandle()->waitForFences(1, &gfxFence, &waitValue, true, -1);
+		mpDevice->getGfxDevice()->waitForFences(1, &gfxFence, &waitValue, true, -1);
 	}
 }
 

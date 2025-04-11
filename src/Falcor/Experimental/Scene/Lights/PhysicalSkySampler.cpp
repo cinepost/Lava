@@ -111,14 +111,16 @@ bool PhysicalSkySampler::createSunTransmittanceLUT(RenderContext* pRenderContext
         assert(mpSunTransmittanceLUT);
     }
 
-    mpSunTransmittanceLUTSetupPass["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
+    auto var = mpSunTransmittanceLUTSetupPass->getRootVar();
 
-    mpSunTransmittanceLUTSetupPass["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
-    mpSunTransmittanceLUTSetupPass["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
-    mpSunTransmittanceLUTSetupPass["CB"]["svMapDim"] = mSkyViewLUTRes;
-    mpSunTransmittanceLUTSetupPass["CB"]["groundRadiusMM"] = mGroundRadiusMM;
-    mpSunTransmittanceLUTSetupPass["CB"]["atmosphereRadiusMM"] = mAtmosphereRadiusMM;
-    mpSunTransmittanceLUTSetupPass["CB"]["sunTransmittanceSteps"] = mSunTransmittanceSteps;
+    var["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
+
+    var["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
+    var["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
+    var["CB"]["svMapDim"] = mSkyViewLUTRes;
+    var["CB"]["groundRadiusMM"] = mGroundRadiusMM;
+    var["CB"]["atmosphereRadiusMM"] = mAtmosphereRadiusMM;
+    var["CB"]["sunTransmittanceSteps"] = mSunTransmittanceSteps;
 
     mpSunTransmittanceLUTSetupPass->execute(pRenderContext, mapWidth, mapHeight);
 
@@ -148,18 +150,20 @@ bool PhysicalSkySampler::createMultipleScatteringLUT(RenderContext* pRenderConte
         assert(mpMultipleScatteringLUT);
     }
 
-    mpMultipleScatteringLUTSetupPass["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
-    mpMultipleScatteringLUTSetupPass["gMultiScatterMap"] = mpMultipleScatteringLUT;
-    mpMultipleScatteringLUTSetupPass["gLUTSampler"] = mpLUTSampler;
+    auto var = mpMultipleScatteringLUTSetupPass->getRootVar();
 
-    mpMultipleScatteringLUTSetupPass["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
-    mpMultipleScatteringLUTSetupPass["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
-    mpMultipleScatteringLUTSetupPass["CB"]["svMapDim"] = mSkyViewLUTRes;
-    mpMultipleScatteringLUTSetupPass["CB"]["groundRadiusMM"] = mGroundRadiusMM;
-    mpMultipleScatteringLUTSetupPass["CB"]["atmosphereRadiusMM"] = mAtmosphereRadiusMM;
-    mpMultipleScatteringLUTSetupPass["CB"]["groundAlbedo"] = mGroundAlbedo;
-    mpMultipleScatteringLUTSetupPass["CB"]["mulScattSteps"] = mMulScattSteps;
-    mpMultipleScatteringLUTSetupPass["CB"]["sqrtSamples"] = mSqrtSamples;
+    var["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
+    var["gMultiScatterMap"] = mpMultipleScatteringLUT;
+    var["gLUTSampler"] = mpLUTSampler;
+
+    var["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
+    var["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
+    var["CB"]["svMapDim"] = mSkyViewLUTRes;
+    var["CB"]["groundRadiusMM"] = mGroundRadiusMM;
+    var["CB"]["atmosphereRadiusMM"] = mAtmosphereRadiusMM;
+    var["CB"]["groundAlbedo"] = mGroundAlbedo;
+    var["CB"]["mulScattSteps"] = mMulScattSteps;
+    var["CB"]["sqrtSamples"] = mSqrtSamples;
 
     mpMultipleScatteringLUTSetupPass->execute(pRenderContext, mapWidth, mapHeight);
 
@@ -188,14 +192,16 @@ bool PhysicalSkySampler::createSkyViewLUT(RenderContext* pRenderContext) {
         assert(mpSkyViewLUT);
     }
 
-    mpSkyViewLUTSetupPass["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
-    mpSkyViewLUTSetupPass["gMultiScatterMap"] = mpMultipleScatteringLUT;
-    mpSkyViewLUTSetupPass["gSkyViewMap"] = mpSkyViewLUT;
-    mpSkyViewLUTSetupPass["gLUTSampler"] = mpLUTSampler;
+    auto var = mpSkyViewLUTSetupPass->getRootVar();
 
-    mpSkyViewLUTSetupPass["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
-    mpSkyViewLUTSetupPass["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
-    mpSkyViewLUTSetupPass["CB"]["svMapDim"] = mSkyViewLUTRes;
+    var["gSunTransmittanceMap"] = mpSunTransmittanceLUT;
+    var["gMultiScatterMap"] = mpMultipleScatteringLUT;
+    var["gSkyViewMap"] = mpSkyViewLUT;
+    var["gLUTSampler"] = mpLUTSampler;
+
+    var["CB"]["stMapDim"] = mSunTrasmittanceLUTRes;
+    var["CB"]["msMapDim"] = mMultipleScatteringLUTRes;
+    var["CB"]["svMapDim"] = mSkyViewLUTRes;
 
     mpSkyViewLUTSetupPass->execute(pRenderContext, mapWidth, mapHeight);
 
@@ -247,17 +253,19 @@ bool PhysicalSkySampler::createImportanceMap(RenderContext* pRenderContext, uint
     mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
     assert(mpImportanceMap);
 
-    mpImportanceMapSetupPass["gImportanceMap"] = mpImportanceMap;
-    mpImportanceMapSetupPass["importanceSampler"] = mpImportanceSampler;
+    auto var = mpImportanceMapSetupPass->getRootVar();
+
+    var["gImportanceMap"] = mpImportanceMap;
+    var["importanceSampler"] = mpImportanceSampler;
 
     uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));
     uint32_t samplesY = samples / samplesX;
     assert(samples == samplesX * samplesY);
 
-    mpImportanceMapSetupPass["CB"]["outputDim"] = uint2(dimension);
-    mpImportanceMapSetupPass["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);
-    mpImportanceMapSetupPass["CB"]["numSamples"] = uint2(samplesX, samplesY);
-    mpImportanceMapSetupPass["CB"]["invSamples"] = 1.f / (samplesX * samplesY);
+    var["CB"]["outputDim"] = uint2(dimension);
+    var["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);
+    var["CB"]["numSamples"] = uint2(samplesX, samplesY);
+    var["CB"]["invSamples"] = 1.f / (samplesX * samplesY);
 
     // Execute setup pass to compute the square importance map (base mip).
     mpImportanceMapSetupPass->execute(pRenderContext, dimension, dimension);

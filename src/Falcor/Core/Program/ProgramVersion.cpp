@@ -171,7 +171,8 @@ void ProgramVersion::init(
 }
 
 ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
-    return std::make_shared<ProgramVersion>(pProgram, pSlangGlobalScope);
+    //return std::make_shared<ProgramVersion>(pProgram, pSlangGlobalScope);
+    return ProgramVersion::SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
 }
 
 ProgramKernels::SharedConstPtr ProgramVersion::getKernels(Device* pDevice, ProgramVars const* pVars) const {

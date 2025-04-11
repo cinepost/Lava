@@ -124,17 +124,19 @@ bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t 
     mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
     assert(mpImportanceMap);
 
-    mpSetupPass["gEnvMap"] =  mpEnvMap->getEnvMap();
-    mpSetupPass["gImportanceMap"] = mpImportanceMap;
+    auto var = mpSetupPass->getRootVar();
+
+    var["gEnvMap"] =  mpEnvMap->getEnvMap();
+    var["gImportanceMap"] = mpImportanceMap;
 
     uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));
     uint32_t samplesY = samples / samplesX;
     assert(samples == samplesX * samplesY);
 
-    mpSetupPass["CB"]["outputDim"] = uint2(dimension);
-    mpSetupPass["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);
-    mpSetupPass["CB"]["numSamples"] = uint2(samplesX, samplesY);
-    mpSetupPass["CB"]["invSamples"] = 1.f / (samplesX * samplesY);
+    var["CB"]["outputDim"] = uint2(dimension);
+    var["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);
+    var["CB"]["numSamples"] = uint2(samplesX, samplesY);
+    var["CB"]["invSamples"] = 1.f / (samplesX * samplesY);
 
     // Execute setup pass to compute the square importance map (base mip).
     mpSetupPass->execute(pRenderContext, dimension, dimension);

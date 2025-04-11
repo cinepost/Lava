@@ -132,27 +132,91 @@ bool isConstantBufferType(const ReflectionType* pType) {
 
 ParameterBlock::~ParameterBlock() {}
 
-ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
+ParameterBlock::ParameterBlock(Device* pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
     : mpDevice(pDevice)
     , mpProgramVersion(pReflector->getProgramVersion())
     , mpReflector(pReflector->getDefaultParameterBlock()) {
     assert(pDevice);
     assert(pReflector);
     
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(pReflector->getProgramVersion()->getKernels(mpDevice.get(), nullptr)->getGfxProgram(), mpShaderObject.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createMutableRootShaderObject(
+        pReflector->getProgramVersion()->getKernels(mpDevice, nullptr)->getGfxProgram(), mpShaderObject.writeRef()
+    ));
+    initializeResourceBindings();
     createConstantBuffers(getRootVar());
 }
 
-ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,
+ParameterBlock::ParameterBlock(Device* pDevice,
     const ProgramVersion::SharedConstPtr& pProgramVersion,
     const ParameterBlockReflection::SharedConstPtr& pReflection)
     : mpDevice(pDevice)
     , mpProgramVersion(pProgramVersion)
     , mpReflector(pReflection) {
-    FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableShaderObjectFromTypeLayout(
-        pReflection->getElementType()->getSlangTypeLayout(),
-        mpShaderObject.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createMutableShaderObjectFromTypeLayout(
+        pReflection->getElementType()->getSlangTypeLayout(), mpShaderObject.writeRef()
+    ));
+    initializeResourceBindings();
     createConstantBuffers(getRootVar());
+}
+
+void ParameterBlock::initializeResourceBindings() {
+    // On Vulkan nested arrays of textures resources fail silently,
+    // so use reflection to catch errors early
+    checkForNestedTextureArrayResources();
+    
+    for (uint32_t i = 0; i < mpReflector->getResourceRangeCount(); i++) {
+        auto info = mpReflector->getResourceRangeBindingInfo(i);
+        auto range = mpReflector->getResourceRange(i);
+        for (uint32_t arrayIndex = 0; arrayIndex < range.count; arrayIndex++) {
+            gfx::ShaderOffset offset = {};
+            offset.bindingRangeIndex = i;
+            offset.bindingArrayIndex = arrayIndex;
+            switch (range.descriptorType) {
+                case ShaderResourceType::Sampler:
+                    mpShaderObject->setSampler(offset, mpDevice->getDefaultSampler()->getGfxSamplerState());
+                    break;
+                case ShaderResourceType::TextureSrv:
+                case ShaderResourceType::TextureUav:
+                case ShaderResourceType::RawBufferSrv:
+                case ShaderResourceType::RawBufferUav:
+                case ShaderResourceType::TypedBufferSrv:
+                case ShaderResourceType::TypedBufferUav:
+                case ShaderResourceType::StructuredBufferUav:
+                case ShaderResourceType::StructuredBufferSrv:
+                case ShaderResourceType::AccelerationStructureSrv:
+                    mpShaderObject->setResource(offset, nullptr);
+                    break;
+            }
+        }
+    }
+}
+
+// Check for nested texture arrays and throw an exception if found.
+void ParameterBlock::checkForNestedTextureArrayResources() {
+    auto reflectorStruct = mpReflector->getElementType()->asStructType();
+    if (reflectorStruct) {
+        for (uint32_t i = 0; i < reflectorStruct->getMemberCount(); i++) {
+            const ReflectionVar::SharedConstPtr& member = reflectorStruct->getMember(i);
+
+            // Recurse through arrays to extract nesting depth + final element type
+            auto elementType = member->getType();
+            int depth = 0;
+            while (elementType->getKind() == ReflectionType::Kind::Array) {
+                elementType = elementType->asArrayType()->getElementType();
+                depth++;
+            }
+
+            // If nesting is > 1 and array element is a texture resource, raise error
+            if (depth > 1) {
+                auto resourceType = elementType->asResourceType();
+                if (resourceType && resourceType->getType() == ReflectionResourceType::Type::Texture) {
+                    FALCOR_THROW(
+                        "Nested texture array '{}' detected in parameter block. This will fail silently on Vulkan.", member->getName()
+                    );
+                }
+            }
+        }
+    }
 }
 
 bool ParameterBlock::setBlob(const void* pSrc, UniformShaderVarOffset offset, size_t size) {
@@ -167,49 +231,57 @@ bool ParameterBlock::setBlob(const void* pSrc, size_t offset, size_t size) {
 }
 
 void ParameterBlock::setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer) {
-    auto var = getRootVar()[name];
-    var.setBuffer(pBuffer);
+    getRootVar()[name].setBuffer(pBuffer);
 }
 
-void ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::SharedPtr& pResource) {
+void ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::SharedPtr& pBuffer) {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLoc);
     if (isUavType(bindLoc.getType())) {
-        auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer);
-        mpShaderObject->setResource(gfxOffset, pUAV->getApiHandle());
+        if (pBuffer && !is_set(pBuffer->getBindFlags(), ResourceBindFlags::UnorderedAccess))
+            FALCOR_THROW("Trying to bind buffer '{}' created without UnorderedAccess flag as a UAV.", pBuffer->getName());
+        auto pUAV = pBuffer ? pBuffer->getUAV() : nullptr;
+        mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
+        mResources[gfxOffset] = pBuffer;
     } else if (isSrvType(bindLoc.getType())) {
-        auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView(mpDevice, ReflectionResourceType::Dimensions::Buffer);
-        mpShaderObject->setResource(gfxOffset, pSRV->getApiHandle());
+        if (pBuffer && !is_set(pBuffer->getBindFlags(), ResourceBindFlags::ShaderResource))
+            FALCOR_THROW("Trying to bind buffer '{}' created without ShaderResource flag as an SRV.", pBuffer->getName());
+        auto pSRV = pBuffer ? pBuffer->getSRV() : nullptr;
+        mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
+        mResources[gfxOffset] = pBuffer;
     } else {
         FALCOR_THROW("Error trying to bind buffer to a non SRV/UAV variable.");
     }
 }
 
 Buffer::SharedPtr ParameterBlock::getBuffer(const std::string& name) const {
-    auto var = getRootVar()[name];
-    return var.getBuffer();
+    return getRootVar()[name].getBuffer();
 }
 
 Buffer::SharedPtr ParameterBlock::getBuffer(const BindLocation& bindLoc) const {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLoc);
     if (isUavType(bindLoc.getType())) {
         auto iter = mUAVs.find(gfxOffset);
-        if (iter == mUAVs.end()) return nullptr;
-        return iter->second->getResource()->asBuffer();
+        if (iter == mUAVs.end())
+            return nullptr;
+        auto pResource = iter->second->getResource();
+        return pResource ? pResource->asBuffer() : nullptr;
     } else if (isSrvType(bindLoc.getType())) {
         auto iter = mSRVs.find(gfxOffset);
-        if (iter == mSRVs.end()) return nullptr;
-        return iter->second->getResource()->asBuffer();
+        if (iter == mSRVs.end())
+            return nullptr;
+        auto pResource = iter->second->getResource();
+        return pResource ? pResource->asBuffer() : nullptr;
     } else {
-        LLOG_ERR << "Error trying to bind resource to non SRV/UAV variable. Ignoring call.";
-        return nullptr;
+        FALCOR_THROW("Error trying to get buffer from a non SRV/UAV variable.");
     }
+
+    return nullptr;
 }
 
 void ParameterBlock::setParameterBlock(const std::string& name, const ParameterBlock::SharedPtr& pBlock) {
-    auto var = getRootVar()[name];
-    var.setParameterBlock(pBlock);
+    getRootVar()[name].setParameterBlock(pBlock);
 }
 
 void ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const ParameterBlock::SharedPtr& pBlock) {
@@ -223,8 +295,7 @@ void ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const P
 }
 
 ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const std::string& name) const {
-    auto var = getRootVar()[name];
-    return var.getParameterBlock();
+    return getRootVar()[name].getParameterBlock();
 }
 
 ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const BindLocation& bindLocation) const {
@@ -305,23 +376,27 @@ void ParameterBlock::setTexture(const BindLocation& bindLocation, const Texture:
 }
 
 Texture::SharedPtr ParameterBlock::getTexture(const std::string& name) const {
-    getRootVar()[name].getTexture();
+    return getRootVar()[name].getTexture();
 }
 
 Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) const {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
     if (isUavType(bindLocation.getType())) {
         auto iter = mUAVs.find(gfxOffset);
-        if (iter == mUAVs.end()) return nullptr;
-        return iter->second->getResource()->asTexture();
+        if (iter == mUAVs.end())
+            return nullptr;
+        auto pResource = iter->second->getResource();
+        return pResource ? pResource->asTexture() : nullptr;
     } else if (isSrvType(bindLocation.getType())) {
         auto iter = mSRVs.find(gfxOffset);
-        if (iter == mSRVs.end()) return nullptr;
-        return iter->second->getResource()->asTexture();
+        if (iter == mSRVs.end())
+            return nullptr;
+        auto pResource = iter->second->getResource();
+        return pResource ? pResource->asTexture() : nullptr;
     } else {
-        LLOG_ERR << "Error trying to bind resource to non SRV/UAV variable. Ignoring call.";
-        return nullptr;
+        FALCOR_THROW("Error trying to get texture from a non SRV/UAV variable.");
     }
+    return nullptr;
 }
 
 void ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv) {
@@ -446,10 +521,6 @@ const ParameterBlock::SharedPtr& ParameterBlock::getParameterBlock(uint32_t reso
 }
 
 void ParameterBlock::collectSpecializationArgs(SpecializationArgs& ioArgs) const {}
-
-void ParameterBlock::markUniformDataDirty() const {
-    throw std::runtime_error("unimplemented");
-}
 
 void const* ParameterBlock::getRawData() const {
     return mpShaderObject->getRawData();

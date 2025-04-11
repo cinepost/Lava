@@ -151,19 +151,19 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
         mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
-        mpComputePass["gScene"] = mpScene->getParameterBlock();
-        
-        mpComputePass[kBackdropTexture] = mpBackdropTexture;
+        auto var = mpComputePass->getRootVar();
+
+        var["gScene"] = mpScene->getParameterBlock();
+        var[kBackdropTexture] = mpBackdropTexture;
 
         // Bind mandatory input channels
-        mpComputePass["gOutColor"] = pDst;
-
-        mpComputePass["gSampler"] = mpSampler;
+        var["gOutColor"] = pDst;
+        var["gSampler"] = mpSampler;
     }
 
     const uint2 frameDim = uint2(pDst->getWidth(), pDst->getHeight());
 
-    auto cb_var = mpComputePass["PerFrameCB"];
+    auto cb_var = mpComputePass->getRootVar()["PerFrameCB"];
     cb_var["frameDim"] = frameDim;
     cb_var["backTextureDim"] = mpBackdropTexture ? uint2({mpBackdropTexture->getWidth(), mpBackdropTexture->getHeight()}) : uint2({1, 1});
     cb_var["gScale"] = mScale;

@@ -28,6 +28,8 @@
 #include "stdafx.h"
 #include "GraphicsState.h"
 
+#include "Falcor/Core/API/Device.h"
+
 namespace Falcor {
 
 static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t) {
@@ -47,7 +49,7 @@ static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t) {
 }
 
 GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDesc(pDevice) {
-    uint32_t vpCount = getMaxViewportCount(pDevice);
+    uint32_t vpCount = getMaxViewportCount();
 
     // Create the viewports
     mViewports.resize(vpCount);

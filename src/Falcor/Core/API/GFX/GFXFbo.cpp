@@ -130,10 +130,10 @@ void Fbo::initApiHandle() const {
 	mpDevice->releaseResource(mApiHandle);
 
 	Slang::ComPtr<gfx::IFramebufferLayout> fboLayout;
-	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef()));
+	FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFramebufferLayout(layoutDesc, fboLayout.writeRef()));
 
 	desc.layout = fboLayout.get();
-	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef()));
+	FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFramebuffer(desc, mApiHandle.writeRef()));
 }
 
 RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {

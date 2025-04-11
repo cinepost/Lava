@@ -31,10 +31,13 @@
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "BaseGraphicsPass.h"
 
+#include <memory>
+
+
 namespace Falcor {
-    class dlldecl RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass> {
+    class FALCOR_API RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass> {
      public:
-        using SharedPtr = ParameterBlockSharedPtr<RasterPass>;
+        using SharedPtr = std::shared_ptr<RasterPass>;
 
         /** Create a new object.
             \param[in] filename Program filename.

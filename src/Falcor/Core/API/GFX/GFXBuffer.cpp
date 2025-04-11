@@ -63,14 +63,13 @@ void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Reso
 
 Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess) {
 	assert(pDevice);
-	Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
-
+	
 	// Create the buffer
 	gfx::IBufferResource::Desc bufDesc = {};
 	prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
 
 	Slang::ComPtr<gfx::IBufferResource> pApiHandle;
-	iDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
+	pDevice->getGfxDevice()->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
 	assert(pApiHandle);
 
 	return pApiHandle;

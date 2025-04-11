@@ -1295,7 +1295,7 @@ Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::Sh
 		addMxNode(pMx->rootNode(), pNodeLSD);
 	}
 
-	return std::move(pMx);
+	return pMx;
 }
 
 Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const std::string& material_name, const Property* pShaderProp) {

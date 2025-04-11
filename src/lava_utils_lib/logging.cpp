@@ -1,6 +1,7 @@
 #include <fstream>
 #include <ostream>
 #include <iomanip>
+#include <atomic>
 
 #include "lava_utils_lib/logging.h"
 
@@ -15,8 +16,8 @@
 #include <boost/log/support/date_time.hpp>
 
 
-static bool g_logger_initialized = false;
-static bool g_logger_shutted_down = false;
+static std::atomic<bool> g_logger_initialized = false;
+static std::atomic<bool> g_logger_shutted_down = false;
 std::vector< std::function< void() > > g_log_stop_functions;
 
 

@@ -39,9 +39,12 @@ const char* kShader = "Experimental/Scene/Lights/EnvMapIntegration.ps.slang";
 
 Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::SharedPtr& pPass, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
 	auto pDevice = pContext->device();
-	pPass["gInputTex"] = pTexture;
-	pPass["gSampler"] = pSampler;
-	pPass["DataCB"]["gSampleCount"] = sampleCount;
+
+	auto var = pPass->getRootVar();
+
+	var["gInputTex"] = pTexture;
+	var["gSampler"] = pSampler;
+	var["DataCB"]["gSampleCount"] = sampleCount;
 
 	// Output texture
 	Fbo::SharedPtr pFbo = Fbo::create2D(pDevice, size, size, Fbo::Desc(pDevice).setColorTarget(0, format));
@@ -64,9 +67,12 @@ Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::Sh
 Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
 	auto pDevice = pContext->device();
 	auto pPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
-	pPass["gInputTex"] = pTexture;
-	pPass["gSampler"] = pSampler;
-	pPass["DataCB"]["gSampleCount"] = sampleCount;
+	
+	auto var = pPass->getRootVar();
+
+	var["gInputTex"] = pTexture;
+	var["gSampler"] = pSampler;
+	var["DataCB"]["gSampleCount"] = sampleCount;
 
 	Texture::SharedPtr pOutput = Texture::create2D(pDevice, size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
 
@@ -77,7 +83,7 @@ Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::S
 		pFbo->attachColorTarget(pOutput, 0, i);
 
 		// Roughness to integrate for on current mip level
-		pPass["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
+		var["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
 		pPass->execute(pContext, pFbo);
 	}
 

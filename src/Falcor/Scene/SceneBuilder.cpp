@@ -1674,7 +1674,9 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 			mSceneGraph[nodeID].dontOptimize) return false;
 
 		assert(node.children.size() == 1);
+		#ifdef _DEBUG
 		assert(node.children[0] == prevNodeID);
+		#endif // _DEBUG
 
 		// Update the transform and step to the parent.
 		transform = node.transformList[0] * transform;

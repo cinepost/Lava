@@ -199,7 +199,7 @@ namespace Falcor
 
 	ResourceBindFlags getFormatBindFlags(std::shared_ptr<Device> pDevice, ResourceFormat format) {
 		gfx::ResourceStateSet stateSet;
-		FALCOR_GFX_CALL(pDevice->getApiHandle()->getFormatSupportedResourceStates(getGFXFormat(format), &stateSet));
+		FALCOR_GFX_CALL(pDevice->getGfxDevice()->getFormatSupportedResourceStates(getGFXFormat(format), &stateSet));
 
 		ResourceBindFlags flags = ResourceBindFlags::None;
 		if (stateSet.contains(gfx::ResourceState::ConstantBuffer)) {
