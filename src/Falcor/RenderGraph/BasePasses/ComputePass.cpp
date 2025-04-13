@@ -33,18 +33,18 @@
 namespace Falcor {
 
 ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {
-    printf("_1\n");
+    LLOG_WRN << "ComputePass::ComputePass() called";
     auto pProg = Program::create(mpDevice, desc, defines);
-    printf("_2\n");
     mpState = ComputeState::create(pDevice);
-    printf("_3\n");
     mpState->setProgram(pProg);
     if (createVars) {
-         printf("_4\n");
         mpVars = ProgramVars::create(pDevice, pProg.get());
     }
     assert(pProg && mpState && (!createVars || mpVars));
-    printf("_5\n");
+}
+
+ComputePass::~ComputePass() {
+    LLOG_WRN << "ComputePass::~ComputePass() called";
 }
 
 ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
@@ -56,7 +56,12 @@ ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, cons
 
 ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
     assert(pDevice);
-    return std::make_shared<ComputePass>(pDevice, desc, defines, createVars);
+    
+    printf("_1\n");
+    auto pPass =  std::make_shared<ComputePass>(pDevice, desc, defines, createVars);
+    printf("_2\n");
+
+    return pPass;
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {
