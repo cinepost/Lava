@@ -68,6 +68,7 @@ VkImageLayout translateImageLayout(ResourceState state)
 {
     switch (state)
     {
+    case ResourceState::General:
     case ResourceState::Undefined:
         return VK_IMAGE_LAYOUT_UNDEFINED;
     case ResourceState::PreInitialized:
@@ -93,6 +94,7 @@ VkImageLayout translateImageLayout(ResourceState state)
     case ResourceState::Present:
         return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     default:
+        LLOG_WRN << "translateImageLayout(ResourceState state) " << to_string(state);
         assert(!"Unsupported");
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }

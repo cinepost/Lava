@@ -1342,7 +1342,9 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
         uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
         uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
 
-        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
+        //ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
+
+        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
 
         ReflectionVar::SharedConstPtr findMember(std::string_view name) const { return getElementType()->findMember(name); }
 

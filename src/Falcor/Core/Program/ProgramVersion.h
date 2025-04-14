@@ -273,6 +273,7 @@ class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
 
     public:
         ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
+        ~ProgramVersion();
 
     protected:
         friend class Program;
@@ -286,6 +287,8 @@ class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
             const std::string& name,
             const std::vector<Slang::ComPtr<slang::IComponentType>>& pSlangEntryPoints
         );
+
+        uint mID;
 
         mutable Program*                    mpProgram;
         DefineList                          mDefines;

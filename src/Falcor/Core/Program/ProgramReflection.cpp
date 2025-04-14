@@ -1650,6 +1650,10 @@ void ParameterBlockReflection::finalize() {
     FALCOR_ASSERT(getElementType()->getResourceRangeCount() == mResourceRanges.size());
 }
 
+std::shared_ptr<const ProgramVersion> ParameterBlockReflection::getProgramVersion() const {
+    return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedPtr();
+}
+
 ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(std::string_view name) const {
     if (name == "") return mpDefaultBlock;
 

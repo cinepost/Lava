@@ -435,7 +435,6 @@ inline std::string to_string(Buffer::MapType mt) {
             return "";
     }
 #undef t2s
-
 }
 
 }  // namespace Falcor

@@ -38,6 +38,9 @@ VkPipelineShaderStageCreateInfo ShaderProgramImpl::compileEntryPoint(
     VkShaderStageFlagBits stage,
     VkShaderModule& outShaderModule)
 {
+    char const* dataBegin = (char const*)code->getBufferPointer();
+    char const* dataEnd = (char const*)code->getBufferPointer() + code->getBufferSize();
+
     // We need to make a copy of the code, since the Slang compiler
     // will free the memory after a compile request is closed.
 
@@ -65,22 +68,13 @@ Result ShaderProgramImpl::createShaderModule(
 {
     m_codeBlobs.add(kernelCode);
     VkShaderModule shaderModule;
-    // HACK: our direct-spirv-emit path generates SPIRV that respects
-    // the original entry point name, while the glslang path always
-    // uses "main" as the name. We should introduce a compiler parameter
-    // to control the entry point naming behavior in SPIRV-direct path
-    // so we can remove the ad-hoc logic here.
     auto realEntryPointName = entryPointInfo->getNameOverride();
     const char* spirvBinaryEntryPointName = "main";
-    if (m_device->m_desc.slang.targetFlags & SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY)
-        spirvBinaryEntryPointName = realEntryPointName;
-
     m_stageCreateInfos.add(compileEntryPoint(
         spirvBinaryEntryPointName,
         kernelCode,
         (VkShaderStageFlagBits)VulkanUtil::getShaderStage(entryPointInfo->getStage()),
         shaderModule));
-    
     m_entryPointNames.add(realEntryPointName);
     m_modules.add(shaderModule);
     return SLANG_OK;

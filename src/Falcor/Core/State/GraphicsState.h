@@ -248,7 +248,7 @@ namespace Falcor {
         };
         CachedData mCachedData;
 
-        using _StateGraph = StateGraph<GraphicsStateObject::SharedPtr, void*>;
-        _StateGraph::SharedPtr mpGsoGraph;
+        using GraphicsStateGraph = StateGraph<GraphicsStateObject::SharedPtr, void*>;
+        std::unique_ptr<GraphicsStateGraph> mpGsoGraph;
     };
 }

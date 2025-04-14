@@ -40,6 +40,9 @@
 
 #include <fmt/format.h>           // TODO C++20: Replace with <format>
 #include <set>
+#include <atomic>
+
+std::atomic<uint> gID = 0;
 
 namespace Falcor {
 
@@ -155,6 +158,38 @@ ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangG
     : mpProgram(pProgram), mpSlangGlobalScope(pSlangGlobalScope)
 {
     FALCOR_ASSERT(pProgram);
+    mID = gID++;
+}
+
+ProgramVersion::~ProgramVersion() {
+    LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " called!";
+
+    LLOG_WRN << "Deleting mDefines";
+    mDefines.clear();
+    LLOG_WRN << "Deleting mDefines done";
+
+    LLOG_WRN << "Deleting mpReflector";
+    mpReflector = nullptr;
+    LLOG_WRN << "Deleting mpReflector done";
+
+    LLOG_WRN << "Deleting mpSlangGlobalScope";
+    mpSlangGlobalScope.setNull();
+    LLOG_WRN << "Deleting mpSlangGlobalScope done";
+
+    LLOG_WRN << "mpSlangEntryPoints.size() " << mpSlangEntryPoints.size();
+    
+    while(!mpSlangEntryPoints.empty()) {
+        size_t ith = mpSlangEntryPoints.size();
+        LLOG_WRN << "Erasing mpSlangEntryPoints " << ith << " element";
+        mpSlangEntryPoints.pop_back();
+        LLOG_WRN << "Erasing mpSlangEntryPoints " << ith << " element done";
+    }
+
+    LLOG_WRN << "Clear mpKernels";
+    mpKernels.clear();
+    LLOG_WRN << "Clear mpKernels done";
+
+    LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " done !!!";
 }
 
 void ProgramVersion::init(

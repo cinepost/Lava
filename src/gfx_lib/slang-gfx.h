@@ -2756,5 +2756,64 @@ struct RayTracingValidationDesc
     bool enableRaytracingValidation = false;
 };
 
+} // namespace gfx
 
+inline std::string to_string(gfx::ResourceState r) {
+#define r2s(r_) case gfx::ResourceState::r_: return #r_;
+  switch (r) {
+		r2s(Undefined);
+		r2s(General);
+		r2s(PreInitialized);
+		r2s(VertexBuffer);
+		r2s(IndexBuffer);
+		r2s(ConstantBuffer);
+		r2s(StreamOutput);
+		r2s(ShaderResource);
+		r2s(UnorderedAccess);
+		r2s(RenderTarget);
+		r2s(DepthRead);
+		r2s(DepthWrite);
+		r2s(Present);
+		r2s(IndirectArgument);
+		r2s(CopySource);
+		r2s(CopyDestination);
+		r2s(ResolveSource);
+		r2s(ResolveDestination);
+		r2s(AccelerationStructure);
+		r2s(AccelerationStructureBuildInput);
+		r2s(PixelShaderResource);
+		r2s(NonPixelShaderResource);
+    default:
+      assert(!"Unsupported");
+      return "";
+  }
+#undef r2s
 }
+
+
+enum class ResourceState
+{
+  Undefined,
+  General,
+  PreInitialized,
+  VertexBuffer,
+  IndexBuffer,
+  ConstantBuffer,
+  StreamOutput,
+  ShaderResource,
+  UnorderedAccess,
+  RenderTarget,
+  DepthRead,
+  DepthWrite,
+  Present,
+  IndirectArgument,
+  CopySource,
+  CopyDestination,
+  ResolveSource,
+  ResolveDestination,
+  AccelerationStructure,
+  AccelerationStructureBuildInput,
+  PixelShaderResource,
+  NonPixelShaderResource,
+  _Count
+};

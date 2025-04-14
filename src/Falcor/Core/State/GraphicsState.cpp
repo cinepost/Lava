@@ -60,7 +60,7 @@ GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDes
         setViewport(i, mViewports[i], true);
     }
 
-    mpGsoGraph = _StateGraph::create();
+    mpGsoGraph = std::make_unique<GraphicsStateGraph>();
 }
 
 GraphicsState::~GraphicsState() = default;
@@ -86,7 +86,7 @@ GraphicsStateObject::SharedPtr GraphicsState::getGSO(const ProgramVars* pVars) {
         mDesc.setVertexLayout(mpVao->getVertexLayout());
         mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
 
-        _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool {
+        GraphicsStateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool {
             return pGso && (desc == pGso->getDesc());
         };
 

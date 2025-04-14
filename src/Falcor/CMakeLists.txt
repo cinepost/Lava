@@ -16,6 +16,7 @@ file( GLOB SOURCES
     ./Core/Platform/*.cpp
     # ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
+    ./Core/Program/DefineList.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
     ./RenderGraph/*.cpp

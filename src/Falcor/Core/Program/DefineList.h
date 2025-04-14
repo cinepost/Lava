@@ -34,7 +34,8 @@
 
 namespace Falcor {
 
-class DefineList : public std::map<std::string, std::string> {
+class DefineList {
+    using Map = std::map<std::string, std::string>;
 public:
     /**
      * Adds a macro definition. If the macro already exists, it will be replaced.
@@ -42,39 +43,65 @@ public:
      * @param[in] value Optional. The value of the macro.
      * @return The updated list of macro definitions.
      */
-    DefineList& add(const std::string& name, const std::string& val = "") {
-        (*this)[name] = val;
-        return *this;
-    }
+    DefineList& add(const std::string& name, const std::string& val = "");
 
     /**
      * Removes a macro definition. If the macro doesn't exist, the call will be silently ignored.
      * @param[in] name The name of macro.
      * @return The updated list of macro definitions.
      */
-    DefineList& remove(const std::string& name) {
-        (*this).erase(name);
-        return *this;
-    }
+    DefineList& remove(const std::string& name);
 
     /**
      * Add a define list to the current list
      */
-    DefineList& add(const DefineList& dl) {
-        for (const auto& p : dl) add(p.first, p.second);
-        return *this;
-    }
+    DefineList& add(const DefineList& dl);
 
     /**
      * Remove a define list from the current list
      */
-    DefineList& remove(const DefineList& dl) {
-        for (const auto& p : dl) remove(p.first);
-        return *this;
+    DefineList& remove(const DefineList& dl);
+
+    const Map& getMap() const { return mMap; }
+
+    bool operator<(const DefineList& rhs) const {
+          return mMap < rhs.getMap();
     }
 
+    bool operator==(const DefineList& other) const { return mMap == other.getMap(); }
+    bool operator!=(const DefineList& other) const { return !(mMap == other.getMap()); }
+
+    void clear() noexcept { mMap.clear(); }
+
+
+    // iterators
+    Map::iterator begin() { return mMap.begin(); }
+    Map::const_iterator begin() const { return mMap.begin(); }
+    
+    Map::iterator end() { return mMap.end(); }
+    Map::const_iterator end() const { return mMap.end(); }
+
+    Map::const_iterator cbegin() const { return mMap.cbegin(); }
+    Map::const_iterator cend() const { return mMap.cend(); }
+
+    // map operations
+    Map::iterator find(const std::string& x) { return mMap.find(x); }
+    Map::const_iterator find(const std::string& x) const { return mMap.find(x); }
+
+    // element access
+    std::string& operator[](const std::string& x) { return mMap[x]; }
+
+    // modifiers
+    Map::size_type erase(const std::string& x) { return mMap.erase(x); }
+    Map::iterator erase(Map::iterator position) { return mMap.erase(position); }
+    Map::iterator erase(Map::const_iterator position) { return mMap.erase(position); }
+
+public:
     DefineList() = default;
-    DefineList(std::initializer_list<std::pair<const std::string, std::string>> il) : std::map<std::string, std::string>(il) {}
+    DefineList(std::initializer_list<std::pair<const std::string, std::string>> il);
+    DefineList(const DefineList& dl);
+private:
+    Map mMap;
 };
 
 }  // namespace Falcor

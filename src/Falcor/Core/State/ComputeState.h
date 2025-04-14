@@ -34,6 +34,7 @@
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
+#include <memory>
 
 namespace Falcor {
 
@@ -80,8 +81,8 @@ class FALCOR_API ComputeState {
         };
         CachedData mCachedData;
 
-        using _StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
-        _StateGraph::SharedPtr mpCsoGraph;
+        using ComputeStateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
+        std::unique_ptr<ComputeStateGraph> mpCsoGraph;
 };
 
 }  // namespace Falcor

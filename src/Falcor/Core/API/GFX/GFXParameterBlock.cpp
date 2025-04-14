@@ -130,7 +130,7 @@ bool isConstantBufferType(const ReflectionType* pType) {
 
 }  // namespace
 
-ParameterBlock::~ParameterBlock() {}
+ParameterBlock::~ParameterBlock() { }
 
 ParameterBlock::ParameterBlock(Device* pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
     : mpDevice(pDevice)

@@ -36,26 +36,15 @@ namespace Falcor {
 template<typename NodeType, typename EdgeType, typename EdgeHashType = std::hash<EdgeType>>
 class StateGraph {
  public:
-    using SharedPtr = std::shared_ptr<StateGraph>;
-    using SharedConstPtr = std::shared_ptr<const StateGraph>;
-
     using CompareFunc = std::function<bool(const NodeType& data)>;
 
     StateGraph() : mGraph(1) {}
 
-    /** Create a new state graph.
-        \return New object, or throws an exception if creation failed.
-    */
-    // #SHADER_VAR remove this
-    static SharedPtr create() {
-        return SharedPtr(new StateGraph());
-    }
-
-    inline bool isEdgeExists(const EdgeType& e) const  {
+    bool isEdgeExists(const EdgeType& e) const  {
         return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());
     }
 
-    inline bool walk(const EdgeType& e) {
+    bool walk(const EdgeType& e) {
         if (isEdgeExists(e)) {
             mCurrentNode = getEdgeIt(e)->second;
             return true;
@@ -69,15 +58,15 @@ class StateGraph {
         }
     }
     
-    inline const NodeType& getCurrentNode() const {
+    const NodeType& getCurrentNode() const {
         return mGraph[mCurrentNode].data;
     }
 
-    inline void setCurrentNodeData(const NodeType& data) {
+    void setCurrentNodeData(const NodeType& data) {
         mGraph[mCurrentNode].data = data;
     }
 
-    inline bool scanForMatchingNode(CompareFunc cmpFunc) {
+    bool scanForMatchingNode(CompareFunc cmpFunc) {
         for (uint32_t i = 0 ; i < (uint32_t)mGraph.size() ; i++) {
             if(i != mCurrentNode) {
                 if (cmpFunc(mGraph[i].data)) {
@@ -100,7 +89,7 @@ class StateGraph {
  private:
     using edge_map = std::unordered_map<EdgeType, uint32_t, EdgeHashType>;
     
-    inline const auto getEdgeIt(const EdgeType& e) const {
+    const auto getEdgeIt(const EdgeType& e) const {
         const Node& n = mGraph[mCurrentNode];
         return n.edges.find(e);
     }

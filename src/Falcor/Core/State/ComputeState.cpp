@@ -33,7 +33,7 @@
 namespace Falcor {
 
 ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
-    mpCsoGraph = _StateGraph::create();
+    mpCsoGraph = std::make_unique<ComputeStateGraph>();
 }
 
 ComputeStateObject::SharedPtr ComputeState::getCSO(const ProgramVars* pVars) {
@@ -51,7 +51,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ProgramVars* pVars) {
     if(pCso == nullptr) {
         mDesc.setProgramKernels(pProgramKernels);
 
-        _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool {
+        ComputeStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool {
             return pCso && (desc == pCso->getDesc());
         };
 

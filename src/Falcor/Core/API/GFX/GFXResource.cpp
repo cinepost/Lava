@@ -42,53 +42,53 @@ SharedResourceApiHandle Resource::getSharedApiHandle() const {
 
 gfx::ResourceState getGFXResourceState(Resource::State state) {
 	switch (state) {
-		case Resource::State::Undefined:
-			return gfx::ResourceState::Undefined;
-		case Resource::State::PreInitialized:
-			return gfx::ResourceState::PreInitialized;
-		case Resource::State::Common:
-			return gfx::ResourceState::General;
-		case Resource::State::VertexBuffer:
-			return gfx::ResourceState::VertexBuffer;
-		case Resource::State::ConstantBuffer:
-			return gfx::ResourceState::ConstantBuffer;
-		case Resource::State::IndexBuffer:
-			return gfx::ResourceState::IndexBuffer;
-		case Resource::State::RenderTarget:
-			return gfx::ResourceState::RenderTarget;
-		case Resource::State::UnorderedAccess:
-			return gfx::ResourceState::UnorderedAccess;
-		case Resource::State::DepthStencil:
-			return gfx::ResourceState::DepthWrite;
-		case Resource::State::ShaderResource:
-			return gfx::ResourceState::ShaderResource;
-		case Resource::State::StreamOut:
-			return gfx::ResourceState::StreamOutput;
-		case Resource::State::IndirectArg:
-			return gfx::ResourceState::IndirectArgument;
-		case Resource::State::CopyDest:
-			return gfx::ResourceState::CopyDestination;
-		case Resource::State::CopySource:
-			return gfx::ResourceState::CopySource;
-		case Resource::State::ResolveDest:
-			return gfx::ResourceState::ResolveDestination;
-		case Resource::State::ResolveSource:
-			return gfx::ResourceState::ResolveSource;
-		case Resource::State::Present:
-			return gfx::ResourceState::Present;
-		case Resource::State::GenericRead:
-			return gfx::ResourceState::General;
-		case Resource::State::Predication:
-			return gfx::ResourceState::General;
-		case Resource::State::PixelShader:
-			return gfx::ResourceState::ShaderResource;
-		case Resource::State::NonPixelShader:
-			return gfx::ResourceState::ShaderResource;
-		case Resource::State::AccelerationStructure:
-			return gfx::ResourceState::AccelerationStructure;
-		default:
-			assert(false);
-			return gfx::ResourceState::Undefined;
+    case Resource::State::Undefined:
+      return gfx::ResourceState::Undefined;
+    case Resource::State::PreInitialized:
+      return gfx::ResourceState::PreInitialized;
+    case Resource::State::Common:
+      return gfx::ResourceState::General;
+    case Resource::State::VertexBuffer:
+      return gfx::ResourceState::VertexBuffer;
+    case Resource::State::ConstantBuffer:
+      return gfx::ResourceState::ConstantBuffer;
+    case Resource::State::IndexBuffer:
+      return gfx::ResourceState::IndexBuffer;
+    case Resource::State::RenderTarget:
+      return gfx::ResourceState::RenderTarget;
+    case Resource::State::UnorderedAccess:
+      return gfx::ResourceState::UnorderedAccess;
+    case Resource::State::DepthStencil:
+      return gfx::ResourceState::DepthWrite;
+    case Resource::State::ShaderResource:
+      return gfx::ResourceState::ShaderResource;
+    case Resource::State::StreamOut:
+      return gfx::ResourceState::StreamOutput;
+    case Resource::State::IndirectArg:
+      return gfx::ResourceState::IndirectArgument;
+    case Resource::State::CopyDest:
+      return gfx::ResourceState::CopyDestination;
+    case Resource::State::CopySource:
+      return gfx::ResourceState::CopySource;
+    case Resource::State::ResolveDest:
+      return gfx::ResourceState::ResolveDestination;
+    case Resource::State::ResolveSource:
+      return gfx::ResourceState::ResolveSource;
+    case Resource::State::Present:
+      return gfx::ResourceState::Present;
+    case Resource::State::GenericRead:
+      return gfx::ResourceState::General;
+    case Resource::State::Predication:
+      return gfx::ResourceState::General;
+    case Resource::State::PixelShader:
+      return gfx::ResourceState::PixelShaderResource;
+    case Resource::State::NonPixelShader:
+      return gfx::ResourceState::NonPixelShaderResource;
+    case Resource::State::AccelerationStructure:
+      return gfx::ResourceState::AccelerationStructure;
+    default:
+      FALCOR_UNREACHABLE();
+      return gfx::ResourceState::Undefined;
 	}
 }
 
