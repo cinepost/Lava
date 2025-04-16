@@ -39,6 +39,8 @@ namespace Falcor {
 
 namespace {
 
+static std::atomic<uint> sNextId = 0;
+
 gfx::ShaderOffset getGFXShaderOffset(const UniformShaderVarOffset& offset) {
     gfx::ShaderOffset result;
     result.bindingArrayIndex = 0;
@@ -130,15 +132,38 @@ bool isConstantBufferType(const ReflectionType* pType) {
 
 }  // namespace
 
-ParameterBlock::~ParameterBlock() { }
+ParameterBlock::~ParameterBlock() {
+/*    LLOG_WRN << "ParameterBlock::~ParameterBlock() " << mID;
+
+    auto programVersionID = mpProgramVersion->mID;
+    LLOG_WRN << "Calling ProgramVersion " << programVersionID << " destruction from ParameterBlock " << mID;
+    mpProgramVersion = nullptr;
+    LLOG_WRN << "Calling ProgramVersion " << programVersionID << " destruction from ParameterBlock " << mID << " call done!";
+    
+    mpReflector = nullptr;
+    mpSpecializedReflector = nullptr;
+
+    mpShaderObject.setNull();
+    mParameterBlocks.clear();
+    mSRVs.clear();
+    mUAVs.clear();
+    mResources.clear();
+    mSamplers.clear();
+    mAccelerationStructures.clear();
+    LLOG_WRN << "ParameterBlock::~ParameterBlock() " << mID << " done!";
+*/
+}   
 
 ParameterBlock::ParameterBlock(Device* pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
     : mpDevice(pDevice)
     , mpProgramVersion(pReflector->getProgramVersion())
     , mpReflector(pReflector->getDefaultParameterBlock()) {
-    assert(pDevice);
-    assert(pReflector);
     
+    assert(mpDevice);
+    assert(mpReflector);
+    
+    mID = sNextId.fetch_add(1);
+
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createMutableRootShaderObject(
         pReflector->getProgramVersion()->getKernels(mpDevice, nullptr)->getGfxProgram(), mpShaderObject.writeRef()
     ));
@@ -152,6 +177,11 @@ ParameterBlock::ParameterBlock(Device* pDevice,
     : mpDevice(pDevice)
     , mpProgramVersion(pProgramVersion)
     , mpReflector(pReflection) {
+
+    assert(mpDevice);
+
+    mID = sNextId.fetch_add(1);
+
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createMutableShaderObjectFromTypeLayout(
         pReflection->getElementType()->getSlangTypeLayout(), mpShaderObject.writeRef()
     ));
@@ -496,10 +526,10 @@ bool ParameterBlock::updateSpecialization() const {
 bool ParameterBlock::prepareDescriptorSets(CopyContext* pCopyContext) {
     // Insert necessary resource barriers for bound resources.
     for (auto& srv : mSRVs) {
-        prepareResource(pCopyContext, srv.second->getResource().get(), false);
+        prepareResource(pCopyContext, srv.second ? srv.second->getResource() : nullptr, false);
     }
     for (auto& uav : mUAVs) {
-        prepareResource(pCopyContext, uav.second->getResource().get(), true);
+        prepareResource(pCopyContext, uav.second ? uav.second->getResource() : nullptr, true);
     }
     for (auto& subObj : this->mParameterBlocks) {
         subObj.second->prepareDescriptorSets(pCopyContext);

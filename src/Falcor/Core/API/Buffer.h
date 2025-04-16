@@ -46,6 +46,8 @@ struct ShaderVar;
 */
 class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource, Buffer> {
   public:
+    static constexpr uint64_t kEntireBuffer = ResourceViewInfo::kEntireBuffer;
+    
     using SharedPtr = std::shared_ptr<Buffer>;
     using WeakPtr = std::weak_ptr<Buffer>;
     using SharedConstPtr = std::shared_ptr<const Buffer>;
@@ -201,13 +203,13 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float
         \param[in] elementCount The number of elements to bind
     */
-    ShaderResourceView::SharedPtr getSRV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    ShaderResourceView::SharedPtr getSRV(uint64_t offset, uint64_t size = kEntireBuffer);
 
     /** Get an unordered access view.
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float
         \param[in] elementCount The number of elements to bind
     */
-    UnorderedAccessView::SharedPtr getUAV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    UnorderedAccessView::SharedPtr getUAV(uint64_t offset, uint64_t size = kEntireBuffer);
 
     /** Get a shader-resource view for the entire resource
     */

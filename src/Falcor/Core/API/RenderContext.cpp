@@ -119,8 +119,8 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
         throw std::runtime_error("RenderContext::blit does not support buffers");
     }
 
-    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource.get());
-    const Texture* pDstTexture = dynamic_cast<const Texture*>(pDstResource.get());
+    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource);
+    const Texture* pDstTexture = dynamic_cast<const Texture*>(pDstResource);
     assert(pSrcTexture != nullptr && pDstTexture != nullptr);
 
     // Clamp rectangles to the dimensions of the source/dest views.
@@ -161,7 +161,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
     // Take fast path to copy the entire resource if possible. This has many requirements;
     // the source/dest must have identical size/format/etc. and the views and rects must cover the full resources.
     if (fullCopy) {
-        copyResource(pDstResource.get(), pSrcResource.get());
+        copyResource(pDstResource, pSrcResource);
         return;
     }
 
@@ -242,7 +242,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
         blitData.prevSrcReftScale = srcRectScale;
     }
 
-    Texture::SharedPtr pSharedTex = std::static_pointer_cast<Texture>(pDstResource);
+    Texture::SharedPtr pSharedTex = pDstResource->asTexture();
     blitData.pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
     blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
     blitData.pPass->getState()->setViewport(0, dstViewport);
@@ -268,7 +268,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
         throw std::runtime_error("RenderContext::blitToBuffer() distination buffer size and dstFormat size are not divisable !");
     }
     
-    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource.get());
+    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource);
     assert(pSrcTexture != nullptr && pBuffer != nullptr);
 
     // Clamp rectangles to the dimensions of the source/dest views.
@@ -326,7 +326,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     // the source/dest must have identical size/format/etc. and the views and rects must cover the full resources.
     
     if (fullCopy) {
-        copyResource(pBuffer.get(), pSrcResource.get());
+        copyResource(pBuffer.get(), pSrcResource);
         return;
     }
 

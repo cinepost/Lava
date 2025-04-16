@@ -264,7 +264,7 @@ DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArr
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return DepthStencilView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+		return DepthStencilView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
@@ -274,7 +274,7 @@ UnorderedAccessView::SharedPtr Texture::getUAV(uint32_t mipLevel, uint32_t first
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return UnorderedAccessView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+		return UnorderedAccessView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
@@ -294,7 +294,7 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
 		assert(pTexture->device());
-		return RenderTargetView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+		return RenderTargetView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
@@ -308,7 +308,7 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
+		return ShaderResourceView::create(pTexture->device(), pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
 	};
 
 	if(mIsSparse) {

@@ -267,59 +267,11 @@ void Device::toggleVSync(bool enable) {
     mDesc.enableVsync = enable;
 }
 
-void Device::cleanup() {
-    toggleFullScreen(false);
-    mpRenderContext->flush(true);
-
-    //mpTextureManager.reset();
-
-    mGfxCommandQueue.setNull();
-
-    mDeferredReleases = decltype(mDeferredReleases)();
-
-    // Release all the bound resources. Need to do that before deleting the RenderContext
-    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
-        mCmdQueues[i].clear();
-#if FALCOR_GFX_VK
-        mCmdNativeQueues[i].clear();
-#endif
-    }
-
-    if(mHeadless) {
-        mpOffscreenFbo.reset();
-    } else {
-        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
-    }
-
-    mDeferredReleases = decltype(mDeferredReleases)();
-
-    releaseNullViews();
-
-    mpTextureManager.reset();
-    mDeferredReleases = decltype(mDeferredReleases)();
-
-    mpRenderContext.reset();
-
-    mpUploadHeap.reset();
-
-    mpFrameFence.reset();
-
-    for (auto& heap : mTimestampQueryHeaps) heap.reset();
-
-    if(mpWindow) {
-        mpWindow.reset();
-    }
-
-    mpDefaultSampler.reset();
-
-    mDeferredReleases = decltype(mDeferredReleases)();
-
-    destroyApiObjects();
-}
-
 void Device::flushAndSync() {
-    mpRenderContext->flush(true);
-    mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
+    if(mpRenderContext) { 
+        mpRenderContext->flush(true);
+        mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
+    }
     executeDeferredReleases();
 }
 

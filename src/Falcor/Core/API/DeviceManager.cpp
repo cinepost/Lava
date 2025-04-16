@@ -47,7 +47,6 @@ DeviceManager::~DeviceManager() {
     for( auto& entry: mRenderingDevices ) {
         auto& pDevice = entry.second;
         if (pDevice) {
-            pDevice->cleanup();
             pDevice.reset();
         }
     }

@@ -161,6 +161,7 @@ ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangG
     mID = gID++;
 }
 
+/*
 ProgramVersion::~ProgramVersion() {
     LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " called!";
 
@@ -191,6 +192,7 @@ ProgramVersion::~ProgramVersion() {
 
     LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " done !!!";
 }
+*/
 
 void ProgramVersion::init(
     const DefineList& defineList,

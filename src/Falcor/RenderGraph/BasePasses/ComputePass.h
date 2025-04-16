@@ -110,14 +110,11 @@ class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> 
 
 public:
     ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
-    ~ComputePass();
 
 protected:
+    std::shared_ptr<Device> mpDevice;
     ProgramVars::SharedPtr mpVars;
     ComputeState::SharedPtr mpState;
-
-//private:
-    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

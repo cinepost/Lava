@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "ParameterBlock.h"
 
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 
-#include "ParameterBlock.h"
+#include <atomic>
+
 
 namespace Falcor {
 

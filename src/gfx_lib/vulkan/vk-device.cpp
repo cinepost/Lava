@@ -572,6 +572,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("atomic-float");
 		}
 
+
 		if (extendedFeatures.extendedDynamicStateFeatures.extendedDynamicState) {
 			// Link into the creation features
 			extendedFeatures.extendedDynamicStateFeatures.pNext = (void*)vulkan12Features.pNext;
@@ -601,7 +602,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			deviceExtensions.add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 			m_features.add("ray-query");
 			m_features.add("ray-tracing");
-			m_features.add("sm_6_6");
 		}
 
 		if (extendedFeatures.inlineUniformBlockFeatures.inlineUniformBlock) {
@@ -754,6 +754,29 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			deviceExtensions.add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
 		}
 	}
+
+	if (m_features.contains("atomic-int64")) {
+		m_features.add("sm_6_0");
+	}
+	if (m_features.contains("fragment-shader-barycentrics")) {
+		m_features.add("sm_6_1");
+	}
+	if (m_features.contains("half")) {
+		m_features.add("sm_6_2");
+	}
+	if (m_features.contains("ray-tracing-pipeline")) {
+		m_features.add("sm_6_3");
+	}
+	if (m_features.contains("fragment-shading-rate")) {
+		m_features.add("sm_6_4");
+	}
+	if (m_features.contains("ray-query")) {
+		m_features.add("sm_6_5");
+	}
+	if (m_features.contains("atomic-float") && m_features.contains("atomic-int64")) {
+		m_features.add("sm_6_6");
+	}
+
 	if (m_api.m_module->isSoftware()) {
 		m_features.add("software-device");
 	} else {
@@ -2279,94 +2302,103 @@ Result DeviceImpl::createBufferView(
 	IResourceView::Desc const& desc,
 	IResourceView** outView)
 {
-	auto resourceImpl = (BufferResourceImpl*)buffer;
+  auto resourceImpl = (BufferResourceImpl*)buffer;
 
-	// TODO: These should come from the `ResourceView::Desc`
-	auto stride = desc.bufferElementSize;
-	if (stride == 0) {
-		if (desc.format == Format::Unknown) {
-			stride = 1;
-		} else {
-			FormatInfo info;
-			gfxGetFormatInfo(desc.format, &info);
-			stride = info.blockSizeInBytes;
-			assert(info.pixelsPerBlock == 1);
-		}
-	}
-	VkDeviceSize offset = (VkDeviceSize)desc.bufferRange.offset;
+  VkDeviceSize offset = (VkDeviceSize)desc.bufferRange.offset;
   VkDeviceSize size = desc.bufferRange.size == 0
     ? (buffer ? resourceImpl->getDesc()->sizeInBytes : 0)
     : (VkDeviceSize)desc.bufferRange.size;
 
-	// There are two different cases we need to think about for buffers.
-	//
-	// One is when we have a "uniform texel buffer" or "storage texel buffer,"
-	// in which case we need to construct a `VkBufferView` to represent the
-	// formatting that is applied to the buffer. This case would correspond
-	// to a `textureBuffer` or `imageBuffer` in GLSL, and more or less to
-	// `Buffer<..>` or `RWBuffer<...>` in HLSL.
-	//
-	// The other case is a `storage buffer` which is the catch-all for any
-	// non-formatted R/W access to a buffer. In GLSL this is a `buffer { ... }`
-	// declaration, while in HLSL it covers a bunch of different `RW*Buffer`
-	// cases. In these cases we do *not* need a `VkBufferView`, but in
-	// order to be compatible with other APIs that require views for any
-	// potentially writable access, we will have to create one anyway.
-	//
-	// We will distinguish the two cases by looking at whether the view
-	// is being requested with a format or not.
-	//
+  // There are two different cases we need to think about for buffers.
+  //
+  // One is when we have a "uniform texel buffer" or "storage texel buffer,"
+  // in which case we need to construct a `VkBufferView` to represent the
+  // formatting that is applied to the buffer. This case would correspond
+  // to a `textureBuffer` or `imageBuffer` in GLSL, and more or less to
+  // `Buffer<..>` or `RWBuffer<...>` in HLSL.
+  //
+  // The other case is a `storage buffer` which is the catch-all for any
+  // non-formatted R/W access to a buffer. In GLSL this is a `buffer { ... }`
+  // declaration, while in HLSL it covers a bunch of different `RW*Buffer`
+  // cases. In these cases we do *not* need a `VkBufferView`, but in
+  // order to be compatible with other APIs that require views for any
+  // potentially writable access, we will have to create one anyway.
+  //
+  // We will distinguish the two cases by looking at whether the view
+  // is being requested with a format or not.
+  //
 
-	switch (desc.type) {
-		default:
-			assert(!"unhandled");
-			return SLANG_FAIL;
+  switch (desc.type)	{
+  	default:
+      assert(!"unhandled");
+      return SLANG_FAIL;
 
-		case IResourceView::Type::UnorderedAccess:
-		case IResourceView::Type::ShaderResource:
-			// Is this a formatted view?
-			//
-			if (desc.format == Format::Unknown) {
-				// Buffer usage that doesn't involve formatting doesn't
-				// require a view in Vulkan.
-				RefPtr<PlainBufferResourceViewImpl> viewImpl = new PlainBufferResourceViewImpl(this);
-				viewImpl->m_buffer = resourceImpl;
-				viewImpl->offset = offset;
-				viewImpl->size = size;
-				viewImpl->m_desc = desc;
+  	case IResourceView::Type::UnorderedAccess:
+  	case IResourceView::Type::ShaderResource:
+      // Is this a formatted view?
+      //
+      if (desc.format == Format::Unknown) {
+        // Buffer usage that doesn't involve formatting doesn't
+        // require a view in Vulkan.
+        RefPtr<PlainBufferResourceViewImpl> viewImpl = new PlainBufferResourceViewImpl(this);
+        viewImpl->m_buffer = resourceImpl;
+        viewImpl->offset = offset;
+        viewImpl->size = size;
+        viewImpl->m_desc = desc;
 
-				returnComPtr(outView, viewImpl);
-				return SLANG_OK;
-			}
-			//
-			// If the view is formatted, then we need to handle
-			// it just like we would for a "sampled" buffer:
-			//
-			// FALLTHROUGH
-			{
-				VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+        returnComPtr(outView, viewImpl);
+        return SLANG_OK;
+      }
+      //
+      // If the view is formatted, then we need to handle
+      // it just like we would for a "sampled" buffer:
+      //
+      // FALLTHROUGH
+      {
+        VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
 
-				VkBufferView view = VK_NULL_HANDLE;
+        VkBufferView view = VK_NULL_HANDLE;
 
-				if (buffer) {
-					info.format = VulkanUtil::getVkFormat(desc.format);
-					info.buffer = resourceImpl->m_buffer.m_buffer;
-					info.offset = offset;
-					info.range = size;
+        if (buffer) {
+          info.format = VulkanUtil::getVkFormat(desc.format);
+          info.buffer = resourceImpl->m_buffer.m_buffer;
+          info.offset = offset;
+          info.range = size;
+          info.pNext = NULL;
 
-					SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateBufferView(m_device, &info, nullptr, &view));
-				}
+        #ifdef VK_VERSION_1_4
+          VkBufferUsageFlags2CreateInfoKHR bufferViewUsage{};
+          bufferViewUsage.sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR;
 
-				RefPtr<TexelBufferResourceViewImpl> viewImpl = new TexelBufferResourceViewImpl(this);
-				viewImpl->m_buffer = resourceImpl;
-				viewImpl->m_view = view;
-				viewImpl->m_desc = desc;
+          if (desc.type == IResourceView::Type::UnorderedAccess)
+          {
+            info.pNext = &bufferViewUsage;
+            bufferViewUsage.usage = VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR;
+          }
+          else if (desc.type == IResourceView::Type::ShaderResource)
+          {
+            info.pNext = &bufferViewUsage;
+            bufferViewUsage.usage = VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR;
+          }
+          else
+          {
+            assert(!"unhandled");
+          }
+        #endif // VK_VERSION_1_4
 
-				returnComPtr(outView, viewImpl);
-				return SLANG_OK;
-			}
-			break;
-	}
+          SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateBufferView(m_device, &info, nullptr, &view));
+        }
+
+        RefPtr<TexelBufferResourceViewImpl> viewImpl = new TexelBufferResourceViewImpl(this);
+        viewImpl->m_buffer = resourceImpl;
+        viewImpl->m_view = view;
+        viewImpl->m_desc = desc;
+
+        returnComPtr(outView, viewImpl);
+        return SLANG_OK;
+      }
+      break;
+  }
 }
 
 Result DeviceImpl::createInputLayout(IInputLayout::Desc const& desc, IInputLayout** outLayout) {
@@ -2416,7 +2448,6 @@ Result DeviceImpl::createInputLayout(IInputLayout::Desc const& desc, IInputLayou
 }
 
 Result DeviceImpl::createProgram(const IShaderProgram::Desc& desc, IShaderProgram** outProgram, ISlangBlob** outDiagnosticBlob) {
-	printf("1\n");
 	RefPtr<ShaderProgramImpl> shaderProgram = new ShaderProgramImpl(this);
 	shaderProgram->init(desc);
 
@@ -2427,6 +2458,10 @@ Result DeviceImpl::createProgram(const IShaderProgram::Desc& desc, IShaderProgra
 		shaderProgram->linkedProgram,
 		shaderProgram->linkedProgram->getLayout(),
 		shaderProgram->m_rootObjectLayout.writeRef());
+
+	if (!shaderProgram->isSpecializable()) {
+    SLANG_RETURN_ON_FAIL(shaderProgram->compileShaders(this));
+  }
 
 	returnComPtr(outProgram, shaderProgram);
 	return SLANG_OK;

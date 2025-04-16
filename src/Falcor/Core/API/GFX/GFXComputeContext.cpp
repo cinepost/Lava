@@ -53,7 +53,7 @@ void ComputeContext::dispatch(ComputeState* pState, ProgramVars* pVars, const ui
 }
 
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value) {
-    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+    resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
 
     auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
     gfx::ClearValue clearValue = { };
@@ -63,7 +63,7 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& val
 }
 
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
-    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+    resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
 
     auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
     gfx::ClearValue clearValue = { };

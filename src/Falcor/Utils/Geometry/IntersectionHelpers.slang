@@ -39,8 +39,9 @@ import Utils.Math.MathHelpers;
     \param[out] t Distance to the closest intersection.
     \return True if the ray intersects the sphere.
 */
-bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float3 sphereCenter, const float sphereRadius, out float t)
-{
+bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float3 sphereCenter, const float sphereRadius, out float t) {
+    t = FLT_MIN;
+
     // Implementation is taken from Chapter 7 of Ray-Tracing Gems
     float3 f = rayOrigin - sphereCenter;
     float a = dot(rayDir, rayDir);
@@ -51,9 +52,7 @@ bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float
     if (discriminant < 0.f) return false;
 
     // If b and discriminant are both 0, then the ray's origin lies on the sphere
-    if (b == 0 && discriminant == 0)
-    {
-        t = 0.f;
+    if (b == 0 && discriminant == 0) {
         return true;
     }
 
@@ -99,8 +98,11 @@ bool intersectRayAABB(const float3 rayOrigin, const float3 rayDir, const float3 
     \param[out] t Intersection distance.
     \return True if the ray intersects the triangle.
 */
-bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const float3 vertices[3], out float3 barycentrics, out float t)
-{
+bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const float3 vertices[3], out float3 barycentrics, out float t) {
+
+    barycentrics = float3(FLT_MIN);
+    t = FLT_MIN;
+
     const float3 absDir = abs(rayDir);
     uint axis = 0;
     if (absDir.y > absDir.x && absDir.y > absDir.z) axis = 1;
@@ -109,8 +111,7 @@ bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const flo
     uint kz = axis;
     uint kx = (kz + 1) % 3;
     uint ky = (kx + 1) % 3;
-    if (rayDir[kz] < 0.f)
-    {
+    if (rayDir[kz] < 0.f) {
         uint swap = kx;
         kx = ky;
         ky = swap;
@@ -135,8 +136,7 @@ bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const flo
     float V = Ax * Cy - Ay * Cx;
     float W = Bx * Ay - By * Ax;
 
-    if (U == 0.f || V == 0.f || W == 0.f)
-    {
+    if (U == 0.f || V == 0.f || W == 0.f) {
         double CxBy = (double)Cx * (double)By;
         double CyBx = (double)Cy * (double)Bx;
         U = (float)(CxBy - CyBx);
@@ -175,13 +175,12 @@ bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const flo
     \param[out] result The closest intersection distance t, and a parameter u for linear interpolation (between 0 and 1).
     \return True if the ray intersects the linear swept sphere segment.
 */
-bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sphereA, float4 sphereB, bool useSphereJoints, out float2 result)
-{
+bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sphereA, float4 sphereB, bool useSphereJoints, out float2 result) {
+
     result = float2(FLT_MAX);
 
     bool reversed = false;
-    if (sphereA.w > sphereB.w)
-    {
+    if (sphereA.w > sphereB.w) {
         float4 tmp = sphereA;
         sphereA = sphereB;
         sphereB = tmp;
@@ -199,22 +198,17 @@ bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sph
     // For better numerical stability, push the ray to be as close as possible to the curve.
     rayOrigin += t0 * rayDir;
 
-    if (useSphereJoints)
-    {
+    if (useSphereJoints) {
         // Intersecting two sphere endcaps.
         float t;
-        if (intersectRaySphere(rayOrigin, rayDir, P1, r1, t))
-        {
-            if (t < result.x)
-            {
+        if (intersectRaySphere(rayOrigin, rayDir, P1, r1, t)) {
+            if (t < result.x) {
                 result.x = t;
                 result.y = (reversed ? 1.f : 0.f);
             }
         }
-        if (intersectRaySphere(rayOrigin, rayDir, P2, r2, t))
-        {
-            if (t < result.x)
-            {
+        if (intersectRaySphere(rayOrigin, rayDir, P2, r2, t)) {
+            if (t < result.x) {
                 result.x = t;
                 result.y = (reversed ? 0.f : 1.f);
             }
@@ -241,8 +235,7 @@ bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sph
     const float tmp2 = p2 / w;
 
     // Row-major matrix.
-    float4x4 M =
-    {
+    float4x4 M = {
         tmp1 * tmp2 * float4(vx, -dot(vx, A)),
         tmp1 * tmp2 * float4(vy, -dot(vy, A)),
         tmp1 * float4(vz, -dot(vz, A)),
@@ -257,21 +250,18 @@ bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sph
     const float b = 2.f * (rayOriginXf.x * rayDirXf.x + rayOriginXf.y * rayDirXf.y - rayOriginXf.z * rayDirXf.z);
     const float c = rayOriginXf.x * rayOriginXf.x + rayOriginXf.y * rayOriginXf.y - rayOriginXf.z * rayOriginXf.z;
     const float disc = b * b - 4 * a * c;
-    if (disc >= 0)
-    {
+    
+    if (disc >= 0) {
         const float sqrtDisc = sqrt(disc);
         const float inv2a = 0.5f / a;
 
         [unroll]
-        for (int i = 0; i < 2; i++)
-        {
+        for (int i = 0; i < 2; i++) {
             float t = (-b + (i * 2.f - 1.f) * sqrtDisc) * inv2a;
-            if (t >= 0 && t < result.x)
-            {
+            if (t >= 0 && t < result.x) {
                 // Check if z is in the valid range.
                 const float z = rayOriginXf.z + t * rayDirXf.z;
-                if (z >= zCap && z <= 1.f)
-                {
+                if (z >= zCap && z <= 1.f) {
                     const float u = (z - zCap) / (1.f - zCap);
                     result.x = t;
                     result.y = (reversed ? 1.f - u : u);

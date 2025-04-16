@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,43 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "RenderPass.h"
-#include "Falcor/Scene/Scene.h"
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERDBG_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERDBG_H_
 
-namespace Falcor {
+#include "../GBufferBase.h"
+#include "Falcor/Core/API/RasterizerState.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
+#include "Falcor/Scene/SceneTypes.slang"
+#include "Falcor/Utils/Noise/STBNGenerator.h"
 
-RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
-	,uint32_t frameNumber, uint32_t sampleNumber)
-    : mName(passName)
-    , mpResources(pResourceCache)
-    , mpDictionary(pDict)
-    , mDefaultTexDims(defaultTexDims)
-    , mDefaultTexFormat(defaultTexFormat)
-    , mFrameNumber(frameNumber)
-    , mSampleNumber(sampleNumber)
-    , mpNullTexture(nullptr)
-    , mpNullBuffer(nullptr)
-{
-    if (!mpDictionary) mpDictionary = InternalDictionary::create();
-}
+using namespace Falcor;
 
-const Resource::SharedPtr& RenderData::getResource(const std::string& name) const {
-    return mpResources->getResource(mName + '.' + name);
-}
 
-Texture::SharedPtr RenderData::getTexture(const std::string& name) const {
-    const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asTexture() : mpNullTexture;
-}
+/** Software rasterized V-buffer pass.
+*/
+class PASS_API VBufferDBG : public GBufferBase {
+	public:
+		using SharedPtr = std::shared_ptr<VBufferDBG>;
+		
+		static const Info kInfo;
 
-Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
-    const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asBuffer() : mpNullBuffer;
-}
+		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mpDevice(pDevice), mInfo(info) {
-    assert(pDevice);
-}
+		RenderPassReflection reflect(const CompileData& compileData) override;
+		void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
+		void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
-}  // namespace Falcor
+	private:
+		VBufferDBG(Device::SharedPtr pDevice, const Dictionary& dict);
+
+		bool                    mDirty;
+		ComputePass::SharedPtr 	mpComputePass;
+};
+
+#endif   // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERDBG_H_

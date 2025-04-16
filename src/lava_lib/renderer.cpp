@@ -31,6 +31,7 @@
 #include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferSW.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferDBG.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -348,6 +349,13 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
 		pVBufferPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	} else if ( primaryRaygenType == std::string("debug")) {
+
+		// Compute shader debug vbuffer generator
+		auto pVBufferPass = VBufferDBG::create(pRenderContext, vbufferPassDictionary);
+		
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else {

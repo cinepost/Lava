@@ -228,7 +228,7 @@ struct Scene
         if(instance.matrixCount < 2 || k == 0.f) return loadWorldMatrix(instance.globalMatrixOffset);
 
         const float fidx = k * (instance.matrixCount - 1);
-        uint idx_l = floor(fidx);
+        uint idx_l = (uint)floor(fidx);
         uint idx_h = idx_l + 1;
 
         float c = fidx - float(idx_l);

@@ -100,10 +100,10 @@ struct OpaqueVisibilitySample {
         texGrads = float16_t4(0.f);
     }
 
-    __init(PackedHitInfo _hitInfo, uint4 _packedCombinedNormal, float16_t4 texGrads) {
+    __init(PackedHitInfo _hitInfo, uint4 _packedCombinedNormal, float16_t4 _texGrads) {
         packedHitInfo = _hitInfo;
         packedCombinedNormal = _packedCombinedNormal;
-        texGrads = texGrads;
+        texGrads = _texGrads;
     }
 #endif
 };
@@ -146,7 +146,9 @@ struct TransparentVisibilitySample {
     __init() {
         packedHitInfo = uint4(0);
         packedCombinedNormal = uint4(0);
-        texGrads = float16_t4(0.f);
+        alpha = 0.0;
+        visibilityWeight = 0.0;
+        texGrads = float16_t4(0.0);
     }
 #endif
 };

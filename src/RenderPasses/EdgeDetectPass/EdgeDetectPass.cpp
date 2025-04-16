@@ -138,7 +138,7 @@ EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, 
 }
 
 EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
-    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+    if (!pDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("EdgeDetectPass requires Shader Model 6.5 support.");
     }
 }

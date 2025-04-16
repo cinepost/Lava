@@ -1523,6 +1523,7 @@
                 "hwraster"     "Rasterizer_HW"
                 "compute"      "Raytracer"
                 "swraster"     "Rasterizer_SW"
+                "debug"        "Debug"
             }
             parmtag { "script_callback_language" "python" }
         }

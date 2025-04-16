@@ -1444,7 +1444,7 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
 
         void finalize();
 
-        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
+        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
 
         /**
          * Get parameter block by name

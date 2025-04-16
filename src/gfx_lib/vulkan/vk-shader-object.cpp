@@ -384,6 +384,7 @@ void ShaderObjectImpl::writeTexelBufferDescriptor(
         write.dstSet = descriptorSet;
         write.descriptorCount = 1;
         write.pTexelBufferView = &bufferView;
+
         writeDescriptor(context, write);
     }
 }

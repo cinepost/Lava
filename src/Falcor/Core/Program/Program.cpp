@@ -85,9 +85,12 @@ Program::Program(Device::SharedPtr pDevice, ProgramDesc desc, DefineList defineL
 Program::~Program() {
     mpDevice->getProgramManager()->unregisterProgramForReload(this);
 
+    mpActiveVersion = nullptr;
+    mProgramVersions.clear();
+
     // Invalidate program versions.
-    for (auto& version : mProgramVersions)
-        version.second->mpProgram = nullptr;
+    //for (auto& version : mProgramVersions)
+    //    version.second->mpProgram = nullptr;
 }
 
 void Program::validateEntryPoints() const {
@@ -287,7 +290,20 @@ bool Program::link() const {
             mpActiveVersion = pVersion;
             return true;
         }
+
+#ifdef _DEBUG
+        char choice;
+        std::cout << "Would you like to try again ? (Y/n)" << std::endl;
+        std::cin >> choice;
+        if ( choice =='N' || choice =='n' ){
+            break;
+        }
+#else
+        break;
+#endif
+
     }
+    return false;
 }
 
 void Program::reset() {

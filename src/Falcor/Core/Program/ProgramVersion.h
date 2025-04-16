@@ -273,11 +273,12 @@ class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
 
     public:
         ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
-        ~ProgramVersion();
+        //~ProgramVersion();
 
     protected:
         friend class Program;
         friend class ProgramManager;
+        friend class ParameterBlock;
 
         static ProgramVersion::SharedPtr createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 

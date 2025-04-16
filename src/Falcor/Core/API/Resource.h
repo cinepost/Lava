@@ -195,9 +195,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
 
-#if defined(FALCOR_GFX)
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
-#endif
 
     std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;

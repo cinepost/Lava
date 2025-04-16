@@ -291,13 +291,6 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 	void Device::toggleFullScreen(bool fullscreen) {}
 
-	void Device::destroyApiObjects() {
-#if FALCOR_NVAPI_AVAILABLE
-		safe_delete(mpApiData->pApiDispatcher);
-#endif
-		safe_delete(mpApiData);
-	}
-
 	gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
 		if( !mHeadless ) {
 			return mpApiData->pTransientResourceHeaps[mCurrentBackBufferIndex].get();
@@ -548,9 +541,51 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 	}
 
 	Device::~Device() {
-		//cleanup();
-		mGfxDevice->cleanup();
+		toggleFullScreen(false);
+    mpRenderContext->flush(true);
+
+    // Release all the bound resources. Need to do that before deleting the RenderContext
+    mGfxCommandQueue.setNull();
+    mDeferredReleases = decltype(mDeferredReleases)();
+    mpRenderContext.reset();
+    mpUploadHeap.reset();
+
+    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
+        mCmdQueues[i].clear();
+#if FALCOR_GFX_VK
+        mCmdNativeQueues[i].clear();
+#endif
+    }
+
+    if(mHeadless) {
+        mpOffscreenFbo.reset();
+    } else {
+        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+    }
+
+    mpDefaultSampler.reset();
+    mpFrameFence.reset();
+
+    releaseNullViews();
+
+    mpTextureManager.reset();
+    mpProgramManager.reset();
+
+    mDeferredReleases = decltype(mDeferredReleases)();
+
+    for (auto& heap : mTimestampQueryHeaps) heap.reset();
+
+    if(mpWindow) {
+        mpWindow.reset();
+    }
+
+    mDeferredReleases = decltype(mDeferredReleases)();
     mGfxDevice.setNull();
+
+#if FALCOR_NVAPI_AVAILABLE
+    safe_delete(mpApiData->pApiDispatcher);
+#endif
+    safe_delete(mpApiData);
 	}
 
 } // namespace Falcor

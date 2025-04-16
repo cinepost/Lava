@@ -149,6 +149,8 @@ void DebugShadingPass::setScene(RenderContext* pRenderContext, const Scene::Shar
 }
 
 void DebugShadingPass::execute(RenderContext* pContext, const RenderData& renderData) {
+    LLOG_WRN << "DebugShadingPass::execute";
+    
     if (!mpScene) return;
 
     SimpleProfiler profile("DebugShadingPass::execute");

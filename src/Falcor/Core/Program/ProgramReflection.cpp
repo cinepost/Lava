@@ -1118,6 +1118,10 @@ void ProgramReflection::finalize(){
     mpDefaultBlock->finalize();
 }
 
+ProgramVersion::SharedConstPtr ProgramReflection::getProgramVersion() const {
+    return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedConstPtr();
+}
+
 ProgramReflection::ProgramReflection(ProgramVersion const* pProgramVersion) : mpProgramVersion(pProgramVersion) {
     ReflectionStructType::SharedPtr pGlobalStruct = ReflectionStructType::create(0, "", nullptr);
 

@@ -79,7 +79,7 @@ TriangleHit getCandidateTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery) {
 }
 
 // TODO: Pass UseAlphaTest as a template argument.
-bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask) {
+bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask) {
     rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
 
     CurveIntersector::Attribs curveCommittedAttribs;
@@ -230,7 +230,7 @@ bool traceSceneRay<let UseAlphaTest : int>(const Ray ray, out HitInfo hit, out f
     }
 }
 
-bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask) {
+bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask) {
     rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
 
     while (rayQuery.Proceed()) {
@@ -314,7 +314,7 @@ bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlag
 }
 
 
-bool traceSceneVisibilityRayRecursiveImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask, uint excludeInstanceIndex) {
+bool traceSceneVisibilityRayRecursiveImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask, uint excludeInstanceIndex) {
     bool canTraveseFurther = true;
 
     Ray _ray = ray;

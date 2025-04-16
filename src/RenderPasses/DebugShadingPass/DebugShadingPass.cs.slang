@@ -82,6 +82,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         // early out
         if (any(pixelPos >= gFrameDim)) return;
+
+        gInOutColor[pixelPos] = float4(0.1, 0.5, 1.0, 1.0); return;
     #else
         uint pixelOffset = dispatchThreadId.x;
         // early out

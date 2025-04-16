@@ -356,7 +356,7 @@ struct VisibilitySamplesContainer {
     }
 
     bool hasTransparentSamples() CONST_FUNCTION {
-        return infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION];
+        return (bool)infoBuffer[VISIBILITY_CONTAINER_INFOBUFFER_HAS_TRANSPARENT_SAMPLES_LOCATION];
     }
 
     bool hasCombinedNormals() CONST_FUNCTION {

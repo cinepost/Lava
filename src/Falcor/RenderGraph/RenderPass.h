@@ -214,13 +214,12 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual void setRandomSeed(int seed) {};
 
+    Device::SharedPtr mpDevice;
     const Info mInfo;
     std::string mName;
     Dictionary  mMetaData;
 
     std::function<void(void)> mPassChangedCB = [] {};
-    Device::SharedPtr mpDevice;
-    
 };
 }
 

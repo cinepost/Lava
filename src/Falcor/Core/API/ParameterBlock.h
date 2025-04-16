@@ -52,7 +52,7 @@ class FALCOR_API ParameterBlock: public std::enable_shared_from_this<ParameterBl
 public:
     using SharedPtr = std::shared_ptr<ParameterBlock>;
     using SharedConstPtr = std::shared_ptr<const ParameterBlock>;
-    ~ParameterBlock();
+    virtual ~ParameterBlock();
 
     using BindLocation = ParameterBlockReflection::BindLocation;
 
@@ -314,6 +314,8 @@ protected:
     void checkForNestedTextureArrayResources();
 
     static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav);
+
+    uint mID;
 
     Device* mpDevice;
     std::shared_ptr<const ProgramVersion> mpProgramVersion;

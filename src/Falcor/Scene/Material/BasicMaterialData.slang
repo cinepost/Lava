@@ -48,29 +48,29 @@ struct BasicMaterialData
 {
     // MaterialHeader (8B) is stored just before this struct in memory.
     uint        flags                   = 0;                ///< Material flags and packed sampler IDs. See accessors below.
-    float16_t   emissiveFactor          = float16_t(1.f);   ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
-    float16_t   bumpNormalFactor        = float16_t(1.f);
+    float16_t   emissiveFactor          = float16_t(1.0);   ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
+    float16_t   bumpNormalFactor        = float16_t(1.0);
 
-    float16_t3  baseColor               = float16_t3(1.f);  ///< Material base color (RGB) and opacity (A).
-    float16_t   reflectivity            = float16_t(1.f);   ///< Material reflectivity.
+    float16_t3  baseColor               = float16_t3(1.0);  ///< Material base color (RGB) and opacity (A).
+    float16_t   reflectivity            = float16_t(1.0);   ///< Material reflectivity.
 
-    float16_t3  emissive                = float16_t3(0.f);  ///< Emissive color (RGB).
-    float16_t   specularTransmission    = float16_t(0.f);   ///< Specular transmission. Range [0,1].
-    float16_t3  transmission            = float16_t3(1.f);  ///< Transmission color.
-    float16_t   diffuseTransmission     = float16_t(0.f);   ///< Diffuse transmission. Range [0,1].
+    float16_t3  emissive                = float16_t3(0.0);  ///< Emissive color (RGB).
+    float16_t   specularTransmission    = float16_t(0.0);   ///< Specular transmission. Range [0,1].
+    float16_t3  transmission            = float16_t3(1.0);  ///< Transmission color.
+    float16_t   diffuseTransmission     = float16_t(0.0);   ///< Diffuse transmission. Range [0,1].
 
-    float16_t3  volumeScattering        = float16_t3(0.f);  ///< Volume scattering coefficient. Range [0,inf).
-    float16_t   IoR                     = float16_t(1.5f);  ///< Index of refraction. Range [1,inf).
-    float16_t3  volumeAbsorption        = float16_t3(0.f);  ///< Volume absorption coefficient. Range [0,inf).
-    float16_t   volumeAnisotropy        = float16_t(0.f);   ///< Volume phase function anisotropy (g). Range [-1,1].
+    float16_t3  volumeScattering        = float16_t3(0.0);  ///< Volume scattering coefficient. Range [0,inf).
+    float16_t   IoR                     = float16_t(1.5);  ///< Index of refraction. Range [1,inf).
+    float16_t3  volumeAbsorption        = float16_t3(0.0);  ///< Volume absorption coefficient. Range [0,inf).
+    float16_t   volumeAnisotropy        = float16_t(0.0);   ///< Volume phase function anisotropy (g). Range [-1,1].
 
-    float16_t   roughness               = float16_t(0.f);
-    float16_t   metallic                = float16_t(0.f);
+    float16_t   roughness               = float16_t(0.0);
+    float16_t   metallic                = float16_t(0.0);
 
-    float16_t   displacementScale       = 0.f;              ///< Displacement scale value.
-    float16_t   displacementOffset      = 0.f;              ///< Displacement offset value.
+    float16_t   displacementScale       = 0.0;              ///< Displacement scale value.
+    float16_t   displacementOffset      = 0.0;              ///< Displacement offset value.
 
-    float16_t   opacityScale            = float16_t(1.f);
+    float16_t   opacityScale            = float16_t(1.0);
     float16_t   _pad1;
 
     // Texture handles (4B each).

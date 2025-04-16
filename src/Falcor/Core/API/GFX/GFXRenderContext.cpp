@@ -226,7 +226,7 @@ namespace Falcor {
     BlitToBufferContext& RenderContext::getBlitToBufferContext() { return sApiData.blitToBufferData; }
 
     void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
-        resourceBarrier(pRtv->getResource().get(), Resource::State::RenderTarget);
+        resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
         gfx::ClearValue clearValue = {};
         memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
         auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
@@ -235,7 +235,7 @@ namespace Falcor {
     }
 
     void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
-        resourceBarrier(pDsv->getResource().get(), Resource::State::DepthStencil);
+        resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
         gfx::ClearValue clearValue = {};
         clearValue.depthStencil.depth = depth;
         clearValue.depthStencil.stencil = stencil;

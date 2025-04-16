@@ -224,7 +224,7 @@ struct Grid
     float lookupLinearIndex(const float3 index, inout Accessor accessor)
     {
         const float3 indexOffset = index - 0.5f;
-        const int3 i = floor(indexOffset);
+        const int3 i = (int3)floor(indexOffset);
         const float3 f = indexOffset - i;
         const float x0z0 = lerp(lookupIndex(i + int3(0, 0, 0), accessor), lookupIndex(i + int3(1, 0, 0), accessor), f.x);
         const float x1z0 = lerp(lookupIndex(i + int3(0, 1, 0), accessor), lookupIndex(i + int3(1, 1, 0), accessor), f.x);
@@ -242,7 +242,7 @@ struct Grid
     float lookupLinearIndexTex(const float3 index)
     {
         const float3 indexOffset = index - 0.5f;
-        const int3 i = floor(indexOffset);
+        const int3 i = (int3)floor(indexOffset);
         const float3 f = indexOffset - i;
         const float x0z0 = lerp(lookupIndexTex(i + int3(0, 0, 0)), lookupIndexTex(i + int3(1, 0, 0)), f.x);
         const float x1z0 = lerp(lookupIndexTex(i + int3(0, 1, 0)), lookupIndexTex(i + int3(1, 1, 0)), f.x);

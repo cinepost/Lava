@@ -121,11 +121,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     uint8_t uid() const { return _uid; }
 
-    /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
-        Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
-    */
-    void cleanup();
-
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
@@ -345,7 +340,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     // API specific functions
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle);
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
-    void destroyApiObjects();
     void apiPresent();
 
     bool apiInit(const std::string& validationLayerOuputFilename);

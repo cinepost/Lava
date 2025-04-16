@@ -235,7 +235,7 @@ FALCOR_ENUM_INFO(
 );
 FALCOR_ENUM_REGISTER(ShaderModel);
 
-inline const std::string& to_string(const ShaderModel& sm) {
+inline std::string to_string(ShaderModel sm) {
     return enumToString(sm);
 }
 

@@ -210,22 +210,26 @@ typename ViewClass::SharedPtr findViewCommon(Buffer* pBuffer, uint32_t firstElem
 	return viewMap[view];
 }
 
-ShaderResourceView::SharedPtr Buffer::getSRV(uint32_t firstElement, uint32_t elementCount) {
-	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-		return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-	};
-	return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
+ShaderResourceView::SharedPtr Buffer::getSRV(uint64_t offset, uint64_t size) {
+    ResourceViewInfo view = ResourceViewInfo(offset, size);
+
+    if (mSrvs.find(view) == mSrvs.end())
+        mSrvs[view] = ShaderResourceView::create(mpDevice, this, offset, size);
+
+    return mSrvs[view];
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV() {
 	return getSRV(0);
 }
 
-UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t elementCount) {
-	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-		return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-	};
-	return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
+UnorderedAccessView::SharedPtr Buffer::getUAV(uint64_t offset, uint64_t size) {
+    ResourceViewInfo view = ResourceViewInfo(offset, size);
+
+    if (mUavs.find(view) == mUavs.end())
+        mUavs[view] = UnorderedAccessView::create(mpDevice, this, offset, size);
+
+    return mUavs[view];
 }
 
 
@@ -304,7 +308,7 @@ void* Buffer::map(MapType type) {
 }
 
 ConstantBufferView::SharedPtr Buffer::getCBV() {
-	if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, std::static_pointer_cast<Buffer>(shared_from_this()));
+	if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, this);
 	return mpCBV;
 }
 

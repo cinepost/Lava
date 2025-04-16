@@ -496,8 +496,6 @@ void MaterialSystem::createParameterBlock() {
 	defines.add("MATERIAL_SYSTEM_PARAMETER_BLOCK");
 	
 	auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
-	LLOG_WRN << "pPass created";
-	
 	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gMaterialsBlock");
 	assert(pReflector);
 
