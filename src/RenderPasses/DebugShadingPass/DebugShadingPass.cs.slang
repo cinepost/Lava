@@ -82,8 +82,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         // early out
         if (any(pixelPos >= gFrameDim)) return;
-
-        gInOutColor[pixelPos] = float4(0.1, 0.5, 1.0, 1.0); return;
     #else
         uint pixelOffset = dispatchThreadId.x;
         // early out
@@ -139,9 +137,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #if !defined(TRANSPARENT_SHADING_PASS)
     if (!hit.isValid()) {
+        gInOutColor[pixelPos] = float4(1.0, 0.0, 0.0, 0.0);
         return;
     }
 #endif
+
+    gInOutColor[pixelPos] = float4(0.1, 0.5, 1.0, 1.0); return;
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();

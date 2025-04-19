@@ -81,6 +81,13 @@ Result DebugDevice::getFeatures(const char** outFeatures, Size bufferSize, GfxCo
     return baseObject->getFeatures(outFeatures, bufferSize, outFeatureCount);
 }
 
+std::vector<std::string> DebugDevice::getFeatures() const
+{
+    SLANG_GFX_API_FUNC;
+
+    return baseObject->getFeatures();
+}
+
 Result DebugDevice::getFormatSupportedResourceStates(Format format, ResourceStateSet* outStates)
 {
     SLANG_GFX_API_FUNC;

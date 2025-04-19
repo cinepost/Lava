@@ -31,6 +31,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 const RenderPass::Info VBufferRT::kInfo { "VBufferRT", "Ray traced V-buffer generation pass." };
 
@@ -79,6 +80,9 @@ RenderPassReflection VBufferRT::reflect(const CompileData& compileData) {
 
 void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     LLOG_WRN << "VBufferRT::execute";
+
+    SimpleProfiler profile("VBufferRT::execute");
+
     GBufferBase::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.

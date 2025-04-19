@@ -93,5 +93,13 @@ VBufferVSOut vsMain(VSIn vsIn) {
 VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
 
+    TriangleHit triangleHit;
+    triangleHit.instanceID = vsOut.instanceID;
+    triangleHit.primitiveIndex = triangleIndex;
+    triangleHit.barycentrics = barycentrics.yz;
+
+    // Store hit information.
+    psOut.packedHitInfo = triangleHit.pack();
+
     return psOut;
 }

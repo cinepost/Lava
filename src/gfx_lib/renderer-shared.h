@@ -1254,6 +1254,10 @@ public:
 
 protected:
     virtual SLANG_NO_THROW SlangResult SLANG_MCALL initialize(const Desc& desc);
+
+public:
+    virtual std::vector<std::string> getFeatures() const override;
+
 protected:
     Slang::List<Slang::String> m_features;
 

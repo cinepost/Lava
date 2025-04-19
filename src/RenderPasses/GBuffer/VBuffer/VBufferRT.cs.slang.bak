@@ -26,43 +26,37 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Utils.Sampling.SampleGenerator;
-//import Scene.RaytracingInline;
+import Scene.RaytracingInline;
 import VBufferRT;
 
 ConstantBuffer<VBufferRT> gVBufferRT;
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
-    const uint2 pixel = dispatchThreadId.xy;
+    uint2 pixel = dispatchThreadId.xy;
     if (any(pixel >= gVBufferRT.frameDim)) return;
 
+    //GpuTimer timer;
+    //gVBufferRT.beginTime(timer);
+
     SampleGenerator sg = SampleGenerator(pixel, gVBufferRT.frameCount);
-//
+
 #if defined(COMPUTE_MOTION_BLUR)
     const Ray ray = gVBufferRT.generateRayMB(pixel, sg);
 #else
     const Ray ray = gVBufferRT.generateRay(pixel, sg);
 #endif
 
-    //SceneRayQuery<VBufferRT::kUseAlphaTest> sceneRayQuery;
+    SceneRayQuery<VBufferRT::kUseAlphaTest> sceneRayQuery;
     HitInfo hit;
     float hitT;
-
-    bool a = true;
-
-    if (a) {
+    if (sceneRayQuery.traceRay(ray, hit, hitT, VBufferRT::kRayFlags, 0xff)) {
         gVBufferRT.writeHit(pixel, ray.origin, ray.dir, hit);
     } else {
-        gVBufferRT.writeMiss(pixel);
+        gVBufferRT.writeMiss(pixel, ray.origin, ray.dir);
     }
 
-//    if (sceneRayQuery.traceRay(ray, hit, hitT, VBufferRT::kRayFlags, 0xff)) {
-//        //gVBufferRT.writeHit(pixel, ray.origin, ray.dir, hit);
-//    } else {
-//        //gVBufferRT.writeMiss(pixel);
-//    }
+    gVBufferRT.writeAux(pixel, ray);
 
-//    gVBufferRT.writeAux(pixel, ray);
-
-//    gVBufferRT.endTime(pixel, timer);
+    //gVBufferRT.endTime(pixel, timer);
 }

@@ -171,8 +171,6 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     const float2 gradX = ddx_fine(vsOut.texC); ///< Gradient of texture coordinate in the screen-space X direction
     const float2 gradY = ddy_fine(vsOut.texC); ///< Gradient of texture coordiante in teh screen-space Y direction
 
-    uint materialID = vsOut.materialID;
-
     TriangleHit triangleHit;
     triangleHit.instanceID = vsOut.instanceID;
     triangleHit.primitiveIndex = triangleIndex;
@@ -182,11 +180,14 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     psOut.packedHitInfo = triangleHit.pack();
     
 
+#if USE_ALPHA_TEST
+
 #if SCENE_HAS_PERPRIM_MATERIALS
-    materialID = gScene.getMaterialID(triangleHit);
+    uint materialID = gScene.getMaterialID(triangleHit);
+#else
+    uint materialID = vsOut.materialID;
 #endif 
 
-#if USE_ALPHA_TEST
     // Alpha test.
     // With the default alpha test, only texC of VertexData is needed.
     // Alpha textures is sampled at lod=0 to match the ray traced V-buffer.

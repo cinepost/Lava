@@ -125,15 +125,14 @@ struct VBufferRT {
         {
             const SDFGridHit sdfGridHit = hit.getSDFGridHit();
             v = gScene.getVertexDataFromSDFGrid(sdfGridHit, rayOrigin, rayDir);
-
             prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
         }
 
         if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid) {
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.getViewProjMat());
-            depth = curPosH.z / curPosH.w;
-
+            //depth = curPosH.z / curPosH.w;
+            
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMat());
@@ -144,7 +143,7 @@ struct VBufferRT {
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
     }
 
-    void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir) {
+    void writeMiss(uint2 pixel) {
         gVBuffer[pixel] = {};
 
         if (is_valid(gDepth))           gDepth[pixel]           = 1.f;

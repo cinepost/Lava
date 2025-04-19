@@ -60,15 +60,15 @@ struct BasicMaterialData
     float16_t   diffuseTransmission     = float16_t(0.0);   ///< Diffuse transmission. Range [0,1].
 
     float16_t3  volumeScattering        = float16_t3(0.0);  ///< Volume scattering coefficient. Range [0,inf).
-    float16_t   IoR                     = float16_t(1.5);  ///< Index of refraction. Range [1,inf).
+    float16_t   IoR                     = float16_t(1.5);   ///< Index of refraction. Range [1,inf).
     float16_t3  volumeAbsorption        = float16_t3(0.0);  ///< Volume absorption coefficient. Range [0,inf).
     float16_t   volumeAnisotropy        = float16_t(0.0);   ///< Volume phase function anisotropy (g). Range [-1,1].
 
     float16_t   roughness               = float16_t(0.0);
     float16_t   metallic                = float16_t(0.0);
 
-    float16_t   displacementScale       = 0.0;              ///< Displacement scale value.
-    float16_t   displacementOffset      = 0.0;              ///< Displacement offset value.
+    float16_t   displacementScale       = float16_t(0.0);   ///< Displacement scale value.
+    float16_t   displacementOffset      = float16_t(0.0);   ///< Displacement offset value.
 
     float16_t   opacityScale            = float16_t(1.0);
     float16_t   _pad1;

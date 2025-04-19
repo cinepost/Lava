@@ -273,36 +273,23 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
 }
 
 bool Program::link() const {
-    while (1) {
-        // Create the program
-        std::string log;
-        auto pVersion = mpDevice->getProgramManager()->createProgramVersion(*this, log);
+    // Create the program
+    std::string log;
+    auto pVersion = mpDevice->getProgramManager()->createProgramVersion(*this, log);
 
-        if (pVersion == nullptr) {
-            std::string msg = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
-            if (reportErrorAndAllowRetry(msg)) continue;
-            FALCOR_THROW(msg);
-        } else {
-            if (!log.empty()) {
-                LLOG_WRN << "Warnings in program:\n" << getProgramDescString() << "\n" << log;
-            }
-
-            mpActiveVersion = pVersion;
-            return true;
+    if (pVersion == nullptr) {
+        std::string msg = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
+        //if (reportErrorAndAllowRetry(msg)) continue;
+        FALCOR_THROW(msg);
+    } else {
+        if (!log.empty()) {
+            LLOG_WRN << "Warnings in program:\n" << getProgramDescString() << "\n" << log;
         }
 
-#ifdef _DEBUG
-        char choice;
-        std::cout << "Would you like to try again ? (Y/n)" << std::endl;
-        std::cin >> choice;
-        if ( choice =='N' || choice =='n' ){
-            break;
-        }
-#else
-        break;
-#endif
-
+        mpActiveVersion = pVersion;
+        return true;
     }
+    
     return false;
 }
 

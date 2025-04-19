@@ -34,6 +34,7 @@ SimpleProfiler::~SimpleProfiler() {
 
 // Generate profile report
 void SimpleProfiler::printReport() {
+	if(mMap.empty()) return;
 	//TimePoint f = Clock::now();
 
 	printf("SimpleProfiler report...\n");

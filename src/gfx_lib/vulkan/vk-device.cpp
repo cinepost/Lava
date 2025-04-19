@@ -202,7 +202,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		applicationInfo.engineVersion = 1;
 		applicationInfo.applicationVersion = 1;
 
-		Array<const char*, 6> instanceExtensions;
+		Array<const char*, 7> instanceExtensions;
 
 		instanceExtensions.add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 		instanceExtensions.add(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
@@ -230,6 +230,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.getCount();
 		instanceCreateInfo.ppEnabledExtensionNames = &instanceExtensions[0];
 
+		const char* layerNames[] = { nullptr };
+
+		VkValidationFeaturesEXT validationFeatures = {};
+		VkValidationFeatureEnableEXT enabledValidationFeatures[1] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
 		if (useValidationLayer) {
 			// Depending on driver version, validation layer may or may not exist.
 			// Newer drivers comes with "VK_LAYER_KHRONOS_validation", while older
@@ -244,7 +248,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			availableLayers.setCount(layerCount);
 			m_api.vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.getBuffer());
 
-			const char* layerNames[] = { nullptr };
 			for (auto& layer : availableLayers) {
 				LLOG_ERR << layer.layerName;
 				if (strncmp(
@@ -274,6 +277,12 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			{
 				instanceCreateInfo.enabledLayerCount = SLANG_COUNT_OF(layerNames);
 				instanceCreateInfo.ppEnabledLayerNames = layerNames;
+
+				// Include support for printf
+        validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+        validationFeatures.enabledValidationFeatureCount = 1;
+        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+        instanceCreateInfo.pNext = &validationFeatures;
 			}
 		}
 		uint32_t apiVersionsToTry[] = { VK_API_VERSION_1_3, VK_API_VERSION_1_2, VK_API_VERSION_1_1, VK_API_VERSION_1_0 };
@@ -355,8 +364,21 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		m_info.adapterName = m_adapterName.begin();
 	}
 
+	// Query the available extensions
+	uint32_t extensionCount = 0;
+	m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, NULL);
+	Slang::List<VkExtensionProperties> extensions;
+	extensions.setCount(extensionCount);
+	m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, extensions.getBuffer());
+
+	HashSet<String> extensionNames;
+	for (const auto& e : extensions) {
+		extensionNames.add(e.extensionName);
+	}
+
 	List<const char*> deviceExtensions;
 	deviceExtensions.add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	deviceExtensions.add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 
 	VkDeviceCreateInfo deviceCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 	deviceCreateInfo.queueCreateInfoCount = 1;
@@ -430,7 +452,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 		
@@ -450,9 +472,21 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.rayTracingPipelineFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.rayTracingPipelineFeatures;
 
+		// SER features.
+    //extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
+    //deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
+
 		// Acceleration structure features
 		extendedFeatures.accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
+
+		// Variable pointer features.
+    extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
+    deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
+
+		// Compute shader derivative features.
+		extendedFeatures.computeShaderDerivativeFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.computeShaderDerivativeFeatures;
 
 		// Extended dynamic states
 		extendedFeatures.extendedDynamicStateFeatures.pNext = deviceFeatures2.pNext;
@@ -465,6 +499,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Robustness2 features
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
+
+    // clock features
+    extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
+    deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
 
 		// Fragment shader barycentrics features
 		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
@@ -483,6 +521,31 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		extendedFeatures.atomicFloatFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.atomicFloatFeatures;
+
+		// https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT.html
+		extendedFeatures.atomicFloat2Features.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.atomicFloat2Features;
+
+		// Image Int64 Atomic
+		// https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT.html
+		extendedFeatures.imageInt64AtomicFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.imageInt64AtomicFeatures;
+
+		// mesh shader features
+		//extendedFeatures.meshShaderFeatures.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.meshShaderFeatures;
+
+		// multiview features
+		extendedFeatures.multiviewFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.multiviewFeatures;
+
+		// fragment shading rate features
+		extendedFeatures.fragmentShadingRateFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.fragmentShadingRateFeatures;
+
+		// raytracing validation features
+		//extendedFeatures.rayTracingValidationFeatures.pNext = deviceFeatures2.pNext;
+		//deviceFeatures2.pNext = &extendedFeatures.rayTracingValidationFeatures;
 
 		// Vulkan 1.2 features
 		extendedFeatures.vulkan12Features.samplerFilterMinmax = VK_TRUE;
@@ -572,6 +635,23 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("atomic-float");
 		}
 
+		if (extendedFeatures.atomicFloat2Features.shaderBufferFloat16Atomics) {
+			// Link into the creation features
+			extendedFeatures.atomicFloat2Features.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.atomicFloat2Features;
+
+			deviceExtensions.add(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
+			m_features.add("atomic-float-2");
+		}
+
+		if (extendedFeatures.imageInt64AtomicFeatures.shaderImageInt64Atomics) {
+			// Link into the creation features
+			extendedFeatures.imageInt64AtomicFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.imageInt64AtomicFeatures;
+
+			deviceExtensions.add(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME);
+			m_features.add("image-atomic-int64");
+		}
 
 		if (extendedFeatures.extendedDynamicStateFeatures.extendedDynamicState) {
 			// Link into the creation features
@@ -581,27 +661,31 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("extended-dynamic-states");
 		}
 
-		if (extendedFeatures.accelerationStructureFeatures.accelerationStructure) {
+		if (extendedFeatures.accelerationStructureFeatures.accelerationStructure
+				&& extensionNames.contains(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
+        && extensionNames.contains(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)) 
+		{
 			extendedFeatures.accelerationStructureFeatures.pNext = (void*)vulkan12Features.pNext;
 			vulkan12Features.pNext = &extendedFeatures.accelerationStructureFeatures;
 			deviceExtensions.add(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 			deviceExtensions.add(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 			m_features.add("acceleration-structure");
-		}
+		
+			if (extendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline) {
+				extendedFeatures.rayTracingPipelineFeatures.pNext = (void*)vulkan12Features.pNext;
+				vulkan12Features.pNext = &extendedFeatures.rayTracingPipelineFeatures;
+				deviceExtensions.add(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+				m_features.add("ray-tracing-pipeline");
+			}
 
-		if (extendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline) {
-			extendedFeatures.rayTracingPipelineFeatures.pNext = (void*)vulkan12Features.pNext;
-			vulkan12Features.pNext = &extendedFeatures.rayTracingPipelineFeatures;
-			deviceExtensions.add(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-			m_features.add("ray-tracing-pipeline");
-		}
+			if (extendedFeatures.rayQueryFeatures.rayQuery) {
+				extendedFeatures.rayQueryFeatures.pNext = (void*)vulkan12Features.pNext;
+				vulkan12Features.pNext = &extendedFeatures.rayQueryFeatures;
+				deviceExtensions.add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+				m_features.add("ray-query");
+				m_features.add("ray-tracing");
+			}
 
-		if (extendedFeatures.rayQueryFeatures.rayQuery) {
-			extendedFeatures.rayQueryFeatures.pNext = (void*)vulkan12Features.pNext;
-			vulkan12Features.pNext = &extendedFeatures.rayQueryFeatures;
-			deviceExtensions.add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-			m_features.add("ray-query");
-			m_features.add("ray-tracing");
 		}
 
 		if (extendedFeatures.inlineUniformBlockFeatures.inlineUniformBlock) {
@@ -617,6 +701,21 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			deviceExtensions.add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
 			m_features.add("robustness2");
 		}
+
+		if (extendedFeatures.clockFeatures.shaderDeviceClock) {
+			extendedFeatures.clockFeatures.pNext = (void*)vulkan12Features.pNext;
+			vulkan12Features.pNext = &extendedFeatures.clockFeatures;
+			deviceExtensions.add(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+			m_features.add("realtime-clock");
+		}
+
+		//if (extendedFeatures.meshShaderFeatures.meshShader) {
+		//	extendedFeatures.meshShaderFeatures.pNext = (void*)vulkan12Features.pNext;
+		//	vulkan12Features.pNext = &extendedFeatures.meshShaderFeatures;
+		//	deviceExtensions.add(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+		//	m_features.add("mesh-shader");
+		//}
+//
 
 		if (extendedFeatures.fragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric) {
 			extendedFeatures.fragmentShaderBarycentricFeaturesKHR.pNext = (void*)vulkan12Features.pNext;
@@ -671,17 +770,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		m_api.m_rtProperties = rtProps;
 		m_api.m_deviceSubgroupProperties = subgroupProps;
-
-		uint32_t extensionCount = 0;
-		m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, NULL);
-		Slang::List<VkExtensionProperties> extensions;
-		extensions.setCount(extensionCount);
-		m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, extensions.getBuffer());
-
-		HashSet<String> extensionNames;
-		for (const auto& e : extensions) {
-			extensionNames.add(e.extensionName);
-		}
 
 		if (extensionNames.contains("VK_KHR_external_memory")) {
 			deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);

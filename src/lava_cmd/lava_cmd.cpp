@@ -58,6 +58,8 @@ namespace {
   std::atomic<bool> shutdown_requested = false;
   static_assert( std::atomic<bool>::is_always_lock_free );
   // or, at runtime: assert( shutdown_requested.is_lock_free() );
+
+  std::atomic<bool> gRenderDone = false;
 }
 
 static std::chrono::high_resolution_clock::time_point gExecTimeStart;
@@ -110,17 +112,40 @@ void atexitHandler()  {
 
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::high_resolution_clock::now() - gExecTimeStart ).count();
 
-  SimpleProfiler::printReport();
-
-  std::cout << "Scene rendered in: " << (float)duration * 0.001f << " sec.\n";
-  std::cout << "Exiting lava. Bye :)\n";
+  if(gRenderDone) {
+    SimpleProfiler::printReport();
+    std::cout << "Scene rendered in: " << (float)duration * 0.001f << " sec.\n";
+  }
 }
 
-void listGPUs() {
+static Falcor::Device::Desc createDesc(const std::string& validationLayerOuputFilename) {
+  Falcor::Device::Desc desc;
+  desc.width = 1280;
+  desc.height = 720;
+  desc.validationLayerOuputFilename = validationLayerOuputFilename;
+
+  return desc;
+}
+
+static void listGPUs() {
   auto pDeviceManager = DeviceManager::create();
   std::cout << "Available rendering devices:\n";
   for( auto const& [gpu_id, info]: pDeviceManager->deviceInfos()) {
     std::cout << "\t[" << std::to_string(static_cast<uint32_t>(gpu_id)) << "] : " << info.deviceName << "\n";
+    static const std::string emptyValidationLayerOuputFilename = "";
+    auto pDevice = pDeviceManager->createRenderingDevice(gpu_id, createDesc(emptyValidationLayerOuputFilename));
+    if(!pDevice) {
+      LLOG_FTL << "Error getting device from DeviceManager !";
+      continue;
+    }
+
+    auto device_features = pDevice->getFeatures();
+    if(!device_features.empty()) {
+      std::cout << "\tFeatures:\n";  
+      for(const auto& feature: device_features) {
+        std::cout << "\t\t" << feature << std::endl;
+      }
+    }
   }
   std::cout << std::endl;
 }
@@ -324,14 +349,8 @@ int main(int argc, char** argv){
 
       pDeviceManager->setDefaultRenderingDevice(gpuID);
 
-      Falcor::Device::Desc device_desc;
-      device_desc.width = 1280;
-      device_desc.height = 720;
-      device_desc.validationLayerOuputFilename = vkValidationFilename;
-
-      Device::SharedPtr pDevice;
       LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
-      pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
+      Device::SharedPtr pDevice = pDeviceManager->createRenderingDevice(gpuID, createDesc(vkValidationFilename));
       
       if(!pDevice) {
         LLOG_FTL << "Unable to initialize GPU !!!";
@@ -407,8 +426,10 @@ int main(int argc, char** argv){
           writeProfilerStatsToFile(profilerCaptureFilename);
         }
 
-      do_shutdown = 1;
-      shutdown_requested = true;
+        gRenderDone = true;
+
+        do_shutdown = 1;
+        shutdown_requested = true;
 
       } // main while loop
 

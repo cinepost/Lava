@@ -174,6 +174,7 @@ public:
     virtual SLANG_NO_THROW Result SLANG_MCALL getTextureRowAlignment(size_t* outAlignment) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL
         createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outTable) override;
+    virtual std::vector<std::string> getFeatures() const override;
 };
 
 } // namespace debug

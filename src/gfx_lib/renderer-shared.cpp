@@ -1039,6 +1039,17 @@ bool ShaderProgramBase::isMeshShaderProgram() const {
     return false;
 }
 
+std::vector<std::string> RendererBase::getFeatures() const { 
+    std::vector<std::string> features;
+    for(const auto& feature: m_features) {
+        features.push_back(feature.begin());
+    }
+
+    std::sort(features.begin(), features.end());
+
+    return features; 
+}
+
 Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline, ShaderObjectBase* rootObject, RefPtr<PipelineStateBase>& outNewPipeline) {
     outNewPipeline = static_cast<PipelineStateBase*>(currentPipeline);
     

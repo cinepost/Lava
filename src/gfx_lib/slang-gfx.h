@@ -2317,6 +2317,9 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL getSlangSession(slang::ISession** outSlangSession) = 0;
 
+		virtual std::vector<std::string> getFeatures() const = 0;
+
+
 		inline ComPtr<slang::ISession> getSlangSession() {
 			ComPtr<slang::ISession> result;
 			getSlangSession(result.writeRef());

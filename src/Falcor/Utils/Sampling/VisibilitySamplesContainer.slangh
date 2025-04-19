@@ -146,8 +146,8 @@ struct TransparentVisibilitySample {
     __init() {
         packedHitInfo = uint4(0);
         packedCombinedNormal = uint4(0);
-        alpha = 0.0;
-        visibilityWeight = 0.0;
+        alpha = float16_t(0.0);
+        visibilityWeight = float16_t(0.0);
         texGrads = float16_t4(0.0);
     }
 #endif

@@ -61,7 +61,7 @@ class RenderContext;
 class TextureManager;
 class ProgramManager;
 
-class dlldecl Device: public std::enable_shared_from_this<Device> {
+class FALCOR_API Device: public std::enable_shared_from_this<Device> {
  public:
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
@@ -221,6 +221,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /// Returns the global slang session.
     slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
+
+    std::vector<std::string> getFeatures() const { return mGfxDevice->getFeatures(); }
 
 #ifdef FALCOR_GFX
     void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }

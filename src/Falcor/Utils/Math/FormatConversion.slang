@@ -352,7 +352,7 @@ uint32_t u2x16to32(uint16_t2 v) {
 }
 
 uint16_t2 u32to2x16(uint32_t v) {
-    return uint16_t2(v & 0x0000ffff, v >> 16);
+    return uint16_t2(uint16_t(v & 0x0000ffff), uint16_t(v >> 16));
 }
 
 
@@ -373,5 +373,5 @@ uint64_t u2x32to64(uint2 v)
 */
 uint2 u64to2x32(uint64_t v)
 {
-    return uint2(v & 0xffffffff, v >> 32);
+    return uint2(uint(v & 0xffffffff), uint(v >> 32));
 }
