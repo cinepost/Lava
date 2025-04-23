@@ -52,10 +52,10 @@ RWTexture2D<uint> gTime;
 #endif
 
 struct VBufferRT {
-    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
-    static const bool kUsePerPixelJitter = USE_PP_JITTER;
-    static const bool kUseAA = USE_AA;
-    static const bool kUseAlphaTest = USE_ALPHA_TEST;
+    static const bool kComputeDepthOfField = (bool)COMPUTE_DEPTH_OF_FIELD;
+    static const bool kUsePerPixelJitter = (bool)USE_PP_JITTER;
+    static const bool kUseAA = (bool)USE_AA;
+    static const bool kUseAlphaTest = (bool)USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
 
     uint2 frameDim;
@@ -131,7 +131,7 @@ struct VBufferRT {
         if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid) {
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.getViewProjMat());
-            //depth = curPosH.z / curPosH.w;
+            depth = curPosH.z / curPosH.w;
             
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);

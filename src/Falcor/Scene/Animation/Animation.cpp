@@ -28,8 +28,7 @@
 #include "stdafx.h"
 #include "Animation.h"
 #include "AnimationController.h"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/transform.hpp"
+#include "Falcor/Scene/Transform.h"
 
 namespace Falcor {
 
@@ -38,7 +37,7 @@ namespace {
 const double kEpsilonTime = 1e-5f;
 
 // Bezier form hermite spline
-static float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t) {
+float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t) {
     float3 b0 = p1;
     float3 b1 = p1 + (p2 - p0) * 0.5f / 3.f;
     float3 b2 = p2 - (p3 - p1) * 0.5f / 3.f;
@@ -55,18 +54,18 @@ static float3 interpolateHermite(const float3& p0, const float3& p1, const float
 }
 
 // Bezier hermite slerp
-static glm::quat interpolateHermite(const glm::quat& r0, const glm::quat& r1, const glm::quat& r2, const glm::quat& r3, float t) {
-    glm::quat b0 = r1;
-    glm::quat b1 = r1 + (r2 - r0) * 0.5f / 3.0f;
-    glm::quat b2 = r2 - (r3 - r1) * 0.5f / 3.0f;
-    glm::quat b3 = r2;
+quatf interpolateHermite(const quatf& r0, const quatf& r1, const quatf& r2, const quatf& r3, float t) {
+    quatf b0 = r1;
+    quatf b1 = r1 + (r2 - r0) * 0.5f / 3.0f;
+    quatf b2 = r2 - (r3 - r1) * 0.5f / 3.0f;
+    quatf b3 = r2;
 
-    glm::quat q0 = slerp(b0, b1, t);
-    glm::quat q1 = slerp(b1, b2, t);
-    glm::quat q2 = slerp(b2, b3, t);
+    quatf q0 = slerp(b0, b1, t);
+    quatf q1 = slerp(b1, b2, t);
+    quatf q2 = slerp(b2, b3, t);
 
-    glm::quat qq0 = slerp(q0, q1, t);
-    glm::quat qq1 = slerp(q1, q2, t);
+    quatf qq0 = slerp(q0, q1, t);
+    quatf qq1 = slerp(q1, q2, t);
 
     return slerp(qq0, qq1, t);
 }
@@ -96,12 +95,12 @@ Animation::SharedPtr Animation::create(const std::string& name, uint32_t nodeID,
 }
 
 Animation::Animation(const std::string& name, uint32_t nodeID, double duration)
-        : mName(name)
-        , mNodeID(nodeID)
-        , mDuration(duration)
+    : mName(name)
+    , mNodeID(nodeID)
+    , mDuration(duration)
 {}
 
-glm::mat4 Animation::animate(double currentTime) {
+float4x4 Animation::animate(double currentTime) {
     // Calculate the sample time.
     double time = currentTime;
     if (time < mKeyframes.front().time || time > mKeyframes.back().time) {
@@ -114,26 +113,31 @@ glm::mat4 Animation::animate(double currentTime) {
 
     Keyframe interpolated;
 
-    if (isLinearPreInfinity && mKeyframes.size() > 1) {
+    if (isLinearPreInfinity && mKeyframes.size() > 1)
+    {
         const auto& k0 = mKeyframes.front();
         auto k1 = interpolate(mInterpolationMode, k0.time + kEpsilonTime);
         double segmentDuration = k1.time - k0.time;
         float t = (float)((time - k0.time) / segmentDuration);
         interpolated = interpolateLinear(k0, k1, t);
-    } else if (isLinearPostInfinity && mKeyframes.size() > 1) {
+    }
+    else if (isLinearPostInfinity && mKeyframes.size() > 1)
+    {
         const auto& k1 = mKeyframes.back();
         auto k0 = interpolate(mInterpolationMode, k1.time - kEpsilonTime);
         double segmentDuration = k1.time - k0.time;
         float t = (float)((time - k0.time) / segmentDuration);
         interpolated = interpolateLinear(k0, k1, t);
-    } else {
+    }
+    else
+    {
         interpolated = interpolate(mInterpolationMode, time);
     }
 
-    glm::mat4 T = translate(interpolated.translation);
-    glm::mat4 R = mat4_cast(interpolated.rotation);
-    glm::mat4 S = scale(interpolated.scaling);
-    glm::mat4 transform = T * R * S;
+    float4x4 T = math::matrixFromTranslation(interpolated.translation);
+    float4x4 R = math::matrixFromQuat(interpolated.rotation);
+    float4x4 S = math::matrixFromScaling(interpolated.scaling);
+    float4x4 transform = mul(mul(T, R), S);
 
     return transform;
 }

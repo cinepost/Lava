@@ -86,7 +86,7 @@ struct VisibilitySamplesContainer {
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
             samples[0].texGrads = transparentTextureGradientsBuffer[rootSampleOffset];
         #else
-            samples[0].texGrads = float16_t4(0.0);
+            samples[0].texGrads = float16_t4(0.h);
         #endif
 
         // Fetch remaining transparent samples
@@ -109,7 +109,7 @@ struct VisibilitySamplesContainer {
              #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
                 samples[samplesCount].texGrads = transparentTextureGradientsBuffer[nextSampleOffset];
             #else
-                samples[samplesCount].texGrads = float16_t4(0.0);
+                samples[samplesCount].texGrads = float16_t4(0.h);
             #endif
 
             samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
@@ -174,7 +174,7 @@ struct VisibilitySamplesContainer {
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_TEXGRADS
             return opaqueTextureGradientsBuffer[pixelOffset];
         #else
-            return float16_t4(0.5);
+            return float16_t4(0.5h);
         #endif
     }
 

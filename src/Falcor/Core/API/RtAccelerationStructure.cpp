@@ -54,9 +54,8 @@ uint64_t RtAccelerationStructure::getGpuAddress() {
     return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
 }
 
-RtInstanceDesc& RtInstanceDesc::setTransform(const glm::mat4& matrix) {
-    glm::mat4 transform4x4 = transpose(matrix);
-    std::memcpy(transform, &transform4x4, sizeof(transform));
+RtInstanceDesc& RtInstanceDesc::setTransform(const float4x4& matrix) {
+    std::memcpy(transform, &matrix, sizeof(transform));
     return *this;
 }
 

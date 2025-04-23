@@ -415,18 +415,19 @@ void rayBilinearPatchIntersectionTest(
 
 bool traceHeightMapEstimated(const DisplacementData displacementData, float3 startPoint, float3 endPoint, out float intersectedT, out float intersectedHeight)
 {
+    intersectedT = 0.f;             // This seems to make the intersection ignored. TODO: experiment with eg. 0.000001
+    intersectedHeight = startPoint.z;
+
     const float entryHeightData = displacementData.readValue(startPoint.xy);
 #if DISPLACEMENT_TWO_SIDED == 0
     if (startPoint.z < entryHeightData)
     {
-        intersectedT = 0.f;             // This seems to make the intersection ignored. TODO: experiment with eg. 0.000001
-        intersectedHeight = startPoint.z;
         return true;
     }
 #endif
 
     float3 viewDirection = endPoint - startPoint;
-    int maxCount = ceil(abs(viewDirection.x)) + ceil(abs(viewDirection.y)) + 2;
+    int maxCount = int(ceil(abs(viewDirection.x)) + ceil(abs(viewDirection.y))) + 2;
     maxCount = min(maxCount * kRaymarchingSampleCountFactor, kRaymarchingMaxSampleCount); // Prevent freeze due to corner cases. Todo: Investigate why this happens.
 
     float3 incrementUnit = viewDirection / maxCount;

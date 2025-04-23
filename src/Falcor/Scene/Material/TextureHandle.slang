@@ -122,7 +122,7 @@ struct ExtendedTextureData {
 
     /** Set mode.
     */
-    SETTER_DECL void setMode(Mode mode) { flags = PACK_BITS(kModeBits, kModeOffset, flags, (uint)mode); }
+    SETTER_DECL void setMode(Mode mode) { flags = (uint16_t)PACK_BITS(kModeBits, kModeOffset, flags, (uint)mode); }
 
     /** Get mode.
     */

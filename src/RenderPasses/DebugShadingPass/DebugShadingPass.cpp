@@ -1,3 +1,5 @@
+#include "DebugShadingPass.h"
+
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/IndirectCommands.h"
 
@@ -10,11 +12,6 @@
 
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
-#include "glm/gtc/random.hpp"
-
-#include "glm/gtx/string_cast.hpp"
-
-#include "DebugShadingPass.h"
 
 static const uint32_t meshletColorCycleSize = 1024;
 

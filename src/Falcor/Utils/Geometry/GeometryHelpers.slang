@@ -52,11 +52,11 @@ float3 computeRayOrigin(float3 pos, float3 normal)
 
     // Per-component integer offset to bit representation of fp32 position.
     int3 iOff = int3(normal * iScale);
-    float3 iPos = asfloat(asint(pos) + (pos < 0.f ? -iOff : iOff));
+    float3 iPos = asfloat(asint(pos) + select(pos < 0.f, -iOff, iOff));
 
     // Select per-component between small fixed offset or above variable offset depending on distance to origin.
     float3 fOff = normal * fScale;
-    return abs(pos) < origin ? pos + fOff : iPos;
+    return select(abs(pos) < origin, pos + fOff, iPos);
 }
 
 
@@ -154,9 +154,9 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
     [unroll]
     for (int i = 0; i < 8; ++i)
     {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
+        const float3 corner = float3(bool(i & 1) ? aabbMin.x : aabbMax.x,
+                                     bool(i & 2) ? aabbMin.y : aabbMax.y,
+                                     bool(i & 4) ? aabbMin.z : aabbMax.z);
         dirSum += normalize(corner - origin);
     }
     coneDir = normalize(dirSum);
@@ -167,9 +167,9 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
     [unroll]
     for (int i = 0; i < 8; ++i)
     {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
+        const float3 corner = float3(bool(i & 1) ? aabbMin.x : aabbMax.x,
+                                     bool(i & 2) ? aabbMin.y : aabbMax.y,
+                                     bool(i & 4) ? aabbMin.z : aabbMax.z);
         cosTheta = min(cosTheta, dot(normalize(corner - origin), coneDir));
     }
     sinTheta = sqrt(max(0.f, 1.f - cosTheta * cosTheta));

@@ -241,12 +241,16 @@ void Device::releaseResource(ApiObjectHandle pResource) {
     if (pResource) {
         // Some static objects get here when the application exits
 
+#if FALCOR_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
+#endif
         if(this) {
             mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
         }
+#if FALCOR_GCC
 #pragma GCC diagnostic pop
+#endif
     }
 }
 

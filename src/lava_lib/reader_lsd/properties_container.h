@@ -67,10 +67,10 @@ class Property {
 
         static bool create(Type type, const Value& value, Property& property, Owner owner = Owner::SYS);
 
-        inline const Type type() const { return mType; };
-        inline const Value& value() const { return mValue; };
+        Type type() const { return mType; };
+        const Value& value() const { return mValue; };
 
-        inline bool isUserProperty() const { return (mOwner == Owner::USER ) ? true : false; };
+        bool isUserProperty() const { return (mOwner == Owner::USER ) ? true : false; };
         bool set(Type type, const Value& value);
         bool set(const Value& value);
 
@@ -78,9 +78,9 @@ class Property {
         const T get() const;
 
 
-        inline bool hasSubContainer() const { return mpSubContainer ? true : false; };
-        std::shared_ptr<PropertiesContainer> createSubContainer();
-        inline std::shared_ptr<PropertiesContainer> subContainer() const { return mpSubContainer; };
+        bool hasSubContainer() const { return mpSubContainer ? true : false; };
+        std::shared_ptr<PropertiesContainer>& createSubContainer();
+        const std::shared_ptr<PropertiesContainer>& subContainer() const { return mpSubContainer; };
 
     private:
         Property(): mType(Type::UNKNOWN), mOwner(Owner::SYS) { }
@@ -90,7 +90,7 @@ class Property {
         Value       mValue;
         Owner       mOwner;
 
-        std::shared_ptr<PropertiesContainer> mpSubContainer = nullptr;
+        std::shared_ptr<PropertiesContainer> mpSubContainer;
 
         friend class PropertiesContainer;
 };

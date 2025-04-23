@@ -37,6 +37,7 @@
 #include "boost/container/static_vector.hpp"
 
 #include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
 #include "grammar_bgeo.h"
@@ -114,7 +115,7 @@ namespace lsd {
         return {vec[0], vec[1], vec[2], vec[3]};
     }
 
-    static inline glm::mat4 to_mat4(const Matrix4& m) {
+    static inline Falcor::float4x4 to_mat4(const Matrix4& m) {
         return {m[0], m[1], m[2], m[3],
                 m[4], m[5], m[6], m[7],
                 m[8], m[9], m[10],m[11],

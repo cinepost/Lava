@@ -60,14 +60,9 @@ namespace {
 		GLTF2,
 	};
 
-	glm::mat4 aiCast(const aiMatrix4x4& aiMat) {
-		glm::mat4 glmMat;
-		glmMat[0][0] = aiMat.a1; glmMat[0][1] = aiMat.a2; glmMat[0][2] = aiMat.a3; glmMat[0][3] = aiMat.a4;
-		glmMat[1][0] = aiMat.b1; glmMat[1][1] = aiMat.b2; glmMat[1][2] = aiMat.b3; glmMat[1][3] = aiMat.b4;
-		glmMat[2][0] = aiMat.c1; glmMat[2][1] = aiMat.c2; glmMat[2][2] = aiMat.c3; glmMat[2][3] = aiMat.c4;
-		glmMat[3][0] = aiMat.d1; glmMat[3][1] = aiMat.d2; glmMat[3][2] = aiMat.d3; glmMat[3][3] = aiMat.d4;
-
-		return transpose(glmMat);
+	float4x4 aiCast(const aiMatrix4x4& ai){
+	    float4x4 m{ai.a1, ai.a2, ai.a3, ai.a4, ai.b1, ai.b2, ai.b3, ai.b4, ai.c1, ai.c2, ai.c3, ai.c4, ai.d1, ai.d2, ai.d3, ai.d4};
+	    return m;
 	}
 
 	float3 aiCast(const aiColor3D& ai) {
@@ -78,8 +73,8 @@ namespace {
 		return float3(val.x, val.y, val.z);
 	}
 
-	glm::quat aiCast(const aiQuaternion& q) {
-		return glm::quat(q.w, q.x, q.y, q.z);
+	quatf aiCast(const aiQuaternion& q) {
+	    return quatf(q.x, q.y, q.z, q.w);
 	}
 
 	/** Mapping from ASSIMP to Falcor texture type.
@@ -133,7 +128,7 @@ namespace {
 		std::map<uint32_t, uint32_t> meshMap; // Assimp mesh index to Falcor mesh ID
 		std::map<const std::string, Texture::SharedPtr> textureCache;
 		const SceneBuilder::InstanceMatrices& modelInstances;
-		std::map<std::string, glm::mat4> localToBindPoseMatrices;
+		std::map<std::string, float4x4> localToBindPoseMatrices;
 
 		uint32_t getFalcorNodeID(const aiNode* pNode) const {
 			return mAiToFalcorNodeID.at(pNode);
@@ -300,7 +295,7 @@ namespace {
 		return true;
 	}
 
-	bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight) {
+	bool addLightCommon(const Light::SharedPtr& pLight, const float4x4& baseMatrix, ImporterData& data, const aiLight* pAiLight) {
 		pLight->setName(pAiLight->mName.C_Str());
 		pLight->setIntensity(aiCast(pAiLight->mColorDiffuse));
 		//pLight->setSpecularIntensity(aiCast(pAiLight->mColorSpecular));
@@ -325,7 +320,7 @@ namespace {
 		DirectionalLight::SharedPtr pLight = DirectionalLight::create();
 		float3 direction = normalize(aiCast(pAiLight->mDirection));
 		pLight->setWorldDirection(direction);
-		glm::mat4 base;
+		float4x4 base = float4x4::identity();
 		base[2] = float4(direction, 0);
 		return addLightCommon(pLight, base, data, pAiLight);
 	}
@@ -333,19 +328,25 @@ namespace {
 	bool createPointLight(ImporterData& data, const aiLight* pAiLight) {
 		PointLight::SharedPtr pLight = PointLight::create();
 		float3 position = aiCast(pAiLight->mPosition);
-		float3 lookAt = normalize(aiCast(pAiLight->mDirection));
-		float3 up = normalize(aiCast(pAiLight->mUp));
-		pLight->setWorldPosition(position);
-		pLight->setWorldDirection(lookAt);
-		pLight->setOpeningAngle(pAiLight->mAngleOuterCone);
-		pLight->setPenumbraAngle(pAiLight->mAngleOuterCone - pAiLight->mAngleInnerCone);
+    float3 direction = aiCast(pAiLight->mDirection);
+    float3 up = aiCast(pAiLight->mUp);
 
-		float3 right = cross(up, lookAt);
-		glm::mat4 base;
-		base[0] = float4(right, 0);
-		base[1] = float4(up, 0);
-		base[2] = float4(lookAt, 0);
-		base[3] = float4(position, 1);
+		// GLTF2 may report zero vectors for direction/up in which case we need to initialize to sensible defaults.
+    direction = length(direction) == 0.f ? float3(0.f, 0.f, -1.f) : normalize(direction);
+    up = length(up) == 0.f ? float3(0.f, 1.f, 0.f) : normalize(up);
+
+    pLight->setWorldPosition(position);
+    pLight->setWorldDirection(direction);
+    pLight->setOpeningAngle(pAiLight->mAngleOuterCone);
+    pLight->setPenumbraAngle(pAiLight->mAngleOuterCone - pAiLight->mAngleInnerCone);
+
+		float3 right = cross(direction, up);
+		float4x4 base = matrixFromColumns(
+      float4(right, 0),      // col 0
+      float4(up, 0),         // col 1
+      float4(-direction, 0), // col 2
+      float4(position, 1)    // col 3
+    );
 
 		return addLightCommon(pLight, base, data, pAiLight);
 	}
@@ -389,12 +390,12 @@ namespace {
 		tangents.resize(count);
 		for (uint32_t i = 0; i < count; i++) {
 			// We compute the bitangent at runtime as defined by MikkTSpace: cross(N, tangent.xyz) * tangent.w.
-			// Compute the orientation of the loaded bitangent here to set the sign (w) correctly.
-			float3 T = float3(pAiTangent[i].x, pAiTangent[i].y, pAiTangent[i].z);
-			float3 B = float3(pAiBitangent[i].x, pAiBitangent[i].y, pAiBitangent[i].z);
-			float3 N = float3(pAiNormal[i].x, pAiNormal[i].y, pAiNormal[i].z);
-			float sign = dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
-			tangents[i] = float4(glm::normalize(T), sign);
+      // Compute the orientation of the loaded bitangent here to set the sign (w) correctly.
+      float3 T = float3(pAiTangent[i].x, pAiTangent[i].y, pAiTangent[i].z);
+      float3 B = float3(pAiBitangent[i].x, pAiBitangent[i].y, pAiBitangent[i].z);
+      float3 N = float3(pAiNormal[i].x, pAiNormal[i].y, pAiNormal[i].z);
+      float sign = dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
+      tangents[i] = float4(normalize(T), sign);
 		}
 	}
 
@@ -553,9 +554,9 @@ namespace {
 		return data.localToBindPoseMatrices.find(name) != data.localToBindPoseMatrices.end();
 	}
 
-	glm::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
+	float4x4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
 	{
-		return isBone(data, name) ? data.localToBindPoseMatrices[name] : glm::identity<glm::mat4>();
+		return isBone(data, name) ? data.localToBindPoseMatrices[name] : float4x4::identity();
 	}
 
 	bool parseNode(ImporterData& data, const aiNode* pCurrent, bool hasBoneAncestor)
@@ -609,35 +610,17 @@ namespace {
 	void addMeshInstances(ImporterData& data, aiNode* pNode)
 	{
 		uint32_t nodeID = data.getFalcorNodeID(pNode);
-		for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
-		{
-			uint32_t meshID = data.meshMap.at(pNode->mMeshes[mesh]);
+    for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
+    {
+        uint32_t meshID = data.meshMap[pNode->mMeshes[mesh]];
+        if (meshID == -1)
+            continue;
+        data.builder.addMeshInstance(nodeID, meshID);
+    }
 
-			if (data.modelInstances.size())
-			{
-				for(size_t instance = 0; instance < data.modelInstances.size(); instance++)
-				{
-					uint32_t instanceNodeID = nodeID;
-					if(data.modelInstances[instance] != glm::mat4())
-					{
-						// Add nodes
-						SceneBuilder::Node n;
-						n.name = "Node" + std::to_string(nodeID) + ".instance" + std::to_string(instance);
-						n.parent = nodeID;
-						n.transformList = {data.modelInstances[instance]};
-						instanceNodeID = data.builder.addNode(n);
-					}
-					data.builder.addMeshInstance(instanceNodeID, meshID);
-				}
-			}
-			else data.builder.addMeshInstance(nodeID, meshID);
-		}
-
-		// Visit the children
-		for (uint32_t i = 0; i < pNode->mNumChildren; i++)
-		{
-			addMeshInstances(data, pNode->mChildren[i]);
-		}
+    // Visit the children
+    for (uint32_t i = 0; i < pNode->mNumChildren; i++)
+        addMeshInstances(data, pNode->mChildren[i]);
 	}
 
 	void loadTextures(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const fs::path& searchPath, const Material::SharedPtr& pMaterial, ImportMode importMode) {

@@ -31,6 +31,9 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
+#include "Falcor/Utils/Math/Quaternion.h"
 
 namespace Falcor {
 
@@ -55,7 +58,7 @@ class dlldecl Animation {
         double time = 0;
         float3 translation = float3(0, 0, 0);
         float3 scaling = float3(1, 1, 1);
-        glm::quat rotation = glm::quat(1, 0, 0, 0);
+        quatf rotation = quatf::identity();
     };
 
     /** Create a new object
@@ -129,7 +132,7 @@ class dlldecl Animation {
         \param time The current time in seconds. This can be larger then the animation time, in which case the animation will loop.
         \return Returns the animation's transform matrix for the specified time.
     */
-    glm::mat4 animate(double currentTime);
+    float4x4 animate(double currentTime);
 
 private:
     Animation(const std::string& name, uint32_t nodeID, double duration);

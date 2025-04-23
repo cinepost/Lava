@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "stdafx.h"
 
-#include <glm/gtc/constants.hpp>
-#include <glm/gtx/io.hpp>
 #include <algorithm>
 #include <numeric>
 

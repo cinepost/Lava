@@ -37,8 +37,7 @@ RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, cons
 }
 
 RtAccelerationStructure::~RtAccelerationStructure() {
-    //mpDevice->getApiHandle()->destroyAccelerationStructure(mApiHandle.get());
-    mpDevice->releaseResource(mApiHandle);
+    mpDevice->releaseResource(mGfxAccelerationStructure);
 }
 
 RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(Device::SharedPtr pDevice,  const RtAccelerationStructureBuildInputs& inputs) {
@@ -49,9 +48,8 @@ RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(Dev
     GFXAccelerationStructureBuildInputsTranslator translator;
     gfxBuildInputs = translator.translate(inputs);
 
-    assert(pDevice);
     gfx::IAccelerationStructure::PrebuildInfo gfxPrebuildInfo;
-    pDevice->getGfxDevice()->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo);
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo));
 
     RtAccelerationStructurePrebuildInfo result = {};
     result.resultDataMaxSize = gfxPrebuildInfo.resultDataMaxSize;
@@ -78,18 +76,14 @@ bool RtAccelerationStructure::apiInit() {
     createDesc.kind = getGFXAccelerationStructureKind(mDesc.mKind);
     createDesc.offset = mDesc.getOffset();
     createDesc.size = mDesc.getSize();
-    SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getGfxDevice()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
+    SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getGfxDevice()->createAccelerationStructure(createDesc, mGfxAccelerationStructure.writeRef()));
     return true;
-}
-
-RtAccelerationStructure::ApiHandle RtAccelerationStructure::getApiHandle() const {
-    return mApiHandle;
 }
 
 gfx::IAccelerationStructure::BuildInputs& GFXAccelerationStructureBuildInputsTranslator::translate(const RtAccelerationStructureBuildInputs& buildInputs) {
     if (buildInputs.geometryDescs) {
         mGeomDescs.resize(buildInputs.descCount);
-        for (size_t i = 0; i < mGeomDescs.size(); i++) {
+        for (size_t i = 0; i < mGeomDescs.size(); ++i) {
             auto& inputGeomDesc = buildInputs.geometryDescs[i];
             mGeomDescs[i].flags = translateGeometryFlags(inputGeomDesc.flags);
 
@@ -144,9 +138,11 @@ gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStruc
         case RtAccelerationStructurePostBuildInfoQueryType::SerializationSize:
             return gfx::QueryType::AccelerationStructureSerializedSize;
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
-        default:
             return gfx::QueryType::AccelerationStructureCurrentSize;
-        }
+        default:
+            FALCOR_UNREACHABLE();
+            return gfx::QueryType::AccelerationStructureCompactedSize;
+    }
 }
 
 }  // namespace Falcor

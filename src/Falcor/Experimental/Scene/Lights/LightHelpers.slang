@@ -152,11 +152,11 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
     const float3 p[4] = {float3(-1.0f, 1.0f, 0.0f), float3(1.0f, 1.0f, 0.0f), float3(1.0f,-1.0f, 0.0f), float3(-1.0f,-1.0f, 0.0f)};
 
     // Double the quad as out weird houdini threats it. TODO: make all unit primitives proper sized!!!
-    uint4 cosT = float4(
-        dot(localNormal, normalize(p[0] - localShadingPos)) > 0.0f ? 1 : 0,
-        dot(localNormal, normalize(p[1] - localShadingPos)) > 0.0f ? 1 : 0,
-        dot(localNormal, normalize(p[2] - localShadingPos)) > 0.0f ? 1 : 0,
-        dot(localNormal, normalize(p[3] - localShadingPos)) > 0.0f ? 1 : 0,
+    uint4 cosT = uint4(
+        dot(localNormal, normalize(p[0] - localShadingPos)) > 0.0f ? 1u : 0u,
+        dot(localNormal, normalize(p[1] - localShadingPos)) > 0.0f ? 1u : 0u,
+        dot(localNormal, normalize(p[2] - localShadingPos)) > 0.0f ? 1u : 0u,
+        dot(localNormal, normalize(p[3] - localShadingPos)) > 0.0f ? 1u : 0u,
     );
 
     [branch]
@@ -268,7 +268,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 }
 
 bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
-    
+    ls = {};
     float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
     float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
 
@@ -382,7 +382,7 @@ bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNorm
 }
 
 bool intersectSphereAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
-    
+    ls = {};
     float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
     float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
 
@@ -430,7 +430,7 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, const 
 }
 
 bool intersectDiscAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
-    
+    ls = {};
     float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
     float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
 

@@ -111,12 +111,12 @@ struct LightData {
     float3      shadowColor                 = float3(0.f, 0.f, 0.f);
     uint32_t    _pad_2;
 
-    float16_t3  directDiffuseIntensityMultiplier      = float16_t3(1, 1, 1);  ///< Emitted diffuse radiance of a light source
-    float16_t3  directSpecularIntensityMultiplier     = float16_t3(1, 1, 1);  ///< Emitted specular radiance of a light source
+    float16_t3  directDiffuseIntensityMultiplier      = float16_t3(1.0h);  ///< Emitted diffuse radiance of a light source
+    float16_t3  directSpecularIntensityMultiplier     = float16_t3(1.0h);  ///< Emitted specular radiance of a light source
     uint32_t    _pad_3;
 
-    float16_t3  indirectSpecularIntensityMultiplier   = float16_t3(1.0, 1.0, 1.0); ///< Indirect specular light intensity
-    float16_t3  indirectDiffuseIntensityMultiplier    = float16_t3(1.0, 1.0, 1.0); ///< Indirect diffuse light intensity
+    float16_t3  indirectSpecularIntensityMultiplier   = float16_t3(1.0h); ///< Indirect specular light intensity
+    float16_t3  indirectDiffuseIntensityMultiplier    = float16_t3(1.0h); ///< Indirect diffuse light intensity
     uint32_t    _pad_4;
 
     // Extra parameters for analytic area lights
@@ -188,43 +188,48 @@ struct LightData {
         return (flags & (uint)LightDataFlags::Infinite) != 0;
     }
 
+    bool isDeltaPosition() CONST_FUNCTION {
+        return (flags & (uint)LightDataFlags::DeltaPosition) != 0;
+    }
+
+    bool isDeltaDirection() CONST_FUNCTION {
+        return (flags & (uint)LightDataFlags::DeltaDirection) != 0;
+    }
+    
     bool isDeltaLight() CONST_FUNCTION {
-        return (flags & (uint)LightDataFlags::DeltaPosition) ||
-               (flags & (uint)LightDataFlags::DeltaDirection); 
+        return isDeltaPosition() || isDeltaDirection(); 
     }
 
     bool contributesDirectIllumination() CONST_FUNCTION {
-        return (flags & (uint)LightDataFlags::ContribureDirectDiffuse) ||
-               (flags & (uint)LightDataFlags::ContributeDirectSpecular); 
+        return contributesDirectDiffuseIllumination() || contributesDirectSpecularIllumination(); 
     }
 
     bool contributesDirectDiffuseIllumination() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::ContribureDirectDiffuse; 
+        return (flags & (uint)LightDataFlags::ContribureDirectDiffuse) != 0; 
     }
 
     bool contributesDirectSpecularIllumination() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::ContributeDirectSpecular; 
+        return (flags & (uint)LightDataFlags::ContributeDirectSpecular) != 0; 
     }
 
     bool contributesIndirectIllumination() CONST_FUNCTION {
-        return (flags & (uint)LightDataFlags::ContributeIndirectDiffuse) ||
-               (flags & (uint)LightDataFlags::ContributeIndirectSpecular); 
+        return contributesIndirectDiffuseIllumination() || contributesIndirectSpecularIllumination(); 
     }
 
     bool contributesIndirectDiffuseIllumination() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::ContributeIndirectDiffuse; 
+        return (flags & (uint)LightDataFlags::ContributeIndirectDiffuse) != 0; 
     }
 
     bool contributesIndirectSpecularIllumination() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::ContributeIndirectSpecular; 
+        return (flags & (uint)LightDataFlags::ContributeIndirectSpecular) != 0; 
     }
 
     bool hasTexture() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::HasTexture; 
+        return (flags & (uint)LightDataFlags::HasTexture) != 0; 
     }
 
     bool visibleToCamera() CONST_FUNCTION {
-        return flags & (uint)LightDataFlags::VisibleToCamera; 
+        return (flags & (uint)LightDataFlags::VisibleToCamera) != 0; 
     }
 
 };

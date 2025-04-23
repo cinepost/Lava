@@ -25,9 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <vector>
-#include <atomic>
-
 #include "Falcor/stdafx.h"
 #include "Texture.h"
 #include "Device.h"
@@ -36,6 +33,10 @@
 
 #include "Falcor/Utils/Debug/debug.h"
 #include "lava_utils_lib/logging.h"
+
+#include <vector>
+#include <atomic>
+#include <cmath>
 
 
 namespace Falcor {
@@ -506,7 +507,7 @@ uint32_t Texture::getMipTailStart() const {
 
 // static
 uint8_t Texture::getMaxMipCount(const uint3& size) {
-	return 1 + uint8_t(glm::log2(static_cast<float>(glm::max(glm::max(size[0], size[1]), size[2]))));
+	return 1 + uint8_t(std::log2(static_cast<float>(std::max(std::max(size[0], size[1]), size[2]))));
 }
 
 uint64_t Texture::getTexelCount() const {

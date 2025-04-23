@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Utils.Sampling.SampleGenerator;
-//import Scene.RaytracingInline;
+import Scene.RaytracingInline;
 import VBufferRT;
 
 ConstantBuffer<VBufferRT> gVBufferRT;
@@ -44,23 +44,15 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const Ray ray = gVBufferRT.generateRay(pixel, sg);
 #endif
 
-    //SceneRayQuery<VBufferRT::kUseAlphaTest> sceneRayQuery;
+    SceneRayQuery<VBufferRT::kUseAlphaTest> sceneRayQuery;
     HitInfo hit;
     float hitT;
 
-    bool a = true;
-
-    if (a) {
+    if (sceneRayQuery.traceRay(ray, hit, hitT, VBufferRT::kRayFlags, 0xff)) {
         gVBufferRT.writeHit(pixel, ray.origin, ray.dir, hit);
     } else {
         gVBufferRT.writeMiss(pixel);
     }
-
-//    if (sceneRayQuery.traceRay(ray, hit, hitT, VBufferRT::kRayFlags, 0xff)) {
-//        //gVBufferRT.writeHit(pixel, ray.origin, ray.dir, hit);
-//    } else {
-//        //gVBufferRT.writeMiss(pixel);
-//    }
 
 //    gVBufferRT.writeAux(pixel, ray);
 

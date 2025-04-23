@@ -21,6 +21,7 @@
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
+#include "RenderPasses/NullShadingPass/NullShadingPass.h"
 #include "RenderPasses/DebugShadingPass/DebugShadingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
 #include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
@@ -32,6 +33,7 @@
 #include "RenderPasses/GBuffer/VBuffer/VBufferRT.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferSW.h"
 #include "RenderPasses/GBuffer/VBuffer/VBufferDBG.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferNULL.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -302,7 +304,12 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		pDebugShadingPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 		mpRenderGraph->addPass(pDebugShadingPass, "ShadingPass");
 
-	} else {
+	} else if (shadingPassType == std::string("null")) {
+
+		auto pNullShadingPass = NullShadingPass::create(pRenderContext, {});
+		mpRenderGraph->addPass(pNullShadingPass, "ShadingPass");
+
+	}else {
 		LLOG_FTL << "Unsupported shading pass type \"" << shadingPassType << "\" requested!!!";
 		mpRenderGraph = nullptr;
 		return;
@@ -348,17 +355,21 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		// Compute shader rasterizer vbuffer generator
 		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
 		pVBufferPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
-
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("debug")) {
 
 		// Compute shader debug vbuffer generator
 		auto pVBufferPass = VBufferDBG::create(pRenderContext, vbufferPassDictionary);
-		
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
-	} else {
+	} else if ( primaryRaygenType == std::string("null")) {
+
+		// Compute shader debug vbuffer generator
+		auto pVBufferPass = VBufferNULL::create(pRenderContext, vbufferPassDictionary);
+		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+	}else {
 
 		LLOG_FTL << "Unsupported primary ray (vbuffer) generator type \"" << primaryRaygenType << "\" requested!!!";
 		mpRenderGraph = nullptr;
@@ -405,14 +416,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// EnvPass
 	mpEnvPass = EnvPass::create(pRenderContext);
 
-	// TODO: handle transparency    
-	mpEnvPass->setOpacity(1.0f);
+	// TODO: handle transparency 
+	if(mpEnvPass) {   
+		mpEnvPass->setOpacity(1.0f);
+		mpEnvPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(mpEnvPass, "EnvPass");
+		mpRenderGraph->addEdge("VBufferPass.depth", "EnvPass.depth");
+	}
 
-	mpEnvPass->setScene(pRenderContext, pScene);
-	mpRenderGraph->addPass(mpEnvPass, "EnvPass");
-	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
-	mpRenderGraph->addEdge("VBufferPass.depth", "EnvPass.depth");
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
@@ -428,7 +440,17 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
 		mpRenderGraph->addEdge("VBufferPass.normW",    "ShadingPass.normW");
 	}
-	mpRenderGraph->addEdge("EnvPass.target",       "ShadingPass.color");
+
+	if(mpEnvPass) {
+		mpRenderGraph->addEdge("EnvPass.target",       "ShadingPass.color");
+	} else {
+		auto format = pMainAOV->format();
+		auto pExternalOutputTexture = Texture::create2D(
+			mpDevice, renderRegionDims[0], renderRegionDims[1], format, 1, 1, nullptr, 
+			ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
+		);
+		mpRenderGraph->setInput("ShadingPass.color", pExternalOutputTexture);
+	}
 
 #endif
 
@@ -587,7 +609,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassColorInputName());
-						LLOG_INF << "!!!! " <<pPlane->accumulationPassColorOutputName();
 					}
 				}
 				break;

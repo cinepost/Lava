@@ -48,33 +48,7 @@ namespace fs = boost::filesystem;
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
 
-// Define DLL export/import
-#if FALCOR_MSVC
-#define falcorexport __declspec(dllexport)
-#define falcorimport __declspec(dllimport)
-#define FALCOR_API_EXPORT __declspec(dllexport)
-#define FALCOR_API_IMPORT __declspec(dllimport)
-#elif FALCOR_GCC
-#define falcorexport __attribute__ ((visibility ("default")))
-#define falcorimport  // extern
-#define FALCOR_API_EXPORT __attribute__ ((visibility ("default")))
-#define FALCOR_API_IMPORT //extern
-#endif  // _MSC_VER
-
-#ifdef FALCOR_DLL
-#define FALCOR_API FALCOR_API_EXPORT
-#define dlldecl falcorexport
-#else   // BUILDING_SHARED_DLL
-#define FALCOR_API FALCOR_API_IMPORT
-#define dlldecl falcorimport
-#endif  // BUILDING_SHARED_DLL
-
-#ifdef PASS_DLL
-#define PASS_API FALCOR_API_EXPORT
-#else   // BUILDING_SHARED_DLL
-#define PASS_API FALCOR_API_IMPORT
-#endif  // BUILDING_SHARED_DLL
-
+#include "Falcor/Core/Macros.h"
 #include "Falcor/Core/ErrorHandling.h"
 
 #include <stdint.h>

@@ -57,7 +57,7 @@ cbuffer PerFrameCB
     float   gSampleDistanceUniform; // Uniform sample distance from the pixel center (rasterizer input only)
     float2  gMaxSampleOffset;       // Maximum sample offset from cetral pixel center
     uint    gSampleNumber;
-}
+};
 
 // Input data to accumulate and accumulated output.
 Texture2D<float4>   gInput;

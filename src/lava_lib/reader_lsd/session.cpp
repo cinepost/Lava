@@ -33,8 +33,6 @@
 #include "lava_utils_lib/ut_string.h"
 #include "lava_utils_lib/logging.h"
 
-#include "glm/gtx/string_cast.hpp"
-
 
 static constexpr float halfC = (float)M_PI / 180.0f;
 static constexpr uint32_t kMaxMeshID = std::numeric_limits<uint32_t>::max();
@@ -74,7 +72,7 @@ Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
 	pSession->mpGlobal = pGlobal;
 	pSession->mpCurrentScope = pGlobal;
 
-	return std::move(pSession);
+	return pSession;
 }
 
 Session::Session(std::shared_ptr<Renderer> pRenderer):mFirstRun(true) { 
@@ -667,7 +665,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	const std::string& light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
 	const std::string& light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", std::string(""));
-	glm::mat4 transform = pLightScope->getTransformList()[0];
+	Falcor::float4x4 transform = pLightScope->getTransformList()[0];
 
 	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
@@ -1540,8 +1538,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 
 	assert(pObj->getTransformList().size() > 0);
 	transformNode.transformList = pObj->getTransformList();
-	transformNode.meshBind = glm::mat4(1);          // For skinned meshes. World transform at bind time.
- 	transformNode.localToBindPose = glm::mat4(1);   // For bones. Inverse bind transform.
+	transformNode.meshBind = float4x4::identity();          // For skinned meshes. World transform at bind time.
+ 	transformNode.localToBindPose = float4x4::identity();   // For bones. Inverse bind transform.
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));

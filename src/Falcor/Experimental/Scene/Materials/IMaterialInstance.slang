@@ -38,21 +38,18 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
 
 /** Hints passed in when creating a material instance.
 */
-enum MaterialInstanceHints : uint
-{
+enum MaterialInstanceHints : uint {
     None = 0,
     DisableNormalMapping = 0x1,     ///< Turn off normal mapping if supported.
     AdjustShadingNormal = 0x2,      ///< Adjust shading normal to reduce risk of back-facing hits.
 };
 
-bool isNormalMappingEnabled(uint hints)
-{
-    return !(hints & (uint)MaterialInstanceHints::DisableNormalMapping);
+bool isNormalMappingEnabled(uint hints) {
+    return !((hints & (uint)MaterialInstanceHints::DisableNormalMapping) != 0);
 }
 
-bool isAdjustShadingNormalEnabled(uint hints)
-{
-    return hints & (uint)MaterialInstanceHints::AdjustShadingNormal;
+bool isAdjustShadingNormalEnabled(uint hints) {
+    return ((hints & (uint)MaterialInstanceHints::AdjustShadingNormal) != 0);
 }
 
 /** Describes a BSDF sample.

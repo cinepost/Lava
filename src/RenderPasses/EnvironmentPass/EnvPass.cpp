@@ -26,8 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "EnvPass.h"
-#include "glm/gtx/transform.hpp"
-#include "glm/gtx/euler_angles.hpp"
 
 #include <pybind11/embed.h>
 

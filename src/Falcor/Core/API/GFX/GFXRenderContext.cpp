@@ -369,9 +369,9 @@ namespace Falcor {
         GFXAccelerationStructureBuildInputsTranslator translator = {};
 
         gfx::IAccelerationStructure::BuildDesc buildDesc = {};
-        buildDesc.dest = desc.dest->getApiHandle();
+        buildDesc.dest = desc.dest->getGfxAccelerationStructure();
         buildDesc.scratchData = desc.scratchData;
-        buildDesc.source = desc.source ? desc.source->getApiHandle() : nullptr;
+        buildDesc.source = desc.source ? desc.source->getGfxAccelerationStructure() : nullptr;
         buildDesc.inputs = translator.translate(desc.inputs);
 
         std::vector<gfx::AccelerationStructureQueryDesc> queryDescs(postBuildInfoCount);
@@ -387,7 +387,7 @@ namespace Falcor {
 
     void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode) {
         auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
-        rtEncoder->copyAccelerationStructure(dest->getApiHandle(), source->getApiHandle(), getGFXAcclerationStructureCopyMode(mode));
+        rtEncoder->copyAccelerationStructure(dest->getGfxAccelerationStructure(), source->getGfxAccelerationStructure(), getGFXAcclerationStructureCopyMode(mode));
         mCommandsPending = true;
     }
 

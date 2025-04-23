@@ -57,6 +57,26 @@ static const uint32_t kInvalidBackbufferIndex = -1;
 /// If not supported, the highest supported shader model will be used instead.
 static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
+class GFXDebugCallBack : public gfx::IDebugCallback {
+    virtual SLANG_NO_THROW void SLANG_MCALL
+    handleMessage(gfx::DebugMessageType type, gfx::DebugMessageSource source, const char* message) override {
+        if (type == gfx::DebugMessageType::Error) 
+        {
+            LLOG_ERR << "GFX Error: " << message;
+        }
+        else if (type == gfx::DebugMessageType::Warning)
+        {
+            LLOG_WRN << "GFX Warning: " << message;
+        }
+        else
+        {
+            LLOG_DBG << "GFX Info: " << message;
+        }
+    }
+};
+
+GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
+
 #if FALCOR_NVAPI_AVAILABLE
 	// To use NVAPI, we intercept the API calls in the gfx layer and dispatch into the NVAPI_Create*PipelineState
 	// functions instead if the shader uses NVAPI functionalities.
@@ -404,6 +424,10 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 		desc.validationLayerOuputFilename = validationLayerOuputFilename;
 
+		// Setup debug layer.
+    	FALCOR_GFX_CALL(gfxSetDebugCallback(&gGFXDebugCallBack));
+    	if (mDesc.enableDebugLayer) gfx::gfxEnableDebugLayer();
+
 		if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
 
 		mGfxDevice = pData->pDevice;
@@ -458,9 +482,8 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 		for (auto& queue : mCmdNativeQueues) {
 		  gfx::InteropHandle handle = {};
-    	FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
-    	//assert(handle.api == gfx::InteropHandleAPI::Vulkan);
-    	queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
+    		FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
+    		queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
 		}
 
 		if (!mHeadless && mpWindow) {
@@ -542,50 +565,48 @@ static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
 
 	Device::~Device() {
 		toggleFullScreen(false);
-    mpRenderContext->flush(true);
+    	mpRenderContext->flush(true);
 
-    // Release all the bound resources. Need to do that before deleting the RenderContext
-    mGfxCommandQueue.setNull();
-    mDeferredReleases = decltype(mDeferredReleases)();
-    mpRenderContext.reset();
-    mpUploadHeap.reset();
+    	// Release all the bound resources. Need to do that before deleting the RenderContext
+    	mGfxCommandQueue.setNull();
+    	mDeferredReleases = decltype(mDeferredReleases)();
+    	mpRenderContext.reset();
+    	mpUploadHeap.reset();
 
-    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
-        mCmdQueues[i].clear();
-#if FALCOR_GFX_VK
-        mCmdNativeQueues[i].clear();
-#endif
-    }
+    	for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
+        	mCmdQueues[i].clear();
+        	mCmdNativeQueues[i].clear();
+    	}
 
-    if(mHeadless) {
-        mpOffscreenFbo.reset();
-    } else {
-        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
-    }
+    	if(mHeadless) {
+        	mpOffscreenFbo.reset();
+    	} else {
+        	for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+    	}
 
-    mpDefaultSampler.reset();
-    mpFrameFence.reset();
+    	mpDefaultSampler.reset();
+    	mpFrameFence.reset();
 
-    releaseNullViews();
+    	releaseNullViews();
 
-    mpTextureManager.reset();
-    mpProgramManager.reset();
+    	mpTextureManager.reset();
+    	mpProgramManager.reset();
 
-    mDeferredReleases = decltype(mDeferredReleases)();
+    	mDeferredReleases = decltype(mDeferredReleases)();
 
-    for (auto& heap : mTimestampQueryHeaps) heap.reset();
+    	for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
-    if(mpWindow) {
-        mpWindow.reset();
-    }
+    	if(mpWindow) {
+        	mpWindow.reset();
+    	}
 
-    mDeferredReleases = decltype(mDeferredReleases)();
-    mGfxDevice.setNull();
+    	mDeferredReleases = decltype(mDeferredReleases)();
+    	mGfxDevice.setNull();
 
 #if FALCOR_NVAPI_AVAILABLE
-    safe_delete(mpApiData->pApiDispatcher);
+    	safe_delete(mpApiData->pApiDispatcher);
 #endif
-    safe_delete(mpApiData);
+    	safe_delete(mpApiData);
 	}
 
 } // namespace Falcor

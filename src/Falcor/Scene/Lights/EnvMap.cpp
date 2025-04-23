@@ -27,8 +27,8 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "EnvMap.h"
-#include "glm/gtc/integer.hpp"
-#include "glm/gtx/euler_angles.hpp"
+
+#include "Falcor/Utils/Math/VectorMath.h"
 
 namespace Falcor {
 
@@ -43,15 +43,22 @@ EnvMap::SharedPtr EnvMap::create(Device::SharedPtr pDevice, const std::string& f
     return create(pDevice, pTexture);
 }
 
-void EnvMap::setRotation(float3 degreesXYZ) {
-    if (degreesXYZ != mRotation) {
+void EnvMap::setRotation(const float3& degreesXYZ) {
+    if (math::any(degreesXYZ != mRotation)) {
         mRotation = degreesXYZ;
 
-        auto transform = glm::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
+        float4x4 transform = math::matrixFromRotationXYZ(math::radians(mRotation.x), math::radians(mRotation.y), math::radians(mRotation.z));
 
-        mData.transform = static_cast<float3x4>(transform);
-        mData.invTransform = static_cast<float3x4>(glm::inverse(transform));
+        mData.transform = transform;
+        mData.invTransform = inverse(transform);
     }
+}
+
+void EnvMap::setTransform(const float4x4& xform) {
+    float3 rotation;
+    // Extract rotation from the computed transform
+    math::extractEulerAngleXYZ(xform, rotation.x, rotation.y, rotation.z);
+    setRotation(math::degrees(rotation));
 }
 
 void EnvMap::setIntensity(float intensity) {

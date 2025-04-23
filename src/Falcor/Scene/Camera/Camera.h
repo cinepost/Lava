@@ -34,6 +34,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
+#include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Core/API/ParameterBlock.h"
 
 namespace Falcor {
@@ -232,37 +233,37 @@ class dlldecl Camera : public Animatable {
 
     /** Get the view matrix.
     */
-    const glm::mat4& getViewMatrix() const;
-    const std::vector<glm::mat4> getViewMatrixList() const;
+    const float4x4& getViewMatrix() const;
+    const std::vector<float4x4> getViewMatrixList() const;
 
     /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
     */
-    const glm::mat4& getPrevViewMatrix() const;
+    const float4x4& getPrevViewMatrix() const;
 
     /** Get the projection matrix.
     */
-    const glm::mat4& getProjMatrix() const;
+    const float4x4& getProjMatrix() const;
 
     /** Get the inverse projection matrix.
     */
-    const glm::mat4& getInvProjMatrix() const;
+    const float4x4& getInvProjMatrix() const;
 
     /** Get the view-projection matrix.
     */
-    const glm::mat4& getViewProjMatrix() const;
+    const float4x4& getViewProjMatrix() const;
 
     /** Get the inverse of the view-projection matrix.
     */
-    const glm::mat4& getInvViewProjMatrix() const;
+    const float4x4& getInvViewProjMatrix() const;
 
     /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
-    void setProjectionMatrix(const glm::mat4& proj);
+    void setProjectionMatrix(const float4x4& proj);
 
     /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
-    void setViewMatrix(const glm::mat4& view);
-    void setViewMatrixList(const std::vector<glm::mat4>& views);
+    void setViewMatrix(const float4x4& view);
+    void setViewMatrixList(const std::vector<float4x4>& views);
 
     /** Enable or disable usage of persistent projection matrix
         \param[in] persistent whether to set it persistent
@@ -285,8 +286,8 @@ class dlldecl Camera : public Animatable {
 
     const CameraXformData& getXformData() const { calculateCameraParameters(); return  mXformList[0]; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
     std::vector<std::string> getDataFormattedDebugStrings() const;
 
@@ -323,8 +324,8 @@ class dlldecl Camera : public Animatable {
     mutable bool mDirty = true;
     mutable bool mEnablePersistentProjMat = false;
     mutable bool mEnablePersistentViewMat = false;
-    mutable glm::mat4 mPersistentProjMat;
-    mutable std::vector<glm::mat4> mPersistentViewMatList;
+    mutable float4x4 mPersistentProjMat;
+    mutable std::vector<float4x4> mPersistentViewMatList;
 
     mutable float3 mPosW;
     mutable float3 mUp;

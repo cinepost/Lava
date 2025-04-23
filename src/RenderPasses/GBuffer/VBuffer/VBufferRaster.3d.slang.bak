@@ -120,14 +120,13 @@ VBufferVSOut vsMain(VSIn vsIn) {
     vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
 
     vsOut.instanceID = instanceID;
-    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
-
     vsOut.materialID = gScene.getMaterialID(instanceID);
 
 #if is_valid(gMotionVector)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vsIn.pos;
     
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
     if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vsIn.vertexID;
         prevPos = gScene.prevVertices[prevVertexIndex].position;

@@ -60,10 +60,8 @@ import Experimental.Scene.Lights.PhysicalSkySampler;
 
 /** Scene data required for rendering.
 */
-struct Scene
-{
-
-    static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
+struct Scene {
+    static bool kUseLightProfile = (SCENE_USE_LIGHT_PROFILE == 1);
     static float kDiffuseAlbedoMultiplier = SCENE_DIFFUSE_ALBEDO_MULTIPLIER;
 
     // Raytracing
@@ -93,7 +91,7 @@ struct Scene
 
     [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
     StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, for dynamic meshes only.
-#if SCENE_HAS_INDEXED_VERTICES
+#if SCENE_HAS_INDEXED_VERTICES == 1
     [root] ByteAddressBuffer indexData;                             ///< Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
 #endif
 
@@ -287,13 +285,11 @@ struct Scene
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::IsWorldFrontFaceCW)) != 0;
     }
 
-    GeometryInstanceData getGeometryInstance(const GeometryInstanceID instanceID)
-    {
+    GeometryInstanceData getGeometryInstance(const GeometryInstanceID instanceID) {
         return geometryInstances[instanceID.index];
     }
 
-    MeshDesc getMeshDesc(const GeometryInstanceID instanceID)
-    {
+    MeshDesc getMeshDesc(const GeometryInstanceID instanceID) {
         return meshes[geometryInstances[instanceID.index].geometryID];
     }
 
@@ -303,8 +299,7 @@ struct Scene
         \param[in] instanceID Global geometry instance ID.
         \return Material ID.
     */
-    uint getMaterialID(const GeometryInstanceID instanceID)
-    {
+    uint getMaterialID(const GeometryInstanceID instanceID) {
         return geometryInstances[instanceID.index].materialID;
     };
 
@@ -327,8 +322,7 @@ struct Scene
         \param[in] instanceID Global geometry instance ID.
         \return internal ID.
     */
-    uint getInternalID(const GeometryInstanceID instanceID)
-    {
+    uint getInternalID(const GeometryInstanceID instanceID) {
         return geometryInstances[instanceID.index].internalID;
     };
 
@@ -462,7 +456,7 @@ struct Scene
         \return Local mesh vertex index.
     */
     uint getLocalIndex(const MeshDesc mesh, const uint index) {
-        return getLocalIndex(mesh.ibOffset, index, mesh.flags & uint(MeshFlags::Use16BitIndices));
+        return getLocalIndex(mesh.ibOffset, index, (mesh.flags & uint(MeshFlags::Use16BitIndices)) != 0);
     }
 
     /** Returns the global vertex indices for a given triangle.
@@ -482,7 +476,7 @@ struct Scene
     */
     uint3 getIndices(const GeometryInstanceID instanceID, const uint triangleIndex) {
         const GeometryInstanceData instance = getGeometryInstance(instanceID);
-        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, (instance.flags & uint(GeometryInstanceFlags::Use16BitIndices)) != 0);
         vtxIndices += instance.vbOffset;
         return vtxIndices;
     }
@@ -628,15 +622,13 @@ struct Scene
         \param[out] triangleArea Triangle area in world space units.
         \return Face normal in world space (normalized).
     */
-    float3 getFaceNormalAndAreaW(const GeometryInstanceID instanceID, const uint triangleIndex, out float triangleArea)
-    {
+    float3 getFaceNormalAndAreaW(const GeometryInstanceID instanceID, const uint triangleIndex, out float triangleArea) {
         uint3 vtxIndices = getIndices(instanceID, triangleIndex);
 
         // Load vertices and transform to world space.
         float3 p[3];
         [unroll]
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < 3; i++) {
             p[i] = vertices[vtxIndices[i]].position;
             p[i] = mul(float4(p[i], 1.f), getWorldMatrix(instanceID)).xyz;
         }
@@ -827,7 +819,7 @@ struct Scene
         float3 prevPos = {};
 
         const GeometryInstanceData instance = getGeometryInstance(instanceID);
-        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, (instance.flags & uint(GeometryInstanceFlags::Use16BitIndices)) != 0);
 
         if (instance.isDynamic())
         {
@@ -872,7 +864,7 @@ struct Scene
 
         const float3 barycentrics = hit.getBarycentricWeights();
         const GeometryInstanceData instance = getGeometryInstance(hit.instanceID);
-        uint3 vtxIndices = getLocalIndices(instance.ibOffset, hit.primitiveIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, hit.primitiveIndex, (instance.flags & uint(GeometryInstanceFlags::Use16BitIndices)) != 0);
 
         // For non-dynamic meshes, the previous position/normal is the same as the current.
         vtxIndices += instance.vbOffset;

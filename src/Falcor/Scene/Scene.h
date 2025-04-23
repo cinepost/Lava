@@ -992,7 +992,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     struct Node {
         Node() = default;
-        Node(const std::string& n, uint32_t p, const std::vector<glm::mat4>& t, const glm::mat4& mb, const glm::mat4& l2b) : name(n), parent(p), transformList(t), meshBind(mb), localToBindSpace(l2b) {};
+        Node(const std::string& n, uint32_t p, const std::vector<float4x4>& t, const float4x4& mb, const float4x4& l2b) : name(n), parent(p), transformList(t), meshBind(mb), localToBindSpace(l2b) {};
         std::string name;
         uint32_t parent = kInvalidNode;
         //float4x4 transform;         ///< The node's transformation matrix.

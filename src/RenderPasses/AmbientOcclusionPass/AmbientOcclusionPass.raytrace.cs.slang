@@ -34,7 +34,7 @@ cbuffer PerFrameCB {
     float2  gFalloffRange;   // min/max occlusion distance values
     int     gRandomSeed;
     float   gRayBias = 0.f;
-}
+};
 
 // Input edge detection data.
 Texture2D<float>            gDepth;            // optional depth buffer

@@ -58,9 +58,9 @@ bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs) {
 Material::Material(Device::SharedPtr pDevice, const std::string& name, MaterialType type): mpDevice(pDevice), mName(name) {
     mHeader.setMaterialType(type);
     mHeader.setAlphaMode(AlphaMode::Opaque);
-    mHeader.setAlphaThreshold(float16_t(0.5f));
+    mHeader.setAlphaThreshold(0.5h);
     mHeader.setActiveLobes(static_cast<uint32_t>(LobeType::All));
-    mHeader.setIoR(1.5f);
+    mHeader.setIoR(1.5h);
 }
 
 std::shared_ptr<BasicMaterial> Material::toBasicMaterial() {

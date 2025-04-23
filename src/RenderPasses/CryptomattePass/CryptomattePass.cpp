@@ -5,9 +5,6 @@
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Cryptomatte/MurmurHash.h"
 
-#include "glm/gtc/random.hpp"
-#include "glm/gtx/string_cast.hpp"
-
 #include "lava_utils_lib/ut_string.h"
 
 #include "CryptomattePass.h"

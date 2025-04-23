@@ -28,13 +28,16 @@
 #ifndef SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
 #define SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
 
-#include <bitset>
 #include "Camera.h"
 
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Utils/Timing/CpuTimer.h"
 
-namespace Falcor
-{
+#include <bitset>
+
+
+namespace Falcor {
     struct MouseEvent;
     struct KeyboardEvent;
 
@@ -95,7 +98,7 @@ namespace Falcor
         float mCameraDistance;
         bool mbDirty;
 
-        glm::mat3x3 mRotation;
+        float3x3 mRotation = float3x3::identity();
         float3 mLastVector;
         bool mIsLeftButtonDown = false;
         bool mShouldRotate = false;
@@ -134,6 +137,12 @@ namespace Falcor
 
         float2 mLastMousePos;
         float2 mMouseDelta;
+
+        bool mGamepadPresent = false;
+        float2 mGamepadLeftStick;
+        float2 mGamepadRightStick;
+        float mGamepadLeftTrigger;
+        float mGamepadRightTrigger;
 
         CpuTimer mTimer;
 

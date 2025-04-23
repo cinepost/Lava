@@ -11,4 +11,4 @@ inline bool isPowerOfTwo(uint32_t n) {
 
 }  // namespace Falcor
 
-#endif  // SRC_
+#endif  // SRC_UTILS_MATH_COMMON_H_

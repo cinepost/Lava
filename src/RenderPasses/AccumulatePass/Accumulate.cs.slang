@@ -52,7 +52,7 @@ cbuffer PerFrameCB
     uint    gAccumCount;
     float   gSampleDistanceUniform;     // Uniform sample distance from the pixel center (rasterizer input only)
     float   gLastSampleDistaceUniform; 
-}
+};
 
 #define is_valid(name) (is_valid_##name != 0)
 

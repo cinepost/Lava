@@ -134,7 +134,7 @@ float3 latlong_map_to_world(float2 latlong)
 */
 float2 oct_wrap(float2 v)
 {
-    return (1.f - abs(v.yx)) * (v.xy >= 0.f ? 1.f : -1.f);
+    return (1.f - abs(v.yx)) * select(v.xy >= 0.f, 1.f, -1.f);
 }
 
 /** Converts normalized direction to the octahedral map (non-equal area, signed normalized).
@@ -145,8 +145,7 @@ float2 ndir_to_oct_snorm(float3 n)
 {
     // Project the sphere onto the octahedron (|x|+|y|+|z| = 1) and then onto the xy-plane.
     float2 p = n.xy * (1.f / (abs(n.x) + abs(n.y) + abs(n.z)));
-    p = (n.z < 0.f) ? oct_wrap(p) : p;
-    return p;
+    return select(n.z < 0.f, oct_wrap(p), p);
 }
 
 /** Converts normalized direction to the octahedral map (non-equal area, unsigned normalized).
@@ -214,7 +213,7 @@ float3 oct_to_ndir_equal_area_unorm(float2 p)
 
     // Compute phi in [0,pi/2] (first quadrant) and sin/cos without branching.
     // TODO: Analyze fp32 precision, do we need a small epsilon instead of 0.0 here?
-    float phi = (r > 0.f) ? ((abs(p.y) - abs(p.x)) / r + 1.f) * M_PI_4 : 0.f;
+    float phi = select(r > 0.f, ((abs(p.y) - abs(p.x)) / r + 1.f) * M_PI_4, 0.f);
 
     // Convert to Cartesian coordinates. Note that sign(x)=0 for x=0, but that's fine here.
     float f = r * sqrt(2.f - r*r);
@@ -574,7 +573,7 @@ float erf(float x)
     p =  1.00002368f + p * t;
     p = -1.26551223f + p * t;
     float tau = t * exp(-x * x + p);
-    return x >= 0.0f ? 1.0f - tau : tau - 1.0f;
+    return select(x >= 0.0f, 1.0f - tau, tau - 1.0f);
 }
 
 /** Inverse error function.
@@ -643,7 +642,7 @@ float lgamma(float x_)
     };
 
     bool reflect = x_ < 0.5f;
-    float x = reflect ? -x_ : x_ - 1.0f;
+    float x = select(reflect, -x_, x_ - 1.0f);
     float base = x + g + 0.5f;
 
     float s = 0.0f;

@@ -32,6 +32,14 @@
 
 namespace Falcor {
 
+namespace {
+
+const float kGamepadDeadZone = 0.1f;        ///< Gamepad dead zone.
+const float kGamepadPowerCurve = 1.2f;      ///< Gamepad power curve exponent.
+const float kGamepadRotationSpeed = 2.5f;   ///< Gamepad camera rotation speed.
+
+}
+
 float2 convertCamPosRange(const float2 pos) {
     // Convert [0,1] range to [-1, 1], and inverse the Y (screen-space y==0 is top)
     const float2 scale(2, -2);
@@ -44,7 +52,7 @@ void OrbiterCameraController::setModelParams(const float3& center, float radius,
     mModelCenter = center;
     mModelRadius = radius;
     mCameraDistance = distanceInRadius;
-    mRotation = glm::mat3();
+    mRotation = float3x3::identity();
     mbDirty = true;
 }
 
@@ -55,11 +63,11 @@ bool OrbiterCameraController::update() {
         mpCamera->setTarget(mModelCenter);
 
         float3 camPos = mModelCenter;
-        camPos += (float3(0,0,1) * mRotation) * mModelRadius * mCameraDistance;
+        camPos += mul(float3(0,0,1), mRotation) * mModelRadius * mCameraDistance;
         mpCamera->setPosition(camPos);
 
         float3 up(0, 1, 0);
-        up = up * mRotation;
+        up = mul(up, mRotation);
         mpCamera->setUpVector(up);
         return true;
     }
@@ -75,27 +83,37 @@ template<bool b6DoF>
 bool FirstPersonCameraControllerCommon<b6DoF>::update() {
     mTimer.update();
 
+    // Clamp elapsed time to avoid huge jumps at long frame times (e.g. loading).
+    float elapsedTime = std::min(0.1f, (float)mTimer.delta());
+
     bool dirty = false;
     if(mpCamera) {
+        bool anyGamepadMovement = mGamepadPresent && (length(mGamepadLeftStick) > 0.f || mGamepadLeftTrigger > 0.f || mGamepadRightTrigger > 0.f);
+        bool anyGamepadRotation = mGamepadPresent && (length(mGamepadRightStick) > 0.f);
+
         if(mShouldRotate) {
             float3 camPos = mpCamera->getPosition();
             float3 camTarget = mpCamera->getTarget();
             float3 camUp = b6DoF ? mpCamera->getUpVector() : float3(0, 1, 0);;
 
-            float3 viewDir = glm::normalize(camTarget - camPos);
+            float3 viewDir = normalize(camTarget - camPos);
             if(mIsLeftButtonDown) {
-                float3 sideway = glm::cross(viewDir, normalize(camUp));
+                float3 sideway = cross(viewDir, normalize(camUp));
+
+                float2 mouseRotation = mIsLeftButtonDown ? mMouseDelta * mSpeedModifier : float2(0.f);
+                float2 gamepadRotation = anyGamepadRotation ? mGamepadRightStick * kGamepadRotationSpeed * elapsedTime : float2(0.f);
+                float2 rotation = mouseRotation + gamepadRotation;
 
                 // Rotate around x-axis
-                glm::quat qy = glm::angleAxis(mMouseDelta.y * mSpeedModifier, sideway);
-                glm::mat3 rotY(qy);
-                viewDir = viewDir * rotY;
-                camUp = camUp * rotY;
+                quatf qy = math::quatFromAngleAxis(rotation.y, sideway);
+                float3x3 rotY = math::matrixFromQuat(qy);
+                viewDir = mul(viewDir, rotY);
+                camUp = mul(camUp, rotY);
 
                 // Rotate around y-axis
-                glm::quat qx = glm::angleAxis(mMouseDelta.x * mSpeedModifier, camUp);
-                glm::mat3 rotX(qx);
-                viewDir = viewDir * rotX;
+                quatf qx = math::quatFromAngleAxis(rotation.x, camUp);
+                float3x3 rotX = math::matrixFromQuat(qx);
+                viewDir = mul(viewDir, rotX);
 
                 mpCamera->setTarget(camPos + viewDir);
                 mpCamera->setUpVector(camUp);
@@ -104,9 +122,9 @@ bool FirstPersonCameraControllerCommon<b6DoF>::update() {
 
             if(b6DoF && mIsRightButtonDown) {
                 // Rotate around x-axis
-                glm::quat q = glm::angleAxis(mMouseDelta.x * mSpeedModifier, viewDir);
-                glm::mat3 rot(q);
-                camUp = camUp * rot;
+                quatf q = math::quatFromAngleAxis(mMouseDelta.x * mSpeedModifier, viewDir);
+                float3x3 rot = math::matrixFromQuat(q);
+                camUp = mul(camUp, rot);
                 mpCamera->setUpVector(camUp);
                 dirty = true;
             }
@@ -128,7 +146,7 @@ bool FirstPersonCameraControllerCommon<b6DoF>::update() {
             float3 camUp = mpCamera->getUpVector();
 
             float3 viewDir = normalize(camTarget - camPos);
-            float3 sideway = glm::cross(viewDir, normalize(camUp));
+            float3 sideway = cross(viewDir, normalize(camUp));
 
             float elapsedTime = (float)mTimer.delta();
 

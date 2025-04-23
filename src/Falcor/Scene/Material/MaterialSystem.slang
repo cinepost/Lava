@@ -38,8 +38,7 @@ __exported import Scene.Material.BasicMaterialData;
 __exported import Scene.Material.VolumeProperties;
 
 
-#if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT) || \
-    !defined(MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT)
+#if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT)
 
 // This error occurs when the module is imported without setting the defines returned by getDefines().
 // This check is necessary until unbounded descriptor arrays are supported (see #1321).
@@ -121,8 +120,8 @@ struct MaterialSystem
         Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
         We workaround this issue by always inlining this function in our generated glsl code.
     */
-#ifdef FALCOR_VK
-    [__unsafeForceInlineEarly]
+#ifdef FALCOR_VULKAN
+    [ForceInline]
 #endif
     SamplerState getTextureSampler(const uint samplerID) {
         return materialSamplers[samplerID];
@@ -133,8 +132,8 @@ struct MaterialSystem
         Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
         We workaround this issue by always inlining this function in our generated glsl code.
     */
-#ifdef FALCOR_VK
-    [__unsafeForceInlineEarly]
+#ifdef FALCOR_VULKAN
+    [ForceInline]
 #endif
     SamplerState getDefaultTextureSampler(const uint materialID) {
         uint samplerID = getMaterialHeader(materialID).getDefaultTextureSamplerID();
@@ -229,7 +228,7 @@ struct MaterialSystem
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \return Sampled color.
     */
-    float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, const SamplerState s, const float2 uv, const float4 uniformValue, L lod) { 
+    float4 sampleTexture<L : ITextureSampler>(const TextureHandle handle, const SamplerState s, const float2 uv, const float4 uniformValue, L lod) { 
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
@@ -267,7 +266,7 @@ struct MaterialSystem
         }
     }
 
-    float4 ddxy<L:ITextureSampler>(const float2 uv, L lod) {
+    float4 ddxy<L : ITextureSampler>(const float2 uv, L lod) {
         return lod.ddxy(uv);
     }
 

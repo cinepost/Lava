@@ -53,15 +53,13 @@ void validateAccelerationStructureBuildInputs(
     case IAccelerationStructure::Kind::TopLevel:
         if (!buildInputs.instanceDescs)
         {
-            GFX_DIAGNOSE_WARNING("IAccelerationStructure::BuildInputs::instanceDescs is null "
-                "when creating a top-level acceleration structure.");
+            GFX_DIAGNOSE_WARNING("IAccelerationStructure::BuildInputs::instanceDescs is null when creating a top-level acceleration structure.");
         }
         break;
     case IAccelerationStructure::Kind::BottomLevel:
         if (!buildInputs.geometryDescs)
         {
-            GFX_DIAGNOSE_WARNING("IAccelerationStructure::BuildInputs::geometryDescs is null "
-                "when creating a bottom-level acceleration structure.");
+            GFX_DIAGNOSE_WARNING("IAccelerationStructure::BuildInputs::geometryDescs is null when creating a bottom-level acceleration structure.");
         }
         for (int i = 0; i < buildInputs.descCount; i++)
         {

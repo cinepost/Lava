@@ -123,7 +123,7 @@ void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::Sh
     FALCOR_ASSERT(resolution.x > 0 && resolution.y > 0);
     FALCOR_ASSERT(elementSize > 0);
 
-    const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize()));
+    const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize().xy()));
     allocate(numTiles.x * numTiles.y, elementSize);
     FALCOR_ASSERT(mpBuffers[0]);
     FALCOR_ASSERT(mpBuffers[1]);

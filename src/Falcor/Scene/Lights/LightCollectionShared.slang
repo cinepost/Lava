@@ -112,9 +112,8 @@ struct PackedEmissiveTriangle
         materialID = tri.materialID;
         lightIdx = tri.lightIdx;
     }
-#endif
 
-    EmissiveTriangle unpack() CONST_FUNCTION
+    EmissiveTriangle unpack()
     {
         EmissiveTriangle tri;
         tri.posW[0] = posAndTexCoords[0].xyz;
@@ -129,6 +128,23 @@ struct PackedEmissiveTriangle
         tri.lightIdx = lightIdx;
         return tri;
     }
+#else
+    EmissiveTriangle unpack() const
+    {
+        EmissiveTriangle tri;
+        tri.posW[0] = posAndTexCoords[0].xyz();
+        tri.posW[1] = posAndTexCoords[1].xyz();
+        tri.posW[2] = posAndTexCoords[2].xyz();
+        tri.texCoords[0] = decodeTexCoord(asuint(posAndTexCoords[0].w));
+        tri.texCoords[1] = decodeTexCoord(asuint(posAndTexCoords[1].w));
+        tri.texCoords[2] = decodeTexCoord(asuint(posAndTexCoords[2].w));
+        tri.normal = decodeNormal2x16(normal);
+        tri.area = asfloat(area);
+        tri.materialID = materialID;
+        tri.lightIdx = lightIdx;
+        return tri;
+    }
+#endif
 };
 
 /** Per-triangle flux data for emissive triangles.

@@ -735,10 +735,12 @@ Result RendererBase::resetShaderCacheStats()
 }
 
 
-ShaderComponentID ShaderCache::getComponentId(slang::TypeReflection* type) {
+ShaderComponentID ShaderCache::getComponentId(slang::TypeReflection* type)
+{
     ComponentKey key;
     key.typeName = UnownedStringSlice(type->getName());
-    switch (type->getKind()) {
+    switch (type->getKind())
+    {
     case slang::TypeReflection::Kind::Specialized:
         {
             auto baseType = type->getElementType();
@@ -750,9 +752,11 @@ ShaderComponentID ShaderCache::getComponentId(slang::TypeReflection* type) {
 
             builder.appendChar('<');
             SlangInt argCount = spReflectionType_getSpecializedTypeArgCount(rawType);
-            for(SlangInt a = 0; a < argCount; ++a) {
+            for(SlangInt a = 0; a < argCount; ++a)
+            {
                 if(a != 0) builder.appendChar(',');
-                if(auto rawArgType = spReflectionType_getSpecializedTypeArgType(rawType, a)) {
+                if(auto rawArgType = spReflectionType_getSpecializedTypeArgType(rawType, a))
+                {
                     auto argType = (slang::TypeReflection*) rawArgType;
                     builder.append(argType->getName());
                 }
@@ -770,7 +774,6 @@ ShaderComponentID ShaderCache::getComponentId(slang::TypeReflection* type) {
     key.updateHash();
     return getComponentId(key);
 }
-
 ShaderComponentID ShaderCache::getComponentId(UnownedStringSlice name) {
     ComponentKey key;
     key.typeName = name;
@@ -778,11 +781,11 @@ ShaderComponentID ShaderCache::getComponentId(UnownedStringSlice name) {
     return getComponentId(key);
 }
 
-ShaderComponentID ShaderCache::getComponentId(ComponentKey key)  {
+ShaderComponentID ShaderCache::getComponentId(ComponentKey key)
+{
     ShaderComponentID componentId = 0;
-    
-    if (componentIds.tryGetValue(key, componentId)) return componentId;
-    
+    if (componentIds.tryGetValue(key, componentId))
+        return componentId;
     OwningComponentKey owningTypeKey;
     owningTypeKey.hash = key.hash;
     owningTypeKey.typeName = key.typeName;
@@ -796,8 +799,10 @@ void ShaderCache::addSpecializedPipeline(PipelineKey key, Slang::RefPtr<Pipeline
     specializedPipelines[key] = specializedPipeline;
 }
 
-void ShaderObjectLayoutBase::initBase(RendererBase* renderer, slang::TypeLayoutReflection* elementTypeLayout) {
+void ShaderObjectLayoutBase::initBase(RendererBase* renderer, slang::ISession* session, slang::TypeLayoutReflection* elementTypeLayout)
+{
     m_renderer = renderer;
+    m_slangSession = session;
     m_elementTypeLayout = elementTypeLayout;
     m_componentID = m_renderer->shaderCache.getComponentId(m_elementTypeLayout->getType());
 }
@@ -808,21 +813,24 @@ Result ShaderObjectBase::getSpecializedShaderObjectType(ExtendedShaderObjectType
     return _getSpecializedShaderObjectType(outType);
 }
 
-Result ShaderObjectBase::_getSpecializedShaderObjectType(ExtendedShaderObjectType* outType) {
+Result ShaderObjectBase::_getSpecializedShaderObjectType(ExtendedShaderObjectType* outType)
+{
     if (shaderObjectType.slangType)
         *outType = shaderObjectType;
     ExtendedShaderObjectTypeList specializationArgs;
     SLANG_RETURN_ON_FAIL(collectSpecializationArgs(specializationArgs));
-    if (specializationArgs.getCount() == 0) {
+    if (specializationArgs.getCount() == 0)
+    {
         shaderObjectType.componentID = getLayoutBase()->getComponentID();
         shaderObjectType.slangType = getLayoutBase()->getElementTypeLayout()->getType();
-    } else {
+    }
+    else
+    {
         shaderObjectType.slangType = getRenderer()->slangContext.session->specializeType(
             _getElementTypeLayout()->getType(),
             specializationArgs.components.getArrayView().getBuffer(), specializationArgs.getCount());
         shaderObjectType.componentID = getRenderer()->shaderCache.getComponentId(shaderObjectType.slangType);
     }
-
     *outType = shaderObjectType;
     return SLANG_OK;
 }
@@ -848,15 +856,12 @@ Result ShaderObjectBase::setExistentialHeader(
     // Slang runtime, so we can look up the ID for this particular conformance (which
     // will create it on demand).
     //
-    ComPtr<slang::ISession> slangSession;
-    SLANG_RETURN_ON_FAIL(getRenderer()->getSlangSession(slangSession.writeRef()));
-    //
     // Note: If the type doesn't actually conform to the required interface for
     // this sub-object range, then this is the point where we will detect that
     // fact and error out.
     //
     uint32_t conformanceID = 0xFFFFFFFF;
-    SLANG_RETURN_ON_FAIL(slangSession->getTypeConformanceWitnessSequentialID(
+    SLANG_RETURN_ON_FAIL(getLayoutBase()->m_slangSession->getTypeConformanceWitnessSequentialID(
         concreteType, existentialType, &conformanceID));
     //
     // Once we have the conformance ID, then we can write it into the object
@@ -1050,14 +1055,19 @@ std::vector<std::string> RendererBase::getFeatures() const {
     return features; 
 }
 
-Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline, ShaderObjectBase* rootObject, RefPtr<PipelineStateBase>& outNewPipeline) {
+Result RendererBase::maybeSpecializePipeline(
+    PipelineStateBase* currentPipeline,
+    ShaderObjectBase* rootObject,
+    RefPtr<PipelineStateBase>& outNewPipeline)
+{
     outNewPipeline = static_cast<PipelineStateBase*>(currentPipeline);
     
     auto pipelineType = currentPipeline->desc.type;
-    if (currentPipeline->unspecializedPipelineState) currentPipeline = currentPipeline->unspecializedPipelineState;
-    
+    if (currentPipeline->unspecializedPipelineState)
+        currentPipeline = currentPipeline->unspecializedPipelineState;
     // If the currently bound pipeline is specializable, we need to specialize it based on bound shader objects.
-    if (currentPipeline->isSpecializable) {
+    if (currentPipeline->isSpecializable)
+    {
         specializationArgs.clear();
         SLANG_RETURN_ON_FAIL(rootObject->collectSpecializationArgs(specializationArgs));
 
@@ -1069,11 +1079,13 @@ Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline,
 
         RefPtr<PipelineStateBase> specializedPipelineState = shaderCache.getSpecializedPipelineState(pipelineKey);
         // Try to find specialized pipeline from shader cache.
-        if (!specializedPipelineState) {
+        if (!specializedPipelineState)
+        {
             auto unspecializedProgram = static_cast<ShaderProgramBase*>(pipelineType == PipelineType::Compute
                 ? currentPipeline->desc.compute.program
                 : currentPipeline->desc.graphics.program);
-            
+            auto unspecializedProgramLayout = unspecializedProgram->linkedProgram->getLayout();
+
             ComPtr<slang::IComponentType> specializedComponentType;
             ComPtr<slang::IBlob> diagnosticBlob;
             auto compileRs = unspecializedProgram->linkedProgram->specialize(
@@ -1081,8 +1093,8 @@ Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline,
                 specializationArgs.getCount(),
                 specializedComponentType.writeRef(),
                 diagnosticBlob.writeRef());
-            
-            if (diagnosticBlob) {
+            if (diagnosticBlob)
+            {
                 getDebugCallback()->handleMessage(
                     compileRs == SLANG_OK ? DebugMessageType::Warning : DebugMessageType::Error,
                     DebugMessageSource::Slang,
@@ -1095,7 +1107,8 @@ Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline,
             IShaderProgram::Desc specializedProgramDesc = unspecializedProgram->desc;
             specializedProgramDesc.slangGlobalScope = specializedComponentType;
 
-            if (specializedProgramDesc.linkingStyle == IShaderProgram::LinkingStyle::SingleProgram) {
+            if (specializedProgramDesc.linkingStyle == IShaderProgram::LinkingStyle::SingleProgram)
+            {
                 // When linking style is GraphicsCompute, the specialized global scope already contains
                 // entry-points, so we do not need to supply them again when creating the specialized
                 // pipeline.
@@ -1105,41 +1118,41 @@ Result RendererBase::maybeSpecializePipeline(PipelineStateBase* currentPipeline,
 
             // Create specialized pipeline state.
             ComPtr<IPipelineState> specializedPipelineComPtr;
-            switch (pipelineType) {
-                case PipelineType::Compute:
-                {
-                    auto pipelineDesc = currentPipeline->desc.compute;
-                    pipelineDesc.program = specializedProgram;
-                    SLANG_RETURN_ON_FAIL(createComputePipelineState(pipelineDesc, specializedPipelineComPtr.writeRef()));
-                    break;
-                }
-                case PipelineType::Graphics:
-                {
-                    auto pipelineDesc = currentPipeline->desc.graphics;
-                    pipelineDesc.program = static_cast<ShaderProgramBase*>(specializedProgram.get());
-                    SLANG_RETURN_ON_FAIL(createGraphicsPipelineState(pipelineDesc, specializedPipelineComPtr.writeRef()));
-                    break;
-                }
-                case PipelineType::RayTracing:
-                {
-                    auto pipelineDesc = currentPipeline->desc.rayTracing;
-                    pipelineDesc.program = static_cast<ShaderProgramBase*>(specializedProgram.get());
-                    SLANG_RETURN_ON_FAIL(createRayTracingPipelineState(pipelineDesc.get(), specializedPipelineComPtr.writeRef()));
-                    break;
-                }
-                default:
-                    break;
+            switch (pipelineType)
+            {
+            case PipelineType::Compute:
+            {
+                auto pipelineDesc = currentPipeline->desc.compute;
+                pipelineDesc.program = specializedProgram;
+                SLANG_RETURN_ON_FAIL(
+                    createComputePipelineState(pipelineDesc, specializedPipelineComPtr.writeRef()));
+                break;
             }
-            specializedPipelineState = static_cast<PipelineStateBase*>(specializedPipelineComPtr.get());
+            case PipelineType::Graphics:
+            {
+                auto pipelineDesc = currentPipeline->desc.graphics;
+                pipelineDesc.program = static_cast<ShaderProgramBase*>(specializedProgram.get());
+                SLANG_RETURN_ON_FAIL(createGraphicsPipelineState(
+                    pipelineDesc, specializedPipelineComPtr.writeRef()));
+                break;
+            }
+            case PipelineType::RayTracing:
+            {
+                auto pipelineDesc = currentPipeline->desc.rayTracing;
+                pipelineDesc.program = static_cast<ShaderProgramBase*>(specializedProgram.get());
+                SLANG_RETURN_ON_FAIL(createRayTracingPipelineState(
+                    pipelineDesc.get(), specializedPipelineComPtr.writeRef()));
+                break;
+            }
+            default:
+                break;
+            }
+            specializedPipelineState =
+                static_cast<PipelineStateBase*>(specializedPipelineComPtr.get());
             specializedPipelineState->unspecializedPipelineState = currentPipeline;
             shaderCache.addSpecializedPipeline(pipelineKey, specializedPipelineState);
         }
         auto specializedPipelineStateBase = static_cast<PipelineStateBase*>(specializedPipelineState.Ptr());
-
-        if(specializedPipelineState->hasCacheBlob()) {
-
-        }
-
         outNewPipeline = specializedPipelineStateBase;
     }
     return SLANG_OK;
@@ -1231,6 +1244,15 @@ bool isDepthFormat(Format format) {
     switch (format) {
         case Format::D16_UNORM:
         case Format::D32_FLOAT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool isStencilFormat(Format format) {
+    switch (format) {
+        case Format::D32_FLOAT_S8_UINT:
             return true;
         default:
             return false;

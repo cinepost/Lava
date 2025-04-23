@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Color/ColorUtils.h"
+#include "Falcor/Utils/Color/ColorUtils.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
@@ -229,7 +229,7 @@ void ToneMapperPass::setOutputFormat(ResourceFormat format) {
 }
 
 void ToneMapperPass::setExposureCompensation(float exposureCompensation) {
-    auto _exposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
+    auto _exposureCompensation = std::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
     if(mExposureCompensation == _exposureCompensation) return;
     mExposureCompensation = _exposureCompensation;
     mUpdateToneMapPass = true;
@@ -242,14 +242,14 @@ void ToneMapperPass::setAutoExposure(bool autoExposure) {
 }
 
 void ToneMapperPass::setExposureValue(float exposureValue) {
-    auto _exposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
+    auto _exposureValue = std::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
     if(mExposureValue == _exposureValue) return;
     mExposureValue = _exposureValue;
     mUpdateToneMapPass = true;
 }
 
 void ToneMapperPass::setFilmSpeed(float filmSpeed) {
-    auto _filmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
+    auto _filmSpeed = std::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
     if(mFilmSpeed == _filmSpeed) return;
     mFilmSpeed = _filmSpeed;
     mUpdateToneMapPass = true;
@@ -262,7 +262,7 @@ void ToneMapperPass::setWhiteBalance(bool whiteBalance) {
 }
 
 void ToneMapperPass::setWhitePoint(float whitePoint) {
-    auto _whitePoint = glm::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
+    auto _whitePoint = std::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
     if(mWhitePoint == _whitePoint) return;
     mWhitePoint = _whitePoint;
     mUpdateToneMapPass = true;
@@ -315,9 +315,9 @@ void ToneMapperPass::createToneMapPass(std::shared_ptr<Device> pDevice) {
 
 void ToneMapperPass::updateWhiteBalanceTransform() {
     // Calculate color transform for the current white point.
-    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : glm::identity<float3x3>();
+    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : float3x3::identity();
     // Calculate source illuminant, i.e. the color that transforms to a pure white (1, 1, 1) output at the current color settings.
-    mSourceWhite = inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
+    mSourceWhite = mul(inverse(mWhiteBalanceTransform), float3(1, 1, 1));
 }
 
 void ToneMapperPass::updateColorTransform() {

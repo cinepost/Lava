@@ -44,6 +44,8 @@ namespace fs = boost::filesystem;
 #include "mikktspace/mikktspace.h"
 
 #include "Falcor/Scene/Material/StandardMaterial.h"
+#include "Falcor/Utils/Math/VectorMath.h"
+#include "Falcor/Utils/Math/MathHelpers.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/ConfigStore.h"
@@ -150,16 +152,18 @@ class MikkTSpaceWrapper {
 
 	void setTangent(const float tangent[], float sign, int32_t face, int32_t vert) {
 		float3 T = *reinterpret_cast<const float3*>(tangent);
-		mTangents[face * 3 + vert] = float4(glm::normalize(T), sign);
+		mTangents[face * 3 + vert] = float4(normalize(T), sign);
 	}
 };
 
 void validateVertex(const SceneBuilder::Mesh::Vertex& v, size_t& invalidCount, size_t& zeroCount) {
-	auto isInvalid = [](const auto& x) {
-		return glm::any(glm::isinf(x) || glm::isnan(x));
+	auto isInvalid = [](const auto& x)
+	{
+	    return math::any(isinf(x) || isnan(x));
 	};
-	auto isZero = [](const auto& x) {
-		return glm::length(x) < 1e-6f;
+	auto isZero = [](const auto& x)
+	{
+	    return length(x) < 1e-6f;
 	};
 
 	if (isInvalid(v.position) || isInvalid(v.normal) || isInvalid(v.tangent) || isInvalid(v.texCrd) || isInvalid(v.boneWeights)) invalidCount++;
@@ -167,15 +171,15 @@ void validateVertex(const SceneBuilder::Mesh::Vertex& v, size_t& invalidCount, s
 }
 
 bool compareVertices(const SceneBuilder::Mesh::Vertex& lhs, const SceneBuilder::Mesh::Vertex& rhs, float threshold = 1e-6f) {
-	using namespace glm;
-	if (lhs.position != rhs.position) return false; // Position need to be exact to avoid cracks
-	if (lhs.tangent.w != rhs.tangent.w) return false;
-	if (lhs.boneIDs != rhs.boneIDs) return false;
-	if (any(greaterThan(abs(lhs.normal - rhs.normal), float3(threshold)))) return false;
-	if (any(greaterThan(abs(lhs.tangent.xyz - rhs.tangent.xyz), float3(threshold)))) return false;
-	if (any(greaterThan(abs(lhs.texCrd - rhs.texCrd), float2(threshold)))) return false;
-	if (any(greaterThan(abs(lhs.boneWeights - rhs.boneWeights), float4(threshold)))) return false;
-	return true;
+    if (math::any(lhs.position != rhs.position)) return false; // Position need to be exact to avoid cracks
+    if (lhs.tangent.w != rhs.tangent.w) return false;
+    if (lhs.curveRadius != rhs.curveRadius) return false;
+    if (math::any(lhs.boneIDs != rhs.boneIDs)) return false;
+    if (math::any(abs(lhs.normal - rhs.normal) > float3(threshold))) return false;
+    if (math::any(abs(lhs.tangent.xyz() - rhs.tangent.xyz()) > float3(threshold))) return false;
+    if (math::any(abs(lhs.texCrd - rhs.texCrd) > float2(threshold))) return false;
+    if (math::any(abs(lhs.boneWeights - rhs.boneWeights) > float4(threshold))) return false;
+    return true;
 }
 
 std::vector<uint32_t> compact16BitIndices(const std::vector<uint32_t>& indices) {
@@ -316,8 +320,8 @@ Scene::SharedPtr SceneBuilder::getScene() {
 		
 		Node dummyNode;
 		dummyNode.name = "Dummy";
-		dummyNode.transformList = {glm::identity<glm::mat4>()}; 
-		dummyNode.meshBind = glm::identity<glm::mat4>();
+		dummyNode.transformList = {float4x4::identity()}; 
+		dummyNode.meshBind = float4x4::identity();
 		auto nodeID = addNode(dummyNode);
 		addMeshInstance(nodeID, meshID);
 	}
@@ -529,21 +533,22 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
 	if (mesh.texCrds.pData != nullptr) {
 		LLOG_DBG << "pretransforming texture coordinates for mesh " << mesh_.name; 
-		const glm::mat4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
-		if (xform != glm::identity<glm::mat4>()) {
+		const float4x4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
+		if (xform != float4x4::identity()) {
 			size_t texCoordCount = mesh.getAttributeCount(mesh.texCrds);
 			transformedTexCoords.resize(texCoordCount);
 			// The given matrix transforms the texture (e.g., scaling > 1 enlarges the texture).
 			// Because we're transforming the input coordinates, apply the inverse.
-			const float4x4 invXform = glm::inverse(xform);
+			const float4x4 invXform = inverse(xform);
 			// Because texture transforms are 2D and affine, we only need apply the corresponding 3x2 matrix
-			glm::mat3x2 coordTransform;
-			coordTransform[0] = invXform[0].xy;
-			coordTransform[1] = invXform[1].xy;
-			coordTransform[2] = invXform[3].xy;
+			math::matrix<float, 2, 3> coordTransform = matrixFromColumns(
+            invXform.getCol(0).xy(),
+            invXform.getCol(1).xy(),
+            invXform.getCol(3).xy()
+            );
 
 			for (size_t i = 0; i < texCoordCount; ++i) {
-				transformedTexCoords[i] = coordTransform * float3(mesh.texCrds.pData[i], 1.f);
+				transformedTexCoords[i] = mul(coordTransform, float3(mesh.texCrds.pData[i], 1.f));
 			}
 			mesh.texCrds.pData = transformedTexCoords.data();
 		}
@@ -1128,7 +1133,7 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 		return nullptr;
 	}
 	if (nodeID == kInvalidNodeID) {
-		nodeID = addNode(Node{ name, {glm::identity<glm::mat4>()}, {}, glm::identity<glm::mat4>() });
+		nodeID = addNode(Node{ name, {float4x4::identity()}, {}, float4x4::identity() });
 	}
 
 	pAnimatable->setNodeID(nodeID);
@@ -1142,34 +1147,31 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
 
 // Scene graph
 
-static inline glm::mat4 validateMatrix(const glm::mat4& m, const char* field) {
-	glm::mat4 _m = m;
-	for (int i = 0; i < 4; i++) {
-		if (glm::any(glm::isinf(m[i])) || glm::any(glm::isnan(m[i]))) {
-			throw std::runtime_error("Error: " + std::string(field) + " matrix has inf/nan values");
-		}
-		// Check the assumption that transforms are affine. Note that glm is column-major.
-		if (_m[0][3] != 0.f || _m[1][3] != 0.f || _m[2][3] != 0.f || _m[3][3] != 1.f) {
-			LLOG_WRN << std::string(field) << " matrix is not affine. Setting last row to (0,0,0,1).";
-			_m[0][3] = _m[1][3] = _m[2][3] = 0.f;
-			_m[3][3] = 1.f;
-		}
-	}
+static inline float4x4 validateMatrix(const float4x4& m, const std::string& name, const char* field) {
+	float4x4 _m(m);
+	if (!isMatrixValid(_m)) {
+        FALCOR_THROW("Node '{}' {} matrix has inf/nan values", name, field);
+    }
+    // Check the assumption that transforms are affine. Note that glm is column-major.
+    if (!isMatrixAffine(_m)) {
+        LLOG_WRN << "SceneBuilder::addNode() - Node '" << name << "' " << field << " matrix is not affine. Setting last row to (0,0,0,1).";
+        _m[3] = float4(0, 0, 0, 1);
+    }
 	return _m;
 }
 
-static inline std::vector<glm::mat4> validateMatrixList(const std::vector<glm::mat4>& list, const char* field) {
-	std::vector<glm::mat4> validatedList(list.size());
+static inline std::vector<float4x4> validateMatrixList(const std::vector<float4x4>& list, const std::string& name, const char* field) {
+	std::vector<float4x4> validatedList(list.size());
 	for(size_t i = 0; i < list.size(); ++i) {
-		validatedList[i] = validateMatrix(list[i], field);
+		validatedList[i] = validateMatrix(list[i], name, field);
 	}
 	return validatedList;
 }
 
 uint32_t SceneBuilder::addNode(const Node& node) {
 	InternalNode internalNode(node);
-	internalNode.transformList = validateMatrixList(node.transformList, "transformList");
-	internalNode.localToBindPose = validateMatrix(node.localToBindPose, "localToBindPose");
+	internalNode.transformList = validateMatrixList(node.transformList, node.name, "transformList");
+	internalNode.localToBindPose = validateMatrix(node.localToBindPose, node.name, "localToBindPose");
 
 	static_assert(kInvalidNodeID >= std::numeric_limits<uint32_t>::max());
 	if (node.parent != kInvalidNodeID && node.parent >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addNode() - Node parent is out of range");
@@ -1196,7 +1198,7 @@ uint32_t SceneBuilder::updateNode(const Node& node) {
 	uint32_t nodeID = getInternalNode(node.name);
 	if(nodeID != kInvalidNodeID ) {
 		auto& existingNode = mSceneGraph[nodeID];
-		auto newTransformList = validateMatrixList(node.transformList, "transformList");
+		auto newTransformList = validateMatrixList(node.transformList, node.name, "transformList");
 		if(existingNode.transformList != newTransformList) {
 			existingNode.transformList = newTransformList;
 		}
@@ -1655,7 +1657,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 
 	// Compute the combined transform.
 	auto& child = mSceneGraph[childNodeID];
-	glm::mat4 transform = child.transformList[0];
+	float4x4 transform = child.transformList[0];
 	
 	#ifdef _DEBUG
 	uint32_t prevNodeID = childNodeID;
@@ -1679,7 +1681,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 		#endif // _DEBUG
 
 		// Update the transform and step to the parent.
-		transform = node.transformList[0] * transform;
+		transform = mul(node.transformList[0], transform);
 		
 		if (nodeID == parentNodeID) break;
 
@@ -1934,10 +1936,10 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			// Compute the object->world transform for the node.
 			assert(nodeID != kInvalidNodeID);
 
-			glm::mat4 transform = glm::identity<glm::mat4>();
+			float4x4 transform = float4x4::identity();
 			while (nodeID != kInvalidNodeID) {
 				assert(nodeID < mSceneGraph.size());
-				transform = mSceneGraph[nodeID].transformList[0] * transform;
+				transform = mul(mSceneGraph[nodeID].transformList[0], transform);
 
 				nodeID = mSceneGraph[nodeID].parent;
 			}
@@ -1951,7 +1953,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			prevNode.meshes.erase(it);
 
 			// Link mesh to new top-level node.
-			uint32_t newNodeID = addNode(Node{newMesh->name, {transform}, {}, glm::identity<glm::mat4>()});
+			uint32_t newNodeID = addNode(Node{newMesh->name, {transform}, {}, float4x4::identity()});
 			auto& newNode = mSceneGraph[newNodeID];
 
 			// Clear the copied list of instance parents, and replace with the new, single instance parent.
@@ -2008,7 +2010,7 @@ void SceneBuilder::optimizeSceneGraph() {
 	// existing nodes, its contents are merged into the matching node.
 
 	// Comparison for strict weak ordering of glm::mat4. TODO: Isn't there a better way?
-	auto lessThan = [](const glm::mat4& lhs, const glm::mat4& rhs) {
+	auto lessThan = [](const float4x4& lhs, const float4x4& rhs) {
 		for (int i = 0; i < 4; i++)
 			for (int j = 0; j < 4; j++)
 				if (lhs[i][j] != rhs[i][j]) return lhs[i][j] < rhs[i][j];
@@ -2061,7 +2063,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 	// This step is a prerequisite for the ray tracing optimizations we do later.
 
 	// Add an identity transform node.
-	uint32_t identityNodeID = addNode(Node{ "Identity", {glm::identity<glm::mat4>()}, {}, glm::identity<glm::mat4>() });
+	uint32_t identityNodeID = addNode(Node{ "Identity", {float4x4::identity()}, {}, float4x4::identity() });
 	auto& identityNode = mSceneGraph[identityNodeID];
 
 	size_t transformedMeshCount = 0;
@@ -2079,33 +2081,33 @@ void SceneBuilder::pretransformStaticMeshes() {
 		auto nodeID = mesh.instances[0].nodeId;
 		assert(nodeID != kInvalidNodeID);
 
-		glm::mat4 transform = glm::identity<glm::mat4>();
+		float4x4 transform = float4x4::identity();
 		while (nodeID != kInvalidNodeID) {
 			assert(nodeID < mSceneGraph.size());
-			transform = mSceneGraph[nodeID].transformList[0] * transform;
+			transform = mul(mSceneGraph[nodeID].transformList[0], transform);
 
 			nodeID = mSceneGraph[nodeID].parent;
 		}
 
 		// Flip triangle winding flag if the transform flips the coordinate system handedness (negative determinant).
-		bool flippedWinding = glm::determinant((glm::mat3)transform) < 0.f;
+		bool flippedWinding = determinant(float3x3(transform)) < 0.f;
 		if (flippedWinding) mesh.isFrontFaceCW = !mesh.isFrontFaceCW;
 
 		// Transform vertices to world space if not already identity transform.
-		if (transform != glm::identity<glm::mat4>()) {
+		if (transform != float4x4::identity()) {
 			assert(!mesh.staticData.empty());
 			assert((size_t)mesh.vertexCount == mesh.staticData.size());
 
-			glm::mat3 invTranspose3x3 = (glm::mat3)glm::transpose(glm::inverse(transform));
-			glm::mat3 transform3x3 = (glm::mat3)transform;
+			float3x3 invTranspose3x3 = float3x3(transpose(inverse(transform)));
+            float3x3 transform3x3 = float3x3(transform);
 
 			for (auto& v : mesh.staticData) {
-				float4 p = transform * float4(v.position, 1.f);
-				v.position = p.xyz;
-				v.normal = glm::normalize(invTranspose3x3 * v.normal);
-				v.tangent.xyz = glm::normalize(transform3x3 * v.tangent.xyz);
-				// TODO: We should flip the sign of v.tangent.w if flippedWinding is true.
-				// Leaving that out for now for consistency with the shader code that needs the same fix.
+				v.position = transformPoint(transform, v.position);
+				v.normal = normalize(transformVector(invTranspose3x3, v.normal));
+                v.tangent = float4(normalize(transformVector(transform3x3, v.tangent.xyz())), v.tangent.w);
+                // TODO: We should flip the sign of v.tangent.w if flippedWinding is true.
+                // Leaving that out for now for consistency with the shader code that needs the same fix.
+                v.curveRadius = length(transformVector(transform3x3, float3(v.curveRadius, 0.f, 0.f)));
 			}
 
 			transformedMeshCount++;
@@ -2953,7 +2955,7 @@ void SceneBuilder::quantizeTexCoords() {
 				// Compute maximum quantization error in texels.
 				// The texcoords are used for all texture channels so taking the maximum dimensions.
 				uint2 maxTexDim = pMaterial->getMaxTextureDimensions();
-				maxError *= maxTexDim;
+				maxError *= float2(maxTexDim);
 				float maxTexelError = std::max(maxError.x, maxError.y);
 
 				if (maxTexelError > kMaxTexelError) {

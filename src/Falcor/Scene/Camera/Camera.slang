@@ -68,8 +68,8 @@ struct Camera {
         if(xformListBufferSize < 2 || k == 0.f) return xform;
 
         const float fidx = k * (xformListBufferSize - 1);
-        uint idx_l = floor(fidx);
-        uint idx_h = ceil(fidx);
+        uint idx_l = (uint)floor(fidx);
+        uint idx_h = (uint)ceil(fidx);
 
         float c = fidx - float(idx_l);
 

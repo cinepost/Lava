@@ -84,6 +84,8 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
         SlangInt descriptorRangeCount = typeLayout->getDescriptorSetDescriptorRangeCount(i);
         if (descriptorRangeCount == 0)
             continue;
+        auto descriptorSetIndex =
+            findOrAddDescriptorSet(offset.bindingSet + typeLayout->getDescriptorSetSpaceOffset(i));
     }
 
     // For actually populating the descriptor sets we prefer to enumerate
@@ -206,7 +208,9 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
                 // uniform buffer to hold ordinary/uniform data, if there is any.
 
                 SLANG_ASSERT(subObjectTypeLayout);
-                SLANG_ASSERT(subObjectTypeLayout->getContainerVarLayout());
+
+                auto containerVarLayout = subObjectTypeLayout->getContainerVarLayout();
+                SLANG_ASSERT(containerVarLayout);
 
                 auto elementVarLayout = subObjectTypeLayout->getElementVarLayout();
                 SLANG_ASSERT(elementVarLayout);
@@ -235,7 +239,9 @@ void ShaderObjectLayoutImpl::Builder::_addDescriptorRangesAsValue(
                 // data part differently.
 
                 SLANG_ASSERT(subObjectTypeLayout);
-                SLANG_ASSERT(subObjectTypeLayout->getContainerVarLayout());
+
+                auto containerVarLayout = subObjectTypeLayout->getContainerVarLayout();
+                SLANG_ASSERT(containerVarLayout);
 
                 auto elementVarLayout = subObjectTypeLayout->getElementVarLayout();
                 SLANG_ASSERT(elementVarLayout);
@@ -617,7 +623,7 @@ Result ShaderObjectLayoutImpl::_init(Builder const* builder)
 {
     auto renderer = builder->m_renderer;
 
-    initBase(renderer, builder->m_elementTypeLayout);
+    initBase(renderer, builder->m_session, builder->m_elementTypeLayout);
 
     m_bindingRanges = builder->m_bindingRanges;
 
@@ -635,42 +641,16 @@ Result ShaderObjectLayoutImpl::_init(Builder const* builder)
     m_containerType = builder->m_containerType;
 
     // Create VkDescriptorSetLayout for all descriptor sets.
-    for (auto& descriptorSetInfo : m_descriptorSetInfos) {
+    for (auto& descriptorSetInfo : m_descriptorSetInfos)
+    {
         VkDescriptorSetLayoutCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         createInfo.pBindings = descriptorSetInfo.vkBindings.getBuffer();
         createInfo.bindingCount = (uint32_t)descriptorSetInfo.vkBindings.getCount();
         VkDescriptorSetLayout vkDescSetLayout;
-
-        #ifdef _DEBUG
-        {
-            // Check for duplicate bindings. TODO: disable in production !
-            uint32_t i = 0;
-            std::set<uint32_t> binding_numbers;
-            for(auto& binding: descriptorSetInfo.vkBindings) {
-                if (binding_numbers.find(binding.binding) != binding_numbers.end()) {
-                    LLOG_ERR << "Duplicate binding number " << binding.binding << " at pBindings[" << i << "] !!!";
-                }
-                i++;
-            }
-        }
-        #endif
-
-        SLANG_RETURN_ON_FAIL(renderer->m_api.vkCreateDescriptorSetLayout(renderer->m_api.m_device, &createInfo, nullptr, &vkDescSetLayout));
-
+        SLANG_RETURN_ON_FAIL(renderer->m_api.vkCreateDescriptorSetLayout(
+            renderer->m_api.m_device, &createInfo, nullptr, &vkDescSetLayout));
         descriptorSetInfo.descriptorSetLayout = vkDescSetLayout;
-
-        #ifdef _DEBUG
-        {
-            LLOG_TRC << "Created descriptor set layout " << descriptorSetInfo.descriptorSetLayout;
-            
-            uint32_t i = 0;
-            for(auto& binding: descriptorSetInfo.vkBindings) {
-                LLOG_TRC << "Binding " << binding.binding << " at pBindings[" << i << "] with descriptor type " << to_string(binding.descriptorType);
-                i++;
-            }
-        }
-        #endif // _DEBUG
     }
     return SLANG_OK;
 }

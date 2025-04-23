@@ -34,6 +34,7 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
 
 #include "Falcor/Utils/HostDeviceShared.slangh"
 #include "LightData.slang"
@@ -196,8 +197,8 @@ class dlldecl Light : public Animatable {
     */
     Changes getChanges() const { return mChanges; }
 
-    void updateFromAnimation(const glm::mat4& transform) override {}
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override {};
+    void updateFromAnimation(const float4x4& transform) override {}
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override {};
 
   protected:
     virtual void update();
@@ -283,8 +284,8 @@ class dlldecl PointLight : public Light {
     */
     float getOpeningAngle() const { return mData.openingAngle; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     virtual void update() override;
@@ -321,8 +322,8 @@ class dlldecl DirectionalLight : public Light {
     */
     float getPower() const override { return 0.f; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     DirectionalLight(const std::string& name);
@@ -365,8 +366,8 @@ class dlldecl DistantLight : public Light {
     */
     float getPower() const override { return 0.f; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   private:
     DistantLight(const std::string& name);
@@ -393,17 +394,17 @@ class dlldecl EnvironmentLight: public Light {
     */
     float getPower() const override;
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
     /** Set transform matrix
       \param[in] mtx object to world space transform matrix
     */
-    void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
+    void setTransformMatrix(const float4x4& mtx) { mTransformMatrix = mtx; update();  }
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    float4x4 getTransformMatrix() const { return mTransformMatrix; }
 
     /** Set light projection texture
     */
@@ -414,7 +415,7 @@ class dlldecl EnvironmentLight: public Light {
   private:
     virtual void update();
 
-    glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    float4x4 mTransformMatrix;     ///< Transform matrix minus scaling component
 
     EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
 
@@ -491,7 +492,7 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix
     */
-    void setTransformMatrix(const glm::mat4& mtx);
+    void setTransformMatrix(const float4x4& mtx);
     void setSingleSided(bool value);
 
     bool isSingleSided() const { return mData.isSingleSided(); }
@@ -502,10 +503,10 @@ class dlldecl AnalyticAreaLight : public Light {
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    float4x4 getTransformMatrix() const { return mTransformMatrix; }
 
-    void updateFromAnimation(const glm::mat4& transform) override;
-    void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+    void updateFromAnimation(const float4x4& transform) override;
+    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
   protected:
     AnalyticAreaLight(const std::string& name, LightType type);
@@ -513,7 +514,7 @@ class dlldecl AnalyticAreaLight : public Light {
     virtual void update();
 
     float3 mScaling;                ///< Scaling, controls the size of the light
-    glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    float4x4 mTransformMatrix;     ///< Transform matrix minus scaling component
     float3 mUnnormalizedIntensity;
     bool mNormalizeArea = false;    ///< Normalize light area
 

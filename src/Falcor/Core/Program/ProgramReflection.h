@@ -32,6 +32,7 @@
 #include "Falcor/Core/Enum.h"
 #include "Falcor/Core/API/ShaderResourceType.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include <slang/slang.h>
 #include <map>
@@ -98,9 +99,35 @@ struct UniformShaderVarOffset {
     */
     enum Invalid { kInvalid = -1 };
 
+#if FALCOR_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
     /** Default constructor: creates an invalid offset.
     */
+
     UniformShaderVarOffset(Invalid _ = kInvalid) : mByteOffset(ByteOffset(-1)) {}
+
+    /** Compare this offset to an invalid offset.
+
+    This operator allows for checks like:
+
+        if(myOffset == UniformShaderVarOffset::kInvalid) { ... }
+    */
+    bool operator==(Invalid _) const { return !isValid(); }
+
+    /** Compare this offset to an invalid offset.
+
+    This operator allows for checks like:
+
+        if(myOffset != UniformShaderVarOffset::kInvalid) { ... }
+    */
+    bool operator!=(Invalid _) const { return isValid(); }
+
+#if FALCOR_GCC
+#pragma GCC diagnostic pop
+#endif
 
     /** Get the raw byte offset.
     */
@@ -119,22 +146,6 @@ struct UniformShaderVarOffset {
     /** Compare this offset to another offset.
     */
     bool operator!=(UniformShaderVarOffset const& other) const { return mByteOffset != other.mByteOffset; }
-
-    /** Compare this offset to an invalid offset.
-
-    This operator allows for checks like:
-
-        if(myOffset == UniformShaderVarOffset::kInvalid) { ... }
-    */
-    bool operator==(Invalid _) const { return !isValid(); }
-
-    /** Compare this offset to an invalid offset.
-
-    This operator allows for checks like:
-
-        if(myOffset != UniformShaderVarOffset::kInvalid) { ... }
-    */
-    bool operator!=(Invalid _) const { return isValid(); }
 
     /** Add an additional byte offset to this offset.
 
@@ -209,9 +220,18 @@ struct ResourceShaderVarOffset {
         */
         enum Invalid { kInvalid = -1 };
 
+#if FALCOR_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
         /** Default constructor: constructs an invalid offset.
         */
         ResourceShaderVarOffset(Invalid _ = kInvalid) : mRangeIndex(RangeIndex(-1)), mArrayIndex(ArrayIndex(-1)) {}
+
+#if FALCOR_GCC
+#pragma GCC diagnostic pop
+#endif
 
         /** Check if this is a valid offset.
         */
@@ -317,9 +337,18 @@ struct ShaderVarOffset {
         */
         enum Invalid { kInvalid = -1 };
 
+#if FALCOR_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
         /** Default constructor: constructs an invalid offset.
         */
         ShaderVarOffset(Invalid _ = kInvalid) : mUniform(UniformShaderVarOffset::kInvalid), mResource(ResourceShaderVarOffset::kInvalid) {}
+
+#if FALCOR_GCC
+#pragma GCC diagnostic pop
+#endif
 
         /** Custom enumeration type used to represent a zero offset.
 
@@ -451,9 +480,18 @@ in all the same places, and also implicitly converts to both
 */
 struct TypedShaderVarOffset : ShaderVarOffset {
     public:
+
+#if FALCOR_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
         /** Default constructor: constructs an invalid offset.
         */
         TypedShaderVarOffset(Invalid _ = kInvalid) {}
+
+#if FALCOR_GCC
+#pragma GCC diagnostic pop
+#endif
 
         /** Get the type of the shader variable.
         */

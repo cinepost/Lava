@@ -407,7 +407,7 @@ public:
         return m_componentID;
     }
 
-    void initBase(RendererBase* renderer, slang::TypeLayoutReflection* elementTypeLayout);
+    void initBase(RendererBase* renderer, slang::ISession* session, slang::TypeLayoutReflection* elementTypeLayout);
 };
 
 class SimpleShaderObjectData {

@@ -55,7 +55,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     ~RenderGraph();
 
-    inline std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device>& device() { return mpDevice; }
 
     /** Create a new render graph.
         \param[in] name Name of the render graph.
@@ -139,7 +139,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Returns true if a render pass exists by this name in the graph.
      */
-    inline bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
+    bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
 
     /** Return the index of a pass from a name, or kInvalidIndex if the pass doesn't exists
     */
@@ -183,15 +183,15 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get current render graph output dimensions
     */
-    inline uint2 dims() const { return mCompilerDeps.defaultResourceProps.dims; }
+    uint2 dims() const { return mCompilerDeps.defaultResourceProps.dims; }
 
     /** Get current render graph default resource format
     */
-    inline const ResourceFormat& format() const { return mCompilerDeps.defaultResourceProps.format; };
+    const ResourceFormat& format() const { return mCompilerDeps.defaultResourceProps.format; };
 
     /** Get the attached scene
     */
-    inline const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+    const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
     /** Get an graph output name from the graph outputs
     */
@@ -205,7 +205,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the num of outputs from this graph
     */
-    inline size_t getOutputCount() const { return mOutputs.size(); }
+    size_t getOutputCount() const { return mOutputs.size(); }
 
     /** Get all output names for the render graph
     */
@@ -218,20 +218,20 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the dictionary objects used to communicate app data to the render-passes
     */
-    inline const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+    const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
 
     /** Get the name
     */
-    inline const std::string& getName() const { return mName; }
+    const std::string& getName() const { return mName; }
 
     /** Get the name
     */
-    inline void setName(const std::string& name) { mName = name; }
+    void setName(const std::string& name) { mName = name; }
 
     /** Compile the graph
     */
     bool compile(RenderContext* pContext, std::string& log);
-    inline bool compile(RenderContext* pContext) { std::string s; return compile(pContext, s); }
+    bool compile(RenderContext* pContext) { std::string s; return compile(pContext, s); }
 
   private:
     friend class RenderGraphUI;

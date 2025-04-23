@@ -27,9 +27,11 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "LightBVHBuilder.h"
+#include "Falcor/Utils/Math/MathConstants.slangh"
+#include "Falcor/Utils/Timing/Profiler.h"
+
 #include <algorithm>
 
-#include "Falcor/Utils/Timing/Profiler.h"
 
 namespace {
 
@@ -45,7 +47,7 @@ const uint32_t kMaxLeafTriangleOffset = 1 << PackedNode::kTriangleOffsetBits;
 
 inline float safeACos(float v)
 {
-	return std::acos(glm::clamp(v, -1.0f, 1.0f));
+	return std::acos(std::clamp(v, -1.0f, 1.0f));
 }
 
 /** Returns sin(a) based on cos(a) for a in [0,pi].
@@ -67,7 +69,7 @@ float computeCosConeAngle(const float3& coneDir, const float cosTheta, const flo
 	float cosResult = kInvalidCosConeAngle;
 	if (cosTheta != kInvalidCosConeAngle && cosOtherTheta != kInvalidCosConeAngle)
 	{
-		const float cosDiffTheta = glm::dot(coneDir, otherConeDir);
+		const float cosDiffTheta = dot(coneDir, otherConeDir);
 		const float sinDiffTheta = sinFromCos(cosDiffTheta);
 		const float sinOtherTheta = sinFromCos(cosOtherTheta);
 
@@ -99,10 +101,10 @@ float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, 
 		return float3(0.0f);
 	}
 
-	dir = glm::normalize(dir);
+	dir = normalize(dir);
 
-	const float aDiff = safeACos(glm::dot(dir, aDir));
-	const float bDiff = safeACos(glm::dot(dir, bDir));
+	const float aDiff = safeACos(dot(dir, aDir));
+	const float bDiff = safeACos(dot(dir, bDir));
 	cosResult = std::cos(std::max(aDiff + std::acos(aCosTheta), bDiff + std::acos(bCosTheta)));
 	return dir;
 }
@@ -207,9 +209,9 @@ float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, flo
 */
 float aabbVolume(const AABB& bb, float epsilon) {
 	if (bb.valid() == false) {
-		return -std::numeric_limits<float>::infinity();
+    return -std::numeric_limits<float>::infinity();
 	}
-	const float3 dims = glm::max(float3(epsilon), bb.extent());
+	const float3 dims = max(float3(epsilon), bb.extent());
 	return dims.x * dims.y * dims.z;
 }
 
@@ -436,8 +438,8 @@ float3 LightBVHBuilder::computeLightingCone(const Range& triangleRange, const Bu
 		coneDirectionSum += data.trianglesData[triangleIdx].coneDirection;
 	}
 
-	if (glm::length(coneDirectionSum) >= FLT_MIN) {
-		coneDirection = glm::normalize(coneDirectionSum);
+	if (length(coneDirectionSum) >= FLT_MIN) {
+		coneDirection = normalize(coneDirectionSum);
 		cosTheta = 1.f;
 
 		for (uint32_t triangleIdx = triangleRange.begin; triangleIdx < triangleRange.end; ++triangleIdx) {
@@ -589,10 +591,10 @@ LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAH(const Bu
 	varies smoothly between pi (flat emitter) to 4pi (full sphere).
 */
 static float computeOrientationCost(const float theta_o) {
-	float theta_w = std::min(theta_o + glm::half_pi<float>(), glm::pi<float>());
-	float sin_theta_o = std::sin(theta_o);
-	float cos_theta_o = std::cos(theta_o);
-	return glm::two_pi<float>() * (1.0f - cos_theta_o) + glm::half_pi<float>() * (2.0f * theta_w * sin_theta_o - std::cos(theta_o - 2.0f * theta_w) - 2.0f * theta_o * sin_theta_o + cos_theta_o);
+	float theta_w = std::min(theta_o + float(M_PI_2), float(M_PI));
+  float sin_theta_o = std::sin(theta_o);
+  float cos_theta_o = std::cos(theta_o);
+  return float(M_2PI) * (1.0f - cos_theta_o) + float(M_PI_2) * (2.0f * theta_w * sin_theta_o - std::cos(theta_o - 2.0f * theta_w) - 2.0f * theta_o * sin_theta_o + cos_theta_o);
 };
 
 /** Evaluates the SAOH cost metric for a node.
@@ -600,13 +602,13 @@ static float computeOrientationCost(const float theta_o) {
 	See Eqn 16 in Moreau and Clarberg, "Importance Sampling of Many Lights on the GPU", Ray Tracing Gems, Ch. 18, 2019.
 */
 static float evalSAOH(const AABB& bounds, const float flux, const float cosTheta, const LightBVHBuilder::Options& parameters) {
-	float fluxCost = parameters.usePreintegration ? flux : 1.0f;
-	float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
-	float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : glm::pi<float>();
-	float orientationCost = parameters.useLightingCones ? computeOrientationCost(theta) : 1.0f;
-	float cost = fluxCost * aabbCost * orientationCost;
-	assert(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
-	return cost;
+  float fluxCost = parameters.usePreintegration ? flux : 1.0f;
+  float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
+  float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : float(M_PI);
+  float orientationCost = parameters.useLightingCones ? computeOrientationCost(theta) : 1.0f;
+  float cost = fluxCost * aabbCost * orientationCost;
+  FALCOR_ASSERT(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
+  return cost;
 }
 
 LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters) {
@@ -674,8 +676,8 @@ LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const B
 		// If the vector is zero length (no lights or if all directions cancelled out), the cone is marked as invalid.
 		// TODO: Switch to a more sophisticated algorithm to get narrower cones.
 		for (Bin& bin : bins) {
-			bin.cosConeAngle = glm::length(bin.coneDirection) < FLT_MIN ? kInvalidCosConeAngle : 1.0f;
-			bin.coneDirection = glm::normalize(bin.coneDirection);
+			bin.cosConeAngle = length(bin.coneDirection) < FLT_MIN ? kInvalidCosConeAngle : 1.0f;
+			bin.coneDirection = normalize(bin.coneDirection);
 		}
 
 		for (uint32_t i = triangleRange.begin; i < triangleRange.end; ++i) {
@@ -692,9 +694,9 @@ LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const B
 
 			// Compute the bounding cone angle for the union of bins 0..i.
 			float cosTheta = kInvalidCosConeAngle;
-			if (glm::length(total.coneDirection) >= FLT_MIN) {
+			if (length(total.coneDirection) >= FLT_MIN) {
 				cosTheta = 1.f;
-				float3 coneDir = glm::normalize(total.coneDirection);
+				float3 coneDir = normalize(total.coneDirection);
 				for (std::size_t j = 0; j <= i; ++j) {
 					cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);
 				}
@@ -710,9 +712,9 @@ LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const B
 
 			// Compute the bounding cone angle for the union of bins i..n-1.
 			float cosTheta = kInvalidCosConeAngle;
-			if (glm::length(total.coneDirection) >= FLT_MIN) {
+			if (length(total.coneDirection) >= FLT_MIN) {
 				cosTheta = 1.f;
-				float3 coneDir = glm::normalize(total.coneDirection);
+				float3 coneDir = normalize(total.coneDirection);
 				for (std::size_t j = i; j <= costs.size(); ++j) {
 					cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);
 				}

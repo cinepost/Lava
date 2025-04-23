@@ -34,6 +34,7 @@
 #include "Falcor/Core/API/ParameterBlock.h"
 
 #include "Falcor/Utils/Math/Float16.h"
+#include "Falcor/Utils/Math/Matrix.h"
 
 namespace Falcor {
 
@@ -362,17 +363,17 @@ set_constant_by_offset(float16_t2);
 set_constant_by_offset(float16_t3);
 set_constant_by_offset(float16_t4);
 
-set_constant_by_offset(glm::mat2);
-set_constant_by_offset(glm::mat2x3);
-set_constant_by_offset(glm::mat2x4);
+set_constant_by_offset(float2x2);
+set_constant_by_offset(float2x3);
+set_constant_by_offset(float2x4);
 
-set_constant_by_offset(glm::mat3);
-set_constant_by_offset(glm::mat3x2);
-set_constant_by_offset(glm::mat3x4);
+set_constant_by_offset(float3x2);
+set_constant_by_offset(float3x3);
+set_constant_by_offset(float3x4);
 
-set_constant_by_offset(glm::mat4);
-set_constant_by_offset(glm::mat4x2);
-set_constant_by_offset(glm::mat4x3);
+set_constant_by_offset(float4x2);
+set_constant_by_offset(float4x3);
+set_constant_by_offset(float4x4);
 
 set_constant_by_offset(uint64_t);
 

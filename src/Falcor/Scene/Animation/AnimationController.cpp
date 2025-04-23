@@ -301,7 +301,7 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
 
         if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNodeID && (mGlobalMatrixLists[i].size() == mGlobalMatrixLists[sceneGraph[i].parent].size())) {
             for(size_t ii = 0; ii < mGlobalMatrixLists[i].size(); ++ii) {
-                mGlobalMatrixLists[i][ii] = mGlobalMatrixLists[sceneGraph[i].parent][ii] * mGlobalMatrixLists[i][ii];
+                mGlobalMatrixLists[i][ii] = mul(mGlobalMatrixLists[sceneGraph[i].parent][ii], mGlobalMatrixLists[i][ii]);
             }
         }
 
@@ -311,7 +311,7 @@ void AnimationController::updateWorldMatrices(bool updateAll) {
         }
 
         if (mpSkinningPass) {
-            mSkinningMatrices[i] = mGlobalMatrixLists[i][0] * sceneGraph[i].localToBindSpace;
+            mSkinningMatrices[i] = mul(mGlobalMatrixLists[i][0], sceneGraph[i].localToBindSpace);
             mInvTransposeSkinningMatrices[i] = transpose(inverse(mSkinningMatrices[i]));
         }
     }
@@ -418,7 +418,7 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
         std::vector<float4x4> meshInvBindMatrices(mMeshBindMatrices.size());
         for (size_t i = 0; i < mpScene->mSceneGraph.size(); i++) {
             mMeshBindMatrices[i] = mpScene->mSceneGraph[i].meshBind;
-            meshInvBindMatrices[i] = glm::inverse(mMeshBindMatrices[i]);
+            meshInvBindMatrices[i] = inverse(mMeshBindMatrices[i]);
         }
 
         // Bind vertex data.

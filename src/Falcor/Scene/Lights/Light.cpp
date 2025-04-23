@@ -39,7 +39,6 @@ static_assert(sizeof(LightData) % 16 == 0, "LightData struct size should be a mu
 
 static const float kMinColorComponentContribution = 0.00001f;
 static constexpr float kAreaEPSILON = std::numeric_limits<float>::epsilon() ;
-static constexpr float M_2PI = (float)M_PI * 2.0f;
 
 static inline bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
     if (cbOffset.getByteOffset() != cppOffset) {
@@ -295,7 +294,7 @@ void PointLight::update(const Light& light) {
 }
 
 void PointLight::setWorldDirection(const float3& dir) {
-    if (!(glm::length(dir) > 0.f)) { 
+    if (!(length(dir) > 0.f)) { 
         // NaNs propagate
         LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
@@ -308,17 +307,17 @@ void PointLight::update() {
     // Update transformation matrices
     // Assumes that mData.dirW is normalized
     const float3 up(0.f, 0.f, 1.f);
-    float3 vec = glm::cross(up, -mData.dirW);
-    float sinTheta = glm::length(vec);
+    float3 vec = cross(up, -mData.dirW);
+    float sinTheta = length(vec);
     
     if (sinTheta > 0.f) {
-        float cosTheta = glm::dot(up, -mData.dirW);
-        mData.transMat = glm::rotate(glm::mat4(), std::acos(cosTheta), vec);
+        float cosTheta = dot(up, -mData.dirW);
+        mData.transMat = rotate(float4x4(), std::acos(cosTheta), vec);
     } else {
-        mData.transMat = glm::mat4();
+        mData.transMat = float4x4();
     }
-    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
-    mData.intensity = mIntensity * M_2PI;
+    mData.transMatIT = inverse(transpose(mData.transMat));
+    mData.intensity = mIntensity * (float)M_2PI;
     Light::update();
 }
 
@@ -335,7 +334,7 @@ void PointLight::setOpeningAngle(float openingAngle) {
 }
 
 void PointLight::setOpeningHalfAngle(float openingAngle) {
-     openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
+     openingAngle = clamp(openingAngle, 0.f, (float)M_PI);
     if (openingAngle == mData.openingAngle) return;
 
     mData.openingAngle = openingAngle;
@@ -350,20 +349,20 @@ void PointLight::setPenumbraAngle(float angle) {
 }
 
 void PointLight::setPenumbraHalfAngle(float angle) {
-    angle = glm::clamp(angle, 0.0f, mData.openingAngle);
+    angle = clamp(angle, 0.0f, mData.openingAngle);
     if (mData.penumbraAngle == angle) return;
     mData.penumbraAngle = angle;
 }
 
 
-void PointLight::updateFromAnimation(const glm::mat4& transform) {
-    float3 fwd = float3(-transform[2]);
-    float3 pos = float3(transform[3]);
+void PointLight::updateFromAnimation(const float4x4& transform) {
+    float3 fwd = -transform.getCol(2).xyz();
+    float3 pos = transform.getCol(3).xyz();
     setWorldPosition(pos);
     setWorldDirection(fwd);
 }
 
-void PointLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void PointLight::updateFromAnimation(const std::vector<float4x4>& transformList) {
     if(transformList.empty()) return;
     updateFromAnimation(transformList[0]);
 }
@@ -381,7 +380,7 @@ DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
 }
 
 void DirectionalLight::update() {
-    mData.intensity = mIntensity * M_2PI;
+    mData.intensity = mIntensity * (float)M_2PI;
     Light::update();
 }
 
@@ -390,7 +389,7 @@ void DirectionalLight::update(const Light& light) {
 }
 
 void DirectionalLight::setWorldDirection(const float3& dir) {
-    if (!(glm::length(dir) > 0.f)) // NaNs propagate
+    if (!(length(dir) > 0.f)) // NaNs propagate
     {
         LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
@@ -398,12 +397,12 @@ void DirectionalLight::setWorldDirection(const float3& dir) {
     mData.dirW = normalize(dir);
 }
 
-void DirectionalLight::updateFromAnimation(const glm::mat4& transform) {
-    float3 fwd = float3(-transform[2]);
+void DirectionalLight::updateFromAnimation(const float4x4& transform) {
+    float3 fwd = -transform.getCol(2).xyz();
     setWorldDirection(fwd);
 }
 
-void DirectionalLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void DirectionalLight::updateFromAnimation(const std::vector<float4x4>& transformList) {
     if(transformList.empty()) return;
     updateFromAnimation(transformList[0]);
 }
@@ -426,7 +425,7 @@ void DistantLight::update(const Light& light) {
 }
 
 void DistantLight::setAngle(float angle) {
-    mAngle = glm::clamp(angle, 0.f, (float)M_PI_2);
+    mAngle = clamp(angle, 0.f, (float)M_PI_2);
     mData.cosSubtendedAngle = std::cos(mAngle);
     update();
 }
@@ -436,7 +435,7 @@ void DistantLight::setAngleDegrees(float deg) {
 }
 
 void DistantLight::setWorldDirection(const float3& dir) {
-    if (!(glm::length(dir) > 0.f)) // NaNs propagate
+    if (!(length(dir) > 0.f)) // NaNs propagate
     {
         LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
@@ -449,16 +448,16 @@ void DistantLight::update() {
     // Update transformation matrices
     // Assumes that mData.dirW is normalized
     const float3 up(0.f, 0.f, 1.f);
-    float3 vec = glm::cross(up, -mData.dirW);
-    float sinTheta = glm::length(vec);
+    float3 vec = cross(up, -mData.dirW);
+    float sinTheta = length(vec);
     
     if (sinTheta > 0.f) {
-        float cosTheta = glm::dot(up, -mData.dirW);
-        mData.transMat = glm::rotate(glm::mat4(), std::acos(cosTheta), vec);
+        float cosTheta = dot(up, -mData.dirW);
+        mData.transMat = rotate(float4x4::identity(), std::acos(cosTheta), vec);
     } else {
-        mData.transMat = glm::mat4();
+        mData.transMat = float4x4::identity();
     }
-    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+    mData.transMatIT = inverse(transpose(mData.transMat));
 
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
@@ -466,16 +465,16 @@ void DistantLight::update() {
         mData.flags &= ~(uint32_t)LightDataFlags::DeltaDirection;
     }
 
-    mData.intensity = mIntensity * M_2PI;
+    mData.intensity = mIntensity * (float)M_2PI;
     Light::update();
 }
 
-void DistantLight::updateFromAnimation(const glm::mat4& transform) {
-    float3 fwd = float3(-transform[2]);
+void DistantLight::updateFromAnimation(const float4x4& transform) {
+    float3 fwd = -transform.getCol(2).xyz();
     setWorldDirection(fwd);
 }
 
-void DistantLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void DistantLight::updateFromAnimation(const std::vector<float4x4>& transformList) {
     if(transformList.empty()) return;
     updateFromAnimation(transformList[0]);
 }
@@ -499,20 +498,20 @@ void EnvironmentLight::update(const Light& light) {
     Light::update(light);
 }
 
-void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
+void EnvironmentLight::updateFromAnimation(const float4x4& transform) {
 
 }
 
-void EnvironmentLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void EnvironmentLight::updateFromAnimation(const std::vector<float4x4>& transformList) {
     if(transformList.empty()) return;
     updateFromAnimation(transformList[0]);
 }
 
 void EnvironmentLight::update() {
     // Update matrix
-    mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), {1.0, 1.0, 1.0});
-    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
-    mData.transMatInv = glm::inverse(mData.transMat);
+    mData.transMat = mul(mTransformMatrix, scale(float4x4::identity(), {1.0, 1.0, 1.0}));
+    mData.transMatIT = inverse(transpose(mData.transMat));
+    mData.transMatInv = inverse(mData.transMat);
 
     mData.posW = {0.0, 0.0, 0.0};
     mData.intensity = mIntensity;
@@ -607,7 +606,7 @@ void AnalyticAreaLight::setSingleSided(bool value) {
     update();
 }
 
-void AnalyticAreaLight::setTransformMatrix(const glm::mat4& mtx) { 
+void AnalyticAreaLight::setTransformMatrix(const float4x4& mtx) { 
     if(mTransformMatrix == mtx) return;
     mTransformMatrix = mtx; 
     update(); 
@@ -620,9 +619,9 @@ void AnalyticAreaLight::setNormalizeArea(bool value) {
 }
 
 void AnalyticAreaLight::update() {
-    mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
-    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
-    mData.transMatInv = glm::inverse(mData.transMat);
+    mData.transMat = mul(mTransformMatrix, scale(float4x4::identity(), mScaling));
+    mData.transMatIT = inverse(transpose(mData.transMat));
+    mData.transMatInv = inverse(mData.transMat);
     mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
 
     if(mNormalizeArea) {
@@ -634,11 +633,11 @@ void AnalyticAreaLight::update() {
     Light::update();
 }
 
-void AnalyticAreaLight::updateFromAnimation(const glm::mat4& transform) { 
+void AnalyticAreaLight::updateFromAnimation(const float4x4& transform) { 
     setTransformMatrix(transform); 
 }
 
-void AnalyticAreaLight::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void AnalyticAreaLight::updateFromAnimation(const std::vector<float4x4>& transformList) {
     if(transformList.empty()) return;
     updateFromAnimation(transformList[0]);
 }
@@ -655,8 +654,8 @@ void RectLight::update(const Light& light) {
 }
 
 void RectLight::update() {
-    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    const float rx = length(mul(mData.transMat, float4(1.0f, 0.0f, 0.0f, 0.0f)));
+    const float ry = length(mul(mData.transMat, float4(0.0f, 1.0f, 0.0f, 0.0f)));
     const float a = std::max(kAreaEPSILON, 4.0f * rx * ry );
 
     mData.surfaceArea = a;
@@ -675,8 +674,8 @@ void DiscLight::update(const Light& light) {
 
 
 void DiscLight::update() {
-    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    const float rx = length(mul(mData.transMat, float4(1.0f, 0.0f, 0.0f, 0.0f)));
+    const float ry = length(mul(mData.transMat, float4(0.0f, 1.0f, 0.0f, 0.0f)));
     const float a = std::max(kAreaEPSILON, (float)M_PI * rx * ry);
     
     mData.surfaceArea = a;
@@ -694,9 +693,9 @@ void SphereLight::update(const Light& light) {
 }
 
 void SphereLight::update() {
-    const float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    const float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    const float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+    const float rx = length(mul(mData.transMat, float4(1.0f, 0.0f, 0.0f, 0.0f)));
+    const float ry = length(mul(mData.transMat, float4(0.0f, 1.0f, 0.0f, 0.0f)));
+    const float rz = length(mul(mData.transMat, float4(0.0f, 0.0f, 1.0f, 0.0f)));
     const float a = std::max( kAreaEPSILON, 
         4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));
 

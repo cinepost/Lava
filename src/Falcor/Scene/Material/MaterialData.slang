@@ -131,51 +131,51 @@ struct MaterialHeader
 
     /** Set double-sided flag.
     */
-    SETTER_DECL void setDoubleSided(bool doubleSided) { packedData.x = PACK_BITS(1, kDoubleSidedFlagOffset, packedData.x, doubleSided ? 1 : 0); }
+    SETTER_DECL void setDoubleSided(bool doubleSided) { packedData.x = PACK_BITS(1, kDoubleSidedFlagOffset, packedData.x, doubleSided ? 1u : 0u); }
 
     /** Get double-sided flag.
     */
-    bool isDoubleSided() CONST_FUNCTION { return packedData.x & (1u << kDoubleSidedFlagOffset); }
+    bool isDoubleSided() CONST_FUNCTION { return (packedData.x & (1u << kDoubleSidedFlagOffset)) != 0; }
 
     /** Set thin surface flag.
     */
-    SETTER_DECL void setThinSurface(bool thinSurface) { packedData.x = PACK_BITS(1, kThinSurfaceFlagOffset, packedData.x, thinSurface ? 1 : 0); }
+    SETTER_DECL void setThinSurface(bool thinSurface) { packedData.x = PACK_BITS(1, kThinSurfaceFlagOffset, packedData.x, thinSurface ? 1u : 0u); }
 
     /** Get thin surface flag.
     */
-    bool isThinSurface() CONST_FUNCTION { return packedData.x & (1u << kThinSurfaceFlagOffset); }
+    bool isThinSurface() CONST_FUNCTION { return (packedData.x & (1u << kThinSurfaceFlagOffset)) != 0; }
 
     /** Set emissive flag.
     */
-    SETTER_DECL void setEmissive(bool isEmissive) { packedData.x = PACK_BITS(1, kEmissiveFlagOffset, packedData.x, isEmissive ? 1 : 0); }
+    SETTER_DECL void setEmissive(bool isEmissive) { packedData.x = PACK_BITS(1, kEmissiveFlagOffset, packedData.x, isEmissive ? 1u : 0u); }
 
     /** Get emissive flag.
     */
-    bool isEmissive() CONST_FUNCTION { return packedData.x & (1u << kEmissiveFlagOffset); }
+    bool isEmissive() CONST_FUNCTION { return (packedData.x & (1u << kEmissiveFlagOffset)) != 0; }
 
     /** Set basic material flag. This flag is an optimization to allow quick type checking.
     */
-    SETTER_DECL void setIsBasicMaterial(bool isBasicMaterial) { packedData.x = PACK_BITS(1, kIsBasicMaterialFlagOffset, packedData.x, isBasicMaterial ? 1 : 0); }
+    SETTER_DECL void setIsBasicMaterial(bool isBasicMaterial) { packedData.x = PACK_BITS(1, kIsBasicMaterialFlagOffset, packedData.x, isBasicMaterial ? 1u : 0u); }
 
     /** Get basic material flag. This flag is an optimization to allow quick type checking.
     */
-    bool isBasicMaterial() CONST_FUNCTION { return packedData.x & (1u << kIsBasicMaterialFlagOffset); }
+    bool isBasicMaterial() CONST_FUNCTION { return (packedData.x & (1u << kIsBasicMaterialFlagOffset)) != 0; }
 
     /** Set light profile enable flag. // DEMO21
     */
-    SETTER_DECL void setEnableLightProfile(bool enableLightProfile) { packedData.y = PACK_BITS(1, kEnableLightProfileOffset, packedData.y, enableLightProfile ? 1 : 0); }
+    SETTER_DECL void setEnableLightProfile(bool enableLightProfile) { packedData.y = PACK_BITS(1, kEnableLightProfileOffset, packedData.y, enableLightProfile ? 1u : 0u); }
 
     /** Get light profile enable flag.
     */
-    bool isLightProfileEnabled() CONST_FUNCTION { return packedData.y & (1u << kEnableLightProfileOffset); }
+    bool isLightProfileEnabled() CONST_FUNCTION { return (packedData.y & (1u << kEnableLightProfileOffset)) != 0; }
 
     /** Set delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
     */
-    SETTER_DECL void setDeltaSpecular(bool deltaSpecular) { packedData.y = PACK_BITS(1, kDeltaSpecularFlagOffset, packedData.y, deltaSpecular ? 1 : 0); }
+    SETTER_DECL void setDeltaSpecular(bool deltaSpecular) { packedData.y = PACK_BITS(1, kDeltaSpecularFlagOffset, packedData.y, deltaSpecular ? 1u : 0u); }
 
     /** Get delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
     */
-    bool isDeltaSpecular() CONST_FUNCTION { return packedData.y & (1u << kDeltaSpecularFlagOffset); }
+    bool isDeltaSpecular() CONST_FUNCTION { return (packedData.y & (1u << kDeltaSpecularFlagOffset)) != 0; }
 
     /// Set index of refraction.
     SETTER_DECL void setIoR(float16_t ior) { packedData.z = PACK_BITS_UNSAFE(kIoRBits, kIoROffset, packedData.z, (uint)asuint16(ior)); }

@@ -3,8 +3,8 @@ import Scene.Material.VirtualTextureData;
 
 
 // Calculates texture page ID for a given mipLevel of a virtual texture at given tex_coord
-uint calculatePageID2D(float2 texCoord, int mipLevel, const VirtualTextureData vtexData, out uint pageID) {
-
+bool calculatePageID2D(float2 texCoord, int mipLevel, const VirtualTextureData vtexData, out uint pageID) {
+    pageID = -1;
     const uint _mipLevel = max(0, mipLevel);
 
     if( _mipLevel >= vtexData.mipTailStart) return false;

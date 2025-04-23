@@ -43,6 +43,7 @@ struct ShadingFrame
     */
     __init(const float3 normalW, const float4 tangentW)
     {
+        this.T = this.B = float3(0.f);
         this.N = normalize(normalW);
         orthonormalize(tangentW);
     }

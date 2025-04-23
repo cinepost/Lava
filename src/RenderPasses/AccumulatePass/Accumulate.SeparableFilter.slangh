@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef RENDERPASSES_ACCUMULATEPASS_SEPARABLEFILTER_SLANGH_
+#define RENDERPASSES_ACCUMULATEPASS_SEPARABLEFILTER_SLANGH_
+
 #include "Utils/HostDeviceShared.slangh"
 
 BEGIN_NAMESPACE_FALCOR
@@ -51,11 +53,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different accumulation pass sample filter types that are available.
 */
-enum class PixelFilterType
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class PixelFilterType : uint32_t
 {
     Point       = SF_TYPE_POINT,
     Box         = SF_TYPE_BOX,
@@ -75,3 +73,5 @@ enum class PixelFilterType
 };
 
 END_NAMESPACE_FALCOR
+
+#endif // RENDERPASSES_ACCUMULATEPASS_SEPARABLEFILTER_SLANGH_

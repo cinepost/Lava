@@ -206,16 +206,16 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
 
     ///
     float2 mInvFrameDim;
-    CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
+    CPUSampleGenerator::SharedPtr   mpSampleGenerator;
     
-    Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
-    Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
+    Falcor::RenderGraph::SharedPtr  mpRenderGraph;
+    Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph;
 
-    AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
-    DepthPass::SharedPtr            mpDepthPrePass = nullptr;
-    DepthPass::SharedPtr            mpDepthPass = nullptr;
-    EnvPass::SharedPtr              mpEnvPass = nullptr;
-    TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
+    AccumulatePass::SharedPtr       mpAccumulatePass;
+    DepthPass::SharedPtr            mpDepthPrePass;
+    DepthPass::SharedPtr            mpDepthPass;
+    EnvPass::SharedPtr              mpEnvPass;
+    TexturesResolvePass::SharedPtr  mpTexturesResolvePass;
     ///
 
     Falcor::Dictionary              mRendererConfDict;

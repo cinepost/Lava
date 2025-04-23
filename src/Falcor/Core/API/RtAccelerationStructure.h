@@ -31,6 +31,7 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Utils/Math/Matrix.h"
 
 namespace Falcor {
 
@@ -78,7 +79,7 @@ struct RtInstanceDesc {
 		layout while a glm matrix is column-major.
 		\param[in] matrix A 4x4 matrix to set into transform.
 	*/
-	RtInstanceDesc& setTransform(const glm::mat4& matrix);
+	RtInstanceDesc& setTransform(const float4x4& matrix);
 };
 
 enum class RtAccelerationStructureKind {
@@ -173,12 +174,10 @@ struct RtAccelerationStructureBuildInputs {
 	of an acceleration structure. It does not own the backing buffer resource, which is similar to
 	a resource view.
 */
-class FALCOR_API RtAccelerationStructure {
+class FALCOR_API RtAccelerationStructure: public std::enable_shared_from_this<RtAccelerationStructure> {
 public:
 	using SharedPtr = std::shared_ptr<RtAccelerationStructure>;
 	using SharedConstPtr = std::shared_ptr<const RtAccelerationStructure>;
-
-	using ApiHandle = AccelerationStructureHandle;
 
 	/** Settings for how the scene is updated
   */
@@ -241,9 +240,7 @@ public:
 
 	const Desc& getDesc() const { return mDesc; }
 
-	ApiHandle getApiHandle() const;
-
-	gfx::IAccelerationStructure* getGfxAccelerationStructure() const { return mApiHandle; }
+	gfx::IAccelerationStructure* getGfxAccelerationStructure() const { return mGfxAccelerationStructure; }
 
 protected:
 	RtAccelerationStructure(Device::SharedPtr pDevice, const Desc& desc);
@@ -251,7 +248,7 @@ protected:
 	Device::SharedPtr mpDevice = nullptr;
 	Desc mDesc;
 
-	ApiHandle mApiHandle;
+	Slang::ComPtr<gfx::IAccelerationStructure> mGfxAccelerationStructure;
 };
 
 }  // namespace Falcor

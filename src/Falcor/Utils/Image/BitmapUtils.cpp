@@ -1,6 +1,7 @@
 #include "Falcor/Core/API/Device.h"
 
 #include "BitmapUtils.h"
+#include "Falcor/Utils/Math/Float16.h"
 
 namespace Falcor {
 
@@ -34,12 +35,12 @@ bool isConvertibleToRGBA32Float(ResourceFormat format) {
 */
 std::vector<float> convertHalfToRGBA32Float(uint32_t width, uint32_t height, uint32_t channelCount, const void* pData) {
     std::vector<float> newData(width * height * 4u, 0.f);
-    const glm::detail::hdata* pSrc = reinterpret_cast<const glm::detail::hdata*>(pData);
+    const float16_t* pSrc = reinterpret_cast<const float16_t*>(pData);
     float* pDst = newData.data();
 
     for (uint32_t i = 0; i < width * height; ++i) {
         for (uint32_t c = 0; c < channelCount; ++c) {
-            *pDst++ = glm::detail::toFloat32(*pSrc++);
+            *pDst++ = float(*pSrc++);
         }
         pDst += (4 - channelCount);
     }

@@ -1524,6 +1524,7 @@
                 "compute"      "Raytracer"
                 "swraster"     "Rasterizer_SW"
                 "debug"        "Debug"
+                "null"         "Null"
             }
             parmtag { "script_callback_language" "python" }
         }
@@ -1553,6 +1554,7 @@
             help    "This controls the type of shading pass/algorithm we are using to shade actual samples/pixels. Deferred stands for a generic shading. PathTracer is... well it's path tracer. Debug is special type shading pass for development purposes."
             default { "deferred" }
             menu {
+                "null"       "Null"
                 "debug"      "Debug"
                 "deferred"   "Deferred"
                 "pathtracer" "PathTracer"

@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "glm/glm/mat4x4.hpp"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
@@ -61,7 +61,7 @@ class Transformable: public ScopeBase {
   public:
     using SharedConstPtr = std::shared_ptr<const Transformable>;
     using SharedPtr = std::shared_ptr<Transformable>;
-    using TransformList = std::vector<glm::mat4x4>;
+    using TransformList = std::vector<Falcor::float4x4>;
 
     Transformable(ScopeBase::SharedPtr pParent);
     virtual ~Transformable() {};

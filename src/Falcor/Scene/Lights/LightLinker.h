@@ -40,6 +40,8 @@
 #include "Falcor/Core/State/GraphicsState.h"
 #include "Falcor/Core/Program/Program.h"
 
+#include "Falcor/Utils/Math/Float16.h"
+
 #include "Falcor/Scene/Raytracing.h"
 
 #include "LightData.slang"

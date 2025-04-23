@@ -134,13 +134,11 @@ float Grid::getMaxValue() const
     return mpFloatGrid->tree().root().maximum();
 }
 
-uint64_t Grid::getVoxelCount() const
-{
+uint64_t Grid::getVoxelCount() const {
     return mpFloatGrid->activeVoxelCount();
 }
 
-uint64_t Grid::getGridSizeInBytes() const
-{
+uint64_t Grid::getGridSizeInBytes() const {
     const uint64_t nvdb = mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
     const uint64_t bricks = (mBrickedGrid.range ? mBrickedGrid.range->getTextureSizeInBytes() : (uint64_t)0) +
         (mBrickedGrid.indirection ? mBrickedGrid.indirection->getTextureSizeInBytes() : (uint64_t)0) +
@@ -148,36 +146,31 @@ uint64_t Grid::getGridSizeInBytes() const
     return nvdb + bricks;
 }
 
-AABB Grid::getWorldBounds() const
-{
+AABB Grid::getWorldBounds() const {
     auto bounds = mpFloatGrid->worldBBox();
     return AABB(cast(bounds.min()), cast(bounds.max()));
 }
 
-float Grid::getValue(const int3& ijk) const
-{
+float Grid::getValue(const int3& ijk) const {
     return mAccessor.getValue(nanovdb::Coord(ijk.x, ijk.y, ijk.z));
 }
 
-const nanovdb::GridHandle<nanovdb::HostBuffer>& Grid::getGridHandle() const
-{
+const nanovdb::GridHandle<nanovdb::HostBuffer>& Grid::getGridHandle() const {
     return mGridHandle;
 }
 
-glm::mat4 Grid::getTransform() const
-{
+float4x4 Grid::getTransform() const {
     const auto& gridMap = mGridHandle.gridMetaData()->map();
-    const float3x3 affine = glm::make_mat3(gridMap.mMatF);
+    const float3x3 affine = math::matrixFromCoefficients<float, 3, 3>(gridMap.mMatF);
     const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-    return glm::translate(float4x4(affine), translation);
+    return math::translate(float4x4(affine), translation);
 }
 
-glm::mat4 Grid::getInvTransform() const
-{
+float4x4 Grid::getInvTransform() const {
     const auto& gridMap = mGridHandle.gridMetaData()->map();
-    const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
+    const float3x3 invAffine = math::matrixFromCoefficients<float, 3, 3>(gridMap.mInvMatF);
     const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-    return glm::translate(float4x4(invAffine), -translation);
+    return math::translate(float4x4(invAffine), -translation);
 }
 
 Grid::Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)

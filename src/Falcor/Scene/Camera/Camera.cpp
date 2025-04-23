@@ -31,7 +31,7 @@
 
 #include "Falcor/Utils/Math/AABB.h"
 #include "Falcor/Utils/Math/FalcorMath.h"
-#include "glm/gtc/type_ptr.hpp"
+//#include "glm/gtc/type_ptr.hpp"
 
 #include "Camera.h"
 
@@ -45,8 +45,6 @@ namespace {
 }
 
 static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
-
-constexpr float M_2PI = 2.0f * M_PI;
 
 // Default dimensions of full frame cameras and 35mm film
 const float Camera::kDefaultFrameHeight = 24.0f;
@@ -214,14 +212,14 @@ void Camera::calculateCameraParameters() const {
 			float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
 			float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
 			float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
-			mData.projMat = glm::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
+			mData.projMat = math::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
 		} else {
 			// Take the length of look-at vector as half a viewport size
 			const float halfLookAtLength = 0.5f;
-			mData.projMat = glm::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
+			mData.projMat = math::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
 		}
 	}
-	mData.invProjMat = glm::inverse(mData.projMat);
+	mData.invProjMat = inverse(mData.projMat);
 
 	mXformList.resize(std::max(size_t(1), mPersistentViewMatList.size()));
 
@@ -232,21 +230,21 @@ void Camera::calculateCameraParameters() const {
 			LLOG_TRC << "Camera persistent view matrix";
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
-			xform.cameraU = glm::normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
-			xform.cameraV = glm::normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
-			xform.cameraW = -glm::normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
+			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
+			xform.cameraV = normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
+			xform.cameraW = -normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
 		} else {
 			LLOG_TRC << "Camera view matrix from pos, up, target";
-			xform.viewMat = glm::lookAt(mPosW, mTarget, mUp);
+			xform.viewMat = math::matrixFromLookAt(mPosW, mTarget, mUp, math::Handedness::RightHanded);
 			// Ray tracing related vectors
-			xform.cameraW = glm::normalize(mTarget - mPosW); // dir
-			xform.cameraU = glm::normalize(glm::cross(xform.cameraW, mUp)); // right
-			xform.cameraV = glm::normalize(glm::cross(xform.cameraU, xform.cameraW)); // up
+			xform.cameraW = normalize(mTarget - mPosW); // dir
+			xform.cameraU = normalize(cross(xform.cameraW, mUp)); // right
+			xform.cameraV = normalize(cross(xform.cameraU, xform.cameraW)); // up
 		}
 
-		xform.viewInvMat = glm::inverse(xform.viewMat);
-		xform.viewProjMat = mData.projMat * xform.viewMat;
-		xform.invViewProj = glm::inverse(xform.viewProjMat);
+		xform.viewInvMat = inverse(xform.viewMat);
+		xform.viewProjMat = mul(mData.projMat, xform.viewMat);
+		xform.invViewProj = inverse(xform.viewProjMat);
 
 		xform.cameraW *= mData.focalDistance;
 		xform.cameraU *= mData.focalDistance * std::tan(fovY * 0.5f) * mData.aspectRatio;
@@ -257,10 +255,12 @@ void Camera::calculateCameraParameters() const {
 	// Build jitter matrix
 	// (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
 	//  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
-	glm::mat4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
+	/*
+	float4x4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		mData.jitterX, mData.jitterY, 0.0f, 1.0f);
+	*/
 
 	// DOF matrix
 	/*
@@ -293,16 +293,16 @@ void Camera::calculateCameraParameters() const {
 	for(auto const& xform: mXformList) {
 		// Extract camera space frustum planes from the VP matrix
 		// See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
-		glm::mat4 tempMat = glm::transpose(xform.viewProjMat);
+		float4x4 tempMat = transpose(xform.viewProjMat);
 		for (int i = 0; i < 6; i++) {
-			float4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
+			float4 plane = (i & 1) ? tempMat.getCol(i >> 1) : -tempMat.getCol(i >> 1);
 			if(i != 5) {
 				// Z range is [0, w]. For the 0 <= z plane we don't need to add w
-				plane += tempMat[3];
+				plane += tempMat.getCol(3);
 			}
 
-			mFrustumPlanes[i].xyz = float3(plane);
-			mFrustumPlanes[i].sign = glm::sign(mFrustumPlanes[i].xyz);
+			mFrustumPlanes[i].xyz = plane.xyz();			
+			mFrustumPlanes[i].sign = math::sign(mFrustumPlanes[i].xyz);
 			mFrustumPlanes[i].negW = -plane.w;
 		}
 	}
@@ -310,51 +310,51 @@ void Camera::calculateCameraParameters() const {
 	mDirty = false;
 }
 
-const glm::mat4& Camera::getViewMatrix() const {
+const float4x4& Camera::getViewMatrix() const {
 	calculateCameraParameters();
 	return mXformList[0].viewMat;
 }
 
-const std::vector<glm::mat4> Camera::getViewMatrixList() const {
+const std::vector<float4x4> Camera::getViewMatrixList() const {
 	calculateCameraParameters();
-	std::vector<glm::mat4> list;
+	std::vector<float4x4> list;
 	for(auto const& xform: mXformList) list.push_back(xform.viewMat);
 	return list;
 }
 
-const glm::mat4& Camera::getPrevViewMatrix() const {
+const float4x4& Camera::getPrevViewMatrix() const {
 	calculateCameraParameters();
 	return mData.prevViewMat;
 }
 
-const glm::mat4& Camera::getProjMatrix() const {
+const float4x4& Camera::getProjMatrix() const {
 	calculateCameraParameters();
 	return mData.projMat;
 }
 
-const glm::mat4& Camera::getInvProjMatrix() const {
+const float4x4& Camera::getInvProjMatrix() const {
 	calculateCameraParameters();
 	return mData.invProjMat;
 }
 
-const glm::mat4& Camera::getViewProjMatrix() const {
+const float4x4& Camera::getViewProjMatrix() const {
 	calculateCameraParameters();
 	return mXformList[0].viewProjMat;
 }
 
-const glm::mat4& Camera::getInvViewProjMatrix() const {
+const float4x4& Camera::getInvViewProjMatrix() const {
 	calculateCameraParameters();
 	return mXformList[0].invViewProj;
 }
 
-void Camera::setProjectionMatrix(const glm::mat4& proj) {
+void Camera::setProjectionMatrix(const float4x4& proj) {
 	if(mPersistentProjMat == proj) return;
 	mDirty = true;
 	mPersistentProjMat = proj;
 	togglePersistentProjectionMatrix(true);
 }
 
-void Camera::setViewMatrix(const glm::mat4& view) {
+void Camera::setViewMatrix(const float4x4& view) {
 	if(mPersistentViewMatList.size() == 0 && mPersistentViewMatList[0] == view) return;
 	if(mPersistentViewMatList.size() != 1) {
 		LLOG_WRN << "Trying to set view matrix for camera " << mName << " while multiple matrices already exists !!! Resetting camera view matrices list...";
@@ -365,7 +365,7 @@ void Camera::setViewMatrix(const glm::mat4& view) {
 	mDirty = true;
 }
 
-void Camera::setViewMatrixList(const std::vector<glm::mat4>& views) {
+void Camera::setViewMatrixList(const std::vector<float4x4>& views) {
 	assert(!views.empty());
 	if(views.empty()) {
 		LLOG_ERR << "Empty views list provided for camera " << mName << ". No changes applied ...";
@@ -397,7 +397,7 @@ bool Camera::isObjectCulled(const AABB& box) const {
 	// See method 4b: https://fgiesen.wordpress.com/2010/10/17/view-frustum-culling/
 	for (int plane = 0; plane < 6; plane++) {
 		float3 signedHalfExtent = 0.5f * box.extent() * mFrustumPlanes[plane].sign;
-		float dr = glm::dot(box.center() + signedHalfExtent, mFrustumPlanes[plane].xyz);
+		float dr = dot(box.center() + signedHalfExtent, mFrustumPlanes[plane].xyz);
 		isInside = isInside && (dr > mFrustumPlanes[plane].negW);
 	}
 
@@ -463,16 +463,16 @@ float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels)
 	return angle;
 }
 
-void Camera::updateFromAnimation(const glm::mat4& transform) {
-	float3 up = float3(transform[1]);
-	float3 fwd = float3(transform[2]);
-	float3 pos = float3(transform[3]);
+void Camera::updateFromAnimation(const float4x4& transform) {
+	float3 up = transform.getCol(1).xyz();
+	float3 fwd = -transform.getCol(2).xyz();
+	float3 pos = transform.getCol(3).xyz();
 	setUpVector(up);
 	setPosition(pos);
 	setTarget(pos + fwd);
 }
 
-void Camera::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+void Camera::updateFromAnimation(const std::vector<float4x4>& transformList) {
 	if(transformList.empty() || mPersistentViewMatList == transformList) return;
 	mPersistentViewMatList = transformList;
 	mEnablePersistentViewMat = true;

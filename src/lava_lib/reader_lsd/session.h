@@ -13,6 +13,7 @@
 #include "scope.h"
 #include "../display.h"
 
+#include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
@@ -46,12 +47,12 @@ class Session {
       double time = 0.0;
 
       // camera section
-      std::string cameraProjectionName = "perspective";
-      double      cameraNearPlane = 0.01;
-      double      cameraFarPlane  = 1000.0;
-      glm::mat4   cameraTransform;
-      double      cameraFocalLength = 1.0;
-      double      cameraFrameHeight = 1.0;
+      std::string       cameraProjectionName = "perspective";
+      double            cameraNearPlane = 0.01;
+      double            cameraFarPlane  = 1000.0;
+      Falcor::float4x4  cameraTransform;
+      double            cameraFocalLength = 1.0;
+      double            cameraFrameHeight = 1.0;
 
       Renderer::SamplePattern samplePattern = Renderer::SamplePattern::Stratified;
     };

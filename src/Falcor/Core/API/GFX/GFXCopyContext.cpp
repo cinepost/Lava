@@ -359,7 +359,7 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 
 	gfx::ITextureResource::Extents copySize = { (int)size.x, (int)size.y, (int)size.z };
 
-	if (size.x == glm::uint(-1)) {
+	if (size.x == uint(-1)) {
 		copySize.width = pSrc->getWidth(srcSubresource.mipLevel) - srcOffset.x;
 		copySize.height = pSrc->getHeight(srcSubresource.mipLevel) - srcOffset.y;
 		copySize.depth = pSrc->getDepth(srcSubresource.mipLevel) - srcOffset.z;

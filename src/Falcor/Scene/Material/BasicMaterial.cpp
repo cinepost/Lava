@@ -266,7 +266,7 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
         // Update base color parameter and texture.
         float3 baseColor = getBaseColor();
         if (isColorConstant) {
-            baseColor = float3(texInfo.value.rgb);
+            baseColor = float3(texInfo.value.rgb());
             mIsTexturedBaseColorConstant = true;
         }
         if (hasAlpha && isAlphaConstant) {
@@ -302,7 +302,7 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
     case TextureSlot::Emissive: {
         if (texInfo.isConstant(channelMask)) {
             clearTexture(Material::TextureSlot::Emissive);
-            setEmissiveColor(texInfo.value.rgb);
+            setEmissiveColor(texInfo.value.rgb());
             stats.texturesRemoved[(size_t)slot]++;
         }
         break;
@@ -332,7 +332,7 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
     case TextureSlot::Transmission: {
         if (texInfo.isConstant(channelMask)) {
             clearTexture(Material::TextureSlot::Transmission);
-            setTransmissionColor(texInfo.value.rgb);
+            setTransmissionColor(texInfo.value.rgb());
             stats.texturesRemoved[(size_t)slot]++;
         }
         break;

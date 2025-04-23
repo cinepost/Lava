@@ -51,10 +51,6 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "SceneBuilder.h"
 
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/string_cast.hpp>
-
-//#include "nvvk/buffers_vk.hpp"
 
 static std::atomic<uint32_t> _cnt = 0;
 
@@ -127,17 +123,9 @@ namespace {
     const std::string kSelectViewpoint = "selectViewpoint";
 
     // Checks if the transform flips the coordinate system handedness (its determinant is negative).
-    inline bool doesTransformFlip(const glm::mat4& m) {
-        return glm::determinant((glm::mat3)m) < 0.f;
+    bool doesTransformFlip(const float4x4& m) {
+        return determinant(float3x3(m)) < 0.f;
     }
-}
-
-static inline VkTransformMatrixKHR toTransformMatrixKHR(const glm::mat4& m) {
-    VkTransformMatrixKHR out_matrix;
-    
-    auto temp = glm::transpose(m);
-    memcpy(&out_matrix, glm::value_ptr(temp), sizeof(VkTransformMatrixKHR));
-    return out_matrix;
 }
 
 Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
@@ -980,7 +968,7 @@ void Scene::updateBounds() {
 
     for (const auto& inst : mGeometryInstanceData) {
         const auto& matrixList = globalMatrixLists[inst.nodeID];
-        for(const glm::mat4& transform: matrixList) {
+        for(const float4x4& transform: matrixList) {
             switch (inst.getType()) {
                 case GeometryType::TriangleMesh:
                 case GeometryType::DisplacedTriangleMesh: 
@@ -997,12 +985,12 @@ void Scene::updateBounds() {
                 }
                 case GeometryType::SDFGrid:
                 {
-                    float3x3 transform3x3 = glm::mat3(transform);
-                    transform3x3[0] = glm::abs(transform3x3[0]);
-                    transform3x3[1] = glm::abs(transform3x3[1]);
-                    transform3x3[2] = glm::abs(transform3x3[2]);
-                    float3 center = transform[3];
-                    float3 halfExtent = transform3x3 * float3(0.5f);
+                    float3x3 transform3x3 = float3x3(transform);
+                    transform3x3[0] = abs(transform3x3[0]);
+                    transform3x3[1] = abs(transform3x3[1]);
+                    transform3x3[2] = abs(transform3x3[2]);
+                    float3 center = transform.getCol(3).xyz();
+                    float3 halfExtent = transformVector(transform3x3, float3(0.5f));
                     mSceneBB |= AABB(center - halfExtent, center + halfExtent);
                     break;
                 }
@@ -1798,8 +1786,8 @@ Scene::UpdateFlags Scene::updateGridVolumes(bool forceUpdate) {
             // Merge grid and volume transforms.
             const auto& densityGrid = pGridVolume->getDensityGrid();
             if (densityGrid) {
-                data.transform = data.transform * densityGrid->getTransform();
-                data.invTransform = densityGrid->getInvTransform() * data.invTransform;
+                data.transform = mul(data.transform, densityGrid->getTransform());
+                data.invTransform = mul(densityGrid->getInvTransform(), data.invTransform);
             }
             mpGridVolumesBuffer->setElement(volumeIndex, data);
         }
@@ -2370,10 +2358,10 @@ void Scene::initGeomDesc(RenderContext* pContext) {
         // TODO: Use AnimationController's matrix buffer directly when we've switched to a row-major matrix library.
         auto getStaticMatricesBuffer = [&]() {
             if (!mpBlasStaticWorldMatrices) {
-                std::vector<glm::mat4> transposedMatrices;
+                std::vector<float4x4> transposedMatrices;
                 transposedMatrices.reserve(mpAnimationController->getGlobalMatricesCount());
                 for(const auto& matrixList: globalMatrixLists) {
-                    for(const auto& m : matrixList) transposedMatrices.push_back(glm::transpose(m));
+                    for(const auto& m : matrixList) transposedMatrices.push_back(transpose(m));
                 }    
 
                 uint32_t float4Count = (uint32_t)transposedMatrices.size() * 4;
@@ -2423,12 +2411,12 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                         uint32_t nodeID = inst.nodeID;
 
                         assert(nodeID < globalMatrixLists.size());
-                        static const std::vector<glm::mat4> defaultList = {glm::identity<glm::mat4>()};
+                        static const std::vector<float4x4> defaultList = {float4x4::identity()};
                         const auto& transformList = globalMatrixLists[nodeID];
                         if (transformList != defaultList) {
                             // Get the GPU address of the transform in row-major format.
                             desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + inst.globalMatrixOffset * 64ull;
-                            if (glm::determinant(transformList[0]) < 0.f) frontFaceCW = !frontFaceCW;
+                            if (determinant(transformList[0]) < 0.f) frontFaceCW = !frontFaceCW;
                         }
                     }
                     triangleWindings |= frontFaceCW ? 1 : 2;
@@ -3089,7 +3077,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
                 instanceID ++;//= (uint32_t)meshList.size();
 
-                glm::mat4 transform4x4 = glm::identity<glm::mat4>();
+                float4x4 transform4x4 = float4x4::identity();
                 if (!isStatic) {
                     // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
                     // Just pick the matrix from the first mesh.
@@ -3217,7 +3205,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
         instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCustomPrimitiveDesc.size();
 
-        glm::mat4 identityMat = glm::identity<glm::mat4>();
+        float4x4 identityMat = float4x4::identity();
         std::memcpy(desc.transform, &identityMat, sizeof(desc.transform));
         instanceDescs.push_back(desc);
     }
@@ -3244,6 +3232,8 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
     inputs.kind = RtAccelerationStructureKind::TopLevel;
     inputs.descCount = (uint32_t)mInstanceDescs.size();
     inputs.flags = RtAccelerationStructureBuildFlags::None;
+
+    LLOG_WRN << "RtAccelerationStructureBuildInputs descCount " << inputs.descCount;
 
     // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
     if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == RtAccelerationStructure::UpdateMode::Refit) {

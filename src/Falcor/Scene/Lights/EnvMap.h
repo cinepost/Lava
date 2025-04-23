@@ -34,6 +34,8 @@
 #include "Falcor/Core/API/Sampler.h"
 
 #include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Matrix.h"
 
 #include "EnvMapData.slang"
 
@@ -64,7 +66,8 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
         a transformation matrix.
         \param[in] degreesXYZ Rotation angles in degrees for XYZ.
     */
-    void setRotation(float3 degreesXYZ);
+    void setRotation(const float3& degreesXYZ);
+    void setTransform(const float4x4& matrix);
 
     /** Get rotation angles.
     */

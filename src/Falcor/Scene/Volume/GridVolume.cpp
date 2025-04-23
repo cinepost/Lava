@@ -41,8 +41,8 @@ namespace Falcor {
     static_assert(sizeof(GridVolumeData) % 16 == 0, "GridVolumeData size should be a multiple of 16");
 
     GridVolume::GridVolume(Device::SharedPtr pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
-        mData.transform = glm::identity<glm::mat4>();
-        mData.invTransform = glm::identity<glm::mat4>();
+        mData.transform = float4x4::identity();
+        mData.invTransform = float4x4::identity();
     }
 
     GridVolume::SharedPtr GridVolume::create(Device::SharedPtr pDevice, const std::string& name) {
@@ -209,16 +209,16 @@ namespace Falcor {
         }
     }
 
-    void GridVolume::updateFromAnimation(const glm::mat4& transform) {
+    void GridVolume::updateFromAnimation(const float4x4& transform) {
         if (mData.transform != transform) {
             mData.transform = transform;
-            mData.invTransform = glm::inverse(transform);
+            mData.invTransform = inverse(transform);
             markUpdates(UpdateFlags::TransformChanged);
             updateBounds();
         }
     }
 
-    void GridVolume::updateFromAnimation(const std::vector<glm::mat4>& transformList) {
+    void GridVolume::updateFromAnimation(const std::vector<float4x4>& transformList) {
         if(transformList.empty()) return;
         updateFromAnimation(transformList[0]);
     }

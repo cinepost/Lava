@@ -41,7 +41,7 @@ __exported import Scene.Camera.Camera;
 __exported import Utils.Math.Ray;
 
 #ifndef COMPUTE_DEPTH_OF_FIELD
-#deinfe COMPUTE_DEPTH_OF_FIELD 0
+#define COMPUTE_DEPTH_OF_FIELD 0
 #endif
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -87,7 +87,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     backColor += gBackdropTexture.SampleGrad(gSampler, uv, gradX, gradY);
 #else
 
-    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
+    static const bool kComputeDepthOfField = (bool)COMPUTE_DEPTH_OF_FIELD;
     float3 rayDir;
 
     if (kComputeDepthOfField) {

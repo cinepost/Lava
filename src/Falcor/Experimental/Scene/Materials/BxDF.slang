@@ -757,14 +757,13 @@ struct StandardBSDF : IBSDF
         float diffuseWeight = luminance(data.diffuse);
         float specularWeight = luminance(evalFresnelSchlick(data.specular, 1.f, wi.z));
 
-        pDiffuseReflection = (activeLobes & (uint)LobeType::DiffuseReflection) ? diffuseWeight * dielectricBSDF * (1.f - diffTrans) : 0.f;
-        pDiffuseTransmission = (activeLobes & (uint)LobeType::DiffuseTransmission) ? diffuseWeight * dielectricBSDF * diffTrans : 0.f;
-        pSpecularReflection = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection)) ? specularWeight * (metallicBRDF + dielectricBSDF) : 0.f;
+        pDiffuseReflection = ((activeLobes & (uint)LobeType::DiffuseReflection) != 0) ? diffuseWeight * dielectricBSDF * (1.f - diffTrans) : 0.f;
+        pDiffuseTransmission = ((activeLobes & (uint)LobeType::DiffuseTransmission) != 0) ? diffuseWeight * dielectricBSDF * diffTrans : 0.f;
+        pSpecularReflection = ((activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection)) != 0) ? specularWeight * (metallicBRDF + dielectricBSDF) : 0.f;
         pSpecularReflectionTransmission = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission)) ? specularBSDF : 0.f;
 
         float normFactor = pDiffuseReflection + pDiffuseTransmission + pSpecularReflection + pSpecularReflectionTransmission;
-        if (normFactor > 0.f)
-        {
+        if (normFactor > 0.f) {
             normFactor = 1.f / normFactor;
             pDiffuseReflection *= normFactor;
             pDiffuseTransmission *= normFactor;
@@ -777,8 +776,7 @@ struct StandardBSDF : IBSDF
         \param[in] data BSDF parameters.
         \return Returns a set of lobes (see LobeType.slang).
     */
-    static uint getLobeTypes(const StandardBSDFData data)
-    {
+    static uint getLobeTypes(const StandardBSDFData data) {
 #if EnableDeltaBSDF
         float alpha = data.roughness * data.roughness;
         bool isDelta = alpha < kMinGGXAlpha;
@@ -789,8 +787,7 @@ struct StandardBSDF : IBSDF
         float specTrans = data.specularTransmission;
 
         uint lobeTypes = isDelta ? (uint)LobeType::DeltaReflection : (uint)LobeType::SpecularReflection;
-        if (any(data.diffuse > 0.f) && specTrans < 1.f)
-        {
+        if (any(data.diffuse > 0.f) && specTrans < 1.f) {
             if (diffTrans < 1.f) lobeTypes |= (uint)LobeType::DiffuseReflection;
             if (diffTrans > 0.f) lobeTypes |= (uint)LobeType::DiffuseTransmission;
         }
@@ -799,9 +796,7 @@ struct StandardBSDF : IBSDF
         return lobeTypes;
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
-    {
-
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg) {
         float3 result = 0.f;
         if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg);
         if (pDiffuseTransmission > 0.f) result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo, sg);
@@ -810,8 +805,7 @@ struct StandardBSDF : IBSDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
-    {
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg) {
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};

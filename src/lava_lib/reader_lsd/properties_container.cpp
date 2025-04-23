@@ -13,7 +13,7 @@ namespace lava {
 
 namespace lsd {
 
-std::shared_ptr<PropertiesContainer> Property::createSubContainer() {
+std::shared_ptr<PropertiesContainer>& Property::createSubContainer() {
     if(mpSubContainer) {
         LLOG_WRN << "Sub-container already exist for property !"; 
     } else {

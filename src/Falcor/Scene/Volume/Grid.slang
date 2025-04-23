@@ -170,7 +170,7 @@ struct Grid
     */
     float lookupWorld(const float3 pos, inout Accessor accessor)
     {
-        return lookupIndex(worldToIndexPos(pos), accessor);
+        return lookupIndex((int3)worldToIndexPos(pos), accessor);
     }
 
     /** Lookup the grid using nearest-neighbor sampling.
@@ -272,7 +272,7 @@ struct Grid
     */
     float lookupStochasticIndex(const float3 index, const float3 u, inout Accessor accessor)
     {
-        return lookupIndex(floor(index + (u - 0.5f)), accessor);
+        return lookupIndex((int3)floor(index + (u - 0.5f)), accessor);
     }
 
     /** Lookup the grid using stochastic tri-linear sampling.
@@ -282,7 +282,7 @@ struct Grid
     */
     float lookupStochasticIndexTex(const float3 index, float3 u)
     {
-        return lookupIndexTex(index + (u - 0.5f));
+        return lookupIndexTex((int3)(index + (u - 0.5f)));
     }
 
     /** Wrapper for NanoVDB DDA.

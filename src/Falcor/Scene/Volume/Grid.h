@@ -46,6 +46,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/Matrix.h"
 
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
@@ -130,11 +131,11 @@ namespace Falcor
 
         /** Get the (affine) NanoVDB transformation matrix.
         */
-        glm::mat4 getTransform() const;
+        float4x4 getTransform() const;
 
         /** Get the inverse (affine) NanoVDB transformation matrix.
         */
-        glm::mat4 getInvTransform() const;
+        float4x4 getInvTransform() const;
 
     private:
         Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);

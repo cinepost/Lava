@@ -6,10 +6,6 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
-#include "glm/gtc/random.hpp"
-
-#include "glm/gtx/string_cast.hpp"
-
 #include "DeferredLightingPass.h"
 
 

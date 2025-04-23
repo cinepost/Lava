@@ -32,27 +32,21 @@ import Utils.Math.MathHelpers;
 
 /** Null collision phase function
 */
-struct NullPhaseFunction : IPhaseFunction
-{
-    __init()
-    {
-    }
+struct NullPhaseFunction : IPhaseFunction {
+    __init() {}
 
-    float3 eval(const float3 wi, const float3 wo)
-    {
+    float3 eval(const float3 wi, const float3 wo) {
         return 0.f;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg)
-    {
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg) {
         wo = -wi;
         pdf = 1.f;
         weight = 1.f;
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
-    {
+    float evalPdf(const float3 wi, const float3 wo) {
         return 0.f;
     }
 };
@@ -60,27 +54,21 @@ struct NullPhaseFunction : IPhaseFunction
 /** Isotropic phase function.
     f_p(wi, wo) = 1 / 4PI
 */
-struct IsotropicPhaseFunction : IPhaseFunction
-{
-    __init()
-    {
-    }
+struct IsotropicPhaseFunction : IPhaseFunction {
+    __init() {}
 
-    float3 eval(const float3 wi, const float3 wo)
-    {
+    float3 eval(const float3 wi, const float3 wo) {
         return M_1_4PI;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg)
-    {
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg) {
         wo = sample_sphere(sampleNext2D(sg));
         pdf = M_1_4PI;
         weight = 1.f;
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
-    {
+    float evalPdf(const float3 wi, const float3 wo) {
         return M_1_4PI;
     }
 };
@@ -89,31 +77,24 @@ struct IsotropicPhaseFunction : IPhaseFunction
     Note: The incident and outgoing directions are assumed to be pointing away from the scattering position.
     Note: This function reduces to isotropic phase function at g = 0 and has singularities at g = -1 and g = 1.
 */
-struct HenyeyGreensteinPhaseFunction : IPhaseFunction
-{
+struct HenyeyGreensteinPhaseFunction : IPhaseFunction {
     float g;
 
-    __init(float g)
-    {
+    __init(float g) {
         this.g = g;
     }
 
-    float3 eval(const float3 wi, const float3 wo)
-    {
+    float3 eval(const float3 wi, const float3 wo) {
         return evalHenyeyGreenstein(dot(wi, wo), g);
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg)
-    {
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg) {
         const float2 u = sampleNext2D(sg);
 
         float cosTheta;
-        if (abs(g) < 1e-3f)
-        {
+        if (abs(g) < 1e-3f) {
             cosTheta = 1.f - 2.f * u.x;
-        }
-        else
-        {
+        } else {
             const float sqr = (1.f - g * g) / (1.f - g + 2.f * g * u.x);
             cosTheta = (1.f + g * g - sqr * sqr) / (2.f * g);
         }
@@ -132,8 +113,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
-    {
+    float evalPdf(const float3 wi, const float3 wo) {
         return evalHenyeyGreenstein(dot(wi, wo), g);
     }
 };
@@ -143,8 +123,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
     \param[in] cosTheta Cosine between unscattered and scattered direction.
     \param[in] g Anisotropy parameter in (-1, 1), where positive values promote forward scattering.
 */
-float evalHenyeyGreenstein(const float cosTheta, const float g)
-{
+float evalHenyeyGreenstein(const float cosTheta, const float g) {
     const float denom = 1 + g * g + 2 * g * cosTheta;
     return M_1_4PI * (1 - g * g) / (denom * sqrt(denom));
 }
@@ -153,32 +132,27 @@ float evalHenyeyGreenstein(const float cosTheta, const float g)
     \param[in] cosTheta Cosine between unscattered and scattered direction.
     \param[in] g Anisotropy parameter in (-1, 1), where positive values promote forward scattering.
 */
-float3 evalHenyeyGreenstein(const float cosTheta, const float3 g)
-{
+float3 evalHenyeyGreenstein(const float cosTheta, const float3 g) {
     const float3 denom = 1 + g * g + 2 * g * cosTheta;
     return M_1_4PI * (1 - g * g) / (denom * sqrt(denom));
 }
 
 /// This is a dummy code for now, to be filled in by @aweidlich by Nov 18th, 2022, no pressure
-struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction
-{
+struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction {
     float3 meancosine[2];
     float3 w0;
 
-    __init(float3 meancosine0, float3 meancosine1, float3 w0)
-    {
+    __init(float3 meancosine0, float3 meancosine1, float3 w0) {
         this.meancosine[0] = meancosine0;
         this.meancosine[1] = meancosine1;
         this.w0 = w0;
     }
 
-    float3 eval(const float3 wi, const float3 wo)
-    {
+    float3 eval(const float3 wi, const float3 wo) {
         return evalHenyeyGreenstein(dot(wi, wo), meancosine[0]) * w0 + evalHenyeyGreenstein(dot(wi, wo), meancosine[1]) * (1.f - w0);
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg)
-    {
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg) {
         const float3 u = sampleNext3D(sg);
 
         const float avgW0 = (w0[0]+w0[1]+w0[2]) / 3.f;
@@ -187,25 +161,21 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction
         const float meancosineHero = (meancosineSelect[0] + meancosineSelect[1] + meancosineSelect[2]) / 3.f;
 
         float cosTheta;
-        if (abs(meancosineHero) < 1e-3f)
-        {
+
+        if (abs(meancosineHero) < 1e-3f) {
             cosTheta = 1.f - 2.f * u.x;
-        }
-        else
-        {
+        } else {
             const float sqr = (1.f - meancosineHero * meancosineHero) / (1.f - meancosineHero + 2.f * meancosineHero * u.x);
             cosTheta = (1.f + meancosineHero * meancosineHero - sqr * sqr) / (2.f * meancosineHero);
         }
 
         float selectionweight;
-        float3 weight;
-        if (u.z <= avgW0)
-        {
+        float3 weight = float3(0.f);
+        
+        if (u.z <= avgW0) {
             selectionweight = avgW0;
             weight = w0;
-        }
-        else
-        {
+        } else {
             selectionweight = (1.0 - avgW0);
             weight = 1.f - w0;
         }
@@ -224,8 +194,7 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
-    {
+    float evalPdf(const float3 wi, const float3 wo) {
         const float mc0 = (meancosine[0][0]+meancosine[0][1]+meancosine[0][2]) / 3.f;
         const float mc1 = (meancosine[1][0]+meancosine[1][1]+meancosine[1][2]) / 3.f;
         const float avgW0 = (w0[0]+w0[1]+w0[2]) / 3.f;

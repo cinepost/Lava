@@ -258,8 +258,8 @@ namespace Falcor
         */
         const AABB& getBounds() const { return mBounds; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
-        void updateFromAnimation(const std::vector<glm::mat4>& transformList) override;
+        void updateFromAnimation(const float4x4& transform) override;
+        void updateFromAnimation(const std::vector<float4x4>& transformList) override;
 
     private:
         GridVolume(Device::SharedPtr pDevice, const std::string& name);

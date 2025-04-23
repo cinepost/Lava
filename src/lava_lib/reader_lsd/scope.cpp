@@ -1,6 +1,8 @@
 #include "scope.h"
 #include "grammar_lsd.h"
 
+#include "Falcor/Utils/Math/Matrix.h"
+
 #include "lava_utils_lib/logging.h"
 
 namespace lava {
@@ -46,7 +48,7 @@ EmbeddedData& ScopeBase::getEmbeddedData(const std::string& name) {
 
 Transformable::Transformable(ScopeBase::SharedPtr pParent):ScopeBase(pParent) {
 	mTransformList.clear();
-	mTransformList.push_back(glm::mat4( 1.0 ));
+	mTransformList.push_back(Falcor::float4x4::identity());
 }
 
 void Transformable::setTransform(const lsd::Matrix4& mat) {

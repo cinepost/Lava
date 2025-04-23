@@ -30,6 +30,7 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 
 namespace Falcor {

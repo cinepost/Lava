@@ -55,6 +55,7 @@ target_link_libraries(
     AmbientOcclusionPass
     EdgeDetectPass
     DepthPass
+    NullShadingPass
     DebugShadingPass
     DeferredLightingPass
 #    PathTracer
