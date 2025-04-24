@@ -47,31 +47,22 @@ EmbeddedData& ScopeBase::getEmbeddedData(const std::string& name) {
 /* Transformable */
 
 Transformable::Transformable(ScopeBase::SharedPtr pParent):ScopeBase(pParent) {
+	static const Falcor::float4x4 m1 = Falcor::float4x4::identity();
 	mTransformList.clear();
-	mTransformList.push_back(Falcor::float4x4::identity());
+	mTransformList.push_back(m1);
 }
 
-void Transformable::setTransform(const lsd::Matrix4& mat) {
+void Transformable::setTransform(const lsd::Matrix4& m) {
 	if(mTransformList.size() > 1) {
 		LLOG_WRN << "Setting transfrorm on transfrorm list that is larger than 1 !!!";
 		return;
 	}
 
-	mTransformList[0] = {
-		mat[0], mat[1], mat[2], mat[3],
-		mat[4], mat[5], mat[6], mat[7],
-		mat[8], mat[9], mat[10], mat[11],
-		mat[12], mat[13], mat[14], mat[15]
-	};
+	mTransformList[0] = to_mat4(m);
 }
 
-void Transformable::addTransform(const lsd::Matrix4& mat) {
-	mTransformList.push_back({
-		mat[0], mat[1], mat[2], mat[3],
-		mat[4], mat[5], mat[6], mat[7],
-		mat[8], mat[9], mat[10], mat[11],
-		mat[12], mat[13], mat[14], mat[15]
-	});
+void Transformable::addTransform(const lsd::Matrix4& m) {
+	mTransformList.push_back(to_mat4(m));
 }
 
 /* Global */

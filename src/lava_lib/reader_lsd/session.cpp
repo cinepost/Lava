@@ -1537,9 +1537,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	transformNode.name = obj_name;
 
 	assert(pObj->getTransformList().size() > 0);
+
+	static const Falcor::float4x4 m1 = Falcor::float4x4::identity();
+
 	transformNode.transformList = pObj->getTransformList();
-	transformNode.meshBind = float4x4::identity();          // For skinned meshes. World transform at bind time.
- 	transformNode.localToBindPose = float4x4::identity();   // For bones. Inverse bind transform.
+	transformNode.meshBind = m1;          // For skinned meshes. World transform at bind time.
+ 	transformNode.localToBindPose = m1;   // For bones. Inverse bind transform.
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));

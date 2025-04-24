@@ -43,6 +43,9 @@
 
 #include <fmt/core.h>
 
+//#define FALCOR_MATH_FORCE_DEPTH_ZERO_TO_ONE
+#define FALCOR_MATH_FORCE_LEFT_HANDED
+
 #define FALCOR_MATH_CLIP_CONTROL_ZO_BIT     (1 << 0) // ZERO_TO_ONE
 #define FALCOR_MATH_CLIP_CONTROL_NO_BIT     (1 << 1) // NEGATIVE_ONE_TO_ONE
 #define FALCOR_MATH_CLIP_CONTROL_LH_BIT     (1 << 2) // LEFT_HANDED, For DirectX, Metal, Vulkan

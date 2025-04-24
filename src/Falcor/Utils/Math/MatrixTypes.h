@@ -109,6 +109,9 @@ public:
     /// Zero matrix.
     [[nodiscard]] static matrix zeros() { return matrix(Form::Zeros); }
 
+    /// Ones matrix.
+    [[nodiscard]] static matrix ones() { return matrix(Form::Ones); }
+
     /// Identity matrix.
     [[nodiscard]] static matrix identity() { return matrix(Form::Identity); }
 
@@ -159,6 +162,7 @@ private:
     enum class Form {
         Undefined,
         Zeros,
+        Ones,
         Identity,
     };
 
@@ -173,10 +177,18 @@ private:
         case Form::Zeros:
             std::memset(this, 0, sizeof(*this));
             break;
+        case Form::Ones:
+            {
+                T* f = &mRows[0][0];
+                for (uint i = 0; i < (RowCount * ColCount); ++i){ *(f++) = T(1); }
+            }
+            break;
         case Form::Identity:
+            {
             std::memset(this, 0, sizeof(*this));
             for (int i = 0; i < std::min(RowCount, ColCount); ++i)
                 mRows[i][i] = T(1);
+            }
             break;
         }
     }

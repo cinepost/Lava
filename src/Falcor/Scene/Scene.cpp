@@ -124,7 +124,7 @@ namespace {
 
     // Checks if the transform flips the coordinate system handedness (its determinant is negative).
     bool doesTransformFlip(const float4x4& m) {
-        return determinant(float3x3(m)) < 0.f;
+        return math::determinant(float3x3(m)) < 0.f;
     }
 }
 
