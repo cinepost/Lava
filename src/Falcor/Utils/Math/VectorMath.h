@@ -31,6 +31,7 @@
 #include "VectorTypes.h"
 #include "ScalarMath.h"
 
+#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 #include <string>

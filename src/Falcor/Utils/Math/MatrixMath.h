@@ -41,10 +41,11 @@
 
 #include "Falcor/Core/Framework.h"
 
+#define FMT_HEADER_ONLY
 #include <fmt/core.h>
 
-//#define FALCOR_MATH_FORCE_DEPTH_ZERO_TO_ONE
-#define FALCOR_MATH_FORCE_LEFT_HANDED
+#define FALCOR_MATH_FORCE_DEPTH_ZERO_TO_ONE
+//#define FALCOR_MATH_FORCE_LEFT_HANDED
 
 #define FALCOR_MATH_CLIP_CONTROL_ZO_BIT     (1 << 0) // ZERO_TO_ONE
 #define FALCOR_MATH_CLIP_CONTROL_NO_BIT     (1 << 1) // NEGATIVE_ONE_TO_ONE
@@ -755,11 +756,11 @@ static inline matrix<T, 4, 4> frustumLH_ZO(T left, T right, T bottom, T top, T n
 #if FALCOR_MATH_CLIP_SPACE_Y == FALCOR_MATH_CLIP_SPACE_Y_TOPDOWN
     m[1][1] = -m[1][1];
 #endif
-    m[2][0] = (right + left) / (right - left);
-    m[2][1] = (top + bottom) / (top - bottom);
+    m[0][2] = (right + left) / (right - left);
+    m[1][2] = (top + bottom) / (top - bottom);
     m[2][2] = farVal / (farVal - nearVal);
-    m[2][3] = static_cast<T>(1);
-    m[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+    m[3][2] = static_cast<T>(1);
+    m[2][3] = -(farVal * nearVal) / (farVal - nearVal);
     return m;
 }
 
@@ -771,11 +772,11 @@ static inline matrix<T, 4, 4> frustumLH_NO(T left, T right, T bottom, T top, T n
 #if FALCOR_MATH_CLIP_SPACE_Y == FALCOR_MATH_CLIP_SPACE_Y_TOPDOWN
     m[1][1] = -m[1][1];
 #endif
-    m[2][0] = (right + left) / (right - left);
-    m[2][1] = (top + bottom) / (top - bottom);
+    m[0][2] = (right + left) / (right - left);
+    m[1][2] = (top + bottom) / (top - bottom);
     m[2][2] = (farVal + nearVal) / (farVal - nearVal);
-    m[2][3] = static_cast<T>(1);
-    m[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+    m[3][2] = static_cast<T>(1);
+    m[2][3] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
     return m;
 }
 
@@ -787,11 +788,11 @@ static inline matrix<T, 4, 4> frustumRH_ZO(T left, T right, T bottom, T top, T n
 #if FALCOR_MATH_CLIP_SPACE_Y == FALCOR_MATH_CLIP_SPACE_Y_TOPDOWN
     m[1][1] = -m[1][1];
 #endif
-    m[2][0] = (right + left) / (right - left);
-    m[2][1] = (top + bottom) / (top - bottom);
+    m[0][2] = (right + left) / (right - left);
+    m[1][2] = (top + bottom) / (top - bottom);
     m[2][2] = farVal / (nearVal - farVal);
-    m[2][3] = static_cast<T>(-1);
-    m[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+    m[3][2] = static_cast<T>(-1);
+    m[2][3] = -(farVal * nearVal) / (farVal - nearVal);
     return m;
 }
 
@@ -803,11 +804,11 @@ static inline  matrix<T, 4, 4> frustumRH_NO(T left, T right, T bottom, T top, T 
 #if FALCOR_MATH_CLIP_SPACE_Y == FALCOR_MATH_CLIP_SPACE_Y_TOPDOWN
     m[1][1] = -m[1][1];
 #endif
-    m[2][0] = (right + left) / (right - left);
-    m[2][1] = (top + bottom) / (top - bottom);
+    m[0][2] = (right + left) / (right - left);
+    m[1][2] = (top + bottom) / (top - bottom);
     m[2][2] = - (farVal + nearVal) / (farVal - nearVal);
-    m[2][3] = static_cast<T>(-1);
-    m[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+    m[3][2] = static_cast<T>(-1);
+    m[2][3] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
     return m;
 }
 

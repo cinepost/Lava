@@ -52,16 +52,16 @@ struct BlitToBufferContext {
     float2 prevSrcReftScale = float2(0, 0);
 
     // Variable offsets in constant buffer
-    UniformShaderVarOffset resolutionVarOffset;
-    UniformShaderVarOffset offsetVarOffset;
-    UniformShaderVarOffset scaleVarOffset;
-    UniformShaderVarOffset srcPixelHalfSizeVarOffset;
+    TypedShaderVarOffset resolutionVarOffset;
+    TypedShaderVarOffset offsetVarOffset;
+    TypedShaderVarOffset scaleVarOffset;
+    TypedShaderVarOffset srcPixelHalfSizeVarOffset;
     ProgramReflection::BindLocation texBindLoc;
     ProgramReflection::BindLocation buffBindLoc;
 
     // Parameters for complex blit
     float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
-    UniformShaderVarOffset compTransVarOffset[4];
+    TypedShaderVarOffset compTransVarOffset[4];
     void init(Device::SharedPtr pDevice);
     void release();
 };

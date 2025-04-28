@@ -578,6 +578,8 @@ bool Texture::compareDesc(const Texture* pOther) const {
 }
 
 Texture::~Texture() {
+	if(this) {
+	LLOG_WRN << "Texture::~Texture() this " << (this ? "YES" : "NO");
 	std::string tex_type = "generic";
 	if(!mSourceFilename.empty()) tex_type = mSourceFilename;
 	if(mIsUDIMTexture) tex_type += " UDIM";
@@ -607,6 +609,7 @@ Texture::~Texture() {
 		//mApiHandle.setNull();
 	}
 	LLOG_TRC << ++gDeletedTexturesCount << " textures deleted out of " << gTotalTexturesCount;
+}
 }
 
 

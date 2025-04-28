@@ -156,10 +156,7 @@ namespace fs = boost::filesystem;
 
 #endif // _DEBUG
 
-#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::std::runtime_error("Not implemented"); } while(0)
-
 #define FALCOR_UNREACHABLE() assert(false)
-
 
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}

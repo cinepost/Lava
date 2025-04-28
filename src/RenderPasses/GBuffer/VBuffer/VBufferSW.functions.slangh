@@ -5,21 +5,21 @@
 
 // Transform world position to clip space
 float4 transformPointToClip(const float3 p) {
-    return mul(float4(p, 1.f), gScene.camera.getViewProjMat());
+    return mul(gScene.camera.getViewProjMat(), float4(p, 1.f));
 }
 
 float4 transformPointToClip(const float3 p, float t) {
     const CameraXformData xform = gScene.camera.getXformData(t);
-    return mul(float4(p, 1.f), xform.viewProjMat);
+    return mul(xform.viewProjMat, float4(p, 1.f));
 }
 
 double4 transformPointToClipDouble(const double3 p) {
-    return mul(double4(p, 1.0), gScene.camera.getViewProjMat());
+    return mul(gScene.camera.getViewProjMat(), double4(p, 1.0));
 }
 
 double4 transformPointToClipDouble(const double3 p, float t) {
     const CameraXformData xform = gScene.camera.getXformData(t);
-    return mul(double4(p, 1.0), xform.viewProjMat);
+    return mul(xform.viewProjMat, double4(p, 1.0));
 }
 
 // Transform world position to sceen space

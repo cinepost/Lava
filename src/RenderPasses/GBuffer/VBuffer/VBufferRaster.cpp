@@ -29,6 +29,7 @@
 #include "Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 #include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
@@ -195,6 +196,8 @@ void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& ren
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    SimpleProfiler profile("VBufferDBG::execute");
+
     //GBufferBase::execute(pRenderContext, renderData);
     
     // Update frame dimension based on render pass output.

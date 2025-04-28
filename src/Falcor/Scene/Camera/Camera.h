@@ -233,8 +233,8 @@ class dlldecl Camera : public Animatable {
 
     /** Get the view matrix.
     */
-    const float4x4& getViewMatrix() const;
-    const std::vector<float4x4> getViewMatrixList() const;
+    const Falcor::float4x4& getViewMatrix() const;
+    const std::vector<Falcor::float4x4> getViewMatrixList() const;
 
     /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
     */
@@ -262,8 +262,8 @@ class dlldecl Camera : public Animatable {
 
     /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
     */
-    void setViewMatrix(const float4x4& view);
-    void setViewMatrixList(const std::vector<float4x4>& views);
+    void setViewMatrix(const Falcor::float4x4& view);
+    void setViewMatrixList(const std::vector<Falcor::float4x4>& views);
 
     /** Enable or disable usage of persistent projection matrix
         \param[in] persistent whether to set it persistent
@@ -286,8 +286,8 @@ class dlldecl Camera : public Animatable {
 
     const CameraXformData& getXformData() const { calculateCameraParameters(); return  mXformList[0]; }
 
-    void updateFromAnimation(const float4x4& transform) override;
-    void updateFromAnimation(const std::vector<float4x4>& transformList) override;
+    void updateFromAnimation(const Falcor::float4x4& transform) override;
+    void updateFromAnimation(const std::vector<Falcor::float4x4>& transformList) override;
 
     std::vector<std::string> getDataFormattedDebugStrings() const;
 

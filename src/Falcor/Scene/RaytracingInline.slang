@@ -210,7 +210,7 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<
     return false;
 }
 
-bool traceSceneRay<let UseAlphaTest : int>(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask) {
+bool traceSceneRay<let UseAlphaTest : bool>(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask) {
     // TODO: Use a constant expression to derive static ray flags.
 
     if (UseAlphaTest) {
@@ -293,7 +293,7 @@ bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, inout
     return rayQuery.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlags, uint instanceInclusionMask) {
+bool traceSceneVisibilityRay<let UseAlphaTest : bool>(const Ray ray, uint rayFlags, uint instanceInclusionMask) {
     // TODO: Use a constant expression to derive static ray flags.
 
     if (UseAlphaTest) {
@@ -349,7 +349,7 @@ bool traceSceneVisibilityRayRecursiveImpl<let Flags : int>(const bool useAlphaTe
 }
 
 
-bool traceSceneVisibilityRayRecursive<let UseAlphaTest : int>(const Ray ray, uint rayFlags, uint instanceInclusionMask, uint excludeInstanceIndex) {
+bool traceSceneVisibilityRayRecursive<let UseAlphaTest : bool>(const Ray ray, uint rayFlags, uint instanceInclusionMask, uint excludeInstanceIndex) {
     // TODO: Use a constant expression to derive static ray flags.
 
     if (UseAlphaTest) {
@@ -371,7 +371,7 @@ bool traceSceneVisibilityRayRecursive<let UseAlphaTest : int>(const Ray ray, uin
 
 /** Scene ray query implementation.
 */
-struct SceneRayQuery<let UseAlphaTest : int> : ISceneRayQuery {
+struct SceneRayQuery<let UseAlphaTest : bool> : ISceneRayQuery {
     bool traceRay(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask) {
         return traceSceneRay<UseAlphaTest>(ray, hit, hitT, rayFlags, instanceInclusionMask);
     }

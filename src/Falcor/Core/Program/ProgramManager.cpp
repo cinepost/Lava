@@ -39,6 +39,7 @@
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
 
+#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 

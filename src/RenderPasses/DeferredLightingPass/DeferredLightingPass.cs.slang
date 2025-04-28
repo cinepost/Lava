@@ -40,6 +40,7 @@ import DeferredLightingAOV;
 
 #define GREY(f3color) (LUMA_REC709(f3color) + 0.5f)
 
+static const bool kUseAlphaTest = false;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
 
@@ -49,8 +50,8 @@ cbuffer PerFrameCB {
   int               gRandomSeed;
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-  float16_t3        gColorLimit = float3(10.0, 10.0, 10.0);
-  float16_t3        gIndirectColorLimit = float3(3.0, 3.0, 3.0);
+  float16_t3        gColorLimit = float16_t3(10.h);
+  float16_t3        gIndirectColorLimit = float16_t3(3.h);
   uint              gRayDiffuseLimit = 0;
   uint              gRayReflectLimit = 0;
   uint              gRayRefractLimit = 0;
@@ -277,7 +278,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
     HitInfo bsdfHit = {}; // We store bsdf hit here as a candidate for the next bounce
     float bsdfHitT = 0.f; // We store hit distance to check agains potential light source to sample from the surface bsdf
-    BSDFSample bsdfSample;
+    BSDFSample bsdfSample = {};
 
     sd.mtl.setActiveLobes(shadingLobes);
     bool validBsdfSample = mi.sample(sd, sg, bsdfSample, true);
@@ -311,7 +312,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
 
             if ((light.getShadowType() == LightShadowType.RayTraced) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
 
-                SceneRayQuery<1> rayQuery;
+                SceneRayQuery<kUseAlphaTest> rayQuery;
                 const Ray ray = Ray(rayShadowOrigin, ls.shadowDir, _tmin, ls.distance);
 
                 [[branch]] if(gScene.isObjectSelfShadowsReceiving(triangleHit.instanceID)) {
@@ -647,15 +648,15 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 surfaceColor = float3(0.0f);
 
     const uint maxRayLevel = _MAX_RAY_LEVEL;
-    float16_t variance = 1.f;
+    float16_t variance = 1.h;
 
 #if is_valid(gLastFrameSum) && _USE_VARIANCE
     const float16_t4 _lastFrameSum = gLastFrameSum[pixelPos];
     const float16_t3 lastFrameSum = _lastFrameSum.rgb;
     const float16_t lastVariance = _lastFrameSum.a;
 #else
-    const float16_t3 lastFrameSum = float16_t3(0.0);
-    const float16_t lastVariance = 1.0;
+    const float16_t3 lastFrameSum = float16_t3(0.0h);
+    const float16_t lastVariance = 1.0h;
 #endif
 
 #if _USE_VARIANCE

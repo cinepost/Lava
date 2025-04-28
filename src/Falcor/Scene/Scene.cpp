@@ -3083,7 +3083,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                     // Just pick the matrix from the first mesh.
                     const uint32_t nodeId = mGeometryInstanceData[desc.instanceID].nodeID;
                     const auto& list = mpAnimationController->getGlobalMatrixLists()[nodeId];
-                    if(!list.empty()) transform4x4 = transpose(list[0]);
+                    if(!list.empty()) transform4x4 = list[0];
 
                     // Verify that all meshes have matching tranforms.
                     for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {

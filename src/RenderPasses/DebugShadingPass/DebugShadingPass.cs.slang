@@ -142,7 +142,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     }
 #endif
 
-    gInOutColor[pixelPos] = float4(0.1, 0.5, 1.0, 1.0); return;
+    //gInOutColor[pixelPos] = float4(0.1, 0.5, 1.0, 1.0); return;
 
     TriangleHit triangleHit = hit.getTriangleHit();
     const float3 barycentrics = triangleHit.getBarycentricWeights();

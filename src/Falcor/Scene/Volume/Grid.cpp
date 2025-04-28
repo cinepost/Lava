@@ -44,7 +44,6 @@
 #pragma warning(pop)
 #endif
 
-#include <glm/gtc/type_ptr.hpp>
 #include "GridConverter.h"
 
 #include "Falcor/Core/Program/ShaderVar.h"

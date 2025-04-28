@@ -2098,7 +2098,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 			assert(!mesh.staticData.empty());
 			assert((size_t)mesh.vertexCount == mesh.staticData.size());
 
-			float3x3 invTranspose3x3 = float3x3(transpose(inverse(transform)));
+			float3x3 invTranspose3x3 = float3x3(inverse(transform));
             float3x3 transform3x3 = float3x3(transform);
 
 			for (auto& v : mesh.staticData) {

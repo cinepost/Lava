@@ -30,10 +30,11 @@
 #include <stdlib.h>
 
 #include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Utils/Math/FalcorMath.h"
-//#include "glm/gtc/type_ptr.hpp"
 
 #include "Camera.h"
+
 
 namespace Falcor {
 
@@ -42,6 +43,26 @@ namespace {
 	const std::string kPosition = "position";
 	const std::string kTarget = "target";
 	const std::string kUp = "up";
+
+template<typename T>
+math::matrix<T, 4, 4> makeFrustum(T left, T right, T bottom, T top, T zNear, T zFar) {
+  math::matrix<T, 4, 4> m = math::matrix<T, 4, 4>::zeros();
+  T zDelta = (zFar-zNear);
+  T dir = (right-left);
+  T height = (top-bottom);
+  T zNear2 = static_cast<T>(2)*zNear;
+
+  m[0][0]=static_cast<T>(2)*zNear/dir;
+  m[0][2]=(right+left)/dir;
+  m[1][1]=zNear2/height;
+  m[1][2]=(top+bottom)/height;
+  m[2][2]=-(zFar+zNear)/zDelta;
+  m[2][3]=-zNear2*zFar/zDelta;
+  m[3][2]=-static_cast<T>(1);
+
+  return m;
+}
+
 }
 
 static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
@@ -50,6 +71,9 @@ static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size shoul
 const float Camera::kDefaultFrameHeight = 24.0f;
 
 Camera::Camera(): mpDevice(nullptr) {
+	mPosW = float3(0.0f);
+	mUp = float3(0.0f, 1.0f, 0.0f);
+	mTarget = float3(0.0f, 0.0f, -1.0f);
 	mXformList.resize(1);
 	mPrevXformList.resize(1);
 	mPersistentViewMatList.resize(1);
@@ -151,7 +175,7 @@ float3 Camera::getPosition(size_t i) const {
 	calculateCameraParameters();
 	assert(i < mXformList.size() && !mXformList.empty());
 	auto const& xform = mXformList[i];
-	return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]};
+	return {xform.viewInvMat[0][3], xform.viewInvMat[1][3], xform.viewInvMat[2][3]};
 }
 
 float3 Camera::getUpVector(size_t i) const {
@@ -213,6 +237,7 @@ void Camera::calculateCameraParameters() const {
 			float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
 			float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
 			mData.projMat = math::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
+			//mData.projMat = makeFrustum<float>(left, right, bottom, top, mData.nearZ, mData.farZ);
 		} else {
 			// Take the length of look-at vector as half a viewport size
 			const float halfLookAtLength = 0.5f;
@@ -227,14 +252,14 @@ void Camera::calculateCameraParameters() const {
 		auto& xform = mXformList[i];
 
 		if (mEnablePersistentViewMat) {
-			LLOG_TRC << "Camera persistent view matrix";
+			LLOG_WRN << "Camera persistent view matrix";
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
 			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
 			xform.cameraV = normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
 			xform.cameraW = -normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
 		} else {
-			LLOG_TRC << "Camera view matrix from pos, up, target";
+			LLOG_WRN << "Camera view matrix from pos, up, target";
 			xform.viewMat = math::matrixFromLookAt(mPosW, mTarget, mUp, math::Handedness::RightHanded);
 			// Ray tracing related vectors
 			xform.cameraW = normalize(mTarget - mPosW); // dir
@@ -289,6 +314,17 @@ void Camera::calculateCameraParameters() const {
 		);
 	}
 	*/
+	{
+		auto& xform = mXformList[0];
+
+		float3 up = xform.viewMat.getCol(1).xyz();
+		float3 fwd = -xform.viewMat.getCol(2).xyz();
+		float3 pos = xform.viewMat.getCol(3).xyz();
+
+		LLOG_WRN << "Camera up: " << to_string(up);
+		LLOG_WRN << "Camera fwd: " << to_string(fwd);
+		LLOG_WRN << "Camera pos: " << to_string(pos);
+	}
 
 	for(auto const& xform: mXformList) {
 		// Extract camera space frustum planes from the VP matrix
@@ -354,18 +390,21 @@ void Camera::setProjectionMatrix(const float4x4& proj) {
 	togglePersistentProjectionMatrix(true);
 }
 
-void Camera::setViewMatrix(const float4x4& view) {
-	if(mPersistentViewMatList.size() == 0 && mPersistentViewMatList[0] == view) return;
+void Camera::setViewMatrix(const Falcor::float4x4& view) {
 	if(mPersistentViewMatList.size() != 1) {
 		LLOG_WRN << "Trying to set view matrix for camera " << mName << " while multiple matrices already exists !!! Resetting camera view matrices list...";
 		mPersistentViewMatList.resize(1);
+		mDirty = true;
 	}
+
+	if(mPersistentViewMatList[0] == view) return;
+	
 	mPersistentViewMatList[0] = view;
 	togglePersistentViewMatrix(true);
 	mDirty = true;
 }
 
-void Camera::setViewMatrixList(const std::vector<float4x4>& views) {
+void Camera::setViewMatrixList(const std::vector<Falcor::float4x4>& views) {
 	assert(!views.empty());
 	if(views.empty()) {
 		LLOG_ERR << "Empty views list provided for camera " << mName << ". No changes applied ...";

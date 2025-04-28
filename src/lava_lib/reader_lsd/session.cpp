@@ -190,6 +190,19 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	} else {
 		pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	}
+
+	{
+		auto& xform = mpGlobal->getTransformList()[0];
+
+		float3 up = xform.getCol(1).xyz();
+		float3 fwd = -xform.getCol(2).xyz();
+		float3 pos = xform.getCol(3).xyz();
+
+		LLOG_WRN << "Camera session up: " << to_string(up);
+		LLOG_WRN << "Camera session fwd: " << to_string(fwd);
+		LLOG_WRN << "Camera session pos: " << to_string(pos);
+	}
+
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
 	pCamera->setCropRegion(cropRegion);
@@ -668,8 +681,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	Falcor::float4x4 transform = pLightScope->getTransformList()[0];
 
 	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
-	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
-	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
+	Falcor::float3 light_pos = {transform[0][3], transform[1][3], transform[2][3]}; // light position
+	Falcor::float3 light_dir = {-transform[0][2], -transform[1][2], -transform[2][2]};
 	
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	std::shared_ptr<PropertiesContainer> pShaderProps;
@@ -1543,6 +1556,18 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	transformNode.transformList = pObj->getTransformList();
 	transformNode.meshBind = m1;          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = m1;   // For bones. Inverse bind transform.
+
+	{
+		auto& xform = transformNode.transformList[0];
+
+		float3 up = xform.getCol(1).xyz();
+		float3 fwd = -xform.getCol(2).xyz();
+		float3 pos = xform.getCol(3).xyz();
+
+		//LLOG_WRN << "Instance " << obj_name << " up: " << to_string(up);
+		//LLOG_WRN << "Instance " << obj_name << " fwd: " << to_string(fwd);
+		LLOG_WRN << "Instance " << obj_name << " pos: " << to_string(pos);
+	}
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));

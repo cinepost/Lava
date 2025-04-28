@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/Utils/Color/ColorUtils.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
@@ -174,6 +175,8 @@ void OpenDenoisePass::compile(RenderContext* pRenderContext, const CompileData& 
 }
 
 void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    SimpleProfiler profile("OpenDenoisePass::execute");
+
     auto pInputResource = renderData[kInput];
     auto pOutputResource = renderData[kOutput];
 
@@ -190,7 +193,7 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
         bypass(pRenderContext, renderData);
         return;
     }
-    
+
     auto pAlbedoTex = renderData[kAlbedoInput]->asTexture();
     auto pNormalTex = renderData[kNormalInput]->asTexture();
 

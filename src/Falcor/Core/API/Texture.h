@@ -83,47 +83,47 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		bool operator==(const UDIMTileInfo& other) const { return ((u == other.u) && (v == other.v) && (pTileTexture == other.pTileTexture)); }
 	};
 
-	~Texture();
+	virtual ~Texture();
 
 	/** Get a mip-level width
 	*/
-	inline uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mWidth >> mipLevel) : 0; }
+	uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mWidth >> mipLevel) : 0; }
 
 	/** Get a mip-level height
 	*/
-	inline uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mHeight >> mipLevel) : 0; }
+	uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mHeight >> mipLevel) : 0; }
 
 	/** Get a mip-level depth
 	*/
-	inline uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mDepth >> mipLevel) : 0; }
+	uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mDepth >> mipLevel) : 0; }
 
 	/** Get the number of mip-levels
 	*/
-	inline uint32_t getMipCount() const { return mMipLevels; }
+	uint32_t getMipCount() const { return mMipLevels; }
 
 	/** Get the sample count
 	*/
-	inline uint32_t getSampleCount() const { return mSampleCount; }
+	uint32_t getSampleCount() const { return mSampleCount; }
 
 	/** Get the array size
 	*/
-	inline uint32_t getArraySize() const { return mArraySize; }
+	uint32_t getArraySize() const { return mArraySize; }
 
 	/** Get the array index of a subresource
 	*/
-	inline uint32_t getSubresourceArraySlice(uint32_t subresource) const { return subresource / mMipLevels; }
+	uint32_t getSubresourceArraySlice(uint32_t subresource) const { return subresource / mMipLevels; }
 
 	/** Get the mip-level of a subresource
 	*/
-	inline uint32_t getSubresourceMipLevel(uint32_t subresource) const { return subresource % mMipLevels; }
+	uint32_t getSubresourceMipLevel(uint32_t subresource) const { return subresource % mMipLevels; }
 
 	/** Get the subresource index
 	*/
-	inline uint32_t getSubresourceIndex(uint32_t arraySlice, uint32_t mipLevel) const { return mipLevel + arraySlice * mMipLevels; }
+	uint32_t getSubresourceIndex(uint32_t arraySlice, uint32_t mipLevel) const { return mipLevel + arraySlice * mMipLevels; }
 
 	/** Get the resource format
 	*/
-	inline ResourceFormat getFormat() const { return mFormat; }
+	ResourceFormat getFormat() const { return mFormat; }
 
 	/** Create a new texture from an existing API handle.
 		\param[in] handle Handle of already allocated resource.
@@ -223,19 +223,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	/** Get an unordered access view for the entire resource
 	*/
 	UnorderedAccessView::SharedPtr getUAV() override;
-
-#if FALCOR_ENABLE_CUDA
-	/** Get the CUDA device address for this resource.
-		\return CUDA device address.
-		Throws an exception if the resource is not (or cannot be) shared with CUDA.
-	*/
-	virtual void* getCUDADeviceAddress() const override;
-
-	/** Get the CUDA device address for a view of this resource.
-		Throws an exception if the resource is not (or cannot be) shared with CUDA.
-	*/
-	virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const override;
-#endif
 
 	/** Get a shader-resource view.
 		\param[in] mostDetailedMip The most detailed mip level of the view

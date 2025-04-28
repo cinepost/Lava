@@ -38,6 +38,7 @@
 
 #include <slang/slang.h>
 
+#define FMT_HEADER_ONLY
 #include <fmt/format.h>           // TODO C++20: Replace with <format>
 #include <set>
 #include <atomic>

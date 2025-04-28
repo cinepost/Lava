@@ -88,6 +88,8 @@ void VBufferDBG::compile(RenderContext* pRenderContext, const CompileData& compi
 
 void VBufferDBG::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     LLOG_WRN << "VBufferDBG::execute";
+
+    SimpleProfiler profile("VBufferDBG::execute");
     
     // Create compute pass.
     if (!mpComputePass || mDirty) {

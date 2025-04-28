@@ -41,6 +41,7 @@ __exported import Scene.SDFs.SDFGrid;
 
 import Utils.Attributes;
 import Utils.Math.MathHelpers;
+import Utils.Math.MatrixUtils;
 import Utils.Geometry.GeometryHelpers;
 import Scene.SDFs.SDFVoxelCommon;
 import Scene.Displacement.DisplacementMapping;
@@ -70,10 +71,10 @@ struct Scene {
 #endif
 
     // Instance transforms
-    [root] StructuredBuffer<float4> worldMatrices;
-    [root] StructuredBuffer<float4> inverseTransposeWorldMatrices; // TODO: Make this 3x3 matrices (stored as 4x3). See #795.
-    StructuredBuffer<float4> prevWorldMatrices;
-    StructuredBuffer<float4> prevInverseTransposeWorldMatrices;
+    [root] StructuredBuffer<float4x4> worldMatrices;
+    [root] StructuredBuffer<float4x4> inverseTransposeWorldMatrices;
+    StructuredBuffer<float4x4> prevWorldMatrices;
+    StructuredBuffer<float4x4> prevInverseTransposeWorldMatrices;
 
     // Instances
     [root] StructuredBuffer<GeometryInstanceData> geometryInstances;
@@ -175,47 +176,30 @@ struct Scene {
 
     // Mesh and instance data access
 
-    float4x4 loadWorldMatrix(const uint matrixID) {
-        float4x4 m = {
-            worldMatrices[matrixID * 4 + 0],
-            worldMatrices[matrixID * 4 + 1],
-            worldMatrices[matrixID * 4 + 2],
-            worldMatrices[matrixID * 4 + 3]
-        };
-        return m;
+    float4x4 loadWorldMatrix(const uint matrixID)
+    {
+        return worldMatrices[matrixID];
     }
 
-    float4x4 loadPrevWorldMatrix(const uint matrixID) {
-        float4x4 m = {
-            prevWorldMatrices[matrixID * 4 + 0],
-            prevWorldMatrices[matrixID * 4 + 1],
-            prevWorldMatrices[matrixID * 4 + 2],
-            prevWorldMatrices[matrixID * 4 + 3]
-        };
-        return m;
+    float4x4 loadPrevWorldMatrix(const uint matrixID)
+    {
+        return prevWorldMatrices[matrixID];
     }
 
-    float3x3 loadInverseTransposeWorldMatrix(const uint matrixID) {
-        float3x3 m = {
-            inverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
-            inverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
-            inverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
-        };
-        return m;
+    float3x3 loadInverseTransposeWorldMatrix(const uint matrixID)
+    {
+        return float3x3(inverseTransposeWorldMatrices[matrixID]);
     }
 
-    float3x3 loadPrevInverseTransposeWorldMatrix(const uint matrixID) {
-        float3x3 m = {
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
-        };
-        return m;
+    float3x3 loadPrevInverseTransposeWorldMatrix(const uint matrixID)
+    {
+        return float3x3(prevInverseTransposeWorldMatrices[matrixID]);
     }
 
-    float4x4 getWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
-        return loadWorldMatrix(matrixOffset);
+    float4x4 getWorldMatrix(const GeometryInstanceID instanceID)
+    {
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadWorldMatrix(matrixID);
     }
 
     float4x4 getWorldMatrix(const GeometryInstanceID instanceID, float tj) {
@@ -234,19 +218,22 @@ struct Scene {
         return loadWorldMatrix(instance.globalMatrixOffset + idx_l) * c + loadWorldMatrix(instance.globalMatrixOffset + idx_h) * (1.f - c);
     }
 
-    float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
-        return loadPrevWorldMatrix(matrixOffset);
+    float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID)
+    {
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadPrevWorldMatrix(matrixID);
     }
 
-    float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
-        return loadInverseTransposeWorldMatrix(matrixOffset);
+    float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
+    {
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadInverseTransposeWorldMatrix(matrixID);
     }
 
-    float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
-        uint matrixOffset = geometryInstances[instanceID.index].globalMatrixOffset;
-        return loadPrevInverseTransposeWorldMatrix(matrixOffset);
+    float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
+    {
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixOffset;
+        return loadPrevInverseTransposeWorldMatrix(matrixID);
     }
 
     bool isWorldMatrixFlippedWinding(const GeometryInstanceID instanceID) {
@@ -577,7 +564,7 @@ struct Scene {
         float3 N = cross(p1 - p0, p2 - p0);
         if (isObjectFrontFaceCW(instanceID)) N = -N;
         float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
-        return normalize(mul(N, worldInvTransposeMat));
+        return normalize(mul(worldInvTransposeMat, N));
     }
 
     /** Returns a triangle's area in world space.
@@ -630,7 +617,7 @@ struct Scene {
         [unroll]
         for (int i = 0; i < 3; i++) {
             p[i] = vertices[vtxIndices[i]].position;
-            p[i] = mul(float4(p[i], 1.f), getWorldMatrix(instanceID)).xyz;
+            p[i] = mul(getWorldMatrix(instanceID), float4(p[i], 1.f)).xyz;
         }
 
         return computeFaceNormalAndAreaW(instanceID, p, triangleArea);
@@ -671,11 +658,11 @@ struct Scene {
 
         v.faceNormalW = getFaceNormalInObjectSpace(vertices, isFrontFaceCW);
 
-        v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
-        v.normalW = mul(v.normalW, worldInvTransposeMat);
-        v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
-        v.tangentW.xyz = mul(v.tangentW.xyz, (float3x3)worldMat);
-        v.curveRadius = length(mul(float3(v.curveRadius, 0.f, 0.f), (float3x3)worldMat));
+        v.posW = mul(worldMat, float4(v.posW, 1.f)).xyz;
+        v.normalW = mul(worldInvTransposeMat, v.normalW);
+        v.faceNormalW = mul(worldInvTransposeMat, v.faceNormalW);
+        v.tangentW.xyz = mul((float3x3)worldMat, v.tangentW.xyz);
+        v.curveRadius = length(mul((float3x3)worldMat, float3(v.curveRadius, 0.f, 0.f)));
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);
@@ -841,7 +828,7 @@ struct Scene {
         }
 
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
-        return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
+        return mul(prevWorldMat, float4(prevPos, 1.f)).xyz;
     }
 
     /** Returns interpolated position on a triangle in world space for the previous frame.
@@ -881,7 +868,7 @@ struct Scene {
         prevPos += prevNormal * (hit.displacement * DisplacementData::kSurfaceSafetyScaleBias.x + DisplacementData::kSurfaceSafetyScaleBias.y);
 
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
-        return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
+        return mul(prevWorldMat, float4(prevPos, 1.f)).xyz;
     }
 
     /** Returns a triangle's vertex positions in world space.
@@ -898,7 +885,7 @@ struct Scene {
         for (int i = 0; i < 3; i++)
         {
             p[i] = vertices[vtxIndices[i]].position;
-            p[i] = mul(float4(p[i], 1.f), worldMat).xyz;
+            p[i] = mul(worldMat, float4(p[i], 1.f)).xyz;
         }
     }
 
@@ -1053,13 +1040,14 @@ struct Scene {
         const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixOffset);
         const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
-        const float3 hitPosition = mul(worldInvTransposeMat, posW - worldMat[3].xyz);
+        // Multiplying v.M to perform the intended (M^T).v
+        const float3 hitPosition = mul(posW - extractTranslate(worldMat), worldInvTransposeMat);
 
         float3 gradient;
         sdfGrid.decodeHit(hit.hitData, hitPosition, gradient);
 
         v.posW = posW;
-        v.normalW = normalize(mul(normalize(gradient), worldInvTransposeMat));
+        v.normalW = normalize(mul(worldInvTransposeMat, normalize(gradient)));
         v.tangentW = float4(perp_stark(v.normalW), 1.0f);
         v.faceNormalW = v.normalW;
 
@@ -1094,7 +1082,10 @@ struct Scene {
         const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
 
-        return mul(float4(mul(worldInvTransposeMat, posW - worldMat[3].xyz), 1.0f), prevWorldMat).xyz;
+        /// Multiplying v.M to perform the intended (M^T).v
+        const float4 hitPosition = float4(mul(posW - extractTranslate(worldMat), worldInvTransposeMat), 1.0f);
+
+        return mul(prevWorldMat, hitPosition).xyz;
     }
 
     // Custom primitive access

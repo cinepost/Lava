@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "stdafx.h"
 
-#include "glm/gtc/integer.hpp"
-
 #include "Falcor/Core/API/RenderContext.h"
 #include "PhysicalSkySampler.h"
 
@@ -245,7 +243,7 @@ bool PhysicalSkySampler::createImportanceMap(RenderContext* pRenderContext, uint
     assert(pRenderContext->device() == mpDevice);
 
     // We create log2(N)+1 mips from NxN...1x1 texels resolution.
-    uint32_t mips = glm::log2(dimension) + 1;
+    uint32_t mips = std::log2(dimension) + 1;
     assert((1u << (mips - 1)) == dimension);
     assert(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 

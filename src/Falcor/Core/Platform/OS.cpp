@@ -33,6 +33,7 @@
 #include "Falcor/Utils/Debug/debug.h"
 
 #include <backward/backward.hpp>    // TODO: Replace with C++20 <stacktrace> when available.
+#define FMT_HEADER_ONLY
 #include <fmt/format.h>             // TODO C++20: Replace with <format>
 
 #include <fstream>

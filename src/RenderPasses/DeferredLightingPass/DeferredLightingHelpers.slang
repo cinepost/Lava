@@ -88,11 +88,8 @@ float __evalMIS(float n0, float p0, float n1, float p1) {
     \param[out] sd ShadingData struct.
     \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
 */
-bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, Texture2D<PackedHitInfo> vbuffer, const ITextureSampler lod, out ShadingData sd, 
-    out TriangleHit triangleHit)
+bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, Texture2D<PackedHitInfo> vbuffer, const ITextureSampler lod, inout ShadingData sd, inout TriangleHit triangleHit)
 {
-    sd = {};
-
     const float3 rayDir = camera.computeRayPinhole(pixel, frameDim).dir;
     bool valid = false;
 
@@ -120,7 +117,7 @@ void calcPrimaryShadingData(const float3 rayDir, const TriangleHit triangleHit, 
     sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 }
 
-bool calcShadingData(const float3 rayDir, const HitInfo hit, const ITextureSampler lod, out ShadingData sd, out TriangleHit triangleHit) {
+bool calcShadingData(const float3 rayDir, const HitInfo hit, const ITextureSampler lod, inout ShadingData sd, inout TriangleHit triangleHit) {
     if (hit.isValid() && hit.getType() != HitType::Triangle) return false;
 
     triangleHit = hit.getTriangleHit();

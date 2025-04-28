@@ -81,7 +81,7 @@ public:
         \param[in] value Value to set
     */
     template<typename T>
-    bool setVariable(const std::string& name, const T& value) {
+    void setVariable(const std::string& name, const T& value) {
         return getRootVar()[name].set(value);
     }
 
@@ -91,19 +91,17 @@ public:
         \param[in] value Value to set
     */
     template<typename T>
-    bool setVariable(UniformShaderVarOffset offset, const T& value);
+    void setVariable(const BindLocation& bindLocation, const T& value);
 
     template<typename T>
-    bool setBlob(UniformShaderVarOffset bindLocation, const T& blob) const {
-        return setBlob(bindLocation, &blob, sizeof(blob));
+    void setBlob(const BindLocation& bindLocation, const T& blob) const {
+        setBlob(bindLocation, &blob, sizeof(blob));
     }
 
-    bool setBlob(UniformShaderVarOffset offset, const void* pSrc, size_t size) {
-        return setBlob(pSrc, offset, size);
-    }
+    void setBlob(const BindLocation& bindLocation, const void* pSrc, size_t size) { return setBlob(pSrc, bindLocation, size); }
 
-    bool setBlob(const void* pSrc, UniformShaderVarOffset offset, size_t size);
-    bool setBlob(const void* pSrc, size_t offset, size_t size);
+    void setBlob(const void* pSrc, const BindLocation& bindLocation, size_t size);
+    void setBlob(const void* pSrc, size_t offset, size_t size);
 
     /** Bind a buffer by name.
         If the name doesn't exists, the bind flags don't match the shader requirements or the size doesn't match the required size, the call will fail.
@@ -251,7 +249,7 @@ public:
 
     /** Get offset of a uniform variable inside the block, given its name.
     */
-    UniformShaderVarOffset getVariableOffset(const std::string& varName) const;
+    TypedShaderVarOffset getVariableOffset(const std::string& varName) const;
 
     /** Get an initial var to the contents of this block.
     */

@@ -1,6 +1,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
@@ -195,6 +196,8 @@ bool DeferredLightingPass::beginFrame(RenderContext *pContext, const RenderData&
 
 void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpScene) return;
+
+    SimpleProfiler profile("DeferredLightingPass::execute");
 
     mUseVariance = false;
 

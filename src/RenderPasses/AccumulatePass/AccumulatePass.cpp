@@ -35,6 +35,7 @@
 
 #include "Falcor/Utils/Textures/FilterKernelsLUT.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include <boost/algorithm/string.hpp>
@@ -182,7 +183,8 @@ void AccumulatePass::enableAccumulation(bool enable) {
 }
 
 void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    LLOG_WRN << "AccumulatePass::execute";
+    SimpleProfiler profile("AccumulatePass::execute");
+
     if (mAutoReset) {
         if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.
         {

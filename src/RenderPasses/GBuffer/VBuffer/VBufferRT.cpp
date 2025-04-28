@@ -79,8 +79,6 @@ RenderPassReflection VBufferRT::reflect(const CompileData& compileData) {
 }
 
 void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    LLOG_WRN << "VBufferRT::execute";
-
     SimpleProfiler profile("VBufferRT::execute");
 
     GBufferBase::execute(pRenderContext, renderData);

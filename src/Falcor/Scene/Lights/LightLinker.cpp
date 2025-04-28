@@ -176,11 +176,11 @@ void LightLinker::setShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.
-    var["globalLightsCount"] = mActiveLightsData.size();
+    var["globalLightsCount"] = (uint32_t)mActiveLightsData.size();
 
     LLOG_DBG << "LightLinker global lights count " << mActiveLightsData.size();
 
-    var["lightSetsCount"] = mLightSets.size();
+    var["lightSetsCount"] = (uint32_t)mLightSets.size();
 
     LLOG_DBG << "LightLinker lightSetsCount " << mLightSets.size();
 
