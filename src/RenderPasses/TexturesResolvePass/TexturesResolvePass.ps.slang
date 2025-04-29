@@ -33,10 +33,6 @@ SamplerState gCalibrationMinSampler;
 SamplerState gCalibrationMaxSampler;
 
 // Vertex
-
-static VSOut vsData;
-
-[shader("vertex")]
 VSOut vsMain(VSIn vIn) {
     VSOut vsOut;
     vsOut = defaultVS(vIn);
@@ -63,13 +59,6 @@ struct gl_TextureFootprint2DNV {
     uint granularity;
 };
 
-//    SpvOpImageSparseSampleImplicitLod = 305,
-
-
-// OpImageSampleFootprintNV
-[[vk::spirv_instruction(5283)]]
-bool textureFootprintGradNV(out gl_TextureFootprint2DNV footprint, Sampler2D sampler, float2 uv, int granularity, bool coarse, float2 dx, float2 dy);
-
 float2 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
 
     float2 tc = uv * float2((float)vtexData.width / 128.0f, (float)vtexData.height / 128.0f);
@@ -77,10 +66,6 @@ float2 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler,
 
     float2 gradX = ddx_fine(tc) * c;
     float2 gradY = ddy_fine(tc) * c;
-
-    gl_TextureFootprint2DNV footprint;
-    //Sampler2D<vector<float,4>> tst(mipCalibrationTextures[0], gCalibrationSampler);
-    //bool _res = textureFootprintGradNV(footprint, tst , uv,  1, false, ddx_fine(tc), ddy_fine(tc));
 
     int mipLevelLo = -1;
     int mipLevelHi = -1;

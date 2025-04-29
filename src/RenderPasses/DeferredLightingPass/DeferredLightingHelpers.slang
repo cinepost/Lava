@@ -47,7 +47,7 @@ float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint t
     if (gScene.isObjectFrontFaceCW(instanceID)) N = -N;
     
     float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
-    return normalize(mul(N, worldInvTransposeMat));
+    return normalize(mul(worldInvTransposeMat, N));
 }
 
 /** Evaluates the currently configured heuristic for multiple importance sampling (MIS).

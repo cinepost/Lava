@@ -81,7 +81,7 @@ namespace {
 }
 
 AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new AmbientOcclusionPass(pRenderContext->device(), dict));
+    auto pThis = SharedPtr(new AmbientOcclusionPass(pRenderContext->device()));
 
     for (const auto& [key, value] : dict) {
         if (key == kShadingRate) pThis->setShadingRate(value);
@@ -93,7 +93,7 @@ AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRen
     return pThis;
 }
 
-AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("AmbientOcclusionPass requires Shader Model 6.5 support.");
     }

@@ -252,14 +252,13 @@ void Camera::calculateCameraParameters() const {
 		auto& xform = mXformList[i];
 
 		if (mEnablePersistentViewMat) {
-			LLOG_WRN << "Camera persistent view matrix";
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
-			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
-			xform.cameraV = normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
-			xform.cameraW = -normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
+			float4x4 m = math::transpose(xform.viewMat);
+			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[0][1], xform.viewMat[0][2])); // up
+			xform.cameraV = normalize(float3(xform.viewMat[1][0], xform.viewMat[1][1], xform.viewMat[1][2])); // right
+			xform.cameraW = -normalize(float3(xform.viewMat[2][0], xform.viewMat[2][1], xform.viewMat[2][2])); // dir
 		} else {
-			LLOG_WRN << "Camera view matrix from pos, up, target";
 			xform.viewMat = math::matrixFromLookAt(mPosW, mTarget, mUp, math::Handedness::RightHanded);
 			// Ray tracing related vectors
 			xform.cameraW = normalize(mTarget - mPosW); // dir
@@ -314,18 +313,7 @@ void Camera::calculateCameraParameters() const {
 		);
 	}
 	*/
-	{
-		auto& xform = mXformList[0];
-
-		float3 up = xform.viewMat.getCol(1).xyz();
-		float3 fwd = -xform.viewMat.getCol(2).xyz();
-		float3 pos = xform.viewMat.getCol(3).xyz();
-
-		LLOG_WRN << "Camera up: " << to_string(up);
-		LLOG_WRN << "Camera fwd: " << to_string(fwd);
-		LLOG_WRN << "Camera pos: " << to_string(pos);
-	}
-
+	
 	for(auto const& xform: mXformList) {
 		// Extract camera space frustum planes from the VP matrix
 		// See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/

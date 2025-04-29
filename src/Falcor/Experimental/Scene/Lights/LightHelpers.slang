@@ -118,11 +118,11 @@ bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, const 
     float3 pos = float3(2.0f * (rnd.x - .5f), 2.0f * (rnd.y - .5f), 0.f);
 
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
     // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, -1.f, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
@@ -326,10 +326,10 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, cons
     float3 pos = sphericalDirection(sinAlpha, cosAlpha, phi, -wcX, -wcY, -wc);
 
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(pos, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
@@ -357,16 +357,16 @@ bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNorm
     float3 pos = localShadingPos + isect * lightSampleDirLocal;
 
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(pos, 0.f)).xyz);
 
     float3 toLight = ls.posW - shadingPosW;
     float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
     ls.distance = sqrt(distSqr);
 
-    ls.dir = ls.shadowDir = normalize(mul(float4(lightSampleDirLocal, 0.f), light.transMat).xyz);
+    ls.dir = ls.shadowDir = normalize(mul(light.transMat, float4(lightSampleDirLocal, 0.f)).xyz);
 
     float cosTheta = dot(ls.normalW, -ls.dir);
 
@@ -390,9 +390,9 @@ bool intersectSphereAreaLight(const float3 shadingPosW, const float3 dir, const 
     if(isect == -1.0f) return false;
 
     float3 pos = localPos + isect * localDir;
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
-    ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(pos, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
@@ -419,10 +419,10 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, const 
     float3 pos = float3(sample_disk_concentric(rnd.xy), 0.f);
 
     // Transform to world space.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, -1.f, 0.f)).xyz);
 
     if (! validateAreaLightSample(shadingPosW, light, ls)) return false;
 
@@ -438,9 +438,9 @@ bool intersectDiscAreaLight(const float3 shadingPosW, const float3 dir, const Li
     
     localPos += isect * localDir;
     if ((localPos.x * localPos.x + localPos.y * localPos.y) > 1.f) return false;
-    ls.posW = mul(float4(localPos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(localPos, 1.f)).xyz;
 
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, -1.f, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 

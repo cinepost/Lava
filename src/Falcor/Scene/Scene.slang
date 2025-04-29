@@ -511,14 +511,14 @@ struct Scene {
         const StaticVertexData vtx2 = vertices[vtxIndices[2]].unpack();
 
         const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-        const float3 pos0 = mul(float4(vtx0.position, 1.f), worldMat).xyz;
-        const float3 pos1 = mul(float4(vtx1.position, 1.f), worldMat).xyz;
-        const float3 pos2 = mul(float4(vtx2.position, 1.f), worldMat).xyz;
+        const float3 pos0 = mul(worldMat, float4(vtx0.position, 1.f)).xyz;
+        const float3 pos1 = mul(worldMat, float4(vtx1.position, 1.f)).xyz;
+        const float3 pos2 = mul(worldMat, float4(vtx2.position, 1.f)).xyz;
 
         const float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
-        const float3 n0 = normalize(mul(vtx0.normal, worldInvTransposeMat));
-        const float3 n1 = normalize(mul(vtx1.normal, worldInvTransposeMat));
-        const float3 n2 = normalize(mul(vtx2.normal, worldInvTransposeMat));
+        const float3 n0 = normalize(mul(worldInvTransposeMat, vtx0.normal));
+        const float3 n1 = normalize(mul(worldInvTransposeMat, vtx1.normal));
+        const float3 n2 = normalize(mul(worldInvTransposeMat, vtx2.normal));
 
         // Project the geometric position (inside the triangle) to the planes defined by the vertex positions and normals.
         const float3 p0 = geomPosition - dot(geomPosition - pos0, n0) * n0;
@@ -543,9 +543,9 @@ struct Scene {
         const StaticVertexData vtx2 = vertices[vtxIndices[2]].unpack();
 
         const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-        const float3 pos0 = mul(float4(vtx0.position, 1.f), worldMat).xyz;
-        const float3 pos1 = mul(float4(vtx1.position, 1.f), worldMat).xyz;
-        const float3 pos2 = mul(float4(vtx2.position, 1.f), worldMat).xyz;
+        const float3 pos0 = mul(worldMat, float4(vtx0.position, 1.f)).xyz;
+        const float3 pos1 = mul(worldMat, float4(vtx1.position, 1.f)).xyz;
+        const float3 pos2 = mul(worldMat, float4(vtx2.position, 1.f)).xyz;
 
         return pos0 * barycentrics.x + pos1 * barycentrics.y + pos2 * barycentrics.z;
     }

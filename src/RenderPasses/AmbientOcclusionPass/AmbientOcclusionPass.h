@@ -51,10 +51,8 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 
 		virtual void setRandomSeed(int seed) override;
 
-	protected:
-		AmbientOcclusionPass(Device::SharedPtr pDevice, const Dictionary& dict);
-
-		Device::SharedPtr           mpDevice;
+	private:
+		AmbientOcclusionPass(Device::SharedPtr pDevice);
 
 		// Internal state
 		Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).

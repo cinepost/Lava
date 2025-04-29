@@ -191,18 +191,6 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 		pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	}
 
-	{
-		auto& xform = mpGlobal->getTransformList()[0];
-
-		float3 up = xform.getCol(1).xyz();
-		float3 fwd = -xform.getCol(2).xyz();
-		float3 pos = xform.getCol(3).xyz();
-
-		LLOG_WRN << "Camera session up: " << to_string(up);
-		LLOG_WRN << "Camera session fwd: " << to_string(fwd);
-		LLOG_WRN << "Camera session pos: " << to_string(pos);
-	}
-
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
 	pCamera->setCropRegion(cropRegion);
@@ -1556,18 +1544,6 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	transformNode.transformList = pObj->getTransformList();
 	transformNode.meshBind = m1;          // For skinned meshes. World transform at bind time.
  	transformNode.localToBindPose = m1;   // For bones. Inverse bind transform.
-
-	{
-		auto& xform = transformNode.transformList[0];
-
-		float3 up = xform.getCol(1).xyz();
-		float3 fwd = -xform.getCol(2).xyz();
-		float3 pos = xform.getCol(3).xyz();
-
-		//LLOG_WRN << "Instance " << obj_name << " up: " << to_string(up);
-		//LLOG_WRN << "Instance " << obj_name << " fwd: " << to_string(fwd);
-		LLOG_WRN << "Instance " << obj_name << " pos: " << to_string(pos);
-	}
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
