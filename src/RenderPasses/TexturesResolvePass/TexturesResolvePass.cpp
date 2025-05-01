@@ -10,9 +10,9 @@
 
 #include "TexturesResolvePass.h"
 
+static_assert(sizeof(VirtualTextureData) % 16 == 0, "MeshDesc size should be a multiple of 16");
 
 const RenderPass::Info TexturesResolvePass::kInfo { "TexturesResolve", "Resolves sparse textures tiles to be loaded" };
-
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -201,7 +201,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	auto var = mpVars->getRootVar();
 
 	var["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-	var["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
+	var["PerFrameCB"]["materialsToResolveCount"] = (int32_t)materialsResolveBuffer.size();
 	var["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
 	var["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
 

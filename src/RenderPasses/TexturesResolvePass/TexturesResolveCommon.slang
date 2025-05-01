@@ -141,7 +141,7 @@ int calculateAdditionalAnisotropicMipLevel(float2 texCoord, float2 texDims, int 
         return 0;
     }
 
-    int mipShift = floor(log2(1.0 / _af));
+    int mipShift = (int)floor(log2(1.0 / _af));
 
     return max(0, currMipLevel - mipShift);  
 }

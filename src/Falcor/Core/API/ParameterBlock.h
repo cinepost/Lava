@@ -293,6 +293,8 @@ public:
     */
     const Buffer::SharedPtr& getUnderlyingConstantBuffer() const;
 
+    const ProgramVersion* getProgramVersion() const { return mpProgramVersion.get(); }
+
     typedef uint64_t ChangeEpoch;
 
 public:

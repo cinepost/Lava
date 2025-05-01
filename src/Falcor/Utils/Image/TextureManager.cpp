@@ -978,35 +978,41 @@ void TextureManager::buildSparseResidencyData() {
 		}
 	}
 
-	mVirtualTexturesData.resize(virtualTexturesCount);
 	mVirtualPagesData.clear();
+	mVirtualTexturesData.resize(virtualTexturesCount);
+	for(auto& vtex: mVirtualTexturesData) {
+		vtex.empty = true;
+	}
 
 	// Fill in virtual texture data
 	for (const auto& entry : mTextureToHandle) {
 
 		const auto& pTexture = entry.first;
-		if(!pTexture || !pTexture->isSparse()) continue;
-			auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
+		if(!pTexture || !pTexture->isSparse()) {
+			continue;
+		}
 
-			vtexData.empty = false;
-			vtexData.textureID = pTexture->id();
+		auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
 
-			vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
-			vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
-			vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
-			vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
-			vtexData.pagesStartOffset = mVirtualPagesData.size();
-			mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
+		vtexData.empty = false;
+		vtexData.textureID = pTexture->id();
 
-			auto const& pageRes = pTexture->sparseDataPageRes();
-			vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
-			vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
-			vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
+		vtexData.width = static_cast<uint16_t>(pTexture->getWidth(0));
+		vtexData.height = static_cast<uint16_t>(pTexture->getHeight(0));
+		vtexData.mipLevelsCount = static_cast<uint8_t>(pTexture->getMipCount());
+		vtexData.mipTailStart = static_cast<uint8_t>(pTexture->getMipTailStart());
+		vtexData.pagesStartOffset = mVirtualPagesData.size();
+		mVirtualPagesStartMap[pTexture] = vtexData.pagesStartOffset;
 
-			auto const& mipBases = pTexture->getMipBases();
-			memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
-		
-			mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataBindsCount());
+		auto const& pageRes = pTexture->sparseDataPageRes();
+		vtexData.pageSizeW = static_cast<uint16_t>(pageRes.x);
+		vtexData.pageSizeH = static_cast<uint16_t>(pageRes.y);
+		vtexData.pageSizeD = static_cast<uint16_t>(pageRes.z);
+
+		auto const& mipBases = pTexture->getMipBases();
+		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
+	
+		mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataBindsCount());
 
 		// TODO: prefill pages residency info
 	}

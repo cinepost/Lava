@@ -41,8 +41,8 @@ import DeferredLightingAOV;
 #define GREY(f3color) (LUMA_REC709(f3color) + 0.5f)
 
 static const bool kUseAlphaTest = false;
-static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
-static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
+static const bool kUseAnalyticLights = (bool)USE_ANALYTIC_LIGHTS;
+static const bool kUseEmissiveLights = (bool)USE_EMISSIVE_LIGHTS;
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;

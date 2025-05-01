@@ -8,15 +8,17 @@
 __exported import Scene.Material.TextureHandle;
 #endif
 
+BEGIN_NAMESPACE_FALCOR
+
 // Basic virtual texture data needed
 struct VirtualTextureData {
-    uint32_t textureID;
-    uint32_t empty = true;
-    uint32_t textureResolveID;
-    uint32_t pagesStartOffset; // Pages start at this index in output pages buffer
+    uint32_t    textureID;
+    bool        empty;
+    uint32_t    textureResolveID;
+    uint32_t    pagesStartOffset; // Pages start at this index in output pages buffer
 
-    uint16_t width;
-    uint16_t height;
+    uint16_t    width;
+    uint16_t    height;
 
     //
 
@@ -35,4 +37,12 @@ struct VirtualTextureData {
     uint8_t _pad2;
 
     uint32_t mipBases[16];
+
+#ifdef HOST_CODE
+    VirtualTextureData(){
+        empty = true;
+    }
+#endif
 };
+
+END_NAMESPACE_FALCOR

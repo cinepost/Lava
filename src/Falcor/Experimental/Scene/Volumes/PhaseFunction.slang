@@ -153,6 +153,7 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction {
     }
 
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg) {
+        weight = float3(0.f);
         const float3 u = sampleNext3D(sg);
 
         const float avgW0 = (w0[0]+w0[1]+w0[2]) / 3.f;
@@ -170,7 +171,6 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction {
         }
 
         float selectionweight;
-        float3 weight = float3(0.f);
         
         if (u.z <= avgW0) {
             selectionweight = avgW0;

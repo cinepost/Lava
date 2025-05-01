@@ -349,17 +349,21 @@ void setVariableInternal(
         FALCOR_THROW("Error trying to set a variable that is not a basic type.");
     ReflectionBasicType::Type expectedType = basicType->getType();
     // Check types. Allow implicit conversions from signed to unsigned types.
-    if (type != expectedType && implicitType != expectedType)
+    if (type != expectedType && implicitType != expectedType) {
         FALCOR_THROW(
-            "Error trying to set a variable with a different type than the one in the program (expected {}, got {}).",
+            "Error trying to set a variable with a different type than the one in the program \"{}\" (expected {}, got {}).",
+            pBlock->getProgramVersion() ? pBlock->getProgramVersion()->getName() : "unknown",
             enumToString(expectedType),
             enumToString(type)
         );
+    }
+
     size_t size = sizeof(T);
     size_t expectedSize = basicType->getByteSize();
     if (size != expectedSize)
         FALCOR_THROW(
-            "Error trying to set a variable with a different size than the one in the program (expected {} bytes, got {}).",
+            "Error trying to set a variable with a different size than the one in the program \"{}\" (expected {} bytes, got {}).",
+            pBlock->getProgramVersion() ? pBlock->getProgramVersion()->getName() : "unknown",
             expectedSize,
             size
         );

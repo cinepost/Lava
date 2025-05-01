@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEXTURE_RESOLVE_DATA_SLANGH_
+#define TEXTURE_RESOLVE_DATA_SLANGH_
 
 #ifdef HOST_CODE
 #include "Scene/Material/TextureHandle.slang"
@@ -19,3 +20,5 @@ struct MaterialResolveData {
     uint32_t _pad1;
     uint32_t _pad2;
 };
+
+#endif // TEXTURE_RESOLVE_DATA_SLANGH_
