@@ -145,7 +145,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 
     ls.Li = light.intensity;
 
-    const float3 localShadingPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
+    const float3 localShadingPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
     const float3 localNormal = normalize(mul(light.transMat, float4(shadingNormalW, 0.f)).xyz);
 
     // Unit size quad
@@ -245,11 +245,11 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 
     
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
     // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, -1.f, 0.f)).xyz);
     
     float3 toLight = ls.posW - shadingPosW;
     float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
@@ -269,16 +269,17 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 
 bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     ls = {};
-    float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
-    float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
+
+    float3 localPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
+    float3 localDir = normalize(mul(light.transMatInv, float4(dir, 0.f)).xyz);
 
     float isect = intersect_plane(localPos, localDir);
     
     localPos += isect * localDir;
     if (localPos.x > 1.f || localPos.x < -1.f || localPos.y > 1.f || localPos.y < -1.f) return false;
-    ls.posW = mul(float4(localPos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(localPos, 1.f)).xyz;
 
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, -1.f, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
@@ -583,7 +584,7 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     EnvMapSample els;
     if(samplerID != LightData::kInvalidSamplerID && gScene.envmapSamplers[samplerID].sample(rnd.xy, els)) {
         float lod = 0.f;
-        ls.dir = ls.shadowDir = mul(els.dir, (float3x3)light.transMat);
+        ls.dir = ls.shadowDir = mul((float3x3)light.transMat, els.dir);
         ls.Li = light.intensity * els.Le;
         ls.pdf = els.pdf;
     } else {
@@ -613,7 +614,7 @@ bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const
     if(samplerID != LightData::kInvalidSamplerID) {
         float lod = 0.f;
         EnvMapSampler sampler = gScene.envmapSamplers[samplerID];
-        float3 dir = normalize(mul(ls.dir, (float3x3)light.transMatInv));
+        float3 dir = normalize(mul((float3x3)light.transMatInv, ls.dir));
         ls.Li *= sampler.eval(dir, lod);
         ls.pdf = sampler.evalPdf(dir);
     } else {
@@ -730,6 +731,7 @@ bool evalLightApproximate(const float3 shadingPosW, const LightData light, out A
 }
 
 bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
+    ls = {};
     switch (light.getLightType()) {
         case LightType::Sphere:
             return intersectSphereAreaLight(shadingPosW, dir, light, ls);
@@ -744,7 +746,6 @@ bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData 
         case LightType::PhysSunSky:
             return intersectPhysicalSkyLight(shadingPosW, dir, light, ls);
         default:
-            ls = {};
             return false;
     }
 }

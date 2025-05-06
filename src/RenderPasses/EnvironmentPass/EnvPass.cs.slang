@@ -100,8 +100,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float  localMaxDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosW();
 
+    float  ltype = 0;
+
     for(uint i = 0; i < gScene.getLightCount(); ++i) {
         LightData light = gScene.getLight(i);
+        
+        ltype += float((uint)light.getLightType());
+
         if(!light.visibleToCamera()) continue;
 
         AnalyticLightSample ls = {};
@@ -114,5 +119,4 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
 
     gOutColor[ipos] = backColor * float4(gIntensity, 1.0f) * clamp(gOpacity, 0.0f, 1.0f);
-
 }

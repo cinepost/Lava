@@ -236,11 +236,12 @@ void Light::setShaderData(const ShaderVar& var) {
 }
 
 
-Light::Light(const std::string& name, LightType type) : mName(name) {
+Light::Light(const std::string& name, LightType ltype) : mName(name) {
     mIntensity = float3(.0f);
-    mData.setLightType(type);
+    mData.setLightType(ltype);
     mData.setLightSamplerID(kInvalidSamplerID);
     mData.flags = 0x0;
+    LLOG_ERR << "Light " << to_string(ltype);
 }
 
 void Light::update(const Light& light) {
@@ -470,7 +471,7 @@ void DistantLight::update() {
 }
 
 void DistantLight::updateFromAnimation(const float4x4& transform) {
-    float3 fwd = -transform.getCol(2).xyz();
+    float3 fwd = -transform.getRow(2).xyz();
     setWorldDirection(fwd);
 }
 
@@ -491,7 +492,7 @@ EnvironmentLight::EnvironmentLight(const std::string& name, Texture::SharedPtr p
 }
 
 EnvironmentLight::SharedPtr EnvironmentLight::create(const std::string& name, Texture::SharedPtr pTexture) {
-    return SharedPtr(new EnvironmentLight(name, pTexture));
+   return SharedPtr(new EnvironmentLight(name, pTexture));
 }
 
 void EnvironmentLight::update(const Light& light) {
@@ -622,7 +623,7 @@ void AnalyticAreaLight::update() {
     mData.transMat = mul(mTransformMatrix, scale(float4x4::identity(), mScaling));
     mData.transMatIT = inverse(transpose(mData.transMat));
     mData.transMatInv = inverse(mData.transMat);
-    mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
+    mData.posW = {mData.transMat[0][3], mData.transMat[1][3], mData.transMat[2][3]};
 
     if(mNormalizeArea) {
         mData.intensity = (mIntensity / mData.surfaceArea) * (float)M_2PI; //M_SQRT2;

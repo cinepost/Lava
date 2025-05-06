@@ -54,6 +54,10 @@ struct EnvMapSampler {
         return envMap.eval(dir, lod);
     }
 
+    float3 evalTexel(uint2 coord) {
+        return envMap.evalTexel(coord);
+    }
+
     /** Importance sampling of the environment map.
     */
     bool sample(const float2 rnd, out EnvMapSample result, float lod = 0.f) {
