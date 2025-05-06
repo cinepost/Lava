@@ -48,7 +48,7 @@ namespace Falcor {
         return false;
     }
 
-    [[noreturn]] void reportFatalError(const std::string& msg) {
+    void reportFatalError(const std::string& msg) {
         LLOG_FTL << msg;
         lava::ut::log::flush();
         std::abort();

@@ -159,7 +159,11 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
         else if (key == kUseD64) setHighpDepth(static_cast<bool>(value));
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
+        #ifdef _WIN32
+        else if (key == kCullMode) setCullMode(value.operator std::string());
+        #else
         else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
+        #endif
         else if (key == kMaxSubdivLevel) setMaxSubdivLevel(static_cast<uint>(value));
         else if (key == kMinScreenEdgeLen) setMinScreenEdgeLen(static_cast<float>(value));
         else if (key == kOpacityLimit) setOpacityLimit(static_cast<float>(value));

@@ -14,7 +14,7 @@ static std::vector<std::string> _lsd_extensions = {".lsd",".lsd.gz",".lsd.zip"};
 
 typedef std::string::const_iterator It;
 
-class ReaderLSD: public ReaderBase {
+class LAVA_API ReaderLSD: public ReaderBase {
  public:
  	ReaderLSD();
  	~ReaderLSD() override;

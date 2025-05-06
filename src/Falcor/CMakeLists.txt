@@ -279,6 +279,7 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 if(WIN32)
     add_definitions(-DUNICODE)
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()
 
 if(USE_MEGALIB)
@@ -317,6 +318,23 @@ else()
                 "Comctl32.lib"
                 "comsuppw.lib"
                 "Shcore.lib"
+        )
+        # add_library(oidn SHARED IMPORTED)
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_LOCATION "${DEPS_DIR}/bin/OpenImageDenoise.dll")
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_IMPLIB "${DEPS_DIR}/lib/OpenImageDenoise.lib")
+        # target_link_libraries(falcor_lib PRIVATE oidn)
+        # add_library(oidn_core STATIC IMPORTED)
+        # set_property(TARGET oidn PROPERTY
+        #             IMPORTED_IMPLIB "${DEPS_DIR}/lib/OpenImageDenoise.lib")
+        # target_link_libraries(falcor_lib PUBLIC oidn)
+        target_link_libraries(
+            falcor_lib
+            PUBLIC
+                ${DEPS_DIR}/lib/OpenImageDenoise_core.lib
+                ${DEPS_DIR}/lib/OpenImageDenoise_device_cpu.lib
+                ${DEPS_DIR}/lib/dnnl.lib
         )
     else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
@@ -371,13 +389,22 @@ file(
     DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
-if(UNIX OR WIN32)
+if(UNIX)
     install( 
         TARGETS falcor_lib
         DESTINATION lib 
         RUNTIME_DEPENDENCY_SET falcor_deps
     )
+elseif(WIN32)
+    install(
+        TARGETS falcor_lib
+        DESTINATION lib
+        # RUNTIME DESTINATION lib
+        # RUNTIME_DEPENDENCY_SET falcor_deps
+    )
+endif()
 
+if(UNIX OR WIN32)
     # Install all needed shaders
     install(
         DIRECTORY Core Experimental Raytracing RenderGraph Rendering RenderPasses Scene Testing Utils

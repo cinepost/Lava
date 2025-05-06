@@ -84,7 +84,11 @@ void Scripting::shutdown() {
 #endif // SCRIPTING
 }
 
+#ifdef _WIN32
+class RedirectStream {
+#else
 class __attribute__ ((visibility("hidden"))) RedirectStream {
+#endif
  public:
     RedirectStream(const std::string& stream = "stdout") : mStream(stream) {
         auto m = pybind11::module::import("sys");

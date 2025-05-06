@@ -74,7 +74,7 @@ class dlldecl SceneBuilder {
     using MeshletSpec = Geometry::MeshletSpec;
     using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
 
-    class MeshID {
+    class dlldecl MeshID {
         enum class IDType: uint8_t {
             NONE,
             INTEGER,

@@ -21,7 +21,7 @@ namespace ba = boost::accumulators;
 
 namespace Falcor {
 
-class SimpleProfiler {
+class dlldecl SimpleProfiler {
 	public:
 		using Clock = CpuTimer::Clock;
 		using TimePoint = CpuTimer::TimePoint;

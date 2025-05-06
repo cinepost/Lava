@@ -37,7 +37,7 @@ find_package(Python3 REQUIRED COMPONENTS Development)
 target_include_directories(reader_lsd_lib PUBLIC ${Python3_INCLUDE_DIRS})
 
 if(WIN32)
-    set_target_properties(reader_lsd_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+    # set_target_properties(reader_lsd_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
     # target_link_options(reader_lsd_lib PRIVATE "/FORCE:UNRESOLVED")
 endif()
 

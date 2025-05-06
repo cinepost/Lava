@@ -90,6 +90,8 @@ using namespace std;
 #define MAX_OMP_THREADS_COUNT 4
 #endif
 
+using uint = uint32_t;
+
 std::vector<std::vector<std::vector<uint8_t>>> g_ScanlineCache;
 
 // One master image for each DspyOpen on an non-LOD image. prman can have

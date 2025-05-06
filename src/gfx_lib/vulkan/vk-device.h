@@ -21,6 +21,8 @@ using namespace Slang;
 
 namespace vk {
 
+using uint = uint32_t;
+
 class DeviceImpl : public RendererBase {
 public:
 	// Renderer    implementation

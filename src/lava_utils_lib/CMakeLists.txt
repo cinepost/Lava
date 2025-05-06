@@ -20,8 +20,18 @@ find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log thread filesystem s
 target_include_directories(lava_utils_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
 # CPUinfo
+if(WIN32)
+    # set(PKGCONFIG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../tmp")
+    set(PKG_CONFIG_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../tmp/pkg-config.exe")
+endif()
+# message ("Using PKGCONFIG_ROOT: ${PKGCONFIG_ROOT}")
+message ("Using PKG_CONFIG_EXECUTABLE: ${PKG_CONFIG_EXECUTABLE}")
 find_package(PkgConfig)
+if(WIN32)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH};${EXTERNALS_INSTALL_DIR}/lib/pkgconfig")
+else()
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${EXTERNALS_INSTALL_DIR}/lib/pkgconfig")
+endif()
 pkg_check_modules(CpuInfo REQUIRED IMPORTED_TARGET libcpuinfo)
 
 if(WIN32)
