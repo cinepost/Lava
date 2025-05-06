@@ -1,6 +1,7 @@
 // vk-base.h
 // Shared header file for Vulkan implementation.
-#pragma once
+#ifndef SRC_GFX_VULKAN_VK_BASE_H_
+#define SRC_GFX_VULKAN_VK_BASE_H_
 
 #include "../command-encoder-com-forward.h"
 #include "../mutable-shader-object.h"
@@ -56,3 +57,5 @@ namespace vk {
 
 } // namespace vk
 } // namespace gfx
+
+#endif // SRC_GFX_VULKAN_VK_BASE_H_

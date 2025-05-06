@@ -1,5 +1,6 @@
 // vk-module.h
-#pragma once
+#ifndef SRC_GFX_VULKAN_VK_MODULE_H_
+#define SRC_GFX_VULKAN_VK_MODULE_H_
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreorder"
@@ -68,3 +69,5 @@ struct VulkanModule
 };
 
 } // renderer_test
+
+#endif // SRC_GFX_VULKAN_VK_MODULE_H_

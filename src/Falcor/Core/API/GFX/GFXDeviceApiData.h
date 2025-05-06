@@ -37,10 +37,7 @@ const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 class PipelineCreationAPIDispatcher;
 
 struct DeviceApiData {
-    Slang::ComPtr<gfx::IDevice> pDevice;
     Slang::ComPtr<gfx::ISwapchain> pSwapChain;
-    Slang::ComPtr<gfx::ICommandQueue> pQueue;
-    Slang::ComPtr<gfx::ITransientResourceHeap> pTransientResourceHeaps[Device::kSwapChainBuffersCount];
     PipelineCreationAPIDispatcher* pApiDispatcher = nullptr;
 #if defined(FALCOR_GFX_VK)
     VkPhysicalDeviceMemoryProperties memoryProperties;

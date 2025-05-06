@@ -171,8 +171,9 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     }
 
 #ifdef _OUTPUT_DEBUG_IMAGE
-    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 0, 1);
+    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 255.0f, 1.f);
 #endif
+    psOut.output = float4(255.0f, 255.0f, 255.0f, 255.0f);
 
     return psOut;
 }

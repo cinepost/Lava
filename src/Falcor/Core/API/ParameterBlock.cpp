@@ -273,14 +273,14 @@ void ParameterBlock::setBuffer(const BindLocation& bindLoc, const Buffer::Shared
         auto pUAV = pBuffer ? pBuffer->getUAV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
-        mResources[gfxOffset] = pBuffer;
+        //mResources[gfxOffset] = pBuffer;
     } else if (isSrvType(bindLoc.getType())) {
         if (pBuffer && !is_set(pBuffer->getBindFlags(), ResourceBindFlags::ShaderResource))
             FALCOR_THROW("Trying to bind buffer '{}' created without ShaderResource flag as an SRV.", pBuffer->getName());
         auto pSRV = pBuffer ? pBuffer->getSRV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
-        mResources[gfxOffset] = pBuffer;
+        //mResources[gfxOffset] = pBuffer;
     } else {
         FALCOR_THROW("Error trying to bind buffer to a non SRV/UAV variable.");
     }
@@ -425,7 +425,7 @@ void ParameterBlock::setTexture(const BindLocation& bindLocation, const Texture:
         auto pUAV = pTexture ? pTexture->getUAV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
-        mResources[gfxOffset] = pTexture;
+        //mResources[gfxOffset] = pTexture;
     } else if (isSrvType(bindLocation.getType())) {
         if (pTexture && !is_set(pTexture->getBindFlags(), ResourceBindFlags::ShaderResource)) {
             FALCOR_THROW("Trying to bind texture '{}' created without ShaderResource flag as an SRV.", pTexture->getName());
@@ -433,7 +433,7 @@ void ParameterBlock::setTexture(const BindLocation& bindLocation, const Texture:
         auto pSRV = pTexture ? pTexture->getSRV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
-        mResources[gfxOffset] = pTexture;
+        //mResources[gfxOffset] = pTexture;
     } else {
         FALCOR_THROW("Error trying to bind texture to a non SRV/UAV variable.");
     }
@@ -469,9 +469,7 @@ void ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResour
         mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSrv;
         // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
-        static const Resource::SharedPtr sNullResource;
-        LLOG_WRN << "ParameterBlock::setSrv pSrv" << (pSrv ? "YES" : "NO");
-        mResources[gfxOffset] = pSrv ? Resource::SharedPtr(pSrv->getResource()) : sNullResource;
+        //mResources[gfxOffset] = Resource::SharedPtr(pSrv ? pSrv->getResource() : nullptr);
     } else {
         FALCOR_THROW("Error trying to bind an SRV to a non SRV variable.");
     }
@@ -483,7 +481,7 @@ void ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAcc
         mpShaderObject->setResource(gfxOffset, pUav ? pUav->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUav;
         // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
-        mResources[gfxOffset] = Resource::SharedPtr(pUav ? pUav->getResource() : nullptr);
+        //mResources[gfxOffset] = Resource::SharedPtr(pUav ? pUav->getResource() : nullptr);
     } else {
         FALCOR_THROW("Error trying to bind a UAV to a non UAV variable.");
     }

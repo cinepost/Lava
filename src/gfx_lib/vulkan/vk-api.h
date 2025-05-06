@@ -1,7 +1,9 @@
 // vk-api.h
-#pragma once
+#ifndef SRC_GFX_VULKAN_VK_API_H_
+#define SRC_GFX_VULKAN_VK_API_H_
 
 #include "vk-module.h"
+#include "vk-device-props.h"
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace gfx {
@@ -427,7 +429,13 @@ struct VulkanApi
     VkPhysicalDeviceFeatures                                m_deviceFeatures;
     VkPhysicalDeviceMemoryProperties                        m_deviceMemoryProperties;
     VulkanExtendedFeatureProperties                         m_extendedFeatures;
+
+    vk::SubgroupSizeControlProperties                       mSubgroupSizeControlProperties;
+    vk::AccelerationStructureProperties                     mAccelerationStructureProperties;
+
     VmaAllocator                                            mVmaAllocator;
 };
 
-} // renderer_test
+} // namespace gfx
+
+#endif // SRC_GFX_VULKAN_VK_API_H_

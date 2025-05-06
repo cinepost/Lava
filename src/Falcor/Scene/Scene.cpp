@@ -54,6 +54,10 @@
 
 static std::atomic<uint32_t> _cnt = 0;
 
+static inline size_t align(size_t x, size_t alignment) {
+    return (x + (alignment - 1)) & ~(alignment - 1);
+}
+
 namespace Falcor {
 
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
@@ -128,9 +132,11 @@ namespace {
     }
 }
 
-Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
+Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice)
+{
     mRayTraceInitialized = false;
     //mDebug.setup(mpDevice->getApiHandle()); 
+
 
     // Copy/move scene data to member variables.
     mFilename = sceneData.filename;
@@ -2594,6 +2600,8 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 }
 
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
+    static const uint64_t acceleration_structure_scratch_offset_alignment = mpDevice->getMinAccelerationStructureScratchOffsetAlignment();
+
     for (auto& blas : mBlasData) {
         // Determine how BLAS build/update should be done.
         // The default choice is to compact all static BLASes and those that don't need to be rebuilt every frame.
@@ -2637,7 +2645,7 @@ void Scene::preparePrebuildInfo(RenderContext* pContext) {
         blas.resultByteSize = align_to(kAccelerationStructureByteAlignment, blas.prebuildInfo.resultDataMaxSize);
 
         uint64_t scratchByteSize = std::max(blas.prebuildInfo.scratchDataSize, blas.prebuildInfo.updateScratchDataSize);
-        blas.scratchByteSize = align_to(kAccelerationStructureByteAlignment, scratchByteSize);
+        blas.scratchByteSize = align_to(acceleration_structure_scratch_offset_alignment, scratchByteSize);
     }
 }
 

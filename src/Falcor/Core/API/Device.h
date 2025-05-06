@@ -42,6 +42,8 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
+#include "gfx_lib/vulkan/vk-device-props.h"
+
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
@@ -66,9 +68,9 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
     using DeviceLocalUID = uint32_t;
-    
+
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
-    static constexpr uint32_t kSwapChainBuffersCount = 3;
+    static constexpr uint32_t kInFlightFrameCount = 3;
 
     ~Device();
 
@@ -219,15 +221,14 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
      */
     ShaderModel getDefaultShaderModel() const { return mDefaultShaderModel; }
 
+    gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
+
     /// Returns the global slang session.
     slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
 
     std::vector<std::string> getFeatures() const { return mGfxDevice->getFeatures(); }
 
-#ifdef FALCOR_GFX
     void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
-
-    gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
 
 
 #if FALCOR_GFX_VK || defined(FALCOR_VK)
@@ -236,7 +237,6 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     VkDevice         getVkDevice() const { return mVkDevice; };
     VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
 #endif  // FALCOR_GFX_VK || FALCOR_VK
-#endif  // FALCOR_GFX
 
 #ifdef FALCOR_VK
     uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
@@ -257,7 +257,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     uint32_t  getDeviceVendorID() const;
 #endif  // FALCOR_VK
 
-    uint32_t getMaxComputeWorkgroupSubgroups() const;
+    uint64_t getMinAccelerationStructureScratchOffsetAlignment() const;
 
     const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const;
 
@@ -291,11 +291,12 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
         ApiObjectHandle pApiObject;
     };
 
-    std::shared_ptr<Sampler> mpDefaultSampler = nullptr;
+    uint32_t mCurrentTransientResourceHeapIndex = 0;
+    std::shared_ptr<Sampler> mpDefaultSampler;
     std::queue<ResourceRelease> mDeferredReleases;
 
     uint32_t mCurrentBackBufferIndex;
-    std::shared_ptr<Fbo> mpSwapChainFbos[kSwapChainBuffersCount];
+    std::shared_ptr<Fbo> mpSwapChainFbos[kInFlightFrameCount];
     std::shared_ptr<Fbo> mpOffscreenFbo;
 
     void executeDeferredReleases();
@@ -323,6 +324,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 #endif
 
     Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<gfx::ITransientResourceHeap> mpTransientResourceHeaps[kInFlightFrameCount];
 
     Window::SharedPtr mpWindow = nullptr;
     DeviceApiData* mpApiData;
@@ -341,7 +343,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     // API specific functions
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle);
-    bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
+    bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kInFlightFrameCount], uint32_t& currentBackBufferIndex);
     void apiPresent();
 
     bool apiInit(const std::string& validationLayerOuputFilename);

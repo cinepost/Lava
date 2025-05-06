@@ -1345,13 +1345,11 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	if (geomInfoBuilder.build(desc.inputs, getDebugCallback()) != SLANG_OK) return;
 
 	if (desc.dest) {
-		geomInfoBuilder.buildInfo.dstAccelerationStructure =
-			static_cast<AccelerationStructureImpl*>(desc.dest)->m_vkHandle;
+		geomInfoBuilder.buildInfo.dstAccelerationStructure = static_cast<AccelerationStructureImpl*>(desc.dest)->m_vkHandle;
 	}
 
 	if (desc.source) {
-		geomInfoBuilder.buildInfo.srcAccelerationStructure =
-			static_cast<AccelerationStructureImpl*>(desc.source)->m_vkHandle;
+		geomInfoBuilder.buildInfo.srcAccelerationStructure = static_cast<AccelerationStructureImpl*>(desc.source)->m_vkHandle;
 	}
 	geomInfoBuilder.buildInfo.scratchData.deviceAddress = desc.scratchData;
 

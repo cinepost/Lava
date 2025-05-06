@@ -983,7 +983,6 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mDirty = false;
 
 	// Debug test
-	Resource::printUsage();
 	printMemAllocCount();
 
 	return true;

@@ -34,47 +34,16 @@
 
 namespace Falcor {
 
-std::atomic<size_t> gAllocatedBuffersCount = 0;
-std::atomic<size_t> gAllocatedTexturesCount = 0;
-
-void Resource::printUsage() {
-#ifdef _DEBUG
-    LLOG_INF << "Allocated buffers count " << gAllocatedBuffersCount;
-    LLOG_INF << "Allocated textures count " << gAllocatedTexturesCount;
-#endif
-}
-
 Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) 
     : mType(type), 
     mBindFlags(bindFlags), 
     mSize(size), 
     mpDevice(pDevice), 
-    mID(newResourceID++) {
-
-#ifdef _DEBUG
-    switch(type) {
-        case Type::Buffer:
-            gAllocatedBuffersCount++;
-            break;
-        default:
-            gAllocatedTexturesCount++;
-            break;
-    }
-#endif
+    mID(newResourceID++) 
+{
 }
 
-Resource::~Resource() {
-#ifdef _DEBUG
-    switch(mType) {
-        case Type::Buffer:
-            gAllocatedBuffersCount--;
-            break;
-        default:
-            gAllocatedTexturesCount--;
-            break;
-    }
-#endif
-}
+Resource::~Resource() = default;
 
 const std::string to_string(Resource::Type type) {
     #define type_2_string(a) case Resource::Type::a: return #a;

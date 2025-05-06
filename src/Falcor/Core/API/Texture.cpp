@@ -326,7 +326,7 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
 	}
 
 	uint32_t channels;
-	ResourceFormat resourceFormat;
+	ResourceFormat resourceFormat = ResourceFormat::Unknown; 
 	std::vector<uint8_t> textureData;
 
 	readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
@@ -345,7 +345,7 @@ void Texture::captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, cons
 	}
 
 	uint32_t channels;
-	ResourceFormat resourceFormat;
+	ResourceFormat resourceFormat = ResourceFormat::Unknown;
 	std::vector<uint8_t> textureData;
 	
 	readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
@@ -414,6 +414,9 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 
 	RenderContext* pContext = mpDevice->getRenderContext();
 
+	resourceFormat = mFormat;
+	channels = getFormatChannelCount(mFormat);
+
 	uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
 	pContext->readTextureSubresource(this, subresource, textureData);
 }
@@ -426,7 +429,6 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vecto
 
 	size_t data_size = getWidth(mipLevel) * getHeight(mipLevel) * getFormatBytesPerBlock(mFormat);
 	if( textureData.size() < data_size) {
-		LLOG_WRN << "textureData size (" << textureData.size() << ") is less than requested (" << data_size << ") ! Forcing resize.";
 		textureData.resize(data_size);
 	}
 	readTextureData(mipLevel, arraySlice, textureData.data(), resourceFormat, channels);

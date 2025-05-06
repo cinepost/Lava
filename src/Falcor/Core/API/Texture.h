@@ -66,8 +66,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
  public:
 	using SharedPtr = std::shared_ptr<Texture>;
 	using SharedConstPtr = std::shared_ptr<const Texture>;
-	using WeakPtr = std::weak_ptr<Texture>;
-	using WeakConstPtr = std::weak_ptr<const Texture>;
 	using inherit_shared_from_this<Resource, Texture>::shared_from_this;
 
 	struct MipTailInfo {
@@ -83,7 +81,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		bool operator==(const UDIMTileInfo& other) const { return ((u == other.u) && (v == other.v) && (pTileTexture == other.pTileTexture)); }
 	};
 
-	virtual ~Texture();
+	~Texture();
 
 	/** Get a mip-level width
 	*/

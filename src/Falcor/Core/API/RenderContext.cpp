@@ -249,6 +249,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
     blitData.pPass->execute(this, blitData.pFbo, false);
 
     // Release the resources we bound
+    blitData.pFbo->attachColorTarget(nullptr, 0);
     blitData.pPass->getVars()->setSrv(blitData.texBindLoc, nullptr);
 }
 

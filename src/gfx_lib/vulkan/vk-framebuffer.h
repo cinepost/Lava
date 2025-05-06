@@ -3,22 +3,18 @@
 
 #include "vk-base.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-enum
-{
+enum {
     kMaxRenderTargets = 8,
     kMaxTargets = kMaxRenderTargets + 1,
 };
 
-class FramebufferLayoutImpl : public FramebufferLayoutBase
-{
+class FramebufferLayoutImpl : public FramebufferLayoutBase {
 public:
     VkRenderPass m_renderPass;
     DeviceImpl* m_renderer;
@@ -34,8 +30,7 @@ public:
     Result init(DeviceImpl* renderer, const IFramebufferLayout::Desc& desc);
 };
 
-class FramebufferImpl : public FramebufferBase
-{
+class FramebufferImpl : public FramebufferBase {
 public:
     VkFramebuffer m_handle;
     ShortList<ComPtr<IResourceView>> renderTargetViews;

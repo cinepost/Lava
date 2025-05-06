@@ -1,10 +1,12 @@
 // vk-device.h
-#pragma once
+#ifndef SRC_GFX_VULKAN_VK_DEVICE_H_
+#define SRC_GFX_VULKAN_VK_DEVICE_H_
 
 #include <stdio.h>
 
 #include "vk-base.h"
 #include "vk-framebuffer.h"
+#include "vk-device-props.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
@@ -21,12 +23,6 @@ namespace vk {
 
 class DeviceImpl : public RendererBase {
 public:
-	struct SubgroupSizeControlProperties {
-		uint minSubgroupSize;
-		uint maxSubgroupSize;
-		uint maxComputeWorkgroupSubgroups;
-	};
-
 	// Renderer    implementation
 	Result initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename);
 	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc) override;
@@ -151,6 +147,8 @@ public:
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL getTextureRowAlignment(Size* outAlignment) override;
 
+	virtual SLANG_NO_THROW Result SLANG_MCALL getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) override;
+
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createFence(const IFence::Desc& desc, IFence** outFence) override;
 
@@ -219,9 +217,6 @@ public:
 	uint32_t getQueueFamilyIndex(ICommandQueue::QueueType queueType);
 
 public:
-	const SubgroupSizeControlProperties& getSubgroupSizeControlProperties() const { return mSubgroupSizeControlProperties; }
-
-public:
 	// DeviceImpl members.
 
 	DeviceInfo m_info;
@@ -242,8 +237,6 @@ public:
 	uint32_t m_queueFamilyIndex;
 
 	Desc m_desc;
-
-	SubgroupSizeControlProperties mSubgroupSizeControlProperties;
 
 	VkPhysicalDeviceProperties m_basicProps;
 	VkPhysicalDeviceProperties m_deviceProps2;
@@ -274,3 +267,5 @@ public:
 
 } // namespace vk
 } // namespace gfx
+
+#endif // SRC_GFX_VULKAN_VK_DEVICE_H_

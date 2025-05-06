@@ -35,7 +35,8 @@
 
 namespace Falcor {
 
-const uint64_t kAccelerationStructureByteAlignment = 256;
+constexpr uint64_t kAccelerationStructureByteAlignment = 256;
+constexpr uint64_t kAccelerationStructureScratchOffsetAlignment = 128;
 
 class RtAccelerationStructure;
 

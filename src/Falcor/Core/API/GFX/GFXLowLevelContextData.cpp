@@ -68,10 +68,10 @@ void LowLevelContextData::openCommandBuffer() {
 	mpApiData->mIsCommandBufferOpen = true;
 
 	if(!mpDevice->isHeadless()) {
-		auto transientHeap = mpDevice->getApiData()->pTransientResourceHeaps[mpDevice->getCurrentBackBufferIndex()].get();
+		auto transientHeap = mpDevice->getCurrentTransientResourceHeap();
 		mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
 	} else {
-		auto transientHeap = mpDevice->getApiData()->pTransientResourceHeaps[0].get();
+		auto transientHeap = mpDevice->getCurrentTransientResourceHeap();
 		mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
 	}
 

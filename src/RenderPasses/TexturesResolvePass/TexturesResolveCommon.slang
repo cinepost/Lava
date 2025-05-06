@@ -3,7 +3,7 @@
 // Generic helpers
 
 uint divMod(int x, int y) {
-    return x - y * floor(float(x) / float(y));
+    return x - y * (int)floor(float(x) / float(y));
 };
 
 // Virtual texturing debug helpers

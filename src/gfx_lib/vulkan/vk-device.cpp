@@ -735,7 +735,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
 		}
 
-		VkPhysicalDeviceProperties2 extendedProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
 
 		VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT };
 		sampleLocationsProps.sampleLocationSampleCounts = VK_SAMPLE_COUNT_1_BIT; //metalFeatures.supportedSampleCounts;
@@ -745,31 +744,48 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		sampleLocationsProps.sampleLocationSubPixelBits = 4;
 		sampleLocationsProps.variableSampleLocations = VK_TRUE;
 
-		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroupSizeControlProps = {};
-		subgroupSizeControlProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES;
-		subgroupSizeControlProps.minSubgroupSize = 0;
-    subgroupSizeControlProps.maxSubgroupSize = 0;
-    subgroupSizeControlProps.maxComputeWorkgroupSubgroups = 0;
-    subgroupSizeControlProps.pNext = NULL;
+		VkPhysicalDeviceSubgroupProperties subgroup_properties = { 
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+			.pNext = NULL
+		};
 
-		VkPhysicalDeviceSubgroupProperties subgroupProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
-		subgroupProps.subgroupSize = 32;
-		subgroupProps.pNext = &subgroupSizeControlProps;
+		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES,
+			.pNext = &subgroup_properties
+		};
 
-		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
-		rtProps.pNext = &subgroupProps;
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR accel_struct_properties = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR,
+			.pNext = &subgroup_size_control_properties
+		};
 
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_pipeline_properties = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+			.pNext = &accel_struct_properties
+		};
 
-		extendedProps.pNext = &rtProps;
+		VkPhysicalDeviceProperties2 dev_props2 = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+			.pNext = &ray_pipeline_properties,
+		};
 
-		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &extendedProps);
-		
-		mSubgroupSizeControlProperties.minSubgroupSize = subgroupSizeControlProps.minSubgroupSize;
-		mSubgroupSizeControlProperties.maxSubgroupSize = subgroupSizeControlProps.maxSubgroupSize;
-		mSubgroupSizeControlProperties.maxComputeWorkgroupSubgroups = subgroupSizeControlProps.maxComputeWorkgroupSubgroups;
+		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &dev_props2);
 
-		m_api.m_rtProperties = rtProps;
-		m_api.m_deviceSubgroupProperties = subgroupProps;
+		m_api.mSubgroupSizeControlProperties.minSubgroupSize = subgroup_size_control_properties.minSubgroupSize;
+		m_api.mSubgroupSizeControlProperties.maxSubgroupSize = subgroup_size_control_properties.maxSubgroupSize;
+		m_api.mSubgroupSizeControlProperties.maxComputeWorkgroupSubgroups = subgroup_size_control_properties.maxComputeWorkgroupSubgroups;
+
+		m_api.mAccelerationStructureProperties.maxGeometryCount = accel_struct_properties.maxGeometryCount;
+		m_api.mAccelerationStructureProperties.maxInstanceCount = accel_struct_properties.maxInstanceCount;
+		m_api.mAccelerationStructureProperties.maxPrimitiveCount = accel_struct_properties.maxPrimitiveCount;
+		m_api.mAccelerationStructureProperties.maxPerStageDescriptorAccelerationStructures = accel_struct_properties.maxPerStageDescriptorAccelerationStructures;
+		m_api.mAccelerationStructureProperties.maxPerStageDescriptorUpdateAfterBindAccelerationStructures = accel_struct_properties.maxPerStageDescriptorUpdateAfterBindAccelerationStructures;
+		m_api.mAccelerationStructureProperties.maxDescriptorSetAccelerationStructures = accel_struct_properties.maxDescriptorSetAccelerationStructures;
+		m_api.mAccelerationStructureProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures = accel_struct_properties.maxDescriptorSetUpdateAfterBindAccelerationStructures;
+		m_api.mAccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment = accel_struct_properties.minAccelerationStructureScratchOffsetAlignment;
+
+		m_api.m_rtProperties = ray_pipeline_properties;
+		m_api.m_deviceSubgroupProperties = subgroup_properties;
 
 		if (extensionNames.contains("VK_KHR_external_memory")) {
 			deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
@@ -913,7 +929,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_api.mVmaAllocator));
 
 	VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-  	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	SLANG_VK_RETURN_ON_FAIL(vkCreateFence(m_device, &fenceInfo, NULL, &mImmediateFence) );
 
 	return SLANG_OK;
@@ -1407,6 +1423,11 @@ Result DeviceImpl::getTextureRowAlignment(Size* outAlignment) {
 	return SLANG_OK;
 }
 
+Result DeviceImpl::getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) {
+	*outAlignment = m_api.mAccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment;
+	return SLANG_OK;
+}
+
 SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() const {
 	return m_api.mVmaAllocator;
 }
@@ -1885,6 +1906,7 @@ bool DeviceImpl::tailMemoryAllocated(const Falcor::Texture* pTexture) {
 }
 
 Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, TextureResourceImpl* textureResource, bool force) {
+	assert(pTexture);
 	assert(textureResource);
 	auto& sparseImageMemoryRequirements = pTexture->mSparseImageMemoryRequirements;
 
@@ -1974,13 +1996,14 @@ Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 
 SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture, VkImage image) {
 	assert(pTexture);
+
 	if (!pTexture->isSparse()) {
 		LLOG_ERR << "Unable to sparse bind non sparse texture !!!";
 		return;
 	}
-
-	assert(image != VK_NULL_HANDLE);
 	
+	if(image == VK_NULL_HANDLE) return;
+
 	// Update list of memory-backed sparse image memory binds
 	pTexture->mSparseImageMemoryBinds.clear();
 	for (const auto& pPage : pTexture->mSparseDataPages) {
@@ -2015,28 +2038,16 @@ SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(Falcor::Texture
 
 void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	assert(pTexture);
-	if (!pTexture->isSparse()) {
-		LLOG_ERR << "Unable to sparse bind non sparse texture !!!";
-		return;
-	}
-
 	TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
-	
 	updateSparseBindInfo(pTexture, texture->m_image);
-	return;
 }
 
 void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
 	std::vector<VkBindSparseInfo> bindInfos;
 
 	for(Falcor::Texture* pTexture: textures) {
-		if(!pTexture) continue;
-
+		assert(pTexture);
 		TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
-		assert(texture->m_image != VK_NULL_HANDLE);
-
-		if(texture->m_image == VK_NULL_HANDLE) continue;
-
 		updateSparseBindInfo(pTexture, texture->m_image);
 	}
 }

@@ -171,7 +171,10 @@ public:
         uint64_t timeout) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL getTextureAllocationInfo(
         const ITextureResource::Desc& desc, size_t* outSize, size_t* outAlignment) override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL getTextureRowAlignment(size_t* outAlignment) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) override;
+
     virtual SLANG_NO_THROW Result SLANG_MCALL
         createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outTable) override;
     virtual std::vector<std::string> getFeatures() const override;

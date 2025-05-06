@@ -85,10 +85,6 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 	mpState->setProgram(mpProgram);
 
 	parseDictionary(dict);
-
- 	if (1 == 1) {
-		mpState->getProgram()->addDefine("_OUTPUT_DEBUG_IMAGE");
-	}
 }
 
 RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData) {
@@ -105,12 +101,15 @@ void TexturesResolvePass::updateTexturesResolveData() {
 }
 
 void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+	if(mpScene == pScene) return;
+
 	mpScene = pScene;
 	if (mpScene) {
 		mpState->getProgram()->addDefines(mpScene->getSceneDefines());
 		//updateTexturesResolveData();
 	}
 	mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+	mDirty = true;
 }
 
 void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& renderData) {
@@ -131,6 +130,10 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	if(mDirty) {
 		uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
 		mpState->getProgram()->addDefine("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
+
+		if (1 == 1) {
+			mpState->getProgram()->addDefine("_OUTPUT_DEBUG_IMAGE", "1");
+		}
 	}
 
 	initDepth(pContext, renderData);
@@ -139,7 +142,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpFbo->attachColorTarget(pDebugData, 0);
 
 	mpState->setFbo(mpFbo);
-	pContext->clearRtv(pDebugData->getRTV().get(), {0, 0, 0, 0});
+	pContext->clearRtv(pDebugData->getRTV().get(), {255, 0, 0, 0});
 
 	auto exec_started = std::chrono::high_resolution_clock::now();
 
@@ -218,6 +221,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
 	pContext->flush(true);
+
+	pDebugData->captureToFile(0, 0, "/home/max/Desktop/vtex_test.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
 
 	// Test resolved data
 	auto pPagesBuffer = pTextureManager->getPagesResidencyBuffer();

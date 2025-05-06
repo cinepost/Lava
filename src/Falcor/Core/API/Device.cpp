@@ -29,12 +29,13 @@
 
 #include <thread>
 
+#include "Device.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ProgramManager.h"
 
-#include "Device.h"
 #include "Sampler.h"
 
 
@@ -129,7 +130,7 @@ bool Device::init() {
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
     FALCOR_ASSERT(mpDefaultSampler);
 
-    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    mpRenderContext = RenderContext::create(shared_from_this(), mGfxCommandQueue);
     FALCOR_ASSERT(mpRenderContext);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -202,7 +203,7 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
     //ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
     //getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
+    for (uint32_t i = 0; i < kInFlightFrameCount; i++) {
         // Create a texture object
         auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
         //pColorTex->mApiHandle = apiHandles[i];
@@ -229,6 +230,16 @@ Fbo::SharedPtr Device::getOffscreenFbo() const {
     assert(mHeadless);
     assert(mpOffscreenFbo);
     return mpOffscreenFbo;
+}
+
+gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
+    return mpTransientResourceHeaps[mCurrentTransientResourceHeapIndex].get();
+}
+
+uint64_t Device::getMinAccelerationStructureScratchOffsetAlignment() const {
+    size_t alignment = kAccelerationStructureScratchOffsetAlignment;
+    mGfxDevice->getMinAccelerationStructureScratchOffsetAlignment(&alignment);
+    return alignment;
 }
 
 std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {

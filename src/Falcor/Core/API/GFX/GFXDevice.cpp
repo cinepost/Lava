@@ -252,8 +252,8 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		}
 	}
 
-	bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex) {
-		for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
+	bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kInFlightFrameCount], uint32_t& currentBackBufferIndex) {
+		for (uint32_t i = 0; i < kInFlightFrameCount; i++) {
 			Slang::ComPtr<gfx::ITextureResource> imageHandle;
 			SlangResult hr = mpApiData->pSwapChain->getImage(i, imageHandle.writeRef());
 			apiHandles[i] = imageHandle.get();
@@ -303,21 +303,13 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 
 	// create resource
 	std::shared_ptr<Falcor::Texture> pTexture;
-	apiHandle = mpApiData->pDevice->createTextureResource(desc, pTexture.get(), nullptr);
+	apiHandle = mGfxDevice->createTextureResource(desc, pTexture.get(), nullptr);
 	FALCOR_ASSERT(apiHandle);
 
 	return true;
 }
 
 	void Device::toggleFullScreen(bool fullscreen) {}
-
-	gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
-		if( !mHeadless ) {
-			return mpApiData->pTransientResourceHeaps[mCurrentBackBufferIndex].get();
-		} else {
-			return mpApiData->pTransientResourceHeaps[0].get();
-		}
-	}
 
 	void Device::present() {
 		assert(!mHeadless);
@@ -335,7 +327,7 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		// Since call to `acquireNextImage` already included a fence wait inside GFX, we don't need to wait again.
 		// Instead we just signal `mpFrameFence` from the host.
 		mpFrameFence->externalSignal();
-		if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) mpFrameFence->setGpuValue(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
+		if (mpFrameFence->getCpuValue() >= kInFlightFrameCount) mpFrameFence->setGpuValue(mpFrameFence->getCpuValue() - kInFlightFrameCount);
 		executeDeferredReleases();
 		mFrameID++;
 	}
@@ -428,9 +420,7 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	FALCOR_GFX_CALL(gfxSetDebugCallback(&gGFXDebugCallBack));
     	if (mDesc.enableDebugLayer) gfx::gfxEnableDebugLayer();
 
-		if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
-
-		mGfxDevice = pData->pDevice;
+		if (SLANG_FAILED(gfxCreateDevice(&desc, mGfxDevice.writeRef()))) return false;
 
 		gfx::IDevice::InteropHandles interopHandles = {};
 		mGfxDevice->getNativeDeviceHandles(&interopHandles);
@@ -443,23 +433,8 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		mSupportedFeatures = querySupportedFeatures(mGfxDevice);
 		mSupportedShaderModel = querySupportedShaderModel(mGfxDevice);
 		mDefaultShaderModel = std::min(kDefaultShaderModel, mSupportedShaderModel);
-
-		if( !mHeadless ) {
-			for (uint32_t i = 0; i < kSwapChainBuffersCount; ++i) {
-				ITransientResourceHeap::Desc transientHeapDesc = {};
-				transientHeapDesc.flags = ITransientResourceHeap::Flags::AllowResizing;
-				transientHeapDesc.constantBufferSize = kTransientHeapConstantBufferSize;
-				transientHeapDesc.samplerDescriptorCount = 2048;
-				transientHeapDesc.uavDescriptorCount = 1000000;
-				transientHeapDesc.srvDescriptorCount = 1000000;
-				transientHeapDesc.constantBufferDescriptorCount = 1000000;
-				transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
-
-				if (SLANG_FAILED(pData->pDevice->createTransientResourceHeap(transientHeapDesc, pData->pTransientResourceHeaps[i].writeRef()))) {
-					return false;
-				}
-			}
-		} else {
+		
+		for (uint32_t i = 0; i < kInFlightFrameCount; ++i) {
 			ITransientResourceHeap::Desc transientHeapDesc = {};
 			transientHeapDesc.flags = ITransientResourceHeap::Flags::AllowResizing;
 			transientHeapDesc.constantBufferSize = kTransientHeapConstantBufferSize;
@@ -468,21 +443,22 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 			transientHeapDesc.srvDescriptorCount = 1000000;
 			transientHeapDesc.constantBufferDescriptorCount = 1000000;
 			transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
-			if (SLANG_FAILED(pData->pDevice->createTransientResourceHeap(transientHeapDesc, pData->pTransientResourceHeaps[0].writeRef()))) {
+
+			if (SLANG_FAILED(mGfxDevice->createTransientResourceHeap(transientHeapDesc, mpTransientResourceHeaps[i].writeRef()))) {
 				return false;
 			}
 		}
-
+		
 		ICommandQueue::Desc queueDesc = {};
 		queueDesc.type = ICommandQueue::QueueType::Graphics;
-		if (SLANG_FAILED(pData->pDevice->createCommandQueue(queueDesc, pData->pQueue.writeRef()))) return false;
+		if (SLANG_FAILED(mGfxDevice->createCommandQueue(queueDesc, mGfxCommandQueue.writeRef()))) return false;
 		for (auto& queue : mCmdQueues) {
-			queue.push_back(pData->pQueue);
+			queue.push_back(mGfxCommandQueue);
 		}
 
 		for (auto& queue : mCmdNativeQueues) {
 		  gfx::InteropHandle handle = {};
-    		FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
+    		FALCOR_GFX_CALL(mGfxCommandQueue->getNativeHandle(&handle));
     		queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
 		}
 
@@ -503,17 +479,17 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		assert(mpWindow);
 		ISwapchain::Desc desc = { };
 		desc.format = getGFXFormat(colorFormat);
-		desc.imageCount = kSwapChainBuffersCount;
+		desc.imageCount = kInFlightFrameCount;
 		auto clientSize = mpWindow->getClientAreaSize();
 		desc.width = clientSize.x;
 		desc.height = clientSize.y;
 		desc.enableVSync = mDesc.enableVsync;
-		desc.queue = mpApiData->pQueue.get();
+		desc.queue = mGfxCommandQueue.get();
 
 #ifdef WIN32
-		if (SLANG_FAILED(mpApiData->pDevice->createSwapchain(desc, gfx::WindowHandle::FromHwnd(mpWindow->getApiHandle()), mpApiData->pSwapChain.writeRef())))
+		if (SLANG_FAILED(mGfxDevice->createSwapchain(desc, gfx::WindowHandle::FromHwnd(mpWindow->getApiHandle()), mpApiData->pSwapChain.writeRef())))
 #else
-		if (SLANG_FAILED(mpApiData->pDevice->createSwapchain(desc, gfx::WindowHandle::FromXWindow(mpWindow->getApiHandle().pDisplay, mpWindow->getApiHandle().window), mpApiData->pSwapChain.writeRef())))
+		if (SLANG_FAILED(mGfxDevice->createSwapchain(desc, gfx::WindowHandle::FromXWindow(mpWindow->getApiHandle().pDisplay, mpWindow->getApiHandle().window), mpApiData->pSwapChain.writeRef())))
 #endif
 		{
 			return false;
@@ -548,13 +524,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		return pDevice->getPhysicalDeviceProperties();
 	}
 
-	uint32_t Device::getMaxComputeWorkgroupSubgroups() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
-		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
-
-		return pDevice->getSubgroupSizeControlProperties().maxComputeWorkgroupSubgroups;
-	}
-
 	uint32_t Device::subgroupSize() const {
 		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
 		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
@@ -573,6 +542,10 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	mpRenderContext.reset();
     	mpUploadHeap.reset();
 
+    	for (size_t i = 0; i < kInFlightFrameCount; ++i) {
+    		mpTransientResourceHeaps[i].setNull();
+    	}
+
     	for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
         	mCmdQueues[i].clear();
         	mCmdNativeQueues[i].clear();
@@ -581,7 +554,7 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	if(mHeadless) {
         	mpOffscreenFbo.reset();
     	} else {
-        	for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+        	for (uint32_t i = 0; i < kInFlightFrameCount; i++) mpSwapChainFbos[i].reset();
     	}
 
     	mpDefaultSampler.reset();

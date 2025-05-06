@@ -2558,7 +2558,7 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL createComputePipelineState(
 			const ComputePipelineStateDesc&    desc,
-			IPipelineState**                     outState) = 0;
+			IPipelineState**                   outState) = 0;
 
 		inline ComPtr<IPipelineState> createComputePipelineState( const ComputePipelineStateDesc& desc) {
 			ComPtr<IPipelineState> state;
@@ -2616,6 +2616,8 @@ class IDevice: public ISlangUnknown {
 			const ITextureResource::Desc& desc, Size* outSize, Size* outAlignment) = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL getTextureRowAlignment(Size* outAlignment) = 0;
+
+		virtual SLANG_NO_THROW Result SLANG_MCALL getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL createShaderObject2(
         slang::ISession* slangSession,

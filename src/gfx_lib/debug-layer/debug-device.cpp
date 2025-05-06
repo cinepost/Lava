@@ -649,8 +649,7 @@ Result DebugDevice::createQueryPool(const IQueryPool::Desc& desc, IQueryPool** o
     return SLANG_OK;
 }
 
-Result DebugDevice::createFence(const IFence::Desc& desc, IFence** outFence)
-{
+Result DebugDevice::createFence(const IFence::Desc& desc, IFence** outFence) {
     SLANG_GFX_API_FUNC;
     RefPtr<DebugFence> result = new DebugFence();
     SLANG_RETURN_ON_FAIL(baseObject->createFence(desc, result->baseObject.writeRef()));
@@ -658,33 +657,31 @@ Result DebugDevice::createFence(const IFence::Desc& desc, IFence** outFence)
     return SLANG_OK;
 }
 
-Result DebugDevice::waitForFences(
-    GfxCount fenceCount, IFence** fences, uint64_t* values , bool waitForAll, uint64_t timeout)
-{
+Result DebugDevice::waitForFences(GfxCount fenceCount, IFence** fences, uint64_t* values , bool waitForAll, uint64_t timeout) {
     SLANG_GFX_API_FUNC;
     ShortList<IFence*> innerFences;
-    for (GfxCount i = 0; i < fenceCount; i++)
-    {
+    for (GfxCount i = 0; i < fenceCount; i++) {
         innerFences.add(getInnerObj(fences[i]));
     }
     return baseObject->waitForFences(fenceCount, innerFences.getArrayView().getBuffer(), values, waitForAll, timeout);
 }
 
-Result DebugDevice::getTextureAllocationInfo(
-    const ITextureResource::Desc& desc, size_t* outSize, size_t* outAlignment)
-{
+Result DebugDevice::getTextureAllocationInfo(const ITextureResource::Desc& desc, size_t* outSize, size_t* outAlignment) {
     SLANG_GFX_API_FUNC;
     return baseObject->getTextureAllocationInfo(desc, outSize, outAlignment);
 }
 
-Result DebugDevice::getTextureRowAlignment(size_t* outAlignment)
-{
+Result DebugDevice::getTextureRowAlignment(size_t* outAlignment) {
     SLANG_GFX_API_FUNC;
     return baseObject->getTextureRowAlignment(outAlignment);
 }
 
-Result DebugDevice::createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outTable)
-{
+Result DebugDevice::getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) {
+    SLANG_GFX_API_FUNC;
+    return baseObject->getMinAccelerationStructureScratchOffsetAlignment(outAlignment);
+}
+
+Result DebugDevice::createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outTable) {
     SLANG_GFX_API_FUNC;
     RefPtr<DebugShaderTable> result = new DebugShaderTable();
     SLANG_RETURN_ON_FAIL(baseObject->createShaderTable(desc, result->baseObject.writeRef()));
