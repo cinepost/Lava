@@ -32,9 +32,11 @@
 #include <map>
 #include <string>
 
+#include "Falcor/Core/Macros.h"
+
 namespace Falcor {
 
-class DefineList {
+class dlldecl DefineList {
     using Map = std::map<std::string, std::string>;
 public:
     /**

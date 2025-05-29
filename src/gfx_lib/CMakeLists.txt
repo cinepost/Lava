@@ -30,6 +30,7 @@ file( GLOB SOURCES
 if(WIN32)
     file( GLOB PLATFORM_SOURCES
         ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/windows/slang-win-process.cpp
+        ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-command-line.cpp
     )
 else()
     file( GLOB PLATFORM_SOURCES
@@ -39,10 +40,11 @@ endif()
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
-
+#set( CMAKE_CXX_STANDARD 20 )
 add_library( gfx_lib SHARED ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} )
 
 if(WIN32)
+    ADD_DEFINITIONS(/std:c++20)
     find_package(Vulkan REQUIRED)
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
     add_definitions(-DBOOST_ALL_DYN_LINK)

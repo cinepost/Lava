@@ -43,6 +43,8 @@
 #include <set>
 #include <atomic>
 
+using uint = uint32_t;
+
 std::atomic<uint> gID = 0;
 
 namespace Falcor {

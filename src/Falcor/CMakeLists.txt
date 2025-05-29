@@ -79,7 +79,7 @@ file( GLOB SOURCES
 if(WIN32)
     file( GLOB SOURCES_ARCH
         ./Core/Platform/Windows/Windows.cpp
-        ./Rendering/Utils/*.cpp
+        # ./Rendering/Utils/*.cpp
         # ./Scene/SDFs/*.cpp
         # ./Scene/SDFs/NormalizedDenseSDFGrid/*.cpp
         # ./Scene/SDFs/SparseBrickSet/*.cpp
@@ -299,6 +299,7 @@ else()
                 ${GLFW_LIBRARY}
                 OpenSSL::SSL
                 OpenImageIO::OpenImageIO
+                ${DEPS_DIR}/lib/OpenImageIO_Util.lib
                 OpenVDB::openvdb
                 OpenEXR::OpenEXR
                 ${ASSIMP_LIBRARY}

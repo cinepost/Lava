@@ -1504,7 +1504,12 @@ if( Slang_FOUND )
 else()
 
 set(SLANG_PREFIX slang)
+if(WIN32)
+set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm gfx")
+else()
 set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm")
+endif()
+
 
 if(NOT DEFINED SLANG_BUILD_TYPE)
   set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
@@ -1529,7 +1534,7 @@ message("Slang build config " ${SLANG_BUILD_CONFIG})
 
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
-if(WIN32)
+if(WIN32_SKIP)
   ExternalProject_Add( Slang
     PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
     GIT_REPOSITORY https://github.com/shader-slang/slang.git

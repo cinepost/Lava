@@ -1,3 +1,8 @@
+if ( MSVC )
+  ADD_DEFINITIONS(/utf-8)
+  #add_compile_options(/utf-8)
+endif ()
+
 message( "GFX LIB " ${FALCOR_API_BACKEND} )
 
 string( TOLOWER ${FALCOR_API_BACKEND} backend_type )

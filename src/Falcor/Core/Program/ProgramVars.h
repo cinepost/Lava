@@ -84,7 +84,7 @@ class RtStateObject;
 /**
  * This class manages a raytracing program's reflection and variable assignment.
  */
-class FALCOR_API RtProgramVars : public ProgramVars, public inherit_shared_from_this<ProgramVars, RtProgramVars> {
+class FALCOR_API RtProgramVars : public ProgramVars, public inherit_shared_from_this<ParameterBlock, RtProgramVars> {
     public:
         using SharedPtr = std::shared_ptr<RtProgramVars>;
 
