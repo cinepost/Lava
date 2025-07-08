@@ -320,7 +320,7 @@ else()
     UPDATE_DISCONNECTED true
 
     CONFIGURE_COMMAND ./bootstrap.bat
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.3 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
       --with-filesystem
       --with-system
       --with-date_time
@@ -818,7 +818,7 @@ else()
   endif()
 
   set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
-  find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT)
+  find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT REQUIRED)
 
   if(NOT LAVA_3RD_LIB_LINK_WITH_STATIC)
     set(ZLIB_USE_STATIC_LIBS OFF)
@@ -1556,7 +1556,7 @@ if(WIN32_SKIP)
         -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
         -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
         -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-      COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+      COMMAND ./premake5.exe vs2022 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
 
     BUILD_COMMAND 
       COMMAND
