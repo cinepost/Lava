@@ -49,7 +49,7 @@ BgeoHeader::Impl::Impl(const char* bgeoPath) {
 
 void BgeoHeader::Impl::parseStream(UT_IStream& stream) {
     UT_AutoJSONParser parserLoader(stream);
-    UT_JSONParser parser = parserLoader.parser();
+    UT_JSONParser& parser = parserLoader.parser();
 
     parser::parseBeginArray(parser);
     {

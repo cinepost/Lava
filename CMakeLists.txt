@@ -168,8 +168,8 @@ if(WIN32)
     -D_CRT_SECURE_NO_WARNINGS
     -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
 else()
-set(HOUDINI_USER "$ENV{HOME}/houdini19.5" CACHE PATH "Houdini home user path")
-set(HOUDINI_ROOT "/opt/hfs19.5" CACHE PATH "Houdini installation path")
+set(HOUDINI_USER "$ENV{HOME}/houdini20.5" CACHE PATH "Houdini home user path")
+set(HOUDINI_ROOT "/opt/hfs20.5" CACHE PATH "Houdini installation path")
 endif()
 
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
