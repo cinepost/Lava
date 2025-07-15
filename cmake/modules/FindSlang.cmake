@@ -130,7 +130,6 @@ set(_SLANG_INCLUDE_SEARCH_DIRS "")
 list(APPEND _SLANG_INCLUDE_SEARCH_DIRS
   ${SLANG_INCLUDEDIR}
   ${_SLANG_ROOT}
-#  ${SYSTEM_LIBRARY_PATHS}
 )
 
 # Look for a standard slang header file.
@@ -173,6 +172,10 @@ if(EXISTS "${Slang_INCLUDE_DIR}/slang/slang-tag-version.h")
   unset(_slang_version_release_string)
 
   set(Slang_VERSION ${Slang_VERSION_MAJOR}.${Slang_VERSION_MINOR}.${Slang_VERSION_RELEASE})
+else()
+  unset(Slang_VERSION)
+  #message(FATAL_ERROR "Unable to find Slang header file ${Slang_INCLUDE_DIR}/slang/slang-tag-version.h")
+  return()
 endif()
 
 # ------------------------------------------------------------------------
@@ -183,7 +186,6 @@ set(_SLANG_LIBRARYDIR_SEARCH_DIRS "")
 list(APPEND _SLANG_LIBRARYDIR_SEARCH_DIRS
   ${SLANG_LIBRARYDIR}
   ${_SLANG_ROOT}
-# ${SYSTEM_LIBRARY_PATHS}
 )
 
 

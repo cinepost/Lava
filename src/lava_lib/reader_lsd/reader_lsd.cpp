@@ -8,7 +8,7 @@
 
 #include <boost/spirit/include/support_istream_iterator.hpp>
 
-#include "rapidjson/document.h"
+//#include "rapidjson/document.h"
 
 #include "reader_lsd.h"
 #include "grammar_lsd.h"

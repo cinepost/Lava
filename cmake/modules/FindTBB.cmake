@@ -163,14 +163,14 @@ list(APPEND _TBB_INCLUDE_SEARCH_DIRS
 )
 
 # Look for a standard tbb header file.
-find_path(Tbb_INCLUDE_DIR tbb/tbb_stddef.h
+find_path(Tbb_INCLUDE_DIR tbb/version.h
   ${_FIND_TBB_ADDITIONAL_OPTIONS}
   PATHS ${_TBB_INCLUDE_SEARCH_DIRS}
   PATH_SUFFIXES ${CMAKE_INSTALL_INCLUDEDIR} include
 )
 
-if(EXISTS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h")
-  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h"
+if(EXISTS "${Tbb_INCLUDE_DIR}/tbb/version.h")
+  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/version.h"
     _tbb_version_major_string REGEX "#define TBB_VERSION_MAJOR "
   )
   string(REGEX REPLACE "#define TBB_VERSION_MAJOR" ""
@@ -178,7 +178,7 @@ if(EXISTS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h")
   )
   string(STRIP "${_tbb_version_major_string}" Tbb_VERSION_MAJOR)
 
-  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h"
+  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/version.h"
      _tbb_version_minor_string REGEX "#define TBB_VERSION_MINOR "
   )
   string(REGEX REPLACE "#define TBB_VERSION_MINOR" ""
