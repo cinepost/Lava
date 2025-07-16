@@ -241,7 +241,6 @@ Light::Light(const std::string& name, LightType ltype) : mName(name) {
     mData.setLightType(ltype);
     mData.setLightSamplerID(kInvalidSamplerID);
     mData.flags = 0x0;
-    LLOG_ERR << "Light " << to_string(ltype);
 }
 
 void Light::update(const Light& light) {
@@ -694,9 +693,9 @@ void SphereLight::update(const Light& light) {
 }
 
 void SphereLight::update() {
-    const float rx = length(mul(mData.transMat, float4(1.0f, 0.0f, 0.0f, 0.0f)));
-    const float ry = length(mul(mData.transMat, float4(0.0f, 1.0f, 0.0f, 0.0f)));
-    const float rz = length(mul(mData.transMat, float4(0.0f, 0.0f, 1.0f, 0.0f)));
+    const float rx = length(mul(mData.transMat, float4(1.0f, 0.0f, 0.0f, 0.0f))) * 0.5f;
+    const float ry = length(mul(mData.transMat, float4(0.0f, 1.0f, 0.0f, 0.0f))) * 0.5f;
+    const float rz = length(mul(mData.transMat, float4(0.0f, 0.0f, 1.0f, 0.0f))) * 0.5f;
     const float a = std::max( kAreaEPSILON, 
         4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));
 

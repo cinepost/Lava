@@ -79,6 +79,7 @@ namespace {
     const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
     const uint32_t kMaxRecursionDepth = 1;
 
+    const std::string kInputDepth = "depth";
     const std::string kVBufferName = "vbuffer";
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
@@ -90,10 +91,13 @@ namespace {
     const std::string kOutputDrawCount = "drawCount";
     const std::string kOutputNormal    = "normW";
 
+    const ChannelList kExtraInputOutputChannels = {
+        { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
+    };
+
     // Additional output channels.
     const ChannelList kVBufferExtraOutputChannels = {
         { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
-        { "depth",              "gDepth",           "Depth buffer (NDC)",              true /* optional */, ResourceFormat::R32Float    },
         { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "texGrads",           "gTextureGrads",    "Texture coordinate gradients",    true /* optional */, ResourceFormat::RGBA16Float },
@@ -171,6 +175,9 @@ RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     // Add the required output. This always exists.
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
+
+    // Add all the other input-outputs.
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
 
     // Add all the other outputs.
     addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
@@ -371,7 +378,8 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // TODO: This should be moved to a more general mechanism using Slang.
         defines.add(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
         defines.add(getValidResourceDefines(kVBufferExtraSubdChannels, renderData));
-        
+        defines.add(getValidResourceDefines(kExtraInputOutputChannels, renderData));
+
         defines.add("is_valid_gIndicesBuffer", mpIndicesBuffer != nullptr ? "1" : "0");
         defines.add("is_valid_gPrimIndicesBuffer", mpPrimIndicesBuffer != nullptr ? "1" : "0");
         defines.add("is_valid_gPositionsBuffer", mpPositionsBuffer != nullptr ? "1" : "0");
@@ -438,6 +446,11 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
             Texture::SharedPtr pTex = getOutput(renderData, channel.name);
             var[channel.texname] = pTex;
         };
+
+        // Bind extra input-output channels
+        for (const auto& channel : kExtraInputOutputChannels) {
+            bind(channel);
+        }
 
         // Bind extra output channels
         for (const auto& channel : kVBufferExtraOutputChannels) {

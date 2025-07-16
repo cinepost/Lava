@@ -645,7 +645,7 @@ else()
   if(WIN32)
     set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
   else()
-    find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+    find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
     message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
   endif()
   

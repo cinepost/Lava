@@ -31,6 +31,7 @@
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "Falcor/Scene/Lights/LightData.slang"
@@ -60,9 +61,8 @@ namespace {
     const char kShaderFile[] = "RenderPasses/EnvironmentPass/EnvPass.cs.slang";
 
     const std::string kBackdropTexture = "gBackdropTexture";
-
-    const std::string kOutputColor = "target";
-    const std::string kDepth = "depth";
+    const std::string kOutputColor = "color";
+    const std::string kOutputDepth = "depth";
 
     // Dictionary keys
     const std::string kBackdropImageName = "backdropImagePath";
@@ -74,6 +74,10 @@ namespace {
 
     //
     const std::string kLightsBufferName = "gLights";
+
+    const ChannelList kExtraOutputChannels = {
+        { kOutputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::R32Float },
+    };
 }
 
 EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
@@ -120,16 +124,15 @@ Dictionary EnvPass::getScriptingDictionary() {
 RenderPassReflection EnvPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kOutputColor, "Color buffer");
-    reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass");//.bindFlags(Resource::BindFlags::DepthStencil);
+    addRenderPassOutputs(reflector, kExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
     return reflector;
 }
 
 void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     if(!mpScene) return;
 
-    Texture::SharedPtr pDst = renderData[kOutputColor]->asTexture();
-
-
+    Texture::SharedPtr pOutColor = renderData[kOutputColor]->asTexture();
+    
     bool computeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
     if(mComputeDOF != computeDOF) {
         mComputeDOF = computeDOF;
@@ -145,7 +148,8 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
         auto defines = mpScene->getSceneDefines();
 
         defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
-        defines.add("is_valid_" + kBackdropTexture, mpBackdropTexture != nullptr ? "1" : "0");
+        defines.add("is_valid_" + kBackdropTexture, mpBackdropTexture ? "1" : "0");
+        defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
 
         mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
@@ -153,13 +157,19 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
         var["gScene"] = mpScene->getParameterBlock();
         var[kBackdropTexture] = mpBackdropTexture;
+        var["gSampler"] = mpSampler;
 
         // Bind mandatory input channels
-        var["gOutColor"] = pDst;
-        var["gSampler"] = mpSampler;
+        var["gOutColor"] = pOutColor;
+
+        // Bind extra output channels as UAV buffers.
+        for (const auto& channel : kExtraOutputChannels) {
+            Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+            var[channel.texname] = pTex;
+        }
     }
 
-    const uint2 frameDim = uint2(pDst->getWidth(), pDst->getHeight());
+    const uint2 frameDim = uint2(pOutColor->getWidth(), pOutColor->getHeight());
 
     auto cb_var = mpComputePass->getRootVar()["PerFrameCB"];
     cb_var["frameDim"] = frameDim;

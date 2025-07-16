@@ -421,7 +421,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpEnvPass->setOpacity(1.0f);
 		mpEnvPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(mpEnvPass, "EnvPass");
-		mpRenderGraph->addEdge("VBufferPass.depth", "EnvPass.depth");
+		mpRenderGraph->addEdge("EnvPass.depth", "VBufferPass.depth");
 	}
 
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
@@ -429,7 +429,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
-	mpRenderGraph->addEdge("EnvPassPass.target", "ShadingPass.color");
+	mpRenderGraph->addEdge("EnvPass.color", "ShadingPass.color");
 	
 #else
 	// Deferred lighting pass
@@ -442,7 +442,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	}
 
 	if(mpEnvPass) {
-		mpRenderGraph->addEdge("EnvPass.target",       "ShadingPass.color");
+		mpRenderGraph->addEdge("EnvPass.color",       "ShadingPass.color");
 	} else {
 		auto format = pMainAOV->format();
 		auto pExternalOutputTexture = Texture::create2D(
