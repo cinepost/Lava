@@ -11,6 +11,7 @@ include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
 file( GLOB SOURCES
     ./Core/ErrorHandling.cpp
     ./Core/Framework.cpp
+    ./Core/Window.h
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp

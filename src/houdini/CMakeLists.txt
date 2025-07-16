@@ -1,6 +1,6 @@
 include(CheckIncludeFile)
 
-add_subdirectory( imgLava )
+#add_subdirectory( imgLava )
 
 if(WIN32)
     set(HYTHON_VERSION_MAJOR "3")

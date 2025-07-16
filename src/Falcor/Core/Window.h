@@ -131,6 +131,9 @@ public:
     /** Get the descriptor
     */
     const Desc& getDesc() const { return mDesc; }
+
+    GLFWwindow* getGLFWWindow() { return mpGLFWWindow; }
+
 private:
     friend class ApiCallbacks;
     Window(ICallbacks* pCallbacks, const Desc& desc);
