@@ -61,19 +61,27 @@ Result ShaderObjectImpl::setData(ShaderOffset const& inOffset, void const* data,
 }
 
 Result ShaderObjectImpl::setResource(ShaderOffset const& offset, IResourceView* resourceView) {
-    if (offset.bindingRangeIndex < 0) return SLANG_E_INVALID_ARG;
-
+    if (offset.bindingRangeIndex < 0)
+        return SLANG_E_INVALID_ARG;
     auto layout = getLayout();
-    if (offset.bindingRangeIndex >= layout->getBindingRangeCount()) return SLANG_E_INVALID_ARG;
-
+    if (offset.bindingRangeIndex >= layout->getBindingRangeCount())
+        return SLANG_E_INVALID_ARG;
     auto& bindingRange = layout->getBindingRange(offset.bindingRangeIndex);
-    if (!resourceView) {
+    if (!resourceView)
+    {
         m_resourceViews[bindingRange.baseIndex + offset.bindingArrayIndex] = nullptr;
-    } else {
-        if (resourceView->getViewDesc()->type == IResourceView::Type::AccelerationStructure) {
-            m_resourceViews[bindingRange.baseIndex + offset.bindingArrayIndex] = static_cast<AccelerationStructureImpl*>(resourceView);
-        } else {
-            m_resourceViews[bindingRange.baseIndex + offset.bindingArrayIndex] = static_cast<ResourceViewImpl*>(resourceView);
+    }
+    else
+    {
+        if (resourceView->getViewDesc()->type == IResourceView::Type::AccelerationStructure)
+        {
+            m_resourceViews[bindingRange.baseIndex + offset.bindingArrayIndex] =
+                static_cast<AccelerationStructureImpl*>(resourceView);
+        }
+        else
+        {
+            m_resourceViews[bindingRange.baseIndex + offset.bindingArrayIndex] =
+                static_cast<ResourceViewImpl*>(resourceView);
         }
     }
     return SLANG_OK;
@@ -206,7 +214,10 @@ Result ShaderObjectImpl::_writeOrdinaryData(
     // be handled in this one location, rather than having some in `setObject()` and
     // others handled here.
     //
-    for (auto const& subObjectRangeInfo : specializedLayout->getSubObjectRanges()) {
+    Index subObjectRangeCounter = 0;
+    for (auto const& subObjectRangeInfo : specializedLayout->getSubObjectRanges())
+    {
+        Index subObjectRangeIndex = subObjectRangeCounter++;
         auto const& bindingRangeInfo =
             specializedLayout->getBindingRange(subObjectRangeInfo.bindingRangeIndex);
 
@@ -253,9 +264,11 @@ Result ShaderObjectImpl::_writeOrdinaryData(
         // fit?" bit as part of the information for bound sub-objects, given that we already
         // compute the "does it fit?" status as part of `setObject()`.
         //
-        if (subObjectRangePendingDataOffset == 0) continue;
+        if (subObjectRangePendingDataOffset == 0)
+            continue;
 
-        for (Slang::Index i = 0; i < count; ++i) {
+        for (Slang::Index i = 0; i < count; ++i)
+        {
             auto subObject = m_objects[bindingRangeInfo.subObjectIndex + i];
 
             RefPtr<ShaderObjectLayoutImpl> subObjectLayout;

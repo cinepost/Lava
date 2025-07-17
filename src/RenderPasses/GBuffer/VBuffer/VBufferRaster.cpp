@@ -196,7 +196,7 @@ void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& ren
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    SimpleProfiler profile("VBufferDBG::execute");
+    SimpleProfiler profile("VBufferRaster::execute");
 
     //GBufferBase::execute(pRenderContext, renderData);
     

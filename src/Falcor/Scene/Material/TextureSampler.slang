@@ -32,6 +32,7 @@ import Scene.Material.VirtualTextureData;
 /** Interface for texture sampling techniques.
     Types implementing this interface support sampling using different LOD computation techniques
 */
+[anyValueSize(32)]
 interface ITextureSampler {
 
     float4 ddxy(float2 uv);

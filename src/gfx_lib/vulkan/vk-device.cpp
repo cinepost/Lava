@@ -2190,7 +2190,6 @@ Result DeviceImpl::createSamplerState(ISamplerState::Desc const& desc, ISamplerS
 
 	VkSamplerReductionModeCreateInfo reductionInfo = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
 	reductionInfo.reductionMode = VulkanUtil::translateReductionOp(desc.reductionOp, m_api.m_extendedFeatures.vulkan12Features.samplerFilterMinmax);
-	
 	samplerInfo.pNext = &reductionInfo;
 
 	VkSampler sampler;

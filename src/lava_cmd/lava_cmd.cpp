@@ -255,7 +255,9 @@ int main(int argc, char** argv){
     po::options_description profiling("Profiling");
     profiling.add_options()
       ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationFilename), "Output Vulkan validation info")
+#ifdef FALCOR_ENABLE_PROFILER
       ("perf-file", po::value<std::string>(&profilerCaptureFilename)->default_value(profilerCaptureDefaultFilename), "Output profiling file")
+#endif //FALCOR_ENABLE_PROFILER
       ;
 
     po::options_description cmdline_options;
@@ -299,9 +301,7 @@ int main(int argc, char** argv){
       std::cout << config << "\n";
       std::cout << input << "\n";
       std::cout << logging << "\n";
-#ifdef FALCOR_ENABLE_PROFILER
       std::cout << profiling << "\n";
-#endif
       exit(EXIT_SUCCESS);
     }
 
