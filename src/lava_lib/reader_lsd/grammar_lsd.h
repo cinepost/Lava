@@ -503,23 +503,23 @@ namespace lava {
 namespace lsd { 
 
 namespace validators {
-    auto is_valid_vector2 = [](auto& ctx) {
+    const auto is_valid_vector2 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 2);
     };
 
-    auto is_valid_vector3 = [](auto& ctx) {
+    const auto is_valid_vector3 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 3);
     };
 
-    auto is_valid_vector4 = [](auto& ctx) {
+    const auto is_valid_vector4 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 4);
     };
 
-    auto is_valid_matrix3 = [](auto& ctx) {
+    const auto is_valid_matrix3 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 9);
     };
 
-    auto is_valid_matrix4 = [](auto& ctx) {
+    const auto is_valid_matrix4 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 16);
     };
 }
@@ -651,7 +651,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(lsd_expr)
 
     using boost::fusion::at_c;
-    auto assign_prop = [](auto& ctx) { 
+    const auto assign_prop = [](auto& ctx) {
         _val(ctx).push_back(PropValue(_attr(ctx)));
     };
 
@@ -822,15 +822,15 @@ namespace parser {
 
     using boost::fusion::at_c;
 
-    auto reset_lights = [](auto& ctx) { 
+    const auto reset_lights = [](auto& ctx) {
         _val(ctx).lights = true; 
     };
 
-    auto reset_objects = [](auto& ctx) { 
+    const auto reset_objects = [](auto& ctx) {
         _val(ctx).objects = true; 
     };
 
-    auto reset_fogs = [](auto& ctx) { 
+    const auto reset_fogs = [](auto& ctx) {
         _val(ctx).fogs = true; 
     };
 

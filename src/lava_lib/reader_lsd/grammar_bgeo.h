@@ -169,7 +169,7 @@ namespace parser {
         }
     } const bool_value;
 
-    auto assign_null = [](auto& ctx) {
+    const auto assign_null = [](auto& ctx) {
         _val(ctx) = ast::NoValue();
     };
 
@@ -226,7 +226,7 @@ namespace parser {
     //auto const bgeo_def = array | object;
     //BOOST_SPIRIT_DEFINE(bgeo)
 
-    auto assign_bgeo = [](auto& ctx) { 
+    const auto assign_bgeo = [](auto& ctx) {
         _val(ctx) =bgeo::ast::Bgeo();
     };
 
