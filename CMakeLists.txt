@@ -15,6 +15,8 @@ set( PROJECT_VERSION_PATCH 001 )
 
 if(WIN32)
   file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindTBB.cmake)
+  file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindBoost.cmake)
+  file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindZLIB.cmake)
 endif()
 
 #### Handle build mode
