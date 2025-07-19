@@ -580,6 +580,8 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     slang::IGlobalSession* pSlangGlobalSession = mpDevice->getSlangGlobalSession();
     FALCOR_ASSERT(pSlangGlobalSession);
 
+    LLOG_WRN << "createSlangCompileRequest for " << program.getProgramDescString();
+
     slang::SessionDesc sessionDesc;
 
     // Add our shader search paths as `#include` search paths for Slang.
