@@ -656,11 +656,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(lsd_expr)
 
     using boost::fusion::at_c;
-<<<<<<< HEAD
-    const auto assign_prop = [](auto& ctx) {
-=======
     inline auto assign_prop = [](auto& ctx) { 
->>>>>>> fa14ef0c37147afb12e6e7ae4c2215c83e3e7476
         _val(ctx).push_back(PropValue(_attr(ctx)));
     };
 
@@ -831,17 +827,6 @@ namespace parser {
 
     using boost::fusion::at_c;
 
-<<<<<<< HEAD
-    const auto reset_lights = [](auto& ctx) {
-        _val(ctx).lights = true; 
-    };
-
-    const auto reset_objects = [](auto& ctx) {
-        _val(ctx).objects = true; 
-    };
-
-    const auto reset_fogs = [](auto& ctx) {
-=======
     inline auto reset_lights = [](auto& ctx) { 
         _val(ctx).lights = true; 
     };
@@ -851,7 +836,6 @@ namespace parser {
     };
 
     inline auto reset_fogs = [](auto& ctx) { 
->>>>>>> fa14ef0c37147afb12e6e7ae4c2215c83e3e7476
         _val(ctx).fogs = true; 
     };
 
