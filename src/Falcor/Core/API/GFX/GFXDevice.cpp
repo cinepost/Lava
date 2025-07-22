@@ -401,7 +401,7 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		desc.deviceType = DeviceType::Vulkan;
 		
 		// Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
-    slang::createGlobalSession(mSlangGlobalSession.writeRef());
+    	slang::createGlobalSession(mSlangGlobalSession.writeRef());
 		desc.slang.slangGlobalSession = mSlangGlobalSession;
 
 		gfx::D3D12DeviceExtendedDesc extDesc = {};

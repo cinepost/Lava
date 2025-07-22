@@ -64,6 +64,7 @@ SamplerState gSampler;
 
 // Main output channel
 RWTexture2D<float4> gOutColor;
+RWTexture2D<float> gDepth;
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
@@ -97,7 +98,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         rayDir = gScene.camera.computeRayPinhole(ipos, frameDim).dir;
     }
 
-    float  localMaxDistance = FLT_MAX;
+    float  localMinDistance = FLT_MAX;
     float3 cameraPosW = gCamera.getPosW();
 
     float  ltype = 0;
@@ -113,9 +114,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         if(intersectLight(cameraPosW, rayDir, light, ls)) {
             backColor.rgb += ls.Li;
             backColor.a = 1.0f;
-            localMaxDistance = ls.distance;
+            localMinDistance = min(localMinDistance, ls.distance);
         }
     }
+#endif
+
+#if is_valid(gDepth)
+    gDepth[ipos] = 0.5f;
 #endif
 
     gOutColor[ipos] = backColor * float4(gIntensity, 1.0f) * clamp(gOpacity, 0.0f, 1.0f);

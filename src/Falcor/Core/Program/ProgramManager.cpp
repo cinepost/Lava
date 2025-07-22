@@ -696,7 +696,8 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     addStringOption(slang::CompilerOptionName::DisableWarning, "15602"); // #pragma once in modules
     addStringOption(slang::CompilerOptionName::DisableWarning, "30056"); // non-short-circuiting `?:` operator is deprecated, use 'select'
                                                                          // instead
-    addStringOption(slang::CompilerOptionName::DisableWarning, "30081"); // implicit conversion
+    addStringOption(slang::CompilerOptionName::DisableWarning, "30081"); // implicit conversion 'double' to 'float'
+    addStringOption(slang::CompilerOptionName::DisableWarning, "30082"); // implicit conversion 'float' to 'double'
     addStringOption(slang::CompilerOptionName::DisableWarning, "41203"); // reinterpret<> into not equally sized types
 
     sessionDesc.compilerOptionEntries = compilerOptionEntries.data();

@@ -182,7 +182,7 @@ void DeviceManager::enumerateDevices() {
     }
 }
 
-Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc) {
+Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc, Window::SharedPtr pWindow) {
     if (!deviceEnumerated(gpuId)) {
         LLOG_ERR << "Rendering device " << to_string(gpuId) << " not enumerated !!!";
         return nullptr;
@@ -206,7 +206,6 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
     iDesc.existingDeviceHandles.handles[2].api = gfx::InteropHandleAPI::Vulkan;
     iDesc.existingDeviceHandles.handles[2].handleValue = 0;
 
-    Window::SharedPtr pWindow = nullptr;
     pDevice = Device::create(pWindow, iDesc, desc);
     if (!pDevice) {
         LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";

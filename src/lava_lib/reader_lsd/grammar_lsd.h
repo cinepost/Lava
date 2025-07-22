@@ -40,7 +40,7 @@
 #include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
-#include "grammar_bgeo.h"
+//#include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
 #include "../display.h"
@@ -389,8 +389,13 @@ static inline std::ostream& operator<<(std::ostream& os, const PropValue& v) {
     return os;
 };
 
-static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> v) {
+static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> vec) {
     //std::copy(v.begin(), v.end(), std::ostream_iterator<PropValue>(os, " "));
+    os << "Array[ ";
+    for(const auto& v: vec) {
+        os << v << " ";
+    }
+    os << "]";
     return os;
 };
 
@@ -503,23 +508,23 @@ namespace lava {
 namespace lsd { 
 
 namespace validators {
-    const auto is_valid_vector2 = [](auto& ctx) {
+    inline auto is_valid_vector2 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 2);
     };
 
-    const auto is_valid_vector3 = [](auto& ctx) {
+    inline auto is_valid_vector3 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 3);
     };
 
-    const auto is_valid_vector4 = [](auto& ctx) {
+    inline auto is_valid_vector4 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 4);
     };
 
-    const auto is_valid_matrix3 = [](auto& ctx) {
+    inline auto is_valid_matrix3 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 9);
     };
 
-    const auto is_valid_matrix4 = [](auto& ctx) {
+    inline auto is_valid_matrix4 = [](auto& ctx) {
         _pass(ctx) = 0 == (_val(ctx).size() % 16);
     };
 }
@@ -642,21 +647,25 @@ namespace parser {
     auto const version_def = lexeme[-lexeme["VER"] >> int_ >> "." >> int_ >> "." >> int_];
     BOOST_SPIRIT_DEFINE(version)
 
-    x3::rule<class bgeo_inline_, bgeo::ast::Bgeo> const bgeo_inline = "bgeo_inline";
-    auto const bgeo_inline_def = bgeo::parser::input;
-    BOOST_SPIRIT_DEFINE(bgeo_inline)
+//    x3::rule<class bgeo_inline_, bgeo::ast::Bgeo> const bgeo_inline = "bgeo_inline";
+//    auto const bgeo_inline_def = bgeo::parser::input;
+//    BOOST_SPIRIT_DEFINE(bgeo_inline)
 
     x3::rule<class lsd_expr_, lsd::expr::ast::Expr> const lsd_expr = "lsd_expr";
     auto const lsd_expr_def = lsd::expr::parser::input;
     BOOST_SPIRIT_DEFINE(lsd_expr)
 
     using boost::fusion::at_c;
+<<<<<<< HEAD
     const auto assign_prop = [](auto& ctx) {
+=======
+    inline auto assign_prop = [](auto& ctx) { 
+>>>>>>> fa14ef0c37147afb12e6e7ae4c2215c83e3e7476
         _val(ctx).push_back(PropValue(_attr(ctx)));
     };
 
     x3::rule<class prop_value_, PropValue> const prop_value = "prop_value";
-    auto const prop_value_def = 
+    inline auto const prop_value_def = 
         vector4 | vector3 | vector2 | double_
       | int4 | int3 | int2 | int_
       | any_string;
@@ -822,6 +831,7 @@ namespace parser {
 
     using boost::fusion::at_c;
 
+<<<<<<< HEAD
     const auto reset_lights = [](auto& ctx) {
         _val(ctx).lights = true; 
     };
@@ -831,10 +841,21 @@ namespace parser {
     };
 
     const auto reset_fogs = [](auto& ctx) {
+=======
+    inline auto reset_lights = [](auto& ctx) { 
+        _val(ctx).lights = true; 
+    };
+
+    inline auto reset_objects = [](auto& ctx) { 
+        _val(ctx).objects = true; 
+    };
+
+    inline auto reset_fogs = [](auto& ctx) { 
+>>>>>>> fa14ef0c37147afb12e6e7ae4c2215c83e3e7476
         _val(ctx).fogs = true; 
     };
 
-    static auto const skipper = lexeme[ 
+    static inline auto const skipper = lexeme[ 
         "/*" >> *(char_ - "*/") >> "*/"
         | "//" >> *~char_("\r\n")
         | '#' >> *~char_("\r\n")

@@ -146,7 +146,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
     ls.Li = light.intensity;
 
     const float3 localShadingPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
-    const float3 localNormal = normalize(mul(light.transMat, float4(shadingNormalW, 0.f)).xyz);
+    const float3 localNormal = normalize(mul(float4(shadingNormalW, 0.f), light.transMat).xyz);
 
     // Unit size quad
     const float3 p[4] = {float3(-1.0f, 1.0f, 0.0f), float3(1.0f, 1.0f, 0.0f), float3(1.0f,-1.0f, 0.0f), float3(-1.0f,-1.0f, 0.0f)};
@@ -283,6 +283,7 @@ bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const Li
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
+    ls.Li = light.intensity;
     return true;
 }
 
@@ -294,7 +295,7 @@ bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const Li
     \return True if a sample was generated, false otherwise.
 */
 bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, const float4 rnd, out AnalyticLightSample ls) {
-    float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
+    float3 localPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
     
     float3 w = -localPos;
     float localDistSqr = max(dot(w, w), kMinLightDistSqr);     //squared local distance to light center
@@ -342,10 +343,8 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, cons
 
 bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNormalW, const LightData light, const float4 rnd, out AnalyticLightSample ls) {
 
-    const float3 localShadingPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
-
-    //float3 localNormal = normalize(mul(float4(shadingNormalW, 0.f), light.transMatInv).xyz);
-    const float3 localNormal = normalize(mul(light.transMat, float4(shadingNormalW, 0.f)).xyz);
+    const float3 localShadingPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
+    const float3 localNormal = normalize(mul(float4(shadingNormalW, 0.f), light.transMat).xyz);
     
     ProjectedSphericalCap cap;
     prepareProjectedSphericalCapSampling(cap, localNormal, -localShadingPos, 1.0f);
@@ -384,15 +383,14 @@ bool sampleSphereAreaLightSAU(const float3 shadingPosW, const float3 shadingNorm
 
 bool intersectSphereAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     ls = {};
-    float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
-    float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
+    float3 localPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
+    float3 localDir = normalize(mul(light.transMatInv, float4(dir, 0.f)).xyz);
 
     float isect = intersect_sphere(localPos, localDir).x;
     if(isect == -1.0f) return false;
 
     float3 pos = localPos + isect * localDir;
     ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
-
     ls.normalW = normalize(mul(light.transMatIT, float4(pos, 0.f)).xyz);
 
     if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
@@ -432,8 +430,8 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, const 
 
 bool intersectDiscAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     ls = {};
-    float3 localPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
-    float3 localDir = normalize(mul(float4(dir, 0.f), light.transMatInv).xyz);
+    float3 localPos = mul(light.transMatInv, float4(shadingPosW, 1.f)).xyz;
+    float3 localDir = normalize(mul(light.transMatInv, float4(dir, 0.f)).xyz);
 
     float isect = intersect_plane(localPos, localDir);
     

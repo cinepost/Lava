@@ -8,19 +8,22 @@ set (SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
 
     # Imgui SDL2 and Vulkan specific files
-    ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_sdl.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_glfw.cpp
     ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_vulkan.cpp
 )
+
+include_directories( 
+#    ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include/slang
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
+)
+
 
 # Find BOOST
 find_package( Boost COMPONENTS filesystem program_options log REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 # we will use static libs
 add_definitions(-DBOOST_LOG_DYN_LINK)
-
-# SDL
-find_package( SDL2 REQUIRED )
-include_directories( ${SDL2_INCLUDE_DIRS} )
 
 # Imgui (+backends), NVVK
 include_directories(
@@ -46,7 +49,6 @@ target_link_libraries(
 	Boost::log 
 	Boost::program_options 
 	Boost::filesystem
-	${SDL2_LIBRARIES}
 )
 
 install(

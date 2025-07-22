@@ -265,9 +265,10 @@ const Property* PropertiesContainer::getProperty(ast::Style style, const std::st
 const Property::Value& PropertiesContainer::_getPropertyValue(ast::Style style, const std::string& name, const  Property::Value& default_value) const {
     auto pProperty = getProperty(style, name);
     
-    if(!pProperty)
+    if(!pProperty) {
         LLOG_DBG << "Can't find property " << to_string(PropertyKey(style, name)) << " ! Returning default value...";
         return default_value;
+    }
 
     if(!checkValueTypeStrict(pProperty->type(), default_value)) {
         LLOG_WRN << "Property " << to_string(PropertyKey(style, name)) << " type and default_value type does not match !!!";
@@ -279,7 +280,9 @@ const Property::Value& PropertiesContainer::_getPropertyValue(ast::Style style, 
 template<>
 const Int2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int2& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Int2>();
+    if(pProperty) {
+        return pProperty->get<Int2>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -287,7 +290,9 @@ const Int2 PropertiesContainer::getPropertyValue(ast::Style style, const std::st
 template<>
 const Int3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int3& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Int3>();
+    if(pProperty) {
+        return pProperty->get<Int3>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -295,7 +300,9 @@ const Int3 PropertiesContainer::getPropertyValue(ast::Style style, const std::st
 template<>
 const Int4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int4& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Int4>();
+    if(pProperty) {
+        return pProperty->get<Int4>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -303,7 +310,9 @@ const Int4 PropertiesContainer::getPropertyValue(ast::Style style, const std::st
 template<>
 const Vector2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector2& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Vector2>();
+    if(pProperty) {
+        return pProperty->get<Vector2>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -311,7 +320,9 @@ const Vector2 PropertiesContainer::getPropertyValue(ast::Style style, const std:
 template<>
 const Vector3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector3& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Vector3>();
+    if(pProperty) {
+        return pProperty->get<Vector3>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -319,7 +330,9 @@ const Vector3 PropertiesContainer::getPropertyValue(ast::Style style, const std:
 template<>
 const Vector4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector4& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<Vector4>();
+    if(pProperty) {
+        return pProperty->get<Vector4>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -327,7 +340,9 @@ const Vector4 PropertiesContainer::getPropertyValue(ast::Style style, const std:
 template<>
 const std::string PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const std::string& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<std::string>();
+    if(pProperty) {
+        return pProperty->get<std::string>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -335,7 +350,9 @@ const std::string PropertiesContainer::getPropertyValue(ast::Style style, const 
 template<>
 const double PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const double& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<double>();
+    if(pProperty) {
+        return pProperty->get<double>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -343,7 +360,9 @@ const double PropertiesContainer::getPropertyValue(ast::Style style, const std::
 template<>
 const float PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const float& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<float>();
+    if(pProperty) {
+        return pProperty->get<float>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -351,7 +370,9 @@ const float PropertiesContainer::getPropertyValue(ast::Style style, const std::s
 template<>
 const int PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const int& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<int>();
+    if(pProperty) {
+        return pProperty->get<int>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< to_string(default_value);
     return default_value;
 }
@@ -359,7 +380,9 @@ const int PropertiesContainer::getPropertyValue(ast::Style style, const std::str
 template<>
 const bool PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const bool& default_value) const {
     auto pProperty = getProperty(style, name);
-    if(pProperty) return pProperty->get<bool>();
+    if(pProperty) {
+        return pProperty->get<bool>();
+    }
     LLOG_TRC << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist. Returning default value "<< (default_value ? "True" : "False");
     return default_value;
 }

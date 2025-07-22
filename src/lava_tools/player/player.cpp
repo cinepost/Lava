@@ -22,10 +22,21 @@ namespace po = boost::program_options;
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
 
-#include <SDL.h>
-#include <SDL_vulkan.h>
+#define GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+// Volk headers
+#ifdef IMGUI_IMPL_VULKAN_USE_VOLK
+#define VOLK_IMPLEMENTATION
+#include <volk.h>
+#endif
 
 #include "Falcor/Core/API/DeviceManager.h"
+#include "Falcor/Core/API/GFX/GFXDeviceApiData.h"
+
+#include "gfx_lib/vulkan/vk-swap-chain.h"
+
 #include "lava_utils_lib/logging.h"
 
 #define IMGUI_UNLIMITED_FRAME_RATE
@@ -39,9 +50,11 @@ static VkDevice                 g_Device = VK_NULL_HANDLE;
 static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
 static VkInstance               g_Instance = VK_NULL_HANDLE;
 static VkQueue                  g_Queue = VK_NULL_HANDLE;
+static uint32_t                 g_QueueFamily = (uint32_t)-1;
 static VkSurfaceKHR             g_Surface = VK_NULL_HANDLE;
 static VkAllocationCallbacks*   g_Allocator = NULL;
 static VkPipelineCache          g_PipelineCache = VK_NULL_HANDLE;
+static VkDescriptorPool         g_DescriptorPool = VK_NULL_HANDLE;
 
 static ImGui_ImplVulkanH_Window g_MainWindowData;
 static uint32_t                 g_MinImageCount = 2;
@@ -49,11 +62,13 @@ static bool                     g_SwapChainRebuild = false;
 
 
 static void check_vk_result(VkResult err) {
-    if (err == 0)
+    if (err == 0) {
         return;
+    }
     fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
-    if (err < 0)
+    if (err < 0) {
         abort();
+    }
 }
 
 static void atexitHandler()  {
@@ -63,44 +78,34 @@ static void atexitHandler()  {
 // All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
 // Your real engine/app may not use them.
 static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, Falcor::Device::SharedPtr pDevice, int width, int height) {
-    uint32_t queueFamily = pDevice->getApiCommandQueueType(Falcor::LowLevelContextData::CommandQueueType::Direct);
-
-    wd->Surface = g_Surface;
-
-    // Check for WSI support
-    VkBool32 res;
-    vkGetPhysicalDeviceSurfaceSupportKHR(g_PhysicalDevice, queueFamily, wd->Surface, &res);
-    if (res != VK_TRUE) {
-        fprintf(stderr, "Error no WSI support on physical device 0\n");
-        exit(-1);
-    }
+    gfx::ISwapchain* pISwapchain = pDevice->getApiData()->pSwapChain.get();
+    assert(pISwapchain);
+    wd->Surface = static_cast<gfx::vk::SwapchainImpl*>(pISwapchain)->m_surface;
 
     // Select Surface Format
     const VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
     const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
+    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(pDevice->getVkPhysicalDevice(), wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
 
     // Select Present Mode
-#ifdef IMGUI_UNLIMITED_FRAME_RATE
+#ifdef APP_USE_UNLIMITED_FRAME_RATE
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
 #else
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
 #endif
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
-    printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
-
-///my take
-//    wd->ImageCount = pDevice->getSwapchainImageCount();
-///
+    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(pDevice->getVkPhysicalDevice(), wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
+    //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
     IM_ASSERT(g_MinImageCount >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, queueFamily, g_Allocator, width, height, g_MinImageCount);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, pDevice->getVkPhysicalDevice(), pDevice->getVkDevice(), wd, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
 }
 
 static void FramePresent(ImGui_ImplVulkanH_Window* wd) {
-    if (g_SwapChainRebuild)
+    if (g_SwapChainRebuild) {
         return;
+    }
+
     VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
     VkPresentInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -184,7 +189,7 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data) {
 }
 
 static void CleanupVulkanWindow(Falcor::Device::SharedPtr pDevice) {
-    ImGui_ImplVulkanH_DestroyWindow(pDevice->getVkInstance(), pDevice->getApiHandle(), &g_MainWindowData, g_Allocator);
+    ImGui_ImplVulkanH_DestroyWindow(g_Instance, g_Device, &g_MainWindowData, g_Allocator);
 }
 
 
@@ -247,7 +252,7 @@ int main(int argc, char** argv){
     }
 
     if (vm.count("version")) {
-      std::cout << "Ltxview, version 0.0\n";
+      std::cout << "Lava Player, version 0.0\n";
       exit(EXIT_SUCCESS);
     }
 
@@ -264,16 +269,16 @@ int main(int argc, char** argv){
       
     }
 
-    // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        LLOG_FTL << "Error: " << SDL_GetError();
+    // Setup window
+    Falcor::Window::Desc window_desc;
+    window_desc.title = "Lava Player";
+    Falcor::Window::SharedPtr pWindow = Falcor::Window::create(window_desc, nullptr);
+    if(!pWindow) {
+        LLOG_FTL << "Error creating window!";
         exit(EXIT_FAILURE);
     }
 
-    // Setup window
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("Ltxview", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, kWindowInitWidth, kWindowInitHeight, window_flags);
-
+    GLFWwindow* pGLFWWindow = pWindow->getGLFWWindow();
 
     auto pDeviceManager = Falcor::DeviceManager::create();
     if (!pDeviceManager) exit(EXIT_FAILURE);
@@ -283,31 +288,36 @@ int main(int argc, char** argv){
     VkResult err;
 
     // Create Window Surface
-    if (SDL_Vulkan_CreateSurface(window, g_Instance, &g_Surface) == 0) {
-        LLOG_FTL << "Failed to create Vulkan surface.";
+    VkSurfaceKHR surface;
+    if(glfwCreateWindowSurface(g_Instance, pGLFWWindow, g_Allocator, &surface) != VK_SUCCESS) {
+        LLOG_FTL << "Error creating window surface!";
         exit(EXIT_FAILURE);
     }
 
     Falcor::Device::Desc deviceDesc;
     deviceDesc.width = kWindowInitWidth;
     deviceDesc.height = kWindowInitHeight;
-    deviceDesc.surface = VK_NULL_HANDLE;
+    //deviceDesc.surface = surface;
 
     // Create device
-    auto pDevice = pDeviceManager->createRenderingDevice(0, deviceDesc);
+    auto pDevice = pDeviceManager->createRenderingDevice(0, deviceDesc, pWindow);
     if (!pDevice) {
         LLOG_FTL << "Failed to create vulkan rendering device.";
         exit(EXIT_FAILURE);
     }
 
-    g_Device = pDevice->getApiHandle();
-    g_Queue = pDevice->getCommandQueueHandle(Falcor::LowLevelContextData::CommandQueueType::Direct, 1);
-    g_PhysicalDevice = pDevice->getVkPhysicalDevice();
-    uint32_t            queueFamily = pDevice->getApiCommandQueueType(Falcor::LowLevelContextData::CommandQueueType::Direct);
-    auto                descriptorPool = pDevice->getGpuDescriptorPool()->getApiHandle(0);
+    assert(pDevice->getWindow());
 
+    g_Device            = pDevice->getVkDevice();
+    
+    auto pICommandQueue = pDevice->getCommandQueueHandle(Falcor::LowLevelContextData::CommandQueueType::Direct, 1);
+    g_Queue             = static_cast<gfx::vk::CommandQueueImpl*>(pICommandQueue.get())->m_queue;
+    g_QueueFamily       = static_cast<gfx::vk::CommandQueueImpl*>(pICommandQueue.get())->m_queueFamilyIndex;
+    g_DescriptorPool    = pDevice->getGpuDescriptorPool()->getApiHandle(0);
+
+    // Create Framebuffers
     int w, h;
-    SDL_GetWindowSize(window, &w, &h);
+    glfwGetFramebufferSize(pGLFWWindow, &w, &h);
     ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
     SetupVulkanWindow(wd, pDevice, w, h);
 
@@ -323,15 +333,15 @@ int main(int argc, char** argv){
 
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForVulkan(window);
+    ImGui_ImplGlfw_InitForVulkan(pGLFWWindow, true);
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = g_Instance;
-    init_info.PhysicalDevice = g_PhysicalDevice;
+    init_info.PhysicalDevice = pDevice->getVkPhysicalDevice();
     init_info.Device = g_Device;
-    init_info.QueueFamily = queueFamily;
+    init_info.QueueFamily = g_QueueFamily;
     init_info.Queue = g_Queue;
     init_info.PipelineCache = g_PipelineCache;
-    init_info.DescriptorPool = descriptorPool;
+    init_info.DescriptorPool = g_DescriptorPool;
     init_info.Subpass = 0;
     init_info.MinImageCount = g_MinImageCount;
     init_info.ImageCount = wd->ImageCount;
@@ -346,7 +356,7 @@ int main(int argc, char** argv){
         VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
         VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
 
-        err = vkResetCommandPool(g_Device, command_pool, 0);
+        err = vkResetCommandPool(pDevice->getApiHandle(), command_pool, 0);
         check_vk_result(err);
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -365,7 +375,7 @@ int main(int argc, char** argv){
         err = vkQueueSubmit(g_Queue, 1, &end_info, VK_NULL_HANDLE);
         check_vk_result(err);
 
-        err = vkDeviceWaitIdle(g_Device);
+        err = vkDeviceWaitIdle(pDevice->getApiHandle());
         check_vk_result(err);
         ImGui_ImplVulkan_DestroyFontUploadObjects();
     }
@@ -373,51 +383,68 @@ int main(int argc, char** argv){
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
-    bool done = false;
-    while (!done) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
-                done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-                done = true;
-        }
+    while (!glfwWindowShouldClose(pGLFWWindow)) {
+        // Poll and handle events (inputs, window resize, etc.)
+        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+        glfwPollEvents();
 
         // Resize swap chain?
-        if (g_SwapChainRebuild) {
-            int width, height;
-            SDL_GetWindowSize(window, &width, &height);
-            if (width > 0 && height > 0) {
-                ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-                ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, queueFamily, g_Allocator, width, height, g_MinImageCount);
-                g_MainWindowData.FrameIndex = 0;
-                g_SwapChainRebuild = false;
-            }
+        int fb_width, fb_height;
+        glfwGetFramebufferSize(pGLFWWindow, &fb_width, &fb_height);
+        if (fb_width > 0 && fb_height > 0 && (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height)) {
+            ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+            ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, pDevice->getVkPhysicalDevice(), pDevice->getApiHandle(), &g_MainWindowData, g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount);
+            g_MainWindowData.FrameIndex = 0;
+            g_SwapChainRebuild = false;
+        }
+
+        if (glfwGetWindowAttrib(pGLFWWindow, GLFW_ICONIFIED) != 0) {
+            ImGui_ImplGlfw_Sleep(10);
+            continue;
         }
 
         // Start the Dear ImGui frame
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL2_NewFrame(window);
+        ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+
+        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
             static float f = 0.0f;
             static int counter = 0;
 
-            ImGui::Begin("Ltxview imgui test window...");
-            ImGui::Text("Test text.");
+            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+            ImGui::Checkbox("Another Window", &show_another_window);
 
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-            ImGui::ColorEdit3("clear color", (float*)&clear_color);
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
-            if (ImGui::Button("Button")) counter++;
-            
+            if (ImGui::Button("Button")) {
+                // Buttons return true when clicked (most widgets return true when edited/activated)
+                counter++;
+            }
             ImGui::SameLine();
             ImGui::Text("counter = %d", counter);
 
-            ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::End();
+        }
+
+        // 3. Show another simple window.
+        if (show_another_window) {
+            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Text("Hello from another window!");
+            if (ImGui::Button("Close Me")) {
+                show_another_window = false;
+            }
             ImGui::End();
         }
 
@@ -436,19 +463,19 @@ int main(int argc, char** argv){
     }
 
     // Cleanup
-    err = vkDeviceWaitIdle(g_Device);
+    err = vkDeviceWaitIdle(pDevice->getApiHandle());
     check_vk_result(err);
     ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
     CleanupVulkanWindow(pDevice);
     pDeviceManager = nullptr; //CleanupVulkan();
 
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
     lava::ut::log::shutdown_log();
-    std::cout << "Exiting ltxview. Bye :)\n";
+    std::cout << "Exiting Lava Player. Bye :)\n";
     exit(EXIT_SUCCESS);
 }

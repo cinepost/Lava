@@ -283,6 +283,8 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     */
     gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
 
+    Window::SharedPtr getWindow() { return mpWindow; }
+
  private:
     Device(Window::SharedPtr pWindow, const Desc& desc);
 

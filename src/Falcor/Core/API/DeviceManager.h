@@ -73,7 +73,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     Device::SharedPtr renderingDevice(uint8_t gpuId) const;
 
-    Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
+    Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc, Window::SharedPtr pWindow = nullptr);
 
     Device::SharedPtr defaultDisplayDevice() const;
     Device::SharedPtr defaultRenderingDevice() const;

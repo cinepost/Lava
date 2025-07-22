@@ -369,7 +369,7 @@ endif()
 #######################
 
 if( NOT EXTERNAL_PYBIND_VERSION )
-  set(EXTERNAL_PYBIND_VERSION 2.5.0)
+  set(EXTERNAL_PYBIND_VERSION 2.12.0)
 endif()
 
 set(pybind11_ROOT ${EXTERNALS_INSTALL_DIR})
@@ -590,7 +590,6 @@ else()
     CMAKE_ARGS -D Blosc_LIBRARY:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D Blosc_INCLUDE_DIR:PATH=${EXTERNALS_INSTALL_DIR}/include/ 
 
-    CMAKE_ARGS -D Tbb_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D TBB_INCLUDEDIR:PATH=${EXTERNALS_INSTALL_DIR}/include/
     CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_INSTALL_DIR}/lib/
@@ -648,7 +647,7 @@ else()
   if(WIN32)
     set(ZLIB_LIBRARY ${EXTERNALS_INSTALL_DIR}/lib/zlib.lib)
   else()
-    find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+    find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
     message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
   endif()
   
@@ -986,100 +985,6 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${TIFF_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${TIFF_PREFIX}
   )
-
-endif()
-
-#######################
-# ZMQ
-#######################
-
-if( NOT EXTERNAL_ZMQ_VERSION)
-  set(EXTERNAL_ZMQ_VERSION 4.3.4)
-endif()
-
-set(ZeroMQ_DIR ${EXTERNALS_INSTALL_DIR})
-find_package(ZeroMQ ${EXTERNAL_ZMQ_VERSION} EXACT)
-
-if(ZeroMQ_FOUND)
-
-  message("ZMQ version ${ZeroMQ_VERSION} found ...")
-  add_custom_target( zmq COMMAND echo "ZMQ build exists, skipping rebuild ...")
-
-else()
-
-  message("ZMQ not found! Running external build ...")
-  set(ZMQ_PREFIX zmq)
-
-  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
-    set(ZMQ_BUILD_STATIC_LIBS ON)
-    set(ZMQ_BUILD_SHARED_LIBS OFF)
-  else()
-    set(ZMQ_BUILD_STATIC_LIBS OFF)
-    set(ZMQ_BUILD_SHARED_LIBS ON)
-  endif()
-
-  ExternalProject_Add ( zmq
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${ZMQ_PREFIX}
-    GIT_REPOSITORY https://github.com/zeromq/libzmq.git
-    GIT_TAG v${EXTERNAL_ZMQ_VERSION}
-    UPDATE_DISCONNECTED true
-
-    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
-    CMAKE_ARGS -D BUILD_SHARED:BOOL=${ZMQ_BUILD_SHARED_LIBS}
-    CMAKE_ARGS -D BUILD_STATIC:BOOL=${ZMQ_BUILD_STATIC_LIBS}
-    CMAKE_ARGS -D WITH_DOCS:BOOL=OFF
-    CMAKE_ARGS -D BUILD_TESTS:BOOL=OFF
-    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS <SOURCE_DIR>
-
-    BUILD_COMMAND ${MAKE_EXECUTABLE}
-
-    TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${ZMQ_PREFIX}
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${ZMQ_PREFIX}
-  )
-
-endif()
-
-#######################
-# CPPZMQ
-#######################
-
-if( NOT EXTERNAL_CPPZMQ_VERSION )
-  set(EXTERNAL_CPPZMQ_VERSION 4.8.1)
-endif()
-
-set(CppZMQ_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(CppZMQ ${EXTERNAL_CPPZMQ_VERSION} EXACT)
-
-if(CppZMQ_FOUND)
-
-  message("CppZMQ version ${CppZMQ_VERSION} found ...")
-  add_custom_target( cppzmq COMMAND echo "CppZMQ build exists, skipping rebuild ...")
-
-else()
-
-  message("CppZMQ not found! Running external build ...")
-  set(CppZMQ_PREFIX cppzmq)
-
-  ExternalProject_Add ( cppzmq
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${CppZMQ_PREFIX}
-    GIT_REPOSITORY https://github.com/zeromq/cppzmq.git
-    GIT_TAG v${EXTERNAL_CPPZMQ_VERSION}
-    UPDATE_DISCONNECTED true
-
-    CMAKE_ARGS -D CPPZMQ_BUILD_TESTS:BOOL=OFF
-    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
-    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS <SOURCE_DIR>
-
-    BUILD_COMMAND ${MAKE_EXECUTABLE}
-
-    TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${CppZMQ_PREFIX}
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CppZMQ_PREFIX}
-  )
-  ExternalProject_Add_StepDependencies(cppzmq configure zmq)
 
 endif()
 
@@ -1496,7 +1401,11 @@ if( NOT EXTERNAL_SLANG_VERSION )
 endif()
 
 set(Slang_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(Slang)
+
+set(SLANG_INCLUDEDIR ${EXTERNALS_INSTALL_DIR}/include)
+set(SLANG_LIBRARYDIR ${EXTERNALS_INSTALL_DIR}/lib)
+
+find_package(Slang ${EXTERNAL_SLANG_VERSION} EXACT)
 
 if( Slang_FOUND )
   message("Slang version ${Slang_VERSION} found ...")
@@ -1633,8 +1542,6 @@ add_dependencies( dummy_target
   VMA
   Slang
   Glfw
-  zmq
-  cppzmq
   tiff
   FreeImage
 )

@@ -1,8 +1,8 @@
 cmake_minimum_required( VERSION 3.21 )
 
 if(UNIX)
-set(CMAKE_C_COMPILER gcc-9)
-set(CMAKE_CXX_COMPILER g++-9)
+set(CMAKE_C_COMPILER gcc-11)
+set(CMAKE_CXX_COMPILER g++-11)
 endif()
 
 set( CMAKE_CXX_STANDARD 17 )
@@ -67,16 +67,6 @@ endif()
 # Version generators
 include (cmake/GenerateLavaVersionCpp.cmake)
 include (cmake/GenerateLavaVersionPython.cmake)
-
-
-# ccache
-#include(cmake/CPM.cmake)
-
-#CPMAddPackage(
-#  NAME Ccache.cmake
-#  GITHUB_REPOSITORY TheLartians/Ccache.cmake
-#  VERSION 1.2
-#)
 
 # Add folder where are supportive functions
 set( CMAKE_MODULE_PATH 
@@ -155,8 +145,8 @@ set(FALCOR_API_BACKEND "Vulkan" CACHE STRING "Rendering API")
 
 # Set up houdini hdk and installation paths
 if(WIN32)
-  set(HOUDINI_USER "$ENV{USERPROFILE}/Documents/houdini19.5" CACHE PATH "Houdini home user path")
-  set(HOUDINI_ROOT "C:/Program Files/Side Effects Software/Houdini 19.5.534" CACHE PATH "Houdini installation path")
+  set(HOUDINI_USER "$ENV{USERPROFILE}/Documents/houdini20.5" CACHE PATH "Houdini home user path")
+  set(HOUDINI_ROOT "C:/Program Files/Side Effects Software/Houdini 20.5.332" CACHE PATH "Houdini installation path")
   add_definitions(
     -DNOMINMAX
     -D_USE_MATH_DEFINES

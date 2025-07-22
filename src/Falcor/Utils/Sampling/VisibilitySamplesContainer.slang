@@ -75,7 +75,7 @@ struct VisibilitySamplesContainer {
         if(!readRootTransparentVisibilitySample(pixelOffset, rootTransparentSample, rootSampleOffset)) return 0;
     
         samples[0].packedHitInfo = rootTransparentSample.packedHitInfo;
-        samples[0].alpha = rootTransparentSample.alpha;
+        samples[0].alpha = (half)rootTransparentSample.alpha;
 
         #if VISIBILITY_SAMPLES_CONTAINER_STORE_NORMALS
             samples[0].packedCombinedNormal = transparentCombinedNormalsBuffer[rootSampleOffset];
@@ -112,7 +112,7 @@ struct VisibilitySamplesContainer {
                 samples[samplesCount].texGrads = float16_t4(0.h);
             #endif
 
-            samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
+            samples[samplesCount++].alpha = (half)transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
             nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
         }
 
@@ -138,7 +138,7 @@ struct VisibilitySamplesContainer {
         if(!readRootTransparentVisibilitySample2D(pixelPos, rootTransparentSample)) return 0;
         
         samples[0].packedHitInfo = rootTransparentSample.packedHitInfo;
-        samples[0].alpha = rootTransparentSample.alpha;
+        samples[0].alpha = (half)rootTransparentSample.alpha;
 
         // Fetch remaining transparent samples
         uint nextSampleOffset = rootTransparentSample.nextSampleOffset;
@@ -146,7 +146,7 @@ struct VisibilitySamplesContainer {
         uint samplesCount = 1;
         while(nextSampleOffset != UINT32_MAX && samplesCount < maxTransparentSamplesCountPP) {            
             samples[samplesCount].packedHitInfo = transparentVisibilitySamplesBuffer[nextSampleOffset].packedHitInfo;
-            samples[samplesCount++].alpha = transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
+            samples[samplesCount++].alpha = (half)transparentVisibilitySamplesBuffer[nextSampleOffset].alpha;
             nextSampleOffset = transparentVisibilitySamplesBuffer[nextSampleOffset].nextSampleOffset;
         }
 
