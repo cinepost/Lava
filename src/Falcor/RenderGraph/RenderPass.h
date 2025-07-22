@@ -36,6 +36,12 @@
 #include "Falcor/Utils/InternalDictionary.h"
 #include "ResourceCache.h"
 
+#if FALCOR_GCC
+// save compiler switches
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 namespace Falcor {
 
 class Scene;
@@ -210,7 +216,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     void requestRecompile() { mPassChangedCB(); }
 
-        /** Set pass random generators seed
+    /** Set pass random generators seed
     */
     virtual void setRandomSeed(int seed) {};
 
@@ -221,6 +227,12 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     std::function<void(void)> mPassChangedCB = [] {};
 };
+
 }
+
+#if FALCOR_GCC
+// restore compiler switches
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_

@@ -172,7 +172,7 @@ class dlldecl Light : public Animatable {
 
     void setLightRadius(float radius);
 
-    const float getLightRadius() const { return mData.radius; }
+    float getLightRadius() const { return mData.radius; }
 
     void setLightSamplerID(uint id);
 

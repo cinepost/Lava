@@ -92,12 +92,13 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
 
     if (enableDebugLayer) {
         enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
-        //enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
+    enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
+    enableLayerIfPresent("VK_LAYER_KHRONOS_shader_object", layerProperties, requiredLayers);
 
     // Initialize the extensions
     std::vector<VkExtensionProperties> supportedExtensions = enumarateInstanceExtensions();

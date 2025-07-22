@@ -118,6 +118,8 @@ ProgramVersion::SharedConstPtr ProgramManager::createProgramVersion(const Progra
     CpuTimer timer;
     timer.update();
 
+    LLOG_WRN << "ProgramManager::createProgramVersion for " << program.getProgramDescString();
+
     auto pSlangRequest = createSlangCompileRequest(program);
     if (pSlangRequest == nullptr)
         return nullptr;
@@ -203,6 +205,8 @@ ProgramVersion::SharedConstPtr ProgramManager::createProgramVersion(const Progra
     mCompilationStats.programVersionTotalTime += time;
     mCompilationStats.programVersionMaxTime = std::max(mCompilationStats.programVersionMaxTime, time);
     LLOG_DBG << "Created program version in " << fmt::format("{:.3f}", timer.delta()) << " s: " << descStr;
+
+    LLOG_WRN << "ProgramManager::createProgramVersion for " << program.getProgramDescString() << " done.";
 
     return pVersion;
 }
@@ -580,7 +584,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     slang::IGlobalSession* pSlangGlobalSession = mpDevice->getSlangGlobalSession();
     FALCOR_ASSERT(pSlangGlobalSession);
 
-    LLOG_WRN << "createSlangCompileRequest for " << program.getProgramDescString();
+    LLOG_WRN << "ProgramManager::createSlangCompileRequest for " << program.getProgramDescString();
 
     slang::SessionDesc sessionDesc;
 
@@ -790,6 +794,8 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
             spAddEntryPoint(pSlangRequest, entryPointGroup.shaderModuleIndex, entryPoint.name.c_str(), getSlangStage(entryPoint.type));
         }
     }
+
+    LLOG_WRN << "ProgramManager::createSlangCompileRequest for " << program.getProgramDescString() << " done.";
 
     return pSlangRequest;
 }

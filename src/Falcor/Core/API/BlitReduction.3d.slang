@@ -109,12 +109,11 @@ float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
     float4 c = float4(0, 0, 0, 0);
 
     [unroll]
-    for (uint i = 0; i < SAMPLE_COUNT; i++)
-    {
+    for (uint i = 0; i < SAMPLE_COUNT; ++i){
         c += gTex.Load(crd, i);
     }
 
-    c /= SAMPLE_COUNT;
+    c /= (float)SAMPLE_COUNT;
     return c;
 #endif
 #endif

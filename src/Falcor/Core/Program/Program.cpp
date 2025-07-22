@@ -253,12 +253,14 @@ bool Program::checkIfFilesChanged() {
 }
 
 const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
+    LLOG_WRN << "Program::getActiveVersion for " << getProgramDescString();
+
     if (mLinkRequired) {
         const auto& it = mProgramVersions.find(ProgramVersionKey{mDefineList, mTypeConformanceList});
         if (it == mProgramVersions.end()) {
-            // Note that link() updates mActiveProgram only if the operation was successful.
+            // Note that linkProgram() updates mActiveProgram only if the operation was successful.
             // On error we get false, and mActiveProgram points to the last successfully compiled version.
-            if (link() == false) {
+            if (linkProgram() == false) {
                 FALCOR_THROW("Program linkage failed");
             } else {
                 mProgramVersions[ProgramVersionKey{mDefineList, mTypeConformanceList}] = mpActiveVersion;
@@ -269,10 +271,15 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
         mLinkRequired = false;
     }
     FALCOR_ASSERT(mpActiveVersion);
+
+    LLOG_WRN << "Program::getActiveVersion for " << getProgramDescString() << " done.";
+
     return mpActiveVersion;
 }
 
-bool Program::link() const {
+bool Program::linkProgram() const {
+    LLOG_WRN << "Program::linkProgram for " << getProgramDescString();
+
     // Create the program
     std::string log;
     auto pVersion = mpDevice->getProgramManager()->createProgramVersion(*this, log);
@@ -287,9 +294,14 @@ bool Program::link() const {
         }
 
         mpActiveVersion = pVersion;
+
+        LLOG_WRN << "Program::linkProgram for " << getProgramDescString() << " done.";
+
         return true;
     }
     
+    LLOG_WRN << "Program::linkProgram for " << getProgramDescString() << " failed.";
+
     return false;
 }
 
