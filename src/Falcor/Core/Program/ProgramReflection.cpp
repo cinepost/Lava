@@ -1714,6 +1714,12 @@ const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(std::string
     return (index == kInvalidMemberIndex) ? pNull : getMember(index);
 }
 
+#if FALCOR_GCC
+// save compiler switches
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#endif
+
 const ReflectionResourceType* ReflectionType::asResourceType() const {
     // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
     FALCOR_ASSERT(this);
@@ -1743,6 +1749,11 @@ const ReflectionInterfaceType* ReflectionType::asInterfaceType() const {
     FALCOR_ASSERT(this);
     return this->getKind() == ReflectionType::Kind::Interface ? static_cast<const ReflectionInterfaceType*>(this) : nullptr;
 }
+
+#if FALCOR_GCC
+// restore compiler switches
+#pragma GCC diagnostic pop
+#endif
 
 const ReflectionType* ReflectionType::unwrapArray() const {
     const ReflectionType* pType = this;

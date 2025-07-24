@@ -33,6 +33,13 @@
 
 #include "SampleGeneratorType.slangh"
 
+
+#if FALCOR_GCC
+// save compiler switches
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 namespace Falcor {
 
 /** Utility class for sample generators on the GPU.
@@ -41,51 +48,55 @@ namespace Falcor {
     uploading the necessary lookup tables (if needed).
     On the GPU, import SampleGenerator.slang in your shader program.
 */
-class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenerator>
-{
-public:
-    using SharedPtr = std::shared_ptr<SampleGenerator>;
-    using SharedConstPtr = std::shared_ptr<const SampleGenerator>;
+class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenerator> {
+    public:
+        using SharedPtr = std::shared_ptr<SampleGenerator>;
+        using SharedConstPtr = std::shared_ptr<const SampleGenerator>;
 
-    virtual ~SampleGenerator() = default;
+        virtual ~SampleGenerator() = default;
 
-    /** Factory function for creating a sample generator of the specified type.
-        \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
-        \return New object, or throws an exception on error.
-    */
-    static SharedPtr create(uint32_t type);
+        /** Factory function for creating a sample generator of the specified type.
+            \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
+            \return New object, or throws an exception on error.
+        */
+        static SharedPtr create(uint32_t type);
 
-    /** Get macro definitions for this sample generator.
-        \return Macro definitions that must be set on the shader program that uses this sampler.
-    */
-    virtual DefineList getDefines() const;
+        /** Get macro definitions for this sample generator.
+            \return Macro definitions that must be set on the shader program that uses this sampler.
+        */
+        virtual DefineList getDefines() const;
 
-    /** Binds the data to a program vars object.
-        \param[in] pVars ProgramVars of the program to set data into.
-        \return false if there was an error, true otherwise.
-    */
-    virtual bool setShaderData(ShaderVar const& var) const { return true; }
+        /** Binds the data to a program vars object.
+            \param[in] pVars ProgramVars of the program to set data into.
+            \return false if there was an error, true otherwise.
+        */
+        virtual bool setShaderData(ShaderVar const& var) const { return true; }
 
-    /** Register a sample generator type.
-        \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
-        \param[in] name Descriptive name used in the UI.
-        \param[in] createFunc Function to create an instance of the sample generator.
-    */
-    static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc);
+        /** Register a sample generator type.
+            \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
+            \param[in] name Descriptive name used in the UI.
+            \param[in] createFunc Function to create an instance of the sample generator.
+        */
+        static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc);
 
-protected:
-    SampleGenerator(uint32_t type) : mType(type) {}
+    protected:
+        SampleGenerator(uint32_t type) : mType(type) {}
 
-    const uint32_t mType;       ///< Type of sample generator. See SampleGeneratorType.slangh.
+        const uint32_t mType;       ///< Type of sample generator. See SampleGeneratorType.slangh.
 
-private:
-    /** Register all basic sample generator types.
-    */
-    static void registerAll();
+    private:
+        /** Register all basic sample generator types.
+        */
+        static void registerAll();
 
-    friend struct RegisterSampleGenerators;
+        friend struct RegisterSampleGenerators;
 };
 
 }  // namespace Falcor
+
+#if FALCOR_GCC
+// restore compiler switches
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // SRC_FALCOR_UTILS_SAMPLING_SAMPLEGNERATOR_H_

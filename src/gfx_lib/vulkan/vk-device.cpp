@@ -452,7 +452,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 		
@@ -473,16 +473,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.rayTracingPipelineFeatures;
 
 		// SER features.
-    //extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
-    //deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
+    	//extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
+    	//deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
 
 		// Acceleration structure features
 		extendedFeatures.accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
 		// Variable pointer features.
-    extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
-    deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
+    	extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
+    	deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
 
 		// Compute shader derivative features.
 		extendedFeatures.computeShaderDerivativeFeatures.pNext = deviceFeatures2.pNext;
@@ -500,9 +500,9 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
 
-    // clock features
-    extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
-    deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
+    	// clock features
+    	extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
+    	deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
 
 		// Fragment shader barycentrics features
 		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
@@ -531,9 +531,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.imageInt64AtomicFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.imageInt64AtomicFeatures;
 
+#if VK_MESH_SHADERS_ENABLED
 		// mesh shader features
-		//extendedFeatures.meshShaderFeatures.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.meshShaderFeatures;
+		extendedFeatures.meshShaderFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.meshShaderFeatures;
+#endif // VK_MESH_SHADERS_ENABLED
 
 		// multiview features
 		extendedFeatures.multiviewFeatures.pNext = deviceFeatures2.pNext;

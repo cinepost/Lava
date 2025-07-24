@@ -47,6 +47,7 @@ VkPipelineShaderStageCreateInfo ShaderProgramImpl::compileEntryPoint(
     VkShaderModuleCreateInfo moduleCreateInfo = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     moduleCreateInfo.pCode = (uint32_t*)code->getBufferPointer();
     moduleCreateInfo.codeSize = code->getBufferSize();
+    moduleCreateInfo.pNext = NULL;
 
     VkShaderModule module;
     SLANG_VK_CHECK(m_device->m_api.vkCreateShaderModule(

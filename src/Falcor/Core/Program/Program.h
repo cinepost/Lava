@@ -687,6 +687,9 @@ public:
 	*/
 	bool setTypeConformances(const TypeConformanceList& conformances);
 
+    /// Get current type conformances.
+    const TypeConformanceList& getTypeConformances() const { return mTypeConformanceList; }
+
 	/** Get the macro definition list of the active program version.
 	*/
 	const DefineList& getDefineList() const { return mDefineList; }
@@ -713,7 +716,7 @@ protected:
   friend class ParameterBlockReflection;
 
   void validateEntryPoints() const;
-  bool link() const;
+  bool linkProgram() const;
 
   Device::SharedPtr mpDevice;
 

@@ -139,6 +139,8 @@ namespace fs = boost::filesystem;
         std::string s = boost::str(boost::format("assertion failed( %1% %2% %3% )\n%4%(%5%)") % #a % #OP % #b % __FILE__ % __LINE__); \
         Falcor::reportFatalError(s); \
     }
+
+
 #define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
 #define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
 #define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
@@ -454,7 +456,7 @@ class FALCOR_API RuntimeError : public Exception
 public:
     RuntimeError() noexcept {}
     RuntimeError(std::string_view what) : Exception(what) {}
-    RuntimeError(const RuntimeError& other) noexcept { mpWhat = other.mpWhat; }
+    RuntimeError(const RuntimeError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
     virtual ~RuntimeError() override {}
 };
 
@@ -466,7 +468,7 @@ class FALCOR_API AssertionError : public Exception
 public:
     AssertionError() noexcept {}
     AssertionError(std::string_view what) : Exception(what) {}
-    AssertionError(const AssertionError& other) noexcept { mpWhat = other.mpWhat; }
+    AssertionError(const AssertionError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
     virtual ~AssertionError() override {}
 };
 

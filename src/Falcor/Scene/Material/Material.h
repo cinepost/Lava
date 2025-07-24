@@ -38,6 +38,12 @@
 #include "Falcor/Utils/Math/Float16.h"
 #include "Falcor/Utils/Image/TextureAnalyzer.h"
 
+#if FALCOR_GCC
+// save compiler switches
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 namespace Falcor {
 
 class MaterialSystem;
@@ -334,6 +340,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		friend class SceneCache;
 };
 
+
 inline std::string to_string(MaterialType type) {
 	switch (type) {
 #define tostr(t_) case MaterialType::t_: return #t_;
@@ -366,5 +373,10 @@ inline std::string to_string(Material::TextureSlot slot) {
 enum_class_operators(Material::UpdateFlags);
 
 }  // namespace Falcor
+
+#if FALCOR_GCC
+// restore compiler switches
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
