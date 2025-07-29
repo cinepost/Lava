@@ -33,6 +33,8 @@ ifeq ($(shell sh -c 'uname -m 2>/dev/null || echo not'),x86_64)
 	CXXFLAGS += -fPIC
 endif
 
+CXXFLAGS += -std=c++14
+
 TARGET  = freeimage
 STATICLIB = lib$(TARGET).a
 SHAREDLIB = lib$(TARGET)-$(VER_MAJOR).$(VER_MINOR).so
