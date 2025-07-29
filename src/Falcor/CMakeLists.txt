@@ -109,6 +109,7 @@ list (APPEND SOURCES ${BACKEND_API_SOURCES})
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
 if(WIN32)
+    ADD_DEFINITIONS(/std:c++20)
     # target_compile_options(falcor_lib PUBLIC /arch:SSE4.1)
     # set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
     # target_link_options(falcor_lib PRIVATE "/FORCE:UNRESOLVED")
