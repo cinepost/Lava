@@ -1,0 +1,1 @@
+C:\Users\max\Documents\GitHub\Lava\third_party\freeimage\Source\LibJXR\x64\Debug\LibJXR.lib

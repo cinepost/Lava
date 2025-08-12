@@ -1,13 +1,17 @@
-message( "GFX LIB " ${FALCOR_API_BACKEND} )
+if ( MSVC )
+  ADD_DEFINITIONS(/utf-8)
+endif () # MSVC
 
-string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
-if(backend_type STREQUAL "gfx")
-	add_subdirectory( gfx_lib ) # Patched Slang GFX library
-endif()
+if(WIN32)
+  add_definitions(-DBOOST_LOG_DYN_LINK)
+  add_definitions(-DBOOST_USE_WINAPI_VERSION=0x0A00)
+endif(WIN32)
 
-if(USE_MEGALIB)
-  add_subdirectory( mega_lib )
-endif()
+add_subdirectory( gfx_lib ) # Patched Slang GFX library
+
+#if(USE_MEGALIB)
+#  add_subdirectory( mega_lib )
+#endif()
 
 add_subdirectory( Falcor ) # core framework rendering library
 add_subdirectory( RenderPasses ) # falcor rendering framework rendering passes plugins

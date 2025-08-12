@@ -8,39 +8,56 @@
 #
 # It also creates the IMPORTED target: FreeImage::FreeImage
 
-unset( _FreeImage_INCLUDE_DIR CACHE)
+unset( FreeImage_INCLUDE_DIR CACHE)
 unset( _FreeImage_LIBRARY_RELEASE CACHE)
 unset( _FreeImage_LIBRARY_DEBUG CACHE)
 unset( FreeImage_FOUND CACHE)
 
-find_path(_FreeImage_INCLUDE_DIR 
-	NAMES FreeImage.h
-	PATHS ${FreeImage_ROOT}/include
+mark_as_advanced(
+  FreeImage_INCLUDE_DIR
+  FreeImage_LIBRARY
+)
+
+find_path(FreeImage_INCLUDE_DIR 
+	NAMES 
+    FreeImage.h
+	PATHS 
+    ${FreeImage_ROOT}/include
 	NO_DEFAULT_PATH
 )
 
 find_library(_FreeImage_LIBRARY_RELEASE 
-	NAMES freeimage.a freeimage freeimage-3.18.0
-	PATHS ${FreeImage_ROOT}/lib
+	NAMES 
+    freeimage
+    FreeImage
+    freeimage.a  
+    freeimage-3.18.0
+	PATHS 
+    ${FreeImage_ROOT}/lib
 	NO_DEFAULT_PATH
 )
 
 find_library(_FreeImage_LIBRARY_DEBUG
-  NAMES freeimage.a freeimage freeimage-3.18.0
-  PATHS ${FreeImage_ROOT}/lib
+  NAMES 
+    freeimage
+    FreeImaged 
+    freeimage.a 
+    freeimage-3.18.0
+  PATHS 
+    ${FreeImage_ROOT}/lib
   NO_DEFAULT_PATH
 )
 
-if(EXISTS "${_FreeImage_INCLUDE_DIR}/FreeImage.h")
-	file( STRINGS ${_FreeImage_INCLUDE_DIR}/FreeImage.h
+if(EXISTS "${FreeImage_INCLUDE_DIR}/FreeImage.h")
+	file( STRINGS ${FreeImage_INCLUDE_DIR}/FreeImage.h
     FreeImage_VERSION_MAJOR REGEX "#define[ ]+FREEIMAGE_MAJOR_VERSION[ ]+[0-9]+"
   )
 
-  file( STRINGS ${_FreeImage_INCLUDE_DIR}/FreeImage.h
+  file( STRINGS ${FreeImage_INCLUDE_DIR}/FreeImage.h
     FreeImage_VERSION_MINOR REGEX "#define[ ]+FREEIMAGE_MINOR_VERSION[ ]+[0-9]+"
   )
 
-  file( STRINGS ${_FreeImage_INCLUDE_DIR}/FreeImage.h
+  file( STRINGS ${FreeImage_INCLUDE_DIR}/FreeImage.h
     FreeImage_VERSION_RELEASE REGEX "#define[ ]+FREEIMAGE_RELEASE_SERIAL[ ]+[0-9]+"
   )
 
@@ -56,47 +73,45 @@ if(EXISTS "${_FreeImage_INCLUDE_DIR}/FreeImage.h")
     string(REGEX MATCH "[0-9]+" FreeImage_VERSION_RELEASE ${FreeImage_VERSION_RELEASE})
   endif()
 
-  set(FreeImage_VERSION ${FreeImage_VERSION_MAJOR}.${FreeImage_VERSION_MINOR}.${FreeImage_VERSION_RELEASE})
+  set(FreeImage_VERSION "${FreeImage_VERSION_MAJOR}.${FreeImage_VERSION_MINOR}.${FreeImage_VERSION_RELEASE}")
 else()
 	set(FreeImage_VERSION "")
+  set(FreeImage_FOUND FALSE)
+  return()
 endif()
 
-message("FreeImage_VERSION ${FreeImage_VERSION}")
+set(FreeImage_LIBRARY "")
+if(${CMAKE_BUILD_TYPE} STREQUAL Debug)
+    set(FreeImage_LIBRARY ${_FreeImage_LIBRARY_DEBUG})
+else()
+    set(FreeImage_LIBRARY ${_FreeImage_LIBRARY_RELEASE})
+endif()
 
+if(NOT FreeImage_LIBRARY)
+  set(FreeImage_FOUND FALSE)
+  return()
+endif()
 
 include(FindPackageHandleStandardArgs)
 
-#find_package_handle_standard_args(FreeImage  DEFAULT_MSG
-#                                  _FreeImage_LIBRARY_RELEASE
-#                                  _FreeImage_INCLUDE_DIR
-#  REQUIRED_VARS _FreeImage_INCLUDE_DIR
-#  VERSION_VAR FreeImage_VERSION)
-
-find_package_handle_standard_args(FreeImage
-  REQUIRED_VARS _FreeImage_INCLUDE_DIR
-  VERSION_VAR FreeImage_VERSION
+find_package_handle_standard_args(FreeImage 
+  DEFAULT_MSG
+  FreeImage_LIBRARY
+  FreeImage_INCLUDE_DIR
 )
 
-
-mark_as_advanced(_FreeImage_INCLUDE_DIR
-                 _FreeImage_LIBRARY_DEBUG
-                 _FreeImage_LIBRARY_RELEASE)
-
-set(FreeImage_LIBRARY "")
-if (_FreeImage_LIBRARY_DEBUG)
-    list(APPEND FreeImage_LIBRARY debug ${_FreeImage_LIBRARY_DEBUG})
-endif()
-if (_FreeImage_LIBRARY_RELEASE)
-    list(APPEND FreeImage_LIBRARY optimized ${_FreeImage_LIBRARY_RELEASE})
-endif()
-
-set(FreeImage_INCLUDE_DIRS ${_FreeImage_INCLUDE_DIR})
+set(FreeImage_INCLUDE_DIRS ${FreeImage_INCLUDE_DIR})
 set(FreeImage_LIBRARIES ${FreeImage_LIBRARY})
 
 if(FreeImage_FOUND)
   if (NOT TARGET FreeImage::FreeImage)
     add_library(FreeImage::FreeImage UNKNOWN IMPORTED)
   endif()
+
+  set_target_properties(FreeImage::FreeImage PROPERTIES
+    IMPORTED_LOCATION "${FreeImage_LIBRARY}"
+  )
+
   if (_FreeImage_LIBRARY_RELEASE)
     set_property(TARGET FreeImage::FreeImage APPEND PROPERTY
       IMPORTED_CONFIGURATIONS RELEASE
@@ -114,6 +129,6 @@ if(FreeImage_FOUND)
     )
   endif()
   set_target_properties(FreeImage::FreeImage PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${_FreeImage_INCLUDE_DIR}"
+    INTERFACE_INCLUDE_DIRECTORIES "${FreeImage_INCLUDE_DIR}"
   )
 endif()

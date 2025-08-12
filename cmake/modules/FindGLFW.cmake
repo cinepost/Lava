@@ -31,7 +31,7 @@
 #
 # Usage example to compile an "executable" target to the glfw library:
 #
-# FIND_PACKAGE (glfw REQUIRED)
+# FIND_PACKAGE (GLFW REQUIRED)
 # INCLUDE_DIRECTORIES (${GLFW_INCLUDE_DIR})
 # ADD_EXECUTABLE (executable ${EXECUTABLE_SRCS})
 # TARGET_LINK_LIBRARIES (executable ${GLFW_LIBRARY})
@@ -45,10 +45,16 @@ unset(GLFW_LIBRARY CACHE)
 #Search for the include file...
 FIND_PATH(GLFW_INCLUDE_DIR GLFW/glfw3.h DOC "Path to GLFW include directory."
     HINTS
-      ${GLFW_ROOT} $ENV{GLFW_ROOT}
+      ${GLFW_ROOT}/include ${GLFW_ROOT}
     PATH_SUFFIX
       include # For finding the include file under the root of the glfw expanded archive, typically on Windows.
 )
+
+if(NOT GLFW_INCLUDE_DIR)
+    message(NOTICE "GLFW include dir not found !")
+    set(GLFW_FOUND FALSE)
+    return()
+endif()
 
 if(WIN32)
   if(GLFW_USE_STATIC_LIBS)
@@ -63,11 +69,17 @@ endif()
 FIND_LIBRARY(GLFW_LIBRARY DOC "Absolute path to GLFW library."
     NAMES glfw glfw3dll glfw3
     HINTS
-      ${GLFW_ROOT}/lib $ENV{GLFW_ROOT}
+      ${GLFW_ROOT}/lib $ENV{GLFW_ROOT}/lib
     PATH_SUFFIXES
        ${CMAKE_FIND_LIBRARY_SUFFIXES} # For finding the library file under the root of the glfw expanded archive, typically on Windows.
     NO_DEFAULT_PATH
 )
+
+if(NOT GLFW_LIBRARY)
+    message(NOTICE "GLFW library not found !")
+    set(GLFW_FOUND FALSE)
+    return()
+endif()
 
 IF(GLFW_INCLUDE_DIR AND EXISTS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h")
     FILE(STRINGS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h" glfw_version_str
@@ -88,9 +100,14 @@ IF(GLFW_INCLUDE_DIR AND EXISTS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h")
             ENDIF()
         ENDFOREACH()
     ENDFOREACH()
+ELSE()
+    message(NOTICE "GLFW glfw3.h file not found !")
+    set(GLFW_FOUND FALSE)
+    return()
 ENDIF()
 
-INCLUDE(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GLFW
   REQUIRED_VARS GLFW_LIBRARY GLFW_INCLUDE_DIR
-  VERSION_VAR GLFW_VERSION)
+  VERSION_VAR GLFW_VERSION
+)

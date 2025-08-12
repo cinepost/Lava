@@ -36,12 +36,8 @@
 #include <atomic>
 #include <unordered_map>
 
-#ifdef FALCOR_VK
-#include "Falcor/Core/API/Vulkan/FalcorVK.h"
-#endif 
-
 #if FALCOR_GFX_VK
-#include <vulkan/vulkan.h>
+#include "gfx_lib/vulkan/vk-module.h"
 #endif
 
 #include "Falcor/Core/API/Device.h"
@@ -84,7 +80,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
 
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
+#if FALCOR_GFX_VK
     const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
     VkInstance vulkanInstance() const;
 #endif
@@ -113,7 +109,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     uint32_t                        mPhysicalDevicesCount = 0;
 
-#if defined(FALCOR_GFX) || defined(FALCOR_VK)
+#if defined(FALCOR_GFX)
     std::vector<VkPhysicalDevice>   mPhysicalDevices;
 #endif
 };

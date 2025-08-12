@@ -27,11 +27,8 @@ if(WIN32)
     message(STATUS "Using module to find Vulkan")
     find_package(Vulkan REQUIRED)
 
-include_directories( ${Vulkan_INCLUDE_DIRS} ${EXTERNALS_INSTALL_DIR} ${EXTERNALS_INSTALL_DIR}/include )
-
-# SLANG
-find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
-endif()
+    include_directories( ${Vulkan_INCLUDE_DIRS} ${EXTERNALS_INSTALL_DIR} ${EXTERNALS_INSTALL_DIR}/include )
+endif(WIN32)
 
 find_package(Python3 REQUIRED COMPONENTS Development)
 target_include_directories(reader_lsd_lib PUBLIC ${Python3_INCLUDE_DIRS})

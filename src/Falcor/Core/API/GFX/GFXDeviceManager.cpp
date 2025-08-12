@@ -29,7 +29,7 @@
 
 #include "Falcor/stdafx.h"
 
-#include <vulkan/vulkan.h>
+#include "gfx_lib/vulkan/vk-module.h"
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/DeviceManager.h"

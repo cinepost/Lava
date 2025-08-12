@@ -207,7 +207,7 @@ void Maker::initData(std::vector<int> groups) {
   
   for (int group : uniqueGroupNumbers) {
     unsigned int mask = 0;
-    for (uint index = 0; index < mDimsionality; ++index) {
+    for (uint32_t index = 0; index < mDimsionality; ++index) {
       if (groups[index] != group) mask |= (1 << index);
     }
     mMasks.push_back(mask);
@@ -219,8 +219,8 @@ void Maker::initData(std::vector<int> groups) {
   
   const float logEnergyLoss = log(kEnergyLoss);
   
-  for (uint i = 0; i < mDimsionality; ++i) {
-    uint radius = uint(sqrtf(-2.0f * sigmas[i] * sigmas[i] * logEnergyLoss));
+  for (uint32_t i = 0; i < mDimsionality; ++i) {
+    uint32_t radius = uint32_t(sqrtf(-2.0f * sigmas[i] * sigmas[i] * logEnergyLoss));
 
     if (radius * 2 + 1 >= size[i]) {
         radius = (size[i] - 1) / 2;
@@ -238,7 +238,7 @@ size_t Maker::getTightestCluster() {
 	size_t clusterPixelIndex = 0;
 	float maxEnergy = -FLT_MAX;
 
-	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
+	for (uint32_t pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
 		if (!mPixelOn[pixelIndex]) continue;
 
 		if (mEnergy[pixelIndex] > maxEnergy) {
@@ -254,7 +254,7 @@ size_t Maker::getLargestVoid() {
 	size_t voidPixelIndex = 0;
 	float minEnergy = FLT_MAX;
 
-	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex){
+	for (uint32_t pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex){
 		if (mPixelOn[pixelIndex]) continue;
 
 		if (mEnergy[pixelIndex] < minEnergy) {
@@ -374,7 +374,7 @@ void Maker::runPhase1() {
 	}
 
 	// restore the "on" states
-	for (uint pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
+	for (uint32_t pixelIndex = 0; pixelIndex < mNumPixels; ++pixelIndex) {
 		if (mPixelRank[pixelIndex] < mNumPixels) {
 			mPixelOn[pixelIndex] = true;
 			splatEnergy<true>(pixelIndex);

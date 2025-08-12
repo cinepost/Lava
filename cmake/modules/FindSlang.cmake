@@ -289,6 +289,7 @@ if(Slang_LIBRARY)
   set(Slang_FOUND TRUE)
 else()
   set(Slang_FOUND FALSE)
+  return()
 endif()
 
 # ------------------------------------------------------------------------

@@ -120,7 +120,7 @@ class FALCOR_API ResourceView: public std::enable_shared_from_this<ResourceView<
 template<>
 ResourceView<CbvHandle>::~ResourceView<CbvHandle>();
 
-class FALCOR_API ShaderResourceView : public ResourceView<SrvHandle>, public inherit_shared_from_this<ResourceView<SrvHandle>, ReflectionArrayType> {
+class FALCOR_API ShaderResourceView : public ResourceView<SrvHandle>, public inherit_shared_from_this<ResourceView<SrvHandle>, ShaderResourceView> {
     public:
         using SharedPtr = std::shared_ptr<ShaderResourceView>;
         using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
@@ -140,7 +140,7 @@ class FALCOR_API ShaderResourceView : public ResourceView<SrvHandle>, public inh
             : ResourceView(pDevice, pResource, handle) {}
 };
 
-class FALCOR_API DepthStencilView : public ResourceView<DsvHandle>, public inherit_shared_from_this<ResourceView<DsvHandle>, ReflectionArrayType> {
+class FALCOR_API DepthStencilView : public ResourceView<DsvHandle>, public inherit_shared_from_this<ResourceView<DsvHandle>, DepthStencilView> {
  public:
     using SharedPtr = std::shared_ptr<DepthStencilView>;
     using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
@@ -153,7 +153,7 @@ class FALCOR_API DepthStencilView : public ResourceView<DsvHandle>, public inher
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
-class FALCOR_API UnorderedAccessView : public ResourceView<UavHandle>, public inherit_shared_from_this<ResourceView<UavHandle>, ReflectionArrayType> {
+class FALCOR_API UnorderedAccessView : public ResourceView<UavHandle>, public inherit_shared_from_this<ResourceView<UavHandle>, UnorderedAccessView> {
  public:
     using SharedPtr = std::shared_ptr<UnorderedAccessView>;
     using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
@@ -171,7 +171,7 @@ class FALCOR_API UnorderedAccessView : public ResourceView<UavHandle>, public in
         : ResourceView(pDevice, pResource, handle, offset, size) {}
 };
 
-class FALCOR_API RenderTargetView : public ResourceView<RtvHandle>, public inherit_shared_from_this<ResourceView<RtvHandle>, ReflectionArrayType> {
+class FALCOR_API RenderTargetView : public ResourceView<RtvHandle>, public inherit_shared_from_this<ResourceView<RtvHandle>, RenderTargetView> {
  public:
     using SharedPtr = std::shared_ptr<RenderTargetView>;
     using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
@@ -186,7 +186,7 @@ class FALCOR_API RenderTargetView : public ResourceView<RtvHandle>, public inher
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
-class FALCOR_API ConstantBufferView : public ResourceView<CbvHandle>, public inherit_shared_from_this<ResourceView<CbvHandle>, ReflectionArrayType> {
+class FALCOR_API ConstantBufferView : public ResourceView<CbvHandle>, public inherit_shared_from_this<ResourceView<CbvHandle>, ConstantBufferView> {
  public:
     using SharedPtr = std::shared_ptr<ConstantBufferView>;
     using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;

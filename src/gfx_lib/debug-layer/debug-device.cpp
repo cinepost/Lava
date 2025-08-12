@@ -29,7 +29,7 @@ const VmaAllocator& DebugDevice::getVmaAllocator() const {
 }
 
 Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
-    baseObject->allocateTailMemory(pTexture, force);
+    return baseObject->allocateTailMemory(pTexture, force);
 }
 
 void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {

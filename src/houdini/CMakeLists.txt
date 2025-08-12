@@ -61,7 +61,6 @@ if(HOTL_EXE)
     )
     
     add_custom_command(
-        POST_BUILD
         OUTPUT "${HDA_FILE}" 
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/otls
         COMMAND ${HOTL_EXE} -c ./lava ${HDA_FILE}

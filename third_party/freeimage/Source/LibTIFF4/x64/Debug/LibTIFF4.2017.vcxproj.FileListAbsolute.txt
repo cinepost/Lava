@@ -1,0 +1,1 @@
+C:\Users\max\Documents\GitHub\Lava\third_party\freeimage\Source\LibTIFF4\x64\Debug\LibTIFF4.lib

@@ -1215,7 +1215,7 @@ class FALCOR_API ReflectionResourceType : public ReflectionType {
 
 /** Reflection object for resources
 */
-class FALCOR_API ReflectionInterfaceType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionInterfaceType> {
+class FALCOR_API ReflectionInterfaceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionInterfaceType> {
     public:
         using SharedPtr = std::shared_ptr<ReflectionInterfaceType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionInterfaceType>;

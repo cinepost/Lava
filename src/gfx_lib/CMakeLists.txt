@@ -1,3 +1,7 @@
+if(NOT EXTERNALS_INSTALL_DIR)
+    set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+
 set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
 
 include_directories( 
@@ -40,27 +44,34 @@ endif()
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
 
+include_directories( 
+    ${EXTERNALS_INSTALL_DIR}/include
+    ${EXTERNALS_INSTALL_DIR}/include/slang
+    ${PROJECT_SOURCE_DIR}/external/include
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
+    ${Boost_INCLUDE_DIRS}
+)
+
 add_library( gfx_lib SHARED ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} )
 
 if(WIN32)
     find_package(Vulkan REQUIRED)
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
     add_definitions(-DBOOST_ALL_DYN_LINK)
-    find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
+    add_definitions(-DBOOST_LOG_DYN_LINK)
 
     set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    # target_link_options(gfx_lib PRIVATE "/FORCE:UNRESOLVED")
+    target_link_options(gfx_lib PRIVATE "/FORCE:UNRESOLVED")
 
     target_link_libraries(
         gfx_lib
         PUBLIC
-        lava_utils_lib
-        ${SLANG_LIBRARY}
-        ${SLANG_GFX_LIBRARY}
-        Vulkan::Vulkan
+            lava_utils_lib
+            ${SLANG_LIBRARY}
+            Vulkan::Vulkan
         PRIVATE
-        # falcor_lib "../../Release/lib/Release/falcor_lib"
-        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/falcor_lib.lib
+            # falcor_lib "../../Release/lib/Release/falcor_lib"
+            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/falcor_lib.lib
     )
 else()
     target_link_libraries(

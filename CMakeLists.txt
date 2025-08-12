@@ -1,8 +1,8 @@
 cmake_minimum_required( VERSION 3.21 )
 
 if(UNIX)
-set(CMAKE_C_COMPILER gcc-11)
-set(CMAKE_CXX_COMPILER g++-11)
+  set(CMAKE_C_COMPILER gcc-11)
+  set(CMAKE_CXX_COMPILER g++-11)
 endif()
 
 set( CMAKE_CXX_STANDARD 17 )
@@ -14,7 +14,8 @@ set( PROJECT_VERSION_MINOR 0 )
 set( PROJECT_VERSION_PATCH 001 )
 
 if(WIN32)
-  file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindTBB.cmake)
+  #file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/FindTBB.cmake)
+  set( PKG_CONFIG_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/pkgconfigwin32/pkg-config.exe)
 endif()
 
 #### Handle build mode
@@ -178,6 +179,7 @@ endif ()
 if ( MSVC )
   ADD_DEFINITIONS(/W3 /std:c++17 /MP /wd4005 /wd4068)
   add_compile_options($<$<CONFIG:DEBUG>:/bigobj>)
+  add_compile_options(/utf-8)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
 
   set(CMAKE_CXX_FLAGS "-Wall -Wextra")

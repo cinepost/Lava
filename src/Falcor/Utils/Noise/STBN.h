@@ -104,8 +104,8 @@ class Maker {
 
 		size_t 		mNumPixels;
 		uint32_t 	mSizeX, mSizeY, mSizeZ, mChannelCount;
-		uint32_t  mDimsionality;
-		uint32_t  mPixelsCountX, mPixelsCountXY;
+		uint32_t 	mDimsionality;
+		uint32_t  	mPixelsCountX, mPixelsCountXY;
 		float 		mSigmaX, mSigmaY, mSigmaZ, mSigmaW;
 
 		int mKernelRadiusStartX, mKernelRadiusStartY, mKernelRadiusStartZ, mKernelRadiusStartW;

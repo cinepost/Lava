@@ -1,3 +1,7 @@
+if(NOT EXTERNALS_INSTALL_DIR)
+    set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
 )
@@ -22,7 +26,10 @@ endif()
 add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
 add_subdirectory(houdini_display)
-add_subdirectory(sdl_display)
+
+if(NOT WIN32)
+    add_subdirectory(sdl_display)
+endif()
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 
@@ -30,17 +37,15 @@ if(WIN32)
     message(STATUS "Using module to find Vulkan")
     find_package(Vulkan REQUIRED)
 
-include_directories( ${Vulkan_INCLUDE_DIRS} )
+    include_directories( ${Vulkan_INCLUDE_DIRS} )
 
-set(dlfcn-win32_DIR "${EXTERNALS_INSTALL_DIR}/dlfcn-win32/share/dlfcn-win32")
-find_package(dlfcn-win32 REQUIRED)
-# include_directories(${dlfcn-win32_INCLUDE_DIRS})
+    set(dlfcn-win32_DIR "${EXTERNALS_INSTALL_DIR}/share/dlfcn-win32")
+    find_package(dlfcn-win32 REQUIRED)
+    # include_directories(${dlfcn-win32_INCLUDE_DIRS})
 
-add_definitions(-DBOOST_ALL_DYN_LINK)
+    add_definitions(-DBOOST_ALL_DYN_LINK)
 
-add_compile_definitions(
-    $<$<CONFIG:DEBUG>:__TBB_LIB_NAME=tbb.lib>
-)
+    add_compile_definitions($<$<CONFIG:DEBUG>:__TBB_LIB_NAME=tbb.lib>)
 endif()
 
 add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )

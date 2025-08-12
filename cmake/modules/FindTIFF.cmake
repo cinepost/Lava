@@ -74,11 +74,7 @@ foreach(name ${TIFF_NAMES})
   list(APPEND TIFF_NAMES_DEBUG "${name}d")
 endforeach()
 
-if(Tiff_ROOT)
-  set(_TIFF_ROOT ${Tiff_ROOT})
-elseif(DEFINED ENV{Tiff_ROOT})
-  set(_TIFF_ROOT $ENV{Tiff_ROOT})
-elseif(TIFF_ROOT)
+if(TIFF_ROOT)
   set(_TIFF_ROOT ${TIFF_ROOT})
 elseif(DEFINED ENV{TIFF_ROOT})
   set(_TIFF_ROOT $ENV{TIFF_ROOT})
@@ -93,6 +89,7 @@ list(APPEND _TIFF_LIBRARYDIR_SEARCH_DIRS
 
 unset(TIFF_INCLUDE_DIR CACHE)
 unset(TIFF_LIBRARY CACHE)
+
 
 find_path(TIFF_INCLUDE_DIR tiff.h
   PATHS 
@@ -113,10 +110,7 @@ if(NOT TIFF_LIBRARY)
       NO_DEFAULT_PATH
     )
 
-  if(WIN32)
-    include(SelectLibraryConfigurations)
-  endif()
-  #include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
+  include(SelectLibraryConfigurations)
   select_library_configurations(TIFF)
   mark_as_advanced(TIFF_LIBRARY_RELEASE TIFF_LIBRARY_DEBUG)
 endif()
@@ -128,6 +122,8 @@ if(TIFF_INCLUDE_DIR AND EXISTS "${TIFF_INCLUDE_DIR}/tiffvers.h")
     string(REGEX REPLACE "^#define[\t ]+TIFFLIB_VERSION_STR[\t ]+\"LIBTIFF, Version +([^ \\n]*).*"
            "\\1" TIFF_VERSION_STR "${tiff_version_str}")
     unset(tiff_version_str)
+
+    set(TIFF_VERSION ${TIFF_VERSION_STR})
 endif()
 
 foreach(_comp IN LISTS TIFF_FIND_COMPONENTS)
@@ -159,13 +155,14 @@ unset(TIFF_NAMES)
 unset(TIFF_NAMES_DEBUG)
 
 include(FindPackageHandleStandardArgs)
+
 find_package_handle_standard_args(TIFF
   FOUND_VAR TIFF_FOUND
   HANDLE_COMPONENTS
   REQUIRED_VARS 
     TIFF_LIBRARY 
     TIFF_INCLUDE_DIR
-  VERSION_VAR TIFF_VERSION_STRING
+  VERSION_VAR TIFF_VERSION
 )
 
 if(TIFF_FOUND)

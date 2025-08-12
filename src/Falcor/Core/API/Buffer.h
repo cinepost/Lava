@@ -31,8 +31,6 @@
 #include <string>
 #include <memory>
 
-#include <vulkan/vulkan.h>
-
 #include "Resource.h"
 #include "GpuMemoryHeap.h"
 
@@ -331,10 +329,6 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     mutable void* mCUDAExternalMemory = nullptr;
     mutable void* mCUDADeviceAddress = nullptr;
-
-#ifdef FALCOR_VK
-    VkBufferDeviceAddressInfo mAddressInfo;
-#endif
 
     /** Helper for converting host type to resource format for typed buffers.
         See list of supported formats for typed UAV loads:

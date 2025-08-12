@@ -32,6 +32,10 @@ using namespace std;
 
 #define h_shared_ptr std::shared_ptr
 
+#ifndef uint
+#define uint unsigned int
+#endif
+
 class H_Image;
 class H_MultiRes;
 typedef h_shared_ptr<H_Image> ImagePtr;

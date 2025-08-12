@@ -56,6 +56,7 @@
 
 #if defined(WIN32)
 	#define GETPID() 0
+	#define fdopen _fdopen
 #else
 	#include <unistd.h>
 	#define GETPID() getpid()
@@ -494,7 +495,7 @@ static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDe
 	char* name;
 	const char* dot;
 	std::string prefix;
-	uint i; 
+	uint32_t i; 
 	int offset;
 	int format;
 
@@ -604,13 +605,13 @@ static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDe
 static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFormat* formats) {
 	if (nformats < 1) return 0;
 
-	uint i; 
+	int i; 
 	int ok;
 	vector< h_shared_ptr< H_ChanDef > > defs;
 
 #if D_HOUDINI_DEBUG_LEVEL > 0
 	log(0, "SCAN %d formats\n", nformats);
-	for (i = 0; i < (uint)nformats; ++i) {
+	for (i = 0; i < nformats; ++i) {
 		unsigned int format_type = formats[i].type & PkDspyMaskType;
 		const char* type;
 
@@ -641,7 +642,7 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 	}
 #endif
 
-    for (i = 0; i < (uint)nformats; ++i) {
+    for (i = 0; i < nformats; ++i) {
 		addChanDef(formats[i], defs, i, img->isHalfFloat());
     }
 
@@ -1288,13 +1289,13 @@ int H_Image::getEntrySize(void) const {
 bool H_Image::writeChannelHeader() {
     FILE* fp = myIMD->GetFile();
 
-    uint header[8];
+    uint32_t header[8];
     ::memset(header, 0, sizeof(header));
 
     for (size_t i = 0; i < myChannels.size(); ++i) {
         const H_Channel& chp = *myChannels[i];
         // Now, define each channel
-        uint namelen = strlen(chp.getName().c_str());
+        uint32_t namelen = strlen(chp.getName().c_str());
         header[0] = i;
         header[1] = namelen;
         header[2] = chp.getFormat();

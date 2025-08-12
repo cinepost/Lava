@@ -1,10 +1,12 @@
 #include <memory>
 #include <array>
 
-#include <dlfcn.h>
 #ifdef _WIN32
-#include "dlfcn-win32/include/dlfcn.h"
+#include "dlfcn.h"
+#else
+#include <dlfcn.h>
 #endif
+
 #include <stdlib.h>
 #include <boost/format.hpp>
 

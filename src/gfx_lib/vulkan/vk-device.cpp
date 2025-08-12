@@ -746,30 +746,25 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		sampleLocationsProps.sampleLocationSubPixelBits = 4;
 		sampleLocationsProps.variableSampleLocations = VK_TRUE;
 
-		VkPhysicalDeviceSubgroupProperties subgroup_properties = { 
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
-			.pNext = NULL
-		};
+		VkPhysicalDeviceSubgroupProperties subgroup_properties;
+		subgroup_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+		subgroup_properties.pNext = NULL;
 
-		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties = {
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES,
-			.pNext = &subgroup_properties
-		};
+		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties;
+		subgroup_size_control_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES;
+		subgroup_size_control_properties.pNext = &subgroup_properties;
 
-		VkPhysicalDeviceAccelerationStructurePropertiesKHR accel_struct_properties = {
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR,
-			.pNext = &subgroup_size_control_properties
-		};
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR accel_struct_properties;
+		accel_struct_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+		accel_struct_properties.pNext = &subgroup_size_control_properties;
 
-		VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_pipeline_properties = {
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
-			.pNext = &accel_struct_properties
-		};
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_pipeline_properties;
+		ray_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+		ray_pipeline_properties.pNext = &accel_struct_properties;
 
-		VkPhysicalDeviceProperties2 dev_props2 = {
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-			.pNext = &ray_pipeline_properties,
-		};
+		VkPhysicalDeviceProperties2 dev_props2;
+		dev_props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		dev_props2.pNext;
 
 		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &dev_props2);
 

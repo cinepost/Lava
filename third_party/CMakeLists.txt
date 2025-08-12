@@ -23,6 +23,7 @@ set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/exter
 set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/stamp)
 set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/tmp)
 
+set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(EXTERNALS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
 find_program(MAKE_EXECUTABLE
@@ -66,12 +67,12 @@ find_package( ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
 
 if( ZLIB_FOUND )
 
-  message("ZLIB version ${ZLIB_VERSION_STRING} found ...")
+  message("ZLIB version ${ZLIB_VERSION} found ...")
   add_custom_target( zlib COMMAND echo "ZLIB build exists, skipping rebuild ...")
 
 else()
 
-  message("ZLIB version ${ZLIB_VERSION_STRING} not found! Running external build ...")
+  message("ZLIB version ${EXTERNAL_ZLIB_VERSION} not found! Running external build ...")
   set(ZLIB_PREFIX zlib)
 
   if(LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -119,11 +120,12 @@ find_package( TBB ${EXTERNAL_TBB_VERSION} EXACT)
 
 if( TBB_FOUND )
 
-  message("TBB version ${Tbb_VERSION} found ...")
+  message("TBB version ${TBB_VERSION} found ...")
   add_custom_target( Tbb COMMAND echo "TBB build exists, skipping rebuild ...")
+
 else()
 
-  message("TBB not found! Running external build ...")
+  message("TBB version ${EXTERNAL_TBB_VERSION} not found! Running external build ...")
   set(TBB_PREFIX tbb)
 
   if(WIN32)
@@ -137,6 +139,7 @@ else()
     CMAKE_ARGS -D TBB_BUILD_DIR=${EXTERNALS_BINARY_DIR}/tbb/build
     CMAKE_ARGS -D TBB_BUILD_PREFIX=${TBB_PREFIX}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
@@ -170,6 +173,58 @@ else()
 
 endif()
 
+#######################
+# Pkg-Config
+#######################
+
+if(WIN32)
+
+  set(PkgConfigWin32_BINDIR ${EXTERNALS_INSTALL_DIR}/bin)
+  find_package(PkgConfigWin32)
+
+  if(PkgConfigWin32_FOUND )
+  
+    add_custom_target( PkgConfigWin32 COMMAND echo "PkgConfig found.")
+
+  else()  
+    set(PKGCONFIG_PREFIX pkgconfig)
+
+    message("PkgConfigWin32 not found! Downloading ...")
+
+    ExternalProject_Add ( libglib
+      PREFIX ${EXTERNALS_SOURCE_DIR}/libglib
+      URL https://download.gnome.org/binaries/win32/glib/2.28/glib_2.28.8-1_win32.zip
+      UPDATE_DISCONNECTED true      
+      DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+      
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      
+      INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/bin/libglib-2.0-0.dll ${EXTERNALS_INSTALL_DIR}/bin/libglib-2.0-0.dll
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${THIRD_PARTY_DIR}/pkgconfigwin32/intl.dll ${EXTERNALS_INSTALL_DIR}/bin/intl.dll
+    )
+
+    ExternalProject_Add ( PkgConfigWin32
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${PKGCONFIG_PREFIX}
+      URL https://download.gnome.org/binaries/win32/dependencies/pkg-config_0.26-1_win32.zip
+      UPDATE_DISCONNECTED true
+      DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      
+      INSTALL_COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/bin/pkg-config.exe ${EXTERNALS_INSTALL_DIR}/bin/pkg-config.exe
+    )
+    ExternalProject_Add_StepDependencies(PkgConfigWin32 configure libglib)
+
+  endif()
+
+else()
+
+   add_custom_target( PkgConfigWin32 COMMAND echo "")
+
+endif()
 
 #######################
 # CpuInfo
@@ -179,12 +234,18 @@ find_package(PkgConfig)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${EXTERNALS_INSTALL_DIR}/lib/pkgconfig")
 pkg_check_modules(CpuInfo IMPORTED_TARGET libcpuinfo)
 
-if( CpuInfo_FOUND )
+if( cpuinfo_FOUND )
   message("CpuInfo found ...")
   add_custom_target( CpuInfo COMMAND echo "CpuInfo build exists, skipping rebuild ...")
 else()
   message("CpuInfo not found! Running external build ...")
   set(CPUINFO_PREFIX cpuinfo)
+
+  set(CPUINFO_BUILD_TYPE "shared")
+
+  if(WIN32)
+    set(CPUINFO_BUILD_TYPE "default")
+  endif()
 
   ExternalProject_Add( CpuInfo
     PREFIX ${EXTERNALS_SOURCE_DIR}/${CPUINFO_PREFIX}
@@ -193,15 +254,14 @@ else()
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D CPUINFO_LIBRARY_TYPE:STRING=shared
-    CMAKE_ARGS -D CPUINFO_RUNTIME_TYPE:STRING=shared
+    CMAKE_ARGS -D CPUINFO_LIBRARY_TYPE:STRING=${CPUINFO_BUILD_TYPE}
+    CMAKE_ARGS -D CPUINFO_RUNTIME_TYPE:STRING=${CPUINFO_BUILD_TYPE}
     CMAKE_ARGS -D CPUINFO_LOG_LEVEL:STRING=none
     CMAKE_ARGS -D CPUINFO_BUILD_TOOLS:BOOL=OFF
     CMAKE_ARGS -D CPUINFO_BUILD_UNIT_TESTS:BOOL=OFF
     CMAKE_ARGS -D CPUINFO_BUILD_MOCK_TESTS:BOOL=OFF
     CMAKE_ARGS -D CPUINFO_BUILD_BENCHMARKS:BOOL=OFF
     CMAKE_ARGS -D CPUINFO_BUILD_PKG_CONFIG:BOOL=ON
-
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
@@ -251,15 +311,16 @@ else()
     CMAKE_ARGS -D BUILD_FUZZERS:BOOL=OFF
     CMAKE_ARGS -D BUILD_BENCHMARKS:BOOL=OFF
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_ARGS -D CMAKE_CXX_FLAGS:STRING="-fPIC"
     CMAKE_ARGS -D CMAKE_C_FLAGS:STRING="-fPIC"
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/blosc
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/blosc
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${BLOSC_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${BLOSC_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${BLOSC_PREFIX}
   )
 
 endif()
@@ -272,15 +333,26 @@ endif()
 set(Boost_USE_MULTITHREADED ON)
 
 if(LAVA_3RD_LIB_LINK_WITH_STATIC)
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME ON)
+  set(Boost_USE_STATIC_LIBS ON)
+  set(Boost_USE_STATIC_RUNTIME ON)
+else()
+  set(Boost_USE_STATIC_LIBS OFF)
 endif()
 
 if( NOT EXTERNAL_BOOST_VERSION )
-  set(EXTERNAL_BOOST_VERSION 1.75.0)
+  set(EXTERNAL_BOOST_VERSION 1.82.0)
 endif()
 
+
+cmake_policy(SET CMP0167 OLD)
+
+set(Boost_NO_BOOST_CMAKE OFF)
+set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
+set(BOOST_INCLUDEDIR ${EXTERNALS_INSTALL_DIR}/include)
+set(BOOST_LIBRARYDIR ${EXTERNALS_INSTALL_DIR}/lib)
+
+
 find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT COMPONENTS json filesystem system date_time iostreams program_options)
 
 if(Boost_FOUND)
@@ -295,7 +367,7 @@ else()
   set(BOOST_PREFIX boost)
 
   if(LAVA_3RD_LIB_LINK_WITH_STATIC)
-    set(BOOST_LINK_STYLE static)
+    set(BOOST_LINK_STYLE "runtime-link=static")
     set(BOOST_CXX_FLAGS "cxxflags=-fPIC")
     set(BOOST_C_FLAGS "cflags=-fPIC")
   else()
@@ -304,6 +376,8 @@ else()
     set(BOOST_C_FLAGS "")
   endif()
 
+  set(BOOST_LINK_STYLE shared)
+
   if(DEPS_BUILD_TYPE STREQUAL "Debug")
     set(BOOST_BUILD_TYPE "debug")
   else()
@@ -311,54 +385,57 @@ else()
   endif()
 
   if(WIN32)
-  ExternalProject_Add ( Boost
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
-    GIT_REPOSITORY https://github.com/boostorg/boost.git
-    GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
-    UPDATE_DISCONNECTED true
 
-    CONFIGURE_COMMAND ./bootstrap.bat
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.2 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
-      --with-filesystem
-      --with-system
-      --with-date_time
-      --with-iostreams
-      --with-program_options
-      --with-regex
-      --with-log 
-      --with-thread
-      --with-json
-      --prefix=${EXTERNALS_INSTALL_DIR}
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
-    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-    TMP_DIR ${EXTERNALS_TMP_DIR}/boost
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
-  )
+    ExternalProject_Add ( Boost
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
+      GIT_REPOSITORY https://github.com/boostorg/boost.git
+      GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
+      UPDATE_DISCONNECTED true
+
+      CONFIGURE_COMMAND ./bootstrap.bat
+      BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 define=BOOST_USE_WINAPI_VERSION=0x0A00 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+        --with-filesystem
+        --with-system
+        --with-date_time
+        --with-iostreams
+        --with-program_options
+        --with-regex
+        --with-log 
+        --with-thread
+        --with-json
+        --prefix=${EXTERNALS_INSTALL_DIR}
+      BUILD_IN_SOURCE 1
+      INSTALL_COMMAND ""
+      INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+      TMP_DIR ${EXTERNALS_TMP_DIR}/boost
+      STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
+    )
+
   else()
-  ExternalProject_Add ( Boost
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
-    GIT_REPOSITORY https://github.com/boostorg/boost.git
-    GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
-    UPDATE_DISCONNECTED true
-    CONFIGURE_COMMAND ./bootstrap.sh
-      --with-libraries=filesystem
-      --with-libraries=system
-      --with-libraries=date_time
-      --with-libraries=iostreams
-      --with-libraries=program_options
-      --with-libraries=regex
-      --with-libraries=log 
-      --with-libraries=thread
-      --with-libraries=json
-      --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
-    INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
-    TMP_DIR ${EXTERNALS_TMP_DIR}/boost
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
-  )
+
+    ExternalProject_Add ( Boost
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
+      GIT_REPOSITORY https://github.com/boostorg/boost.git
+      GIT_TAG boost-${EXTERNAL_BOOST_VERSION}
+      UPDATE_DISCONNECTED true
+      CONFIGURE_COMMAND ./bootstrap.sh
+        --with-libraries=filesystem
+        --with-libraries=system
+        --with-libraries=date_time
+        --with-libraries=iostreams
+        --with-libraries=program_options
+        --with-libraries=regex
+        --with-libraries=log 
+        --with-libraries=thread
+        --with-libraries=json
+        --prefix=<INSTALL_DIR>
+      BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+      BUILD_IN_SOURCE 1
+      INSTALL_COMMAND ""
+      INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+      TMP_DIR ${EXTERNALS_TMP_DIR}/boost
+      STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
+    )
   endif()
 endif()
 
@@ -512,8 +589,9 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
+  
   ExternalProject_Add_StepDependencies(Assimp configure zlib Tbb OpenVDB Blosc)
-
+  
 endif()
 
 
@@ -554,12 +632,12 @@ else()
   endif()
 
   if(WIN32)
-  set(OPENVDB_CXX_FLAGS "/EHsc")
-  if(DEPS_BUILD_TYPE STREQUAL "Release")
-    set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Release/lib/tbb12.lib")
-  else()
-    set(OPENVDB_CXX_STANDARD_LIBRARIES "D:/Lava/deps/Debug/lib/tbb12_debug.lib")
-  endif()
+    set(OPENVDB_CXX_FLAGS "/EHsc")
+    if(DEPS_BUILD_TYPE STREQUAL "Release")
+      set(OPENVDB_CXX_STANDARD_LIBRARIES "${EXTERNALS_INSTALL_DIR}/lib/tbb12.lib")
+    else()
+      set(OPENVDB_CXX_STANDARD_LIBRARIES "${EXTERNALS_INSTALL_DIR}/lib/tbb12_debug.lib")
+    endif()
   elseif(UNIX)
     # set(OPENVDB_CXX_STANDARD_LIBRARIES "")
   endif()
@@ -659,6 +737,7 @@ else()
     CMAKE_ARGS -D PNG_STATIC:BOOL=${PNG_BUILD_STATIC_LIB}
     CMAKE_ARGS -D PNG_SHARED:BOOL=${PNG_BUILD_SHARED_LIB}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
@@ -709,6 +788,7 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D ENABLE_SHARED:BOOL=${JPEG_BUILD_SHARED_LIB}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
@@ -798,12 +878,12 @@ find_package(OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT)
 
 if(OpenImageIO_FOUND)
 
-  message("OpenImageIO version ${OpenImageIO_VERSION} found ...")
+  message("OpenImageIO version ${OPENIMAGEIO_VERSION} found ...")
   add_custom_target( OpenImageIO COMMAND echo "OpenImageIO build exists, skipping rebuild ...")
 
 else()
 
-  message("OpenImageIO not found! Running external build ...")
+  message("OpenImageIO version ${EXTERNAL_OIIO_VERSION} not found! Running external build ...")
   set(OIIO_PREFIX openimageio)
 
   if(LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -860,7 +940,7 @@ else()
     CMAKE_ARGS -D OpenColorIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D PNG_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D pybind11_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
-    
+
     CMAKE_ARGS -D USE_FFMPEG:BOOL=OFF
     CMAKE_ARGS -D USE_RAW:BOOL=OFF
     CMAKE_ARGS -D USE_PYTHON:BOOL=OFF
@@ -869,8 +949,14 @@ else()
     CMAKE_ARGS -D USE_OPENVDB:BOOL=OFF
     CMAKE_ARGS -D USE_OPENCOLORIO:BOOL=OFF
     CMAKE_ARGS -D USE_OPENCV:BOOL=OFF
-
-    CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+    
+    # fucking fmt madness
+    CMAKE_ARGS -D INTERNALIZE_FMT:BOOL=OFF
+    CMAKE_ARGS -D OIIO_USING_FMT:BOOL=OFF
+    CMAKE_ARGS -D BUILD_FMT_FORCE:BOOL=OFF
+    CMAKE_ARGS -D BUILD_MISSING_FMT:BOOL=OFF
+    
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=0"
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
@@ -881,10 +967,11 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
+  
   if(WIN32)
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
+    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
   else()
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
+    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
   endif()
 
 endif()
@@ -899,16 +986,16 @@ if( NOT EXTERNAL_GLFW_VERSION )
 endif()
 
 set(GLFW_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(glfw ${EXTERNAL_GLFW_VERSION} EXACT)
+find_package(GLFW ${EXTERNAL_GLFW_VERSION} EXACT)
 
-if(glfw_FOUND)
+if(GLFW_FOUND)
 
-  message("Glfw version ${glfw_VERSION} found ...")
+  message("Glfw version ${GLFW_VERSION} found ...")
   add_custom_target( Glfw COMMAND echo "Glfw build exists, skipping rebuild ...")
 
 else()
 
-  message("Glfw not found! Running external build ...")
+  message("Glfw version ${EXTERNAL_GLFW_VERSION} not found! Running external build ...")
   set(GLFW_PREFIX glfw)
 
   if(LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -937,6 +1024,93 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLFW_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${GLFW_PREFIX}
+  )
+
+endif()
+
+#######################
+# GLEW
+#######################
+
+if( NOT EXTERNAL_GLEW_VERSION )
+  set(EXTERNAL_GLEW_VERSION 2.1.0)
+endif()
+
+set(GLEW_ROOT ${EXTERNALS_INSTALL_DIR})
+
+find_package(GLEW)
+
+if(GLEW_FOUND)
+  
+  message("GLEW version ${GLEW_VERSION} found ...")
+  add_custom_target( glew COMMAND echo "GLEW build exists, skipping rebuild ...")
+
+else()
+
+  message("GLEW version ${EXTERNAL_GLEW_VERSION} not found! Running external build ...")
+  set(GLEW_PREFIX glew)
+
+  ExternalProject_Add( glew
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${GLEW_PREFIX}
+    URL "https://downloads.sourceforge.net/project/glew/glew/2.1.0/glew-2.1.0.tgz"
+    UPDATE_DISCONNECTED true
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D BUILD_UTILS:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+
+
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
+
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} ${CMAKE_ARGS} <SOURCE_DIR>/build/cmake/ -DCMAKE_INSTALL_PREFIX=${EXTERNALS_INSTALL_DIR}
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${GLEW_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLEW_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${GLEW_PREFIX}
+  )
+
+endif()
+
+#######################
+# dlfcn-win32
+#######################
+
+if( NOT EXTERNAL_DLFCN_VERSION)
+  set(EXTERNAL_DLFCN_VERSION 1.4.2)
+endif()
+
+set(dlfcn-win32_DIR "${EXTERNALS_INSTALL_DIR}/share/dlfcn-win32")
+find_package(dlfcn-win32)
+
+if(dlfcn-win32_FOUND)
+
+  message("dlfcn-win32 found ...")
+  add_custom_target( dlfcn COMMAND echo "dlfcn-win32 build exists, skipping rebuild ...")
+
+else()
+  
+  message("dlfcn-win32 not found! Running external build ...")
+  set(DLFCN_PREFIX dlfcn)
+
+  ExternalProject_Add ( dlfcn
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${DLFCN_PREFIX}
+    GIT_REPOSITORY https://github.com/dlfcn-win32/dlfcn-win32.git
+    GIT_TAG v${EXTERNAL_DLFCN_VERSION}
+
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${DLFCN_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${DLFCN_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${DLFCN_PREFIX}
   )
 
 endif()
@@ -975,6 +1149,7 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${TIFF_BUILD_SHARED_LIBS}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE}
@@ -1047,7 +1222,7 @@ if(OIDN_FOUND)
 
 else()
 
-  message("OpenImageDenoise not found! Running external build ...")
+  message("OpenImageDenoise version ${EXTERNAL_OIDN_VERSION} not found! Running external build ...")
   set(OIDN_PREFIX openimagedenoise)
 
   if(WIN32)
@@ -1225,8 +1400,8 @@ ExternalProject_Add ( RTXGI_DDGI
 #  BUILD_COMMAND ""
 
 #  INSTALL_COMMAND
-#    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
-#    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
 
 #  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXDI_PREFIX}
 #  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXDI_PREFIX}
@@ -1237,13 +1412,65 @@ ExternalProject_Add ( RTXGI_DDGI
 
 
 #######################
+# LZ4
+#######################
+
+if( NOT EXTERNAL_LZ4_VERSION)
+  set(EXTERNAL_LZ4_VERSION 1.9.4) 
+endif()
+
+set(LZ4_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package( LZ4 )
+
+if(LZ4_FOUND)
+
+  message("LZ4 found ...")
+  add_custom_target( LZ4 COMMAND echo "LZ4_Stream found, skipping download ...")
+
+else()
+
+  message("LZ4 version ${EXTERNAL_LZ4_VERSION} not found ! Downloading LZ4 ...")
+  
+  set(LZ4_PREFIX lz4)
+
+  if(WIN32)
+    set(LZ4_BUILD_COMMAND "msbuild;${EXTERNALS_SOURCE_DIR}\\${LZ4_PREFIX}\\src\\LZ4\\build\\VS2022\\liblz4\\liblz4.vcxproj;/property:Configuration=${DEPS_BUILD_TYPE};/property:Platform=x64")
+    set(LZ4_INSTL_COMMAND "")
+  else()
+    message(FATAL_ERROR "LZ4_BUILD_COMMAND not set !!!")
+  endif()
+
+  ExternalProject_Add ( LZ4
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${LZ4_PREFIX}
+    GIT_REPOSITORY https://github.com/lz4/lz4.git
+    GIT_TAG v${EXTERNAL_LZ4_VERSION}
+
+    UPDATE_DISCONNECTED true
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ${LZ4_BUILD_COMMAND}
+
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D SRC_DIR=<SOURCE_DIR>
+      -D BUILD_DIR=<SOURCE_DIR>/build/VS2022/bin
+      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -D BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/lz4_install_files.cmake
+  
+    TMP_DIR ${EXTERNALS_TMP_DIR}/lz4
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/lz4
+
+  )
+
+endif()
+
+#######################
 # LZ4 Stream
 #######################
 
 set(LZ4_STREAM_PREFIX lz4_stream)
-set(LZ4_INSTALL_DIR ${EXTERNALS_INSTALL_DIR}/include/lz4_stream)
+set(LZ4_STREAM_INSTALL_DIR ${EXTERNALS_INSTALL_DIR}/include/lz4_stream)
 
-if(EXISTS "${LZ4_INSTALL_DIR}/lz4_stream.h")
+if(EXISTS "${LZ4_STREAM_INSTALL_DIR}/lz4_stream.h")
 
   message("LZ4_Stream found ...")
   add_custom_target( LZ4_Stream COMMAND echo "LZ4_Stream found, skipping download ...")
@@ -1258,12 +1485,15 @@ else()
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND 
-      ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/include/lz4_stream.h ${LZ4_INSTALL_DIR}/lz4_stream.h
+      ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/include/lz4_stream.h ${LZ4_STREAM_INSTALL_DIR}/lz4_stream.h
   
     TMP_DIR ${EXTERNALS_TMP_DIR}/lz4_stream
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/lz4_stream
 
   )
+
+  ExternalProject_Add_StepDependencies(LZ4_Stream configure LZ4)
+
 endif()
 
 #######################
@@ -1310,8 +1540,13 @@ set(FreeImage_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(FreeImage ${EXTERNAL_FREEIMAGE_VERSION} EXACT)
 
 if( FreeImage_FOUND )
-  add_custom_target( FreeImage COMMAND echo "FreeImage build exists, skipping rebuild ...")
+
+  message("FreeImage version ${FreeImage_VERSION} found.")
+  add_custom_target( FreeImage COMMAND echo "FreeImage found, skipping rebuild ...")
+
 else()
+
+  message("FreeImage version ${EXTERNAL_FREEIMAGE_VERSION} not found! Running external build ...")
 
   set(TIFF_ROOT ${EXTERNALS_INSTALL_DIR})
   find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
@@ -1340,6 +1575,7 @@ else()
       -D STATIC_LIB=${LAVA_3RD_LIB_LINK_WITH_STATIC}
       -D SRC_DIR=${FREE_SRC_DIR}
       -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -D BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
 
     BINARY_DIR ${EXTERNALS_SOURCE_DIR}/../freeimage
@@ -1365,7 +1601,7 @@ if( fmt_FOUND )
   add_custom_target( fmt COMMAND echo "FMT build exists, skipping rebuild ...")
 else()
 
-  message("FMT lib not found! Running external build ...")
+  message("FMT lib version ${EXTERNAL_FMT_VERSION} not found! Running external build ...")
   set(FMT_PREFIX fmt)
 
   ExternalProject_Add ( fmt
@@ -1410,107 +1646,106 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-set(SLANG_PREFIX slang)
-set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm")
+  message("Slang version ${EXTERNAL_SLANG_VERSION} not found! Running external build ...")
 
-if(NOT DEFINED SLANG_BUILD_TYPE)
-  set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
-endif()
+  set(SLANG_PREFIX slang)
+  set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm")
+
+  if(NOT DEFINED SLANG_BUILD_TYPE)
+    set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
+  endif()
 
 
-if(SLANG_BUILD_TYPE STREQUAL "Release")
-  set(SLANG_BUILD_CONFIG release)
-  set(SLANG_BIN_DIR "build/Release")
-elseif(SLANG_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  set(SLANG_BUILD_CONFIG releaseWithDebugInfo)
-  set(SLANG_BIN_DIR "build/RelWithDebInfo")
-elseif(SLANG_BUILD_TYPE STREQUAL "MinSizeRel")
-  set(SLANG_BUILD_CONFIG release)
-  set(SLANG_BIN_DIR "build/Release")
-else()
-  set(SLANG_BUILD_CONFIG debug)
-  set(SLANG_BIN_DIR "build/Debug")
-endif()
+  if(SLANG_BUILD_TYPE STREQUAL "Release")
+    set(SLANG_BUILD_CONFIG release)
+    set(SLANG_BIN_DIR "build/Release")
+  elseif(SLANG_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set(SLANG_BUILD_CONFIG releaseWithDebugInfo)
+    set(SLANG_BIN_DIR "build/RelWithDebInfo")
+  elseif(SLANG_BUILD_TYPE STREQUAL "MinSizeRel")
+    set(SLANG_BUILD_CONFIG release)
+    set(SLANG_BIN_DIR "build/Release")
+  else()
+    set(SLANG_BUILD_CONFIG debug)
+    set(SLANG_BIN_DIR "build/Debug")
+  endif()
 
-message("Slang build config " ${SLANG_BUILD_CONFIG})
+  message("Slang build config " ${SLANG_BUILD_CONFIG})
 
-string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
+  string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
-if(WIN32)
-  ExternalProject_Add( Slang
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
-    GIT_REPOSITORY https://github.com/shader-slang/slang.git
-    GIT_TAG v${EXTERNAL_SLANG_VERSION}
-    UPDATE_DISCONNECTED ON
-    BUILD_IN_SOURCE   TRUE
-    LOG_BUILD ON
-    USES_TERMINAL ON
-    USES_TERMINAL_CONFIGURE ON
+  if(WIN32)
+    
+    set(slang_h_patch git apply ${CMAKE_CURRENT_SOURCE_DIR}/slang.patch)
 
-    CONFIGURE_COMMAND
-      COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/downloads/slang-llvm-13.x-28-win64.zip <SOURCE_DIR>/downloads/slang-llvm-13.x-28-win64.zip
-      COMMAND ${CMAKE_COMMAND}
-        -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/windows-x64/premake5.exe?raw=true
-        -D OUTPUT_FILE=<SOURCE_DIR>/premake5.exe
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
-      COMMAND ${CMAKE_COMMAND}
-        -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-        -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
-        -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-      COMMAND ./premake5.exe vs2019 --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
+    ExternalProject_Add( Slang
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
+      GIT_REPOSITORY https://github.com/shader-slang/slang.git
+      GIT_TAG v${EXTERNAL_SLANG_VERSION}
+      UPDATE_DISCONNECTED ON
+      BUILD_IN_SOURCE   TRUE
+      LOG_BUILD ON
 
-    BUILD_COMMAND 
-      COMMAND
-        msbuild -m slang.sln /property:Configuration=${DEPS_BUILD_TYPE} /property:Platform=x64
+      PATCH_COMMAND ${slang_h_patch}
 
-    INSTALL_COMMAND ${CMAKE_COMMAND}
-      -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
-      -D SOURCE_DIR=<SOURCE_DIR>
-      -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
-      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
+      CONFIGURE_COMMAND
+        COMMAND ${CMAKE_COMMAND}
+          -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+          -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
+          -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/slang
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
-  )
-else()
-  ############################################################
-  #
-  # Ubuntu install packages: g++-9, ninja-build, cmake >= 3.25
-  #
-  ############################################################
+      BUILD_COMMAND 
+        COMMAND ${CMAKE_COMMAND} --preset vs2022
+        COMMAND ${CMAKE_COMMAND} --build --preset ${SLANG_BUILD_CONFIG}
 
-  ExternalProject_Add( Slang
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
-    GIT_REPOSITORY https://github.com/shader-slang/slang.git
-    GIT_TAG v${EXTERNAL_SLANG_VERSION}
-    UPDATE_DISCONNECTED ON
-    BUILD_IN_SOURCE   TRUE
-    LOG_BUILD ON
+      INSTALL_COMMAND ${CMAKE_COMMAND}
+        -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
+        -D SOURCE_DIR=<SOURCE_DIR>
+        -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
+        -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
 
-    CONFIGURE_COMMAND
-      COMMAND ${CMAKE_COMMAND}
-        -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-        -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
-        -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
-      
-    BUILD_COMMAND
-      COMMAND ${CMAKE_COMMAND} --preset default
-      COMMAND ${CMAKE_COMMAND} --build --preset ${SLANG_BUILD_CONFIG}
+      TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+      STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
+    )
+  else()
+    ############################################################
+    #
+    # Ubuntu install packages: g++-9, ninja-build, cmake >= 3.25
+    #
+    ############################################################
 
-    INSTALL_COMMAND ${CMAKE_COMMAND}
-      -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
-      -D SOURCE_DIR=<SOURCE_DIR>
-      -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
-      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
+    ExternalProject_Add( Slang
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
+      GIT_REPOSITORY https://github.com/shader-slang/slang.git
+      GIT_TAG v${EXTERNAL_SLANG_VERSION}
+      UPDATE_DISCONNECTED ON
+      BUILD_IN_SOURCE   TRUE
+      LOG_BUILD ON
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/slang
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
-  )
-endif()
+      CONFIGURE_COMMAND
+        COMMAND ${CMAKE_COMMAND}
+          -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+          -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
+          -D OUTPUT_FILE=<SOURCE_DIR>/slang-tag-version.h
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
+        
+      BUILD_COMMAND
+        COMMAND ${CMAKE_COMMAND} --preset default
+        COMMAND ${CMAKE_COMMAND} --build --preset ${SLANG_BUILD_CONFIG}
+
+      INSTALL_COMMAND ${CMAKE_COMMAND}
+        -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
+        -D SOURCE_DIR=<SOURCE_DIR>
+        -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
+        -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
+
+      TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+      STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
+    )
+  endif()
 
 endif()
 
@@ -1537,7 +1772,9 @@ add_dependencies( dummy_target
   Glfw
   tiff
   FreeImage
+  LZ4_Stream
 )
+
 if(WIN32)
-  add_dependencies( dummy_target jpeg )
+  add_dependencies( dummy_target LZ4 dlfcn glew jpeg )
 endif()

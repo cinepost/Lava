@@ -1,0 +1,13 @@
+diff --git a/include/slang.h b/include/slang.h
+index 25e364504..f788ca712 100644
+--- a/include/slang.h
++++ b/include/slang.h
+@@ -505,6 +505,8 @@ convention for interface methods.
+ #include <stddef.h>
+ #endif // ! SLANG_NO_STDDEF
+ 
++#include <chrono>
++
+ #ifdef __cplusplus
+ extern "C"
+ {

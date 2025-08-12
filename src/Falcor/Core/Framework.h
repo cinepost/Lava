@@ -29,6 +29,7 @@
 #define SRC_FALCOR_CORE_FRAMEWORK_H_
 
 #include "FalcorPlatform.h"
+#include "Macros.h"
 #include "Enum.h"
 
 #include <fstd/source_location.h> // TODO C++20: Replace with <source_location>
@@ -37,17 +38,18 @@
 //#include <fmt/format.h>
 #include <OpenImageIO/detail/fmt/format.h>
 
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-
 #if FALCOR_GCC
 // save compiler switches
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-#endif
+#endif  // FALCOR_GCC
 
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+
+#ifdef WIN32
+#include <Windows.h>
+#endif // WIN32
 
 #include "Falcor/Core/Macros.h"
 #include "Falcor/Core/ErrorHandling.h"
@@ -63,7 +65,6 @@ namespace fs = boost::filesystem;
 #include <utility>
 #include <memory>
 #include <type_traits>
-
 
 #include "boost/format.hpp"
 #include "boost/filesystem.hpp"
@@ -213,12 +214,11 @@ inline std::string to_string(ShaderModel sm) {
     return enumToString(sm);
 }
 
-inline uint32_t getShaderModelMajorVersion(ShaderModel sm)
-{
+inline uint32_t getShaderModelMajorVersion(ShaderModel sm) {
     return uint32_t(sm) / 10;
 }
-inline uint32_t getShaderModelMinorVersion(ShaderModel sm)
-{
+
+inline uint32_t getShaderModelMinorVersion(ShaderModel sm) {
     return uint32_t(sm) % 10;
 }
 
@@ -426,18 +426,17 @@ namespace Falcor {
 /**
  * Base class for all Falcor exceptions.
  */
-class FALCOR_API Exception : public std::exception
-{
-public:
-    Exception() noexcept {}
-    Exception(std::string_view what) : mpWhat(std::make_shared<std::string>(what)) {}
-    Exception(const Exception& other) noexcept { mpWhat = other.mpWhat; }
-    virtual ~Exception() override {}
-    virtual const char* what() const noexcept override { return mpWhat ? mpWhat->c_str() : ""; }
+class FALCOR_API Exception : public std::exception {
+    public:
+        Exception() noexcept {}
+        Exception(std::string_view what) : mpWhat(std::make_shared<std::string>(what)) {}
+        Exception(const Exception& other) noexcept { mpWhat = other.mpWhat; }
+        virtual ~Exception() override {}
+        virtual const char* what() const noexcept override { return mpWhat ? mpWhat->c_str() : ""; }
 
-protected:
-    // Message is stored as a reference counted string in order to allow copy constructor to be noexcept.
-    std::shared_ptr<std::string> mpWhat;
+    protected:
+        // Message is stored as a reference counted string in order to allow copy constructor to be noexcept.
+        std::shared_ptr<std::string> mpWhat;
 };
 
 #ifdef _MSC_VER
@@ -447,25 +446,23 @@ protected:
 /**
  * Exception to be thrown when an error happens at runtime.
  */
-class FALCOR_API RuntimeError : public Exception
-{
-public:
-    RuntimeError() noexcept {}
-    RuntimeError(std::string_view what) : Exception(what) {}
-    RuntimeError(const RuntimeError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
-    virtual ~RuntimeError() override {}
+class FALCOR_API RuntimeError : public Exception {
+    public:
+        RuntimeError() noexcept {}
+        RuntimeError(std::string_view what) : Exception(what) {}
+        RuntimeError(const RuntimeError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
+        virtual ~RuntimeError() override {}
 };
 
 /**
  * Exception to be thrown on FALCOR_ASSERT.
  */
-class FALCOR_API AssertionError : public Exception
-{
-public:
-    AssertionError() noexcept {}
-    AssertionError(std::string_view what) : Exception(what) {}
-    AssertionError(const AssertionError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
-    virtual ~AssertionError() override {}
+class FALCOR_API AssertionError : public Exception {
+    public:
+        AssertionError() noexcept {}
+        AssertionError(std::string_view what) : Exception(what) {}
+        AssertionError(const AssertionError& other) noexcept: Exception() { mpWhat = other.mpWhat; }
+        virtual ~AssertionError() override {}
 };
 
 

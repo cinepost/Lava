@@ -1,0 +1,1 @@
+C:\Users\max\Documents\GitHub\Lava\third_party\freeimage\Source\LibRawLite\x64\Debug\LibRaw.lib

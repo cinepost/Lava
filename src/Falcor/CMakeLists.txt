@@ -1,3 +1,7 @@
+if(NOT EXTERNALS_INSTALL_DIR)
+    set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+
 set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
 
 include_directories( 
@@ -148,15 +152,6 @@ if(WIN32)
     message ("Using ASSIMP_LIBRARY: ${ASSIMP_LIBRARY}")
 endif()
 
-# LZ4
-if(WIN32)
-    set(LZ4_ROOT ${DEPS_DIR}/lz4)
-endif()
-find_package( LZ4 REQUIRED )
-if(WIN32)
-    include_directories( ${LZ4_INCLUDE_DIR} )
-endif()
-
 set(TBB_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package( TBB ${EXTERNAL_TBB_VERSION} EXACT)
 
@@ -199,6 +194,8 @@ find_package( OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT REQUIRED )
 
 # OpenImageIO
 set(OPENIMAGEIO_ROOT ${DEPS_DIR})
+set(INTERNALIZE_FMT OFF)
+set(OIIO_USING_FMT_LOCAL OFF)
 find_package( OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT REQUIRED )
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
@@ -221,6 +218,10 @@ if (NOT Vulkan_FOUND)
     endif()
 endif()
 endif()
+
+# LZ4
+set(LZ4_ROOT ${DEPS_DIR})
+find_package( LZ4 ${EXTERNAL_LZ4_VERSION} REQUIRED )
 
 # FreeImage
 set(FreeImage_ROOT ${DEPS_DIR})
@@ -280,46 +281,40 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 if(WIN32)
     add_definitions(-DUNICODE)
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()
 
-if(USE_MEGALIB)
+if(WIN32)
+    add_definitions(-DBOOST_ALL_DYN_LINK)
     target_link_libraries(
         falcor_lib
         PUBLIC
-            mega_lib
-            stdc++fs
+            Blosc::blosc
+            ${GLFW_LIBRARY}
+            OpenSSL::SSL
+            OpenImageIO::OpenImageIO
+            OpenVDB::openvdb
+            OpenEXR::OpenEXR
+            ${ASSIMP_LIBRARY}
+            ${SLANG_LIBRARY}
+            Boost::system
+            Boost::filesystem
+            Boost::thread
+            Boost::json
+            Vulkan::Vulkan
+            ${GTK3_LIBRARIES}
+            ${TIFF_LIBRARIES}
+            ZLIB::ZLIB
+            ${LZ4_LIBRARY}
+            Python3::Python
+            FreeImage::FreeImage
+            ${OIDN_LIBRARIES}
+            "Comctl32.lib"
+            "comsuppw.lib"
+            "Shcore.lib"
+            gfx_lib
     )
 else()
-    if(WIN32)
-        add_definitions(-DBOOST_ALL_DYN_LINK)
-        target_link_libraries(
-            falcor_lib
-            PUBLIC
-                Blosc::blosc
-                ${GLFW_LIBRARY}
-                OpenSSL::SSL
-                OpenImageIO::OpenImageIO
-                OpenVDB::openvdb
-                OpenEXR::OpenEXR
-                ${ASSIMP_LIBRARY}
-                ${SLANG_LIBRARY}
-                Boost::system
-                Boost::filesystem
-                Boost::thread
-                Boost::json
-                Vulkan::Vulkan
-                ${GTK3_LIBRARIES}
-                ${TIFF_LIBRARIES}
-                ZLIB::ZLIB
-                ${LZ4_LIBRARY}
-                Python3::Python
-                FreeImage::FreeImage
-                ${OIDN_LIBRARIES}
-                "Comctl32.lib"
-                "comsuppw.lib"
-                "Shcore.lib"
-        )
-    else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
     target_link_libraries(
         falcor_lib
@@ -345,16 +340,8 @@ else()
             Python3::Python
             FreeImage::FreeImage
             ${OIDN_LIBRARIES}
+            gfx_lib
     )
-    endif()
-endif()
-
-if(backend_type STREQUAL "gfx")
-target_link_libraries(
-    falcor_lib
-    PUBLIC
-        gfx_lib
-)
 endif()
 
 # Copy/install all needed shaders

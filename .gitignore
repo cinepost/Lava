@@ -53,6 +53,8 @@ venv
 venv/
 env
 env/
+out
+out/
 
 third_party/null.cpp
 third_party/external
@@ -62,7 +64,8 @@ third_party/external/
 # lava textures
 *.ltx
 
-third_party/freeimage/
+third_party/freeimage/x64
+third_party/freeimage/x64/
 third_party/downloads/
 install/
 .vs/
