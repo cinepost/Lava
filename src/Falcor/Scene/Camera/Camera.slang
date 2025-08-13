@@ -52,7 +52,7 @@ struct Camera {
 
     // Time independent functions
 
-    float3 getPosW() { return {xform.viewInvMat[0][3], xform.viewInvMat[1][3], xform.viewInvMat[2][3]}; }
+    float3 getPosW() { return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]}; }
     
     float4x4 getViewProjMat() { return xform.viewProjMat; }
     

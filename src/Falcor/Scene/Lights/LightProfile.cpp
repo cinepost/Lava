@@ -91,7 +91,7 @@ namespace {
     */
 
     enum class IesStatus {
-        Success,
+        SUCCESS,
         UnsupportedProfile,
         UnsupportedTilt,
         WrongDataSize,
@@ -163,7 +163,7 @@ namespace {
         for (int index = headerSize + numHorizontalAngles + numVerticalAngles; index < expectedDataSize; index++)
             maxCandelas = std::max(maxCandelas, numericData[index]);
 
-        return IesStatus::Success;
+        return IesStatus::SUCCESS;
     }
 
 }  // namespace
@@ -194,7 +194,7 @@ LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Devic
     IesStatus status = parseIesFile(str.data(), numericData, maxCandelas);
     
     switch (status) {
-        case IesStatus::Success:
+        case IesStatus::SUCCESS:
             break;
         case IesStatus::UnsupportedProfile:
         case IesStatus::UnsupportedTilt:

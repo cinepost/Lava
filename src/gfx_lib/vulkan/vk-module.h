@@ -25,13 +25,21 @@
 #include <vulkan/vulkan_xlib.h>
 #endif
 
-// Undef xlib macros
+// Undef xlib macros (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
+#ifdef Bool
+#   undef Bool
+#endif
 #ifdef Always
 #    undef Always
 #endif
 #ifdef None
 #    undef None
 #endif
+#ifdef Status
+#   undef Status
+#endif
+#endif // _WIN32
 
 namespace gfx {
 
@@ -44,8 +52,7 @@ typedef int Window;
 
 }
 
-struct VulkanModule
-{
+struct VulkanModule {
         /// true if has been initialized
     SLANG_FORCE_INLINE bool isInitialized() const { return m_module != nullptr; }
 

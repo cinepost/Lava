@@ -353,7 +353,7 @@ uint32_t popcount(uint32_t a) {
 
 DllHandle loadDll(const std::string& libPath) {
     void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
-
+    
     if (!handle) {
         LLOG_ERR << "Cannot open library: " << dlerror();
         return nullptr;

@@ -281,8 +281,8 @@ bool Session::cmdRaytrace() {
 
 	passDict["rayBias"] = auto_ray_bias ? 0.0f : mpGlobal->getPropertyValue(ast::Style::RENDERER, "raybias", float(0.0f));
 
-  passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
-  passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
+  	passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
+  	passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
 	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
 	passDict["useMotionBlur"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usemblur", bool(false));
 	passDict["cullMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "cullmode", std::string("back"));
@@ -508,22 +508,22 @@ bool Session::cmdRaytrace() {
 	}
 ///////
 
-  initDisplayTimeReport.addTotal("Display init total time");
-  initDisplayTimeReport.printToLog();
+  	initDisplayTimeReport.addTotal("Display init total time");
+  	initDisplayTimeReport.printToLog();
 
-  // Frame rendering
-  TimeReport renderingTimeReport;
+  	// Frame rendering
+  	TimeReport renderingTimeReport;
 	
 	LLOG_INF << "Rendering image started...";
 	setUpCamera(mpRenderer->currentCamera());
-  
-  for(const auto& tile: tiles) {
-  	LLOG_DBG << "Rendering " << to_string(tile);
 
-  	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
-    frameInfo.renderRegion = tile.renderRegion;
+  	for(const auto& tile: tiles) {
+  		LLOG_DBG << "Rendering " << to_string(tile);
 
-  	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+  		Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+    	frameInfo.renderRegion = tile.renderRegion;
+
+  		mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
  		mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;
@@ -572,11 +572,11 @@ bool Session::cmdRaytrace() {
 		if (!sendImageRegionData(hImage, mpDisplay.get(), frameInfo, pMainOutputPlane.get())) break;
 	
 		// Send secondary aov image planes data
-  	for(auto& entry: aovPlanes) {
-  		uint hImage = entry.first;
-    	auto& pPlane = entry.second;
-    	if (pPlane && pPlane->isEnabled()) {
-    		AOVPlaneGeometry aov_geometry;
+		for(auto& entry: aovPlanes) {
+			uint hImage = entry.first;
+			auto& pPlane = entry.second;
+			if (pPlane && pPlane->isEnabled()) {
+				AOVPlaneGeometry aov_geometry;
 				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
 					LLOG_ERR << "Error getting AOV " << std::string(pPlane->name()) << " geometry!";
 					continue;
@@ -589,14 +589,23 @@ bool Session::cmdRaytrace() {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
-    	}
-    }
+			}
+		}
 	}
 
-	LLOG_DBG << "Closing display...";
-  if(!mIPR) mpDisplay->closeImage(hImage);
+	{
 
-  // Close secondary aov images
+		auto _strings = mpRenderer->currentCamera()->getDataFormattedDebugStrings();
+
+		for(const auto& str: _strings) {
+			LLOG_WRN << str;
+		}
+	}	
+
+	LLOG_DBG << "Closing display...";
+  	if(!mIPR) mpDisplay->closeImage(hImage);
+
+  	// Close secondary aov images
 	for(auto& entry: aovPlanes) {
 	uint hImage = entry.first;
   	auto& pPlane = entry.second;
@@ -669,8 +678,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	Falcor::float4x4 transform = pLightScope->getTransformList()[0];
 
 	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
-	Falcor::float3 light_pos = {transform[0][3], transform[1][3], transform[2][3]}; // light position
-	Falcor::float3 light_dir = {-transform[0][2], -transform[1][2], -transform[2][2]};
+	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
+	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	std::shared_ptr<PropertiesContainer> pShaderProps;
@@ -1310,24 +1319,24 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   std::string   surface_base_bump_texture_path   = "";
   std::string 	surface_metallic_texture_path    = "";
   std::string 	surface_roughness_texture_path   = "";
-  std::string		surface_emission_texture_path    = "";
-  std::string		surface_opacity_texture_path     = "";
+  std::string	surface_emission_texture_path    = "";
+  std::string	surface_opacity_texture_path     = "";
 
   bool      use_base_color_alpha = false;
 
-  bool 			surface_use_basecolor_texture  = false;
-  bool 			surface_use_roughness_texture  = false;
-  bool 			surface_use_metallic_texture   = false;
-  bool 			surface_use_basenormal_texture = false;
-  bool 			surface_use_emission_texture   = false;
+  bool 		surface_use_basecolor_texture  = false;
+  bool 		surface_use_roughness_texture  = false;
+  bool 		surface_use_metallic_texture   = false;
+  bool 		surface_use_basenormal_texture = false;
+  bool 		surface_use_emission_texture   = false;
   bool      surface_use_opacity_texture    = false;
 
   bool      front_face = false;
 
-  float 		surface_ior = 1.5;
-  float 		surface_metallic = 0.0;
-  float 		surface_roughness = 0.3;
-  float 		surface_reflectivity = 1.0;
+  float 	surface_ior = 1.5;
+  float 	surface_metallic = 0.0;
+  float 	surface_roughness = 0.3;
+  float 	surface_reflectivity = 1.0;
 
   Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
   float           emissive_factor = 1.0f;
@@ -1546,7 +1555,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
  	transformNode.localToBindPose = m1;   // For bones. Inverse bind transform.
 
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
-  std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
+  	std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	

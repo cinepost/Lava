@@ -1078,42 +1078,46 @@ endif()
 # dlfcn-win32
 #######################
 
-if( NOT EXTERNAL_DLFCN_VERSION)
-  set(EXTERNAL_DLFCN_VERSION 1.4.2)
-endif()
+if(WIN32)
 
-set(dlfcn-win32_DIR "${EXTERNALS_INSTALL_DIR}/share/dlfcn-win32")
-find_package(dlfcn-win32)
+  if( NOT EXTERNAL_DLFCN_VERSION)
+    set(EXTERNAL_DLFCN_VERSION 1.4.2)
+  endif()
 
-if(dlfcn-win32_FOUND)
+  set(dlfcn-win32_DIR "${EXTERNALS_INSTALL_DIR}/share/dlfcn-win32")
+  find_package(dlfcn-win32)
 
-  message("dlfcn-win32 found ...")
-  add_custom_target( dlfcn COMMAND echo "dlfcn-win32 build exists, skipping rebuild ...")
+  if(dlfcn-win32_FOUND)
 
-else()
-  
-  message("dlfcn-win32 not found! Running external build ...")
-  set(DLFCN_PREFIX dlfcn)
+    message("dlfcn-win32 found ...")
+    add_custom_target( dlfcn COMMAND echo "dlfcn-win32 build exists, skipping rebuild ...")
 
-  ExternalProject_Add ( dlfcn
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${DLFCN_PREFIX}
-    GIT_REPOSITORY https://github.com/dlfcn-win32/dlfcn-win32.git
-    GIT_TAG v${EXTERNAL_DLFCN_VERSION}
+  else()
+    
+    message("dlfcn-win32 not found! Running external build ...")
+    set(DLFCN_PREFIX dlfcn)
 
-    UPDATE_DISCONNECTED true
+    ExternalProject_Add ( dlfcn
+      PREFIX ${EXTERNALS_SOURCE_DIR}/${DLFCN_PREFIX}
+      GIT_REPOSITORY https://github.com/dlfcn-win32/dlfcn-win32.git
+      GIT_TAG v${EXTERNAL_DLFCN_VERSION}
 
-    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
-    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS <SOURCE_DIR>
+      UPDATE_DISCONNECTED true
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE}
+      CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+      CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+      CMAKE_ARGS <SOURCE_DIR>
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/${DLFCN_PREFIX}
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${DLFCN_PREFIX}
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${DLFCN_PREFIX}
-  )
+      BUILD_COMMAND ${MAKE_EXECUTABLE}
 
-endif()
+      TMP_DIR ${EXTERNALS_TMP_DIR}/${DLFCN_PREFIX}
+      STAMP_DIR ${EXTERNALS_STAMP_DIR}/${DLFCN_PREFIX}
+      BINARY_DIR ${EXTERNALS_BINARY_DIR}/${DLFCN_PREFIX}
+    )
+
+  endif()
+
+endif(WIN32)
 
 #######################
 # TIFF

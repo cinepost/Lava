@@ -175,7 +175,7 @@ float3 Camera::getPosition(size_t i) const {
 	calculateCameraParameters();
 	assert(i < mXformList.size() && !mXformList.empty());
 	auto const& xform = mXformList[i];
-	return {xform.viewInvMat[0][3], xform.viewInvMat[1][3], xform.viewInvMat[2][3]};
+	return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]};
 }
 
 float3 Camera::getUpVector(size_t i) const {
@@ -237,7 +237,6 @@ void Camera::calculateCameraParameters() const {
 			float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
 			float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
 			mData.projMat = math::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
-			//mData.projMat = makeFrustum<float>(left, right, bottom, top, mData.nearZ, mData.farZ);
 		} else {
 			// Take the length of look-at vector as half a viewport size
 			const float halfLookAtLength = 0.5f;
@@ -254,10 +253,9 @@ void Camera::calculateCameraParameters() const {
 		if (mEnablePersistentViewMat) {
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
-			float4x4 m = math::transpose(xform.viewMat);
-			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[0][1], xform.viewMat[0][2])); // up
-			xform.cameraV = normalize(float3(xform.viewMat[1][0], xform.viewMat[1][1], xform.viewMat[1][2])); // right
-			xform.cameraW = -normalize(float3(xform.viewMat[2][0], xform.viewMat[2][1], xform.viewMat[2][2])); // dir
+			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
+			xform.cameraV = normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
+			xform.cameraW = -normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
 		} else {
 			xform.viewMat = math::matrixFromLookAt(mPosW, mTarget, mUp, math::Handedness::RightHanded);
 			// Ray tracing related vectors
@@ -267,7 +265,7 @@ void Camera::calculateCameraParameters() const {
 		}
 
 		xform.viewInvMat = inverse(xform.viewMat);
-		xform.viewProjMat = mul(mData.projMat, xform.viewMat);
+		xform.viewProjMat = mul(xform.viewMat, mData.projMat);
 		xform.invViewProj = inverse(xform.viewProjMat);
 
 		xform.cameraW *= mData.focalDistance;
@@ -512,19 +510,19 @@ void Camera::setBackgroundImageFilename(const std::string& filename) {
 }
 
 std::vector<std::string> Camera::getDataFormattedDebugStrings() const {
-	  calculateCameraParameters();
+	calculateCameraParameters();
 
-	  std::vector<std::string> out;
+	std::vector<std::string> out;
 
-	  auto const& xform = mXformList[0];
+	auto const& xform = mXformList[0];
 
-	  out.push_back("World position: " + to_string(getPosition()));
-	  //out.push_back("World position prev: " + to_string(mData.prevPosW));
-	  out.push_back("Up: " + to_string(getUpVector()));
-	  out.push_back("Target: " + to_string(getTarget()));
-	  out.push_back("Camera U: " + to_string(xform.cameraU));
-	  out.push_back("Camera V: " + to_string(xform.cameraV));
-	  out.push_back("Camera W: " + to_string(xform.cameraW));
+	out.push_back("World position: " + to_string(getPosition()));
+	//out.push_back("World position prev: " + to_string(mData.prevPosW));
+	out.push_back("Up: " + to_string(getUpVector()));
+	out.push_back("Target: " + to_string(getTarget()));
+	out.push_back("Camera U: " + to_string(xform.cameraU));
+	out.push_back("Camera V: " + to_string(xform.cameraV));
+	out.push_back("Camera W: " + to_string(xform.cameraW));
     out.push_back("Focal length: " + std::to_string(mData.focalLength));
     out.push_back("Aspect ratio: " + std::to_string(mData.aspectRatio));
     out.push_back("Clipping plane near: " + std::to_string(mData.nearZ));

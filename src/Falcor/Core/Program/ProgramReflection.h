@@ -28,14 +28,17 @@
 #ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
 #define SRC_FALCOR_CORE_PROGRAM_PROGRAMREFLECTION_H_
 
-#include "Falcor/Core/Framework.h"
+#include <map>
+
+#include <slang/slang.h>
+
 #include "Falcor/Core/Enum.h"
 #include "Falcor/Core/API/ShaderResourceType.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
 #include "Falcor/Utils/Math/Vector.h"
 
-#include <slang/slang.h>
-#include <map>
+#include "Falcor/Core/Framework.h"
+
 
 namespace Falcor {
 

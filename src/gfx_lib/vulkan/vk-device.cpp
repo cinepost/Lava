@@ -748,7 +748,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		VkPhysicalDeviceSubgroupProperties subgroup_properties;
 		subgroup_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
-		subgroup_properties.pNext = NULL;
+		subgroup_properties.pNext = &sampleLocationsProps;
 
 		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties;
 		subgroup_size_control_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES;
@@ -764,7 +764,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		VkPhysicalDeviceProperties2 dev_props2;
 		dev_props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		dev_props2.pNext;
+		dev_props2.pNext = &ray_pipeline_properties;
 
 		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &dev_props2);
 
@@ -950,17 +950,22 @@ SlangResult DeviceImpl::initialize(const Desc& desc) {
 
 	for (int forceSoftware = 0; forceSoftware <= 1; forceSoftware++) {
 		initDeviceResult = m_module.init(forceSoftware != 0);
-		if (initDeviceResult != SLANG_OK)
+		if (initDeviceResult != SLANG_OK) {
 			continue;
+		}
+
 		initDeviceResult = m_api.initGlobalProcs(m_module);
-		if (initDeviceResult != SLANG_OK)
+		if (initDeviceResult != SLANG_OK) {
 			continue;
+		}
+
 		descriptorSetAllocator.m_api = &m_api;
 
 		initDeviceResult = initVulkanInstanceAndDevice(desc.existingDeviceHandles.handles, desc.validationLayerOuputFilename);
 		
-		if (initDeviceResult == SLANG_OK)
+		if (initDeviceResult == SLANG_OK) {
 			break;
+		}
 	}
 	SLANG_RETURN_ON_FAIL(initDeviceResult);
 
@@ -973,9 +978,9 @@ SlangResult DeviceImpl::initialize(const Desc& desc) {
 	SLANG_RETURN_ON_FAIL(slangContext.initialize(
 		desc.slang,
 		desc.extendedDescCount,
-    desc.extendedDescs,
+    	desc.extendedDescs,
 		SLANG_SPIRV,
-		"sm_5_1",
+		"sm_6_6",
 		makeArray(slang::PreprocessorMacroDesc{ "__VK__", "1" }).getView()));
 
 	// Create default sampler.

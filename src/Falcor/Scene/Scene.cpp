@@ -2359,9 +2359,6 @@ void Scene::initGeomDesc(RenderContext* pContext) {
         // Normally static geometry is already pre-transformed to world space by the SceneBuilder,
         // but if that isn't the case, we let DXR transform static geometry as part of the BLAS build.
         // For this we need the GPU address of the transform matrix of each mesh in row-major format.
-        // Since glm uses column-major format we lazily create a buffer with the transposed matrices.
-        // Note that this is sufficient to do once only as the transforms for static meshes can't change.
-        // TODO: Use AnimationController's matrix buffer directly when we've switched to a row-major matrix library.
         auto getStaticMatricesBuffer = [&]() {
             if (!mpBlasStaticWorldMatrices) {
                 std::vector<float4x4> transposedMatrices;

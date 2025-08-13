@@ -100,7 +100,7 @@ struct EnvMap
     float3 toWorld(float3 dir)
     {
         // TODO: For identity transform we might want to skip this statically.
-        return mul((float3x3)data.transform, dir);
+        return mul(dir, (float3x3)data.transform);
     }
 
     /** Transform direction from world to local space.
@@ -108,7 +108,7 @@ struct EnvMap
     float3 toLocal(float3 dir)
     {
         // TODO: For identity transform we might want to skip this statically.
-        return mul((float3x3)data.invTransform, dir);
+        return mul(dir, (float3x3)data.invTransform);
     }
 
     /** Get the intensity scaling factor (including tint).

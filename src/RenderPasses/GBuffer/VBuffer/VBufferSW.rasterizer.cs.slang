@@ -268,7 +268,7 @@ float3 getFaceNormalW(const GeometryInstanceID instanceID, const uint triangleIn
     float3 N = cross(p1 - p0, p2 - p0);
     if (gScene.isObjectFrontFaceCW(instanceID)) N = -N;
     float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
-    return normalize(mul(worldInvTransposeMat, N));
+    return normalize(mul(N, worldInvTransposeMat));
 }
 
 MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
@@ -283,9 +283,9 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
     const uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
 
     float3 src_nv[3] = {
-        normalize(mul(worldInvTransposeMat, gsVertexData[uint(indices[0])].normal)),
-        normalize(mul(worldInvTransposeMat, gsVertexData[uint(indices[1])].normal)),
-        normalize(mul(worldInvTransposeMat, gsVertexData[uint(indices[2])].normal))
+        normalize(mul(gsVertexData[uint(indices[0])].normal, worldInvTransposeMat)),
+        normalize(mul(gsVertexData[uint(indices[1])].normal, worldInvTransposeMat)),
+        normalize(mul(gsVertexData[uint(indices[2])].normal, worldInvTransposeMat))
     };
 
     uint2 pair0 = gScene.meshNeighborVerticesMap[gsMeshDesc.subdivDataOffset + mt.srcPrimID * 3 + 0];
@@ -315,7 +315,7 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
 
     if(count0 > 2 && d_idx0 != kInvalid) {
         StaticVertexData vtx_d = gScene.getVertex(gScene.getIndex(gsMeshDesc, d_idx0));
-        pv_sum[0] = mul(worldMat, float4(vtx_d.position, 1.f)).xyz;
+        pv_sum[0] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
         patch.pe[0] = (src_pv[0] + src_pv[1]) * k38 + (src_pv[2] + pv_sum[0]) * k18;
         patch.ne[0] = normalize(normalize(cross(src_pv[0] - src_pv[1], pv_sum[0] - src_pv[0])) + faceN);
     } else {
@@ -324,7 +324,7 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
 
     if(count1 > 2 && d_idx1 != kInvalid) {
         StaticVertexData vtx_d = gScene.getVertex(gScene.getIndex(gsMeshDesc, d_idx1));
-        pv_sum[1] = mul(worldMat, float4(vtx_d.position, 1.f)).xyz;
+        pv_sum[1] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
         patch.pe[1] = (src_pv[1] + src_pv[2]) * k38 + (src_pv[0] + pv_sum[1]) * k18;
         patch.ne[1] = normalize(normalize(cross(src_pv[1] - src_pv[2], pv_sum[1] - src_pv[1])) + faceN);
     } else {
@@ -333,7 +333,7 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
 
     if(count2 > 2 && d_idx2 != kInvalid) {
         StaticVertexData vtx_d = gScene.getVertex(gScene.getIndex(gsMeshDesc, d_idx2));
-        pv_sum[2] = mul(worldMat, float4(vtx_d.position, 1.f)).xyz;
+        pv_sum[2] = mul(float4(vtx_d.position, 1.f), worldMat).xyz;
         patch.pe[2] = (src_pv[2] + src_pv[0]) * k38 + (src_pv[1] + pv_sum[2]) * k18;
         patch.ne[2] = normalize(normalize(cross(src_pv[2] - src_pv[0], pv_sum[2] - src_pv[2])) + faceN);
     } else {
@@ -348,14 +348,14 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         uint idx2 = gScene.meshNeighborVertices[offset0 + 2];
         StaticVertexData vtx1 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx1));
         StaticVertexData vtx2 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx2));
-        patch.pv[0] = src_pv[0] * k34 + mul(worldMat, float4(vtx1.position, 1.f)).xyz * k18 + mul(worldMat, float4(vtx2.position, 1.f)).xyz * k18;
+        patch.pv[0] = src_pv[0] * k34 + mul(float4(vtx1.position, 1.f), worldMat).xyz * k18 + mul(float4(vtx2.position, 1.f), worldMat).xyz * k18;
     } else {
         float kb = valence[0] == 3 ? k316 : (k58 - pow(k38 + 0.25f * cos(M_2PI / valence[0]), 2)) / valence[0];
         pv_sum[0] *= kb;
         for(uint c = 1; c < count0; ++c) {
             uint idx = gScene.meshNeighborVertices[offset0 + c];
             StaticVertexData vtx = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx));            
-            pv_sum[0] += mul(worldMat, float4(vtx.position, 1.f)).xyz * kb;
+            pv_sum[0] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;
         }
         patch.pv[0] = pv_sum[0] + (src_pv[0] * (1.f - kb * valence[0]));
     }
@@ -379,14 +379,14 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         uint idx2 = gScene.meshNeighborVertices[offset1 + 2];
         StaticVertexData vtx1 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx1));
         StaticVertexData vtx2 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx2));
-        patch.pv[1] = src_pv[1] * k34 + mul(worldMat, float4(vtx1.position, 1.f)).xyz * k18 + mul(worldMat, float4(vtx2.position, 1.f)).xyz * k18;
+        patch.pv[1] = src_pv[1] * k34 + mul(float4(vtx1.position, 1.f), worldMat).xyz * k18 + mul(float4(vtx2.position, 1.f), worldMat).xyz * k18;
     } else {
         float kb = valence[1] == 3 ? k316 : (k58 - pow(k38 + 0.25f * cos(M_2PI / valence[1]), 2)) / valence[1];
         pv_sum[1] *= kb;
         for(uint c = 1; c < count1; ++c) {
             uint idx = gScene.meshNeighborVertices[offset1 + c];
             StaticVertexData vtx = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx));            
-            pv_sum[1] += mul(worldMat, float4(vtx.position, 1.f)).xyz * kb;
+            pv_sum[1] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;
         }
         patch.pv[1] = pv_sum[1] + (src_pv[1] * (1.f - kb * valence[1]));
     }
@@ -410,14 +410,14 @@ MicroPatch3 buildPatch3(uint triangle_id, uint tri_buff_id) {
         uint idx2 = gScene.meshNeighborVertices[offset2 + 2];
         StaticVertexData vtx1 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx1));
         StaticVertexData vtx2 = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx2));
-        patch.pv[2] = src_pv[2] * k34 + mul(worldMat, float4(vtx1.position, 1.f)).xyz * k18 + mul(worldMat, float4(vtx2.position, 1.f)).xyz * k18;
+        patch.pv[2] = src_pv[2] * k34 + mul(float4(vtx1.position, 1.f), worldMat).xyz * k18 + mul(float4(vtx2.position, 1.f), worldMat).xyz * k18;
     } else {
         float kb = valence[2] == 3 ? k316 : (k58 - pow(k38 + 0.25f * cos(M_2PI / valence[2]), 2)) / valence[2];
         pv_sum[2] *= kb;
         for(uint c = 1; c < count2; ++c) {
             uint idx = gScene.meshNeighborVertices[offset2 + c];
             StaticVertexData vtx = gScene.getVertex(gScene.getIndex(gsMeshDesc, idx));
-            pv_sum[2] += mul(worldMat, float4(vtx.position, 1.f)).xyz * kb;        
+            pv_sum[2] += mul(float4(vtx.position, 1.f), worldMat).xyz * kb;        
         }
         patch.pv[2] = pv_sum[2] + (src_pv[2] * (1.f - kb * valence[2]));
     }
@@ -443,9 +443,9 @@ void nullSubdivideTriangle(uint triangle_id) {
     uint8_t3 indices = gScene.meshletLocalIndexData.Load<uint8_t3>(meshlet.localIndexOffset + triangle_id * 3u);
     
     MicroTriangle mt;
-    mt.pw0 = mul(worldMat, float4(gsVertexData[uint(indices[0])].position, 1.f)).xyz;
-    mt.pw1 = mul(worldMat, float4(gsVertexData[uint(indices[1])].position, 1.f)).xyz;
-    mt.pw2 = mul(worldMat, float4(gsVertexData[uint(indices[2])].position, 1.f)).xyz;
+    mt.pw0 = mul(float4(gsVertexData[uint(indices[0])].position, 1.f), worldMat).xyz;
+    mt.pw1 = mul(float4(gsVertexData[uint(indices[1])].position, 1.f), worldMat).xyz;
+    mt.pw2 = mul(float4(gsVertexData[uint(indices[2])].position, 1.f), worldMat).xyz;
 
     mt.b0 = float2(0.f);
     mt.b1 = float2(1.f, 0.f);

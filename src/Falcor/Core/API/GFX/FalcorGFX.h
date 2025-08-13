@@ -69,7 +69,7 @@
 #endif
 #endif
 
-#include <vulkan/vulkan.h>
+#include "gfx_lib/vulkan/vk-module.h"
 
 #define FALCOR_GFX_CALL(a) {auto hr_ = a; if(SLANG_FAILED(hr_)) { reportError(#a); }}
 

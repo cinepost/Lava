@@ -1163,7 +1163,7 @@ static inline float4x4 validateMatrix(const float4x4& m, const std::string& name
 static inline std::vector<float4x4> validateMatrixList(const std::vector<float4x4>& list, const std::string& name, const char* field) {
 	std::vector<float4x4> validatedList(list.size());
 	for(size_t i = 0; i < list.size(); ++i) {
-		validatedList[i] = validateMatrix(list[i], name, field);
+		validatedList[i] = list[i]; //validateMatrix(list[i], name, field);
 	}
 	return validatedList;
 }
@@ -1681,7 +1681,7 @@ bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID) {
 		#endif // _DEBUG
 
 		// Update the transform and step to the parent.
-		transform = mul(node.transformList[0], transform);
+		transform = mul(transform, node.transformList[0]);
 		
 		if (nodeID == parentNodeID) break;
 
@@ -1939,7 +1939,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
 			float4x4 transform = float4x4::identity();
 			while (nodeID != kInvalidNodeID) {
 				assert(nodeID < mSceneGraph.size());
-				transform = mul(mSceneGraph[nodeID].transformList[0], transform);
+				transform = mul(transform, mSceneGraph[nodeID].transformList[0]);
 
 				nodeID = mSceneGraph[nodeID].parent;
 			}
@@ -2084,7 +2084,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 		float4x4 transform = float4x4::identity();
 		while (nodeID != kInvalidNodeID) {
 			assert(nodeID < mSceneGraph.size());
-			transform = mul(mSceneGraph[nodeID].transformList[0], transform);
+			transform = mul(transform, mSceneGraph[nodeID].transformList[0]);
 
 			nodeID = mSceneGraph[nodeID].parent;
 		}
@@ -2098,7 +2098,7 @@ void SceneBuilder::pretransformStaticMeshes() {
 			assert(!mesh.staticData.empty());
 			assert((size_t)mesh.vertexCount == mesh.staticData.size());
 
-			float3x3 invTranspose3x3 = float3x3(inverse(transform));
+			float3x3 invTranspose3x3 = (float3x3)transpose(inverse(transform));
             float3x3 transform3x3 = float3x3(transform);
 
 			for (auto& v : mesh.staticData) {

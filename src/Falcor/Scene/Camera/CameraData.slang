@@ -50,7 +50,7 @@ struct CameraXformData {
     float    _pad2;
 
     float3 getPosW() { 
-        return {viewInvMat[0][3], viewInvMat[1][3], viewInvMat[2][3]}; 
+        return {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]}; 
     }
 };
 

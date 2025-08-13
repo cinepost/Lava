@@ -523,13 +523,21 @@ enum_class_operators(ErrorDiagnosticFlags);
     } while (0)
 
 
-// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+// Undef xlib macros (included by vulkan.h) that cause conflicts
 #ifndef _WIN32
-#undef None
-#undef Status
-#undef Bool
-#undef Always
+#ifdef Bool
+#   undef Bool
 #endif
+#ifdef Always
+#    undef Always
+#endif
+#ifdef None
+#    undef None
+#endif
+#ifdef Status
+#   undef Status
+#endif
+#endif // _WIN32
 
 #ifdef WIN32
 using WindowHandle = HWND;

@@ -1075,7 +1075,7 @@ void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Textu
 
 	// Fill in textures
 	size_t ii = 0;
-	for (const auto pTex: textures) {
+	for (const auto& pTex: textures) {
 		if(pTex && !pTex->isUDIMTexture()) {
 			var[ii] = pTex;
 		} else {
