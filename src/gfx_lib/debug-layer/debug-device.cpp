@@ -28,27 +28,23 @@ const VmaAllocator& DebugDevice::getVmaAllocator() const {
     return baseObject->getVmaAllocator();
 }
 
-Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
+Result DebugDevice::allocateTailMemory(ITextureResource* pTexture, bool force) {
     return baseObject->allocateTailMemory(pTexture, force);
 }
 
-void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
+void DebugDevice::releaseTailMemory(ITextureResource* pTexture) {
     baseObject->releaseTailMemory(pTexture);
 }
 
-void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
-    baseObject->updateSparseBindInfo(pTexture);
-}
-
-void DebugDevice::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
-    baseObject->updateSparseBindInfo(textures);
+void DebugDevice::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) {
+    baseObject->updateSparseBindInfo(pTexture, pages);
 }
 
 void DebugDevice::cleanup() {
     baseObject->cleanup();
 }
 
-bool DebugDevice::tailMemoryAllocated(const Falcor::Texture* pTexture) {
+bool DebugDevice::tailMemoryAllocated(const ITextureResource* pTexture) {
     SLANG_GFX_API_FUNC;
 
     return baseObject->tailMemoryAllocated(pTexture);
@@ -130,15 +126,13 @@ Result DebugDevice::createTransientResourceHeap(
 
 Result DebugDevice::createTextureResource(
     const ITextureResource::Desc& desc,
-    Falcor::Texture* pTexture,
     const ITextureResource::SubresourceData* initData,
     ITextureResource** outResource)
 {
     SLANG_GFX_API_FUNC;
 
     RefPtr<DebugTextureResource> outObject = new DebugTextureResource();
-    auto result =
-        baseObject->createTextureResource(desc, pTexture, initData, outObject->baseObject.writeRef());
+    auto result = baseObject->createTextureResource(desc, initData, outObject->baseObject.writeRef());
     if (SLANG_FAILED(result))
         return result;
     returnComPtr(outResource, outObject);

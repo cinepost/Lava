@@ -42,13 +42,6 @@ else()
     add_definitions(-DBOOST_LOG_DYN_LINK)
 endif()
 
-if(USE_MEGALIB)
-target_link_libraries(
-    lava_utils_lib
-    PUBLIC
-        mega_lib
-)
-else()
 target_link_libraries(
     lava_utils_lib
     PUBLIC
@@ -58,7 +51,6 @@ target_link_libraries(
         Boost::system
         PkgConfig::CpuInfo
 )
-endif()
 
 if(UNIX OR WIN32)
     install( TARGETS lava_utils_lib DESTINATION "lib" )

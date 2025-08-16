@@ -39,6 +39,30 @@ Result DebugTextureResource::setDebugName(const char* name)
     return baseObject->setDebugName(name);
 }
 
+bool DebugTextureResource::isSparse() const {
+	return baseObject->isSparse();
+};
+
+uint32_t DebugTextureResource::sparseDataBindsCount() const {
+	return baseObject->sparseDataBindsCount();
+}
+
+const IVirtualTexturePageResource::Extent& DebugTextureResource::sparseDataPageRes() const {
+	return baseObject->sparseDataPageRes();
+}
+
+GfxCount DebugTextureResource::getArraySize() const {
+	return baseObject->getArraySize();
+}
+
+std::array<uint32_t, 16>& DebugTextureResource::mipBases() {
+	return baseObject->mipBases();
+}
+
+const std::array<uint32_t, 16>& DebugTextureResource::getMipBases() const {
+	return baseObject->getMipBases();
+}
+
 const char* DebugTextureResource::getDebugName() { return baseObject->getDebugName(); }
 
 } // namespace debug

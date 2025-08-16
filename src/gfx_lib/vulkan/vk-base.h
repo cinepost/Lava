@@ -54,6 +54,7 @@ namespace vk {
     class TransientResourceHeapImpl;
     class QueryPoolImpl;
     class SwapchainImpl;
+    class VirtualTexturePageResourceImpl;
 
 } // namespace vk
 } // namespace gfx

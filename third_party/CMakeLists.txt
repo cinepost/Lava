@@ -1582,7 +1582,7 @@ else()
       -D BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
 
-    BINARY_DIR ${EXTERNALS_SOURCE_DIR}/../freeimage
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/freeimage
     TMP_DIR ${EXTERNALS_TMP_DIR}/freeimage
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/freeimage
   )
@@ -1653,8 +1653,8 @@ else()
   message("Slang version ${EXTERNAL_SLANG_VERSION} not found! Running external build ...")
 
   set(SLANG_PREFIX slang)
-  set(SLANG_BUILD_LIBS "slang slang-glslang slang-llvm")
-
+  set(SLANG_BUILD_LIBS "slang slang-glslang")
+ 
   if(NOT DEFINED SLANG_BUILD_TYPE)
     set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
   endif()

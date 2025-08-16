@@ -19,11 +19,18 @@ foreach (entry IN LISTS SLANG_BUILD_LIBS_LIST)
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${INPUT_FILE} ${OUTPUT_FILE})
 endforeach()
 
+# copy binaries
+if(WIN32)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BIN_DIR}/bin/slangc.exe ${DEST_DIR}/bin/slangc.exe)
+else()
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BIN_DIR}/bin/slangc ${DEST_DIR}/bin/slangc)
+endif()
+
 # copy headers
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang.h                     ${DEST_DIR}/include/slang/slang.h)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-com-ptr.h             ${DEST_DIR}/include/slang/slang-com-ptr.h)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-com-helper.h          ${DEST_DIR}/include/slang/slang-com-helper.h)
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-image-format-defs.h   ${DEST_DIR}/include/slang/slang-image-format-defs.h)
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-deprecated.h          ${DEST_DIR}/include/slang/slang-deprecated.h)
+#execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-image-format-defs.h   ${DEST_DIR}/include/slang/slang-image-format-defs.h)
+#execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/include/slang-deprecated.h          ${DEST_DIR}/include/slang/slang-deprecated.h)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SOURCE_DIR}/slang-tag-version.h ${DEST_DIR}/include/slang/slang-tag-version.h)
 

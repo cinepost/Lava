@@ -1436,11 +1436,9 @@ SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() con
 
 Result DeviceImpl::createTextureResource( 
 	const ITextureResource::Desc& descIn, 
-	Falcor::Texture* pTexture, 
 	const ITextureResource::SubresourceData* initData, 
 	ITextureResource** outResource) 
 {
-	assert(pTexture);
 	TextureResource::Desc desc = fixupTextureDesc(descIn);
 
 	const VkFormat format = VulkanUtil::getVkFormat(desc.format);
@@ -1508,12 +1506,12 @@ Result DeviceImpl::createTextureResource(
 
 	imageInfo.samples = (VkSampleCountFlagBits)desc.sampleDesc.numSamples;
 
-	if (pTexture && sparse) {
+	if (sparse) {
 		imageInfo.pQueueFamilyIndices = nullptr;
     	imageInfo.queueFamilyIndexCount = 0;
 		imageInfo.flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		pTexture->mState.global = Falcor::Resource::State::Undefined;
+		//pTexture->mState.global = Falcor::Resource::State::Undefined;
 	}
 
 #if SLANG_WINDOWS_FAMILY
@@ -1535,23 +1533,23 @@ Result DeviceImpl::createTextureResource(
 		vmaCreateImage(m_api.mVmaAllocator, &imageInfo, &allocCreateInfo, &texture->m_image, &texture->mAllocation, nullptr);
 	}
 
-	if (pTexture && sparse) {
-  	pTexture->mState.global = Falcor::Resource::State::Undefined;
-  }
+	if (sparse) {
+  		//pTexture->mState.global = Falcor::Resource::State::Undefined;
+  	}
 
   	///////////////////////////////////////
 
-  	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &pTexture->mMemRequirements);
+  	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &texture->mMemRequirements);
 	
   	////////////// sparse texture section /////////////////
 
-	if (pTexture && sparse) {
+	if(sparse) {
 #ifdef _DEBUG
 		LLOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
 #endif		
 
 		// Check requested image size against hardware sparse limit            
-		if (pTexture->mMemRequirements.size > m_basicProps.limits.sparseAddressSpaceSize) {
+		if (texture->mMemRequirements.size > m_basicProps.limits.sparseAddressSpaceSize) {
 			LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";
 			return SLANG_FAIL;
 		};
@@ -1581,14 +1579,14 @@ Result DeviceImpl::createTextureResource(
 			LLOG_DBG << "\t Mip tail stride: " << reqs.imageMipTailStride;
 			
 			//todo:multiple reqs
-			pTexture->mMipTailStart = reqs.imageMipTailFirstLod;
+			texture->mipTailInfo().mipTailStart = reqs.imageMipTailFirstLod;
 		}
 
 		// Get sparse image requirements for the color aspect
 		bool colorAspectFound = false;
 		for (auto reqs : sparseMemoryReqs) {
 			if (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-				pTexture->mSparseImageMemoryRequirements = reqs;
+				texture->mSparseImageMemoryRequirements = reqs;
 				colorAspectFound = true;
 				break;
 			}
@@ -1598,35 +1596,35 @@ Result DeviceImpl::createTextureResource(
 			return SLANG_FAIL;
 		}
 
-		auto& sparseImageMemoryRequirements = pTexture->mSparseImageMemoryRequirements;
+		auto& sparseImageMemoryRequirements = texture->mSparseImageMemoryRequirements;
 
 		// Calculate number of required sparse memory bindings by alignment
-		assert((pTexture->mMemRequirements.size % pTexture->mMemRequirements.alignment) == 0);
+		assert((texture->mMemRequirements.size % texture->mMemRequirements.alignment) == 0);
 		//mMemoryTypeIndex = vulkanDevice->getMemoryType(sparseImageMemoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		pTexture->mMemoryTypeIndex = _getVkMemoryTypeNative(m_memoryProperties, pTexture->mMemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		texture->mMemoryTypeIndex = _getVkMemoryTypeNative(m_memoryProperties, texture->mMemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		pTexture->mSparsePageRes = {
+		texture->mSparsePageRes = {
 			sparseImageMemoryRequirements.formatProperties.imageGranularity.width,
 			sparseImageMemoryRequirements.formatProperties.imageGranularity.height,
 			sparseImageMemoryRequirements.formatProperties.imageGranularity.depth
 		};
 
-		LLOG_DBG << "mSparsePageRes " << pTexture->mSparsePageRes.x << " " << pTexture->mSparsePageRes.y << " " <<  pTexture->mSparsePageRes.z;
+		LLOG_DBG << "mSparsePageRes " << texture->mSparsePageRes.width << " " << texture->mSparsePageRes.height << " " <<  texture->mSparsePageRes.depth;
 		
 		// The mip tail contains all mip levels > sparseImageMemoryRequirements.imageMipTailFirstLod
 		// Check if the format has a single mip tail for all layers or one mip tail for each layer
 		// @todo: Comment
-		pTexture->mMipTailInfo.singleMipTail = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
-		pTexture->mMipTailInfo.alignedMipSize = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
+		texture->mipTailInfo().singleMipTail = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
+		texture->mipTailInfo().alignedMipSize = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
 
 		uint32_t pageIndex = 0;
-		pTexture->mSparseBindsCount = 0;
+		texture->mSparseBindsCount = 0;
 		// Sparse bindings for each mip level of all layers outside of the mip tail
-		for (uint32_t layer = 0; layer < pTexture->getArraySize(); layer++) {
+		for (uint32_t layer = 0; layer < texture->getArraySize(); ++layer) {
 
 			// sparseImageMemoryRequirements.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
 			uint32_t currentMipBase = 0;
-			for (uint32_t mipLevel = 0; mipLevel < sparseImageMemoryRequirements.imageMipTailFirstLod; mipLevel++) {
+			for (uint32_t mipLevel = 0; mipLevel < sparseImageMemoryRequirements.imageMipTailFirstLod; ++mipLevel) {
 				VkExtent3D extent;
 				extent.width = std::max(imageInfo.extent.width >> mipLevel, 1u);
 				extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
@@ -1645,9 +1643,9 @@ Result DeviceImpl::createTextureResource(
 				LLOG_DBG << "Mip level " << mipLevel << " sparse binds count: " <<  sparseBindCounts.x << " " << sparseBindCounts.y << " " << sparseBindCounts.z;
 
 				// @todo: Comment
-				for (uint32_t z = 0; z < sparseBindCounts.z; z++) {
-					for (uint32_t y = 0; y < sparseBindCounts.y; y++) {
-						for (uint32_t x = 0; x < sparseBindCounts.x; x++) {
+				for (uint32_t z = 0; z < sparseBindCounts.z; ++z) {
+					for (uint32_t y = 0; y < sparseBindCounts.y; ++y) {
+						for (uint32_t x = 0; x < sparseBindCounts.x; ++x) {
 							// Offset
 							VkOffset3D offset;
 							offset.x = x * imageGranularity.width;
@@ -1661,34 +1659,34 @@ Result DeviceImpl::createTextureResource(
 							extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
 							// Add new virtual page
-							pTexture->addTexturePage(pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, pTexture->mMemRequirements.alignment, pTexture->mMemRequirements.memoryTypeBits, mipLevel, layer);
+							pTexture->addTexturePage(pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, texture->mMemRequirements.alignment, texture->mMemRequirements.memoryTypeBits, mipLevel, layer);
 						}
 					}
 				}
-				pTexture->mMipBases[mipLevel] = currentMipBase;
+				texture->mipBases()[mipLevel] = currentMipBase;
 				
-				pTexture->mSparseBindsCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
-				currentMipBase = pTexture->mSparseBindsCount;
+				texture->mSparseBindsCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
+				currentMipBase = texture->mSparseBindsCount;
 			}
 
 			// @todo: proper comment
 			// @todo: store in mip tail and properly release
 			// @todo: Only one block for single mip tail
 
-			pTexture->mMipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
+			texture->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
 
 			for(uint32_t tailMipLevel = sparseImageMemoryRequirements.imageMipTailFirstLod; tailMipLevel < 16; ++tailMipLevel) {
-				pTexture->mMipBases[tailMipLevel] = pTexture->mSparseBindsCount;           
+				texture->mipBases()[tailMipLevel] = texture->mSparseBindsCount;           
 			}  
 			
 		} // end layers and mips
 
 		LLOG_DBG << "Texture info:";
-		LLOG_DBG << "\tDim: " << pTexture->mWidth << " x " << pTexture->mHeight;
-		LLOG_DBG << "\tVirtual pages: " << pTexture->sparseDataPages().size();
-		LLOG_DBG << "\tAll layers single mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No");
-		LLOG_DBG << "\tMip tail start: " << pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod;
-		LLOG_DBG << "\tMip tail size: " << pTexture->mSparseImageMemoryRequirements.imageMipTailSize;
+		LLOG_DBG << "\tDim: " << desc.size.width << " x " << desc.size.height;
+		LLOG_DBG << "\tVirtual pages: " << texture->mSparseBindsCount;
+		LLOG_DBG << "\tAll layers single mip tail: " << (texture->getMipTailInfo().singleMipTail ? "Yes" : "No");
+		LLOG_DBG << "\tMip tail start: " << texture->mSparseImageMemoryRequirements.imageMipTailFirstLod;
+		LLOG_DBG << "\tMip tail size: " << texture->mSparseImageMemoryRequirements.imageMipTailSize;
 
 		// Create signal semaphore for sparse binding
 		//VkSemaphoreCreateInfo semaphoreCreateInfo = {};
@@ -1701,11 +1699,11 @@ Result DeviceImpl::createTextureResource(
 		//	return SLANG_FAIL;
 		//}
 
-		allocateTailMemory(pTexture, texture, false /* don't force*/);
+		allocateTailMemory(texture, false /* don't force*/);
 
 		updateSparseBindInfo(pTexture, texture->m_image);
 
-		m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &pTexture->mBindSparseInfo, VK_NULL_HANDLE);
+		m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &texture->mBindSparseInfo, VK_NULL_HANDLE);
 		m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
 	}
 
@@ -1812,7 +1810,7 @@ Result DeviceImpl::createTextureResource(
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		pTexture->mState.global = Falcor::Resource::State::CopyDest;
+		//pTexture->mState.global = Falcor::Resource::State::CopyDest;
 
 		{
 			Offset srcOffset = 0;
@@ -1865,7 +1863,7 @@ Result DeviceImpl::createTextureResource(
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			defaultLayout);
 
-		pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
+		//pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 	} else {
 		// No init data non-sparse texture
 		if(!sparse) {
@@ -1877,52 +1875,59 @@ Result DeviceImpl::createTextureResource(
 					*texture->getDesc(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					defaultLayout);
-				pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
+				//pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 			}
 		}
 	}
+
+	LLOG_WRN << "!!!!! DON'T FORGET TO CHANGE Falcor::Texture::mState.global according to vk-device !!!!!!";
+
 	m_deviceQueue.flushAndWait();
 	returnComPtr(outResource, texture);
 	return SLANG_OK;
 }
 
-void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
+void DeviceImpl::releaseTailMemory(ITextureResource* pTexture) {
 	assert(pTexture);
 	if(!pTexture->isSparse()) return;
 
-	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
-	auto texture = static_cast<TextureResourceImpl*>(textureResource);
+	auto pTextureResourceImpl = static_cast<TextureResourceImpl*>(pTexture);
 
-	for(auto& allocation: texture->mTailAllocations) {
+	for(auto& allocation: pTextureResourceImpl->mTailAllocations) {
         vmaFreeMemory(m_api.mVmaAllocator, allocation);
         allocation = VK_NULL_HANDLE;
     }
 }
 
-bool DeviceImpl::tailMemoryAllocated(const Falcor::Texture* pTexture) {
+bool DeviceImpl::tailMemoryAllocated(const ITextureResource* pTexture) {
 	assert(pTexture);
 	if(!pTexture->isSparse()) return false;
-	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
-	auto texture = static_cast<TextureResourceImpl*>(textureResource);
-	return texture ? texture->mTailMemoryAllocated : false;
+	auto pTextureResourceImpl = static_cast<const TextureResourceImpl*>(pTexture);
+	return pTextureResourceImpl->mTailMemoryAllocated;
 }
 
-Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, TextureResourceImpl* textureResource, bool force) {
+Result DeviceImpl::allocateTailMemory(ITextureResource* pTexture, bool force) {
 	assert(pTexture);
-	assert(textureResource);
-	auto& sparseImageMemoryRequirements = pTexture->mSparseImageMemoryRequirements;
 
-	if((!pTexture->mMipTailInfo.singleMipTail) && (sparseImageMemoryRequirements.imageMipTailFirstLod < pTexture->mMipLevels)) {
+	if(!pTexture->isSparse()) return false;
+
+	if(tailMemoryAllocated(pTexture) && !force) return false;
+
+	auto pTextureResourceImpl = static_cast<TextureResourceImpl*>(pTexture);
+
+	auto& sparseImageMemoryRequirements = pTextureResourceImpl->mSparseImageMemoryRequirements;
+
+	if((!pTextureResourceImpl->getMipTailInfo().singleMipTail) && (sparseImageMemoryRequirements.imageMipTailFirstLod < pTextureResourceImpl->getDesc()->numMipLevels)) {
 		for(uint32_t layer = 0; layer < pTexture->getArraySize(); layer++) {
 			LLOG_DBG << "Layer " << layer << " single mip tail";
 			// Allocate memory for the layer mip tail
 
-			textureResource->mTailAllocations.push_back({});
-			VmaAllocation* pAllocation = &textureResource->mTailAllocations.back();
+			pTextureResourceImpl->mTailAllocations.push_back({});
+			VmaAllocation* pAllocation = &pTextureResourceImpl->mTailAllocations.back();
 			VkMemoryRequirements tailMemReqs = {};
 			tailMemReqs.size = sparseImageMemoryRequirements.imageMipTailSize;
-			tailMemReqs.alignment = pTexture->mMemRequirements.alignment;
-			tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
+			tailMemReqs.alignment = pTextureResourceImpl->mMemRequirements.alignment;
+			tailMemReqs.memoryTypeBits = 1u << pTextureResourceImpl->mMemoryTypeIndex;
 
 			VmaAllocationCreateInfo allocCreateInfo = {};
 			allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -1944,7 +1949,7 @@ Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, TextureResource
 			sparseMemoryBind.size = allocationInfo.size;
 			sparseMemoryBind.memory = allocationInfo.deviceMemory;
 
-			pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);         
+			pTextureResourceImpl->mOpaqueMemoryBinds.push_back(sparseMemoryBind);         
 		}
 	}
 
@@ -1953,11 +1958,11 @@ Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, TextureResource
 		LLOG_DBG << "One mip tail for all mip layers ";
 		// Allocate memory for the mip tail
 
-		textureResource->mTailAllocations.push_back({});
-		VmaAllocation* pAllocation = &textureResource->mTailAllocations.back();
+		pTextureResourceImpl->mTailAllocations.push_back({});
+		VmaAllocation* pAllocation = &pTextureResourceImpl->mTailAllocations.back();
 		VkMemoryRequirements tailMemReqs = {};
 		tailMemReqs.size = sparseImageMemoryRequirements.imageMipTailSize;
-		tailMemReqs.alignment = pTexture->mMemRequirements.alignment;
+		tailMemReqs.alignment = pTextureResourceImpl->mMemRequirements.alignment;
 		tailMemReqs.memoryTypeBits = 1u << pTexture->mMemoryTypeIndex;
 
 		VmaAllocationCreateInfo allocCreateInfo = {};
@@ -1980,23 +1985,14 @@ Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, TextureResource
 		sparseMemoryBind.size = allocationInfo.size;
 		sparseMemoryBind.memory = allocationInfo.deviceMemory;
 
-		pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+		pTextureResourceImpl->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 	}
 
-	textureResource->mTailMemoryAllocated = true;
+	pTextureResourceImpl->mTailMemoryAllocated = true;
 	return SLANG_OK;
 }
 
-Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
-	assert(pTexture);
-
-	if(!pTexture->isSparse()) return SLANG_FAIL;
-
-	gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
-	return allocateTailMemory(pTexture, static_cast<TextureResourceImpl*>(textureResource), force);
-}
-
-SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture, VkImage image) {
+SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) {
 	assert(pTexture);
 
 	if (!pTexture->isSparse()) {
@@ -2004,11 +2000,13 @@ SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(Falcor::Texture
 		return;
 	}
 	
-	if(image == VK_NULL_HANDLE) return;
+	TextureResourceImpl* pTextureResourceImpl = static_cast<TextureResourceImpl*>(pTexture);
+
+	if(pTextureResourceImpl->m_image == VK_NULL_HANDLE) return;
 
 	// Update list of memory-backed sparse image memory binds
-	pTexture->mSparseImageMemoryBinds.clear();
-	for (const auto& pPage : pTexture->mSparseDataPages) {
+	pTextureResourceImpl->mSparseImageMemoryBinds.clear();
+	for (const auto& pPage : pages) {
 		if ( pPage->isResident()) pTexture->mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
 	}
 
@@ -2022,36 +2020,20 @@ SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(Falcor::Texture
 
 	// Image memory binds
 	pTexture->mImageMemoryBindInfo = {};
-	pTexture->mImageMemoryBindInfo.image = image;
-	pTexture->mImageMemoryBindInfo.bindCount = static_cast<uint32_t>(pTexture->mSparseImageMemoryBinds.size());
-	pTexture->mImageMemoryBindInfo.pBinds = pTexture->mSparseImageMemoryBinds.data();
+	pTexture->mImageMemoryBindInfo.image = pTextureResourceImpl->m_image;
+	pTexture->mImageMemoryBindInfo.bindCount = static_cast<uint32_t>(pTextureResourceImpl->mSparseImageMemoryBinds.size());
+	pTexture->mImageMemoryBindInfo.pBinds = pTextureResourceImpl->mSparseImageMemoryBinds.data();
 
-	pTexture->mBindSparseInfo.imageBindCount = (pTexture->mImageMemoryBindInfo.bindCount > 0) ? 1 : 0;
-	pTexture->mBindSparseInfo.pImageBinds = &pTexture->mImageMemoryBindInfo;
+	pTexture->mBindSparseInfo.imageBindCount = (pTextureResourceImpl->mImageMemoryBindInfo.bindCount > 0) ? 1 : 0;
+	pTexture->mBindSparseInfo.pImageBinds = &pTextureResourceImpl->mImageMemoryBindInfo;
 
 	// Opaque image memory binds for the mip tail
-	pTexture->mOpaqueMemoryBindInfo.image = image;
-	pTexture->mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(pTexture->mOpaqueMemoryBinds.size());
-	pTexture->mOpaqueMemoryBindInfo.pBinds = pTexture->mOpaqueMemoryBinds.data();
+	pTexture->mOpaqueMemoryBindInfo.image = pTextureResourceImpl->m_image;
+	pTexture->mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(pTextureResourceImpl->mOpaqueMemoryBinds.size());
+	pTexture->mOpaqueMemoryBindInfo.pBinds = pTextureResourceImpl->mOpaqueMemoryBinds.data();
 	
-	pTexture->mBindSparseInfo.imageOpaqueBindCount = (pTexture->mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
-	pTexture->mBindSparseInfo.pImageOpaqueBinds = &pTexture->mOpaqueMemoryBindInfo;
-}
-
-void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
-	assert(pTexture);
-	TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
-	updateSparseBindInfo(pTexture, texture->m_image);
-}
-
-void DeviceImpl::updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) {
-	std::vector<VkBindSparseInfo> bindInfos;
-
-	for(Falcor::Texture* pTexture: textures) {
-		assert(pTexture);
-		TextureResourceImpl* texture = static_cast<TextureResourceImpl*>(pTexture->getGfxTextureResource());
-		updateSparseBindInfo(pTexture, texture->m_image);
-	}
+	pTexture->mBindSparseInfo.imageOpaqueBindCount = (pTextureResourceImpl->mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
+	pTexture->mBindSparseInfo.pImageOpaqueBinds = &pTextureResourceImpl->mOpaqueMemoryBindInfo;
 }
 
 Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource) {

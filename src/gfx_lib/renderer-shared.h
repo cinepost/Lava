@@ -267,6 +267,10 @@ public:
         return m_debugName.getBuffer();
     }
 
+    virtual SLANG_NO_THROW GfxCount getArraySize() const override {
+        return m_desc.arraySize;
+    }
+
 protected:
     Desc m_desc;
 };

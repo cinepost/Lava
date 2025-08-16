@@ -26,37 +26,46 @@ public:
 	// Renderer    implementation
 	Result initVulkanInstanceAndDevice(const InteropHandle* handles, const std::string& validationLayerOuputFilename);
 	virtual SLANG_NO_THROW Result SLANG_MCALL initialize(const Desc& desc) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		getFormatSupportedResourceStates(Format format, ResourceStateSet* outStates) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createTransientResourceHeap(
 		const ITransientResourceHeap::Desc& desc, ITransientResourceHeap** outHeap) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createCommandQueue(const ICommandQueue::Desc& desc, ICommandQueue** outQueue) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createSwapchain(
 		const ISwapchain::Desc& desc, WindowHandle window, ISwapchain** outSwapchain) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createFramebufferLayout(
 		const IFramebufferLayout::Desc& desc, IFramebufferLayout** outLayout) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createFramebuffer(const IFramebuffer::Desc& desc, IFramebuffer** outFramebuffer) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createRenderPassLayout(
 		const IRenderPassLayout::Desc& desc, IRenderPassLayout** outRenderPassLayout) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
 		const ITextureResource::Desc& desc,
-		Falcor::Texture* pTexture,
 		const ITextureResource::SubresourceData* initData,
 		ITextureResource** outResource) override;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
+	virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
+        IVirtualTexturePageResource::Offset offset, 
+        IVirtualTexturePageResource::Extent extent, 
+        uint32_t mipLevel, uint32_t layer, 
+        IVirtualTexturePageResource** outResource) override;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) override;
+	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) override;
 
-	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
+	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) override;
 
-	SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, TextureResourceImpl* textureResource, bool force = false);
+	virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const ITextureResource* pTexture) override;
 
-	virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) override;
-
-	virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
+	virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(ITextureResource* pTexture) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferResource(
 		const IBufferResource::Desc& desc,

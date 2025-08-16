@@ -699,12 +699,63 @@ struct SubresourceRange
 	GfxCount layerCount; // For cube maps, this is a multiple of 6.
 };
 
+class IVirtualTexturePageResource {
+	public:
+		struct Offset {
+			int32_t x = 0;
+			int32_t y = 0;
+			int32_t z = 0;
+			Offset() = default;
+			Offset(int32_t _x, int32_t _y, int32_t _z) :x(_x), y(_y), z(_z) {}
+		};
+
+		struct Extent {
+			uint32_t width  = 0;    ///< Width in pixels
+			uint32_t height = 0;    ///< Height in pixels (if 2d or 3d)
+			uint32_t depth  = 0;	///< Depth (if 3d)
+
+			Extent() = default;
+			Extent(uint32_t _w, uint32_t _h, uint32_t _d) :width(_w), height(_h), depth(_d) {}
+		};
+
+	public:
+		IVirtualTexturePageResource(const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer): 
+			mOffset(offset), mExtent(extent), mMipLevel(mipLevel), mLayer(layer), mIsResident(false) {};
+
+		uint32_t getMipLevel() const { return mMipLevel; }
+		uint32_t getLayer() const { return mLayer; }
+		uint32_t getIndex() const { return mIndex; }
+
+		uint32_t getWidth() const { return mExtent.width; }
+		uint32_t getHeight() const { return mExtent.height; }
+		uint32_t getDepth() const { return mExtent.depth; }
+
+		const Offset& getOffset() const { return mOffset; }
+		const Extent& getExtent() const { return mExtent; }
+
+		bool isResident() const { return mIsResident; }
+
+		virtual bool allocate() = 0;
+		virtual void release() = 0;
+
+		virtual size_t getUsedMemSize() const = 0;
+
+	protected:
+		bool mIsResident = false;
+
+		Offset mOffset;
+        Extent mExtent;
+		
+		uint32_t mMipLevel;		// Mip level that this page belongs to
+        uint32_t mLayer;        // Array layer that this page belongs to
+        uint32_t mIndex;        // Texture related page index 
+};
+
 class ITextureResource: public IResource
 {
 public:
 	static const Size kRemainingTextureSize = 0xFFFFFFFF;
-	struct Offset3D
-	{
+	struct Offset3D {
 		GfxIndex x = 0;
 		GfxIndex y = 0;
 		GfxIndex z = 0;
@@ -712,21 +763,24 @@ public:
 		Offset3D(GfxIndex _x, GfxIndex _y, GfxIndex _z) :x(_x), y(_y), z(_z) {}
 	};
 
-	struct SampleDesc
-	{
-		GfxCount numSamples = 1;                ///< Number of samples per pixel
-		int quality = 0;                        ///< The quality measure for the samples
+	struct SampleDesc {
+		GfxCount numSamples = 1;        ///< Number of samples per pixel
+		int quality = 0;                ///< The quality measure for the samples
 	};
 
-	struct Extents
-	{
-		GfxCount width = 0;              ///< Width in pixels
-		GfxCount height = 0;             ///< Height in pixels (if 2d or 3d)
-		GfxCount depth = 0;              ///< Depth (if 3d)
+	struct Extents {
+		GfxCount width = 0;             ///< Width in pixels
+		GfxCount height = 0;            ///< Height in pixels (if 2d or 3d)
+		GfxCount depth = 0;             ///< Depth (if 3d)
 	};
 
-	struct Desc: public DescBase
-	{
+	struct MipTailInfo {
+		bool singleMipTail;
+		bool alignedMipSize;
+		uint32_t mipTailStart; 		// First mip level in mip tail
+	};
+
+	struct Desc: public DescBase {
 		Extents     size;
 
 		GfxCount    arraySize = 0;      ///< Array size
@@ -783,13 +837,35 @@ public:
 		gfx::Size strideZ;
 	};
 
-	virtual SLANG_NO_THROW Desc* SLANG_MCALL getDesc() = 0;
-};
-#define SLANG_UUID_ITextureResource                                                    \
-	{                                                                                  \
-		0xcf88a31c, 0x6187, 0x46c5, { 0xa4, 0xb7, 0xeb, 0x58, 0xc7, 0x33, 0x40, 0x17 } \
-	}
+	virtual bool isSparse() const = 0;
 
+	virtual uint32_t sparseDataBindsCount() const = 0;
+
+	virtual const IVirtualTexturePageResource::Extent& sparseDataPageRes() const = 0;
+
+	virtual SLANG_NO_THROW Desc* SLANG_MCALL getDesc() = 0;
+
+	virtual SLANG_NO_THROW GfxCount getArraySize() const = 0;
+
+	virtual SLANG_NO_THROW std::array<uint32_t, 16>& mipBases() = 0;
+
+	virtual SLANG_NO_THROW const std::array<uint32_t, 16>& getMipBases() const = 0;
+
+	MipTailInfo& mipTailInfo() { return mMipTailInfo; }
+
+	const MipTailInfo& getMipTailInfo() const { return mMipTailInfo; }
+
+
+protected:
+	std::vector<Slang::ComPtr<IVirtualTexturePageResource>> mSparseDataPages;    // Contains all virtual pages of the texture
+
+	MipTailInfo mMipTailInfo;
+};
+
+#define SLANG_UUID_ITextureResource                                                    \
+{                                                                                  \
+	0xcf88a31c, 0x6187, 0x46c5, { 0xa4, 0xb7, 0xeb, 0x58, 0xc7, 0x33, 0x40, 0x17 } \
+}
 
 enum class ComparisonFunc : uint8_t
 {
@@ -2349,29 +2425,40 @@ class IDevice: public ISlangUnknown {
 		///
 		virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
 			const ITextureResource::Desc& desc,
-			Falcor::Texture* pTexture,
 			const ITextureResource::SubresourceData* initData,
 			ITextureResource** outResource) = 0;
 
 			/// Create a texture resource. initData holds the initialize data to set the contents of the texture when constructed.
 		inline SLANG_NO_THROW ComPtr<ITextureResource> createTextureResource(
 			const ITextureResource::Desc& desc,
-			Falcor::Texture* pTexture,
 			const ITextureResource::SubresourceData* initData = nullptr) {
 			ComPtr<ITextureResource> resource;
-			SLANG_RETURN_NULL_ON_FAIL(createTextureResource(desc, pTexture, initData, resource.writeRef()));
+			SLANG_RETURN_NULL_ON_FAIL(createTextureResource(desc, initData, resource.writeRef()));
 			return resource;
 		}
 
-		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) = 0;
+		virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
+			IVirtualTexturePageResource::Offset offset, 
+			IVirtualTexturePageResource::Extent extent, 
+			uint32_t mipLevel, uint32_t layer, 
+			IVirtualTexturePageResource** outResource) = 0;
 
-		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) = 0;
+		inline SLANG_NO_THROW ComPtr<IVirtualTexturePageResource> createVirtualTexturePageResource(
+			IVirtualTexturePageResource::Offset offset, 
+			IVirtualTexturePageResource::Extent extent, 
+			uint32_t mipLevel, uint32_t layer) {
+			ComPtr<IVirtualTexturePageResource> resource;
+			SLANG_RETURN_NULL_ON_FAIL(createVirtualTexturePageResource(offset, extent, mipLevel, layer, resource.writeRef()));
+			return resource;
+		}
 
-		virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) = 0;
+		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) = 0;
 
-		virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) = 0;
+		virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) = 0;
 
-		virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) = 0;
+		virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const ITextureResource* pTexture) = 0;
+
+		virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(ITextureResource* pTexture) = 0;
 
 		virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const = 0;
 

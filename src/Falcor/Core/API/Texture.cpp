@@ -198,9 +198,8 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 		mArraySize(arraySize), 
 		mFormat(format), 
 		mIsSparse(false),  
-	  mIsSolid(false),
-	  mMemRequirements({}) 
-	  {
+		mIsSolid(false)
+{
 	
 	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
@@ -470,7 +469,7 @@ void Texture::generateMips(RenderContext* pContext, bool minMaxMips) {
 		LLOG_WRN << "Texture::generateMips() was only tested with Texture2Ds";
 	}
 
-	if (mIsSparse) {
+	if (isSparse()) {
 		LLOG_WRN << "Texture::generateMips() does not work with sparse textures !!!";
 		return;
 	}
@@ -501,10 +500,10 @@ void Texture::generateMips(RenderContext* pContext, bool minMaxMips) {
 }
 
 uint32_t Texture::getMipTailStart() const { 
-	assert(mIsSparse);
+	assert(isSparse());
 	assert(!mIsUDIMTexture);
 
-	return mMipTailStart; 
+	return getGfxTextureResource()->getMipTailInfo().mipTailStart; 
 }
 
 // static
@@ -535,7 +534,7 @@ void Texture::setUDIM_ID(uint16_t id) {
 }
 
 void Texture::setVirtualID(uint32_t id) {
-	if(!mIsSparse) {
+	if(!isSparse()) {
 		LLOG_ERR << "Unable to set texture virtual ID to Non-virtual texture !";
 		return;
 	}
@@ -583,7 +582,7 @@ Texture::~Texture() {
 	std::string tex_type = "generic";
 	if(!mSourceFilename.empty()) tex_type = mSourceFilename;
 	if(mIsUDIMTexture) tex_type += " UDIM";
-	if(mIsSparse) tex_type += " virtual";
+	if(isSparse()) tex_type += " virtual";
 
 	if (mIsUDIMTexture) {
 		for(auto& info: mUDIMTileInfos) {
@@ -591,7 +590,7 @@ Texture::~Texture() {
 			info.pTileTexture = nullptr;
 		}
 	} else {
-		if(mIsSparse) {
+		if(isSparse()) {
 			for(auto pPage: mSparseDataPages) {
 				pPage->release();
 				pPage.reset();

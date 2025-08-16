@@ -158,7 +158,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 }
 
 void Texture::updateSparseBindInfo() {
-	mpDevice->getGfxDevice()->updateSparseBindInfo(this);
+	mpDevice->getGfxDevice()->updateSparseBindInfo(mApiHandle.get());
 }
 
 }  // namespace Falcor

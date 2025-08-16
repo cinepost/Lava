@@ -10,14 +10,7 @@
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
-
-#if defined(FALCOR_GFX_VK) 
-namespace gfx {
-	namespace vk {
-		class DeviceImpl;
-	}
-}
-#endif
+#include "gfx_lib/vulkan/vk-virtual-texture-page.h"
 
 namespace Falcor {
 
@@ -29,6 +22,7 @@ class TextureManager;
 // Contains memory bindings, offsets and status information
 class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTexturePage>  {
   public:
+  		static constexpr uint32_t kInvalidID = 0xffffffff;
 		using SharedPtr = std::shared_ptr<VirtualTexturePage>;
 		using SharedConstPtr = std::shared_ptr<const VirtualTexturePage>;
 
@@ -41,59 +35,41 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		~VirtualTexturePage();
 
-		bool isResident() const { return mIsResident; }
-		bool allocate();
-		void release();
+		bool isResident() const { return mpVirtualTexturePageResource->isResident(); }
+		bool allocate() { return mpVirtualTexturePageResource->allocate(); }
+		void release() { mpVirtualTexturePageResource->release(); }
 
 		const std::shared_ptr<Device>& device() const { return mpDevice; }
 
-		uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		const VkOffset3D& offsetVK() const { return mOffset; }
-		uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
-		const VkExtent3D& extentVK() const { return mExtent; }
+		gfx::IVirtualTexturePageResource::Offset offsetGFX() const { return mpVirtualTexturePageResource->getOffset(); }
+		gfx::IVirtualTexturePageResource::Extent extentGFX() const { return mpVirtualTexturePageResource->getExtent(); }
 
-		gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		gfx::ITextureResource::Extents extentGFX() const { return {static_cast<gfx::GfxCount>(mExtent.width), static_cast<gfx::GfxCount>(mExtent.height), static_cast<gfx::GfxCount>(mExtent.depth)}; }
+		size_t getUsedMemSize() const { return mpVirtualTexturePageResource->getUsedMemSize(); }
 
-		size_t usedMemSize() const;
+		uint32_t width() const { return mpVirtualTexturePageResource->getWidth(); }
+		uint32_t height() const { return mpVirtualTexturePageResource->getHeight(); }
+		uint32_t depth() const { return mpVirtualTexturePageResource->getDepth(); }
 
-		uint32_t width() const { return mExtent.width; }
-		uint32_t height() const { return mExtent.height; }
-		uint32_t depth() const { return mExtent.depth; }
+		uint32_t mipLevel() const { return mpVirtualTexturePageResource->getMipLevel(); }
+		uint32_t index() const { return mpVirtualTexturePageResource->getIndex(); }
 
-		uint32_t mipLevel() const { return mMipLevel; }
-		uint32_t index() const { return mIndex; }
-
-		uint32_t id() const { return mID; }
+		//uint32_t id() const { return mID; }
 
 		const std::shared_ptr<Texture>& texture() const { return mpTexture; }
 
-  public:
-  	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+  	public:
+  		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
 
  	protected:
 		const std::shared_ptr<Device>   mpDevice;
 		const std::shared_ptr<Texture>  mpTexture;
 
-		bool mIsResident = false;
+		Slang::ComPtr<gfx::IVirtualTexturePageResource> mpVirtualTexturePageResource;
 
-		VkOffset3D mOffset;
-		VkExtent3D mExtent;
-		VkSparseImageMemoryBind mImageMemoryBind;		// Sparse image memory bind for this page
-		VkDeviceSize mDevMemSize;                   // Page memory size in bytes
-		uint32_t mMipLevel;                         // Mip level that this page belongs to
-		uint32_t mLayer;                            // Array layer that this page belongs to
-		uint32_t mIndex;    												// Texture related page index 
-		uint32_t mID;       												// Global page id (Texture manager index)
-		uint32_t mMemoryTypeBits;
-
-		VmaAllocation mAllocation;
+		uint32_t mID;
 
 		friend class Texture;
 		friend class TextureManager;
-#if defined(FALCOR_GFX_VK)
-		friend class gfx::vk::DeviceImpl;
-#endif
 };
 
 }  // namespace Falcor

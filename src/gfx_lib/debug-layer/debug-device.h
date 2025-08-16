@@ -28,23 +28,29 @@ public:
 
     virtual SLANG_NO_THROW Result SLANG_MCALL
         getSlangSession(slang::ISession** outSlangSession) override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL createTransientResourceHeap(
         const ITransientResourceHeap::Desc& desc,
         ITransientResourceHeap** outHeap) override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
         const ITextureResource::Desc& desc,
-        Falcor::Texture* pTexture,
         const ITextureResource::SubresourceData* initData,
         ITextureResource** outResource) override;
-    virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
 
-    virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(const std::vector<Falcor::Texture*>& textures) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
+        IVirtualTexturePageResource::Offset offset, 
+        IVirtualTexturePageResource::Extent extent, 
+        uint32_t mipLevel, uint32_t layer, 
+        IVirtualTexturePageResource** outResource) override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
+    virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) override;
 
-    virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const Falcor::Texture* pTexture) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) override;
 
-    virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
+    virtual SLANG_NO_THROW bool SLANG_MCALL tailMemoryAllocated(const ITextureResource* pTexture) override;
+
+    virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(ITextureResource* pTexture) override;
 
     virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
 
