@@ -197,7 +197,6 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 		mSampleCount(sampleCount), 
 		mArraySize(arraySize), 
 		mFormat(format), 
-		mIsSparse(false),  
 		mIsSolid(false)
 {
 	
@@ -311,7 +310,7 @@ ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t
 		return ShaderResourceView::create(pTexture->device(), pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
 	};
 
-	if(mIsSparse) {
+	if(isSparse()) {
 		updateSparseBindInfo();
 	}
 
@@ -551,20 +550,6 @@ void Texture::addUDIMTileTexture(const UDIMTileInfo& udim_tile_info) {
 	mUDIMTileInfos[udim_tile_info.u + udim_tile_info.v * 10] = udim_tile_info;
 }
 
-bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer) {
-  auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer);
-  if (!pPage) return false;
-
-  //LLOG_DBG << "VirtualTexturePage id: " << std::to_string(index) << " offset: " << to_string(offset) << " extent: " << to_string(extent);
-
-  pPage->mMemoryTypeBits = memoryTypeBits;
-  pPage->mDevMemSize = size;
-  pPage->mIndex = index;
-    
-  mSparseDataPages.push_back(pPage);
-  return true;
-}
-
 bool Texture::compareDesc(const Texture* pOther) const {
 	return mWidth == pOther->mWidth &&
 		mHeight == pOther->mHeight &&
@@ -573,8 +558,8 @@ bool Texture::compareDesc(const Texture* pOther) const {
 		mSampleCount == pOther->mSampleCount &&
 		mArraySize == pOther->mArraySize &&
 		mFormat == pOther->mFormat &&
-		mIsSparse == pOther->mIsSparse &&
-		mSparsePageRes == pOther->mSparsePageRes &&
+		isSparse() == pOther->isSparse() &&
+		sparseDataPageRes() == pOther->sparseDataPageRes() &&
 		mIsUDIMTexture == pOther->mIsUDIMTexture;
 }
 
@@ -596,7 +581,7 @@ Texture::~Texture() {
 				pPage.reset();
 			}
 			mSparseDataPages.clear();
-			mpDevice->getGfxDevice()->releaseTailMemory(this);
+			mpDevice->getGfxDevice()->releaseTailMemory(getGfxTextureResource());
 		}
 
 		//ApiObjectHandle objectHandle;

@@ -4,7 +4,7 @@
 #define SRC_GFX_VULKAN_VK_BASE_H_
 
 #include "../command-encoder-com-forward.h"
-#include "../mutable-shader-object.h"
+//#include "../mutable-shader-object.h"
 #include "../renderer-shared.h"
 #include "../transient-resource-heap-base.h"
 

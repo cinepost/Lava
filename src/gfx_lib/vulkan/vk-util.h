@@ -1,5 +1,8 @@
 // vk-util.h
-#pragma once
+#ifndef GFX_VK_UTIL_H_
+#define GFX_VK_UTIL_H_
+
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreorder"
@@ -9,8 +12,6 @@
 #include "vk-api.h"
 
 #include "../slang-gfx.h"
-
-#include "Falcor/Core/API/Resource.h"
 
 // Macros to make testing vulkan return codes simpler
 
@@ -52,8 +53,6 @@ struct VulkanUtil
     static VkShaderStageFlags getShaderStage(SlangStage stage);
 
     static VkImageLayout getImageLayoutFromState(ResourceState state);
-
-    static Falcor::Resource::State toFalcorState(ResourceState state);
 
     /// Calculate size taking into account alignment. Alignment must be a power of 2
     static UInt calcAligned(UInt size, UInt alignment) { return (size + alignment - 1) & ~(alignment - 1); }
@@ -130,5 +129,6 @@ struct AccelerationStructureBuildGeometryInfoBuilder {
             VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
 };
 
+} // namespace gfx
 
-} // renderer_test
+#endif // GFX_VK_UTIL_H_

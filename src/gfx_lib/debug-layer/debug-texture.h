@@ -24,10 +24,6 @@ public:
 
 	virtual SLANG_NO_THROW GfxCount getArraySize() const override;
 
-	virtual SLANG_NO_THROW std::array<uint32_t, 16>& mipBases() override;
-
-	virtual SLANG_NO_THROW const std::array<uint32_t, 16>& getMipBases() const override;
-
     ITextureResource* getInterface(const Slang::Guid& guid);
     virtual SLANG_NO_THROW Type SLANG_MCALL getType() override;
     virtual SLANG_NO_THROW Desc* SLANG_MCALL getDesc() override;

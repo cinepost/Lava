@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "vk-base.h"
 #include "vk-device.h"
 
 namespace gfx {
@@ -12,7 +11,7 @@ using namespace Slang;
 
 namespace vk {
 
-class VirtualTexturePageResourceImpl: public IVirtualTexturePageResource {
+class VirtualTexturePageResourceImpl: public VirtualTexturePageResource {
     public:
         VirtualTexturePageResourceImpl(DeviceImpl* device, const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer);
         ~VirtualTexturePageResourceImpl();
@@ -20,8 +19,10 @@ class VirtualTexturePageResourceImpl: public IVirtualTexturePageResource {
         VkOffset3D offsetVK() const { return {mOffset.x, mOffset.y, mOffset.z}; }
         VkExtent3D extentVK() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
 
-        virtual bool allocate() override;
-        virtual void release() override;
+        virtual bool isResident() const override;
+
+        virtual bool allocateMemory() override;
+        virtual void releaseMemory() override;
 
         virtual size_t getUsedMemSize() const override;
 
@@ -33,6 +34,8 @@ class VirtualTexturePageResourceImpl: public IVirtualTexturePageResource {
         uint32_t mMemoryTypeBits;
 
         VmaAllocation mAllocation;
+
+        friend class DeviceImpl;
 };
 
 } // namespace vk

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "slang-gfx.h"
-
 #include "slang-context.h"
 
 #pragma GCC diagnostic push
@@ -15,8 +14,7 @@
 
 #include "lava_utils_lib/logging.h"
 
-namespace gfx
-{
+namespace gfx {
 
 struct GfxGUID
 {
@@ -240,6 +238,16 @@ public:
 
 protected:
     Desc m_desc;
+};
+
+class VirtualTexturePageResource: public IVirtualTexturePageResource, public Slang::ComObject {
+    public:
+        SLANG_COM_OBJECT_IUNKNOWN_ALL
+        IVirtualTexturePageResource* getInterface(const Slang::Guid& guid);
+
+    public:
+        typedef IVirtualTexturePageResource Parent;
+        VirtualTexturePageResource(const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer): Parent(offset, extent, mipLevel, layer) {}
 };
 
 class TextureResource : public ITextureResource, public Resource {

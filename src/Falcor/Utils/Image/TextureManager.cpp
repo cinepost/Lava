@@ -250,11 +250,11 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   if( !pTexture ) return nullptr;
 
   pTexture->setSourceFilename(ltxPath.string());
-  pTexture->mIsSparse = true;
   
   try {
 	generateMipLevels = false;
-	pTexture->apiInit(nullptr, generateMipLevels);
+	const bool sparse = true;
+	pTexture->apiInit(nullptr, generateMipLevels, sparse);
   } catch (const std::runtime_error& e) {
 	LLOG_ERR << "Error initializing sparse texture " << ltxPath << "'\nError details:";
 	LLOG_ERR << e.what();
@@ -262,11 +262,6 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
   } catch (...) {
 	LLOG_ERR <<  "Error initializing sparse texture " << ltxPath;
 	return nullptr;
-  }
-
-  for(auto& pPage: pTexture->sparseDataPages()) {
-	pPage->mID = static_cast<uint32_t>(mSparseDataPages.size());
-	mSparseDataPages.push_back(pPage);
   }
 
   LLOG_DBG << "Texture requires " << std::to_string(pTexture->getTextureSizeInBytes()) << " bytes of device memory";
@@ -339,16 +334,16 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 
   if(allocationChanged) {
 	  {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getGfxDevice());
+			auto pRendererBase = static_cast<gfx::RendererBase*>(mpDevice->getGfxDevice());
 			auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
 			auto& vk_api = pDevice->vkAPI();
 			VkDevice device = pDevice->vkDevice();
 			VkQueue  queue = pDevice->vkQueue();
-		vk_api.vkDeviceWaitIdle(device);
+			vk_api.vkDeviceWaitIdle(device);
 
-		  pTexture->updateSparseBindInfo();
+		  	pTexture->updateSparseBindInfo();
 		  
-		  VkFenceCreateInfo fenceCreateInfo {};
+		  	VkFenceCreateInfo fenceCreateInfo {};
 			fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 			fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
 

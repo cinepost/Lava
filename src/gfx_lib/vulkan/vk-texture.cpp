@@ -18,7 +18,7 @@ TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): 
     m_device(device),
     mSparseBindsCount(0) 
 {
-    mMipBases = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 }
 
 TextureResourceImpl::~TextureResourceImpl() {

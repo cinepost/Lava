@@ -79,12 +79,12 @@ uint64_t Texture::getTextureSizeInBytes() const {
 
 }
 
-void Texture::apiInit(const void* pData, bool autoGenMips) {
+void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	// create resource description
 	gfx::ITextureResource::Desc desc = {};
 
 	// base description
-	desc.sparse = mIsSparse;
+	desc.sparse = sparse;
 
 	// type
 	desc.type = getResourceType(mType); // same as resource dimension in D3D12
@@ -145,6 +145,78 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 
 	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);
 
+	gfx::vk::TextureResourceImpl* pTextureResource = static_cast<gfx::vk::TextureResourceImpl*>(textureResource.get());
+
+	const auto& memoryRequirements = pTextureResource->getMemoryRequirements();
+
+	if(mIsSparse) {
+		auto pTextureManager = mpDevice->getTextureManager();
+
+		uint32_t pageIndex = 0;
+		uint32_t sparseDataPagesCapacity = 0;
+		// Sparse bindings for each mip level of all layers outside of the mip tail
+		for (uint32_t layer = 0; layer < pTextureResource->getArraySize(); ++layer) {
+
+			// sparseImageMemoryRequirements.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
+			uint32_t currentMipBase = 0;
+			for (uint32_t mipLevel = 0; mipLevel < sparseImageMemoryRequirements.imageMipTailFirstLod; ++mipLevel) {
+				VkExtent3D extent;
+				extent.width = std::max(imageInfo.extent.width >> mipLevel, 1u);
+				extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
+				extent.depth = std::max(imageInfo.extent.depth >> mipLevel, 1u);
+
+				LLOG_DBG << "Mip level " << mipLevel << " width " << extent.width << " height " << extent.height;
+
+				// Aligned sizes by image granularity
+				VkExtent3D imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
+				Falcor::uint3 sparseBindCounts = alignedDivision(extent, imageGranularity);
+				Falcor::uint3 lastBlockExtent = {
+					(extent.width % imageGranularity.width) ? extent.width % imageGranularity.width : imageGranularity.width,
+					(extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height,
+					(extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth
+				};
+
+				LLOG_DBG << "Mip level " << mipLevel << " sparse binds count: " <<  sparseBindCounts.x << " " << sparseBindCounts.y << " " << sparseBindCounts.z;
+
+				// @todo: Comment
+				for (uint32_t z = 0; z < sparseBindCounts.z; ++z) {
+					for (uint32_t y = 0; y < sparseBindCounts.y; ++y) {
+						for (uint32_t x = 0; x < sparseBindCounts.x; ++x) {
+							// Offset
+							int3 offset (
+								x * imageGranularity.width;
+								y * imageGranularity.height;
+								z * imageGranularity.depth;
+							);
+
+							// Size of the page
+							uint3 extent(
+								(x == sparseBindCounts.x - 1) ? lastBlockExtent.x : imageGranularity.width;
+								(y == sparseBindCounts.y - 1) ? lastBlockExtent.y : imageGranularity.height;
+								(z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
+							);
+
+							// Add new virtual page
+							addTexturePage(offset, extent, memoryRequirements.alignment, memoryRequirements.memoryTypeBits, mipLevel, layer, pageIndex++);
+						}
+					}
+				}
+				mMipBases[mipLevel] = currentMipBase;
+				
+				currentMipBase += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
+			}
+
+			sparseDataPagesCapacity += currentMipBase;
+
+			// @todo: proper comment
+			// @todo: store in mip tail and properly release
+			// @todo: Only one block for single mip tail
+
+			texture->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
+			
+		} // end layers and mips
+	}
+
 	mApiHandle = textureResource;
 
 //#if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)
@@ -156,6 +228,20 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 		uploadInitData(pData, autoGenMips);
 	}
 }
+
+bool Texture::addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index) {
+  
+  const auto& memRequirements = getGfxVKTextureResource()->getMemoryRequirements();
+
+  auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer, index, memRequirements.alignment, memRequirements.memoryTypeBits);
+  if (!pPage) return false;
+
+  //LLOG_DBG << "VirtualTexturePage id: " << std::to_string(index) << " offset: " << to_string(offset) << " extent: " << to_string(extent);
+    
+  mSparseDataPages.push_back(pPage);
+  return true;
+}
+
 
 void Texture::updateSparseBindInfo() {
 	mpDevice->getGfxDevice()->updateSparseBindInfo(mApiHandle.get());

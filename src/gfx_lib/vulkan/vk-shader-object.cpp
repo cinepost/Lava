@@ -1,4 +1,5 @@
 // vk-shader-object.cpp
+#include "../mutable-shader-object.h"
 #include "vk-shader-object.h"
 
 #include "vk-command-buffer.h"

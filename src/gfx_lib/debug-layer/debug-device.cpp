@@ -36,7 +36,7 @@ void DebugDevice::releaseTailMemory(ITextureResource* pTexture) {
     baseObject->releaseTailMemory(pTexture);
 }
 
-void DebugDevice::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) {
+void DebugDevice::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) {
     baseObject->updateSparseBindInfo(pTexture, pages);
 }
 
@@ -122,6 +122,13 @@ Result DebugDevice::createTransientResourceHeap(
         return result;
     returnComPtr(outHeap, outObject);
     return result;
+}
+
+Result DebugDevice::createVirtualTexturePageResource(IVirtualTexturePageResource::Offset offset, IVirtualTexturePageResource::Extent extent,
+    uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, IVirtualTexturePageResource** outResource)
+{
+    assert(false);
+    return SLANG_FAIL;
 }
 
 Result DebugDevice::createTextureResource(

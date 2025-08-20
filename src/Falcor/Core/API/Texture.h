@@ -40,14 +40,9 @@
 #include "VirtualTexturePage.h"
 #include "Falcor/Utils/Image/Bitmap.h"
 
-#if defined(FALCOR_GFX_VK) 
-namespace gfx {
-	namespace vk {
-		class DeviceImpl;
-		class ResourceCommandEncoder;
-	}
-}
-#endif
+#include "gfx_lib/vulkan/vk-texture.h"
+
+
 
 namespace Falcor {
 
@@ -67,11 +62,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	using SharedPtr = std::shared_ptr<Texture>;
 	using SharedConstPtr = std::shared_ptr<const Texture>;
 	using inherit_shared_from_this<Resource, Texture>::shared_from_this;
-
-	struct MipTailInfo {
-		bool singleMipTail;
-		bool alignedMipSize;
-	};
 
 	struct UDIMTileInfo {
 		Texture::SharedPtr pTileTexture = nullptr;
@@ -105,7 +95,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	/** Get the array size
 	*/
-	uint32_t getArraySize() const { return getGfxTextureResource()->getArraySize(); }
+	uint32_t getArraySize() const { return mArraySize; }
 
 	/** Get the array index of a subresource
 	*/
@@ -330,9 +320,11 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint32_t sparseDataPagesCount() const { return static_cast<uint32_t>(mSparseDataPages.size()); }
 
+	const gfx::IVirtualTexturePageResource::Extent& sparseDataPageRes() const { return getGfxTextureResource()->sparseDataPageRes(); }
+
 	uint32_t getMipTailStart() const;
 
-	const std::array<uint32_t, 16>& getMipBases() const { return getGfxTextureResource()->getMipBases(); }
+	const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
 
 	bool isUDIMTexture() const { return mIsUDIMTexture; }
 
@@ -357,13 +349,13 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
-  	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);
+  	bool addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
 
   public:
   	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 
   protected:
-		void apiInit(const void* pData, bool autoGenMips);
+		void apiInit(const void* pData, bool autoGenMips, bool sparse = false);
 		void uploadInitData(const void* pData, bool autoGenMips);
 		void setMipTailFilled(bool state) { mMipTailFilled = state; }
 
@@ -375,7 +367,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		uint32_t mDepth = 0;
 		uint32_t mMipLevels = 0;
 		uint32_t mSampleCount = 0;
+		uint32_t mArraySize = 0;
 		ResourceFormat mFormat = ResourceFormat::Unknown;
+
+		std::array<uint32_t, 16> mMipBases;
 
 		mutable std::mutex mMutex;
 
@@ -394,12 +389,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		friend class TextureManager;
 		friend class CopyContext;
 		friend class VirtualTexturePage;
-
-#if defined(FALCOR_GFX_VK)
-		friend class gfx::vk::DeviceImpl;
-		friend class gfx::vk::ResourceCommandEncoder;
-#endif
-
 };
 
 inline std::string to_string(const std::shared_ptr<Texture>& tex) {

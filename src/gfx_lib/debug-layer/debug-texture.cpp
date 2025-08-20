@@ -55,14 +55,6 @@ GfxCount DebugTextureResource::getArraySize() const {
 	return baseObject->getArraySize();
 }
 
-std::array<uint32_t, 16>& DebugTextureResource::mipBases() {
-	return baseObject->mipBases();
-}
-
-const std::array<uint32_t, 16>& DebugTextureResource::getMipBases() const {
-	return baseObject->getMipBases();
-}
-
 const char* DebugTextureResource::getDebugName() { return baseObject->getDebugName(); }
 
 } // namespace debug

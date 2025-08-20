@@ -43,9 +43,6 @@ class TextureResourceImpl : public TextureResource {
 
         VkSparseImageMemoryBind mMipTailimageMemoryBind{};
 
-        std::array<uint32_t, 16> mMipBases;
-
-
         bool mTailMemoryAllocated = false;
         bool mIsSparse = false;
         bool m_isWeakImageReference = false;
@@ -53,15 +50,13 @@ class TextureResourceImpl : public TextureResource {
 
         uint32_t getMemoryTypeIndex() const { return mMemoryTypeIndex; }
 
+        const VkMemoryRequirements& getMemoryRequirements() const { return mMemRequirements; }
+
         virtual bool isSparse() const override { return mIsSparse; }
 
         virtual uint32_t sparseDataBindsCount() const override { return mSparseBindsCount; }
 
         virtual const IVirtualTexturePageResource::Extent& sparseDataPageRes() const override { return mSparsePageRes; }
-
-        virtual SLANG_NO_THROW std::array<uint32_t, 16>& mipBases() override { return mMipBases; }
-
-        virtual SLANG_NO_THROW const std::array<uint32_t, 16>& getMipBases() const override { return mMipBases; }
 
         virtual SLANG_NO_THROW Result SLANG_MCALL getNativeResourceHandle(InteropHandle* outHandle) override;
 

@@ -512,6 +512,38 @@ enum class ResourceState
   _Count
 };
 
+inline std::string to_string(ResourceState state) {
+#define rs2s(t_) case ResourceState::t_: return #t_;
+    switch (state) {
+		rs2s(Undefined);
+		rs2s(General);
+		rs2s(PreInitialized);
+		rs2s(VertexBuffer);
+		rs2s(IndexBuffer);
+		rs2s(ConstantBuffer);
+		rs2s(StreamOutput);
+		rs2s(ShaderResource);
+		rs2s(UnorderedAccess);
+		rs2s(RenderTarget);
+		rs2s(DepthRead);
+		rs2s(DepthWrite);
+		rs2s(Present);
+		rs2s(IndirectArgument);
+		rs2s(CopySource);
+		rs2s(CopyDestination);
+		rs2s(ResolveSource);
+		rs2s(ResolveDestination);
+		rs2s(AccelerationStructure);
+		rs2s(AccelerationStructureBuildInput);
+		rs2s(PixelShaderResource);
+		rs2s(NonPixelShaderResource);
+        default:
+            assert(false);
+            return "Unknown";
+    }
+#undef rs2s
+}
+
 struct ResourceStateSet
 {
 public:
@@ -699,7 +731,7 @@ struct SubresourceRange
 	GfxCount layerCount; // For cube maps, this is a multiple of 6.
 };
 
-class IVirtualTexturePageResource {
+class IVirtualTexturePageResource: public ISlangUnknown {
 	public:
 		struct Offset {
 			int32_t x = 0;
@@ -707,6 +739,8 @@ class IVirtualTexturePageResource {
 			int32_t z = 0;
 			Offset() = default;
 			Offset(int32_t _x, int32_t _y, int32_t _z) :x(_x), y(_y), z(_z) {}
+
+			bool operator==(const Offset& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z; }
 		};
 
 		struct Extent {
@@ -716,15 +750,16 @@ class IVirtualTexturePageResource {
 
 			Extent() = default;
 			Extent(uint32_t _w, uint32_t _h, uint32_t _d) :width(_w), height(_h), depth(_d) {}
+
+			bool operator==(const Extent& rhs) const { return width == rhs.width && height == rhs.height && depth == rhs.depth; }
 		};
 
 	public:
 		IVirtualTexturePageResource(const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer): 
-			mOffset(offset), mExtent(extent), mMipLevel(mipLevel), mLayer(layer), mIsResident(false) {};
+			mOffset(offset), mExtent(extent), mMipLevel(mipLevel), mLayer(layer) {};
 
 		uint32_t getMipLevel() const { return mMipLevel; }
 		uint32_t getLayer() const { return mLayer; }
-		uint32_t getIndex() const { return mIndex; }
 
 		uint32_t getWidth() const { return mExtent.width; }
 		uint32_t getHeight() const { return mExtent.height; }
@@ -733,22 +768,19 @@ class IVirtualTexturePageResource {
 		const Offset& getOffset() const { return mOffset; }
 		const Extent& getExtent() const { return mExtent; }
 
-		bool isResident() const { return mIsResident; }
+		virtual bool isResident() const = 0;
 
-		virtual bool allocate() = 0;
-		virtual void release() = 0;
+		virtual bool allocateMemory() = 0;
+		virtual void releaseMemory() = 0;
 
 		virtual size_t getUsedMemSize() const = 0;
 
 	protected:
-		bool mIsResident = false;
-
 		Offset mOffset;
         Extent mExtent;
 		
 		uint32_t mMipLevel;		// Mip level that this page belongs to
         uint32_t mLayer;        // Array layer that this page belongs to
-        uint32_t mIndex;        // Texture related page index 
 };
 
 class ITextureResource: public IResource
@@ -846,10 +878,6 @@ public:
 	virtual SLANG_NO_THROW Desc* SLANG_MCALL getDesc() = 0;
 
 	virtual SLANG_NO_THROW GfxCount getArraySize() const = 0;
-
-	virtual SLANG_NO_THROW std::array<uint32_t, 16>& mipBases() = 0;
-
-	virtual SLANG_NO_THROW const std::array<uint32_t, 16>& getMipBases() const = 0;
 
 	MipTailInfo& mipTailInfo() { return mMipTailInfo; }
 
@@ -2439,20 +2467,21 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
 			IVirtualTexturePageResource::Offset offset, 
-			IVirtualTexturePageResource::Extent extent, 
-			uint32_t mipLevel, uint32_t layer, 
+			IVirtualTexturePageResource::Extent extent,
+			uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
 			IVirtualTexturePageResource** outResource) = 0;
 
 		inline SLANG_NO_THROW ComPtr<IVirtualTexturePageResource> createVirtualTexturePageResource(
 			IVirtualTexturePageResource::Offset offset, 
-			IVirtualTexturePageResource::Extent extent, 
-			uint32_t mipLevel, uint32_t layer) {
+			IVirtualTexturePageResource::Extent extent,
+			uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits) 
+		{
 			ComPtr<IVirtualTexturePageResource> resource;
-			SLANG_RETURN_NULL_ON_FAIL(createVirtualTexturePageResource(offset, extent, mipLevel, layer, resource.writeRef()));
+			SLANG_RETURN_NULL_ON_FAIL(createVirtualTexturePageResource(offset, extent, mipLevel, layer, size, memoryTypeBits, resource.writeRef()));
 			return resource;
 		}
 
-		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) = 0;
+		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) = 0;
 

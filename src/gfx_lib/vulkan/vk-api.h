@@ -447,6 +447,8 @@ struct VulkanApi
         /// Given queue required flags, finds a queue
     int findQueue(VkQueueFlags reqFlags) const;
 
+    VmaAllocator& vmaAllocator() { return mVmaAllocator; }
+
     const VulkanModule* m_module = nullptr;               ///< Module this was all loaded from
     VkInstance m_instance = VK_NULL_HANDLE;
     VkDevice m_device = VK_NULL_HANDLE;

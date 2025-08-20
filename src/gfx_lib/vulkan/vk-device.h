@@ -55,11 +55,11 @@ public:
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
         IVirtualTexturePageResource::Offset offset, 
-        IVirtualTexturePageResource::Extent extent, 
-        uint32_t mipLevel, uint32_t layer, 
+        IVirtualTexturePageResource::Extent extent,
+        uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
         IVirtualTexturePageResource** outResource) override;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource>& pages) override;
+	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) override;
 

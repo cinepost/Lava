@@ -31,34 +31,70 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		/** Create a new vertex buffer layout object.
 			\return New object, or throws an exception on error.
 		*/
-		static SharedPtr create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+		static SharedPtr create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
 
 		~VirtualTexturePage();
 
-		bool isResident() const { return mpVirtualTexturePageResource->isResident(); }
-		bool allocate() { return mpVirtualTexturePageResource->allocate(); }
-		void release() { mpVirtualTexturePageResource->release(); }
+		bool isResident() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->isResident(); 
+		}
+		
+		bool allocate() { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->allocateMemory(); 
+		}
+		
+		void release() { 
+			assert(mpVirtualTexturePageResource); 
+			mpVirtualTexturePageResource->releaseMemory(); 
+		}
 
 		const std::shared_ptr<Device>& device() const { return mpDevice; }
 
-		gfx::IVirtualTexturePageResource::Offset offsetGFX() const { return mpVirtualTexturePageResource->getOffset(); }
-		gfx::IVirtualTexturePageResource::Extent extentGFX() const { return mpVirtualTexturePageResource->getExtent(); }
+		gfx::IVirtualTexturePageResource::Offset offsetGFX() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getOffset(); 
+		}
 
-		size_t getUsedMemSize() const { return mpVirtualTexturePageResource->getUsedMemSize(); }
+		gfx::IVirtualTexturePageResource::Extent extentGFX() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getExtent(); 
+		}
 
-		uint32_t width() const { return mpVirtualTexturePageResource->getWidth(); }
-		uint32_t height() const { return mpVirtualTexturePageResource->getHeight(); }
-		uint32_t depth() const { return mpVirtualTexturePageResource->getDepth(); }
+		size_t getUsedMemSize() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getUsedMemSize(); 
+		}
 
-		uint32_t mipLevel() const { return mpVirtualTexturePageResource->getMipLevel(); }
-		uint32_t index() const { return mpVirtualTexturePageResource->getIndex(); }
+		uint32_t width() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getWidth(); 
+		}
+		
+		uint32_t height() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getHeight(); 
+		}
+		
+		uint32_t depth() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getDepth(); 
+		}
+
+		uint32_t mipLevel() const { 
+			assert(mpVirtualTexturePageResource); 
+			return mpVirtualTexturePageResource->getMipLevel(); 
+		}
+		
+		uint32_t index() const { return mIndex; }
 
 		//uint32_t id() const { return mID; }
 
 		const std::shared_ptr<Texture>& texture() const { return mpTexture; }
 
   	public:
-  		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+  		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
 
  	protected:
 		const std::shared_ptr<Device>   mpDevice;
@@ -66,7 +102,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		Slang::ComPtr<gfx::IVirtualTexturePageResource> mpVirtualTexturePageResource;
 
-		uint32_t mID;
+		uint32_t mIndex;
 
 		friend class Texture;
 		friend class TextureManager;

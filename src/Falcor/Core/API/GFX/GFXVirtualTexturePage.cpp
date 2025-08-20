@@ -9,12 +9,16 @@
 
 namespace Falcor {
 
-VirtualTexturePage::VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer): mpDevice(pTexture->device()), mpTexture(pTexture), mMipLevel(mipLevel), mLayer(layer) {
+VirtualTexturePage::VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index, uint32_t size, uint32_t memoryTypeBits): 
+	mpDevice(pTexture->device()), 
+	mpTexture(pTexture), 
+	mIndex(index) 
+{
     // create resource
-	Slang::ComPtr<gfx::IVirtualTexturePageResource> texturePageResource = mpDevice->getGfxDevice()->createVirtualTexturePageResource(this, offset, extent, mipLevel, layer);
-	assert(texturePageResource);
-
-	mpVirtualTexturePageResource = texturePageResource;
+	mpVirtualTexturePageResource = 
+		mpDevice->getGfxDevice()->createVirtualTexturePageResource(this, offset, extent, mipLevel, layer, size, memoryTypeBits);
+	
+	assert(mpVirtualTexturePageResource);
 }
 
 VirtualTexturePage::~VirtualTexturePage() {
