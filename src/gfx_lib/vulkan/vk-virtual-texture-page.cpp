@@ -81,6 +81,5 @@ void VirtualTexturePageResourceImpl::releaseMemory() {
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
 
-
 } // namespace vk
 } // namespace gfx

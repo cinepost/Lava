@@ -33,6 +33,7 @@ const Slang::Guid GfxGUID::IID_ISamplerState = SLANG_UUID_ISamplerState;
 const Slang::Guid GfxGUID::IID_IResource = SLANG_UUID_IResource;
 const Slang::Guid GfxGUID::IID_IBufferResource = SLANG_UUID_IBufferResource;
 const Slang::Guid GfxGUID::IID_ITextureResource = SLANG_UUID_ITextureResource;
+const Slang::Guid GfxGUID::IID_ITexturePageResource = SLANG_UUID_IVirtualTexturePageResource;
 const Slang::Guid GfxGUID::IID_IDevice = SLANG_UUID_IDevice;
 const Slang::Guid GfxGUID::IID_IShaderCache = SLANG_UUID_IShaderCache;
 const Slang::Guid GfxGUID::IID_IShaderObject = SLANG_UUID_IShaderObject;
@@ -89,6 +90,12 @@ IFence* FenceBase::getInterface(const Slang::Guid& guid)
 {
     if (guid == GfxGUID::IID_ISlangUnknown || guid == GfxGUID::IID_IFence)
         return static_cast<IFence*>(this);
+    return nullptr;
+}
+
+IVirtualTexturePageResource* VirtualTexturePageResource::getInterface(const Slang::Guid& guid) {
+    if (guid == GfxGUID::IID_ISlangUnknown || guid == GfxGUID::IID_ITexturePageResource)
+        return static_cast<IVirtualTexturePageResource*>(this);
     return nullptr;
 }
 

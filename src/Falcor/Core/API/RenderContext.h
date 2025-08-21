@@ -240,15 +240,21 @@ class dlldecl RenderContext : public ComputeContext {
 private:
     RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
-    Falcor::BlitContext& getBlitContext();
-    Falcor::BlitToBufferContext& getBlitToBufferContext();
+    //Falcor::BlitContext& getBlitContext();
+    //Falcor::BlitToBufferContext& getBlitToBufferContext();
 
 #if defined(FALCOR_VK)
         bool applyGraphicsVars(ProgramVars* pVars, RootSignature* pRootSignature);
         bool prepareForDraw(GraphicsState* pState, ProgramVars* pVars);
 #endif
-        StateBindFlags mBindFlags = StateBindFlags::All;
-        ProgramVars* mpLastBoundGraphicsVars = nullptr;
+
+    std::unique_ptr<BlitContext> mpBlitContext;
+    std::unique_ptr<BlitToBufferContext> mpBlitToBufferContext;
+        
+    StateBindFlags mBindFlags = StateBindFlags::All;
+    ProgramVars* mpLastBoundGraphicsVars = nullptr;
+
+
 };
 
 enum_class_operators(RenderContext::StateBindFlags);

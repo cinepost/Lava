@@ -32,363 +32,334 @@
 #include "GFXFormats.h"
 #include "GFXRtAccelerationStructure.h"
 
-gfx::IRenderCommandEncoder* gEncoder = nullptr;
-
 namespace Falcor {
 
-    namespace {
+namespace {
 
-        constexpr void checkViewportScissorBinaryCompatiblity() {
-            static_assert(offsetof(gfx::Viewport, originX) == offsetof(GraphicsState::Viewport, originX));
-            static_assert(offsetof(gfx::Viewport, originY) == offsetof(GraphicsState::Viewport, originY));
-            static_assert(offsetof(gfx::Viewport, extentX) == offsetof(GraphicsState::Viewport, width));
-            static_assert(offsetof(gfx::Viewport, extentY) == offsetof(GraphicsState::Viewport, height));
-            static_assert(offsetof(gfx::Viewport, minZ) == offsetof(GraphicsState::Viewport, minDepth));
-            static_assert(offsetof(gfx::Viewport, maxZ) == offsetof(GraphicsState::Viewport, maxDepth));
+constexpr void checkViewportScissorBinaryCompatiblity() {
+    static_assert(offsetof(gfx::Viewport, originX) == offsetof(GraphicsState::Viewport, originX));
+    static_assert(offsetof(gfx::Viewport, originY) == offsetof(GraphicsState::Viewport, originY));
+    static_assert(offsetof(gfx::Viewport, extentX) == offsetof(GraphicsState::Viewport, width));
+    static_assert(offsetof(gfx::Viewport, extentY) == offsetof(GraphicsState::Viewport, height));
+    static_assert(offsetof(gfx::Viewport, minZ) == offsetof(GraphicsState::Viewport, minDepth));
+    static_assert(offsetof(gfx::Viewport, maxZ) == offsetof(GraphicsState::Viewport, maxDepth));
 
-            static_assert(offsetof(gfx::ScissorRect, minX) == offsetof(GraphicsState::Scissor, left));
-            static_assert(offsetof(gfx::ScissorRect, minY) == offsetof(GraphicsState::Scissor, top));
-            static_assert(offsetof(gfx::ScissorRect, maxX) == offsetof(GraphicsState::Scissor, right));
-            static_assert(offsetof(gfx::ScissorRect, maxY) == offsetof(GraphicsState::Scissor, bottom));
-        }
+    static_assert(offsetof(gfx::ScissorRect, minX) == offsetof(GraphicsState::Scissor, left));
+    static_assert(offsetof(gfx::ScissorRect, minY) == offsetof(GraphicsState::Scissor, top));
+    static_assert(offsetof(gfx::ScissorRect, maxX) == offsetof(GraphicsState::Scissor, right));
+    static_assert(offsetof(gfx::ScissorRect, maxY) == offsetof(GraphicsState::Scissor, bottom));
+}
 
-        void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo) {
-            if (pFbo) {
-                for (uint32_t i = 0; i < pFbo->getMaxColorTargetCount(); i++) {
-                    auto pTexture = pFbo->getColorTexture(i);
-                    if (pTexture) {
-                        auto pRTV = pFbo->getRenderTargetView(i);
-                        pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget, &pRTV->getViewInfo());
-                    }
-                }
-
-                auto& pTexture = pFbo->getDepthStencilTexture();
-                
-                if (pTexture) {
-                    auto pDSV = pFbo->getDepthStencilView();
-                    pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil, &pDSV->getViewInfo());
-                }
+void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo) {
+    if (pFbo) {
+        for (uint32_t i = 0; i < pFbo->getMaxColorTargetCount(); i++) {
+            auto pTexture = pFbo->getColorTexture(i);
+            if (pTexture) {
+                auto pRTV = pFbo->getRenderTargetView(i);
+                pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget, &pRTV->getViewInfo());
             }
         }
 
-        gfx::PrimitiveTopology getGFXPrimitiveTopology(Vao::Topology topology) {
-            switch (topology) {
-                case Vao::Topology::Undefined:
-                    return gfx::PrimitiveTopology::TriangleList;
-                case Vao::Topology::PointList:
-                    return gfx::PrimitiveTopology::PointList;
-                case Vao::Topology::LineList:
-                    return gfx::PrimitiveTopology::LineList;
-                case Vao::Topology::LineStrip:
-                    return gfx::PrimitiveTopology::LineStrip;
-                case Vao::Topology::TriangleList:
-                    return gfx::PrimitiveTopology::TriangleList;
-                case Vao::Topology::TriangleStrip:
-                    return gfx::PrimitiveTopology::TriangleStrip;
-                default:
-                    assert(false);
-                    return gfx::PrimitiveTopology::TriangleList;
-            }
-        }
-
-        gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars) {
-            static GraphicsStateObject* spLastGso = nullptr;
-
-            // Insert barriers for bound resources.
-            pVars->prepareDescriptorSets(pContext);
-
-            // Insert barriers for render targets.
-            ensureFboAttachmentResourceStates(pContext, pState->getFbo().get());
-
-            // Insert barriers for vertex/index buffers.
-            auto pGso = pState->getGSO(pVars).get();
-            if (pGso != spLastGso) {
-                auto pVao = pState->getVao().get();
-                for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
-                    auto vertexBuffer = pVao->getVertexBuffer(i).get();
-                    pContext->resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
-                }
-                if (pVao->getIndexBuffer()) {
-                    auto indexBuffer = pVao->getIndexBuffer().get();
-                    pContext->resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
-                }
-            }
-
-            bool isNewEncoder = false;
-            auto encoder = pContext->getLowLevelData()->getApiData()->getRenderCommandEncoder(
-                pGso->getGFXRenderPassLayout(),
-                pState->getFbo() ? pState->getFbo()->getApiHandle() : nullptr,
-                isNewEncoder);
-
-            FALCOR_GFX_CALL(encoder->bindPipelineWithRootObject(pGso->getApiHandle(), pVars->getShaderObject()));
-
-            if (isNewEncoder || pGso != spLastGso) {
-                spLastGso = pGso;
-                auto pVao = pState->getVao().get();
-                auto pVertexLayout = pVao->getVertexLayout().get();
-                
-                for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
-                    auto bufferLayout = pVertexLayout->getBufferLayout(i);
-                    auto vertexBuffer = pVao->getVertexBuffer(i).get();
-                    encoder->setVertexBuffer(
-                        i,
-                        static_cast<gfx::IBufferResource*>(pVao->getVertexBuffer(i)->getApiHandle().get()),
-                        bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset());
-                }
-
-                if (pVao->getIndexBuffer()) {
-                    auto indexBuffer = pVao->getIndexBuffer().get();
-                    encoder->setIndexBuffer(
-                        static_cast<gfx::IBufferResource*>(indexBuffer->getApiHandle().get()),
-                        getGFXFormat(pVao->getIndexBufferFormat()),
-                        (uint32_t)indexBuffer->getGpuAddressOffset());
-                }
-                
-                encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
-                encoder->setViewports((uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data()));
-                encoder->setScissorRects((uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data()));
-
-                /*
-                auto pFbo = pState->getFbo().get();
-                if (pFbo && pFbo) {
-                    const std::vector<Fbo::SamplePosition>& samplePositions = pFbo->getSamplePositions();
-                    uint32_t pixelCount = pFbo->getSamplePositionsPixelCount();
-                    uint32_t samplesPerPixel = pFbo->getSamplePositionsPerPixel();
-                
-                    assert(samplePositions.size() == pixelCount * samplesPerPixel);
-                    if(pixelCount > 0 && samplesPerPixel > 0) {
-                        if(samplePositions.size() == pixelCount * samplesPerPixel) {
-                            LLOG_DBG << "!!! Setting sample positions...";
-                            if(encoder->setSamplePositions(samplesPerPixel, pixelCount, reinterpret_cast<const gfx::SamplePosition*>(samplePositions.data())) == SLANG_E_NOT_AVAILABLE) {
-                                LLOG_ERR << "Sample positions not available!";
-                            } else {
-                                LLOG_DBG << "!!! Sample positions set ! :)";
-                            }
-                        } else {
-                            LLOG_ERR << "Unable to set sample positions! Wrong pixelCount " << pixelCount << " and samplesPerPixel " << samplesPerPixel << " combination!";
-                        }
-                    }
-                }
-                */
-            }
-
-            return encoder;
-        }
-
-        gfx::AccelerationStructureCopyMode getGFXAcclerationStructureCopyMode(RenderContext::RtAccelerationStructureCopyMode mode) {
-            switch (mode) {
-                case RenderContext::RtAccelerationStructureCopyMode::Clone:
-                    return gfx::AccelerationStructureCopyMode::Clone;
-                case RenderContext::RtAccelerationStructureCopyMode::Compact:
-                    return gfx::AccelerationStructureCopyMode::Compact;
-                default:
-                    assert(false);
-                    return gfx::AccelerationStructureCopyMode::Clone;
-            }
-        }
-
-        struct RenderContextApiData {
-            size_t refCount = 0;
-            BlitContext blitData;
-            BlitToBufferContext blitToBufferData;
-
-            static void init(Device::SharedPtr pDevice);
-            static void release();
-        };
-
-        RenderContextApiData sApiData;
-
-        void RenderContextApiData::init(Device::SharedPtr pDevice) {
-            sApiData.blitData.init(pDevice);
-            sApiData.blitToBufferData.init(pDevice);
-            sApiData.refCount++;
-        }
-
-        void RenderContextApiData::release() {
-            sApiData.refCount--;
-            if (sApiData.refCount == 0) {
-                sApiData.blitData.release();
-                sApiData.blitToBufferData.release();
-                sApiData = {};
-            }
-        }
-    }
-
-    RenderContext::RenderContext(Device::SharedPtr pDevice, CommandQueueHandle queue): ComputeContext(pDevice, LowLevelContextData::CommandQueueType::Direct, queue) {
-        RenderContextApiData::init(pDevice);
-    }
-
-    RenderContext::~RenderContext() {
-        RenderContextApiData::release();
-    }
-
-    BlitContext& RenderContext::getBlitContext() { return sApiData.blitData; }
-    BlitToBufferContext& RenderContext::getBlitToBufferContext() { return sApiData.blitToBufferData; }
-
-    void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
-        resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
-        gfx::ClearValue clearValue = {};
-        memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
-        auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-        encoder->clearResourceView(pRtv->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
-        resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
-        gfx::ClearValue clearValue = {};
-        clearValue.depthStencil.depth = depth;
-        clearValue.depthStencil.stencil = stencil;
-        auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-        gfx::ClearResourceViewFlags::Enum flags = gfx::ClearResourceViewFlags::None;
-        if (clearDepth) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearDepth);
-        if (clearStencil) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearStencil);
-        encoder->clearResourceView(pDsv->getApiHandle(), &clearValue, flags);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->draw(vertexCount, startVertexLocation);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
-        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->drawIndirect(
-            maxCommandCount,
-            static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
-            argBufferOffset,
-            pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
-            countBufferOffset);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
-        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-        auto encoder = drawCallCommon(this, pState, pVars);
+        auto& pTexture = pFbo->getDepthStencilTexture();
         
-        //if(!gEncoder) {
-        //    gEncoder = drawCallCommon(this, pState, pVars);
-        //}
-        
-        encoder->drawIndexedIndirect(
-            maxCommandCount,
-            static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
-            argBufferOffset);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
-        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-        auto encoder = drawCallCommon(this, pState, pVars);
-        encoder->drawIndexedIndirectCount(
-            maxCommandCount,
-            static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
-            argBufferOffset,
-            pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
-            countBufferOffset);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
-        auto pRtso = pProgram->getRtso(pVars);
-
-        pVars->prepareShaderTable(this, pRtso.get());
-        pVars->prepareDescriptorSets(this);
-
-        auto rtEncoder = mpLowLevelData->getApiData()->getRayTracingCommandEncoder();
-        FALCOR_GFX_CALL(rtEncoder->bindPipelineWithRootObject(pRtso->getApiHandle(), pVars->getShaderObject()));
-        rtEncoder->dispatchRays(0, pVars->getShaderTable(), width, height, depth);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource) {
-        auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-        gfx::SubresourceRange srcRange = {};
-        srcRange.baseArrayLayer = pSrc->getSubresourceArraySlice(srcSubresource);
-        srcRange.layerCount = 1;
-        srcRange.mipLevel = pSrc->getSubresourceMipLevel(srcSubresource);
-        srcRange.mipLevelCount = 1;
-
-        gfx::SubresourceRange dstRange = {};
-        dstRange.baseArrayLayer = pDst->getSubresourceArraySlice(dstSubresource);
-        dstRange.layerCount = 1;
-        dstRange.mipLevel = pDst->getSubresourceMipLevel(dstSubresource);
-        dstRange.mipLevelCount = 1;
-
-        resourceEncoder->resolveResource(
-            static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get()),
-            gfx::ResourceState::ResolveSource,
-            srcRange,
-            static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get()),
-            gfx::ResourceState::ResolveDestination,
-            dstRange);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst) {
-        resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
-        resourceBarrier(pDst.get(), Resource::State::ResolveDest);
-
-        auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-
-        gfx::SubresourceRange srcRange = {};
-        gfx::SubresourceRange dstRange = {};
-
-        resourceEncoder->resolveResource(
-            static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get()),
-            gfx::ResourceState::ResolveSource,
-            srcRange,
-            static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get()),
-            gfx::ResourceState::ResolveDestination,
-            dstRange);
-        mCommandsPending = true;
-    }
-
-    void RenderContext::buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs) {
-        GFXAccelerationStructureBuildInputsTranslator translator = {};
-
-        gfx::IAccelerationStructure::BuildDesc buildDesc = {};
-        buildDesc.dest = desc.dest->getGfxAccelerationStructure();
-        buildDesc.scratchData = desc.scratchData;
-        buildDesc.source = desc.source ? desc.source->getGfxAccelerationStructure() : nullptr;
-        buildDesc.inputs = translator.translate(desc.inputs);
-
-        std::vector<gfx::AccelerationStructureQueryDesc> queryDescs(postBuildInfoCount);
-        for (uint32_t i = 0; i < postBuildInfoCount; i++) {
-            queryDescs[i].firstQueryIndex = pPostBuildInfoDescs[i].index;
-            queryDescs[i].queryPool = pPostBuildInfoDescs[i].pool->getGFXQueryPool();
-            queryDescs[i].queryType = getGFXAccelerationStructurePostBuildQueryType(pPostBuildInfoDescs[i].type);
+        if (pTexture) {
+            auto pDSV = pFbo->getDepthStencilView();
+            pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil, &pDSV->getViewInfo());
         }
-        auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
-        rtEncoder->buildAccelerationStructure(buildDesc, (int)postBuildInfoCount, queryDescs.data());
-        mCommandsPending = true;
+    }
+}
+
+gfx::PrimitiveTopology getGFXPrimitiveTopology(Vao::Topology topology) {
+    switch (topology) {
+        case Vao::Topology::Undefined:
+            return gfx::PrimitiveTopology::TriangleList;
+        case Vao::Topology::PointList:
+            return gfx::PrimitiveTopology::PointList;
+        case Vao::Topology::LineList:
+            return gfx::PrimitiveTopology::LineList;
+        case Vao::Topology::LineStrip:
+            return gfx::PrimitiveTopology::LineStrip;
+        case Vao::Topology::TriangleList:
+            return gfx::PrimitiveTopology::TriangleList;
+        case Vao::Topology::TriangleStrip:
+            return gfx::PrimitiveTopology::TriangleStrip;
+        default:
+            assert(false);
+            return gfx::PrimitiveTopology::TriangleList;
+    }
+}
+
+gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, ProgramVars* pVars) {
+    static GraphicsStateObject* spLastGso = nullptr;
+
+    // Insert barriers for bound resources.
+    pVars->prepareDescriptorSets(pContext);
+
+    // Insert barriers for render targets.
+    ensureFboAttachmentResourceStates(pContext, pState->getFbo().get());
+
+    // Insert barriers for vertex/index buffers.
+    auto pGso = pState->getGSO(pVars).get();
+    if (pGso != spLastGso) {
+        auto pVao = pState->getVao().get();
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            pContext->resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
+        }
+        if (pVao->getIndexBuffer()) {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            pContext->resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
+        }
     }
 
-    void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode) {
-        auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
-        rtEncoder->copyAccelerationStructure(dest->getGfxAccelerationStructure(), source->getGfxAccelerationStructure(), getGFXAcclerationStructureCopyMode(mode));
-        mCommandsPending = true;
+    bool isNewEncoder = false;
+    auto encoder = pContext->getLowLevelData()->getApiData()->getRenderCommandEncoder(
+        pGso->getGFXRenderPassLayout(),
+        pState->getFbo() ? pState->getFbo()->getApiHandle() : nullptr,
+        isNewEncoder);
+
+    FALCOR_GFX_CALL(encoder->bindPipelineWithRootObject(pGso->getApiHandle(), pVars->getShaderObject()));
+
+    if (isNewEncoder || pGso != spLastGso) {
+        spLastGso = pGso;
+        auto pVao = pState->getVao().get();
+        auto pVertexLayout = pVao->getVertexLayout().get();
+        
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
+            auto bufferLayout = pVertexLayout->getBufferLayout(i);
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            encoder->setVertexBuffer(
+                i,
+                static_cast<gfx::IBufferResource*>(pVao->getVertexBuffer(i)->getApiHandle().get()),
+                bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset());
+        }
+
+        if (pVao->getIndexBuffer()) {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            encoder->setIndexBuffer(
+                static_cast<gfx::IBufferResource*>(indexBuffer->getApiHandle().get()),
+                getGFXFormat(pVao->getIndexBufferFormat()),
+                (uint32_t)indexBuffer->getGpuAddressOffset());
+        }
+        
+        encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
+        encoder->setViewports((uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data()));
+        encoder->setScissorRects((uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data()));
+
+        /*
+        auto pFbo = pState->getFbo().get();
+        if (pFbo && pFbo) {
+            const std::vector<Fbo::SamplePosition>& samplePositions = pFbo->getSamplePositions();
+            uint32_t pixelCount = pFbo->getSamplePositionsPixelCount();
+            uint32_t samplesPerPixel = pFbo->getSamplePositionsPerPixel();
+        
+            assert(samplePositions.size() == pixelCount * samplesPerPixel);
+            if(pixelCount > 0 && samplesPerPixel > 0) {
+                if(samplePositions.size() == pixelCount * samplesPerPixel) {
+                    LLOG_DBG << "!!! Setting sample positions...";
+                    if(encoder->setSamplePositions(samplesPerPixel, pixelCount, reinterpret_cast<const gfx::SamplePosition*>(samplePositions.data())) == SLANG_E_NOT_AVAILABLE) {
+                        LLOG_ERR << "Sample positions not available!";
+                    } else {
+                        LLOG_DBG << "!!! Sample positions set ! :)";
+                    }
+                } else {
+                    LLOG_ERR << "Unable to set sample positions! Wrong pixelCount " << pixelCount << " and samplesPerPixel " << samplesPerPixel << " combination!";
+                }
+            }
+        }
+        */
     }
+
+    return encoder;
+}
+
+gfx::AccelerationStructureCopyMode getGFXAcclerationStructureCopyMode(RenderContext::RtAccelerationStructureCopyMode mode) {
+    switch (mode) {
+        case RenderContext::RtAccelerationStructureCopyMode::Clone:
+            return gfx::AccelerationStructureCopyMode::Clone;
+        case RenderContext::RtAccelerationStructureCopyMode::Compact:
+            return gfx::AccelerationStructureCopyMode::Compact;
+        default:
+            assert(false);
+            return gfx::AccelerationStructureCopyMode::Clone;
+    }
+}
+
+} // namespace
+
+RenderContext::RenderContext(Device::SharedPtr pDevice, CommandQueueHandle queue): ComputeContext(pDevice, LowLevelContextData::CommandQueueType::Direct, queue) {
+    //RenderContextApiData::init(pDevice);
+    mpBlitContext = std::make_unique<BlitContext>(pDevice);
+    mpBlitToBufferContext = std::make_unique<BlitToBufferContext>(pDevice);
+}
+
+RenderContext::~RenderContext() {
+    //RenderContextApiData::release();
+}
+
+//BlitContext& RenderContext::getBlitContext() { return sApiData.blitData; }
+//BlitToBufferContext& RenderContext::getBlitToBufferContext() { return sApiData.blitToBufferData; }
+
+void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
+    resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
+    gfx::ClearValue clearValue = {};
+    memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
+    auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    encoder->clearResourceView(pRtv->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
+    mCommandsPending = true;
+}
+
+void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
+    resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
+    gfx::ClearValue clearValue = {};
+    clearValue.depthStencil.depth = depth;
+    clearValue.depthStencil.stencil = stencil;
+    auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    gfx::ClearResourceViewFlags::Enum flags = gfx::ClearResourceViewFlags::None;
+    if (clearDepth) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearDepth);
+    if (clearStencil) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearStencil);
+    encoder->clearResourceView(pDsv->getApiHandle(), &clearValue, flags);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->draw(vertexCount, startVertexLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->drawIndirect(
+        maxCommandCount,
+        static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
+        argBufferOffset,
+        pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
+        countBufferOffset);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+    auto encoder = drawCallCommon(this, pState, pVars);
+    
+    encoder->drawIndexedIndirect(
+        maxCommandCount,
+        static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
+        argBufferOffset);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+    auto encoder = drawCallCommon(this, pState, pVars);
+    encoder->drawIndexedIndirectCount(
+        maxCommandCount,
+        static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
+        argBufferOffset,
+        pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
+        countBufferOffset);
+    mCommandsPending = true;
+}
+
+void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
+    auto pRtso = pProgram->getRtso(pVars);
+
+    pVars->prepareShaderTable(this, pRtso.get());
+    pVars->prepareDescriptorSets(this);
+
+    auto rtEncoder = mpLowLevelData->getApiData()->getRayTracingCommandEncoder();
+    FALCOR_GFX_CALL(rtEncoder->bindPipelineWithRootObject(pRtso->getApiHandle(), pVars->getShaderObject()));
+    rtEncoder->dispatchRays(0, pVars->getShaderTable(), width, height, depth);
+    mCommandsPending = true;
+}
+
+void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource) {
+    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    gfx::SubresourceRange srcRange = {};
+    srcRange.baseArrayLayer = pSrc->getSubresourceArraySlice(srcSubresource);
+    srcRange.layerCount = 1;
+    srcRange.mipLevel = pSrc->getSubresourceMipLevel(srcSubresource);
+    srcRange.mipLevelCount = 1;
+
+    gfx::SubresourceRange dstRange = {};
+    dstRange.baseArrayLayer = pDst->getSubresourceArraySlice(dstSubresource);
+    dstRange.layerCount = 1;
+    dstRange.mipLevel = pDst->getSubresourceMipLevel(dstSubresource);
+    dstRange.mipLevelCount = 1;
+
+    resourceEncoder->resolveResource(
+        static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get()),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get()),
+        gfx::ResourceState::ResolveDestination,
+        dstRange);
+    mCommandsPending = true;
+}
+
+void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst) {
+    resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+    resourceBarrier(pDst.get(), Resource::State::ResolveDest);
+
+    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+
+    gfx::SubresourceRange srcRange = {};
+    gfx::SubresourceRange dstRange = {};
+
+    resourceEncoder->resolveResource(
+        static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get()),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get()),
+        gfx::ResourceState::ResolveDestination,
+        dstRange);
+    mCommandsPending = true;
+}
+
+void RenderContext::buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs) {
+    GFXAccelerationStructureBuildInputsTranslator translator = {};
+
+    gfx::IAccelerationStructure::BuildDesc buildDesc = {};
+    buildDesc.dest = desc.dest->getGfxAccelerationStructure();
+    buildDesc.scratchData = desc.scratchData;
+    buildDesc.source = desc.source ? desc.source->getGfxAccelerationStructure() : nullptr;
+    buildDesc.inputs = translator.translate(desc.inputs);
+
+    std::vector<gfx::AccelerationStructureQueryDesc> queryDescs(postBuildInfoCount);
+    for (uint32_t i = 0; i < postBuildInfoCount; i++) {
+        queryDescs[i].firstQueryIndex = pPostBuildInfoDescs[i].index;
+        queryDescs[i].queryPool = pPostBuildInfoDescs[i].pool->getGFXQueryPool();
+        queryDescs[i].queryType = getGFXAccelerationStructurePostBuildQueryType(pPostBuildInfoDescs[i].type);
+    }
+    auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
+    rtEncoder->buildAccelerationStructure(buildDesc, (int)postBuildInfoCount, queryDescs.data());
+    mCommandsPending = true;
+}
+
+void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode) {
+    auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
+    rtEncoder->copyAccelerationStructure(dest->getGfxAccelerationStructure(), source->getGfxAccelerationStructure(), getGFXAcclerationStructureCopyMode(mode));
+    mCommandsPending = true;
+}
 
 }  // namespace Falcor

@@ -30,6 +30,7 @@ struct GfxGUID
     static const Slang::Guid IID_IResource;
     static const Slang::Guid IID_IBufferResource;
     static const Slang::Guid IID_ITextureResource;
+    static const Slang::Guid IID_ITexturePageResource;
     static const Slang::Guid IID_IInputLayout;
     static const Slang::Guid IID_IDevice;
     static const Slang::Guid IID_IShaderCache;

@@ -44,7 +44,7 @@ public:
         uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
         IVirtualTexturePageResource** outResource) override;
 
-    virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) override;
+    virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) override;
 
     virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) override;
 
@@ -175,6 +175,9 @@ public:
         uint64_t* values,
         bool waitForAll,
         uint64_t timeout) override;
+
+    virtual SLANG_NO_THROW Result SLANG_MCALL bindSparseResources(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) override;
+
     virtual SLANG_NO_THROW Result SLANG_MCALL getTextureAllocationInfo(
         const ITextureResource::Desc& desc, size_t* outSize, size_t* outAlignment) override;
     

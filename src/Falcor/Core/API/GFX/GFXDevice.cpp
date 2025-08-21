@@ -302,8 +302,11 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 	FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	std::shared_ptr<Falcor::Texture> pTexture;
-	apiHandle = mGfxDevice->createTextureResource(desc, pTexture.get(), nullptr);
+	
+	//std::shared_ptr<Falcor::Texture> pTexture;
+	//apiHandle = mGfxDevice->createTextureResource(desc, pTexture.get(), nullptr);
+	apiHandle = mGfxDevice->createTextureResource(desc, nullptr);
+
 	FALCOR_ASSERT(apiHandle);
 
 	return true;

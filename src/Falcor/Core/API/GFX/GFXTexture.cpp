@@ -140,30 +140,30 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	assert(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getGfxDevice()->createTextureResource(desc, this, nullptr);
+	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getGfxDevice()->createTextureResource(desc, nullptr);
 	assert(textureResource);
 
 	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);
 
-	gfx::vk::TextureResourceImpl* pTextureResource = static_cast<gfx::vk::TextureResourceImpl*>(textureResource.get());
+	gfx::vk::TextureResourceImpl* pTextureResourceImpl = static_cast<gfx::vk::TextureResourceImpl*>(textureResource.get());
 
-	const auto& memoryRequirements = pTextureResource->getMemoryRequirements();
+	if(sparse) {
+		const VkSparseImageMemoryRequirements& sparseImageMemoryRequirements = pTextureResourceImpl->getSparseImageMemoryRequirements();
 
-	if(mIsSparse) {
 		auto pTextureManager = mpDevice->getTextureManager();
 
 		uint32_t pageIndex = 0;
 		uint32_t sparseDataPagesCapacity = 0;
 		// Sparse bindings for each mip level of all layers outside of the mip tail
-		for (uint32_t layer = 0; layer < pTextureResource->getArraySize(); ++layer) {
+		for (uint32_t layer = 0; layer < pTextureResourceImpl->getArraySize(); ++layer) {
 
 			// sparseImageMemoryRequirements.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
 			uint32_t currentMipBase = 0;
 			for (uint32_t mipLevel = 0; mipLevel < sparseImageMemoryRequirements.imageMipTailFirstLod; ++mipLevel) {
 				VkExtent3D extent;
-				extent.width = std::max(imageInfo.extent.width >> mipLevel, 1u);
-				extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
-				extent.depth = std::max(imageInfo.extent.depth >> mipLevel, 1u);
+				extent.width = std::max(desc.size.width >> mipLevel, 1);
+				extent.height = std::max(desc.size.height >> mipLevel, 1);
+				extent.depth = std::max(desc.size.depth >> mipLevel, 1);
 
 				LLOG_DBG << "Mip level " << mipLevel << " width " << extent.width << " height " << extent.height;
 
@@ -184,20 +184,20 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 						for (uint32_t x = 0; x < sparseBindCounts.x; ++x) {
 							// Offset
 							int3 offset (
-								x * imageGranularity.width;
-								y * imageGranularity.height;
-								z * imageGranularity.depth;
+								x * imageGranularity.width,
+								y * imageGranularity.height,
+								z * imageGranularity.depth
 							);
 
 							// Size of the page
 							uint3 extent(
-								(x == sparseBindCounts.x - 1) ? lastBlockExtent.x : imageGranularity.width;
-								(y == sparseBindCounts.y - 1) ? lastBlockExtent.y : imageGranularity.height;
-								(z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
+								(x == sparseBindCounts.x - 1) ? lastBlockExtent.x : imageGranularity.width,
+								(y == sparseBindCounts.y - 1) ? lastBlockExtent.y : imageGranularity.height,
+								(z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth
 							);
 
 							// Add new virtual page
-							addTexturePage(offset, extent, memoryRequirements.alignment, memoryRequirements.memoryTypeBits, mipLevel, layer, pageIndex++);
+							addTexturePage(offset, extent, mipLevel, layer, pageIndex++);
 						}
 					}
 				}
@@ -212,7 +212,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 			// @todo: store in mip tail and properly release
 			// @todo: Only one block for single mip tail
 
-			texture->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
+			getGfxVKTextureResource()->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
 			
 		} // end layers and mips
 	}
@@ -244,7 +244,13 @@ bool Texture::addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint3
 
 
 void Texture::updateSparseBindInfo() {
-	mpDevice->getGfxDevice()->updateSparseBindInfo(mApiHandle.get());
+
+	std::vector<const gfx::IVirtualTexturePageResource*> gfxTexturePages(mSparseDataPages.size());
+	for(size_t i = 0; i < mSparseDataPages.size(); ++i) {
+		gfxTexturePages[i] = mSparseDataPages[i]->getGfxTexturePageResource();
+	}
+
+	mpDevice->getGfxDevice()->updateSparseBindInfo(getGfxTextureResource(), gfxTexturePages);
 }
 
 }  // namespace Falcor

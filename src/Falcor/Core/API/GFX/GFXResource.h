@@ -40,67 +40,67 @@ namespace Falcor {
 
 inline Falcor::Resource::State toFalcorState(gfx::ResourceState state) {
     switch (state) {
-        case ResourceState::Undefined:
+        case gfx::ResourceState::Undefined:
             return Falcor::Resource::State::Undefined;
         
-        case ResourceState::PreInitialized:
+        case gfx::ResourceState::PreInitialized:
             return Falcor::Resource::State::PreInitialized;
         
-        case ResourceState::General:
+        case gfx::ResourceState::General:
             return Falcor::Resource::State::Common;
         
-        case ResourceState::VertexBuffer:
+        case gfx::ResourceState::VertexBuffer:
             return Falcor::Resource::State::VertexBuffer;
         
-        case ResourceState::ConstantBuffer:
+        case gfx::ResourceState::ConstantBuffer:
             return Falcor::Resource::State::ConstantBuffer;
         
-        case ResourceState::IndexBuffer:
+        case gfx::ResourceState::IndexBuffer:
             return Falcor::Resource::State::IndexBuffer;
         
-        case ResourceState::RenderTarget:
+        case gfx::ResourceState::RenderTarget:
             return Falcor::Resource::State::RenderTarget;
         
-        case ResourceState::UnorderedAccess:
+        case gfx::ResourceState::UnorderedAccess:
             return Falcor::Resource::State::UnorderedAccess;
         
-        case ResourceState::DepthWrite:
+        case gfx::ResourceState::DepthWrite:
             return Falcor::Resource::State::DepthStencil;
         
-        case ResourceState::ShaderResource:
+        case gfx::ResourceState::ShaderResource:
             return Falcor::Resource::State::ShaderResource;
         
-        case ResourceState::StreamOutput:
+        case gfx::ResourceState::StreamOutput:
             return Falcor::Resource::State::StreamOut;
         
-        case ResourceState::IndirectArgument:
+        case gfx::ResourceState::IndirectArgument:
             return Falcor::Resource::State::IndirectArg;
         
-        case ResourceState::CopyDestination:
+        case gfx::ResourceState::CopyDestination:
             return Falcor::Resource::State::CopyDest;
         
-        case ResourceState::CopySource:
+        case gfx::ResourceState::CopySource:
             return Falcor::Resource::State::CopySource;
         
-        case ResourceState::ResolveDestination:
+        case gfx::ResourceState::ResolveDestination:
             return Falcor::Resource::State::ResolveDest;
         
-        case ResourceState::ResolveSource:
+        case gfx::ResourceState::ResolveSource:
             return Falcor::Resource::State::ResolveSource;
         
-        case ResourceState::Present:
+        case gfx::ResourceState::Present:
             return Falcor::Resource::State::Present;
         
-        //case ResourceState::General:
+        //case gfx::ResourceState::General:
         //    return Falcor::Resource::State::GenericRead;
         
-        //case ResourceState::ShaderResource:
+        //case gfx::ResourceState::ShaderResource:
         //    return Falcor::Resource::State::PixelShader;
         
-        //case Resource::State::NonPixelShader:
+        //case gfx::Resource::State::NonPixelShader:
         //    return gfx::ResourceState::ShaderResource;
         
-        case ResourceState::AccelerationStructure:
+        case gfx::ResourceState::AccelerationStructure:
             return Falcor::Resource::State::AccelerationStructure;
         
         default:

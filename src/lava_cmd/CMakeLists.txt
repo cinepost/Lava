@@ -1,5 +1,6 @@
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
 include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)

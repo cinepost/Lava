@@ -50,13 +50,17 @@ class TextureResourceImpl : public TextureResource {
 
         uint32_t getMemoryTypeIndex() const { return mMemoryTypeIndex; }
 
+        const VkSparseImageMemoryRequirements& getSparseImageMemoryRequirements() const { return mSparseImageMemoryRequirements; }
+
         const VkMemoryRequirements& getMemoryRequirements() const { return mMemRequirements; }
+
+        const VkBindSparseInfo* getBingSparseInfo() const { return &mBindSparseInfo; }
 
         virtual bool isSparse() const override { return mIsSparse; }
 
         virtual uint32_t sparseDataBindsCount() const override { return mSparseBindsCount; }
 
-        virtual const IVirtualTexturePageResource::Extent& sparseDataPageRes() const override { return mSparsePageRes; }
+        virtual const ITextureResource::Extents& sparseDataPageRes() const override { return mSparsePageRes; }
 
         virtual SLANG_NO_THROW Result SLANG_MCALL getNativeResourceHandle(InteropHandle* outHandle) override;
 

@@ -1,25 +1,21 @@
 // vk-sampler.cpp
 #include "vk-sampler.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
 SamplerStateImpl::SamplerStateImpl(DeviceImpl* device)
-    : m_device(device)
+    : m_device(device), m_sampler(VK_NULL_HANDLE)
 {}
 
-SamplerStateImpl::~SamplerStateImpl()
-{
+SamplerStateImpl::~SamplerStateImpl() {
     m_device->m_api.vkDestroySampler(m_device->m_api.m_device, m_sampler, nullptr);
 }
 
-Result SamplerStateImpl::getNativeHandle(InteropHandle* outHandle)
-{
+Result SamplerStateImpl::getNativeHandle(InteropHandle* outHandle) {
     outHandle->api = InteropHandleAPI::Vulkan;
     outHandle->handleValue = (uint64_t)(m_sampler);
     return SLANG_OK;

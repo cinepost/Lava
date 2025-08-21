@@ -30,7 +30,7 @@
 
 namespace Falcor {
 
-void BlitContext::init(Device::SharedPtr pDevice) {
+BlitContext::BlitContext(Device::SharedPtr pDevice) {
     FALCOR_ASSERT(pDevice);
     if (pPass == nullptr) {
         // Init the blit data.
@@ -87,10 +87,6 @@ void BlitContext::init(Device::SharedPtr pDevice) {
         prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
         for (uint32_t i = 0; i < 4; i++) pBlitParamsBuffer->setVariable(compTransVarOffset[i], prevComponentsTransform[i]);
     }
-}
-
-void BlitContext::release() {
-    *this = {};
 }
 
 }  // namespace Falcor

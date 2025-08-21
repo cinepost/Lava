@@ -10,6 +10,7 @@ find_package( Python3 REQUIRED COMPONENTS Development )
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
     ${Python3_INCLUDE_DIRS}
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
 # external passes (can also be made built-in)

@@ -44,14 +44,6 @@ namespace vk {
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
-static Falcor::uint3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
-	Falcor::uint3 res;
-	res.x = extent.width / granularity.width + ((extent.width % granularity.width) ? 1u : 0u);
-	res.y = extent.height / granularity.height + ((extent.height % granularity.height) ? 1u : 0u);
-	res.z = extent.depth / granularity.depth + ((extent.depth % granularity.depth) ? 1u : 0u);
-	return res;
-}
-
 static uint32_t _getVkMemoryTypeNative(const VkPhysicalDeviceMemoryProperties& deviceMemoryProperties, uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) {
 	for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
 		if ((typeBits & 1) == 1) {
@@ -2017,7 +2009,7 @@ Result DeviceImpl::allocateTailMemory(ITextureResource* pTexture, bool force) {
 	return SLANG_OK;
 }
 
-SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) {
+SLANG_NO_THROW void SLANG_MCALL DeviceImpl::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) {
 	assert(pTexture);
 
 	if (!pTexture->isSparse()) {
@@ -2680,9 +2672,37 @@ Result DeviceImpl::waitForFences(GfxCount fenceCount, IFence** fences, uint64_t*
 	waitInfo.pSemaphores = semaphores.getArrayView().getBuffer();
 	waitInfo.pValues = fenceValues;
 	auto result = m_api.vkWaitSemaphores(m_api.m_device, &waitInfo, timeout);
-	if (result == VK_TIMEOUT)
+	if (result == VK_TIMEOUT) {
 		return SLANG_E_TIME_OUT;
+	}
 	return result == VK_SUCCESS ? SLANG_OK : SLANG_FAIL;
+}
+
+Result DeviceImpl::bindSparseResources(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) {
+	VkQueue queue = m_deviceQueue.getQueue(); 
+	m_api.vkDeviceWaitIdle(m_device);
+
+	updateSparseBindInfo(pTexture, pages);
+
+	VkFenceCreateInfo fenceCreateInfo {};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = 0;//VK_FLAGS_NONE;
+
+	TextureResourceImpl* pTextureResourceImpl = static_cast<TextureResourceImpl*>(pTexture);
+
+	auto result = SLANG_OK;
+	VkFence fence;
+	SLANG_RETURN_ON_FAIL(m_api.vkCreateFence(m_device, &fenceCreateInfo, nullptr, &fence));
+	
+	if(SLANG_FAILED(m_api.vkQueueBindSparse(queue, 1, pTextureResourceImpl->getBingSparseInfo(), fence))) {
+		LLOG_ERR << "vkQueueBindSparse failed !!!";
+		result = SLANG_FAIL;
+	}
+	
+	SLANG_RETURN_ON_FAIL(m_api.vkWaitForFences(m_device, 1, &fence, VK_TRUE, UINT64_MAX));
+	m_api.vkDestroyFence(m_device, fence, nullptr);
+
+	return result;
 }
 
 } // namespace vk

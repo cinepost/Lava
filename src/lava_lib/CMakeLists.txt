@@ -4,6 +4,7 @@ endif()
 
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
 file( GLOB SOURCES

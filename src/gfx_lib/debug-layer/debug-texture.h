@@ -20,7 +20,7 @@ public:
 
 	virtual uint32_t sparseDataBindsCount() const override;
 
-	virtual const IVirtualTexturePageResource::Extent& sparseDataPageRes() const override;
+	virtual const ITextureResource::Extents& sparseDataPageRes() const override;
 
 	virtual SLANG_NO_THROW GfxCount getArraySize() const override;
 

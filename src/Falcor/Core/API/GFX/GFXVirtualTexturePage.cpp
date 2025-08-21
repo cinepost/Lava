@@ -16,7 +16,7 @@ VirtualTexturePage::VirtualTexturePage(const std::shared_ptr<Texture>& pTexture,
 {
     // create resource
 	mpVirtualTexturePageResource = 
-		mpDevice->getGfxDevice()->createVirtualTexturePageResource(this, offset, extent, mipLevel, layer, size, memoryTypeBits);
+		mpDevice->getGfxDevice()->createVirtualTexturePageResource({offset.x, offset.y, offset.z}, {extent.x, extent.y, extent.z} , mipLevel, layer, size, memoryTypeBits);
 	
 	assert(mpVirtualTexturePageResource);
 }

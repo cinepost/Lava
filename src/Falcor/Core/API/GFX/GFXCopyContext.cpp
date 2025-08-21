@@ -405,8 +405,11 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 	assert(pData);
 	if(!pData) return;
 
-	if(!mpDevice->getGfxDevice()->tailMemoryAllocated(pTexture)) {
-		mpDevice->getGfxDevice()->allocateTailMemory(pTexture);
+	gfx::ITextureResource* pTextureResource = pTexture->getGfxTextureResource();
+	assert(pTextureResource);
+
+	if(!mpDevice->getGfxDevice()->tailMemoryAllocated(pTextureResource)) {
+		mpDevice->getGfxDevice()->allocateTailMemory(pTextureResource);
 	}
 
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
@@ -434,7 +437,7 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
 		data.strideZ = data.strideY * (height / formatInfo.blockHeight);
 		dataPtr += tailDataInOnePage ? (data.strideZ * depth) : 65536;
 
-		resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, {0, 0, 0}, {static_cast<gfx::GfxCount>(width), static_cast<gfx::GfxCount>(height), 1}, &data, 1);
+		resourceEncoder->uploadTextureData(pTextureResource, subresourceRange, {0, 0, 0}, {static_cast<gfx::GfxCount>(width), static_cast<gfx::GfxCount>(height), 1}, &data, 1);
 	}
 
 	pTexture->setMipTailFilled(true);
@@ -455,8 +458,8 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
   const Texture* pTexture = pPage->texture().get();
   
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-	gfx::ITextureResource::Offset3D gfxOffset = pPage->offsetGFX();
-	gfx::ITextureResource::Extents gfxSize = pPage->extentGFX();
+	gfx::IVirtualTexturePageResource::Offset gfxOffset = pPage->offsetGFX();
+	gfx::IVirtualTexturePageResource::Extent gfxSize = pPage->extentGFX();
 	gfx::FormatInfo formatInfo = {};
 	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
 

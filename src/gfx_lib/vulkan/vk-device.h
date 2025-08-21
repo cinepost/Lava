@@ -59,7 +59,7 @@ public:
         uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
         IVirtualTexturePageResource** outResource) override;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) override;
+	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(ITextureResource* pTexture, bool force = false) override;
 
@@ -170,7 +170,7 @@ public:
 
 	void waitForGpu();
 
-	SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture, VkImage image);
+	virtual SLANG_NO_THROW Result SLANG_MCALL bindSparseResources(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) override;
 
 	virtual SLANG_NO_THROW const DeviceInfo& SLANG_MCALL getDeviceInfo() const override;
 

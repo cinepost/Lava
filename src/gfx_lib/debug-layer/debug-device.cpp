@@ -36,7 +36,7 @@ void DebugDevice::releaseTailMemory(ITextureResource* pTexture) {
     baseObject->releaseTailMemory(pTexture);
 }
 
-void DebugDevice::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<IVirtualTexturePageResource*>& pages) {
+void DebugDevice::updateSparseBindInfo(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) {
     baseObject->updateSparseBindInfo(pTexture, pages);
 }
 
@@ -68,6 +68,12 @@ SlangResult DebugDevice::queryInterface(SlangUUID const& uuid, void** outObject)
 
 Result DebugDevice::getNativeDeviceHandles(InteropHandles* outHandles){
     return baseObject->getNativeDeviceHandles(outHandles);
+}
+
+Result DebugDevice::bindSparseResources(ITextureResource* pTexture, const std::vector<const IVirtualTexturePageResource*>& pages) {
+    SLANG_GFX_API_FUNC;
+
+    return baseObject->bindSparseResources(pTexture, pages);  
 }
 
 Result DebugDevice::getFeatures(const char** outFeatures, Size bufferSize, GfxCount* outFeatureCount)

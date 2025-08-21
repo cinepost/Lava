@@ -60,8 +60,7 @@ struct BlitContext {
     // Parameters for complex blit
     float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
     TypedShaderVarOffset compTransVarOffset[4];
-    void init(Device::SharedPtr pDevice);
-    void release();
+    BlitContext(Device::SharedPtr pDevice);
 };
 
 }  // namespace Falcor

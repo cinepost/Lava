@@ -31,7 +31,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		/** Create a new vertex buffer layout object.
 			\return New object, or throws an exception on error.
 		*/
-		static SharedPtr create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
+		static SharedPtr create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index, uint32_t size, uint32_t memoryTypeBits);
 
 		~VirtualTexturePage();
 
@@ -93,8 +93,10 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		const std::shared_ptr<Texture>& texture() const { return mpTexture; }
 
+		const gfx::IVirtualTexturePageResource* getGfxTexturePageResource() const { return mpVirtualTexturePageResource.get(); }
+
   	public:
-  		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
+  		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index, uint32_t size, uint32_t memoryTypeBits);
 
  	protected:
 		const std::shared_ptr<Device>   mpDevice;

@@ -159,5 +159,13 @@ using DepthStencilStateHandle = void*;
 using RasterizerStateHandle = void*;
 using BlendStateHandle = void*;
 
+inline Falcor::uint3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
+    return {
+        extent.width / granularity.width + ((extent.width % granularity.width) ? 1u : 0u),
+        extent.height / granularity.height + ((extent.height % granularity.height) ? 1u : 0u),
+        extent.depth / granularity.depth + ((extent.depth % granularity.depth) ? 1u : 0u)
+    };
+}
+
     /*! @} */
 }  // namespace Falcor
