@@ -215,6 +215,8 @@ public:
 	Buffer::SharedPtr getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
 	Buffer::SharedConstPtr getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
 
+	Buffer::SharedPtr getVirtualTexturesDataBuffer() { return mpVirtualTexturesDataBuffer; }
+
 	size_t getVirtualTexturePagesStartIndex(const Texture* pTexture);
 
 	const std::map<const Texture*, size_t>& getVirtualPagesStartMap() const { return mVirtualPagesStartMap;}

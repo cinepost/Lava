@@ -140,15 +140,23 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	assert(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getGfxDevice()->createTextureResource(desc, nullptr);
-	assert(textureResource);
+	Slang::ComPtr<gfx::ITextureResource> pApiHandle;
+	if(SLANG_FAILED(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, pApiHandle.writeRef()))) {
+		LLOG_FTL << "Error creating texture " << to_string(desc);
+		return;
+	}
+	assert(pApiHandle);
+	mApiHandle = pApiHandle;
 
-	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);
-
-	gfx::vk::TextureResourceImpl* pTextureResourceImpl = static_cast<gfx::vk::TextureResourceImpl*>(textureResource.get());
+	gfx::ITextureResource* ptx = static_cast<gfx::ITextureResource*>(mApiHandle.get());
+	gfx::vk::TextureResourceImpl* pTextureResourceImpl = static_cast<gfx::vk::TextureResourceImpl*>(ptx);
 
 	if(sparse) {
+		assert(mApiHandle);
 		const VkSparseImageMemoryRequirements& sparseImageMemoryRequirements = pTextureResourceImpl->getSparseImageMemoryRequirements();
+
+		const VkExtent3D& imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
+		LLOG_DBG << "Sparse image granularity " << imageGranularity.width << " x " << imageGranularity.height << " x " << imageGranularity.depth;
 
 		auto pTextureManager = mpDevice->getTextureManager();
 
@@ -165,10 +173,9 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 				extent.height = std::max(desc.size.height >> mipLevel, 1);
 				extent.depth = std::max(desc.size.depth >> mipLevel, 1);
 
-				LLOG_DBG << "Mip level " << mipLevel << " width " << extent.width << " height " << extent.height;
+				LLOG_DBG << "Mip level " << mipLevel << " width " << extent.width << " height " << extent.height << " depth " << extent.depth;
 
 				// Aligned sizes by image granularity
-				VkExtent3D imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
 				Falcor::uint3 sparseBindCounts = alignedDivision(extent, imageGranularity);
 				Falcor::uint3 lastBlockExtent = {
 					(extent.width % imageGranularity.width) ? extent.width % imageGranularity.width : imageGranularity.width,
@@ -211,13 +218,9 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 			// @todo: proper comment
 			// @todo: store in mip tail and properly release
 			// @todo: Only one block for single mip tail
-
-			getGfxVKTextureResource()->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
 			
 		} // end layers and mips
 	}
-
-	mApiHandle = textureResource;
 
 //#if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)
 //	mMipTailimageMemoryBind.memory = VK_NULL_HANDLE;

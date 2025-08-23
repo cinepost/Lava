@@ -421,7 +421,10 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 
 		// Setup debug layer.
     	FALCOR_GFX_CALL(gfxSetDebugCallback(&gGFXDebugCallBack));
-    	if (mDesc.enableDebugLayer) gfx::gfxEnableDebugLayer();
+    	if (mDesc.enableDebugLayer) {
+    		//gfx::DebugDevice disabled. Sparse texture creation issues (TextureResourceImpl members)
+    		//gfx::gfxEnableDebugLayer();
+    	}
 
 		if (SLANG_FAILED(gfxCreateDevice(&desc, mGfxDevice.writeRef()))) return false;
 

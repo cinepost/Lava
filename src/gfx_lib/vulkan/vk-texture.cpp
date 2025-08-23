@@ -15,10 +15,11 @@ TextureResourceImpl::TextureResourceImpl(const Desc& desc, DeviceImpl* device): 
     mBindSparseSemaphore(VK_NULL_HANDLE), 
     mMemRequirements{}, 
     mTailMemoryAllocated(false), 
-    m_device(device),
-    mSparseBindsCount(0) 
+    mSparseBindsCount(0),
+    mIsSparse(desc.sparse),
+    m_device(device)
 {
-
+    mMipTailimageMemoryBind.memory = VK_NULL_HANDLE;
 }
 
 TextureResourceImpl::~TextureResourceImpl() {

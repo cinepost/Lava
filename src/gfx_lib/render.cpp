@@ -9,6 +9,8 @@
 
 #include "debug-layer/debug-device.h"
 
+#include "lava_utils_lib/logging.h"
+
 #include <cstring>
 
 namespace gfx {
@@ -270,6 +272,7 @@ extern "C" {
             return resultCode;
         }
 
+        LLOG_ERR << "!!! gfx::DebugDevice doesn't work properly! Sparse texture creation issues (TextureResourceImpl members)";
         RefPtr<debug::DebugDevice> debugDevice = new debug::DebugDevice();
         debugDevice->baseObject = innerDevice;
         returnComPtr(outDevice, debugDevice);
@@ -291,18 +294,8 @@ extern "C" {
             return "Unknown";
         case gfx::DeviceType::Default:
             return "Default";
-        //case gfx::DeviceType::DirectX11:
-        //    return "DirectX11";
-        //case gfx::DeviceType::DirectX12:
-        //    return "DirectX12";
-        //case gfx::DeviceType::OpenGl:
-        //    return "OpenGL";
         case gfx::DeviceType::Vulkan:
             return "Vulkan";
-        //case gfx::DeviceType::CPU:
-        //    return "CPU";
-        //case gfx::DeviceType::CUDA:
-        //    return "CUDA";
         default:
             return "?";
         }

@@ -134,8 +134,10 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
 
         if(mode != TextureHandle::Mode::Virtual && mode != TextureHandle::Mode::UDIM_Texture) continue;
 
-        uint32_t textureID = textureHandle.getTextureID();
+        const uint32_t textureID = textureHandle.getTextureID();
+
         uint32_t virtualTextureID = gScene.materials.extendedTexturesData[textureID].virtualID;
+
         VirtualTextureData vtexData = gScene.materials.virtualTexturesData[virtualTextureID];
 
         if(mode == TextureHandle::Mode::UDIM_Texture) {
@@ -165,15 +167,18 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
 
             for( int m = loMipLevel; m <= hiMipLevel; m++) {
                 uint pageID;
-                if(calculatePageID2D(uv, m, vtexData, pageID)) writeTileID(pageID);
+                if(calculatePageID2D(uv, m, vtexData, pageID)) {
+                   writeTileID(pageID);
+                }
             }
         }
     }
 
 #ifdef _OUTPUT_DEBUG_IMAGE
-    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 255.0f, 1.f);
-#endif
+    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, .5f, 1.f);
+#else
     psOut.output = float4(255.0f, 255.0f, 255.0f, 255.0f);
+#endif
 
     return psOut;
 }

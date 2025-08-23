@@ -379,7 +379,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		bool mIsSolid = false;
 		bool mMipTailFilled = false;
 		uint16_t mUDIM_ID = 0;
-		uint32_t mVirtualID = 0; // Should always start with 1. 0 means non virtual texture.
+		uint32_t mVirtualID = 0; // always start with 1
 
 		std::vector<VirtualTexturePage::SharedPtr> mSparseDataPages;
 	
@@ -395,6 +395,13 @@ inline std::string to_string(const std::shared_ptr<Texture>& tex) {
 	std::string s = "Texture: " + std::to_string(tex->getWidth()) + "x" + std::to_string(tex->getHeight());
 	s += " source " + tex->getSourceFilename();
 	//s += ",map type " + to_string(buff->getType());
+	return s;
+}
+
+inline std::string to_string(const gfx::ITextureResource::Desc& desc) {
+	std::string s = desc.sparse ? "Sparse gfx::ITextureResource: " : "gfx::ITextureResource: ";
+	s += std::to_string(desc.size.width) + "x" + std::to_string(desc.size.height) + "x" + std::to_string(desc.size.depth);
+	s += " format: " + gfx::to_string(desc.format) + " mip levels: " + std::to_string(desc.numMipLevels);
 	return s;
 }
 

@@ -1549,6 +1549,8 @@ Result DeviceImpl::createTextureResource(
 	
   	////////////// sparse texture section /////////////////
 
+  	texture->setDebugName(sparse ? "TextureResourceImpl sparse" : "TextureResourceImpl");
+
 	if(sparse) {
 #ifdef _DEBUG
 		LLOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
@@ -1574,25 +1576,29 @@ Result DeviceImpl::createTextureResource(
 		// Get actual requirements
 		m_api.vkGetImageSparseMemoryRequirements(m_device, texture->m_image, &sparseMemoryReqsCount, sparseMemoryReqs.data());
 
-		LLOG_DBG << "Sparse image memory requirements: " << sparseMemoryReqsCount;
-		
-		for (auto reqs : sparseMemoryReqs) {
-			LLOG_DBG << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " 
-							 << reqs.formatProperties.imageGranularity.depth;
-			LLOG_DBG << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod;
-			LLOG_DBG << "\t Mip tail size: " << reqs.imageMipTailSize;
-			LLOG_DBG << "\t Mip tail offset: " << reqs.imageMipTailOffset;
-			LLOG_DBG << "\t Mip tail stride: " << reqs.imageMipTailStride;
-			
-			//todo:multiple reqs
-			texture->mipTailInfo().mipTailStart = reqs.imageMipTailFirstLod;
-		}
+		LLOG_DBG << "Sparse image memory requirements count: " << sparseMemoryReqsCount;
+
 
 		// Get sparse image requirements for the color aspect
 		bool colorAspectFound = false;
-		for (auto reqs : sparseMemoryReqs) {
-			if (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+		for (const auto& reqs : sparseMemoryReqs) {
+			if ((sparseMemoryReqsCount == 1) || (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)) {
+
+				LLOG_DBG << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " 
+							 << reqs.formatProperties.imageGranularity.depth;
+				LLOG_DBG << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod;
+				LLOG_DBG << "\t Mip tail size: " << reqs.imageMipTailSize;
+				LLOG_DBG << "\t Mip tail offset: " << reqs.imageMipTailOffset;
+				LLOG_DBG << "\t Mip tail stride: " << reqs.imageMipTailStride;
+			
+				//todo:multiple reqs
+				texture->mMipTailInfo.mipTailStart = reqs.imageMipTailFirstLod;
 				texture->mSparseImageMemoryRequirements = reqs;
+
+				//assert(sizeof(reqs) == sizeof(texture->mSparseImageMemoryRequirements));
+				//::memcpy(&texture->mSparseImageMemoryRequirements, &reqs, sizeof(reqs));
+
+
 				colorAspectFound = true;
 				break;
 			}
@@ -1601,6 +1607,10 @@ Result DeviceImpl::createTextureResource(
 			LLOG_ERR << "Error: Could not find sparse image memory requirements for color aspect bit !!!";
 			return SLANG_FAIL;
 		}
+
+		LLOG_DBG << "TextureResourceImpl granularity: w = " << texture->mSparseImageMemoryRequirements.formatProperties.imageGranularity.width 
+			<< " h = " << texture->mSparseImageMemoryRequirements.formatProperties.imageGranularity.height << " d = " 
+			<< texture->mSparseImageMemoryRequirements.formatProperties.imageGranularity.depth;
 
 		auto& sparseImageMemoryRequirements = texture->mSparseImageMemoryRequirements;
 
@@ -1620,9 +1630,8 @@ Result DeviceImpl::createTextureResource(
 		// The mip tail contains all mip levels > sparseImageMemoryRequirements.imageMipTailFirstLod
 		// Check if the format has a single mip tail for all layers or one mip tail for each layer
 		// @todo: Comment
-		texture->mipTailInfo().singleMipTail = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
-		texture->mipTailInfo().alignedMipSize = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
-		texture->mipTailInfo().mipTailStart = sparseImageMemoryRequirements.imageMipTailFirstLod;
+		texture->mMipTailInfo.singleMipTail = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
+		texture->mMipTailInfo.alignedMipSize = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
 
 		uint32_t sparseDataPagesCapacity = 0;
 /**

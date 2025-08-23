@@ -12,8 +12,8 @@ BEGIN_NAMESPACE_FALCOR
 
 // Basic virtual texture data needed
 struct VirtualTextureData {
-    uint32_t    textureID;
     bool        empty;
+    uint32_t    textureID;
     uint32_t    textureResolveID;
     uint32_t    pagesStartOffset; // Pages start at this index in output pages buffer
 

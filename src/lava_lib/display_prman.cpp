@@ -89,11 +89,19 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
     }
 
     #ifdef _WIN32
-	    boost::format libdspy_name("%1%/etc/d_%2%.dll");
+        const std::string driver_ext = "dll";
     #else
-        boost::format libdspy_name("%1%/etc/d_%2%.so");
+        const std::string driver_ext = "so";
     #endif
-	libdspy_name % lava_home % display_driver_name;
+
+    boost::format libdspy_name;
+    if(lava_home != NULL) {
+	    libdspy_name = boost::format("%1%/etc/d_%2%.%3%");
+        libdspy_name % lava_home % display_driver_name % driver_ext;
+    } else {
+        libdspy_name = boost::format("d_%1%.%2%");
+        libdspy_name % display_driver_name % driver_ext;
+    }
 
 	void* mLibHandle = dlopen(libdspy_name.str().c_str(), RTLD_NOW);
 	if (!mLibHandle) {

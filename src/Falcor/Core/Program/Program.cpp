@@ -253,8 +253,6 @@ bool Program::checkIfFilesChanged() {
 }
 
 const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
-    LLOG_WRN << "Program::getActiveVersion for " << getProgramDescString();
-
     if (mLinkRequired) {
         const auto& it = mProgramVersions.find(ProgramVersionKey{mDefineList, mTypeConformanceList});
         if (it == mProgramVersions.end()) {
@@ -272,14 +270,10 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
     }
     FALCOR_ASSERT(mpActiveVersion);
 
-    LLOG_WRN << "Program::getActiveVersion for " << getProgramDescString() << " done.";
-
     return mpActiveVersion;
 }
 
 bool Program::linkProgram() const {
-    LLOG_WRN << "Program::linkProgram for " << getProgramDescString();
-
     // Create the program
     std::string log;
     auto pVersion = mpDevice->getProgramManager()->createProgramVersion(*this, log);
@@ -295,12 +289,10 @@ bool Program::linkProgram() const {
 
         mpActiveVersion = pVersion;
 
-        LLOG_WRN << "Program::linkProgram for " << getProgramDescString() << " done.";
-
         return true;
     }
     
-    LLOG_WRN << "Program::linkProgram for " << getProgramDescString() << " failed.";
+    LLOG_ERR << "Program::linkProgram for " << getProgramDescString() << " failed.";
 
     return false;
 }

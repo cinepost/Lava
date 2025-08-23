@@ -31,5 +31,7 @@
 #include "gfx_lib/slang-gfx.h"
 
 namespace Falcor {
-    gfx::Format getGFXFormat(ResourceFormat format);
-}
+
+gfx::Format getGFXFormat(ResourceFormat format);
+
+} // namespace Falcor

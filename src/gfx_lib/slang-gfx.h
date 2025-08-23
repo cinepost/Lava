@@ -439,6 +439,127 @@ enum class Format
 	_Count,
 };
 
+inline std::string to_string(Format format) {
+#define fmt_2_string(a) case Format::a: return #a;
+    switch(format) {
+		fmt_2_string(Unknown);
+
+		fmt_2_string(R32G32B32A32_TYPELESS);
+		fmt_2_string(R32G32B32_TYPELESS);
+		fmt_2_string(R32G32_TYPELESS);
+		fmt_2_string(R32_TYPELESS);
+
+		fmt_2_string(R16G16B16A16_TYPELESS);
+		fmt_2_string(R16G16B16_TYPELESS);
+		fmt_2_string(R16G16_TYPELESS);
+		fmt_2_string(R16_TYPELESS);
+
+		fmt_2_string(R8G8B8A8_TYPELESS);
+		fmt_2_string(R8G8B8_TYPELESS);
+		fmt_2_string(R8G8_TYPELESS);
+		fmt_2_string(R8_TYPELESS);
+		fmt_2_string(B8G8R8A8_TYPELESS);
+
+		fmt_2_string(R32G32B32A32_FLOAT);
+		fmt_2_string(R32G32B32_FLOAT);
+		fmt_2_string(R32G32_FLOAT);
+		fmt_2_string(R32_FLOAT);
+
+		fmt_2_string(R16G16B16A16_FLOAT);
+		fmt_2_string(R16G16B16_FLOAT);
+		fmt_2_string(R16G16_FLOAT);
+		fmt_2_string(R16_FLOAT);
+
+		fmt_2_string(R32G32B32A32_UINT);
+		fmt_2_string(R32G32B32_UINT);
+		fmt_2_string(R32G32_UINT);
+		fmt_2_string(R32_UINT);
+
+		fmt_2_string(R16G16B16A16_UINT);
+		fmt_2_string(R16G16B16_UINT);
+		fmt_2_string(R16G16_UINT);
+		fmt_2_string(R16_UINT);
+
+		fmt_2_string(R8G8B8A8_UINT);
+		fmt_2_string(R8G8B8_UINT);
+		fmt_2_string(R8G8_UINT);
+		fmt_2_string(R8_UINT);
+
+		fmt_2_string(R32G32B32A32_SINT);
+		fmt_2_string(R32G32B32_SINT);
+		fmt_2_string(R32G32_SINT);
+		fmt_2_string(R32_SINT);
+
+		fmt_2_string(R16G16B16A16_SINT);
+		fmt_2_string(R16G16B16_SINT);
+		fmt_2_string(R16G16_SINT);
+		fmt_2_string(R16_SINT);
+
+		fmt_2_string(R8G8B8A8_SINT);
+		fmt_2_string(R8G8B8_SINT);
+		fmt_2_string(R8G8_SINT);
+		fmt_2_string(R8_SINT);
+
+		fmt_2_string(R16G16B16A16_UNORM);
+		fmt_2_string(R16G16B16_UNORM);
+		fmt_2_string(R16G16_UNORM);
+		fmt_2_string(R16_UNORM);
+
+		fmt_2_string(R8G8B8A8_UNORM);
+		fmt_2_string(R8G8B8A8_UNORM_SRGB);
+		fmt_2_string(R8G8B8_UNORM);
+		fmt_2_string(R8G8_UNORM);
+		fmt_2_string(R8_UNORM);
+		fmt_2_string(B8G8R8A8_UNORM);
+		fmt_2_string(B8G8R8A8_UNORM_SRGB);
+		fmt_2_string(B8G8R8X8_UNORM);
+		fmt_2_string(B8G8R8X8_UNORM_SRGB);
+
+		fmt_2_string(R16G16B16A16_SNORM);
+		fmt_2_string(R16G16B16_SNORM);
+		fmt_2_string(R16G16_SNORM);
+		fmt_2_string(R16_SNORM);
+
+		fmt_2_string(R8G8B8A8_SNORM);
+		fmt_2_string(R8G8B8_SNORM);
+		fmt_2_string(R8G8_SNORM);
+		fmt_2_string(R8_SNORM);
+
+		fmt_2_string(D32_FLOAT);
+		fmt_2_string(D32_FLOAT_S8_UINT);
+		fmt_2_string(D16_UNORM);
+
+		fmt_2_string(B4G4R4A4_UNORM);
+		fmt_2_string(B5G6R5_UNORM);
+		fmt_2_string(B5G5R5A1_UNORM);
+
+		fmt_2_string(R9G9B9E5_SHAREDEXP);
+		fmt_2_string(R10G10B10A2_TYPELESS);
+		fmt_2_string(R10G10B10A2_UNORM);
+		fmt_2_string(R10G10B10A2_UINT);
+		fmt_2_string(R11G11B10_FLOAT);
+
+		fmt_2_string(BC1_UNORM);
+		fmt_2_string(BC1_UNORM_SRGB);
+		fmt_2_string(BC2_UNORM);
+		fmt_2_string(BC2_UNORM_SRGB);
+		fmt_2_string(BC3_UNORM);
+		fmt_2_string(BC3_UNORM_SRGB);
+		fmt_2_string(BC4_UNORM);
+		fmt_2_string(BC4_SNORM);
+		fmt_2_string(BC5_UNORM);
+		fmt_2_string(BC5_SNORM);
+		fmt_2_string(BC6H_UF16);
+		fmt_2_string(BC6H_SF16);
+		fmt_2_string(BC7_UNORM);
+		fmt_2_string(BC7_UNORM_SRGB);
+        default:
+        	assert(false);
+            return "Unknown";
+    }
+    #undef fmt_2_string
+}
+
 // TODO: Aspect = Color, Depth, Stencil, etc.
 // TODO: Channel = R, G, B, A, D, S, etc.
 // TODO: Pick : pixel or texel
@@ -727,6 +848,12 @@ struct SubresourceRange
 	GfxCount layerCount; // For cube maps, this is a multiple of 6.
 };
 
+namespace vk {
+
+class DeviceImpl;
+
+}
+
 class ITextureResource: public IResource
 {
 public:
@@ -833,11 +960,10 @@ public:
 
 	const MipTailInfo& getMipTailInfo() const { return mMipTailInfo; }
 
-
 protected:
-	//std::vector<Slang::ComPtr<IVirtualTexturePageResource>> mSparseDataPages;    // Contains all virtual pages of the texture
-
 	MipTailInfo mMipTailInfo;
+
+	friend class vk::DeviceImpl;
 };
 
 #define SLANG_UUID_ITextureResource                                                    \

@@ -62,6 +62,8 @@ namespace ba = boost::adaptors;
 
 namespace Falcor {
 
+static_assert(sizeof(VirtualTextureData) % 16 == 0, "VirtualTextureData size should be a multiple of 16");
+
 static std::mutex   g_vk_cmd_mutex;
 static std::mutex   g_simple_cache_mutex;
 static std::mutex   g_simple_tail_cache_mutex;
@@ -220,67 +222,68 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	}
 	
 	auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
-  if (!pLtxBitmap) {
-	LLOG_ERR << "Error loading LTX texture from " << ltxPath;
-	return nullptr;
-  }
+	if (!pLtxBitmap) {
+		LLOG_ERR << "Error loading LTX texture from " << ltxPath;
+		return nullptr;
+	}
 
-  if((pLtxBitmap->header().srcLastWriteTime != fs::last_write_time(path.string())) && !isLtxSrcFile) {
-	LLOG_WRN << "LTX source texture modification time changed. Forcing on-line reconversion !";
-	if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
+	if((pLtxBitmap->header().srcLastWriteTime != fs::last_write_time(path.string())) && !isLtxSrcFile) {
+		LLOG_WRN << "LTX source texture modification time changed. Forcing on-line reconversion !";
+		if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
 			LLOG_ERR << "Error re-converting texture source texture: " << path;
 			return nullptr;
 		} else {
 			LLOG_INF << "Re-conversion done for source texture: " << path;
 		}
 		pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
-  }
+	}
 
 
-  ResourceFormat texFormat = pLtxBitmap->getFormat();
+	ResourceFormat texFormat = pLtxBitmap->getFormat();
 
-  if (loadAsSRGB) {
-	texFormat = linearToSrgbFormat(texFormat);
-  }
+	if (loadAsSRGB) {
+		texFormat = linearToSrgbFormat(texFormat);
+	}
 
-  uint32_t arraySize = 1;
-  Texture::SharedPtr pTexture = Texture::SharedPtr(
-	new Texture(mpDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
-  );
+	uint32_t arraySize = 1;
+	Texture::SharedPtr pTexture = Texture::SharedPtr(
+		new Texture(mpDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
+	);
 
-  if( !pTexture ) return nullptr;
+	if( !pTexture ) return nullptr;
 
-  pTexture->setSourceFilename(ltxPath.string());
+	pTexture->setSourceFilename(ltxPath.string());
+
+	try {
+		generateMipLevels = false;
+		const bool sparse = true;
+		pTexture->apiInit(nullptr, generateMipLevels, sparse);
+	} catch (const std::runtime_error& e) {
+		LLOG_ERR << "Error initializing sparse texture " << ltxPath << "'\nError details:";
+		LLOG_ERR << e.what();
+		return nullptr;
+	} catch (...) {
+		LLOG_ERR <<  "Error initializing sparse texture " << ltxPath;
+		return nullptr;
+	}
+
+	LLOG_DBG << "Texture requires " << std::to_string(pTexture->getTextureSizeInBytes()) << " bytes of device memory";
+	//if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
+	//  deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
+	//} else {
+	//  LLOG_ERR << "No texture memory left for texture " <<  ltxPath;
+	//  return handle;
+	//}
+
+	// Sparse bitmaps tracking
+	auto it = mTextureLTXBitmapsMap.find(pTexture->id());
+	if (it == mTextureLTXBitmapsMap.end()) {
+		mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
+  	}
   
-  try {
-	generateMipLevels = false;
-	const bool sparse = true;
-	pTexture->apiInit(nullptr, generateMipLevels, sparse);
-  } catch (const std::runtime_error& e) {
-	LLOG_ERR << "Error initializing sparse texture " << ltxPath << "'\nError details:";
-	LLOG_ERR << e.what();
-	return nullptr;
-  } catch (...) {
-	LLOG_ERR <<  "Error initializing sparse texture " << ltxPath;
-	return nullptr;
-  }
+  	pTexture->setVirtualID(++mSparseTexturesCount);
 
-  LLOG_DBG << "Texture requires " << std::to_string(pTexture->getTextureSizeInBytes()) << " bytes of device memory";
-  //if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
-  //  deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
-  //} else {
-  //  LLOG_ERR << "No texture memory left for texture " <<  ltxPath;
-  //  return handle;
-  //}
-  
-  // Sparse bitmaps tracking
-  auto it = mTextureLTXBitmapsMap.find(pTexture->id());
-  if (it == mTextureLTXBitmapsMap.end()) {
-	mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
-  }
-  
-  pTexture->setVirtualID(mSparseTexturesCount++);
-
+  	mDirty = true;	
 	return pTexture;
 }
 
@@ -1008,7 +1011,11 @@ void TextureManager::buildSparseResidencyData() {
 	}
 
 	mVirtualPagesData.clear();
-	mVirtualTexturesData.resize(virtualTexturesCount);
+	mVirtualTexturesData.reserve(1024);
+
+	mVirtualTexturesData.clear();
+	mVirtualTexturesData.reserve(16);
+
 	for(auto& vtex: mVirtualTexturesData) {
 		vtex.empty = true;
 	}
@@ -1020,6 +1027,8 @@ void TextureManager::buildSparseResidencyData() {
 		if(!pTexture || !pTexture->isSparse()) {
 			continue;
 		}
+
+		mVirtualTexturesData.resize(pTexture->getVirtualID() + 1);
 
 		auto& vtexData = mVirtualTexturesData[pTexture->getVirtualID()];
 
@@ -1043,7 +1052,7 @@ void TextureManager::buildSparseResidencyData() {
 		auto const& mipBases = pTexture->getMipBases();
 		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
 	
-		mVirtualPagesData.resize(mVirtualPagesData.size() + pTextureResource->sparseDataBindsCount());
+		mVirtualPagesData.resize(mVirtualPagesData.size() + pTexture->sparseDataPagesCount());
 
 		// TODO: prefill pages residency info
 	}

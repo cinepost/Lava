@@ -78,7 +78,7 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 	mpState = GraphicsState::create(pDevice);
 
 	DepthStencilState::Desc dsDesc;
-	dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Equal);
+	dsDesc.setDepthWriteMask(false).setDepthEnabled(false).setDepthFunc(DepthStencilState::Func::Equal);
 	mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 	mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
@@ -106,7 +106,8 @@ void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::S
 	mpScene = pScene;
 	if (mpScene) {
 		mpState->getProgram()->addDefines(mpScene->getSceneDefines());
-		//updateTexturesResolveData();
+		mpState->getProgram()->setTypeConformances(pScene->getTypeConformances());
+		updateTexturesResolveData();
 	}
 	mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 	mDirty = true;
@@ -142,7 +143,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpFbo->attachColorTarget(pDebugData, 0);
 
 	mpState->setFbo(mpFbo);
-	pContext->clearRtv(pDebugData->getRTV().get(), {255, 0, 0, 0});
+	pContext->clearRtv(pDebugData->getRTV().get(), {0, 0, 0, 0});
 
 	auto exec_started = std::chrono::high_resolution_clock::now();
 
@@ -222,10 +223,26 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
 	pContext->flush(true);
 
+	// test //
+/*
 	pDebugData->captureToFile(0, 0, "/home/max/Desktop/vtex_test.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
 
+	Buffer::SharedPtr pVirtualTexturesDataBuffer = pTextureManager->getVirtualTexturesDataBuffer();
+
+	if(pVirtualTexturesDataBuffer) {
+		const VirtualTextureData* pTestPagesData = reinterpret_cast<const VirtualTextureData*>(pVirtualTexturesDataBuffer->map(Buffer::MapType::Read));
+
+		for(uint32_t i = 0; i < pVirtualTexturesDataBuffer->getElementCount(); ++i) {
+			LLOG_ERR << "! TEST VirtualTextureData[" << i << "].empty " << (pTestPagesData[i].empty ? "yes" : "no");
+		}
+
+		pVirtualTexturesDataBuffer->unmap();
+	}
+*/
+	//////////
+
 	// Test resolved data
-	auto pPagesBuffer = pTextureManager->getPagesResidencyBuffer();
+	Buffer::SharedPtr pPagesBuffer = pTextureManager->getPagesResidencyBuffer();
 	
 	const int8_t* pOutPagesData = pPagesBuffer ? reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read)) : nullptr;
 
@@ -253,21 +270,31 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	for ( auto const& pTex: textures) {
 		uint32_t pagesStartOffset = pTextureManager->getVirtualTexturePagesStartIndex(pTex.get());
 		uint32_t texturePagesCount = pTex->sparseDataPagesCount();
-		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for texture: " << pTex->getSourceFilename();
+		LLOG_DBG << "Analyzing " << std::to_string(texturePagesCount) << " pages for virtual texture: " << pTex->getSourceFilename();
 		LLOG_DBG << "Virtual texture " << pTex->getSourceFilename() << " pages start offset is " << std::to_string(pagesStartOffset);
 
 		texturesToPageIDsList.emplace_back(std::make_pair(pTex,  std::vector<uint32_t>()));
 		auto& texturePageIDs = texturesToPageIDsList.back().second;
 
+		//for(uint32_t i = 0; i < texturePagesCount; ++i) {
+		//	texturePageIDs.push_back(i);
+		//}
+
+		if(!pOutPagesData) {
+			LLOG_ERR << "No pOutPagesData buffer exists !!!!";
+		}
+
 		// index 'i' is a page index relative to the texture. starts with 0
 		if(pOutPagesData) {
 			for(uint32_t i = 0; i < texturePagesCount; ++i) {
+				LLOG_TRC << "Texture page " << i << " " << std::to_string(pOutPagesData[i + pagesStartOffset]);
 				if (pOutPagesData[i + pagesStartOffset] != 0) {
 					texturePageIDs.push_back(i);
 				}
 			}
-			LLOG_DBG << std::to_string(texturePageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 		}
+
+		LLOG_DBG << std::to_string(texturePageIDs.size()) << " pages need to be loaded for texture " << pTex->getSourceFilename();
 	}
 
 	if(mLoadPagesAsync) {
