@@ -175,7 +175,7 @@ float3 Camera::getPosition(size_t i) const {
 	calculateCameraParameters();
 	assert(i < mXformList.size() && !mXformList.empty());
 	auto const& xform = mXformList[i];
-	return {xform.viewInvMat[3][0], xform.viewInvMat[3][1], xform.viewInvMat[3][2]};
+	return {xform.viewInvMat[0][3], xform.viewInvMat[1][3], xform.viewInvMat[2][3]};
 }
 
 float3 Camera::getUpVector(size_t i) const {
@@ -253,9 +253,9 @@ void Camera::calculateCameraParameters() const {
 		if (mEnablePersistentViewMat) {
 			xform.viewMat = mPersistentViewMatList[i];
 			// Ray tracing related vectors
-			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[1][0], xform.viewMat[2][0])); // up
-			xform.cameraV = normalize(float3(xform.viewMat[0][1], xform.viewMat[1][1], xform.viewMat[2][1])); // right
-			xform.cameraW = -normalize(float3(xform.viewMat[0][2], xform.viewMat[1][2], xform.viewMat[2][2])); // dir
+			xform.cameraU = normalize(float3(xform.viewMat[0][0], xform.viewMat[0][1], xform.viewMat[0][2])); // up
+			xform.cameraV = normalize(float3(xform.viewMat[1][0], xform.viewMat[1][1], xform.viewMat[1][2])); // right
+			xform.cameraW = -normalize(float3(xform.viewMat[2][0], xform.viewMat[2][1], xform.viewMat[2][2])); // dir
 		} else {
 			xform.viewMat = math::matrixFromLookAt(mPosW, mTarget, mUp, math::Handedness::RightHanded);
 			// Ray tracing related vectors
@@ -277,12 +277,14 @@ void Camera::calculateCameraParameters() const {
 	// Build jitter matrix
 	// (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
 	//  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
-	/*
-	float4x4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
+	
+	float4x4 jitterMat({
+		1.0f, 0.0f, 0.0f, mData.jitterX,
+		0.0f, 1.0f, 0.0f, mData.jitterY,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		mData.jitterX, mData.jitterY, 0.0f, 1.0f);
-	*/
+		0.0f, 0.0f, 0.0f, 1.0f
+	});
+	
 
 	// DOF matrix
 	/*

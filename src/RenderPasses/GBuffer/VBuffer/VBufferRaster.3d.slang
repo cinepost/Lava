@@ -98,7 +98,7 @@ VBufferVSOut vsMain(VSIn vsIn) {
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
 #endif
 
-    vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
+    vsOut.posW = mul(worldMat, float4(vsIn.pos, 1.f)).xyz;
 
 #if defined(COMPUTE_MOTION_BLUR)
     const CameraXformData xform = gScene.camera.getXformData(tj);
@@ -108,16 +108,16 @@ VBufferVSOut vsMain(VSIn vsIn) {
     
 #endif
     
-    vsOut.posH = mul(double4((double3)vsOut.posW, 1.0l), (double4x4)viewProjMat);
+    vsOut.posH = mul((double4x4)viewProjMat, double4((double3)vsOut.posW, 1.0l));
 
     vsOut.posH.x += 2.f * gScene.camera.data.jitterX * vsOut.posH.w;
     vsOut.posH.y += 2.f * gScene.camera.data.jitterY * vsOut.posH.w;
     
-    const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
+    const double4 viewP = mul((double4x4)gScene.camera.data.invProjMat, vsOut.posH);
     vsOut.camZ = -(viewP.z / viewP.w);
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
-    vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
+    vsOut.normalW = normalize(mul(gScene.getInverseTransposeWorldMatrix(instanceID)), vsIn.unpack().normal);
 
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);
@@ -132,8 +132,8 @@ VBufferVSOut vsMain(VSIn vsIn) {
         prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
 
-    float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
-    vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.getPrevViewProjMat());
+    float3 prevPosW = mul(gScene.getPrevWorldMatrix(instanceID), float4(prevPos, 1.f)).xyz;
+    vsOut.prevPosH = mul(gScene.camera.getPrevViewProjMat(), float4(prevPosW, 1.f));
 #endif
 
     return vsOut;
