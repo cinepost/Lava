@@ -265,7 +265,7 @@ void Camera::calculateCameraParameters() const {
 		}
 
 		xform.viewInvMat = inverse(xform.viewMat);
-		xform.viewProjMat = mul(xform.viewMat, mData.projMat);
+		xform.viewProjMat = mul(mData.projMat, xform.viewMat);
 		xform.invViewProj = inverse(xform.viewProjMat);
 
 		xform.cameraW *= mData.focalDistance;

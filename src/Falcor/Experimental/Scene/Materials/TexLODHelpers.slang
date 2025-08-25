@@ -160,8 +160,8 @@ float computeRayConeTriangleLODValue(float3 vertices[3], float2 txcoords[3], flo
 
     // We need the area of the triangle, which is length(triangleNormal) in worldspace, and
     // could not figure out a way with fewer than two 3x3 mtx multiplies for ray cones.
-    float3 edge01 = mul(vertices[1] - vertices[0], worldMat);
-    float3 edge02 = mul(vertices[2] - vertices[0], worldMat);
+    float3 edge01 = mul(worldMat, vertices[1] - vertices[0]);
+    float3 edge02 = mul(worldMat, vertices[2] - vertices[0]);
 
     float3 triangleNormal = cross(edge01, edge02);              // In world space, by design.
     float Pa = length(triangleNormal);                          // Twice the area of the triangle.
@@ -801,11 +801,11 @@ void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], flo
     out float3 edge01, out float3 edge02, out float3 normals[3], out float3 unnormalizedN, out float2 txcoords[3])
 {
     // Transform relevant data to world space.
-    edge01 = mul(vertices[1].position - vertices[0].position, (float3x3)worldMat);
-    edge02 = mul(vertices[2].position - vertices[0].position, (float3x3)worldMat);
-    normals[0] = mul(vertices[0].normal, worldInvTransposeMat).xyz;
-    normals[1] = mul(vertices[1].normal, worldInvTransposeMat).xyz;
-    normals[2] = mul(vertices[2].normal, worldInvTransposeMat).xyz;
+    edge01 = mul((float3x3)worldMat, vertices[1].position - vertices[0].position);
+    edge02 = mul((float3x3)worldMat, vertices[2].position - vertices[0].position);
+    normals[0] = mul(worldInvTransposeMat, vertices[0].normal).xyz;
+    normals[1] = mul(worldInvTransposeMat, vertices[1].normal).xyz;
+    normals[2] = mul(worldInvTransposeMat, vertices[2].normal).xyz;
     // Note that we do not need to normalize the individual normals[], since the derivation
     // by Igehy page 182 normalizes the normal after interpolation.
 

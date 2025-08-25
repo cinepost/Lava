@@ -1037,8 +1037,8 @@ struct Scene {
         const SDFGrid sdfGrid = sdfGrids[instance.geometryID];
 
         // Load Matrices.
-        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
-        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixOffset);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         // Multiplying v.M to perform the intended (M^T).v
         const float3 hitPosition = mul(posW - extractTranslate(worldMat), worldInvTransposeMat);
@@ -1078,9 +1078,9 @@ struct Scene {
         const GeometryInstanceData instance = geometryInstances[hit.instanceID.index];
 
         // Load Matrices.
-        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
-        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixOffset);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixOffset);
 
         /// Multiplying v.M to perform the intended (M^T).v
         const float4 hitPosition = float4(mul(posW - extractTranslate(worldMat), worldInvTransposeMat), 1.0f);

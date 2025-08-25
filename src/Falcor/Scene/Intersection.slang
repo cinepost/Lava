@@ -164,8 +164,8 @@ struct SDFGridIntersector
         float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         // Convert ray origin and direction to local space.
-        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
-        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+        float3 rayOrigLocal = mul(ray.origin - worldMat[3].xyz, worldInvTransposeMat);
+        float3 rayDirLocal = mul(ray.dir, worldInvTransposeMat);
 
         return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, t, hitData);
     }
@@ -187,8 +187,8 @@ struct SDFGridIntersector
         float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixOffset);
 
         // Convert ray origin and direction to local space.
-        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
-        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+        float3 rayOrigLocal = mul(ray.origin - worldMat[3].xyz, worldInvTransposeMat);
+        float3 rayDirLocal = mul(ray.dir, worldInvTransposeMat);
 
 #if SCENE_SDF_OPTIMIZE_VISIBILITY_RAYS
         return sdfGrid.intersectSDFAny(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID);

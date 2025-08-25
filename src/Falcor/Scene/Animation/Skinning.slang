@@ -114,13 +114,13 @@ struct SkinningData
         boneMat += getBoneMatrix(s.boneID.w) * s.boneWeight.w;
 
         // Apply mesh bind transform before skinning (mesh to skeleton local at bind time)
-        boneMat = mul(getMeshBindMatrix(s.bindMatrixID), boneMat);
+        boneMat = mul(boneMat, getMeshBindMatrix(s.bindMatrixID));
 
         // Skinning takes us to world space, so apply the inverse to return to skeleton local
-        boneMat = mul(boneMat, getInverseWorldMatrix(s.skeletonMatrixID));
+        boneMat = mul(getInverseWorldMatrix(s.skeletonMatrixID), boneMat);
 
         // Apply inverse bind matrix to return to mesh-local
-        boneMat = mul(boneMat, getInverseMeshBindMatrix(s.bindMatrixID));
+        boneMat = mul(getInverseMeshBindMatrix(s.bindMatrixID), boneMat);
         return boneMat;
     }
 
@@ -133,7 +133,7 @@ struct SkinningData
         boneMat += getInverseTransposeBoneMatrix(s.boneID.z) * s.boneWeight.z;
         boneMat += getInverseTransposeBoneMatrix(s.boneID.w) * s.boneWeight.w;
 
-        boneMat = mul(boneMat, getTransposeWorldMatrix(s.skeletonMatrixID));
+        boneMat = mul(getTransposeWorldMatrix(s.skeletonMatrixID), boneMat);
         return boneMat;
     }
 
@@ -175,9 +175,9 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     float4x4 boneMat = gData.getBlendedMatrix(vertexId);
     float4x4 invTransposeMat = gData.getInverseTransposeBlendedMatrix(vertexId);
 
-    s.position = mul(float4(s.position, 1.f), boneMat).xyz;
-    s.tangent.xyz = mul(s.tangent.xyz, (float3x3) boneMat);
-    s.normal = mul(s.normal, (float3x3) transpose(invTransposeMat));
+    s.position = mul(boneMat, float4(s.position, 1.f)).xyz;
+    s.tangent.xyz = mul((float3x3) boneMat, s.tangent.xyz);
+    s.normal = mul((float3x3) invTransposeMat, s.normal);
 
     // Copy the previous skinned data
     PrevVertexData prev;

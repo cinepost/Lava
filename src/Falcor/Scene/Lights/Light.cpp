@@ -619,7 +619,7 @@ void AnalyticAreaLight::setNormalizeArea(bool value) {
 }
 
 void AnalyticAreaLight::update() {
-    mData.transMat = mul(mTransformMatrix, scale(float4x4::identity(), mScaling));
+    mData.transMat = mul(mTransformMatrix, math::matrixFromScaling(mScaling));
     mData.transMatIT = inverse(transpose(mData.transMat));
     mData.transMatInv = inverse(mData.transMat);
     mData.posW = {mData.transMat[0][3], mData.transMat[1][3], mData.transMat[2][3]};

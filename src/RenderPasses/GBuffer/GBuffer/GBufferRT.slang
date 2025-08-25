@@ -236,13 +236,13 @@ struct GBufferRT
         {
             // Compute motion vector in screen and world space.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
-            float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+            float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
             motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
             motionVectorW = float4(prevPosW - sd.posW, 0.f);
 
             // Compute disocclusion.
             // Do the occlusion masking in linearZ space
-            float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+            float4 curPosH = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW, 1.f));
             disocclusion = prevPosH.w - curPosH.w;
         }
 
@@ -270,7 +270,7 @@ struct GBufferRT
 
         if (is_valid(gLinearZ))
         {
-            float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+            float4 curPosH = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW, 1.f));
             float curLinearZ = curPosH.w;
 
             // TODO: Improve computation of derivatives:
@@ -287,7 +287,7 @@ struct GBufferRT
         // Output a depth buffer similar to raster (NDC).
         if (is_valid(gDepth))
         {
-            float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+            float4 curPosH = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW, 1.f));
             gDepth[pixel] = curPosH.z / curPosH.w;
         }
 
@@ -313,7 +313,7 @@ struct GBufferRT
         float3 worldPos = rayOrigin + normalize(rayDir) * kEnvMapDepth; // Hit on env map
 
         float2 pixelPos = pixel + float2(0.5f, 0.5f);
-        float4 prevPosH = mul(float4(worldPos, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+        float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(worldPos, 1.f));
         return calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
     }
 

@@ -113,11 +113,11 @@ VBufferVSOut vsMain(VSIn vsIn) {
     vsOut.posH.x += 2.f * gScene.camera.data.jitterX * vsOut.posH.w;
     vsOut.posH.y += 2.f * gScene.camera.data.jitterY * vsOut.posH.w;
     
-    const double4 viewP = mul((double4x4)gScene.camera.data.invProjMat, vsOut.posH);
+    const double4 viewP = mul(vsOut.posH, (double4x4)gScene.camera.data.invProjMat);
     vsOut.camZ = -(viewP.z / viewP.w);
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
-    vsOut.normalW = normalize(mul(gScene.getInverseTransposeWorldMatrix(instanceID)), vsIn.unpack().normal);
+    vsOut.normalW = normalize(mul(gScene.getInverseTransposeWorldMatrix(instanceID), vsIn.unpack().normal));
 
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);

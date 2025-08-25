@@ -462,7 +462,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, const f
     float3 dir = sample_cone(rnd.xy, light.cosSubtendedAngle);
 
     // Transform sampled direction to world space
-    ls.dir = ls.shadowDir = normalize(mul((float3x3)light.transMat, dir));
+    ls.dir = ls.shadowDir = normalize(mul(dir, (float3x3)light.transMat));
     ls.normalW = -ls.dir;
     ls.distance = kMaxLightDistance;
 
