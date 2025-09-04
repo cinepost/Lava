@@ -1,1 +1,0 @@
-C:\Users\max\Documents\GitHub\Lava\third_party\freeimage\Source\ZLib\x64\Debug\ZLib.lib
