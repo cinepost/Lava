@@ -66,6 +66,7 @@ third_party/external/
 
 third_party/freeimage/x64
 third_party/freeimage/x64/
+third_party/freeimage/*/*/x64
 third_party/downloads/
 install/
 .vs/
