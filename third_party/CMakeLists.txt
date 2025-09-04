@@ -393,7 +393,7 @@ else()
       UPDATE_DISCONNECTED true
 
       CONFIGURE_COMMAND ./bootstrap.bat
-      BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 define=BOOST_USE_WINAPI_VERSION=0x0A00 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+      BUILD_COMMAND ./b2 define=BOOST_USE_WINAPI_VERSION=0x0A00 --disable-icu --build-dir=${EXTERNALS_BINARY_DIR}/boost install -j8 toolset=msvc-14.3 address-model=64 architecture=x86 link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
         --with-filesystem
         --with-system
         --with-date_time
@@ -1438,7 +1438,7 @@ else()
   set(LZ4_PREFIX lz4)
 
   if(WIN32)
-    set(LZ4_BUILD_COMMAND "msbuild;${EXTERNALS_SOURCE_DIR}\\${LZ4_PREFIX}\\src\\LZ4\\build\\VS2022\\liblz4\\liblz4.vcxproj;/property:Configuration=${DEPS_BUILD_TYPE};/property:Platform=x64")
+    set(LZ4_BUILD_COMMAND "msbuild;${EXTERNALS_SOURCE_DIR}\\${LZ4_PREFIX}\\src\\LZ4\\build\\VS2022\\lz4.sln;/target:liblz4-dll;/property:Configuration=${DEPS_BUILD_TYPE};/property:Platform=x64")
     set(LZ4_INSTL_COMMAND "")
   else()
     message(FATAL_ERROR "LZ4_BUILD_COMMAND not set !!!")

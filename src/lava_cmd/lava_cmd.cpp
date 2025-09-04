@@ -395,7 +395,7 @@ int main(int argc, char** argv){
               exit(EXIT_FAILURE);
             }
             
-            auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
+            auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::path(inputFilename).extension().string());
             reader->init(pRenderer, echo_input);
 
             LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";

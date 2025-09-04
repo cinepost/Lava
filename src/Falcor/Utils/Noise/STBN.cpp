@@ -16,7 +16,7 @@
 #include "pcg_basic.h"
 #include "STBN.h"
 #include "lava_utils_lib/logging.h"
-
+#include "float.h"
 
 // If true, will use the same random numbers each run
 #define DETERMINISTIC() true
