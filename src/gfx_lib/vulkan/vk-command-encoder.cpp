@@ -386,8 +386,8 @@ void ResourceCommandEncoder::copyTexture(
 
 void ResourceCommandEncoder::uploadTexturePageData(
 	ITextureResource* dst,
-	ITextureResource::Offset3D offset,
-	ITextureResource::Extents extent,
+	IVirtualTexturePageResource::Offset3D offset,
+	IVirtualTexturePageResource::Extent3D extent,
 	uint32_t mipLevel,
 	ITextureResource::SubresourceData* subResourceData)
 {

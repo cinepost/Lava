@@ -52,12 +52,12 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		const std::shared_ptr<Device>& device() const { return mpDevice; }
 
-		gfx::IVirtualTexturePageResource::Offset offsetGFX() const { 
+		const gfx::IVirtualTexturePageResource::Offset3D& offsetGFX() const { 
 			assert(mpVirtualTexturePageResource); 
 			return mpVirtualTexturePageResource->getOffset(); 
 		}
 
-		gfx::IVirtualTexturePageResource::Extent extentGFX() const { 
+		const gfx::IVirtualTexturePageResource::Extent3D& extentGFX() const { 
 			assert(mpVirtualTexturePageResource); 
 			return mpVirtualTexturePageResource->getExtent(); 
 		}

@@ -54,8 +54,8 @@ public:
 		ITextureResource** outResource) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
-        IVirtualTexturePageResource::Offset offset, 
-        IVirtualTexturePageResource::Extent extent,
+        IVirtualTexturePageResource::Offset3D offset, 
+        IVirtualTexturePageResource::Extent3D extent,
         uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
         IVirtualTexturePageResource** outResource) override;
 

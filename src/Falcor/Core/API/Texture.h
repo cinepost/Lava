@@ -320,7 +320,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint32_t sparseDataPagesCount() const { return static_cast<uint32_t>(mSparseDataPages.size()); }
 
-	const gfx::IVirtualTexturePageResource::Extent& sparseDataPageRes() const { return getGfxTextureResource()->sparseDataPageRes(); }
+	const gfx::IVirtualTexturePageResource::Extent3D& sparseDataPageRes() const { return getGfxTextureResource()->sparseDataPageRes(); }
 
 	uint32_t getMipTailStart() const;
 

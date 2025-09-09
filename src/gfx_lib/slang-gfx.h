@@ -854,6 +854,62 @@ class DeviceImpl;
 
 }
 
+class IVirtualTexturePageResource: public ISlangUnknown {
+	public:
+		struct Offset3D {
+			int x = 0;
+			int y = 0;
+			int z = 0;
+			Offset3D() = default;
+			Offset3D(int _x, int _y, int _z) :x(_x), y(_y), z(_z) {}
+
+			bool operator==(const Offset3D& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z; }
+		};
+
+		struct Extent3D {
+			uint32_t width = 0;             ///< Width in pixels
+			uint32_t height = 0;            ///< Height in pixels (if 2d or 3d)
+			uint32_t depth = 0;             ///< Depth (if 3d)
+			Extent3D() = default;
+			Extent3D(uint32_t _w, uint32_t _h, uint32_t _d) :width(_w), height(_h), depth(_d) {}
+
+			bool operator==(const Extent3D& rhs) const { return width == rhs.width && height == rhs.height && depth == rhs.depth; }
+		};
+
+	public:
+		IVirtualTexturePageResource(const Offset3D& offset, const Extent3D& extent, uint32_t mipLevel, uint32_t layer): 
+			mOffset(offset), mExtent(extent), mMipLevel(mipLevel), mLayer(layer) {};
+
+		uint32_t getMipLevel() const { return mMipLevel; }
+		uint32_t getLayer() const { return mLayer; }
+
+		uint32_t getWidth() const { return mExtent.width; }
+		uint32_t getHeight() const { return mExtent.height; }
+		uint32_t getDepth() const { return mExtent.depth; }
+
+		const Offset3D& getOffset() const { return mOffset; }
+		const Extent3D& getExtent() const { return mExtent; }
+
+		virtual bool isResident() const = 0;
+
+		virtual bool allocateMemory() = 0;
+		virtual void releaseMemory() = 0;
+
+		virtual size_t getUsedMemSize() const = 0;
+
+	protected:
+		Offset3D mOffset;
+        Extent3D mExtent;
+		
+		uint32_t mMipLevel;		// Mip level that this page belongs to
+        uint32_t mLayer;        // Array layer that this page belongs to
+};
+
+#define SLANG_UUID_IVirtualTexturePageResource                                     \
+{                                                                                  \
+	0x1a274ffe, 0x6e37, 0x482b, { 0x83, 0x6a, 0x7e, 0xa7, 0xe7, 0xf4, 0xb4, 0x99 } \
+}
+
 class ITextureResource: public IResource
 {
 public:
@@ -878,7 +934,7 @@ public:
 		GfxCount height = 0;            ///< Height in pixels (if 2d or 3d)
 		GfxCount depth = 0;             ///< Depth (if 3d)
 		Extents() = default;
-		Extents(uint32_t _w, uint32_t _h, uint32_t _d) :width(_w), height(_h), depth(_d) {}
+		Extents(GfxCount _w, GfxCount _h, GfxCount _d) :width(_w), height(_h), depth(_d) {}
 
 		bool operator==(const Extents& rhs) const { return width == rhs.width && height == rhs.height && depth == rhs.depth; }
 	};
@@ -950,7 +1006,7 @@ public:
 
 	virtual uint32_t sparseDataBindsCount() const = 0;
 
-	virtual const Extents& sparseDataPageRes() const = 0;
+	virtual const IVirtualTexturePageResource::Extent3D& sparseDataPageRes() const = 0;
 
 	virtual SLANG_NO_THROW Desc* SLANG_MCALL getDesc() = 0;
 
@@ -969,46 +1025,6 @@ protected:
 #define SLANG_UUID_ITextureResource                                                    \
 {                                                                                  \
 	0xcf88a31c, 0x6187, 0x46c5, { 0xa4, 0xb7, 0xeb, 0x58, 0xc7, 0x33, 0x40, 0x17 } \
-}
-
-class IVirtualTexturePageResource: public ISlangUnknown {
-	public:
-		using Offset = ITextureResource::Offset3D;
-
-		using Extent = ITextureResource::Extents;
-
-	public:
-		IVirtualTexturePageResource(const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer): 
-			mOffset(offset), mExtent(extent), mMipLevel(mipLevel), mLayer(layer) {};
-
-		uint32_t getMipLevel() const { return mMipLevel; }
-		uint32_t getLayer() const { return mLayer; }
-
-		uint32_t getWidth() const { return mExtent.width; }
-		uint32_t getHeight() const { return mExtent.height; }
-		uint32_t getDepth() const { return mExtent.depth; }
-
-		const Offset& getOffset() const { return mOffset; }
-		const Extent& getExtent() const { return mExtent; }
-
-		virtual bool isResident() const = 0;
-
-		virtual bool allocateMemory() = 0;
-		virtual void releaseMemory() = 0;
-
-		virtual size_t getUsedMemSize() const = 0;
-
-	protected:
-		Offset mOffset;
-        Extent mExtent;
-		
-		uint32_t mMipLevel;		// Mip level that this page belongs to
-        uint32_t mLayer;        // Array layer that this page belongs to
-};
-
-#define SLANG_UUID_IVirtualTexturePageResource                                     \
-{                                                                                  \
-	0x1a274ffe, 0x6e37, 0x482b, { 0x83, 0x6a, 0x7e, 0xa7, 0xe7, 0xf4, 0xb4, 0x99 } \
 }
 
 enum class ComparisonFunc : uint8_t
@@ -1897,8 +1913,8 @@ public:
 		GfxCount subResourceDataCount) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(
 		ITextureResource* dst,
-		ITextureResource::Offset3D offset,
-		ITextureResource::Extents extent,
+		IVirtualTexturePageResource::Offset3D offset,
+		IVirtualTexturePageResource::Extent3D extent,
 		uint32_t mipLevel,
 		ITextureResource::SubresourceData* subResourceData) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL
@@ -2582,14 +2598,14 @@ class IDevice: public ISlangUnknown {
 		}
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL createVirtualTexturePageResource(
-			IVirtualTexturePageResource::Offset offset, 
-			IVirtualTexturePageResource::Extent extent,
+			IVirtualTexturePageResource::Offset3D offset, 
+			IVirtualTexturePageResource::Extent3D extent,
 			uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, 
 			IVirtualTexturePageResource** outResource) = 0;
 
 		inline SLANG_NO_THROW ComPtr<IVirtualTexturePageResource> createVirtualTexturePageResource(
-			IVirtualTexturePageResource::Offset offset, 
-			IVirtualTexturePageResource::Extent extent,
+			IVirtualTexturePageResource::Offset3D offset, 
+			IVirtualTexturePageResource::Extent3D extent,
 			uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits) 
 		{
 			ComPtr<IVirtualTexturePageResource> resource;

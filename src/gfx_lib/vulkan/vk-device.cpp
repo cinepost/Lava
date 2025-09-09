@@ -1426,7 +1426,7 @@ const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() const {
 	return m_api.mVmaAllocator;
 }
 
-Result SLANG_MCALL DeviceImpl::createVirtualTexturePageResource(IVirtualTexturePageResource::Offset offset, IVirtualTexturePageResource::Extent extent,
+Result SLANG_MCALL DeviceImpl::createVirtualTexturePageResource(IVirtualTexturePageResource::Offset3D offset, IVirtualTexturePageResource::Extent3D extent,
     uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, IVirtualTexturePageResource** outResource) {
 
 	assert(size > 0);

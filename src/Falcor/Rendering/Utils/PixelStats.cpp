@@ -69,7 +69,7 @@ namespace Falcor
             // Create parallel reduction helper.
             if (!mpParallelReduction)
             {
-                mpParallelReduction = ComputeParallelReduction::create(mpDevice);
+                mpParallelReduction = ParallelReduction::create(mpDevice);
                 mpReductionResult = Buffer::create(mpDevice, (kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
@@ -108,11 +108,11 @@ namespace Falcor
             // Sum of the per-pixel counters. The results are copied to a GPU buffer.
             for (uint32_t i = 0; i < kRayTypeCount; i++)
             {
-                mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
+                mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
             }
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathVertexCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 1) * sizeof(uint4));
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathVertexCount, ParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 1) * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
 
             // Submit command list and insert signal.
             pRenderContext->flush(false);

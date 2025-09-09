@@ -458,8 +458,8 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
   const Texture* pTexture = pPage->texture().get();
   
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-	gfx::IVirtualTexturePageResource::Offset gfxOffset = pPage->offsetGFX();
-	gfx::IVirtualTexturePageResource::Extent gfxSize = pPage->extentGFX();
+	gfx::IVirtualTexturePageResource::Offset3D gfxOffset = pPage->offsetGFX();
+	gfx::IVirtualTexturePageResource::Extent3D gfxSize = pPage->extentGFX();
 	gfx::FormatInfo formatInfo = {};
 	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
 

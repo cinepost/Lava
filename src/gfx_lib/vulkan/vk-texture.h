@@ -31,7 +31,7 @@ class TextureResourceImpl : public TextureResource {
 
         uint32_t mMemoryTypeIndex;                                      // @todo: Comment
 
-        IVirtualTexturePageResource::Extent mSparsePageRes;
+        IVirtualTexturePageResource::Extent3D mSparsePageRes;
         uint32_t mSparseBindsCount;
 
         VkBindSparseInfo mBindSparseInfo;                               // Sparse queue binding information
@@ -60,7 +60,7 @@ class TextureResourceImpl : public TextureResource {
 
         virtual uint32_t sparseDataBindsCount() const override { return mSparseBindsCount; }
 
-        virtual const ITextureResource::Extents& sparseDataPageRes() const override { return mSparsePageRes; }
+        virtual const IVirtualTexturePageResource::Extent3D& sparseDataPageRes() const override { return mSparsePageRes; }
 
         virtual SLANG_NO_THROW Result SLANG_MCALL getNativeResourceHandle(InteropHandle* outHandle) override;
 

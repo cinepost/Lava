@@ -241,7 +241,7 @@ namespace gfx {
 
 #define VK_API_ALL_INSTANCE_PROCS(x) \
     VK_API_INSTANCE_PROCS(x) \
-    VK_API_INSTANCE_KHR_PROCS(x)
+    VK_API_INSTANCE_KHR_PROCS(x) \
 
 #define VK_API_ALL_DEVICE_PROCS(x) \
     VK_API_DEVICE_PROCS(x) \

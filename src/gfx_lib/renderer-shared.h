@@ -248,7 +248,7 @@ class VirtualTexturePageResource: public IVirtualTexturePageResource, public Sla
 
     public:
         typedef IVirtualTexturePageResource Parent;
-        VirtualTexturePageResource(const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer): Parent(offset, extent, mipLevel, layer) {}
+        VirtualTexturePageResource(const Offset3D& offset, const Extent3D& extent, uint32_t mipLevel, uint32_t layer): Parent(offset, extent, mipLevel, layer) {}
 };
 
 class TextureResource : public ITextureResource, public Resource {

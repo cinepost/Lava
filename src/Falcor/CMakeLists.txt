@@ -293,7 +293,7 @@ if(WIN32)
             Blosc::blosc
             ${GLFW_LIBRARY}
             OpenSSL::SSL
-            OpenImageIO::OpenImageIO
+            ${OPENIMAGEIO_LIBRARIES}
             OpenVDB::openvdb
             OpenEXR::OpenEXR
             ${ASSIMP_LIBRARY}
@@ -324,7 +324,7 @@ else()
             Blosc::blosc
             ${GLFW_LIBRARY}
             OpenSSL::SSL
-            OpenImageIO::OpenImageIO
+            ${OPENIMAGEIO_LIBRARIES}
             OpenVDB::openvdb
             OpenEXR::OpenEXR
             ${assimp_LIBRARIES}

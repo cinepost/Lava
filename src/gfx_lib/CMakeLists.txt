@@ -9,6 +9,7 @@ include_directories(
     ${EXTERNALS_INSTALL_DIR}/include/slang
     ${PROJECT_SOURCE_DIR}/external/include
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
+    ${Boost_INCLUDE_DIRS}
 )
 
 file( GLOB SOURCES
@@ -29,6 +30,7 @@ file( GLOB SOURCES
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-file-system.cpp
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-io.cpp
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-text-io.cpp
+    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-command-line.cpp
 )
 
 if(WIN32)
@@ -43,14 +45,6 @@ endif()
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
-
-include_directories( 
-    ${EXTERNALS_INSTALL_DIR}/include
-    ${EXTERNALS_INSTALL_DIR}/include/slang
-    ${PROJECT_SOURCE_DIR}/external/include
-    ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
-    ${Boost_INCLUDE_DIRS}
-)
 
 add_library( gfx_lib SHARED ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} )
 
@@ -67,11 +61,9 @@ if(WIN32)
         gfx_lib
         PUBLIC
             lava_utils_lib
-            ${SLANG_LIBRARY}
             Vulkan::Vulkan
         PRIVATE
-            # falcor_lib "../../Release/lib/Release/falcor_lib"
-            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/falcor_lib.lib
+            ${SLANG_LIBRARY}
     )
 else()
     target_link_libraries(

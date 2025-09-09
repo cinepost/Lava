@@ -32,7 +32,7 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/RenderGraph/BasePasses/ComputePass.h"
-#include "Falcor/Utils/Algorithm/ComputeParallelReduction.h"
+#include "Falcor/Utils/Algorithm/ParallelReduction.h"
 
 #include "PixelStatsShared.slang"
 
@@ -119,7 +119,7 @@ namespace Falcor
         Device::SharedPtr                   mpDevice = nullptr;
 
         // Internal state
-        ComputeParallelReduction::SharedPtr mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
+        ParallelReduction::UniquePtr        mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
         Buffer::SharedPtr                   mpReductionResult;              ///< Results buffer for stats readback (CPU mappable).
         GpuFence::SharedPtr                 mpFence;                        ///< GPU fence for sychronizing readback.
 

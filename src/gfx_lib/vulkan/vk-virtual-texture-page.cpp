@@ -10,7 +10,7 @@ using namespace Slang;
 
 namespace vk {
 
-VirtualTexturePageResourceImpl::VirtualTexturePageResourceImpl(DeviceImpl* device, const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer)
+VirtualTexturePageResourceImpl::VirtualTexturePageResourceImpl(DeviceImpl* device, const Offset3D& offset, const Extent3D& extent, uint32_t mipLevel, uint32_t layer)
     : VirtualTexturePageResource(offset, extent, mipLevel, layer), m_device(device)
 {
 

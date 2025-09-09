@@ -42,6 +42,8 @@ class dlldecl ParallelReduction {
         MinMax,
     };
 
+    static UniquePtr create(std::shared_ptr<Device> pDevice);
+
     ParallelReduction(std::shared_ptr<Device> pDevice);
 
     /** Perform parallel reduction.

@@ -130,7 +130,7 @@ Result DebugDevice::createTransientResourceHeap(
     return result;
 }
 
-Result DebugDevice::createVirtualTexturePageResource(IVirtualTexturePageResource::Offset offset, IVirtualTexturePageResource::Extent extent,
+Result DebugDevice::createVirtualTexturePageResource(IVirtualTexturePageResource::Offset3D offset, IVirtualTexturePageResource::Extent3D extent,
     uint32_t mipLevel, uint32_t layer, uint32_t size, uint32_t memoryTypeBits, IVirtualTexturePageResource** outResource)
 {
     assert(false);

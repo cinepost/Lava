@@ -47,7 +47,7 @@ uint32_t DebugTextureResource::sparseDataBindsCount() const {
 	return baseObject->sparseDataBindsCount();
 }
 
-const ITextureResource::Extents& DebugTextureResource::sparseDataPageRes() const {
+const IVirtualTexturePageResource::Extent3D& DebugTextureResource::sparseDataPageRes() const {
 	return baseObject->sparseDataPageRes();
 }
 

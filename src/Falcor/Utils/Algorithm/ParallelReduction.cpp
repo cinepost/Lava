@@ -37,6 +37,10 @@ namespace Falcor {
 
 static const char kShaderFile[] = "Utils/Algorithm/ParallelReduction.cs.slang";
 
+ParallelReduction::UniquePtr ParallelReduction::create(std::shared_ptr<Device> pDevice) {
+    return std::make_unique<ParallelReduction>(pDevice);
+}
+
 ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice): mpDevice(std::move(pDevice)) {
     // Create the programs.
     // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.

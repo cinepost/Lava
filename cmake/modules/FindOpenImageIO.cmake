@@ -52,6 +52,7 @@ endif()
 
 unset(OpenImageIO_FOUND)
 unset(OPENIMAGEIO_LIBRARY)
+unset(OPENIMAGEIO_UTIL_LIBRARY)
 
 # If 'OPENIMAGE_HOME' not set, use the env variable of that name if available
 if (NOT OPENIMAGEIO_ROOT AND NOT $ENV{OPENIMAGEIO_ROOT} STREQUAL "")
@@ -61,6 +62,11 @@ endif ()
 
 find_library ( OPENIMAGEIO_LIBRARY
                NAMES OpenImageIO OpenImageIO${OIIO_LIBNAME_SUFFIX}
+               PATHS ${OPENIMAGEIO_ROOT}/lib 
+               NO_DEFAULT_PATH)
+
+find_library ( OPENIMAGEIO_UTIL_LIBRARY
+               NAMES OpenImageIO_Util OpenImageIO_Util${OIIO_LIBNAME_SUFFIX}
                PATHS ${OPENIMAGEIO_ROOT}/lib 
                NO_DEFAULT_PATH)
 
@@ -97,7 +103,7 @@ if(EXISTS ${OPENIMAGEIO_LIBRARY})
     include (FindPackageHandleStandardArgs)
     find_package_handle_standard_args (OpenImageIO
         FOUND_VAR     OpenImageIO_FOUND
-        REQUIRED_VARS OPENIMAGEIO_INCLUDE_DIR OPENIMAGEIO_LIBRARY
+        REQUIRED_VARS OPENIMAGEIO_INCLUDE_DIR OPENIMAGEIO_LIBRARY OPENIMAGEIO_UTIL_LIBRARY
                       OPENIMAGEIO_VERSION
         VERSION_VAR   OPENIMAGEIO_VERSION
         )
@@ -106,7 +112,7 @@ endif()
 
 if (OpenImageIO_FOUND)
     set (OPENIMAGEIO_INCLUDES ${OPENIMAGEIO_INCLUDE_DIR})
-    set (OPENIMAGEIO_LIBRARIES ${OPENIMAGEIO_LIBRARY})
+    set (OPENIMAGEIO_LIBRARIES "${OPENIMAGEIO_LIBRARY}" "${OPENIMAGEIO_UTIL_LIBRARY}")
     get_filename_component (OPENIMAGEIO_LIBRARY_DIRS "${OPENIMAGEIO_LIBRARY}" DIRECTORY)
     if (NOT OpenImageIO_FIND_QUIETLY)
         message ( STATUS "OpenImageIO includes     = ${OPENIMAGEIO_INCLUDE_DIR}" )
@@ -121,7 +127,7 @@ if (OpenImageIO_FOUND)
             INTERFACE_INCLUDE_DIRECTORIES "${OPENIMAGEIO_INCLUDES}")
 
         set_property(TARGET OpenImageIO::OpenImageIO APPEND PROPERTY
-            IMPORTED_LOCATION "${OPENIMAGEIO_LIBRARIES}")
+            IMPORTED_LOCATION "${OPENIMAGEIO_LIBRARY}" "${OPENIMAGEIO_UTIL_LIBRARY}")
     endif ()
 
     if (NOT TARGET OpenImageIO::oiiotool AND EXISTS "${OIIOTOOL_BIN}")
@@ -133,5 +139,5 @@ endif ()
 
 mark_as_advanced (
     OPENIMAGEIO_INCLUDE_DIR
-    OPENIMAGEIO_LIBRARY
+    OPENIMAGEIO_LIBRARIES
     )

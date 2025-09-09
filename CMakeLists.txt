@@ -140,7 +140,7 @@ add_compile_definitions(
 )
 endif()
 
-set(FALCOR_API_BACKEND "Vulkan" CACHE STRING "Rendering API")
+set(FALCOR_API_BACKEND "GFX" CACHE STRING "Rendering API")
 
 # Set up houdini hdk and installation paths
 if(WIN32)

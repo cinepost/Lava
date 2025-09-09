@@ -13,7 +13,7 @@ namespace vk {
 
 class VirtualTexturePageResourceImpl: public VirtualTexturePageResource {
     public:
-        VirtualTexturePageResourceImpl(DeviceImpl* device, const Offset& offset, const Extent& extent, uint32_t mipLevel, uint32_t layer);
+        VirtualTexturePageResourceImpl(DeviceImpl* device, const Offset3D& offset, const Extent3D& extent, uint32_t mipLevel, uint32_t layer);
         ~VirtualTexturePageResourceImpl();
 
         VkOffset3D offsetVK() const { return {mOffset.x, mOffset.y, mOffset.z}; }

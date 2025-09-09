@@ -8,7 +8,9 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 find_package( Python3 REQUIRED COMPONENTS Development )
 
 include_directories( 
-    ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include
+    ${EXTERNALS_INSTALL_DIR}/include/slang
+    ${PROJECT_SOURCE_DIR}/external/include
     ${Python3_INCLUDE_DIRS}
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
@@ -21,6 +23,7 @@ if(WIN32)
     message(STATUS "Using module to find Vulkan")
     find_package(Vulkan REQUIRED)
     include_directories(${Vulkan_INCLUDE_DIRS})
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
     add_definitions(-DBOOST_ALL_DYN_LINK)
     add_definitions(-DPASS_DLL)
 endif()
@@ -69,14 +72,8 @@ function (makeRenderPassLib)
     	falcor_lib
         ${ARGS_DEPS}
         lava_utils_lib
+        gfx_lib
     )
-
-if(USE_MEGALIB)
-    target_link_libraries(
-        ${PASS_LIB}
-        mega_lib
-    )
-endif()
 
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
@@ -109,7 +106,6 @@ endif()
 endfunction()
 
 # Now make bundled render passes
-
 
 makeRenderPassLib(NAME "AccumulatePass")
 makeRenderPassLib(NAME "AmbientOcclusionPass")
