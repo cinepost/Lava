@@ -52,9 +52,9 @@ target_link_libraries(
     falcor_lib
     ${SLANG_GFX_LIBRARY}
     PRIVATE
-    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/lava_lib.lib
-    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/AccumulatePass.lib
+    lava_lib
 )
+
 endif()
 
 if(UNIX OR WIN32)
