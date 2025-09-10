@@ -55,7 +55,7 @@ if(WIN32)
     add_definitions(-DBOOST_LOG_DYN_LINK)
 
     set_target_properties(gfx_lib PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    target_link_options(gfx_lib PRIVATE "/FORCE:UNRESOLVED")
+    # target_link_options(gfx_lib PRIVATE "/FORCE:UNRESOLVED")
 
     target_link_libraries(
         gfx_lib

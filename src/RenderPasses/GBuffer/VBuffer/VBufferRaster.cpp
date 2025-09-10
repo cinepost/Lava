@@ -67,7 +67,7 @@ void VBufferRaster::parseDictionary(const Dictionary& dict) {
         if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
         else if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
-        else if (key == kCullMode) setCullMode(static_cast<std::string>(value));
+        else if (key == kCullMode) setCullMode(value.operator std::string());
     }
 }
 

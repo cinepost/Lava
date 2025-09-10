@@ -20,7 +20,7 @@ include_directories(
 )
 
 if(WIN32)
-add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL)
+add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL -DVK_USE_PLATFORM_WIN32_KHR)
 else()
 add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
 endif()
@@ -54,7 +54,7 @@ add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     lava_lib
-    reader_lsd_lib
+    reader_bgeo_lib
     falcor_lib
     lava_utils_lib
     TexturesResolvePass

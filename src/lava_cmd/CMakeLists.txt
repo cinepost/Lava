@@ -1,5 +1,6 @@
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include/slang
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
@@ -25,10 +26,10 @@ add_executable ( lava_cmd ${SOURCES} )
 set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava-bin" )
  
 target_link_libraries( lava_cmd
-	gfx_lib
 	falcor_lib
 	lava_lib
 	lava_utils_lib  
+	reader_lsd_lib
 )
 
 if(USE_MEGALIB)
