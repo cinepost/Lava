@@ -95,17 +95,17 @@ if( APPLE )
   endif()
 endif()
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
 elseif(UNIX)
   set( CMAKE_INSTALL_PREFIX "/opt/lava" )
 elseif(WIN32)
-  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "D:/Lava/install" CACHE PATH "Lava install prefix" FORCE)
-  endif()
-  message("CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
+  set( CMAKE_INSTALL_PREFIX "D:/work/lava" CACHE PATH "Lava install prefix" FORCE)
 endif()
+endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+message("CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
 
 # Specify build paths
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
@@ -115,17 +115,10 @@ set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin 
 
 add_definitions(-DLAVA_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
 
-if (WIN32 OR APPLE)
-  if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    # We don't want to install in default system location, install is really for the SDK, so call it that
-    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/sdk" CACHE PATH "Falcor install prefix" FORCE )
-  endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-endif(WIN32 OR APPLE)
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-endif ()
+endif()
 
 if(WIN32)
 add_compile_definitions(
@@ -159,8 +152,8 @@ if(WIN32)
     -D_CRT_SECURE_NO_WARNINGS
     -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
 else()
-set(HOUDINI_USER "$ENV{HOME}/houdini20.5" CACHE PATH "Houdini home user path")
-set(HOUDINI_ROOT "/opt/hfs20.5" CACHE PATH "Houdini installation path")
+  set(HOUDINI_USER "$ENV{HOME}/houdini20.5" CACHE PATH "Houdini home user path")
+  set(HOUDINI_ROOT "/opt/hfs20.5" CACHE PATH "Houdini installation path")
 endif()
 
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
@@ -232,10 +225,10 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 # a dummy output that's not actually produced, in order
 # to force version.cmake to always be re-run before the build
 ADD_CUSTOM_COMMAND(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
-           ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
-    COMMAND ${CMAKE_COMMAND} -P
-            version.cmake
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
+         ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
+  COMMAND ${CMAKE_COMMAND} -P
+          version.cmake
 )
 
 #------------------------------------------
@@ -262,20 +255,20 @@ install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 # third party libs
 if(WIN32)
-install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
-FILES_MATCHING PATTERN "*.dll"
-PATTERN "*.lib"
-PATTERN "cmake" EXCLUDE
-PATTERN "pkgconfig" EXCLUDE
-PATTERN "libpng" EXCLUDE
-)
+  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+    FILES_MATCHING PATTERN "*.dll"
+    PATTERN "*.lib"
+    PATTERN "cmake" EXCLUDE
+    PATTERN "pkgconfig" EXCLUDE
+    PATTERN "libpng" EXCLUDE
+  )
 else()
-install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
-        FILES_MATCHING PATTERN "*.so*"
-        PATTERN "cmake" EXCLUDE
-        PATTERN "pkgconfig" EXCLUDE
-        PATTERN "libpng" EXCLUDE
-)
+  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+    FILES_MATCHING PATTERN "*.so*"
+    PATTERN "cmake" EXCLUDE
+    PATTERN "pkgconfig" EXCLUDE
+    PATTERN "libpng" EXCLUDE
+  )
 endif()
 
 # third additional shaders and dependencies
@@ -296,28 +289,28 @@ if(UNIX AND COLLECT)
 
       # Feel free to add some missing system dependecies here ;)
       set(REQ_SYS_LIBS 
-          "libpython"
-          "libOpenColorIO"
-          "libicui18n"
-          "libicuuc"
-          "libjxrglue"
-          "libHalf"
-          "libcrystalhd"
-          "libvpx"
-          "libtinyxml"
-          "libyaml-cpp"
-          "libjpegxr"
-          "libicudata"
+        "libpython"
+        "libOpenColorIO"
+        "libicui18n"
+        "libicuuc"
+        "libjxrglue"
+        "libHalf"
+        "libcrystalhd"
+        "libvpx"
+        "libtinyxml"
+        "libyaml-cpp"
+        "libjpegxr"
+        "libicudata"
       )
 
       string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
 
       file(GET_RUNTIME_DEPENDENCIES
-          LIBRARIES $<TARGET_FILE:falcor_lib>
-          RESOLVED_DEPENDENCIES_VAR _r_deps
-          UNRESOLVED_DEPENDENCIES_VAR _u_deps
-          CONFLICTING_DEPENDENCIES_PREFIX _c_deps
-          #DIRECTORIES ${DEPS_INSTALL_DIR}
+        LIBRARIES $<TARGET_FILE:falcor_lib>
+        RESOLVED_DEPENDENCIES_VAR _r_deps
+        UNRESOLVED_DEPENDENCIES_VAR _u_deps
+        CONFLICTING_DEPENDENCIES_PREFIX _c_deps
+        #DIRECTORIES ${DEPS_INSTALL_DIR}
       )
       
       foreach(_file ${_r_deps})

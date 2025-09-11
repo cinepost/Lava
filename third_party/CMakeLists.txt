@@ -969,9 +969,9 @@ else()
   )
   
   if(WIN32)
-    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff jpeg)
+    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff fmt jpeg)
   else()
-    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff)
+    ExternalProject_Add_StepDependencies(OpenImageIO configure Boost Tbb Blosc PyBind OpenEXR OpenVDB zlib png tiff fmt)
   endif()
 
 endif()
