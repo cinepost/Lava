@@ -1,5 +1,9 @@
+if(NOT EXTERNALS_INSTALL_DIR)
+    set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+    
 include_directories( 
-    ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include
     ${EXTERNALS_INSTALL_DIR}/include/slang
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )

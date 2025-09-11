@@ -1,6 +1,13 @@
 include(FindPkgConfig)
 include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
 
+if(NOT EXTERNALS_INSTALL_DIR)
+    set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+
+set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
+
+
 file( GLOB SOURCES
     ./logging.cpp
     ./lru_cache.cpp
@@ -8,7 +15,7 @@ file( GLOB SOURCES
     ./ut_string.cpp
     ./ut_system.cpp
 )
-set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
+
 add_library( lava_utils_lib SHARED ${SOURCES} ${HEADERS} )
 
 # Find boost

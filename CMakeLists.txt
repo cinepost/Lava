@@ -49,6 +49,28 @@ if (COLLECT)
   add_definitions(-D_DEPLOY_BUILD)
 endif()
 
+# Install path
+message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+  set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
+elseif(UNIX)
+  set( CMAKE_INSTALL_PREFIX "/opt/lava" )
+elseif(WIN32)
+  set( CMAKE_INSTALL_PREFIX "D:/work/lava" CACHE PATH "Lava install prefix" FORCE)
+endif()
+endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  message("CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT YES")
+else()
+  message("CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT NO")
+endif()
+
+
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
 
@@ -94,18 +116,6 @@ if( APPLE )
     cmake_policy(SET CMP0068 NEW)  # CMake 3.9+: `RPATH` settings on macOS do not affect `install_name`.
   endif()
 endif()
-
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-  set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
-elseif(UNIX)
-  set( CMAKE_INSTALL_PREFIX "/opt/lava" )
-elseif(WIN32)
-  set( CMAKE_INSTALL_PREFIX "D:/work/lava" CACHE PATH "Lava install prefix" FORCE)
-endif()
-endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-message("CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
 
 # Specify build paths
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)

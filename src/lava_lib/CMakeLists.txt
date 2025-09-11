@@ -2,8 +2,10 @@ if(NOT EXTERNALS_INSTALL_DIR)
     set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
 endif()
 
+set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}")
+
 include_directories( 
-    ${EXTERNALS_INSTALL_DIR}
+    ${EXTERNALS_INSTALL_DIR}/include
     ${EXTERNALS_INSTALL_DIR}/include/slang
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
@@ -20,9 +22,9 @@ include_directories(
 )
 
 if(WIN32)
-add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL -DVK_USE_PLATFORM_WIN32_KHR)
+    add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL -DVK_USE_PLATFORM_WIN32_KHR)
 else()
-add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
+    add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
 endif()
 
 add_subdirectory(reader_bgeo)
