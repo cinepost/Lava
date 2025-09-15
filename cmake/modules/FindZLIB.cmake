@@ -129,6 +129,11 @@ include(SelectLibraryConfigurations)
 cmake_policy(PUSH)
 cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
+set(_ZLIB_SEARCH_DIRS "")
+list(APPEND _ZLIB_SEARCH_DIRS
+  ${ZLIB_ROOT}
+)
+
 if(ZLIB_FIND_COMPONENTS AND NOT ZLIB_FIND_QUIETLY)
   message(AUTHOR_WARNING
     "ZLIB does not provide any COMPONENTS.  Calling\n"
@@ -194,8 +199,21 @@ if(NOT ZLIB_LIBRARY)
   endif()
 
   foreach(search ${_ZLIB_SEARCHES})
-    find_library(ZLIB_LIBRARY_RELEASE NAMES ${ZLIB_NAMES} NAMES_PER_DIR ${${search}} PATH_SUFFIXES lib)
-    find_library(ZLIB_LIBRARY_DEBUG NAMES ${ZLIB_NAMES_DEBUG} NAMES_PER_DIR ${${search}} PATH_SUFFIXES lib)
+    find_library(ZLIB_LIBRARY_RELEASE 
+      NAMES ${ZLIB_NAMES} 
+      NAMES_PER_DIR ${${search}}
+      PATHS ${_ZLIB_SEARCH_DIRS} 
+      PATH_SUFFIXES lib
+      NO_DEFAULT_PATH
+    )
+    
+    find_library(ZLIB_LIBRARY_DEBUG 
+      NAMES ${ZLIB_NAMES_DEBUG} 
+      NAMES_PER_DIR ${${search}}
+      PATHS ${_ZLIB_SEARCH_DIRS}  
+      PATH_SUFFIXES lib
+      NO_DEFAULT_PATH
+    )
   endforeach()
 
   # Restore the original find library ordering

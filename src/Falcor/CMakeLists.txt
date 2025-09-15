@@ -162,8 +162,8 @@ if( TBB_FOUND )
 endif()
 
 # ZLIB
+set(ZLIB_ROOT ${DEPS_DIR})
 if(WIN32)
-    set(ZLIB_ROOT ${DEPS_DIR})
     if (DEPS_BUILD_TYPE STREQUAL "Release")
         set( ZLIB_LIBRARY ${DEPS_DIR}/lib/zlib.lib )
     else()

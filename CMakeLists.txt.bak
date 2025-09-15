@@ -73,50 +73,6 @@ endif()
 
 message("Install path: ${CMAKE_INSTALL_PREFIX}")
 
-if(UNIX)
-  set(DEFAULT_HFS_PATH "/opt/hfs20.5")
-  set(DEFAULT_HIH_PATH "$ENV{HOME}/houdini20.5")
-else() # WIN
-  set(USER_DOCUMENTS_PATH "$ENV{USERPROFILE}/Documents")
-  set(DEFAULT_HFS_PATH "C:\\Program Files\\Side Effects Software\\Houdini 20.5.332")
-  set(DEFAULT_HIH_PATH "${USER_DOCUMENTS_PATH}\\houdini20.5")
-endif()
-
-if (NOT DEFINED ENV{HFS})
-  if(WIN32)
-    message( WARNING "Houdini HFS environment variable not set. Using default path: ${DEFAULT_HFS_PATH}")
-    set(ENV{HFS} ${DEFAULT_HFS_PATH})
-  else()
-    message( FATAL_ERROR "Houdini HFS environment variable not set. Source .houdini_setup first!")
-  endif()
-endif()
-
-if (NOT DEFINED ENV{HIH})
-  message( WARNING "Houdini HIH environment variable not set. Using defalut path: ${DEFAULT_HIH_PATH}")
-  set(ENV{HIH} ${DEFAULT_HIH_PATH})
-endif()
-
-# Set up houdini hdk and installation paths
-set(HOUDINI_ROOT $ENV{HFS})
-set(HOUDINI_USER $ENV{HIH})
-
-if(WIN32)
-  add_definitions(
-    -DNOMINMAX
-    -D_USE_MATH_DEFINES
-    -DWIN32
-    # -D_WIN32
-    # -DUNICODE
-    # -DAMD64
-    # -DSIZEOF_VOID_P=8
-    -DHAVE_SNPRINTF
-    -D_SCL_SECURE_NO_WARNINGS
-    -D_CRT_SECURE_NO_WARNINGS
-    -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
-endif()
-
-message("Houdini: ${HOUDINI_ROOT}")
-
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
 
@@ -141,9 +97,7 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/defaults
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
-  ${HOUDINI_ROOT}/toolkit/cmake
 )
-
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # Set PROJECT_VERSION_PATCH and PROJECT_VERSION_TWEAK to 0 if not present, needed by add_project_meta
@@ -192,6 +146,49 @@ add_compile_definitions(
 endif()
 
 set(FALCOR_API_BACKEND "GFX" CACHE STRING "Rendering API")
+
+if(UNIX)
+  set(DEFAULT_HFS_PATH "/opt/hfs20.5")
+  set(DEFAULT_HIH_PATH "$ENV{HOME}/houdini20.5")
+else() # WIN
+  set(USER_DOCUMENTS_PATH "$ENV{USERPROFILE}/Documents")
+  set(DEFAULT_HFS_PATH "C:\\Program Files\\Side Effects Software\\Houdini 20.5.332")
+  set(DEFAULT_HIH_PATH "${USER_DOCUMENTS_PATH}\\houdini20.5")
+endif()
+
+if (NOT DEFINED ENV{HFS})
+  if(WIN32)
+    message( WARNING "Houdini HFS environment variable not set. Using default path: ${DEFAULT_HFS_PATH}")
+    set(ENV{HFS} ${DEFAULT_HFS_PATH})
+  else()
+    message( FATAL_ERROR "Houdini HFS environment variable not set. Source .houdini_setup first!")
+  endif()
+endif()
+
+if (NOT DEFINED ENV{HIH})
+  message( WARNING "Houdini HIH environment variable not set. Using defalut path: ${DEFAULT_HIH_PATH}")
+  set(ENV{HIH} ${DEFAULT_HIH_PATH})
+endif()
+
+# Set up houdini hdk and installation paths
+set(HOUDINI_ROOT $ENV{HFS})
+set(HOUDINI_USER $ENV{HIH})
+list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_ROOT}/toolkit/cmake" )
+
+if(WIN32)
+  add_definitions(
+    -DNOMINMAX
+    -D_USE_MATH_DEFINES
+    -DWIN32
+    # -D_WIN32
+    # -DUNICODE
+    # -DAMD64
+    # -DSIZEOF_VOID_P=8
+    -DHAVE_SNPRINTF
+    -D_SCL_SECURE_NO_WARNINGS
+    -D_CRT_SECURE_NO_WARNINGS
+    -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+endif()
 
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
 option (PROFILING_LOG "Enable/Disable renderer performance profiler logging." OFF)

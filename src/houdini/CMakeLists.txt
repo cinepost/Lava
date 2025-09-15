@@ -2,6 +2,15 @@ include(CheckIncludeFile)
 
 #add_subdirectory( imgLava )
 
+if(NOT Houdini_DIR)
+    set(Houdini_DIR "${HOUDINI_ROOT}/toolkit/cmake")
+endif()
+
+find_package( Houdini REQUIRED )
+message("Houdini python version: ${_houdini_python_version}")
+set(HOUDINI_INST_DIR houdini_${Houdini_VERSION})
+message("Houdini install path: ${CMAKE_INSTALL_PREFIX}/${HOUDINI_INST_DIR}")
+
 if(WIN32)
     set(HYTHON_VERSION_MAJOR "3")
     set(HYTHON_VERSION_MINOR "11")
@@ -72,7 +81,7 @@ if(HOTL_EXE)
 
     add_custom_target(generate_hda ALL DEPENDS "${HDA_FILE}")
 
-    install(FILES ${HDA_FILE} DESTINATION houdini/otls)
+    install(FILES ${HDA_FILE} DESTINATION ${HOUDINI_INST_DIR}/otls)
 endif()
 
 # Make lava_version.py used by our SOHO scripts and other python tools
@@ -84,11 +93,11 @@ install(
     RENAME
     	lava_version.py
     DESTINATION
-    	houdini/python${HYTHON_VERSION}libs
+    	${HOUDINI_INST_DIR}/python${HYTHON_VERSION}libs
 )
 
 # Make FBformats used by Houdini
-set(DSO_PATH ${CMAKE_INSTALL_PREFIX}/houdini/dso)
+set(DSO_PATH ${CMAKE_INSTALL_PREFIX}/${HOUDINI_INST_DIR}/dso)
 configure_file(FBformats.in ${CMAKE_CURRENT_BINARY_DIR}/FBformats.install @ONLY)
 
 install(
@@ -97,23 +106,23 @@ install(
     RENAME
         FBformats
     DESTINATION
-        houdini
+        ${HOUDINI_INST_DIR}
 )
 
 
 # Install shit
-install(DIRECTORY scripts DESTINATION houdini)
-install(DIRECTORY config DESTINATION houdini)
-install(DIRECTORY toolbar DESTINATION houdini)
-install(DIRECTORY soho DESTINATION houdini PATTERN "python" EXCLUDE)
-install(DIRECTORY soho/python/ DESTINATION houdini/soho/python${HYTHON_VERSION})
+install(DIRECTORY scripts DESTINATION ${HOUDINI_INST_DIR})
+install(DIRECTORY config DESTINATION ${HOUDINI_INST_DIR})
+install(DIRECTORY toolbar DESTINATION ${HOUDINI_INST_DIR})
+install(DIRECTORY soho DESTINATION ${HOUDINI_INST_DIR} PATTERN "python" EXCLUDE)
+install(DIRECTORY soho/python/ DESTINATION ${HOUDINI_INST_DIR}/soho/python${HYTHON_VERSION})
 
-install(DIRECTORY python/ DESTINATION houdini/python${HYTHON_VERSION}libs)
+install(DIRECTORY python/ DESTINATION ${HOUDINI_INST_DIR}/python${HYTHON_VERSION}libs)
 
-install(FILES OPmenu.xml DESTINATION houdini)
-install(FILES FBfiles DESTINATION houdini)
-install(FILES FBrenderLava DESTINATION houdini)
-install(FILES Renderers DESTINATION houdini)
-install(FILES LavaTypeFormats DESTINATION houdini)
-install(FILES LavaPixelFilterTypes DESTINATION houdini)
-install(FILES UsdRenderers.json DESTINATION houdini)
+install(FILES OPmenu.xml DESTINATION ${HOUDINI_INST_DIR})
+install(FILES FBfiles DESTINATION ${HOUDINI_INST_DIR})
+install(FILES FBrenderLava DESTINATION ${HOUDINI_INST_DIR})
+install(FILES Renderers DESTINATION ${HOUDINI_INST_DIR})
+install(FILES LavaTypeFormats DESTINATION ${HOUDINI_INST_DIR})
+install(FILES LavaPixelFilterTypes DESTINATION ${HOUDINI_INST_DIR})
+install(FILES UsdRenderers.json DESTINATION ${HOUDINI_INST_DIR})

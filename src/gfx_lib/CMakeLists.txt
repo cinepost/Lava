@@ -43,6 +43,8 @@ else()
     )
 endif()
 
+set(DISABLE_CMAKE_SEARCH_PATHS TRUE)
+
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
 

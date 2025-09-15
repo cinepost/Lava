@@ -678,8 +678,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	Falcor::float4x4 transform = pLightScope->getTransformList()[0];
 
 	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
-	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
-	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
+	Falcor::float3 light_pos = {transform[0][3], transform[1][3], transform[2][3]}; // light position
+	Falcor::float3 light_dir = {-transform[0][2], -transform[1][2], -transform[2][2]};
 	
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	std::shared_ptr<PropertiesContainer> pShaderProps;
@@ -728,6 +728,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
+
+		LLOG_ERR << "Light pos w: " << to_string(light_pos);		
 
 		if(light_radius > 0.0f) pPointLight->setLightRadius(light_radius);
 

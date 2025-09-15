@@ -312,7 +312,7 @@ void PointLight::update() {
     
     if (sinTheta > 0.f) {
         float cosTheta = dot(up, -mData.dirW);
-        mData.transMat = rotate(float4x4(), std::acos(cosTheta), vec);
+        mData.transMat = math::matrixFromRotation(std::acos(cosTheta), vec);
     } else {
         mData.transMat = float4x4();
     }

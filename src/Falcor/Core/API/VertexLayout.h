@@ -94,7 +94,7 @@ class dlldecl VertexBufferLayout : public std::enable_shared_from_this<VertexBuf
 
     /** Return the array size the element
     */
-    const uint32_t getElementArraySize(uint32_t index) const {
+    uint32_t getElementArraySize(uint32_t index) const {
         return mElements[index].arraySize;
     }
 

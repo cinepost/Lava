@@ -107,7 +107,7 @@ void shutdown_log() {
             stop();
         }
     }
-    g_log_stop_functions.empty();
+    g_log_stop_functions.clear();
     //boost::log::core::get()->flush();
     //boost::log::core::get()->remove_all_sinks();
 }
