@@ -539,7 +539,7 @@ std::vector<std::string> Camera::getDataFormattedDebugStrings() const {
     out.push_back("Shutter speed: " + std::to_string(mData.shutterSpeed));
     out.push_back("ISO: " + std::to_string(mData.ISOSpeed));
 
-    out.push_back("Backend color: " + to_string(mData.backgroundColor));
+    out.push_back("Background color: " + to_string(mData.backgroundColor));
 
     return out;
 }

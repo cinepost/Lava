@@ -729,8 +729,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
 
-		LLOG_ERR << "Light pos w: " << to_string(light_pos);		
-
 		if(light_radius > 0.0f) pPointLight->setLightRadius(light_radius);
 
 		bool do_cone = false;
