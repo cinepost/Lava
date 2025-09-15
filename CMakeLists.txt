@@ -50,26 +50,28 @@ if (COLLECT)
 endif()
 
 # Install path
-message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-  set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
-elseif(UNIX)
-  set( CMAKE_INSTALL_PREFIX "/opt/lava" )
-elseif(WIN32)
-  set( CMAKE_INSTALL_PREFIX "D:/work/lava" CACHE PATH "Lava install prefix" FORCE)
-endif()
-endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  message("CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT YES")
+if(CMAKE_INSTALL_PREFIX)
+  set(linuxDefault ${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
+  set(windowsDefault ${CMAKE_INSTALL_PREFIX} STREQUAL "C:\\Program Files (x86)")
 else()
-  message("CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT NO")
+  set(linuxDefault TRUE)
+  set(windowsDefault TRUE)
 endif()
 
+if(UNIX)
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "/opt/lava" )
+elseif(WIN32)
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "D:/work/lava")
+else()
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "/Applications/Lava" )
+endif()
+
+# Override default install path
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR ${linuxDefault} OR ${windowsDefault})
+  set( CMAKE_INSTALL_PREFIX ${DEFAULT_CMAKE_INSTALL_PREFIX} CACHE PATH "Lava install prefix" FORCE)
+endif()
+
+message("Install path: ${CMAKE_INSTALL_PREFIX}")
 
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
