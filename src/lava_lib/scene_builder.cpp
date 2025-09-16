@@ -228,7 +228,7 @@ bool SceneBuilder::processBgeo(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std:
                 vUV[i] = UV[vt_idx_ptr[i]];
             }
         } else {
-            LLOG_DBG << "Mesh " << name << " has no texture coordinates !";
+            LLOG_WRN << "Mesh " << name << " has no texture coordinates !";
             for( ika::bgeo::parser::uint64 i = 0; i < vt_map.getVertexCount(); ++i){
                 vUV[i] = {0.f, 0.f};
             }

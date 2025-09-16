@@ -636,7 +636,7 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
  	// immediate mesh add
  	ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
  	std::string fullpath = pGeo->detailFilePath().string();
-  pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+  	pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
  	if(!pBgeo) {
  		LLOG_ERR << "Unable to load \"" << name << "\" geometry (bgeo) !!!";

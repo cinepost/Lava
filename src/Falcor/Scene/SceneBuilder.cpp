@@ -788,65 +788,71 @@ void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) c
 uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh, uint32_t meshID) {
 	const bool keepMeshletSpecsData = is_set(mFlags, Flags::KeepLocalMeshletSpecData);
 	const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
+	bool mesh_exists = false;
 
-	MeshSpec spec;
+	MeshSpec meshSpec;
 
-	// If mesh already exist copy old instances data
-	if(meshID != kInvalidMeshID && (meshID < mMeshes.size())) { 
-	// thread safety
+	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);
 
-		const MeshSpec& oldSpec = mMeshes[meshID];
-		spec.instances = oldSpec.instances;
+		// If mesh already exist copy old instances data
+		if(meshID != kInvalidMeshID && (meshID < mMeshes.size())) { 
+			mesh_exists = true;
+
+			const MeshSpec& oldSpec = mMeshes[meshID];
+			meshSpec.instances = oldSpec.instances;
+		}
 	}
 
-	spec.isAnimated = true; // TODO: for interactive scene we have to make them non static (animated). This is default for now
+	meshSpec.isAnimated = true; // TODO: for interactive scene we have to make them non static (animated). This is default for now
 							// So it's better to provide some hints from the outside. For the LSD case it's quite easy. If the mesh is not time dependent set a flag.
 
 	// Add the mesh to the scene.
-	spec.name = mesh.name;
-	spec.topology = mesh.topology;
-	spec.materialId = addMaterial(mesh.pMaterial);
-	spec.isFrontFaceCW = mesh.isFrontFaceCW;
-	spec.skeletonNodeID = mesh.skeletonNodeId;
+	meshSpec.name = mesh.name;
+	meshSpec.topology = mesh.topology;
+	meshSpec.materialId = addMaterial(mesh.pMaterial);
+	meshSpec.isFrontFaceCW = mesh.isFrontFaceCW;
+	meshSpec.skeletonNodeID = mesh.skeletonNodeId;
 
-	spec.indexDataHash = mesh.indexDataHash;
-    spec.positionsDataHash = mesh.positionsDataHash;
+	meshSpec.indexDataHash = mesh.indexDataHash;
+    meshSpec.positionsDataHash = mesh.positionsDataHash;
 
-	spec.vertexCount = (uint32_t)mesh.staticData.size();
-	spec.staticVertexCount = (uint32_t)mesh.staticData.size();
-	spec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
-	spec.perPrimMaterialIndicesCount = (uint32_t)mesh.perPrimitiveMaterialIDsData.size();
+	meshSpec.vertexCount = (uint32_t)mesh.staticData.size();
+	meshSpec.staticVertexCount = (uint32_t)mesh.staticData.size();
+	meshSpec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
+	meshSpec.perPrimMaterialIndicesCount = (uint32_t)mesh.perPrimitiveMaterialIDsData.size();
 		
-	spec.indexData = std::move(mesh.indexData);
-	spec.staticData = std::move(mesh.staticData);
-	spec.skinningData = std::move(mesh.skinningData);
+	meshSpec.indexData = std::move(mesh.indexData);
+	meshSpec.staticData = std::move(mesh.staticData);
+	meshSpec.skinningData = std::move(mesh.skinningData);
 	
-	spec.pointIndexData = std::move(mesh.pointIndexData);
-	spec.subdivDataOffset = kInvalidID;
+	meshSpec.pointIndexData = std::move(mesh.pointIndexData);
+	meshSpec.subdivDataOffset = kInvalidID;
 	
 	if(mesh.hasMultipleMaterials()) {
-		spec.perPrimitiveMaterialIDsData = std::move(mesh.perPrimitiveMaterialIDsData);
+		meshSpec.perPrimitiveMaterialIDsData = std::move(mesh.perPrimitiveMaterialIDsData);
 	}
 
 	if (isIndexed) {
-		spec.indexCount = (uint32_t)mesh.indexCount;
-		spec.use16BitIndices = mesh.use16BitIndices;
+		meshSpec.indexCount = (uint32_t)mesh.indexCount;
+		meshSpec.use16BitIndices = mesh.use16BitIndices;
 	}
 
-	if (!spec.skinningData.empty()) {
-		assert(spec.skinningVertexCount > 0);
-		spec.hasSkinningData = true;
-		spec.prevVertexCount = spec.skinningVertexCount;
+	if (!meshSpec.skinningData.empty()) {
+		assert(meshSpec.skinningVertexCount > 0);
+		meshSpec.hasSkinningData = true;
+		meshSpec.prevVertexCount = meshSpec.skinningVertexCount;
 	}
 
 	// Build meshlets. If needed...
 	if(mpMeshletBuilder && is_set(mFlags, Flags::GenerateMeshlets)) {
 		// thread safe
-		std::scoped_lock lock(spec.mMutex);
+		std::scoped_lock lock(meshSpec.mMutex);
 		MeshletBuilder::BuildMode buildMode = is_set(mFlags, Flags::OptimizeMeshlets) ? MeshletBuilder::BuildMode::MESHOPT : MeshletBuilder::BuildMode::SCAN;
-		mpMeshletBuilder->generateMeshlets(spec, buildMode);
+		mpMeshletBuilder->generateMeshlets(meshSpec, buildMode);
 	}
+
+	MeshletList* pMeshletList = nullptr;
 
 	{ // thread safety
 		std::scoped_lock lock(mMeshesMutex);
@@ -860,24 +866,33 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh, uint32_t mesh
 			throw std::runtime_error("Trying to build a scene that exceeds supported number of meshes");
 		}
 
-		if(meshID != kInvalidMeshID) {
-			mMeshes[meshID] = std::move(spec);
-		} else {
-			mMeshes.push_back(std::move(spec));
+		if(mesh_exists) { 
+			// Mesh exist
+			mMeshes[meshID] = std::move(meshSpec);
+			assert(meshID < mMeshletLists.size());
+		} else { 
+			// New mesh
+			mMeshes.push_back(std::move(meshSpec));
 			meshID = (uint32_t)(mMeshes.size() - 1);
+			assert(meshID == mMeshletLists.size());
+			mMeshletLists.emplace_back();
 		}
 	}
 
-	{ // Meshlets part
+	// Optional meshlets part
+	{ // thread safety
 		std::scoped_lock lock(mMeshletsMutex);
 
-		const auto& meshSpec = mMeshes[meshID];
+		MeshletList& meshletList = mMeshletLists[meshID];
 
 		if(meshSpec.hasMeshlets()) {
-			MeshletList meshlets;
-			for(const auto& meshletSpec: meshSpec.meshletSpecs) {
+			MeshletList meshlets(meshSpec.meshletSpecs.size());
+			for(size_t i = 0; i < meshSpec.meshletSpecs.size(); ++i) {
 				
-				MeshletData meshlet;
+				const auto& meshletSpec = meshSpec.meshletSpecs[i];
+
+				MeshletData& meshlet = meshlets[i];
+
 				meshlet.vertexOffset = mMeshletVertices.size();
 				meshlet.localIndexOffset =  mMeshletIndices.size();
 				meshlet.primIndexOffset = mMeshletPrimIndices.size();
@@ -898,14 +913,9 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh, uint32_t mesh
 				//while(mMeshletIndices.size() % 16 != 0) mMeshletIndices.push_back(0);
 				//while(mMeshletVertices.size() % 4 != 0) mMeshletVertices.push_back(0);
 				//while(mMeshletPrimIndices.size() % 4 != 0) mMeshletPrimIndices.push_back(0);
-
-				meshlets.push_back(std::move(meshlet));
 			}
-			mMeshletLists.push_back(std::move(meshlets));
-		} else {
-			mMeshletLists.push_back({});
+			meshletList = std::move(meshlets);
 		}
-		//assert((mMeshletLists.size() - 1) == meshID);
 	}
 
 	return meshID;
