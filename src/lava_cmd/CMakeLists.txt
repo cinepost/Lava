@@ -27,7 +27,7 @@ endif()
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )
-set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava-bin" )
+set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME $<IF:$<PLATFORM_ID:Linux>,lava-bin,lava> )
  
 target_link_libraries( lava_cmd
 	falcor_lib
@@ -48,29 +48,36 @@ else()
 	)
 endif()
 
-install(
-	TARGETS lava_cmd 
-	RUNTIME DESTINATION bin
-	LIBRARY DESTINATION lib
-)
+if(UNIX)
+	install(
+		TARGETS lava_cmd
+		RUNTIME DESTINATION bin
+		LIBRARY DESTINATION lib
+	)
 
-install(
-	PROGRAMS
-		bin/lava
-	DESTINATION 
-		${CMAKE_INSTALL_PREFIX}/bin/
-)
+	install(
+		PROGRAMS
+			bin/lava
+		DESTINATION
+			${CMAKE_INSTALL_PREFIX}/bin/
+	)
 
-set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
-configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
+	set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
+	configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
 
-install(
-    PROGRAMS
-    	${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
-    RENAME
-    	lava_app_init.sh
-    DESTINATION
-    	${CMAKE_INSTALL_PREFIX}/bin/
-)
+	install(
+		PROGRAMS
+			${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
+		RENAME
+			lava_app_init.sh
+		DESTINATION
+			${CMAKE_INSTALL_PREFIX}/bin/
+	)
+elseif(WIN32)
+	install(
+		TARGETS lava_cmd
+		RUNTIME DESTINATION bin
+	)
+endif()
 
 install(DIRECTORY conf DESTINATION ${CMAKE_INSTALL_PREFIX})

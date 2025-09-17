@@ -19,7 +19,7 @@ endif()
 
 # Executable 
 add_executable ( ltxmake ${SOURCES} )
-set_target_properties( ltxmake PROPERTIES OUTPUT_NAME "ltxmake-bin" )
+set_target_properties( ltxmake PROPERTIES OUTPUT_NAME $<IF:$<PLATFORM_ID:Linux>,ltxmake-bin,ltxmake> )
  
 target_link_libraries( ltxmake
 	lava_lib
@@ -36,15 +36,22 @@ target_link_libraries( ltxmake
 )
 endif()
 
-install(
-	TARGETS ltxmake 
-	RUNTIME DESTINATION bin
-	LIBRARY DESTINATION lib
-)
+if(UNIX)
+	install(
+		TARGETS ltxmake
+		RUNTIME DESTINATION bin
+		LIBRARY DESTINATION lib
+	)
 
-install(
-	PROGRAMS
-		../bin/ltxmake
-	DESTINATION 
-		${CMAKE_INSTALL_PREFIX}/bin/
-)
+	install(
+		PROGRAMS
+			../bin/ltxmake
+		DESTINATION
+			${CMAKE_INSTALL_PREFIX}/bin/
+	)
+elseif(WIN32)
+	install(
+		TARGETS ltxmake
+		RUNTIME DESTINATION bin
+	)
+endif()

@@ -84,10 +84,17 @@ function (makeRenderPassLib)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
 
     # Install render-pass library
-    install( 
-        TARGETS ${PASS_LIB} 
-        DESTINATION "render_passes" 
-    )
+    if(UNIX)
+        install(
+            TARGETS ${PASS_LIB}
+            DESTINATION "render_passes"
+        )
+    elseif(WIN32)
+        install(
+            TARGETS ${PASS_LIB}
+            RUNTIME DESTINATION "render_passes"
+        )
+    endif()
 
     # Install render-pass shaders
     install(

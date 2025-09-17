@@ -38,5 +38,9 @@ if (APPLE)
     	SUFFIX ".so"
     )
 endif (APPLE)
-	
-install(TARGETS d_houdini DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+
+if(UNIX)
+	install(TARGETS d_houdini DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+elseif(WIN32)
+	install(TARGETS d_houdini RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+endif()

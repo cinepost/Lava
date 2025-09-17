@@ -59,6 +59,8 @@ target_link_libraries(
         PkgConfig::CpuInfo
 )
 
-if(UNIX OR WIN32)
+if(UNIX)
     install( TARGETS lava_utils_lib DESTINATION "lib" )
+elseif(WIN32)
+    install( TARGETS lava_utils_lib RUNTIME DESTINATION "bin" )
 endif()

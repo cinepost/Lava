@@ -292,9 +292,9 @@ install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 # third party libs
 if(WIN32)
-  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ ${EXTERNALS_INSTALL_DIR}/bin/ DESTINATION lib/3rdparty
     FILES_MATCHING PATTERN "*.dll"
-    PATTERN "*.lib"
+    PATTERN "*.lib" EXCLUDE
     PATTERN "cmake" EXCLUDE
     PATTERN "pkgconfig" EXCLUDE
     PATTERN "libpng" EXCLUDE

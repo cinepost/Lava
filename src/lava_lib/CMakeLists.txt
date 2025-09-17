@@ -22,7 +22,7 @@ include_directories(
 )
 
 if(WIN32)
-    add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DLAVA_DLL -DVK_USE_PLATFORM_WIN32_KHR)
+    add_definitions(-DAMD64 -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P} -DVK_USE_PLATFORM_WIN32_KHR)
 else()
     add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
 endif()
@@ -30,6 +30,10 @@ endif()
 add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
 add_subdirectory(houdini_display)
+
+if(WIN32)
+    add_definitions(-DLAVA_DLL)
+endif()
 
 if(NOT WIN32)
     add_subdirectory(sdl_display)
@@ -85,10 +89,14 @@ target_link_libraries( lava_lib
 )
 endif()
 
-if(UNIX OR WIN32)
+if(UNIX)
     install(TARGETS lava_lib
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+    )
+elseif(WIN32)
+    install(TARGETS lava_lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     )
 endif()

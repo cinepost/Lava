@@ -41,10 +41,14 @@ target_link_libraries( reader_bgeo_lib
 )
 endif()
 
-if(UNIX OR WIN32)
+if(UNIX)
     install(TARGETS reader_bgeo_lib
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+    )
+elseif(WIN32)
+    install(TARGETS reader_bgeo_lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     )
 endif()
