@@ -515,6 +515,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout RayData 
     return surfaceColor;
 }
 
+[shader("compute")]
 #if defined(USE_VISIBILITY_CONTAINER)
 [numthreads(GROUP_SIZE_X, 1, 1)]
 #else

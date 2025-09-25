@@ -591,15 +591,6 @@ bool Session::cmdRaytrace() {
 				}
 			}
 		}
-	}
-
-	{
-
-		auto _strings = mpRenderer->currentCamera()->getDataFormattedDebugStrings();
-
-		for(const auto& str: _strings) {
-			LLOG_WRN << str;
-		}
 	}	
 
 	LLOG_DBG << "Closing display...";

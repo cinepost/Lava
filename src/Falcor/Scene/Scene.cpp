@@ -3238,8 +3238,6 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
     inputs.descCount = (uint32_t)mInstanceDescs.size();
     inputs.flags = RtAccelerationStructureBuildFlags::None;
 
-    LLOG_WRN << "RtAccelerationStructureBuildInputs descCount " << inputs.descCount;
-
     // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
     if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == RtAccelerationStructure::UpdateMode::Refit) {
         inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;

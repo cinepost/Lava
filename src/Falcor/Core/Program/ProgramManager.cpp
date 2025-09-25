@@ -118,8 +118,6 @@ ProgramVersion::SharedConstPtr ProgramManager::createProgramVersion(const Progra
     CpuTimer timer;
     timer.update();
 
-    LLOG_WRN << "ProgramManager::createProgramVersion for " << program.getProgramDescString();
-
     auto pSlangRequest = createSlangCompileRequest(program);
     if (pSlangRequest == nullptr)
         return nullptr;
@@ -205,8 +203,6 @@ ProgramVersion::SharedConstPtr ProgramManager::createProgramVersion(const Progra
     mCompilationStats.programVersionTotalTime += time;
     mCompilationStats.programVersionMaxTime = std::max(mCompilationStats.programVersionMaxTime, time);
     LLOG_DBG << "Created program version in " << fmt::format("{:.3f}", timer.delta()) << " s: " << descStr;
-
-    LLOG_WRN << "ProgramManager::createProgramVersion for " << program.getProgramDescString() << " done.";
 
     return pVersion;
 }
@@ -584,8 +580,6 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     slang::IGlobalSession* pSlangGlobalSession = mpDevice->getSlangGlobalSession();
     FALCOR_ASSERT(pSlangGlobalSession);
 
-    LLOG_WRN << "ProgramManager::createSlangCompileRequest for " << program.getProgramDescString();
-
     slang::SessionDesc sessionDesc;
 
     // Add our shader search paths as `#include` search paths for Slang.
@@ -693,6 +687,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     bool useColumnMajor = is_set(compilerFlags, SlangCompilerFlags::MatrixLayoutColumnMajor);
     addIntOption(useColumnMajor ? slang::CompilerOptionName::MatrixLayoutColumn : slang::CompilerOptionName::MatrixLayoutRow, 1);
 
+#ifndef _DEBUG
     // New versions of slang default to short-circuiting for logical and/or operators.
     // Facor is still written with the assumption that these operators do not short-circuit.
     // We want to transition to the new behavior, but for now we disable it.
@@ -700,11 +695,15 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
 
     // Disable noisy warnings enabled in newer slang versions.
     addStringOption(slang::CompilerOptionName::DisableWarning, "15602"); // #pragma once in modules
-    addStringOption(slang::CompilerOptionName::DisableWarning, "30056"); // non-short-circuiting `?:` operator is deprecated, use 'select'
-                                                                         // instead
+    addStringOption(slang::CompilerOptionName::DisableWarning, "30056"); // non-short-circuiting `?:` operator is deprecated, use 'select' instead
     addStringOption(slang::CompilerOptionName::DisableWarning, "30081"); // implicit conversion 'double' to 'float'
     addStringOption(slang::CompilerOptionName::DisableWarning, "30082"); // implicit conversion 'float' to 'double'
+    addStringOption(slang::CompilerOptionName::DisableWarning, "41012"); // entry point uses additional capabilities that are not part of the specified profile
+    addStringOption(slang::CompilerOptionName::DisableWarning, "41018"); // returning without initializing out parameter
+    addStringOption(slang::CompilerOptionName::DisableWarning, "41020"); // exiting constructor without initializing field
+    addStringOption(slang::CompilerOptionName::DisableWarning, "41021"); // default initializer will not initialize field
     addStringOption(slang::CompilerOptionName::DisableWarning, "41203"); // reinterpret<> into not equally sized types
+#endif
 
     sessionDesc.compilerOptionEntries = compilerOptionEntries.data();
     sessionDesc.compilerOptionEntryCount = (uint32_t)compilerOptionEntries.size();
@@ -718,6 +717,19 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     SlangCompileRequest* pSlangRequest = nullptr;
     pSlangSession->createCompileRequest(&pSlangRequest);
     FALCOR_ASSERT(pSlangRequest);
+
+#ifndef _DEBUG
+    // Disable noisy warnings enabled in newer slang versions.
+    spOverrideDiagnosticSeverity(pSlangRequest, 15602, SLANG_SEVERITY_DISABLED); // #pragma once in modules
+    spOverrideDiagnosticSeverity(pSlangRequest, 30056, SLANG_SEVERITY_DISABLED); // non-short-circuiting `?:` operator is deprecated, use 'select' instead
+    spOverrideDiagnosticSeverity(pSlangRequest, 30081, SLANG_SEVERITY_DISABLED); // implicit conversion 'double' to 'float'
+    spOverrideDiagnosticSeverity(pSlangRequest, 30082, SLANG_SEVERITY_DISABLED); // implicit conversion 'float' to 'double'
+    spOverrideDiagnosticSeverity(pSlangRequest, 41012, SLANG_SEVERITY_DISABLED); // entry point uses additional capabilities that are not part of the specified profile
+    spOverrideDiagnosticSeverity(pSlangRequest, 41018, SLANG_SEVERITY_DISABLED); // returning without initializing out parameter
+    spOverrideDiagnosticSeverity(pSlangRequest, 41020, SLANG_SEVERITY_DISABLED); // exiting constructor without initializing field
+    spOverrideDiagnosticSeverity(pSlangRequest, 41021, SLANG_SEVERITY_DISABLED); // default initializer will not initialize field
+    spOverrideDiagnosticSeverity(pSlangRequest, 41203, SLANG_SEVERITY_DISABLED); // reinterpret<> into not equally sized types
+#endif
 
     // Enable/disable intermediates dump
     bool dumpIR = is_set(program.mDesc.compilerFlags, SlangCompilerFlags::DumpIntermediates);
@@ -759,7 +771,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
         // If module name is empty, pass in nullptr to let Slang generate a name internally.
         const char* name = !module.name.empty() ? module.name.c_str() : nullptr;
         int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, name);
-        FALCOR_ASSERT(translationUnitIndex == moduleIndex);
+        FALCOR_ASSERT((translationUnitIndex >= 0) && ((size_t)translationUnitIndex == moduleIndex));
 
         for (const auto& source : module.sources) {
             // Add source code to the translation unit
@@ -794,8 +806,6 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
             spAddEntryPoint(pSlangRequest, entryPointGroup.shaderModuleIndex, entryPoint.name.c_str(), getSlangStage(entryPoint.type));
         }
     }
-
-    LLOG_WRN << "ProgramManager::createSlangCompileRequest for " << program.getProgramDescString() << " done.";
 
     return pSlangRequest;
 }

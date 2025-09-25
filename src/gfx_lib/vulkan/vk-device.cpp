@@ -1894,7 +1894,9 @@ Result DeviceImpl::createTextureResource(
 		}
 	}
 
+#ifdef _DEBUG
 	LLOG_WRN << "!!!!! DON'T FORGET TO CHANGE Falcor::Texture::mState.global according to vk-device !!!!!!";
+#endif
 
 	m_deviceQueue.flushAndWait();
 	returnComPtr(outResource, texture);

@@ -88,6 +88,7 @@ int xorshift(int value) {
     return value;
 }
 
+[shader("vertex")]
 VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
     const GeometryInstanceID instanceID = { vsIn.instanceID };
@@ -144,6 +145,7 @@ float ff(const float a, const float b, float value) {
     return (value - a) / (b - a);
 }
 
+[shader("pixel")]
 #if !is_valid(gHighpDepth)
 [earlydepthstencil]
 #endif

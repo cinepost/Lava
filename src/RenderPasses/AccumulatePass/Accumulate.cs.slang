@@ -76,6 +76,7 @@ SamplerState gKernelSampler;
 
 /** Single precision standard summation.
 */
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -137,6 +138,7 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 
 /** Single precision compensated summation.
 */
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -161,6 +163,7 @@ void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
 
 /** Double precision standard summation.
 */
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void accumulateDouble(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
