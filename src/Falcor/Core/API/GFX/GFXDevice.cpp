@@ -402,6 +402,24 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 
 		IDevice::Desc desc = {};
 		desc.deviceType = DeviceType::Vulkan;
+
+		// Setup shader cache.
+		desc.shaderCache.maxEntryCount = mDesc.maxShaderCacheEntryCount;
+		if (mDesc.shaderCachePath == "") {
+			desc.shaderCache.shaderCachePath = nullptr;
+		} else {
+			desc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
+
+			// If the supplied shader cache path does not exist, we will need to create it before creating the device.
+			if (fs::exists(mDesc.shaderCachePath)) {
+				if (!fs::is_directory(mDesc.shaderCachePath)) {
+					LLOG_ERR << "Shader cache path \"" << mDesc.shaderCachePath <<  "\" exists and is not a directory! Shader cache disabled!";
+					desc.shaderCache.shaderCachePath = nullptr;
+				}
+			} else {
+				fs::create_directories(mDesc.shaderCachePath);
+			}
+		}
 		
 		// Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
     	slang::createGlobalSession(mSlangGlobalSession.writeRef());
@@ -479,6 +497,35 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		} else {
 			return createOffscreenFBO(mDesc.colorFormat);
 		}
+	}
+
+	bool Device::enableShaderCache(const std::string& shaderCachePath, uint32_t maxShaderCacheEntryCount) {
+    	if(mDesc.shaderCachePath != "" && mInitialized) {
+    		LLOG_ERR << "Attempting to set shader cache path that was already set! Skipping...";
+    		return false;
+    	}
+
+		mDesc.shaderCachePath = shaderCachePath;
+		mDesc.maxShaderCacheEntryCount = maxShaderCacheEntryCount;
+
+    	if(!mInitialized) {
+    		// We can leave now. Shader cache should be created inside Device::apiInit() call.
+        	return true;
+    	}
+
+    	assert(mGfxDevice);
+    	
+    	gfx::IDevice::ShaderCacheDesc desc;
+    	desc.shaderCachePath = mDesc.shaderCachePath.c_str();
+    	desc.maxEntryCount = mDesc.maxShaderCacheEntryCount;
+
+    	auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+    	
+    	if(SLANG_FAILED(pRendererBase->setShaderCache(desc))) {
+    		return false;
+    	}
+
+    	return true; 
 	}
 
 	bool Device::createSwapChain(ResourceFormat colorFormat) {

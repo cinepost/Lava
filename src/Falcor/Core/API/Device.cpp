@@ -47,6 +47,7 @@ void releaseNullViews(Device::SharedPtr pDevice);
 std::atomic<std::uint8_t> Device::UID = 0;
 
 Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mDesc(desc), mpWindow(pWindow), mPhysicalDeviceName("Unknown") {
+    mInitialized = false;
     mCurrentBackBufferIndex = 0;
     _uid = UID++;
     if(pWindow) { mHeadless = false; } else { mHeadless = true; };
@@ -147,6 +148,8 @@ bool Device::init() {
             return false;
         }
     }
+
+    mInitialized = true;
     return true;
 }
 

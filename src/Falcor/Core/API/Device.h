@@ -95,6 +95,12 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
         uint32_t width = 1280;                                          ///< Headless FBO width
         uint32_t height = 720;                                          ///< Headless FBO height
 
+        /// The maximum number of entries allowable in the shader cache. A value of 0 indicates no limit.
+        uint32_t maxShaderCacheEntryCount = 1000;
+
+        /// The full path to the root directory for the shader cache. An empty string will disable the cache.
+        std::string shaderCachePath;
+
 #ifdef FALCOR_VK
         VkSurfaceKHR surface = VK_NULL_HANDLE;
 #endif
@@ -126,6 +132,8 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
+
+    bool enableShaderCache(const std::string& shaderCachePath, uint32_t maxShaderCacheEntryCount = 1000);
 
     /** Enable/disable vertical sync
     */
@@ -405,6 +413,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     IDesc mIDesc; // device creation using gfx::IDevice::Desc
 
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
+    bool mInitialized;
 
     NullResourceViews mNullViews;
 

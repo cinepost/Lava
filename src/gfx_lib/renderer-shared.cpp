@@ -368,7 +368,43 @@ IDevice* gfx::RendererBase::getInterface(const Guid& guid) {
                : nullptr;
 }
 
+
+
+        struct ShaderCacheDesc {
+            // The root directory for the shader cache. If not set, shader cache is disabled.
+            const char* shaderCachePath = nullptr;
+            // The maximum number of entries stored in the cache. By default, there is no limit.
+            GfxCount maxEntryCount = 0;
+        };
+
+SLANG_NO_THROW Result SLANG_MCALL RendererBase::setShaderCache(const IDevice::ShaderCacheDesc& desc) {
+    if(persistentShaderCache) {
+        // Cache already exist !
+        return SLANG_FAIL;
+    }
+
+    if(!desc.shaderCachePath) {
+        // No shader cache path specified !
+        return SLANG_FAIL;
+    }
+
+    PersistentCache::Desc cacheDesc;
+    cacheDesc.directory = desc.shaderCachePath;
+    cacheDesc.maxEntryCount = desc.maxEntryCount;
+    persistentShaderCache = new PersistentCache(cacheDesc);
+
+    return SLANG_OK;
+}
+
 SLANG_NO_THROW Result SLANG_MCALL RendererBase::initialize(const Desc& desc) {
+     // We only want to initialize the shader cache if a shader cache path was provided.
+    if (desc.shaderCache.shaderCachePath) {
+        PersistentCache::Desc cacheDesc;
+        cacheDesc.directory = desc.shaderCache.shaderCachePath;
+        cacheDesc.maxEntryCount = desc.shaderCache.maxEntryCount;
+        persistentShaderCache = new PersistentCache(cacheDesc);
+    }
+
     if (desc.apiCommandDispatcher) {
         desc.apiCommandDispatcher->queryInterface(
             GfxGUID::IID_IPipelineCreationAPIDispatcher,

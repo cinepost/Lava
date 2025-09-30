@@ -221,12 +221,14 @@ int main(int argc, char** argv){
     // Declare a group of options that will be allowed both on command line and in config file
     bool vtoff_flag = false; // virtual texturing enabled by default
     bool fconv_flag = false; // force virtual textures (re)conversion
+    std::string shader_cache_path;
     po::options_description config("Configuration");
     config.add_options()
       ("device,d", po::value<uint8_t>(&gpuID)->default_value(0), "Use specific device")
       ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
       ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
       ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
+      ("shader-cache-path,s", po::value<std::string>(&shader_cache_path), "Shader-Cache path")
       ;
 
     std::string logFilename = "";
@@ -350,7 +352,11 @@ int main(int argc, char** argv){
       pDeviceManager->setDefaultRenderingDevice(gpuID);
 
       LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
-      Device::SharedPtr pDevice = pDeviceManager->createRenderingDevice(gpuID, createDesc(vkValidationFilename));
+
+
+      Falcor::Device::Desc device_desc = createDesc(vkValidationFilename);
+      device_desc.shaderCachePath = shader_cache_path;
+      Device::SharedPtr pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
       
       if(!pDevice) {
         LLOG_FTL << "Unable to initialize GPU !!!";

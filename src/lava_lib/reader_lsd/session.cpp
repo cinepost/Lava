@@ -91,6 +91,7 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
 	try {
+
 		if (name == "vtoff") { mRendererConfig.useVirtualTexturing = get_bool(value); return; }
 		if (name == "fconv") { mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return; }
 		if (name == "async_geo") { mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return; }
@@ -101,12 +102,13 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 		if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
 		if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
 		if (name == "meshlet_generator") { mRendererConfig.meshletsGenerationMode = boost::get<std::string>(value); return; }
-  } catch (const boost::bad_get& ex) {
-  	LLOG_ERR << ex.what() << "\nError getting configuration value for key: " << name << " !!!";
-  	return;
-  } catch (...) {
-  	LLOG_ERR << "Error getting configuration value for key: " << name << " !!!";
-  }
+
+	} catch (const boost::bad_get& ex) {
+		LLOG_ERR << ex.what() << "\nError getting configuration value for key: " << name << " !!!";
+		return;
+	} catch (...) {
+		LLOG_ERR << "Error getting configuration value for key: " << name << " !!!";
+	}
 
 	LLOG_WRN << "Unsupported renderer configuration property: " << name << " of type:" << to_string(type);
 	return;
@@ -982,6 +984,11 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 	mpRenderer->init(mRendererConfig);
 
 	switch (object_type) {
+		case lsd::ast::Style::CONFIG:
+			{
+				
+			}
+			break;
 		case lsd::ast::Style::GEO:
 			{ 
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -990,8 +997,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pGlobal->addGeo();
-				break;
 			}
+			break;
 		case lsd::ast::Style::OBJECT:
 			{
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -1000,8 +1007,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				} 
 				mpCurrentScope = pGlobal->addObject();
-				break;
 			}
+			break;
 		case lsd::ast::Style::LIGHT:
 			{
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -1010,8 +1017,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pGlobal->addLight();
-				break;
 			}
+			break;
 		case lsd::ast::Style::PLANE:
 			{
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -1020,8 +1027,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pGlobal->addPlane();
-				break;
 			}
+			break;
 		case lsd::ast::Style::SEGMENT:
 			{
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -1030,8 +1037,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pGlobal->addSegment();
-				break;
 			}
+			break;
 		case lsd::ast::Style::MATERIAL:
 			{
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope); 
@@ -1041,8 +1048,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 				}
 				mpCurrentScope = pGlobal->addMaterial();
 				mpMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
-				break;
 			}
+			break;
 		case lsd::ast::Style::NODE:
 			{ 
 				auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
@@ -1051,8 +1058,8 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pNode->addChildNode();
-				break;
 			}
+			break;
 		default:
 			LLOG_FTL << "Unsupported cmd_start style: " << to_string(object_type);
 			return false;
@@ -1077,6 +1084,11 @@ bool Session::cmdEnd() {
 	bool result = true;
 
 	switch(mpCurrentScope->type()) {
+		case ast::Style::CONFIG:
+			{
+
+			}
+			break;
 		case ast::Style::GEO:
 			{
 				scope::Geo::SharedPtr pScopeGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);

@@ -2496,11 +2496,11 @@ class IDevice: public ISlangUnknown {
 		};
 
 		struct ShaderCacheDesc {
-      // The root directory for the shader cache. If not set, shader cache is disabled.
-      const char* shaderCachePath = nullptr;
-      // The maximum number of entries stored in the cache. By default, there is no limit.
-      GfxCount maxEntryCount = 0;
-    };
+			// The root directory for the shader cache. If not set, shader cache is disabled.
+			const char* shaderCachePath = nullptr;
+			// The maximum number of entries stored in the cache. By default, there is no limit.
+			GfxCount maxEntryCount = 0;
+		};
 
 		struct InteropHandles {
 			InteropHandle handles[3] = {};
@@ -2516,7 +2516,7 @@ class IDevice: public ISlangUnknown {
 			InteropHandles existingDeviceHandles;
 			
 			// LUID of the adapter to use. Use getGfxAdapters() to get a list of available adapters.
-      const AdapterLUID* adapterLUID = nullptr;
+			const AdapterLUID* adapterLUID = nullptr;
 			
 			// Number of required features.
 			GfxCount requiredFeatureCount = 0;
@@ -2531,7 +2531,7 @@ class IDevice: public ISlangUnknown {
 			GfxIndex nvapiExtnSlot = -1;
 			
 			// Configurations for the shader cache.
-      ShaderCacheDesc shaderCache = {};
+			ShaderCacheDesc shaderCache = {};
 			
 			// Configurations for Slang compiler.
 			SlangDesc slang = {};
@@ -2901,6 +2901,7 @@ struct ShaderCacheStats
 class IShaderCache : public ISlangUnknown
 {
 public:
+	virtual SLANG_NO_THROW Result SLANG_MCALL setShaderCache(const IDevice::ShaderCacheDesc& desc) = 0;
     virtual SLANG_NO_THROW Result SLANG_MCALL clearShaderCache() = 0;
     virtual SLANG_NO_THROW Result SLANG_MCALL getShaderCacheStats(ShaderCacheStats* outStats) = 0;
     virtual SLANG_NO_THROW Result SLANG_MCALL resetShaderCacheStats() = 0;

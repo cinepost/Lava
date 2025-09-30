@@ -2051,6 +2051,7 @@
                     "blosc" "BLOSC Compression"
                     "gzip"  "gzip Compression"
                 }
+                hidewhen "{ 0 == 0 }"
                 disablewhen "{ lv_shadercacheuse == 0 }"
             }
             parm {
@@ -2595,6 +2596,7 @@
                 "lava -e"               "Echo scene descriprtion"
                 "lava --vk-validate"    "Vulkan validate"
             }
+            parmtag { "script_callback" "hou.ui.displayMessage(repr(kwargs))" }
             parmtag { "script_callback_language" "python" }
         }
         parm {

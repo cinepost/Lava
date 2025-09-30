@@ -58,10 +58,8 @@ headerParms = {
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
     "pipestream"        : SohoParm("soho:pipestream", "int", key="pipestream"),
-    "tmpsharedstorage"  : SohoParm("lv_tmpsharedstorage", "string",
-                                    key="tmpsharedstorage"),
-    "tmplocalstorage"   : SohoParm("lv_tmplocalstorage", "string",
-                                    key="tmplocalstorage"),
+    "tmpsharedstorage"  : SohoParm("lv_tmpsharedstorage", "string", key="tmpsharedstorage"),
+    "tmplocalstorage"   : SohoParm("lv_tmplocalstorage", "string", key="tmplocalstorage"),
 }
 
 configParms = {
@@ -77,6 +75,10 @@ configParms = {
     "lv_generate_meshlets"      : SohoParm("lv_generate_meshlets", "bool", key="lv_generate_meshlets", skipdefault=False),
 
     "lv_geo_tangent_generation" : SohoParm("lv_geo_tangent_generation", "string", key="lv_geo_tangent_generation", skipdefault=False),
+
+    "lv_shadercacheuse"         : SohoParm("lv_shadercacheuse", "bool", key="lv_shadercacheuse", skipdefault=False),
+    "lv_shadercachecompression" : SohoParm("lv_shadercachecompression", "string", key="lv_shadercachecompression", skipdefault=False),
+    "lv_shadercachestorage"     : SohoParm("lv_shadercachestorage", "string", key="lv_shadercachestorage", skipdefault=False),
 }
 
 objXformMotion = [
@@ -201,6 +203,8 @@ def header(now, propdefs):
     cfg_plist = rop.evaluate(configParms, now)
     cmd_comment("Renderer configuration")
 
+    cmd_start('config')
+
     cmd_config('fconv', cfg_plist.get('lv_fconv', None))
     cmd_config('async_vtex', cfg_plist.get('lv_async_vtex', None))
     
@@ -216,6 +220,8 @@ def header(now, propdefs):
     cmd_config('shader_cache_use', cfg_plist.get('lv_shadercacheuse', None))
     cmd_config('shader_cache_compression', cfg_plist.get('lv_shadercachecompression', None))
     cmd_config('shader_cache_storate', cfg_plist.get('lv_shadercachestorage', None))
+
+    cmd_end()
 
     cmd_declare_parm('global', 'async_geo', cfg_plist.get('lv_async_geo', None))
     cmd_declare_parm('global', 'vtoff', cfg_plist.get('lv_vtoff', None))

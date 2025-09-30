@@ -1261,6 +1261,7 @@ public:
 
 public:
     // IShaderCache interface
+    virtual SLANG_NO_THROW Result SLANG_MCALL setShaderCache(const IDevice::ShaderCacheDesc& desc) SLANG_OVERRIDE;
     virtual SLANG_NO_THROW Result SLANG_MCALL clearShaderCache() SLANG_OVERRIDE;
     virtual SLANG_NO_THROW Result SLANG_MCALL getShaderCacheStats(ShaderCacheStats* outStats) SLANG_OVERRIDE;
     virtual SLANG_NO_THROW Result SLANG_MCALL resetShaderCacheStats() SLANG_OVERRIDE;

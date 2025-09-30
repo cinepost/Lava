@@ -132,13 +132,14 @@ namespace lsd {
 namespace ast {
 
     enum class Type { FLOAT, BOOL, INT, INT2, INT3, INT4, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
-    enum class Style { GLOBAL, MATERIAL, NODE, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
+    enum class Style { GLOBAL, CONFIG, MATERIAL, NODE, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
     enum class EmbedDataType { TEXTURE, UNKNOWN };
     enum class EmbedDataEncoding { UUENCODED, UNKNOWN };
     enum class IPRMode { DEFAULT, GENERATE, UPDATE };
 
     typedef lava::Display::DisplayType DisplayType;
     
+    struct otprefer;
     struct ifthen;
     struct endif;
     struct setenv;
@@ -173,6 +174,7 @@ namespace ast {
 
     typedef x3::variant<
         //NoValue,
+        otprefer,
         ifthen,
         endif,
         setenv,
@@ -210,6 +212,11 @@ namespace ast {
     // non-nullary commands
     struct ifthen{
         expr::ast::Expr expr;
+    };
+
+    struct otprefer {
+        std::string key;
+        std::string value;
     };
 
     struct setenv {
@@ -483,6 +490,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_quit)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_raytrace)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::ifthen, expr)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::setenv, key, value)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::otprefer, key, value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_time, time)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, object_type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
@@ -670,9 +678,9 @@ namespace parser {
 
     auto const keyword
         = x3::rule<class keyword>{"keyword"}
-        = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
-        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode") | lit("ray_embeddedfile")
-        | lit("cmd_edge") | lit("cmd_procedural");
+        = x3::lit("otprefer") | x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") 
+        | lit("cmd_start") | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode") 
+        | lit("ray_embeddedfile") | lit("cmd_edge") | lit("cmd_procedural");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -857,6 +865,10 @@ namespace parser {
         = x3::rule<class setenv, ast::setenv>{"setenv"}
         = "setenv" >> identifier >> "=" >> any_string >> eps;
 
+    auto const otprefer
+        = x3::rule<class otprefer, ast::otprefer>{"otprefer"}
+        = "otprefer" >> any_string >> any_string >> eps;
+
     auto const cmd_image
         = x3::rule<class cmd_image, ast::cmd_image>{"cmd_image"}
         = "cmd_image" >> lit("\"-f\"") >> display_type >> any_filename >> eps
@@ -965,9 +977,8 @@ namespace parser {
         = x3::rule<class ray_embeddedfile, ast::ray_embeddedfile>{"ray_embeddedfile"}
         = "ray_embeddedfile" >> embedded_data_type >> any_string >> embedded_data_encoding >> int_;
 
-    auto const cmd = setenv | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset | cmd_edge |
-        cmd_socket | cmd_delete |
-        cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption | ray_embeddedfile |
+    auto const cmd = setenv | otprefer | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset | cmd_edge |
+        cmd_socket | cmd_delete | cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption | ray_embeddedfile |
         ifthen | endif;
 
     auto const input  = skip(skipper) [*cmd % eol];
