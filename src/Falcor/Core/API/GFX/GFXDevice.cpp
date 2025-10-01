@@ -55,7 +55,19 @@ static const uint32_t kInvalidBackbufferIndex = -1;
 
 /// The default Shader Model to use when compiling programs.
 /// If not supported, the highest supported shader model will be used instead.
-static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_6;
+static const ShaderModel kDefaultShaderModel = ShaderModel::SM6_7;
+
+static bool createShaderCacheDir(const std::string& shaderCachePath) { 
+	if (fs::exists(shaderCachePath)) {
+		if (!fs::is_directory(shaderCachePath)) {
+			LLOG_ERR << "Shader cache path \"" << shaderCachePath <<  "\" exists and is not a directory!";
+			return false;
+		}
+		return true;
+	} else {
+		return fs::create_directories(shaderCachePath);
+	}
+}
 
 class GFXDebugCallBack : public gfx::IDebugCallback {
     virtual SLANG_NO_THROW void SLANG_MCALL
@@ -408,16 +420,10 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		if (mDesc.shaderCachePath == "") {
 			desc.shaderCache.shaderCachePath = nullptr;
 		} else {
-			desc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
-
-			// If the supplied shader cache path does not exist, we will need to create it before creating the device.
-			if (fs::exists(mDesc.shaderCachePath)) {
-				if (!fs::is_directory(mDesc.shaderCachePath)) {
-					LLOG_ERR << "Shader cache path \"" << mDesc.shaderCachePath <<  "\" exists and is not a directory! Shader cache disabled!";
-					desc.shaderCache.shaderCachePath = nullptr;
-				}
+			if(createShaderCacheDir(mDesc.shaderCachePath)) {
+				desc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
 			} else {
-				fs::create_directories(mDesc.shaderCachePath);
+				LLOG_ERR << "Shader cache disabled!";
 			}
 		}
 		
@@ -499,33 +505,71 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		}
 	}
 
-	bool Device::enableShaderCache(const std::string& shaderCachePath, uint32_t maxShaderCacheEntryCount) {
-    	if(mDesc.shaderCachePath != "" && mInitialized) {
-    		LLOG_ERR << "Attempting to set shader cache path that was already set! Skipping...";
-    		return false;
-    	}
+	bool Device::setShaderCache(const std::string& shaderCachePath, int maxShaderCacheEntryCount) {
+		LLOG_WRN << "Setting shader cache to: " << shaderCachePath;
+
+		if(mDesc.shaderCachePath != "" && mInitialized) {
+			LLOG_ERR << "Attempting to set shader cache path that was already set! Skipping...";
+			return false;
+		}
 
 		mDesc.shaderCachePath = shaderCachePath;
 		mDesc.maxShaderCacheEntryCount = maxShaderCacheEntryCount;
 
-    	if(!mInitialized) {
-    		// We can leave now. Shader cache should be created inside Device::apiInit() call.
-        	return true;
-    	}
+		if(!mInitialized) {
+			// We can leave now. Shader cache should be created inside Device::apiInit() call.
+			return true;
+		}
 
-    	assert(mGfxDevice);
-    	
-    	gfx::IDevice::ShaderCacheDesc desc;
-    	desc.shaderCachePath = mDesc.shaderCachePath.c_str();
-    	desc.maxEntryCount = mDesc.maxShaderCacheEntryCount;
+		assert(mGfxDevice);
+		
 
-    	auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
-    	
-    	if(SLANG_FAILED(pRendererBase->setShaderCache(desc))) {
-    		return false;
-    	}
+		if(createShaderCacheDir(mDesc.shaderCachePath)) {
+		
+			gfx::IDevice::ShaderCacheDesc desc;
+			desc.shaderCachePath = mDesc.shaderCachePath.c_str();
+			desc.maxEntryCount = mDesc.maxShaderCacheEntryCount;
 
-    	return true; 
+			auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+			
+			if(SLANG_FAILED(pRendererBase->setShaderCache(desc))) {
+				LLOG_ERR << "Failed to set shader cache path to: " << shaderCachePath << " ! Skipping...";
+				return false;
+			}
+
+			return true; 
+		} else {
+			LLOG_ERR << "Shader cache disabled!";
+			return false;
+		}
+		
+	}
+
+	gfx::ShaderCacheStats Device::getShaderCacheStats() const {
+		gfx::ShaderCacheStats stats;
+		
+		if(mDesc.shaderCachePath == "" || mDesc.shaderCachePath.empty()) {
+			return stats;
+		}
+
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+		
+		if(SLANG_FAILED(pRendererBase->getShaderCacheStats(&stats))) {
+			LLOG_ERR << "Error getting shader cache stats !";
+		}
+
+		return stats;
+	}
+
+	bool Device::resetShaderCacheStats() {
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+		
+		if(SLANG_FAILED(pRendererBase->resetShaderCacheStats())) {
+			LLOG_ERR << "Error resetting shader cache stats !";
+			return false;
+		}
+
+		return true;
 	}
 
 	bool Device::createSwapChain(ResourceFormat colorFormat) {

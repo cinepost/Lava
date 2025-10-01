@@ -67,7 +67,15 @@ Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(
 bool Renderer::init(const Config& config) {
 	if(mInited) return true;
 
+	assert(mpDevice);
+
 	mCurrentConfig = config;
+
+	// Init shader cache if needed
+	if(mCurrentConfig.shaderCachePath != "") {
+		mpDevice->setShaderCache(mCurrentConfig.shaderCachePath);
+	}
+
 
 	Falcor::OSServices::start();
 
@@ -90,17 +98,17 @@ bool Renderer::init(const Config& config) {
 		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 		sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMeshes;
-    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeStatic;
-    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeDynamic;
-    sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
-    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
-    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
-    sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshletSpecData;
-    
-    if(config.optimizeForBatch) {
-    	sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
-    }
+		sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeStatic;
+		sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeDynamic;
+		sceneBuilderFlags |= SceneBuilder::Flags::RTDontMergeInstanced;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeGraph;
+		sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+		sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshData;
+		sceneBuilderFlags |= SceneBuilder::Flags::KeepLocalMeshletSpecData;
+
+		if(config.optimizeForBatch) {
+			sceneBuilderFlags |= SceneBuilder::Flags::KeepMeshData;
+		}
 	} else {
 		sceneBuilderFlags |= SceneBuilder::Flags::FlattenStaticMeshInstances;
 	}

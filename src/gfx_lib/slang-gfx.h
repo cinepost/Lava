@@ -2887,11 +2887,19 @@ class IDevice: public ISlangUnknown {
 		  0x715bdf26, 0x5135, 0x11eb, { 0xAE, 0x93, 0x02, 0x42, 0xAC, 0x13, 0x00, 0x02 } \
 	}
 
-struct ShaderCacheStats
-{
+struct ShaderCacheStats {
     GfxCount hitCount;
     GfxCount missCount;
     GfxCount entryCount;
+
+    bool present;
+
+    ShaderCacheStats() {
+    	hitCount = 0;
+    	missCount = 0;
+    	entryCount = 0;
+    	present = false;
+    };
 };
 
 // These are exclusively used to track hit/miss counts for shader cache entries. Entry hit and

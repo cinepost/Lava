@@ -203,8 +203,6 @@ def header(now, propdefs):
     cfg_plist = rop.evaluate(configParms, now)
     cmd_comment("Renderer configuration")
 
-    cmd_start('config')
-
     cmd_config('fconv', cfg_plist.get('lv_fconv', None))
     cmd_config('async_vtex', cfg_plist.get('lv_async_vtex', None))
     
@@ -217,11 +215,11 @@ def header(now, propdefs):
     cmd_config('geo_tangent_generation', cfg_plist.get('lv_geo_tangent_generation', None))
     cmd_config('generate_meshlets', cfg_plist.get('lv_generate_meshlets', None))
 
-    cmd_config('shader_cache_use', cfg_plist.get('lv_shadercacheuse', None))
-    cmd_config('shader_cache_compression', cfg_plist.get('lv_shadercachecompression', None))
-    cmd_config('shader_cache_storate', cfg_plist.get('lv_shadercachestorage', None))
-
-    cmd_end()
+    use_shader_cache = cfg_plist.get('lv_shadercacheuse', None)
+    if use_shader_cache:
+        if use_shader_cache.Value[0] == True:
+            cmd_config('shader_cache_compression', cfg_plist.get('lv_shadercachecompression', None))
+            cmd_config('shader_cache_storage', cfg_plist.get('lv_shadercachestorage', None))
 
     cmd_declare_parm('global', 'async_geo', cfg_plist.get('lv_async_geo', None))
     cmd_declare_parm('global', 'vtoff', cfg_plist.get('lv_vtoff', None))

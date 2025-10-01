@@ -55,6 +55,8 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       std::string tangentGenerationMode = "mikkt";
       std::string cullMode = "back";
       std::string meshletsGenerationMode = "scan"; // choices for now are: "scan", "optimal"
+
+      std::string shaderCachePath;
     };
 
     enum class SamplePattern : uint32_t {

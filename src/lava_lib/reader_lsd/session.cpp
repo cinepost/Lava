@@ -102,7 +102,7 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 		if (name == "vtex_tlc_level") { mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return; }
 		if (name == "geo_tangent_generation") { mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return; }
 		if (name == "meshlet_generator") { mRendererConfig.meshletsGenerationMode = boost::get<std::string>(value); return; }
-
+		if (name == "shader_cache_storage") { mRendererConfig.shaderCachePath = boost::get<std::string>(value); return; }
 	} catch (const boost::bad_get& ex) {
 		LLOG_ERR << ex.what() << "\nError getting configuration value for key: " << name << " !!!";
 		return;
@@ -984,11 +984,6 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 	mpRenderer->init(mRendererConfig);
 
 	switch (object_type) {
-		case lsd::ast::Style::CONFIG:
-			{
-				
-			}
-			break;
 		case lsd::ast::Style::GEO:
 			{ 
 				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -1084,11 +1079,6 @@ bool Session::cmdEnd() {
 	bool result = true;
 
 	switch(mpCurrentScope->type()) {
-		case ast::Style::CONFIG:
-			{
-
-			}
-			break;
 		case ast::Style::GEO:
 			{
 				scope::Geo::SharedPtr pScopeGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);

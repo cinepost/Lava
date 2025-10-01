@@ -380,11 +380,13 @@ IDevice* gfx::RendererBase::getInterface(const Guid& guid) {
 SLANG_NO_THROW Result SLANG_MCALL RendererBase::setShaderCache(const IDevice::ShaderCacheDesc& desc) {
     if(persistentShaderCache) {
         // Cache already exist !
+        printf("PersistentCache already exist!\n");
         return SLANG_FAIL;
     }
 
     if(!desc.shaderCachePath) {
         // No shader cache path specified !
+        printf("PersistentCache no shader cache path specified !\n");
         return SLANG_FAIL;
     }
 
@@ -749,17 +751,14 @@ Result RendererBase::getShaderObjectLayout(
     return SLANG_OK;
 }
 
-Result RendererBase::clearShaderCache()
-{
-    SLANG_ASSERT(persistentShaderCache);
+Result RendererBase::clearShaderCache() {
+    if(!persistentShaderCache) return SLANG_FAIL;
     return persistentShaderCache->clear();
 }
 
-Result RendererBase::getShaderCacheStats(ShaderCacheStats* outStats)
-{
-    SLANG_ASSERT(persistentShaderCache);
-    if (!outStats)
-    {
+Result RendererBase::getShaderCacheStats(ShaderCacheStats* outStats) {
+    if(!persistentShaderCache) return SLANG_FAIL;
+    if (!outStats) {
         return SLANG_E_INVALID_ARG;
     }
 
@@ -767,12 +766,12 @@ Result RendererBase::getShaderCacheStats(ShaderCacheStats* outStats)
     outStats->entryCount = (GfxCount)stats.entryCount;
     outStats->hitCount = (GfxCount)stats.hitCount;
     outStats->missCount = (GfxCount)stats.missCount;
+    outStats->present = true;
     return SLANG_OK;
 }
 
-Result RendererBase::resetShaderCacheStats()
-{
-    SLANG_ASSERT(persistentShaderCache);
+Result RendererBase::resetShaderCacheStats() {
+    if(!persistentShaderCache) return SLANG_FAIL;
     persistentShaderCache->resetStats();
     return SLANG_OK;
 }

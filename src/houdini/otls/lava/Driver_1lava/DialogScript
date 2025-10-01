@@ -2036,7 +2036,7 @@
 
             parm {
                 name    "lv_shadercacheuse"
-                label   "Use Shaders Cache"
+                label   "Use Shader Cache"
                 type    toggle
                 default { "0" }
                 parmtag { "script_callback_language" "python" }
@@ -2058,7 +2058,7 @@
                 name    "lv_shadercachestorage"
                 label   "Shaders cache storage"
                 type    file
-                default { "$HIP/lava/shaders_cache" }
+                default { "$HIP/lava/shader_cache" }
                 disablewhen "{ lv_shadercacheuse == 0 }"
                 parmtag { "filechooser_mode" "write" }
                 parmtag { "script_callback_language" "python" }

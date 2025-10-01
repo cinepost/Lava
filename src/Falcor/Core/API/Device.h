@@ -96,7 +96,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
         uint32_t height = 720;                                          ///< Headless FBO height
 
         /// The maximum number of entries allowable in the shader cache. A value of 0 indicates no limit.
-        uint32_t maxShaderCacheEntryCount = 1000;
+        int maxShaderCacheEntryCount = 0;
 
         /// The full path to the root directory for the shader cache. An empty string will disable the cache.
         std::string shaderCachePath;
@@ -133,7 +133,12 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
 
-    bool enableShaderCache(const std::string& shaderCachePath, uint32_t maxShaderCacheEntryCount = 1000);
+    bool setShaderCache(const std::string& shaderCachePath, int maxShaderCacheEntryCount = 0);
+
+    gfx::ShaderCacheStats getShaderCacheStats() const;
+
+    bool resetShaderCacheStats();
+
 
     /** Enable/disable vertical sync
     */
