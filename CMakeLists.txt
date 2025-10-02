@@ -78,8 +78,8 @@ if(UNIX)
   set(DEFAULT_HIH_PATH "$ENV{HOME}/houdini20.5")
 else() # WIN
   set(USER_DOCUMENTS_PATH "$ENV{USERPROFILE}/Documents")
-  set(DEFAULT_HFS_PATH "C:\\Program Files\\Side Effects Software\\Houdini 20.5.332")
-  set(DEFAULT_HIH_PATH "${USER_DOCUMENTS_PATH}\\houdini20.5")
+  set(DEFAULT_HFS_PATH "C:/Program Files/Side Effects Software/Houdini 20.5.332")
+  set(DEFAULT_HIH_PATH "${USER_DOCUMENTS_PATH}/houdini20.5")
 endif()
 
 if (NOT DEFINED ENV{HFS})
