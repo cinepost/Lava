@@ -8,8 +8,8 @@ set (SOURCES
 # Find Boost libs
 set(Boost_USE_MULTITHREADED ON)
 if(WIN32)
-set(BOOST_ROOT ${DEPS_DIR})
-set(Boost_USE_STATIC_LIBS OFF)
+	set(BOOST_ROOT ${DEPS_DIR})
+	set(Boost_USE_STATIC_LIBS OFF)
 endif()
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 
@@ -22,7 +22,7 @@ include_directories(
 )
 
 if(WIN32)
-add_definitions( -D_HAS_STD_BYTE=0 )
+	add_definitions( -D_HAS_STD_BYTE=0 )
 endif()
 
 add_library( d_houdini SHARED ${SOURCES} )
@@ -40,7 +40,13 @@ if (APPLE)
 endif (APPLE)
 
 if(UNIX)
-	install(TARGETS d_houdini DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+	install(
+		TARGETS d_houdini 
+		DESTINATION etc
+	)
 elseif(WIN32)
-	install(TARGETS d_houdini RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+	install(
+		TARGETS d_houdini 
+		RUNTIME DESTINATION etc
+	)
 endif()

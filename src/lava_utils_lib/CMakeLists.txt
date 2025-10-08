@@ -60,7 +60,20 @@ target_link_libraries(
 )
 
 if(UNIX)
-    install( TARGETS lava_utils_lib DESTINATION "lib" )
+    install( 
+        TARGETS lava_utils_lib 
+        DESTINATION lib 
+    )
 elseif(WIN32)
-    install( TARGETS lava_utils_lib RUNTIME DESTINATION "bin" )
+    install( 
+        TARGETS lava_utils_lib 
+        RUNTIME DESTINATION bin 
+    )
+    install(
+        IMPORTED_RUNTIME_ARTIFACTS 
+            Boost::log
+            Boost::filesystem
+            Boost::thread
+            Boost::system
+    )
 endif()

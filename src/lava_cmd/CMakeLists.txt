@@ -16,13 +16,15 @@ set (SOURCES
 
 # Find BOOST
 if(WIN32)
-set(BOOST_ROOT ${DEPS_DIR})
-set(Boost_USE_STATIC_LIBS OFF)
+	set(BOOST_ROOT ${DEPS_DIR})
+	set(Boost_USE_STATIC_LIBS OFF)
 endif()
+
 find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS program_options log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
+
 if(WIN32)
-add_definitions(-DBOOST_ALL_DYN_LINK)
+	add_definitions(-DBOOST_ALL_DYN_LINK)
 endif()
 
 # Executable 
@@ -36,17 +38,11 @@ target_link_libraries( lava_cmd
 	reader_lsd_lib
 )
 
-if(USE_MEGALIB)
-	target_link_libraries( lava_cmd
-		mega_lib
-	)
-else()
-	add_definitions(-DBOOST_LOG_DYN_LINK)
-	target_link_libraries( lava_cmd
-		Boost::log 
-		Boost::program_options 
-	)
-endif()
+add_definitions(-DBOOST_LOG_DYN_LINK)
+target_link_libraries( lava_cmd
+	Boost::log 
+	Boost::program_options 
+)
 
 if(UNIX)
 	install(
@@ -56,22 +52,17 @@ if(UNIX)
 	)
 
 	install(
-		PROGRAMS
-			bin/lava
-		DESTINATION
-			${CMAKE_INSTALL_PREFIX}/bin/
+		PROGRAMS bin/lava
+		DESTINATION bin
 	)
 
 	set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
 	configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
 
 	install(
-		PROGRAMS
-			${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
-		RENAME
-			lava_app_init.sh
-		DESTINATION
-			${CMAKE_INSTALL_PREFIX}/bin/
+		PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
+		RENAME lava_app_init.sh
+		DESTINATION bin
 	)
 elseif(WIN32)
 	install(
@@ -80,4 +71,7 @@ elseif(WIN32)
 	)
 endif()
 
-install(DIRECTORY conf DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(
+	DIRECTORY conf 
+	DESTINATION .
+)

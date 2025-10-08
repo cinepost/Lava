@@ -1,4 +1,4 @@
 if(UNIX)
-    install(DIRECTORY linux/etc DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(DIRECTORY linux/etc DESTINATION .)
 endif()
-install(DIRECTORY shaders DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY shaders DESTINATION .)

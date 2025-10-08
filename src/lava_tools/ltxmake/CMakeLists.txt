@@ -44,10 +44,8 @@ if(UNIX)
 	)
 
 	install(
-		PROGRAMS
-			../bin/ltxmake
-		DESTINATION
-			${CMAKE_INSTALL_PREFIX}/bin/
+		PROGRAMS ../bin/ltxmake
+		DESTINATION bin
 	)
 elseif(WIN32)
 	install(

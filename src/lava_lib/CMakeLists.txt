@@ -71,7 +71,6 @@ target_link_libraries(
     NullShadingPass
     DebugShadingPass
     DeferredLightingPass
-#    PathTracer
     CryptomattePass
     ToneMapperPass
     OpenDenoisePass
@@ -82,21 +81,18 @@ target_link_libraries(
 
 if(WIN32)
 target_link_libraries( lava_lib
-    # ${dlfcn-win32_LIBRARIES}
     dlfcn-win32::dl
-    # ${HOUDINI_ROOT}/custom/houdini/dsolib/OpenImageIO_sidefx.lib
-    # ${HOUDINI_ROOT}/custom/houdini/dsolib/OpenImageIO_Util_sidefx.lib
 )
 endif()
 
 if(UNIX)
     install(TARGETS lava_lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
     )
 elseif(WIN32)
     install(TARGETS lava_lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        RUNTIME DESTINATION bin
     )
 endif()

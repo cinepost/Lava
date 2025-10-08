@@ -85,11 +85,6 @@ if(WIN32)
     file( GLOB SOURCES_ARCH
         ./Core/Platform/Windows/Windows.cpp
         ./Rendering/Utils/*.cpp
-        # ./Scene/SDFs/*.cpp
-        # ./Scene/SDFs/NormalizedDenseSDFGrid/*.cpp
-        # ./Scene/SDFs/SparseBrickSet/*.cpp
-        # ./Scene/SDFs/SparseVoxelOctree/*.cpp
-        # ./Scene/SDFs/SparseVoxelSet/*.cpp
     )
 else()
     file( GLOB SOURCES_ARCH
@@ -366,12 +361,20 @@ if(UNIX)
     install( 
         TARGETS falcor_lib
         DESTINATION lib 
-        RUNTIME_DEPENDENCY_SET falcor_deps
     )
 elseif(WIN32)
     install(
         TARGETS falcor_lib
         RUNTIME DESTINATION bin
+    )
+    install(
+        IMPORTED_RUNTIME_ARTIFACTS 
+        Python3::Python
+        Boost::system
+        Boost::filesystem
+        Boost::thread
+        Boost::json
+        OpenEXR::OpenEXR
     )
 endif()
 

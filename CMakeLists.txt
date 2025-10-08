@@ -10,7 +10,7 @@ set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS ON )
 
 set( PROJECT_VERSION_MAJOR 0 )
-set( PROJECT_VERSION_MINOR 0 )
+set( PROJECT_VERSION_MINOR 1 )
 set( PROJECT_VERSION_PATCH 001 )
 
 if(WIN32)
@@ -38,17 +38,6 @@ if (USE_PROFILING)
   add_definitions(-DFALCOR_ENABLE_PROFILER)
 endif()
 
-option (USE_MEGALIB "Build most of the third-party dependencies as a separate mega library." OFF)
-if(USE_MEGALIB)
-  set(Boost_USE_STATIC_RUNTIME ON)
-endif()
-
-option (COLLECT "Enable/Disable portable build dependencies collection." OFF)
-if (COLLECT)
-  # If we are going to collect dependecies, it's most likely to be a deployment build. So we are setting _DEPLOY_BUILD so we can make some optimisations later in the code.
-  add_definitions(-D_DEPLOY_BUILD)
-endif()
-
 # Install path
 if(CMAKE_INSTALL_PREFIX)
   set(linuxDefault ${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
@@ -58,12 +47,22 @@ else()
   set(windowsDefault TRUE)
 endif()
 
+
 if(UNIX)
-  set( DEFAULT_CMAKE_INSTALL_PREFIX "/opt/lava" )
+  set( DEFAULT_CMAKE_INSTALL_ROOT_PATH "/opt" )
 elseif(WIN32)
-  set( DEFAULT_CMAKE_INSTALL_PREFIX "D:/work/lava")
+  set( DEFAULT_CMAKE_INSTALL_ROOT_PATH "D:\\work" )
 else()
-  set( DEFAULT_CMAKE_INSTALL_PREFIX "/Applications/Lava" )
+  set( DEFAULT_CMAKE_INSTALL_ROOT_PATH "/Applications" )
+endif()
+
+
+if(UNIX)
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "${DEFAULT_CMAKE_INSTALL_ROOT_PATH}/lava" )
+elseif(WIN32)
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "${DEFAULT_CMAKE_INSTALL_ROOT_PATH}\\lava")
+else()
+  set( DEFAULT_CMAKE_INSTALL_PREFIX "${DEFAULT_CMAKE_INSTALL_ROOT_PATH}/Lava" )
 endif()
 
 # Override default install path
@@ -128,7 +127,7 @@ if(USE_SUPERBUILD)
 else()
   # Basic information about project
   set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} )
-  project( Falcor VERSION ${PROJECT_VERSION} )
+  project(Lava VERSION ${PROJECT_VERSION})
 endif()
 
 # Version generators
@@ -284,15 +283,24 @@ endif()
 add_subdirectory( src )
 add_subdirectory( contrib )
 
-install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(FILES src/changelog.txt DESTINATION .)
 
 #------------------------------------------
 # Install third party dependencies
 #------------------------------------------
 
+if(NOT EXTERNALS_INSTALL_DIR)
+  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${CMAKE_BUILD_TYPE})
+endif()
+
 # third party libs
 if(WIN32)
-  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ ${EXTERNALS_INSTALL_DIR}/bin/ DESTINATION lib/3rdparty
+  install(
+    DIRECTORY 
+      ${EXTERNALS_INSTALL_DIR}/lib/ 
+      ${EXTERNALS_INSTALL_DIR}/bin/ 
+    DESTINATION 
+      bin
     FILES_MATCHING PATTERN "*.dll"
     PATTERN "*.lib" EXCLUDE
     PATTERN "cmake" EXCLUDE
@@ -300,7 +308,11 @@ if(WIN32)
     PATTERN "libpng" EXCLUDE
   )
 else()
-  install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+  install(
+    DIRECTORY 
+      ${EXTERNALS_INSTALL_DIR}/lib/ 
+    DESTINATION 
+      lib/3rdparty
     FILES_MATCHING PATTERN "*.so*"
     PATTERN "cmake" EXCLUDE
     PATTERN "pkgconfig" EXCLUDE
@@ -311,160 +323,27 @@ endif()
 # third additional shaders and dependencies
 #install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
 
+# CPack
 
-#------------------------------------------
-# Install system collected dependencies
-#------------------------------------------
+include(InstallRequiredSystemLibraries)
 
-if(UNIX AND COLLECT)
-  install(CODE "set(DEPS_INSTALL_DIR \"${EXTERNALS_INSTALL_DIR}/lib\")")
-  
-  install(CODE [[
-      
-      message(" ")
-      message("Collecting and installing portable build dependencies ...")
+#set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
 
-      # Feel free to add some missing system dependecies here ;)
-      set(REQ_SYS_LIBS 
-        "libpython"
-        "libOpenColorIO"
-        "libicui18n"
-        "libicuuc"
-        "libjxrglue"
-        "libHalf"
-        "libcrystalhd"
-        "libvpx"
-        "libtinyxml"
-        "libyaml-cpp"
-        "libjpegxr"
-        "libicudata"
-      )
+set(CPACK_PACKAGE_NAME "Lava")
+set(CPACK_PACKAGE_VENDOR "PAROVOZ")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "lava")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lava - Vulkan Photo Relistic Renderer")
 
-      string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
-
-      file(GET_RUNTIME_DEPENDENCIES
-        LIBRARIES $<TARGET_FILE:falcor_lib>
-        RESOLVED_DEPENDENCIES_VAR _r_deps
-        UNRESOLVED_DEPENDENCIES_VAR _u_deps
-        CONFLICTING_DEPENDENCIES_PREFIX _c_deps
-        #DIRECTORIES ${DEPS_INSTALL_DIR}
-      )
-      
-      foreach(_file ${_r_deps})
-          if(${_file} MATCHES "^/usr/*|^/lib/*")
-              foreach(REQ_SYS_LIB_NAME ${REQ_SYS_LIBS})
-                  if(${_file} MATCHES ".*${REQ_SYS_LIB_NAME}.*")
-                      file(INSTALL
-                          DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/sys"
-                          TYPE SHARED_LIBRARY
-                          FOLLOW_SYMLINK_CHAIN
-                          FILES "${_file}"
-                      )
-                  endif()
-              endforeach()
-          endif()
-      endforeach()
-      
-      foreach(_file ${_u_deps})
-          find_library(UNRESOLVED_LIBRARY
-            NAMES ${_file}
-            PATHS ${DEPS_INSTALL_DIR}
-            REQUIRED
-            NO_DEFAULT_PATH
-          )
-          if(NOT UNRESOLVED_LIBRARY)
-            message(FATAL_ERROR "${_file} dependency not resolved !!!")
-          else()
-            file(INSTALL
-                DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
-                TYPE SHARED_LIBRARY
-                FOLLOW_SYMLINK_CHAIN
-                FILES "${UNRESOLVED_LIBRARY}"
-            )
-            message("Dependency " ${_file} " resolved !")
-          endif()
-      endforeach()
-      
-      foreach(_file ${_c_deps_FILENAMES})
-          find_library(CONFLICT_LIBRARY
-            NAMES ${_file}
-            PATHS ${DEPS_INSTALL_DIR}
-            REQUIRED
-            NO_DEFAULT_PATH
-          )
-          if(NOT CONFLICT_LIBRARY)
-            message(FATAL_ERROR "${_file} conflict not resolved !!!")
-          else()
-              file(INSTALL
-                  DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
-                  TYPE SHARED_LIBRARY
-                  FOLLOW_SYMLINK_CHAIN
-                  FILES "${CONFLICT_LIBRARY}"
-              )
-              message("Conflict for " ${_file} " resolved !")
-          endif()
-      endforeach()
-  ]])
+if(WIN32)
+  set(CPACK_GENERATOR "NSIS")
+  set(CPACK_NSIS_INSTALL_ROOT ${DEFAULT_CMAKE_INSTALL_ROOT_PATH})
+  set(CPACK_NSIS_MODIFY_PATH ON)
+else()
+  set(CPACK_GENERATOR "TGZ")
+  set(CPACK_SOURCE_GENERATOR "TGZ")
 endif()
 
-if(WIN32 AND COLLECT)
-  install(CODE "set(DEPS_INSTALL_DIR \"${EXTERNALS_INSTALL_DIR}/lib\")")
-
-  install(CODE [[
-
-      message(" ")
-      message("Collecting and installing portable build dependencies ...")
-
-      string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
-
-      file(GET_RUNTIME_DEPENDENCIES
-          LIBRARIES $<TARGET_FILE:falcor_lib>
-          RESOLVED_DEPENDENCIES_VAR _r_deps
-          UNRESOLVED_DEPENDENCIES_VAR _u_deps
-          CONFLICTING_DEPENDENCIES_PREFIX _c_deps
-          #DIRECTORIES ${DEPS_INSTALL_DIR}
-      )
-
-      foreach(_file ${_u_deps})
-          find_library(UNRESOLVED_LIBRARY
-            NAMES ${_file}
-            PATHS ${DEPS_INSTALL_DIR}
-            # REQUIRED
-            NO_DEFAULT_PATH
-          )
-          if(NOT UNRESOLVED_LIBRARY)
-            # message(FATAL_ERROR "${_file} dependency not resolved !!!")
-            message(WARNING "${_file} dependency not resolved !!!")
-          else()
-            file(INSTALL
-                DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
-                TYPE SHARED_LIBRARY
-                FOLLOW_SYMLINK_CHAIN
-                FILES "${UNRESOLVED_LIBRARY}"
-            )
-            message("Dependency " ${_file} " resolved !")
-          endif()
-      endforeach()
-
-      foreach(_file ${_c_deps_FILENAMES})
-          find_library(CONFLICT_LIBRARY
-            NAMES ${_file}
-            PATHS ${DEPS_INSTALL_DIR}
-            # REQUIRED
-            NO_DEFAULT_PATH
-          )
-          if(NOT CONFLICT_LIBRARY)
-            # message(FATAL_ERROR "${_file} conflict not resolved !!!")
-            message(WARNING "${_file} conflict not resolved !!!")
-          else()
-              file(INSTALL
-                  DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
-                  TYPE SHARED_LIBRARY
-                  FOLLOW_SYMLINK_CHAIN
-                  FILES "${CONFLICT_LIBRARY}"
-              )
-              message("Conflict for " ${_file} " resolved !")
-          endif()
-      endforeach()
-  ]])
-endif()
+include(CPack)
