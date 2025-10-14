@@ -595,6 +595,9 @@ Texture::~Texture() {
 	LLOG_TRC << ++gDeletedTexturesCount << " textures deleted out of " << gTotalTexturesCount;
 }
 
+void Texture::apiSetName() {
+	mGfxTextureResource->setDebugName(mName.c_str());
+}
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Texture) {

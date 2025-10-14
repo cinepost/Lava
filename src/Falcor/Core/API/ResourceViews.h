@@ -32,7 +32,12 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Program/ProgramReflection.h"
+
+#include <slang/slang.h>
+#include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
 
 
 namespace Falcor {
@@ -41,8 +46,6 @@ class Device;
 class Resource;
 class Texture;
 class Buffer;
-
-using ResourceSharedPtr = std::shared_ptr<Resource>;
 
 struct FALCOR_API ResourceViewInfo {
     ResourceViewInfo() = default;
@@ -72,28 +75,24 @@ struct FALCOR_API ResourceViewInfo {
 
 /** Abstracts API resource views.
 */
-template<typename ApiHandleType>
-class FALCOR_API ResourceView: public std::enable_shared_from_this<ResourceView<ApiHandleType>> {
+class FALCOR_API ResourceView: public Object {
+    FALCOR_OBJECT(ResourceView)
  public:
-    using ApiHandle = ApiHandleType;
     using Dimension = ReflectionResourceType::Dimensions;
     static const uint32_t kMaxPossible = -1;
+    static constexpr uint64_t kEntireBuffer = -1;
     virtual ~ResourceView();
 
-    ResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
-        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
+    ResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        : mGfxResourceView(gfxResourceView), mpDevice(pDevice), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-    ResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint64_t offset, uint64_t size)
-        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(offset, size) {}
+    ResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint64_t offset, uint64_t size)
+        : mGfxResourceView(gfxResourceView), mpDevice(pDevice), mpResource(pResource), mViewInfo(offset, size) {}
 
-    ResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle)
-        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource) {}
+    ResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView)
+        : mGfxResourceView(gfxResourceView), mpDevice(pDevice), mpResource(pResource) {}
 
-    gfx::IResourceView* getGfxResourceView() const { return mApiHandle; }
-
-    /** Get the raw API handle.
-    */
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
+    gfx::IResourceView* getGfxResourceView() const { return mGfxResourceView; }
 
     /** Get information about the view.
     */
@@ -102,108 +101,78 @@ class FALCOR_API ResourceView: public std::enable_shared_from_this<ResourceView<
     /** Get the resource referenced by the view.
     */
     Resource* getResource() const { return mpResource; }
-    //ResourceSharedPtr getResource() const { 
-    //    assert(!mpResource.expired());
-    //    return mpResource.lock(); 
-    //}
-    // Resource* getResource() const { return mpResource.lock().get(); }
+
 
  protected:
     friend class Resource;
 
-    ApiHandle mApiHandle;
-    std::shared_ptr<Device> mpDevice;
-    Resource* mpResource;
+    void invalidate();
+
+    Device* mpDevice;
+    Slang::ComPtr<gfx::IResourceView> mGfxResourceView;
     ResourceViewInfo mViewInfo;
+    Resource* mpResource;
 };
 
-template<>
-ResourceView<CbvHandle>::~ResourceView<CbvHandle>();
-
-class FALCOR_API ShaderResourceView : public ResourceView<SrvHandle>, public inherit_shared_from_this<ResourceView<SrvHandle>, ShaderResourceView> {
+class FALCOR_API ShaderResourceView : public ResourceView {
     public:
-        using SharedPtr = std::shared_ptr<ShaderResourceView>;
-        using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
+        using SharedPtr = Falcor::SharedPtr<ShaderResourceView>;
+        using SharedConstPtr = Falcor::SharedPtr<const ShaderResourceView>;
 
-        static SharedPtr create(std::shared_ptr<Device> pDevice, Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
-        static SharedPtr create(std::shared_ptr<Device> pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
-        static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
-        static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+        static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
+        static SharedPtr create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
+        static SharedPtr create(Device* pDevice, Dimension dimension);
 
-        ShaderResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
-            : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
+        ShaderResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+            : ResourceView(pDevice, pResource, gfxResourceView, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-        ShaderResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint64_t offset, uint64_t size)
-            : ResourceView(pDevice, pResource, handle, offset, size) {}
+        ShaderResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint64_t offset, uint64_t size)
+            : ResourceView(pDevice, pResource, gfxResourceView, offset, size) {}
 
-        ShaderResourceView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle)
-            : ResourceView(pDevice, pResource, handle) {}
+        ShaderResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView)
+            : ResourceView(pDevice, pResource, gfxResourceView) {}
 };
 
-class FALCOR_API DepthStencilView : public ResourceView<DsvHandle>, public inherit_shared_from_this<ResourceView<DsvHandle>, DepthStencilView> {
+class FALCOR_API DepthStencilView : public ResourceView {
  public:
-    using SharedPtr = std::shared_ptr<DepthStencilView>;
-    using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
+    using SharedPtr = Falcor::SharedPtr<DepthStencilView>;
+    using SharedConstPtr = Falcor::SharedPtr<const DepthStencilView>;
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr create(Device* pDevice, Dimension dimension);
 
-    DepthStencilView(std::shared_ptr<Device> pDevice,Resource* pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
+    DepthStencilView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, gfxResourceView, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
-class FALCOR_API UnorderedAccessView : public ResourceView<UavHandle>, public inherit_shared_from_this<ResourceView<UavHandle>, UnorderedAccessView> {
+class FALCOR_API UnorderedAccessView : public ResourceView {
  public:
-    using SharedPtr = std::shared_ptr<UnorderedAccessView>;
-    using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
+    using SharedPtr = Falcor::SharedPtr<UnorderedAccessView>;
+    using SharedConstPtr = Falcor::SharedPtr<const UnorderedAccessView>;
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
+    static SharedPtr create(Device* pDevice, Dimension dimension);
 
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    UnorderedAccessView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, gfxResourceView, mipLevel, 1, firstArraySlice, arraySize) {}
 
-    UnorderedAccessView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
-
-    UnorderedAccessView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint64_t offset, uint64_t size)
-        : ResourceView(pDevice, pResource, handle, offset, size) {}
+    UnorderedAccessView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint64_t offset, uint64_t size)
+        : ResourceView(pDevice, pResource, gfxResourceView, offset, size) {}
 };
 
-class FALCOR_API RenderTargetView : public ResourceView<RtvHandle>, public inherit_shared_from_this<ResourceView<RtvHandle>, RenderTargetView> {
+class FALCOR_API RenderTargetView : public ResourceView {
  public:
-    using SharedPtr = std::shared_ptr<RenderTargetView>;
-    using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+    using SharedPtr = Falcor::SharedPtr<RenderTargetView>;
+    using SharedConstPtr = Falcor::SharedPtr<const RenderTargetView>;
 
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr create(Device* pDevice, Dimension dimension);
 
     ~RenderTargetView();
 
-    RenderTargetView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
-};
-
-class FALCOR_API ConstantBufferView : public ResourceView<CbvHandle>, public inherit_shared_from_this<ResourceView<CbvHandle>, ConstantBufferView> {
- public:
-    using SharedPtr = std::shared_ptr<ConstantBufferView>;
-    using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Buffer* pBuffer);
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
-
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
-
-    ConstantBufferView(std::shared_ptr<Device> pDevice, Resource* pResource, ApiHandle handle) : ResourceView(pDevice, pResource, handle, 0, 1, 0, 1) {}
-};
-
-struct NullResourceViews {
-    std::array<ShaderResourceView::SharedPtr, (size_t)ShaderResourceView::Dimension::Count> srv;
-    std::array<UnorderedAccessView::SharedPtr, (size_t)UnorderedAccessView::Dimension::Count> uav;
-    std::array<DepthStencilView::SharedPtr, (size_t)DepthStencilView::Dimension::Count> dsv;
-    std::array<RenderTargetView::SharedPtr, (size_t)RenderTargetView::Dimension::Count> rtv;
-    ConstantBufferView::SharedPtr cbv;
+    RenderTargetView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, gfxResourceView, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
 }  // namespace Falcor

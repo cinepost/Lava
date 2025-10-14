@@ -30,19 +30,19 @@
 #include <queue>
 #include <memory>
 
-#include "GpuFence.h"
+#include "Fence.h"
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 
 namespace Falcor {
 
 class Device;
 
 template<typename ObjectType>
-class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>> {
+class FALCOR_API FencedPool : public Object {
+    FALCOR_OBJECT(FencedPool)
  public:
-    using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
-    using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
-    using NewObjectFuncType = ObjectType(*)(std::shared_ptr<Device>, void*);
+    using NewObjectFuncType = ObjectType (*)(void*);
 
     /** Create a new fenced pool.
         \param[in] pFence GPU fence to use for synchronization.
@@ -50,8 +50,8 @@ class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<Object
         \param[in] pUserData Optional ptr to user data passed to the object creation function.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) {
-        return SharedPtr(new FencedPool(device, pFence, newFunc, pUserData));
+    static SharedPtr create(Fence::SharedPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) {
+        return new FencedPool(pFence, newFunc, pUserData);
     }
 
     /** Return an object.
@@ -61,12 +61,12 @@ class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<Object
         // Retire the active object
         Data data;
         data.alloc = mActiveObject;
-        data.timestamp = mpFence->getCpuValue();
+        data.timestamp = mpFence->getSignaledValue();
         mQueue.push(data);
 
         // The queue is sorted based on time. Check if the first object is free
         data = mQueue.front();
-        if (data.timestamp <= mpFence->getGpuValue()) {
+        if (data.timestamp <= mpFence->getCurrentValue()) {
             mQueue.pop();
         } else {
             data.alloc = createObject();
@@ -77,13 +77,7 @@ class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<Object
     }
 
 private:
-    FencedPool(std::shared_ptr<Device> device, GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
-        : mpUserData(pUserData)
-        , mpFence(pFence)
-        , mNewObjFunc(newFunc)
-        , mpDevice(device)
-    {
-        assert(device);
+    FencedPool(Fence::SharedPtr pFence, NewObjectFuncType newFunc, void* pUserData) : mNewObjFunc(newFunc), mpFence(pFence), mpUserData(pUserData) {
         assert(pFence && newFunc);
         mActiveObject = createObject();
     }
@@ -104,9 +98,8 @@ private:
     ObjectType mActiveObject;
     NewObjectFuncType mNewObjFunc = nullptr;
     std::queue<Data> mQueue;
-    GpuFence::SharedConstPtr mpFence;
+    Fence::SharedPtr mpFence;
     void* mpUserData;
-    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

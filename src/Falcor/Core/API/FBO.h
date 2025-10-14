@@ -30,6 +30,7 @@
 
 #include <unordered_set>
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
@@ -41,18 +42,12 @@ class FboData;
 /** Low level framebuffer object.
     This class abstracts the API's framebuffer creation and management.
 */
-class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
+class FALCOR_API Fbo : public Object {
+    FALCOR_OBJECT(Fbo)
  public:
-    using SharedPtr = std::shared_ptr<Fbo>;
-    using SharedConstPtr = std::shared_ptr<const Fbo>;
-    using ApiHandle = FboHandle;
-
-    class dlldecl Desc {
+    class FALCOR_API Desc {
      public:
-        Desc(std::shared_ptr<Device> pDevice);
-
-        std::shared_ptr<Device> device() { return mpDevice; }
-        std::shared_ptr<Device> device() const { return mpDevice; }        
+        Desc();
 
         /** Set a render target to be a color target.
             \param[in] rtIndex Index of render target
@@ -110,7 +105,6 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
         std::vector<TargetDesc> mColorTargets;
         TargetDesc mDepthStencilTarget;
         uint32_t mSampleCount = 1;
-        std::shared_ptr<Device> mpDevice;
     };
 
     std::shared_ptr<Device> device() { return mpDevice; }
@@ -123,10 +117,6 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     /** Destructor. Releases the API object
     */
     ~Fbo();
-
-    /** Get a FBO representing the default framebuffer object
-    */
-    static SharedPtr getDefault(std::shared_ptr<Device> pDevice);
 
     /** Create a new empty FBO.
         \return A new object, or throws an exception if creation failed.
@@ -249,12 +239,10 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     */
     uint32_t getSamplePositionsPixelCount() const { return mSamplePositionsPixelCount; }
 
-    /** Get the number of sample positions per one pixels
-    */
-    uint32_t getSamplePositionsPerPixel() const { return mSamplePositionsPerPixel; }
-
     struct Attachment {
-        Texture::SharedPtr pTexture = nullptr;
+        Falcor::SharedPtr<Texture> pTexture;
+        Falcor::SharedPtr<ResourceView> pNullView;
+
         uint32_t mipLevel = 0;
         uint32_t arraySize = 1;
         uint32_t firstArraySlice = 0;
@@ -264,11 +252,13 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
         std::size_t operator()(const Desc& d) const;
     };
 
+    void breakStrongReferenceToDevice();
+
  private:
     static std::unordered_set<Desc, DescHash> sDescs;
 
-    bool verifyAttachment(const Attachment& attachment) const;
-    bool calcAndValidateProperties() const;
+    void verifyAttachment(const Attachment& attachment) const;
+    void calcAndValidateProperties() const;
 
     void applyColorAttachment(uint32_t rtIndex);
     void applyDepthAttachment();
@@ -279,14 +269,15 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     */
     void finalize() const;
 
-    Fbo(std::shared_ptr<Device> pDevice);
-    std::vector<Attachment> mColorAttachments;
-    std::vector<SamplePosition> mSamplePositions;
-    
-    uint32_t mSamplePositionsPixelCount = 0;
-    uint32_t mSamplePositionsPerPixel = 0;
+    Fbo(Falcor::SharedPtr<Device> pDevice);
 
-    Attachment mDepthStencil;
+    mutable Falcor::BreakableSharedPtr<Device> mpDevice;
+
+    std::vector<SamplePosition> mSamplePositions;    
+    uint32_t mSamplePositionsPixelCount = 0;
+
+    mutable std::vector<Attachment> mColorAttachments;
+    mutable Attachment mDepthStencil;
 
     mutable Desc mTempDesc;
     mutable const Desc* mpDesc = nullptr;
@@ -297,13 +288,9 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     mutable bool mIsLayered = false;
     mutable bool mIsZeroAttachment = false;
 
-    mutable ApiHandle mApiHandle = {};
+    mutable Slang::ComPtr<gfx::IFramebuffer> mGfxFramebuffer;
+    mutable bool mHandleDirty = true;
 
-#if defined(FALCOR_GFX)
-    std::unique_ptr<FboData> mpPrivateData;
-#endif
-
-    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

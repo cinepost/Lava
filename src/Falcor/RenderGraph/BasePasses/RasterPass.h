@@ -35,10 +35,9 @@
 
 
 namespace Falcor {
-    class FALCOR_API RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass> {
+    class FALCOR_API RasterPass : public BaseGraphicsPass {
+        FALCOR_OBJECT(RasterPass)
      public:
-        using SharedPtr = std::shared_ptr<RasterPass>;
-
         /** Create a new object.
             \param[in] filename Program filename.
             \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.

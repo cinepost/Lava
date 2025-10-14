@@ -31,6 +31,7 @@
 
 #include "Device.h"
 #include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
@@ -94,6 +95,97 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc&
     return pDevice;
 }
 
+Buffer::SharedPtr Device::createBuffer(size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData)
+{
+    return std::make_shared<Buffer>(this, size, bindFlags, memoryType, pInitData);
+}
+
+Buffer::SharedPtr Device::createTypedBuffer(
+    ResourceFormat format,
+    uint32_t elementCount,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData
+)
+{
+    return std::make_shared<Buffer>(this, format, elementCount, bindFlags, memoryType, pInitData);
+}
+
+Buffer::SharedPtr Device::createStructuredBuffer(
+    uint32_t structSize,
+    uint32_t elementCount,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData,
+    bool createCounter
+){
+    return std::make_shared<Buffer>(this, structSize, elementCount, bindFlags, memoryType, pInitData, createCounter);
+}
+
+Buffer::SharedPtr Device::createStructuredBuffer(
+    const ReflectionType* pType,
+    uint32_t elementCount,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData,
+    bool createCounter
+) {
+    FALCOR_CHECK(pType != nullptr, "Can't create a structured buffer from a nullptr type.");
+    const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
+    if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
+        FALCOR_THROW("Can't create a structured buffer from type '{}'.", pType->getClassName());
+    }
+
+    // Read the stride directly from the slang type layout, as the stored 'byte size' may not be the same
+    auto structStride = pResourceType->getStructType()->getSlangTypeLayout()->getStride();
+
+    FALCOR_ASSERT(structStride <= std::numeric_limits<uint32_t>::max());
+    return std::make_shared<Buffer>(this, (uint32_t)structStride, elementCount, bindFlags, memoryType, pInitData, createCounter);
+}
+
+Buffer::SharedPtr Device::createStructuredBuffer(
+    const ShaderVar& shaderVar,
+    uint32_t elementCount,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData,
+    bool createCounter
+){
+    return createStructuredBuffer(shaderVar.getType(), elementCount, bindFlags, memoryType, pInitData, createCounter);
+}
+
+Buffer::SharedPtr Device::createBufferFromResource(
+    gfx::IBufferResource* pResource,
+    size_t size,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType
+){
+    return std::make_shared<Buffer>(this, pResource, size, bindFlags, memoryType);
+}
+
+Buffer::SharedPtr Device::createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType){
+    return std::make_shared<Buffer>(this, handle, size, bindFlags, memoryType);
+}
+
+Texture::SharedPtr Device::createTextureFromResource(
+    gfx::ITextureResource* pResource,
+    Texture::Type type,
+    ResourceFormat format,
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    uint32_t sampleCount,
+    ResourceBindFlags bindFlags,
+    Resource::State initState
+)
+{
+    return make_ref<Texture>(
+        ref<Device>(this), pResource, type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, initState
+    );
+}
+
 /**
  * Initialize device
  */
@@ -108,6 +200,12 @@ bool Device::init() {
 
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
     FALCOR_ASSERT(mpUploadHeap);
+    //mpUploadHeap->breakStrongReferenceToDevice();
+
+
+    mpReadBackHeap = GpuMemoryHeap::create(shared_from_this(), MemoryType::ReadBack, 1024 * 1024 * 2, mpFrameFence);
+    FALCOR_ASSERT(mpReadBackHeap);
+    //mpReadBackHeap->breakStrongReferenceToDevice();
 
     createNullViews();
 
@@ -274,8 +372,10 @@ bool Device::isFeatureSupported(SupportedFeatures flags) const {
 
 void Device::executeDeferredReleases() {
     mpUploadHeap->executeDeferredReleases();
-    uint64_t gpuVal = mpFrameFence->getGpuValue();
-    while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
+    mpReadBackHeap->executeDeferredReleases();
+
+    uint64_t currentValue = mpFrameFence->getCurrentValue();
+    while (mDeferredReleases.size() && mDeferredReleases.front().fenceValue <= currentValue) {
         mDeferredReleases.pop();
     }
 }
@@ -284,11 +384,10 @@ void Device::toggleVSync(bool enable) {
     mDesc.enableVsync = enable;
 }
 
-void Device::flushAndSync() {
-    if(mpRenderContext) { 
-        mpRenderContext->flush(true);
-        mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
-    }
+void Device::wait() {
+    assert(mpRenderContext); 
+    mpRenderContext->flush(true);
+    mpRenderContext->signal(mpFrameFence.get());
     executeDeferredReleases();
 }
 

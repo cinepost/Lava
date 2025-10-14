@@ -59,7 +59,7 @@ bool VirtualTexturePageResourceImpl::allocateMemory() {
 
     VmaAllocationInfo vmaAllocInfo = {};
 
-    VkResult result = vmaAllocateMemory(m_device->vkAPI().vmaAllocator(), &memRequirements, &vmaMemAllocInfo, &mAllocation, &vmaAllocInfo);
+    VkResult result = vmaAllocateMemory(m_device->getVkAPI().vmaAllocator(), &memRequirements, &vmaMemAllocInfo, &mAllocation, &vmaAllocInfo);
 
     if( result != VK_SUCCESS ){
         LLOG_ERR << "Error allocating virtual page memory !!! VkResult: " << to_string(result);
@@ -76,7 +76,7 @@ void VirtualTexturePageResourceImpl::releaseMemory() {
     if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
         return;
     }
-    vmaFreeMemory(m_device->vkAPI().vmaAllocator(), mAllocation);
+    vmaFreeMemory(m_device->getVkAPI().vmaAllocator(), mAllocation);
 
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }

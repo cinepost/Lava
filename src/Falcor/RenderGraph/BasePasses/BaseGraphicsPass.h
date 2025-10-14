@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
 #define SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "Falcor/Core/State/GraphicsState.h"
@@ -37,7 +38,8 @@ namespace Falcor {
 
 class Device;
 
-class FALCOR_API BaseGraphicsPass {
+class FALCOR_API BaseGraphicsPass: public Object {
+    FALCOR_OBJECT(BaseGraphicsPass)
  public:
     virtual ~BaseGraphicsPass() = default;
 
@@ -68,17 +70,19 @@ class FALCOR_API BaseGraphicsPass {
     */
     void setVars(const ProgramVars::SharedPtr& pVars);
 
+    void breakStrongReferenceToDevice();
+
  protected:
     /** Create a new object.
         \param[in] progDesc The program description.
         \param[in] programDefines List of macro definitions to set into the program. The macro definitions will be set on all shader stages.
         \return A new object, or an exception is thrown if creation failed.
     */
-    BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    BaseGraphicsPass(Falcor::SharedPtr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
 
+    Falcor::BreakableSharedPtr<Device> mpDevice;
     ProgramVars::SharedPtr mpVars;
     GraphicsState::SharedPtr mpState;
-    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

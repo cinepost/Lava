@@ -36,6 +36,7 @@
 #include <mutex>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Resource.h"
 #include "VirtualTexturePage.h"
 #include "Falcor/Utils/Image/Bitmap.h"
@@ -57,12 +58,9 @@ class VirtualTexturePage;
 
 /** Abstracts the API texture objects
 */
-class dlldecl Texture : public Resource, public inherit_shared_from_this<Resource, Texture> {
+class dlldecl Texture : public Resource {
+	FALCOR_OBJECT(Texture)
  public:
-	using SharedPtr = std::shared_ptr<Texture>;
-	using SharedConstPtr = std::shared_ptr<const Texture>;
-	using inherit_shared_from_this<Resource, Texture>::shared_from_this;
-
 	struct UDIMTileInfo {
 		Texture::SharedPtr pTileTexture = nullptr;
 		uint32_t u = 0;
@@ -113,22 +111,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	*/
 	ResourceFormat getFormat() const { return mFormat; }
 
-	/** Create a new texture from an existing API handle.
-		\param[in] handle Handle of already allocated resource.
-		\param[in] type The type of texture.
-		\param[in] width The width of the texture.
-		\param[in] height The height of the texture.
-		\param[in] depth The depth of the texture.
-		\param[in] format The format of the texture.
-		\param[in] sampleCount The sample count of the texture.
-		\param[in] arraySize The array size of the texture.
-		\param[in] mipLevels The number of mip levels.
-		\param[in] initState The initial resource state.
-		\param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
-		\return A pointer to a new texture, or throws an exception if creation failed.
-	*/
-	static SharedPtr createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags);
-
 	/** Create a 1D texture.
 		\param[in] width The width of the texture.
 		\param[in] format The format of the texture.
@@ -138,7 +120,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] bindFlags The requested bind flags for the resource.
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
-	static SharedPtr create1D(std::shared_ptr<Device> pDevice, uint32_t width, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+	static SharedPtr create1D(Falcor::SharedPtr<Device> pDevice, uint32_t width, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Create a 2D texture.
 		\param[in] width The width of the texture.
@@ -150,7 +132,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] bindFlags The requested bind flags for the resource.
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
-	static SharedPtr create2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+	static SharedPtr create2D(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Create a 3D texture.
 		\param[in] width The width of the texture.
@@ -163,7 +145,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] isSparse If true, the texture is created using sparse texture options supported by the API.
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
-	static SharedPtr create3D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool sparse = false);
+	static SharedPtr create3D(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, bool sparse = false);
 
 	/** Create a cube texture.
 		\param[in] width The width of the texture.
@@ -175,7 +157,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] bindFlags The requested bind flags for the resource.
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
-	static SharedPtr createCube(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+	static SharedPtr createCube(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Create a multi-sampled 2D texture.
 		\param[in] width The width of the texture.
@@ -186,13 +168,13 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] bindFlags The requested bind flags for the resource.
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
-	static SharedPtr create2DMS(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
+	static SharedPtr create2DMS(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Create UDIM pseudo texture.
 		This is just a placeholder. No actual data uploaded and no graphics API code executed.
 	*/ 
-	static SharedPtr createUDIMFromFile(std::shared_ptr<Device> pDevice, const std::string& filename);
-	static SharedPtr createUDIMFromFile(std::shared_ptr<Device> pDevice, const fs::path& path);
+	static SharedPtr createUDIMFromFile(Falcor::SharedPtr<Device> pDevice, const std::string& filename);
+	static SharedPtr createUDIMFromFile(Falcor::SharedPtr<Device> pDevice, const fs::path& path);
 
 	/** Create a new texture object from a file.
 		\param[in] filename Filename of the image. Can also include a full path or relative path from a data directory.
@@ -201,8 +183,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\param[in] bindFlags The bind flags to create the texture with.
 		\return A new texture, or nullptr if the texture failed to load.
 	*/
-	static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, BindFlags bindFlags = BindFlags::ShaderResource);
-	static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, BindFlags bindFlags = BindFlags::ShaderResource);
+	static SharedPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
+	static SharedPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Get a shader-resource view for the entire resource
 	*/
@@ -344,20 +326,26 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isMipTailFilled() const { return (isSparse() && mMipTailFilled); }
 
-	gfx::ITextureResource* getGfxTextureResource() const { return static_cast<gfx::ITextureResource*>(mApiHandle.get()); }
-	gfx::vk::TextureResourceImpl* getGfxVKTextureResource() const { return static_cast<gfx::vk::TextureResourceImpl*>(mApiHandle.get()); }
+	virtual gfx::IResource* getGfxResource() const override { return mGfxTextureResource; }
+
+	gfx::ITextureResource* getGfxTextureResource() const { return static_cast<gfx::ITextureResource*>(mGfxTextureResource.get()); }
+	gfx::vk::TextureResourceImpl* getGfxVKTextureResource() const { return static_cast<gfx::vk::TextureResourceImpl*>(mGfxTextureResource.get()); }
 
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
   	bool addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer, uint32_t index);
 
   public:
-  	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
+  	Texture(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, ResourceBindFlags bindFlags);
 
   protected:
+  		virtual void apiSetName() override;
+
 		void apiInit(const void* pData, bool autoGenMips, bool sparse = false);
 		void uploadInitData(const void* pData, bool autoGenMips);
 		void setMipTailFilled(bool state) { mMipTailFilled = state; }
+
+		Slang::ComPtr<gfx::ITextureResource> mGfxTextureResource;
 
 		bool mReleaseRtvsAfterGenMips = true;
 		std::string mSourceFilename;

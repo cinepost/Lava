@@ -33,6 +33,10 @@
 #include <vector>
 #include <unordered_map>
 
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Formats.h"
+
+#include "NativeHandle.h"
 #include "ResourceViews.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
@@ -44,10 +48,9 @@ class Texture;
 class Buffer;
 class ParameterBlock;
 
-class dlldecl Resource : public std::enable_shared_from_this<Resource> {
+class dlldecl Resource : public Object {
+    FALCOR_OBJECT(Resource)
  public:
-    using ApiHandle = ResourceHandle;
-    using BindFlags = ResourceBindFlags;
 
     /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
     */
@@ -84,12 +87,8 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-        AccelerationStructure,
-        AccelerationStructureBuildInput
+        AccelerationStructure
     };
-
-    using SharedPtr = std::shared_ptr<Resource>;
-    using SharedConstPtr = std::shared_ptr<const Resource>;
     
     /** Default value used in create*() methods
     */
@@ -97,14 +96,14 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     virtual ~Resource() = 0;
 
-    std::shared_ptr<Device> device() const { return mpDevice; }
+    Falcor::SharedPtr<Device> getDevice() const;
 
     size_t id() const { return mID; }
 
 
     /** Get the bind flags
     */
-    BindFlags getBindFlags() const { return mBindFlags; }
+    ResourceBindFlags getBindFlags() const { return mBindFlags; }
 
     bool isStateGlobal() const { return mState.isGlobal; }
 
@@ -120,9 +119,15 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     Type getType() const { return mType; }
 
-    /** Get the API handle
-    */
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
+    /**
+     * Get the resource
+     */
+    virtual gfx::IResource* getGfxResource() const = 0;
+
+    /**
+     * Returns the native API handle: VkBuffer or VkImage
+     */
+    NativeHandle getNativeHandle() const;
 
     /** Get a shared resource API handle.
 
@@ -163,9 +168,11 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Conversions to derived classes
     */
-    std::shared_ptr<Texture> asTexture();
-    std::shared_ptr<const Texture> asTexture() const;
-    std::shared_ptr<Buffer> asBuffer();
+    Falcor::SharedPtr<Texture> asTexture();
+    Falcor::SharedPtr<const Texture> asTexture() const;
+    Falcor::SharedPtr<Buffer> asBuffer();
+
+    void breakStrongReferenceToDevice();
 
  private:
     static std::atomic<size_t> newResourceID;
@@ -173,10 +180,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
  protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
+    Resource(std::shared_ptr<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size);
+
+    Falcor::BreakableSharedPtr<Device> mpDevice;
 
     Type mType;
-    BindFlags mBindFlags;
+    ResourceBindFlags mBindFlags;
 
     struct {
         bool isGlobal = true;
@@ -186,16 +195,13 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     void setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const;
     void setGlobalState(State newState) const;
-    void apiSetName();
+    virtual void apiSetName() = 0;
 
-    ApiHandle mApiHandle;
     size_t mSize = 0;
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
 
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
-
-    std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;
     size_t mID;
 

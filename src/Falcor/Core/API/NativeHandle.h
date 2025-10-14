@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,46 +25,64 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_CORE_API_BLITCONTEXT_H_
-#define FALCOR_CORE_API_BLITCONTEXT_H_
+#ifndef SRC_FALCOR_CORE_API_NATIVEHANDLE_H_
+#define SRC_FALCOR_CORE_API_NATIVEHANDLE_H_
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Core/API/FBO.h"
-#include "Falcor/Core/API/ParameterBlock.h"
-#include "Falcor/Core/Program/ProgramVersion.h"
+#include <cstdint>
 
 namespace Falcor {
 
-class Device;
-class FullScreenPass;
-
-struct BlitContext {
-    Falcor::SharedPtr<FullScreenPass> mpPass;
-    Fbo::SharedPtr mpFbo;
-
-    Sampler::SharedPtr pLinearSampler;
-    Sampler::SharedPtr pPointSampler;
-    Sampler::SharedPtr pLinearMinSampler;
-    Sampler::SharedPtr pPointMinSampler;
-    Sampler::SharedPtr pLinearMaxSampler;
-    Sampler::SharedPtr pPointMaxSampler;
-
-    ParameterBlock::SharedPtr pBlitParamsBuffer;
-    float2 prevSrcRectOffset = float2(0, 0);
-    float2 prevSrcReftScale = float2(0, 0);
-
-    // Variable offsets in constant buffer
-    TypedShaderVarOffset offsetVarOffset;
-    TypedShaderVarOffset scaleVarOffset;
-    ProgramReflection::BindLocation texBindLoc;
-
-    // Parameters for complex blit
-    float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
-    TypedShaderVarOffset compTransVarOffset[4];
-    BlitContext(Device* pDevice);
+enum class NativeHandleType {
+    Unknown,
+    VkInstance,
+    VkPhysicalDevice,
+    VkDevice,
+    VkImage,
+    VkImageView,
+    VkBuffer,
+    VkBufferView,
+    VkPipeline,
+    VkFence,
+    VkQueue,
+    VkCommandBuffer,
+    VkSampler,
 };
 
-}  // namespace Falcor
+template<typename T>
+struct NativeHandleTrait;
 
-#endif  // FALCOR_CORE_API_BLITCONTEXT_H_
+/// Represents a native graphics API handle (e.g. D3D12 or Vulkan).
+/// Native handles are expected to fit into 64 bits.
+/// Type information and conversion from/to native handles is done
+/// using type traits from NativeHandleTraits.h which needs to be
+/// included when creating and accessing NativeHandle.
+/// This separation is done so we don't expose the heavy D3D12/Vulkan
+/// headers everywhere.
+class NativeHandle {
+public:
+    NativeHandle() = default;
+
+    template<typename T>
+    explicit NativeHandle(T native) {
+        mType = NativeHandleTrait<T>::type;
+        mValue = NativeHandleTrait<T>::pack(native);
+    }
+
+    NativeHandleType getType() const { return mType; }
+
+    bool isValid() const { return mType != NativeHandleType::Unknown; }
+
+    template<typename T>
+    T as() const {
+        assert(mType == NativeHandleTrait<T>::type);
+        return NativeHandleTrait<T>::unpack(mValue);
+    }
+
+private:
+    NativeHandleType mType{NativeHandleType::Unknown};
+    uint64_t mValue{0};
+};
+
+} // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_NATIVEHANDLE_H_

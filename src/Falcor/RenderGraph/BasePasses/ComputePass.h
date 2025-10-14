@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_COMPUTESPASS_H_
 #define SRC_FALCOR_RENDERGRAPH_BASEPASSES_COMPUTESPASS_H_
 
-//#include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/ComputeContext.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ShaderVar.h"
@@ -38,10 +38,9 @@ namespace Falcor {
 
 class Device;
 
-class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> {
- public:
-    using SharedPtr = std::shared_ptr<ComputePass>;
-
+class FALCOR_API ComputePass : : public Object {
+    FALCOR_OBJECT(ComputePass)
+  public:
     /** Create a new compute pass from file.
         \param[in] filename Compute program filename.
         \param[in] csEntry Name of the entry point in the program. If not specified "main" will be used.
@@ -49,7 +48,7 @@ class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> 
         \param[in] createVars Create program vars automatically, otherwise use setVars().
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::string& filename, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
 
     /** Create a new compute pass.
         \param[in] desc The program's description.
@@ -57,7 +56,7 @@ class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> 
         \param[in] createVars Create program vars automatically, otherwise use setVars().
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
 
     /** Execute the pass using the given compute-context
         \param[in] pContext The compute context
@@ -108,11 +107,13 @@ class FALCOR_API ComputePass : public std::enable_shared_from_this<ComputePass> 
     */
     uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
 
+    const Falcor::SharedPtr<Device>& getDevice() const { return mpDevice; }
+
 public:
-    ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
+    ComputePass(Falcor::SharedPtr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
 
 protected:
-    std::shared_ptr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
     ProgramVars::SharedPtr mpVars;
     ComputeState::SharedPtr mpState;
 };

@@ -179,9 +179,10 @@ public:
 	const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const { return m_basicProps; }
 	const VkPhysicalDeviceMemoryProperties& getPhysicalDeviceMemoryProperties() const { return m_memoryProperties; }
 
-	VulkanApi& vkAPI() { return m_api; };
-	VkDevice   vkDevice() { return m_device; }
-	VkQueue    vkQueue() { return m_deviceQueue.getQueue(); }
+	VulkanApi& getVkAPI() { return m_api; };
+	VkDevice   getVkDevice() const { return m_device; }
+	VkQueue    getVkQueue() { return m_deviceQueue.getQueue(); }
+	VkPhysicalDevice getVkPhysicalDevice() const { return m_physicalDevice; }
 
 	virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
 
@@ -233,7 +234,8 @@ public:
 
 	VkDebugReportCallbackEXT m_debugReportCallback = VK_NULL_HANDLE;
 
-	VkDevice m_device = VK_NULL_HANDLE;
+	VkPhysicalDevice 	m_physicalDevice = VK_NULL_HANDLE;
+	VkDevice 			m_device = VK_NULL_HANDLE;
 
 	VulkanModule m_module;
 	VulkanApi m_api;

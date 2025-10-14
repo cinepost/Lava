@@ -32,10 +32,6 @@
 
 namespace Falcor {
 
-void Resource::apiSetName() {
-	mApiHandle->setDebugName(mName.c_str());
-}
-
 SharedResourceApiHandle Resource::getSharedApiHandle() const {
 	return SharedResourceApiHandle();
 }

@@ -16,10 +16,10 @@ file( GLOB SOURCES
     ./Core/ErrorHandling.cpp
     ./Core/Framework.cpp
     ./Core/Window.h
+    ./Core/Object.h
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
-    # ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
     ./Core/Program/DefineList.cpp
     ./Core/State/*.cpp

@@ -31,7 +31,7 @@
 #include "ProgramVersion.h"
 #include "DefineList.h"
 //#include "Falcor/Core/Macros.h"
-//#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Object.h"
 //#include "Falcor/Core/API/Types.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
@@ -535,10 +535,10 @@ struct ProgramDesc {
 	This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
 	This allows simple usage in case different macros are required - for example static vs. animated models.
 */
-class FALCOR_API Program : public std::enable_shared_from_this<Program> {
+class FALCOR_API Program : public Object {
 public:
-    using SharedPtr = std::shared_ptr<Program>;
-    using SharedConstPtr = std::shared_ptr<const Program>;
+    using SharedPtr = Falcor::SharedPtr<Program>;
+    using SharedConstPtr = Falcor::SharedPtr<const Program>;
 
     using Desc = ProgramDesc;
     using DefineList = Falcor::DefineList;
@@ -557,7 +557,7 @@ public:
    * @return A new object, or an exception is thrown if creation failed.
    */
   static Program::SharedPtr create(Device::SharedPtr pDevice, ProgramDesc desc, DefineList programDefines = {}) {
-      return std::make_shared<Program>(std::move(pDevice), std::move(desc), std::move(programDefines));
+      return make_shared_ptr<Program>(std::move(pDevice), std::move(desc), std::move(programDefines));
   }
 
   /**

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,39 +25,27 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "BaseGraphicsPass.h"
-#include "Falcor/Core/API/Device.h"
+#ifndef SRC_FALCOR_CORE_API_FORMATS_H_
+#define SRC_FALCOR_CORE_API_FORMATS_H_
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Macros.h"
+
+#include <slang/slang.h>
+#include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
+
+#include <memory>
 
 namespace Falcor {
+using GpuAddress = uint64_t;
+#if FALCOR_WINDOWS
+using SharedResourceApiHandle = void*; // HANDLE
+using SharedFenceApiHandle = void*;    // HANDLE
+#elif FALCOR_LINUX
+using SharedResourceApiHandle = void*;
+using SharedFenceApiHandle = void*;
+#endif
+} // namespace Falcor
 
-BaseGraphicsPass::BaseGraphicsPass(Device::SharedPtr pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): mpDevice(pDevice) {
-    auto pProg = Program::create(mpDevice, progDesc, programDefines);
-    pProg->breakStrongReferenceToDevice();
-
-    mpState = GraphicsState::create(pDevice);
-    mpState->breakStrongReferenceToDevice();
-    mpState->setProgram(pProg);
-
-    mpVars = ProgramVars::create(pDevice, pProg.get());
-}
-
-void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars) {
-    mpState->getProgram()->addDefine(name, value);
-    if (updateVars) mpVars = ProgramVars::create(mpDevice, mpState->getProgram().get());
-}
-
-void BaseGraphicsPass::removeDefine(const std::string& name, bool updateVars) {
-    mpState->getProgram()->removeDefine(name);
-    if (updateVars) mpVars = ProgramVars::create(mpDevice, mpState->getProgram().get());
-}
-
-void BaseGraphicsPass::setVars(const ProgramVars::SharedPtr& pVars) {
-    mpVars = pVars ? pVars : ProgramVars::create(mpDevice, mpState->getProgram().get());
-}
-
-void BaseGraphicsPass::breakStrongReferenceToDevice() {
-    mpDevice.breakStrongReference();
-}
-
-}  // namespace Falcor
+#endif // SRC_FALCOR_CORE_API_FORMATS_H_

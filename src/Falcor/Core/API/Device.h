@@ -36,12 +36,16 @@
 #include <atomic>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Window.h"
+
+#include "Falcor/Core/API/NativeHandle.h"
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
+#include "gfx_lib/slang-gfx.h"
 #include "gfx_lib/vulkan/vk-device-props.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
@@ -57,19 +61,20 @@ namespace Falcor {
 struct DeviceApiData;
 
 class Fbo;
+class Buffer;
 class Sampler;
+class ShaderVar;
 class CopyContext;
 class RenderContext;
 class TextureManager;
 class ProgramManager;
 
-class FALCOR_API Device: public std::enable_shared_from_this<Device> {
- public:
-    using SharedPtr = std::shared_ptr<Device>;
-    using SharedConstPtr = std::shared_ptr<const Device>;
+class FALCOR_API Device: public Object {
+    FALCOR_OBJECT(Device)
+  public:
+    using BreakableSharedPtr = Falcor::BreakableSharedPtr<Device>;
     using DeviceLocalUID = uint32_t;
 
-    static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
     static constexpr uint32_t kInFlightFrameCount = 3;
 
     ~Device();
@@ -86,9 +91,6 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
         bool enableVsync = false;                                       ///< Controls vertical-sync
         bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;      ///< Enable the debug layer. The default for release build is false, for debug build it's true.
         std::string validationLayerOuputFilename;
-
-        static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
-        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 2 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
 
         std::vector<std::string> requiredExtensions;
 
@@ -123,11 +125,168 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
         AtomicFloat = 0x800,
     };
 
-    using MemoryType = GpuMemoryHeap::Type;
-
     /** Device unique id.
     */
     uint8_t uid() const { return _uid; }
+
+        /**
+     * Create a new buffer.
+     * @param[in] size Size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createBuffer(
+        size_t size,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr
+    );
+
+    /**
+     * Create a new typed buffer.
+     * @param[in] format Typed buffer format.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createTypedBuffer(
+        ResourceFormat format,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr
+    );
+
+    /**
+     * Create a new typed buffer. The format is deduced from the template parameter.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    template<typename T>
+    Falcor::SharedPtr<Buffer> createTypedBuffer(
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const T* pInitData = nullptr
+    )
+    {
+        return createTypedBuffer(FormatForElementType<T>::kFormat, elementCount, bindFlags, memoryType, pInitData);
+    }
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] structSize Size of the struct in bytes.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createStructuredBuffer(
+        uint32_t structSize,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] pType Type of the structured buffer.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createStructuredBuffer(
+        const ReflectionType* pType,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new structured buffer.
+     * @param[in] shaderVar ShaderVar pointing to the buffer variable.
+     * @param[in] elementCount Number of elements.
+     * @param[in] bindFlags Buffer bind flags.
+     * @param[in] memoryType Type of memory to use for the buffer.
+     * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+     * @param[in] createCounter True if the associated UAV counter should be created.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createStructuredBuffer(
+        const ShaderVar& shaderVar,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = false
+    );
+
+    /**
+     * Create a new buffer from an existing resource.
+     * @param[in] pResource Already allocated resource.
+     * @param[in] size The size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] memoryType Type of memory to use for the buffer. Flags must match those of the heap the original resource is
+     * allocated on.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createBufferFromResource(gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+
+    /**
+     * Create a new buffer from an existing native handle.
+     * @param[in] handle Handle of already allocated resource.
+     * @param[in] size The size of the buffer in bytes.
+     * @param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] memoryType Type of memory to use for the buffer. Flags must match those of the heap the original resource is
+     * allocated on.
+     * @return A pointer to a new buffer object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Buffer> createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+
+    /**
+     * Create a new texture from an resource.
+     * @param[in] pResource Already allocated resource.
+     * @param[in] type The type of texture.
+     * @param[in] format The format of the texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] depth The depth of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels The number of mip levels.
+     * @param[in] sampleCount The sample count of the texture.
+     * @param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
+     * @param[in] initState The initial resource state.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTextureFromResource(
+        gfx::ITextureResource* pResource,
+        Texture::Type type,
+        ResourceFormat format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t arraySize,
+        uint32_t mipLevels,
+        uint32_t sampleCount,
+        ResourceBindFlags bindFlags,
+        Resource::State initState
+    );
 
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 
@@ -171,18 +330,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     */
     RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
-    /** Get the command queue handle
-    */
-    CommandQueueHandle getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-
-    VkQueue            getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-
-    /** Get the API queue type.
-        \return API queue type, or throws an exception if type is unknown.
-    */
-    ApiCommandQueueType getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const;
-
-    VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
+    VkPhysicalDevice getApiNativeHandle() const;
 
     /** Present the back-buffer to the window
     */
@@ -190,7 +338,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     /** Flushes pipeline, releases resources, and blocks until completion
     */
-    void flushAndSync();
+    void wait();
 
     /** Check if vertical sync is enabled
     */
@@ -220,6 +368,7 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     size_t getBufferDataAlignment(ResourceBindFlags bindFlags);
 
+    const GpuMemoryHeap::SharedPtr& getReadBackHeap() const { return mpReadBackHeap; }
     const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; }  // ms/tick
 
@@ -244,33 +393,6 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     std::vector<std::string> getFeatures() const { return mGfxDevice->getFeatures(); }
 
     void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
-
-
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
-    VkInstance       getVkInstance() const { return mVkInstance; };
-    VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
-    VkDevice         getVkDevice() const { return mVkDevice; };
-    VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
-#endif  // FALCOR_GFX_VK || FALCOR_VK
-
-#ifdef FALCOR_VK
-    uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
-
-    /** Get the index of a memory type that has all the requested property bits set
-        *
-        * @param typeBits Bitmask with bits set for each memory type supported by the resource to request for (from VkMemoryRequirements)
-        * @param properties Bitmask of properties for the memory type to request
-        * @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
-        * 
-        * @return Index of the requested memory type
-        *
-        * @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
-        */
-    uint32_t getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) const;
-    
-    const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
-    uint32_t  getDeviceVendorID() const;
-#endif  // FALCOR_VK
 
     uint64_t getMinAccelerationStructureScratchOffsetAlignment() const;
 
@@ -304,8 +426,8 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     Device(Window::SharedPtr pWindow, const Desc& desc);
 
     struct ResourceRelease {
-        size_t frameID;
-        ApiObjectHandle pApiObject;
+        uint64_t fenceValue;
+        Slang::ComPtr<ISlangUnknown> mObject;
     };
 
     uint32_t mCurrentTransientResourceHeapIndex = 0;
@@ -325,20 +447,12 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     Desc mDesc;
     Slang::ComPtr<gfx::IDevice> mGfxDevice;
+    GpuMemoryHeap::SharedPtr mpReadBackHeap;
     GpuMemoryHeap::SharedPtr mpUploadHeap;
     Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
 
     bool mIsWindowOccluded = false;
-    GpuFence::SharedPtr mpFrameFence;
-
-#if FALCOR_GFX_VK || defined(FALCOR_VK)
-    VkPhysicalDevice    mVkPhysicalDevice = VK_NULL_HANDLE;
-    VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
-    VkDevice            mVkDevice         = VK_NULL_HANDLE;
-    VkInstance          mVkInstance       = VK_NULL_HANDLE;
-
-    std::vector<VkQueue>            mCmdNativeQueues[kQueueTypeCount];
-#endif
+    Fence::SharedPtr mpFrameFence;
 
     Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
     Slang::ComPtr<gfx::ITransientResourceHeap> mpTransientResourceHeaps[kInFlightFrameCount];
@@ -349,8 +463,6 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
     size_t mFrameID = 0;
     std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
     double mGpuTimestampFrequency;
-
-    std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
     bool mHeadless = false;
 

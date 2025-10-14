@@ -32,6 +32,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
 
 
@@ -41,13 +42,9 @@ class Device;
 
 /** Abstract the API sampler state object
 */
-class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
+class FALCOR_API Sampler : public Object {
+    FALCOR_OBJECT(Sampler)
  public:
-    using SharedPtr = std::shared_ptr<Sampler>;
-    using SharedConstPtr = std::shared_ptr<const Sampler>;
-    using ConstSharedPtrRef = const SharedPtr&;
-    using ApiHandle = SamplerHandle;
-
     /** Filter mode
     */
     enum class Filter {
@@ -220,17 +217,17 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     */
     const Desc& getDesc() const { return mDesc; }
 
-    /** Get an object that represents a default sampler
-    */
-    static Sampler::SharedPtr getDefault(std::shared_ptr<Device> pDevice);
+    void breakStrongReferenceToDevice();
 
 private:
-    Sampler(std::shared_ptr<Device> pDevice, const Desc& desc);
+    Sampler(Falcor::SharedPtr<Device> pDevice, const Desc& desc);
 
-    std::shared_ptr<Device> mpDevice = nullptr; 
+    Falcor::BreakableSharedPtr<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::ISamplerState> mGfxSamplerState;
     static uint32_t getApiMaxAnisotropy();
+
+    friend class Device;
 
 };
 

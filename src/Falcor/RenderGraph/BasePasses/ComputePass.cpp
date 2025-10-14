@@ -27,12 +27,14 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 #include "ComputePass.h"
+#include "Falcor/Core/API/Device.h"
 
 #include "lava_utils_lib/logging.h"
 
+
 namespace Falcor {
 
-ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {
+ComputePass::ComputePass(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {
     auto pProg = Program::create(mpDevice, desc, defines);
     mpState = ComputeState::create(pDevice);
     mpState->setProgram(pProg);
@@ -42,14 +44,14 @@ ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& d
     assert(pProg && mpState && (!createVars || mpVars));
 }
 
-ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
+ComputePass::SharedPtr ComputePass::create(Device::SharedPtr pDevice, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
     assert(pDevice);
     Program::Desc d;
     d.addShaderLibrary(filename).csEntry(csEntry);
     return create(pDevice, d, defines, createVars);
 }
 
-ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
+ComputePass::SharedPtr ComputePass::create(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
     assert(pDevice);
     return  std::make_shared<ComputePass>(pDevice, desc, defines, createVars);    
 }

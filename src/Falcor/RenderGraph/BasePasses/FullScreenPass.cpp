@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "FullScreenPass.h"
 
@@ -61,7 +62,7 @@ const Vertex kVertices[] = {
 };
 #undef ADJUST_Y
 
-void initFullScreenData(std::shared_ptr<Device> device, Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
+void initFullScreenData(Device::SharedPtr device, Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
     // First time we got here. create VB and VAO
     const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
     pVB = Buffer::create(device, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
@@ -81,7 +82,7 @@ void initFullScreenData(std::shared_ptr<Device> device, Buffer::SharedPtr& pVB, 
 
 }  // namespace
 
-FullScreenPass::FullScreenPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): 
+FullScreenPass::FullScreenPass(Device::SharedPtr pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): 
     BaseGraphicsPass(pDevice, progDesc, programDefines) 
 {
     gFullScreenData.objectCount++;
@@ -109,7 +110,7 @@ FullScreenPass::~FullScreenPass() {
     }
 }
 
-FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+FullScreenPass::SharedPtr FullScreenPass::create(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
     assert(pDevice);
     Program::Desc d = desc;
     Program::DefineList defs = defines;
@@ -125,7 +126,7 @@ FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice
     return SharedPtr(new FullScreenPass(pDevice, d, defs));
 }
 
-FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> device, const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
+FullScreenPass::SharedPtr FullScreenPass::create(Device::SharedPtr device, const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
     Program::Desc d;
     d.addShaderLibrary(filename).psEntry("main");
     return create(device, d, defines, viewportMask);

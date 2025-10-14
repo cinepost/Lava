@@ -314,7 +314,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateDebugReportCallbackEXT( instance, &debugCreateInfo, nullptr, &m_debugReportCallback));
 	}
 
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	m_physicalDevice = VK_NULL_HANDLE;
 	if (handles[1].handleValue == 0) {
 		uint32_t numPhysicalDevices = 0;
 		SLANG_VK_RETURN_ON_FAIL( m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, nullptr));
@@ -324,34 +324,36 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		SLANG_VK_RETURN_ON_FAIL(m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, physicalDevices.getBuffer()));
 
 		// Use first physical device by default.
-    Index selectedDeviceIndex = 0;
+    	Index selectedDeviceIndex = 0;
 
 		// Search for requested adapter.
-    if (m_desc.adapterLUID) {
-      selectedDeviceIndex = -1;
-      for (Index i = 0; i < physicalDevices.getCount(); ++i) {
-        if (vk::getAdapterLUID(m_api, physicalDevices[i]) == *m_desc.adapterLUID) {
-          selectedDeviceIndex = i;
-          break;
-        }
-      }
+	    if (m_desc.adapterLUID) {
+	      selectedDeviceIndex = -1;
+	      for (Index i = 0; i < physicalDevices.getCount(); ++i) {
+	        if (vk::getAdapterLUID(m_api, physicalDevices[i]) == *m_desc.adapterLUID) {
+	          selectedDeviceIndex = i;
+	          break;
+	        }
+	      }
 
-      if (selectedDeviceIndex < 0) return SLANG_E_NOT_FOUND;
-    }
+	      if (selectedDeviceIndex < 0) return SLANG_E_NOT_FOUND;
+	    }
 
-    if (selectedDeviceIndex >= physicalDevices.getCount()) return SLANG_FAIL;
+	    if (selectedDeviceIndex >= physicalDevices.getCount()) {
+	    	return SLANG_FAIL;
+	    }
 
-		physicalDevice = physicalDevices[selectedDeviceIndex];
+		m_physicalDevice = physicalDevices[selectedDeviceIndex];
 	} else {
-		physicalDevice = (VkPhysicalDevice)handles[1].handleValue;
+		m_physicalDevice = (VkPhysicalDevice)handles[1].handleValue;
 	}
 
-	SLANG_RETURN_ON_FAIL(m_api.initPhysicalDevice(physicalDevice));
+	SLANG_RETURN_ON_FAIL(m_api.initPhysicalDevice(m_physicalDevice));
 
 	// Obtain the name of the selected adapter.
 	{
 		VkPhysicalDeviceProperties basicProps = {};
-		m_api.vkGetPhysicalDeviceProperties(physicalDevice, &basicProps);
+		m_api.vkGetPhysicalDeviceProperties(m_physicalDevice, &basicProps);
 		m_adapterName = basicProps.deviceName;
 		m_info.adapterName = m_adapterName.begin();
 	}
@@ -908,7 +910,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
 	vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 	vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
-	vmaAllocatorCreateInfo.physicalDevice = physicalDevice;
+	vmaAllocatorCreateInfo.physicalDevice = m_physicalDevice;
 	vmaAllocatorCreateInfo.device = m_device;
 	vmaAllocatorCreateInfo.instance = instance;
 	vmaAllocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;

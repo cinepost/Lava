@@ -325,6 +325,32 @@ void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t 
 	mCommandsPending = true;
 }
 
+void CopyContext::readBuffer(const Buffer* pBuffer, void* pData, size_t offset, size_t numBytes) {
+	if (numBytes == 0) {
+	    numBytes = pBuffer->getSize() - offset;
+	}
+
+	if (pBuffer->adjustSizeOffsetParams(numBytes, offset) == false) {
+	    LLOG_WRN << "CopyContext::readBuffer() - size and offset are invalid. Nothing to read.";
+	    return;
+	}
+
+	const auto& pReadBackHeap = mpDevice->getReadBackHeap();
+
+	auto allocation = pReadBackHeap->allocate(numBytes);
+
+	bufferBarrier(pBuffer, Resource::State::CopySource);
+
+	auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+	resourceEncoder->copyBuffer(allocation.gfxBufferResource, allocation.offset, pBuffer->getGfxBufferResource(), offset, numBytes);
+	mCommandsPending = true;
+	submit(true);
+
+	std::memcpy(pData, allocation.pData, numBytes);
+
+	pReadBackHeap->release(allocation);
+}
+
 void CopyContext::copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes) {
 	resourceBarrier(pDst, Resource::State::CopyDest);
 	resourceBarrier(pSrc, Resource::State::CopySource);

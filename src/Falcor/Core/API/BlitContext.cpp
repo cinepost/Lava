@@ -28,11 +28,15 @@
 #include "stdafx.h"
 #include "BlitContext.h"
 
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/BasePasses/FullScreenPass.h"
+
+
 namespace Falcor {
 
-BlitContext::BlitContext(Device::SharedPtr pDevice) {
+BlitContext::BlitContext(Device* pDevice) {
     FALCOR_ASSERT(pDevice);
-    if (pPass == nullptr) {
+    if (mpPass == nullptr) {
         // Init the blit data.
         Program::DefineList defines = {
             { "SAMPLE_COUNT", "1" },
@@ -42,9 +46,9 @@ BlitContext::BlitContext(Device::SharedPtr pDevice) {
         };
         Program::Desc d;
         d.addShaderLibrary("Core/API/BlitReduction.3d.slang").vsEntry("vsMain").psEntry("psMain");
-        pPass = FullScreenPass::create(pDevice, d, defines);
-        pFbo = Fbo::create(pDevice);
-        FALCOR_ASSERT(pPass && pFbo);
+        mpPass = FullScreenPass::create(Falcor::SharedPtr<Device>(pDevice), d, defines);
+        mpFbo = Fbo::create(Falcor::SharedPtr<Device>(pDevice));
+        FALCOR_ASSERT(pPass && mpFbo);
 
         pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
         offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");
@@ -72,7 +76,7 @@ BlitContext::BlitContext(Device::SharedPtr pDevice) {
         desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
         pPointMaxSampler = Sampler::create(pDevice, desc);
 
-        const auto& pDefaultBlockReflection = pPass->getProgram()->getReflector()->getDefaultParameterBlock();
+        const auto& pDefaultBlockReflection = mpPass->getProgram()->getReflector()->getDefaultParameterBlock();
         texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
 
         // Complex blit parameters

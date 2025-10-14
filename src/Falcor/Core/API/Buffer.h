@@ -29,173 +29,99 @@
 #define SRC_FALCOR_CORE_API_BUFFER_H_
 
 #include <string>
-#include <memory>
 
 #include "Resource.h"
 #include "GpuMemoryHeap.h"
+#include "Falcor/Core/Enum.h"
+#include "Falcor/Core/Object.h"
+
+#include "gfx_lib/slang-gfx.h"
+
 
 namespace Falcor {
 
+class Device;
 class Program;
 struct ShaderVar;
+
+/// Buffer memory types.
+enum class MemoryType {
+    DeviceLocal, ///< Device local memory. The buffer can be updated using Buffer::setBlob().
+    Upload,      ///< Upload memory. The buffer can be mapped for CPU writes.
+    ReadBack,    ///< Read-back memory. The buffer can be mapped for CPU reads.
+
+    // NOTE: In older version of Falcor this enum used to be Buffer::CpuAccess.
+    // Use the following mapping to update your code:
+    // - CpuAccess::None -> MemoryType::DeviceLocal
+    // - CpuAccess::Write -> MemoryType::Upload
+    // - CpuAccess::Read -> MemoryType::ReadBack
+};
+
+FALCOR_ENUM_INFO(
+    MemoryType,
+    {
+        {MemoryType::DeviceLocal, "DeviceLocal"},
+        {MemoryType::Upload, "Upload"},
+        {MemoryType::ReadBack, "ReadBack"},
+    }
+);
+FALCOR_ENUM_REGISTER(MemoryType);
 
 /** Low-level buffer object
     This class abstracts the API's buffer creation and management
 */
-class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource, Buffer> {
+class FALCOR_API Buffer : public Resource {
+    FALCOR_OBJECT(Buffer)
   public:
     static constexpr uint64_t kEntireBuffer = ResourceViewInfo::kEntireBuffer;
-    
-    using SharedPtr = std::shared_ptr<Buffer>;
-    using WeakPtr = std::weak_ptr<Buffer>;
-    using SharedConstPtr = std::shared_ptr<const Buffer>;
-    using ConstSharedPtrRef = const SharedPtr&;
-    using inherit_shared_from_this<Resource, Buffer>::shared_from_this;
 
-    /** Buffer access flags.
-        These flags are hints the driver how the buffer will be used.
-    */
-    enum class CpuAccess {
-        None,    ///< The CPU can't access the buffer's content. The buffer can be updated using Buffer#updateData()
-        Write,   ///< The buffer can be mapped for CPU writes
-        Read,    ///< The buffer can be mapped for CPU reads
-    };
+    /// Constructor.
+    Buffer(
+        Falcor::SharedPtr<Device> pDevice,
+        size_t size,
+        size_t structSize,
+        ResourceFormat format,
+        ResourceBindFlags bindFlags,
+        MemoryType memoryType,
+        const void* pInitData
+    );
 
-    enum class MapType {
-        Read,           ///< Map the buffer for read access.
-        Write,          ///< Map the buffer for write access. Buffer had to be created with CpuAccess::Write flag.
-        WriteDiscard,   ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with CpuAccess::Write flag.
-    };
+    /// Constructor for raw buffer.
+    Buffer(Falcor::SharedPtr<Device> pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData);
+
+    /// Constructor for typed buffer.
+    Buffer(
+        Falcor::SharedPtr<Device> pDevice,
+        ResourceFormat format,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags,
+        MemoryType memoryType,
+        const void* pInitData
+    );
+
+    /// Constructor for structured buffer.
+    Buffer(
+        Falcor::SharedPtr<Device> pDevice,
+        uint32_t structSize,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags,
+        MemoryType memoryType,
+        const void* pInitData,
+        bool createCounter
+    );
+
+    /// Constructor with existing resource.
+    Buffer(Falcor::SharedPtr<Device> pDevice, gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+
+    /// Constructor with native handle.
+    Buffer(Falcor::SharedPtr<Device> pDevice, NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     ~Buffer();
 
-    /** Create a new buffer.
-        \param[in] size Size of the buffer in bytes.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(
-        std::shared_ptr<Device> pDevice,
-        size_t size,
-        Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const void* pInitData = nullptr);
 
-    /** Create a new typed buffer.
-        \param[in] format Typed buffer format.
-        \param[in] elementCount Number of elements.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createTyped(
-        std::shared_ptr<Device> pDevice,
-        ResourceFormat format,
-        uint32_t elementCount,
-        Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const void* pInitData = nullptr);
+    gfx::IBufferResource* getGfxBufferResource() const { return mGfxBufferResource; }
 
-    /** Create a new typed buffer. The format is deduced from the template parameter.
-        \param[in] elementCount Number of elements.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    template<typename T>
-    static SharedPtr createTyped(
-        std::shared_ptr<Device> pDevice,
-        uint32_t elementCount,
-        Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const T* pInitData = nullptr)
-    {
-        return createTyped(pDevice, FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
-    }
-
-    /** Create a new structured buffer.
-        \param[in] structSize Size of the struct in bytes.
-        \param[in] elementCount Number of elements.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
-        \param[in] createCounter True if the associated UAV counter should be created.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createStructured(
-        std::shared_ptr<Device> pDevice,
-        uint32_t structSize,
-        uint32_t elementCount,
-        ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const void* pInitData = nullptr,
-        bool createCounter = true);
-
-    /** Create a new structured buffer.
-        \param[in] pProgram Program declaring the buffer.
-        \param[in] name Variable name in the program.
-        \param[in] elementCount Number of elements.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
-        \param[in] createCounter True if the associated UAV counter should be created.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createStructured(
-        std::shared_ptr<Device> pDevice,
-        const Program* pProgram,
-        const std::string& name,
-        uint32_t elementCount,
-        ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const void* pInitData = nullptr,
-        bool createCounter = true);
-
-    /** Create a new structured buffer.
-        \param[in] shaderVar ShaderVar pointing to the buffer variable.
-        \param[in] elementCount Number of elements.
-        \param[in] bindFlags Buffer bind flags.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated.
-        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
-        \param[in] createCounter True if the associated UAV counter should be created.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createStructured(
-        std::shared_ptr<Device> pDevice,
-        const ShaderVar& shaderVar,
-        uint32_t elementCount,
-        ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        CpuAccess cpuAccess = Buffer::CpuAccess::None,
-        const void* pInitData = nullptr,
-        bool createCounter = true);
-
-    static SharedPtr aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags);
-
-#ifdef FALCOR_GFX
-    /** Create a new buffer from an existing API handle.
-        \param[in] handle Handle of already allocated resource.
-        \param[in] size The size of the buffer in bytes.
-        \param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated. Flags must match those of the heap the original resource is allocated on.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
-#endif
-
-#if FALCOR_D3D12_AVAILABLE
-    /** Create a new buffer from an existing D3D12 handle. Available only when D3D12 is the underlying graphics API.
-        \param[in] handle Handle of already allocated resource.
-        \param[in] size The size of the buffer in bytes.
-        \param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
-        \param[in] cpuAccess Flags indicating how the buffer can be updated. Flags must match those of the heap the original resource is allocated on.
-        \return A pointer to a new buffer object, or throws an exception if creation failed.
-    */
-    static SharedPtr createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
-#endif
+    virtual gfx::IResource* getGfxResource() const override;
 
     /** Get a shader-resource view.
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float
@@ -235,7 +161,15 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \param[in] size Number of bytes to copy.
         If offset and size will cause an out-of-bound access to the buffer, an error will be logged and the update will fail.
     */
-    virtual bool setBlob(const void* pData, size_t offset, size_t size);
+    virtual void setBlob(const void* pData, size_t offset, size_t size);
+
+    /**
+     * Read the buffer's data
+     * @param pData Pointer to the destination data.
+     * @param offset Byte offset into the source buffer, indicating where to start copy from.
+     * @param size Number of bytes to copy.
+     */
+    void getBlob(void* pData, size_t offset, size_t size) const;
 
     /** Get the offset from the beginning of the GPU resource
     */
@@ -266,18 +200,12 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     /** Map the buffer.
-
-        The low-level behavior depends on MapType and the CpuAccess flags of the buffer:
-        - For CPU accessible buffers, the caller should ensure CPU/GPU memory accesses do not conflict.
-        - For GPU-only buffers, map for read will create an internal staging buffer that is safe to read.
-        - Mapping a CPU write buffer for WriteDiscard will cause the buffer to be internally re-allocated,
-          causing its address range to change and invalidating all previous views to the buffer.
     */
-    void* map(MapType Type);
+    void* map() const;
 
     /** Unmap the buffer
     */
-    void unmap();
+    void unmap() const;
 
     /** Get safe offset and size values
     */
@@ -294,10 +222,6 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         return true;
     }
 
-    /** Get the CPU access flags
-    */
-    CpuAccess getCpuAccess() const { return mCpuAccess; }
-
     /** Check if this is a typed buffer
     */
     bool isTyped() const { return mFormat != ResourceFormat::Unknown; }
@@ -311,35 +235,43 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         setBlob(&value, sizeof(T)*index, sizeof(T));
     }
 
-  public:
-    Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess);
+    template<typename T>
+    std::vector<T> getElements(uint32_t firstElement = 0, uint32_t elementCount = 0) const {
+        if (elementCount == 0) {
+            elementCount = (mSize / sizeof(T)) - firstElement;
+        }
+
+        std::vector<T> data(elementCount);
+        getBlob(data.data(), firstElement * sizeof(T), elementCount * sizeof(T));
+        return data;
+    }
+
+    template<typename T>
+    T getElement(uint32_t index) const {
+        T data;
+        getBlob(&data, index * sizeof(T), sizeof(T));
+        return data;
+    }
 
   protected:
-    void apiInit(bool hasInitData);
+    virtual void apiSetName() override;
 
-    CpuAccess mCpuAccess;
-    GpuMemoryHeap::Allocation mDynamicData;
-    Buffer::SharedPtr mpStagingResource; // For buffers that have both CPU read flag and can be used by the GPU
-    Resource::SharedPtr mpAliasedResource;
+    Slang::ComPtr<gfx::IBufferResource> mGfxBufferResource;
+
+    MemoryType mMemoryType;
     uint32_t mElementCount = 0;
     ResourceFormat mFormat = ResourceFormat::Unknown;
     uint32_t mStructSize = 0;
-    ConstantBufferView::SharedPtr mpCBV; // For constant-buffers
     Buffer::SharedPtr mpUAVCounter; // For structured-buffers
-
-    mutable void* mCUDAExternalMemory = nullptr;
-    mutable void* mCUDADeviceAddress = nullptr;
-
-    /** Helper for converting host type to resource format for typed buffers.
-        See list of supported formats for typed UAV loads:
-        https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads
-    */
-    template<typename T>
-    struct FormatForElementType {};
+    mutable void* mMappedPtr = nullptr;
 
 };
 
-#define CASE(TYPE, FORMAT) template<> struct Buffer::FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
+template<typename T>
+struct FormatForElementType
+{};
+
+#define CASE(TYPE, FORMAT) template<> struct FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
 
     // Guaranteed supported formats on D3D12.
     CASE(float,     ResourceFormat::R32Float);
@@ -395,7 +327,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     
 #undef CASE
 
-inline std::string to_string(const std::shared_ptr<Buffer>& buff) {
+inline std::string to_string(const Buffer::SharedPtr& buff) {
     std::string s = "Buffer: ";
     s += "cpu access " + to_string(buff->getType());
     return s;
@@ -405,32 +337,6 @@ inline std::string to_string(Buffer *buff) {
     std::string s = "Buffer: ";
     s += "cpu access " + to_string(buff->getType());
     return s;
-}
-
-inline std::string to_string(Buffer::CpuAccess c) {
-#define a2s(ca_) case Buffer::CpuAccess::ca_: return #ca_;
-    switch (c) {
-        a2s(None);
-        a2s(Write);
-        a2s(Read);
-        default:
-            should_not_get_here();
-            return "";
-    }
-#undef a2s
-}
-
-inline std::string to_string(Buffer::MapType mt) {
-#define t2s(t_) case Buffer::MapType::t_: return #t_;
-    switch (mt) {
-        t2s(Read);
-        t2s(Write);
-        t2s(WriteDiscard);
-        default:
-            should_not_get_here();
-            return "";
-    }
-#undef t2s
 }
 
 }  // namespace Falcor

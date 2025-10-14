@@ -145,6 +145,8 @@ class dlldecl CopyContext {
     */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
 
+    void readBuffer(const Buffer* pBuffer, void* pData, size_t offset = 0, size_t numBytes = 0);
+
     /** Read texture data synchronously. Calling this command will flush the pipeline and wait for the GPU to finish execution
     */
     std::vector<uint8_t> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);

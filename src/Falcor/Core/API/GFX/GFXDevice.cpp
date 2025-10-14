@@ -264,6 +264,13 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		}
 	}
 
+	VkPhysicalDevice Device::getApiNativeHandle() const {
+		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
+		return pDevice->getVkPhysicalDevice();
+	}
+
 	bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kInFlightFrameCount], uint32_t& currentBackBufferIndex) {
 		for (uint32_t i = 0; i < kInFlightFrameCount; i++) {
 			Slang::ComPtr<gfx::ITextureResource> imageHandle;
@@ -638,6 +645,7 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	mDeferredReleases = decltype(mDeferredReleases)();
     	mpRenderContext.reset();
     	mpUploadHeap.reset();
+    	mpReadBackHeap.reset();
 
     	for (size_t i = 0; i < kInFlightFrameCount; ++i) {
     		mpTransientResourceHeaps[i].setNull();
@@ -673,9 +681,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	mDeferredReleases = decltype(mDeferredReleases)();
     	mGfxDevice.setNull();
 
-#if FALCOR_NVAPI_AVAILABLE
-    	safe_delete(mpApiData->pApiDispatcher);
-#endif
     	safe_delete(mpApiData);
 	}
 

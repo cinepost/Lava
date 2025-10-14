@@ -43,17 +43,17 @@ namespace Falcor {
         mDeferredReleases = decltype(mDeferredReleases)();
     }
 
-    GpuMemoryHeap::GpuMemoryHeap(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
+    GpuMemoryHeap::GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence)
         : mType(type)
         , mpFence(pFence)
         , mPageSize(pageSize)
-        , mpDevice(device)
+        , mpDevice(pDevice)
     {
         allocateNewPage();
     }
 
-    GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence) {
-        return SharedPtr(new GpuMemoryHeap(device, type, pageSize, pFence));
+    GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence) {
+        return SharedPtr(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
     }
 
     void GpuMemoryHeap::allocateNewPage() {

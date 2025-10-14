@@ -35,6 +35,8 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Core/API/GFX/GFXFormats.h"
+
 
 #include "lava_utils_lib/logging.h"
 
@@ -43,183 +45,192 @@
 
 namespace Falcor {
 
-namespace {
+void getGFXResourceState(ResourceBindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
 
-static std::atomic<uint32_t> gTotalStagingBuffersCount = 0;
-
-
-Buffer::SharedPtr createStructuredFromType(
-	std::shared_ptr<Device> pDevice,
-	const ReflectionType* pType,
-	const std::string& varName,
-	uint32_t elementCount,
+static void prepareGFXBufferDesc(
+	gfx::IBufferResource::Desc& bufDesc,
+	size_t size,
+	size_t elementSize,
+	ResourceFormat format,
 	ResourceBindFlags bindFlags,
-	Buffer::CpuAccess cpuAccess,
-	const void* pInitData,
-	bool createCounter)
+	MemoryType memoryType)
 {
-	const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
-	if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
-		throw std::runtime_error("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.");
+	bufDesc.sizeInBytes = size;
+	bufDesc.elementSize = elementSize;
+	bufDesc.format = getGFXFormat(format);
+	switch (memoryType) {
+		case MemoryType::DeviceLocal:
+			bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
+			break;
+		case MemoryType::ReadBack:
+			bufDesc.memoryType = gfx::MemoryType::ReadBack;
+			break;
+		case MemoryType::Upload:
+			bufDesc.memoryType = gfx::MemoryType::Upload;
+			break;
+		default:
+			FALCOR_UNREACHABLE();
+			break;
+	}
+	getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
+	bufDesc.isShared = is_set(bindFlags, ResourceBindFlags::Shared);
+}
+
+// TODO: This is also used in GpuMemoryHeap
+Slang::ComPtr<gfx::IBufferResource> createBufferResource(
+	Device::SharedPtr pDevice,
+	Buffer::State initState,
+	size_t size,
+	size_t elementSize,
+	ResourceFormat format,
+	ResourceBindFlags bindFlags,
+	MemoryType memoryType)
+{
+	assert(pDevice);
+
+	// Create the buffer
+	gfx::IBufferResource::Desc bufDesc = {};
+	prepareGFXBufferDesc(bufDesc, size, elementSize, format, bindFlags, memoryType);
+
+	Slang::ComPtr<gfx::IBufferResource> pApiHandle;
+	FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef()));
+	assert(pApiHandle);
+
+	return pApiHandle;
+}
+
+Buffer::Buffer(
+	Device::SharedPtr pDevice,
+	size_t size,
+	size_t structSize,
+	ResourceFormat format,
+	ResourceBindFlags bindFlags,
+	MemoryType memoryType,
+	const void* pInitData): Resource(pDevice, Type::Buffer, bindFlags, size), mMemoryType(memoryType) 
+{
+	FALCOR_CHECK(size > 0, "Can't create GPU buffer of size zero");
+
+	// Check that buffer size is within 4GB limit. Larger buffers are currently not well supported in D3D12.
+	// TODO: Revisit this check in the future.
+	FALCOR_CHECK(size <= (1ull << 32), "Creating GPU buffer of size {} bytes. Buffers above 4GB are not currently well supported.", size);
+
+	if (mMemoryType != MemoryType::DeviceLocal && is_set(mBindFlags, ResourceBindFlags::Shared)) {
+		FALCOR_THROW("Can't create shared resource with CPU access other than 'None'.");
 	}
 
-	assert(pResourceType->getSize() <= UINT32_MAX);
-	return Buffer::createStructured(pDevice, (uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	mSize = align_to(mpDevice->getBufferDataAlignment(bindFlags), mSize);
+	mStructSize = structSize;
+	mFormat = format;
+
+	if (mMemoryType == MemoryType::DeviceLocal) {
+		mState.global = Resource::State::Common;
+		if (is_set(mBindFlags, ResourceBindFlags::AccelerationStructure)) {
+			mState.global = Resource::State::AccelerationStructure;
+		}
+	} else if (mMemoryType == MemoryType::Upload) {
+		mState.global = Resource::State::GenericRead;
+	} else if (mMemoryType == MemoryType::ReadBack) {
+		mState.global = Resource::State::CopyDest;
+	}
+
+	mGfxBufferResource = createBufferResource(mpDevice, mState.global, mSize, mStructSize, mFormat, mBindFlags, mMemoryType);
+
+	if (pInitData) {
+		setBlob(pInitData, 0, size);
+	}
+
+	mElementCount = uint32_t(size);
 }
 
-}  // namespace
+Buffer::Buffer(Device::SharedPtr pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData)
+	: Buffer(pDevice, size, 0, ResourceFormat::Unknown, bindFlags, memoryType, pInitData)
+{}
 
-size_t getBufferDataAlignment(const Buffer* pBuffer);
-void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
-
-Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess): Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess) {
-
+Buffer::Buffer(
+	Device::SharedPtr pDevice,
+	ResourceFormat format,
+	uint32_t elementCount,
+	ResourceBindFlags bindFlags,
+	MemoryType memoryType,
+	const void* pInitData): Buffer(pDevice, (size_t)getFormatBytesPerBlock(format) * elementCount, 0, format, bindFlags, memoryType, pInitData)
+{
+	mElementCount = elementCount;
 }
 
-Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, cpuAccess);
-	pBuffer->apiInit(pInitData != nullptr);
-	if (pInitData) pBuffer->setBlob(pInitData, 0, size);
-	return pBuffer;
-}
-
-Buffer::SharedPtr Buffer::createTyped(std::shared_ptr<Device> pDevice, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-	size_t size = elementCount * getFormatBytesPerBlock(format);
-	SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
-	assert(pBuffer);
-
-	pBuffer->mFormat = format;
-	pBuffer->mElementCount = elementCount;
-	return pBuffer;
-}
-
-Buffer::SharedPtr Buffer::createStructured(
-	std::shared_ptr<Device> pDevice,
+Buffer::Buffer(
+	Device::SharedPtr pDevice,
 	uint32_t structSize,
 	uint32_t elementCount,
 	ResourceBindFlags bindFlags,
-	CpuAccess cpuAccess,
+	MemoryType memoryType,
 	const void* pInitData,
-	bool createCounter)
+	bool createCounter
+): Buffer(pDevice, (size_t)structSize * elementCount, structSize, ResourceFormat::Unknown, bindFlags, memoryType, pInitData)
 {
-	size_t size = structSize * elementCount;
-	Buffer::SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
-	assert(pBuffer);
-
-	pBuffer->mElementCount = elementCount;
-	pBuffer->mStructSize = structSize;
+	mElementCount = elementCount;
 	static const uint32_t zero = 0;
-	
 	if (createCounter) {
-		pBuffer->mpUAVCounter = Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+		FALCOR_CHECK(mStructSize > 0, "Can't create a counter buffer with struct size of 0.");
+		mpUAVCounter = std::make_shared<Buffer>(
+			mpDevice,
+			sizeof(uint32_t),
+			sizeof(uint32_t),
+			ResourceFormat::Unknown,
+			ResourceBindFlags::UnorderedAccess,
+			MemoryType::DeviceLocal,
+			&zero
+		);
 	}
-	return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createStructured(
-	std::shared_ptr<Device> pDevice,
-	const ShaderVar& shaderVar,
-	uint32_t elementCount,
+// TODO: Its wasteful to create a buffer just to replace it afterwards with the supplied one!
+Buffer::Buffer(Device::SharedPtr pDevice, gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
+    : Buffer(pDevice, size, 0, ResourceFormat::Unknown, bindFlags, memoryType, nullptr)
+{
+	FALCOR_ASSERT(pResource);
+	mGfxBufferResource = pResource;
+}
+
+inline Slang::ComPtr<gfx::IBufferResource> gfxResourceFromNativeHandle(
+	Device* pDevice,
+	NativeHandle handle,
+	size_t size,
 	ResourceBindFlags bindFlags,
-	CpuAccess cpuAccess,
-	const void* pInitData,
-	bool createCounter)
+	MemoryType memoryType)
 {
-	return createStructuredFromType(pDevice, shaderVar.getType(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	gfx::IBufferResource::Desc bufDesc = {};
+	prepareGFXBufferDesc(bufDesc, size, 0, ResourceFormat::Unknown, bindFlags, memoryType);
+
+	gfx::InteropHandle gfxNativeHandle = {};
+	gfxNativeHandle.api = gfx::InteropHandleAPI::Vulkan;
+	gfxNativeHandle.handleValue = reinterpret_cast<uint64_t>(handle.as<VkBuffer>());
+	
+	Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
+	FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferFromNativeHandle(gfxNativeHandle, bufDesc, gfxBuffer.writeRef()));
+
+	return gfxBuffer;
 }
 
-Buffer::SharedPtr Buffer::createStructured(
-	std::shared_ptr<Device> pDevice,
-	const Program* pProgram,
-	const std::string& name,
-	uint32_t elementCount,
-	ResourceBindFlags bindFlags,
-	CpuAccess cpuAccess,
-	const void* pInitData,
-	bool createCounter)
-{
-	const auto& pDefaultBlock = pProgram->getReflector()->getDefaultParameterBlock();
-	const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
-	if (pVar == nullptr) {
-		throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
-	}
-	return createStructuredFromType(pDevice, pVar->getType(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
-}
-
-Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags) {
-	assert(pBaseResource->asBuffer()); // Only aliasing buffers for now
-	CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
-	if (cpuAccess != CpuAccess::None) {
-		LLOG_ERR << "Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" << to_string(cpuAccess) << " which is illegal. Aliased resource must have CpuAccess::None";
-		return nullptr;
-	}
-
-	if ((pBaseResource->getBindFlags() & bindFlags) != bindFlags) {
-		LLOG_ERR << "Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " << 
-		to_string(bindFlags) << "\nAliased = " << to_string(pBaseResource->getBindFlags());
-		return nullptr;
-	}
-
-	if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize()) {
-		LLOG_ERR << "Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " <<
-			to_string(size) << ", offset = " << to_string(offset) << ". Aliased resource size = " << to_string(pBaseResource->getSize());
-		return nullptr;
-	}
-
-	SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, CpuAccess::None);
-	pBuffer->mpAliasedResource = pBaseResource;
-	pBuffer->mApiHandle = pBaseResource->getApiHandle();
-	pBuffer->mGpuVaOffset = offset;
-	return pBuffer;
-}
-
-Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
-{
-	assert(handle);
-	Buffer::SharedPtr pBuffer = std::make_shared<Buffer>(std::move(pDevice), size, bindFlags, cpuAccess);
-	pBuffer->mApiHandle = handle;
-	return pBuffer;
-}
-
-uint32_t Buffer::getElementSize() const {
-	if(isStructured()) return getStructSize();
-	if(isTyped()) return getFormatBytesPerBlock(mFormat);
-	return 1;
-}
+Buffer::Buffer(Device::SharedPtr pDevice, NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
+	: Buffer(pDevice, gfxResourceFromNativeHandle(pDevice.get(), handle, size, bindFlags, memoryType), size, bindFlags, memoryType)
+{}
 
 Buffer::~Buffer() {
-	/*
-	if (mpAliasedResource) return;
-
-	if (mDynamicData.pResourceHandle) {
-		mpDevice->getUploadHeap()->release(mDynamicData);
-	} else {
-		mpDevice->releaseResource(mApiHandle);
-	}
-	*/
-	mpDevice->releaseResource(mApiHandle);
+	mpDevice->releaseResource(mGfxBufferResource);
 }
 
-template<typename ViewClass>
-using CreateFuncType = std::function<typename ViewClass::SharedPtr(Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)>;
-
-template<typename ViewClass, typename ViewMapType>
-typename ViewClass::SharedPtr findViewCommon(Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount, ViewMapType& viewMap, CreateFuncType<ViewClass> createFunc) {
-	ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
-
-	if (viewMap.find(view) == viewMap.end()) {
-		viewMap[view] = createFunc(pBuffer, firstElement, elementCount);
-	}
-	return viewMap[view];
+gfx::IResource* Buffer::getGfxResource() const {
+	return mGfxBufferResource;
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV(uint64_t offset, uint64_t size) {
-    ResourceViewInfo view = ResourceViewInfo(offset, size);
+	ResourceViewInfo view = ResourceViewInfo(offset, size);
 
-    if (mSrvs.find(view) == mSrvs.end())
-        mSrvs[view] = ShaderResourceView::create(mpDevice, this, offset, size);
+	if (mSrvs.find(view) == mSrvs.end()) {
+		mSrvs[view] = ShaderResourceView::create(mpDevice, this, offset, size);
+	}
 
-    return mSrvs[view];
+	return mSrvs[view];
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV() {
@@ -227,92 +238,94 @@ ShaderResourceView::SharedPtr Buffer::getSRV() {
 }
 
 UnorderedAccessView::SharedPtr Buffer::getUAV(uint64_t offset, uint64_t size) {
-    ResourceViewInfo view = ResourceViewInfo(offset, size);
+	ResourceViewInfo view = ResourceViewInfo(offset, size);
 
-    if (mUavs.find(view) == mUavs.end())
-        mUavs[view] = UnorderedAccessView::create(mpDevice, this, offset, size);
+	if (mUavs.find(view) == mUavs.end()) {
+		mUavs[view] = UnorderedAccessView::create(mpDevice, this, offset, size);
+	}
 
-    return mUavs[view];
+	return mUavs[view];
 }
-
-
 
 UnorderedAccessView::SharedPtr Buffer::getUAV() {
 	return getUAV(0);
 }
 
-bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
-	if (offset + size > mSize) {
-		LLOG_ERR << "Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call";
-		return false;
-	}
+void Buffer::setBlob(const void* pData, size_t offset, size_t size) {
+	FALCOR_CHECK(offset + size <= mSize, "'offset' ({}) and 'size' ({}) don't fit the buffer size {}.", offset, size, mSize);
 
-	if (mCpuAccess == CpuAccess::Write) {
-		uint8_t* pDst = (uint8_t*)map(MapType::WriteDiscard) + offset;
+	if (mMemoryType == MemoryType::Upload) {
+		bool wasMapped = mMappedPtr != nullptr;
+		uint8_t* pDst = (uint8_t*)map() + offset;
 		std::memcpy(pDst, pData, size);
-	} else {
-		mpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
-	}
-	return true;
-}
-// Buffer::MapType::Read
-void* Buffer::map(MapType type) {
-	if (type == MapType::Write) {
-		if (mCpuAccess != CpuAccess::Write) {
-			LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
-			return nullptr;
-		}
-		return mDynamicData.pData;
-	} else if (type == MapType::WriteDiscard) {
-		if (mCpuAccess != CpuAccess::Write) {
-			LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
-			return nullptr;
-		}
-
-		// Allocate a new buffer
-		if (mDynamicData.pResourceHandle) {
-			mpDevice->getUploadHeap()->release(mDynamicData);
-		}
-
-		mpCBV = nullptr;
-		mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
-		mApiHandle = mDynamicData.pResourceHandle;
-		mGpuVaOffset = mDynamicData.offset;
+		
+		if (!wasMapped) unmap();
+		// TODO we should probably use a barrier instead
 		invalidateViews();
-		return mDynamicData.pData;
-	} else {
-		// MapType::Read
-		assert(type == MapType::Read);
-
-		if (mCpuAccess == CpuAccess::Write) {
-			// Buffers on the upload heap are already mapped, just return the ptr.
-			assert(mDynamicData.pResourceHandle);
-			assert(mDynamicData.pData);
-			return mDynamicData.pData;
-		} else if (mCpuAccess == CpuAccess::Read) {
-			assert(mBindFlags == BindFlags::None);
-			return mapBufferApi(mApiHandle, mSize);
-		} else {
-			// For buffers without CPU access we must copy the contents to a staging buffer.
-			LLOG_WRN << "Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work";
-			if (mpStagingResource == nullptr) {
-				mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-			}
-
-			// Copy the buffer and flush the pipeline
-			RenderContext* pContext = mpDevice->getRenderContext();
-			assert(mGpuVaOffset == 0);
-			pContext->copyResource(mpStagingResource.get(), this);
-			pContext->flush(true);
-
-			return mpStagingResource->map(MapType::Read);
-		}
+	} else if (mMemoryType == MemoryType::DeviceLocal) {
+		mpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
+	} else if (mMemoryType == MemoryType::ReadBack) {
+		throw std::runtime_error("Cannot set data to a buffer that was created with MemoryType::ReadBack.");
 	}
 }
 
-ConstantBufferView::SharedPtr Buffer::getCBV() {
-	if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, this);
-	return mpCBV;
+void Buffer::getBlob(void* pData, size_t offset, size_t size) const {
+	FALCOR_CHECK(offset + size <= mSize, "'offset' ({}) and 'size' ({}) don't fit the buffer size {}.", offset, size, mSize);
+
+	if (mMemoryType == MemoryType::ReadBack) {
+		bool wasMapped = mMappedPtr != nullptr;
+		const uint8_t* pSrc = (const uint8_t*)map() + offset;
+		std::memcpy(pData, pSrc, size);
+		if (!wasMapped) unmap();
+	} else if (mMemoryType == MemoryType::DeviceLocal) {
+		mpDevice->getRenderContext()->readBuffer(this, pData, offset, size);
+	} else if (mMemoryType == MemoryType::Upload) {
+		throw std::runtime_error("Cannot get data from a buffer that was created with MemoryType::Upload.");
+	}
+}
+
+void* Buffer::map() const {
+	FALCOR_CHECK( 
+		mMemoryType == MemoryType::Upload || mMemoryType == MemoryType::ReadBack,
+		"Trying to map a buffer that wasn't created with the upload or readback flags."
+	);
+
+	if (!mMappedPtr) {
+		FALCOR_GFX_CALL(mGfxBufferResource->map(nullptr, &mMappedPtr));
+	}
+
+	return mMappedPtr;
+}
+
+void Buffer::unmap() const {
+	if (mMappedPtr) {
+		FALCOR_GFX_CALL(mGfxBufferResource->unmap(nullptr));
+		mMappedPtr = nullptr;
+	}
+}
+
+bool Buffer::adjustSizeOffsetParams(size_t& size, size_t& offset) const
+{
+    if (offset >= mSize)
+    {
+        logWarning("Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.");
+        return false;
+    }
+
+    if (offset + size > mSize)
+    {
+        logWarning("Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size");
+        size = mSize - offset;
+    }
+    return true;
+}
+
+uint64_t Buffer::getGpuAddress() const {
+	return mGfxBufferResource->getDeviceAddress();
+}
+
+void Buffer::apiSetName() {
+	mGfxBufferResource->setDebugName(mName.c_str());
 }
 
 #ifdef SCRIPTING

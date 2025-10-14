@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 #include "RasterScenePass.h"
+
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/Scene.h"
 
 namespace Falcor {

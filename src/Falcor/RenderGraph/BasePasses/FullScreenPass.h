@@ -36,10 +36,9 @@
 
 namespace Falcor {
     
-class FALCOR_API FullScreenPass : public BaseGraphicsPass, public std::enable_shared_from_this<FullScreenPass>  {
+class FALCOR_API FullScreenPass : public BaseGraphicsPass {
+    FALCOR_OBJECT(FullScreenPass)
  public:
-   using SharedPtr = std::shared_ptr<FullScreenPass>;
-
     virtual ~FullScreenPass();
 
     /** Create a new fullscreen pass from file.
@@ -48,7 +47,7 @@ class FALCOR_API FullScreenPass : public BaseGraphicsPass, public std::enable_sh
         \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::string& filename, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
 
     /** Create a new fullscreen pass.
         \param[in] desc The program description.
@@ -56,7 +55,7 @@ class FALCOR_API FullScreenPass : public BaseGraphicsPass, public std::enable_sh
         \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
 
     /** Execute the pass using an FBO
         \param[in] pRenderContext The render context.
@@ -66,7 +65,7 @@ class FALCOR_API FullScreenPass : public BaseGraphicsPass, public std::enable_sh
     virtual void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc = true) const;
 
  protected:
-    FullScreenPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    FullScreenPass(Falcor::SharedPtr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
 };
 
 }  // namespace Falcor

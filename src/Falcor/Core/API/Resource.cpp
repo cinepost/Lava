@@ -34,7 +34,7 @@
 
 namespace Falcor {
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) 
+Resource::Resource(std::shared_ptr<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size) 
     : mType(type), 
     mBindFlags(bindFlags), 
     mSize(size), 
@@ -44,6 +44,10 @@ Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFla
 }
 
 Resource::~Resource() = default;
+
+Falcor::SharedPrt<Device> Resource::getDevice() const {
+    return mpDevice;
+}
 
 const std::string to_string(Resource::Type type) {
     #define type_2_string(a) case Resource::Type::a: return #a;
@@ -145,18 +149,22 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 #pragma GCC optimize ("O0")
 
 std::shared_ptr<Texture> Resource::asTexture() {
-    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
-    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+    assert(this);
+    return Falcor::SharedPtr<Texture>(dynamic_cast<Texture*>(this));
 }
 
-std::shared_ptr<const Texture> Resource::asTexture() const {
-    //static const std::shared_ptr<Texture> pNullTexture = nullptr;
-    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
+Falcor::SharedPtr<const Texture> Resource::asTexture() const {
+    assert(this);
+    return Falcor::SharedPtr<const Texture>(dynamic_cast<const Texture*>(this));
 }
 
-std::shared_ptr<Buffer> Resource::asBuffer() {
-    //static const std::shared_ptr<Buffer> pNullBuffer = nullptr;
-    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+Buffer::SharedPtr Resource::asBuffer() {
+    assert(this);
+    return Falcor::SharedPtr<Buffer>(dynamic_cast<Buffer*>(this));
+}
+
+void Resource::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
 }
 
 #pragma GCC pop_options

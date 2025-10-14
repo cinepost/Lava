@@ -96,14 +96,18 @@ void Swapchain::prepareImages() {
     for (uint32_t i = 0; i < mDesc.imageCount; ++i) {
         Slang::ComPtr<gfx::ITextureResource> resource;
         FALCOR_GFX_CALL(mGfxSwapchain->getImage(i, resource.writeRef()));
-        //mImages.push_back(Texture::createFromResource(
-        //    mpDevice, resource, Texture::Type::Texture2D, mDesc.width, mDesc.height, 1, mDesc.format, 1, 1, 1,
-        //    Resource::State::Undefined, Texture::BindFlags::RenderTarget
-        //));
-
-        mImages.push_back(Texture::createFromApiHandle(
-            mpDevice, static_cast<Slang::ComPtr<gfx::IResource>>(resource), Texture::Type::Texture2D, mDesc.width, mDesc.height, 1, mDesc.format, 1, 1, 1,
-            Resource::State::Undefined, Texture::BindFlags::RenderTarget
+        mImages.push_back(mpDevice->createTextureFromResource(
+            resource,
+            Texture::Type::Texture2D,
+            mDesc.format,
+            mDesc.width,
+            mDesc.height,
+            1,
+            1,
+            1,
+            1,
+            ResourceBindFlags::RenderTarget,
+            Resource::State::Undefined
         ));
     }
 }
