@@ -519,13 +519,13 @@ bool Session::cmdRaytrace() {
 	LLOG_INF << "Rendering image started...";
 	setUpCamera(mpRenderer->currentCamera());
 
-  	for(const auto& tile: tiles) {
-  		LLOG_DBG << "Rendering " << to_string(tile);
+  for(const auto& tile: tiles) {
+  	LLOG_DBG << "Rendering " << to_string(tile);
 
-  		Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
-    	frameInfo.renderRegion = tile.renderRegion;
+  	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+   	frameInfo.renderRegion = tile.renderRegion;
 
-  		mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+  	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
  		mpRenderer->prepareFrame(frameInfo);
 
 		AOVPlaneGeometry aov_geometry;

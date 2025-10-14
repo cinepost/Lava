@@ -87,8 +87,9 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc&
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
 
-    if (!pDevice->init())
+    if(!pDevice->apiInit(idesc.validationLayerOuputFilename)) {
         return nullptr;
+    }
 
     return pDevice;
 }
@@ -101,8 +102,6 @@ bool Device::init() {
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
     #endif // _DEBUG
-
-    if (!apiInit(mDesc.validationLayerOuputFilename)) return false;
 
     mpFrameFence = GpuFence::create(shared_from_this());
     FALCOR_ASSERT(mpFrameFence);
@@ -291,6 +290,14 @@ void Device::flushAndSync() {
         mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
     }
     executeDeferredReleases();
+}
+
+size_t Device::getBufferDataAlignment(ResourceBindFlags bindFlags) {
+    if (is_set(bindFlags, ResourceBindFlags::Constant))
+        return kConstantBufferDataPlacementAlignment;
+    if (is_set(bindFlags, ResourceBindFlags::Index))
+        return kIndexBufferDataPlacementAlignment;
+    return 1;
 }
 
 bool Device::isShaderModelSupported(ShaderModel shaderModel) const {

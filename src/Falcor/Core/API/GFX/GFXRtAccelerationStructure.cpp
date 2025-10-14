@@ -140,8 +140,8 @@ gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStruc
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
             return gfx::QueryType::AccelerationStructureCurrentSize;
         default:
-            FALCOR_UNREACHABLE();
-            return gfx::QueryType::AccelerationStructureCompactedSize;
+            //FALCOR_UNREACHABLE();
+            return gfx::QueryType::AccelerationStructureCurrentSize;
     }
 }
 

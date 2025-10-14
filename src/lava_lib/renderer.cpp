@@ -423,7 +423,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// EnvPass
 	mpEnvPass = EnvPass::create(pRenderContext);
-
+	
 	// TODO: handle transparency 
 	if(mpEnvPass) {   
 		mpEnvPass->setOpacity(1.0f);
@@ -434,12 +434,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
 
-#ifdef USE_FORWARD_LIGHTING_PASS
-	// Forward lighting pass
-	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
-	mpRenderGraph->addEdge("EnvPass.color", "ShadingPass.color");
-	
-#else
 	// Deferred lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth",    "ShadingPass.depth");
 
@@ -452,15 +446,13 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	if(mpEnvPass) {
 		mpRenderGraph->addEdge("EnvPass.color",       "ShadingPass.color");
 	} else {
-		auto format = pMainAOV->format();
-		auto pExternalOutputTexture = Texture::create2D(
-			mpDevice, renderRegionDims[0], renderRegionDims[1], format, 1, 1, nullptr, 
-			ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
-		);
-		mpRenderGraph->setInput("ShadingPass.color", pExternalOutputTexture);
+		//auto format = pMainAOV->format();
+		//auto pExternalOutputTexture = Texture::create2D(
+		//	mpDevice, renderRegionDims[0], renderRegionDims[1], format, 1, 1, nullptr, 
+		//	ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
+		//);
+		//mpRenderGraph->setInput("ShadingPass.color", pExternalOutputTexture);
 	}
-
-#endif
 
 	// Create optional render passes
 	for(const auto &entry: mAOVPlanes) {

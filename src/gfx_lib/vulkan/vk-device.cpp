@@ -444,7 +444,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 		
@@ -465,16 +465,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.rayTracingPipelineFeatures;
 
 		// SER features.
-    	//extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
-    	//deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
+    //extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
+    //deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
 
 		// Acceleration structure features
 		extendedFeatures.accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
 		// Variable pointer features.
-    	extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
-    	deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
+    extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
+    deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
 
 		// Compute shader derivative features.
 		extendedFeatures.computeShaderDerivativeFeatures.pNext = deviceFeatures2.pNext;
@@ -492,9 +492,9 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
 
-    	// clock features
-    	extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
-    	deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
+    // clock features
+    extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
+    deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
 
 		// Fragment shader barycentrics features
 		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
@@ -709,8 +709,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		//	deviceExtensions.add(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 		//	m_features.add("mesh-shader");
 		//}
-//
-
+		
 		if (extendedFeatures.fragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric) {
 			extendedFeatures.fragmentShaderBarycentricFeaturesKHR.pNext = (void*)vulkan12Features.pNext;
 			vulkan12Features.pNext = &extendedFeatures.fragmentShaderBarycentricFeaturesKHR;
@@ -723,11 +722,12 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		VkExtent2D maxSampleLocationGridSize = {4, 4};
 
-		if (m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT) {
-			VkMultisamplePropertiesEXT multisampleProperties = {VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT};
-			m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT(m_api.m_physicalDevice, VK_SAMPLE_COUNT_1_BIT, &multisampleProperties);
-			maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
-		}
+
+		//if (m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT) {
+		//	VkMultisamplePropertiesEXT multisampleProperties = {VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT};
+		//	m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT(m_api.m_physicalDevice, VK_SAMPLE_COUNT_1_BIT, &multisampleProperties);
+		//	maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
+		//}
 
 
 		VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT };

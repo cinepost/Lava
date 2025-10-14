@@ -67,9 +67,10 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     const std::unordered_map<uint8_t, DeviceInfo>& deviceInfos() { return mDeviceInfos; }
     std::vector<Device::SharedPtr> renderingDevices() const;
 
-    Device::SharedPtr renderingDevice(uint8_t gpuId) const;
+    Device::SharedPtr getRenderingDevice(uint8_t gpuId) const;
 
     Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc, Window::SharedPtr pWindow = nullptr);
+    std::vector<std::string> getDeviceFeatures(uint8_t gpu_id, const Device::Desc &desc) const;
 
     Device::SharedPtr defaultDisplayDevice() const;
     Device::SharedPtr defaultRenderingDevice() const;

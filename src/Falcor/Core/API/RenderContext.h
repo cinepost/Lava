@@ -240,9 +240,6 @@ class dlldecl RenderContext : public ComputeContext {
 private:
     RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
-    //Falcor::BlitContext& getBlitContext();
-    //Falcor::BlitToBufferContext& getBlitToBufferContext();
-
 #if defined(FALCOR_VK)
         bool applyGraphicsVars(ProgramVars* pVars, RootSignature* pRootSignature);
         bool prepareForDraw(GraphicsState* pState, ProgramVars* pVars);

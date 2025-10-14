@@ -52,9 +52,12 @@ class dlldecl GpuMemoryHeap {
     };
 
     struct BaseData {
-        ResourceHandle pResourceHandle;
+        Slang::ComPtr<gfx::IBufferResource> gfxBufferResource;
+        uint32_t size = 0;
         GpuAddress offset = 0;
         uint8_t* pData = nullptr;
+
+        uint64_t getGpuAddress() const { return gfxBufferResource->getDeviceAddress() + offset; }
     };
 
     struct Allocation : public BaseData {
@@ -76,6 +79,8 @@ class dlldecl GpuMemoryHeap {
     static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
 
     Allocation allocate(size_t size, size_t alignment = 1);
+    Allocation allocate(size_t size, ResourceBindFlags bindFlags);
+
     void release(Allocation& data);
     size_t getPageSize() const { return mPageSize; }
     void executeDeferredReleases();

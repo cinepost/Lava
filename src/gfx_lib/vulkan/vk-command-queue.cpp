@@ -137,7 +137,13 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
         commandBufferImpl->m_transientHeap->advanceFence();
     }
 
+    printf("1\n");
+    printf("CommandQueueImpl signal semaphores count %zu\n", (size_t)signalSemaphores.getCount());
+    for(uint32_t i = 0; i < submitInfo.signalSemaphoreCount; ++i) {
+        printf("CommandQueueImpl pSignalSemaphores[%zu] = %zu\n",(size_t)i ,(size_t)signalSemaphores[i]);
+    }
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
+    printf("2\n");
 
     m_pendingWaitSemaphores[0] = m_semaphore;
     m_pendingWaitSemaphores[1] = VK_NULL_HANDLE;

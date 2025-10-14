@@ -127,23 +127,20 @@ static Falcor::Device::Desc createDesc(const std::string& validationLayerOuputFi
   return desc;
 }
 
-static void listGPUs() {
+static void listGPUs(bool show_features = false) {
   auto pDeviceManager = DeviceManager::create();
   std::cout << "Available rendering devices:\n";
   for( auto const& [gpu_id, info]: pDeviceManager->deviceInfos()) {
     std::cout << "\t[" << std::to_string(static_cast<uint32_t>(gpu_id)) << "] : " << info.deviceName << "\n";
     static const std::string emptyValidationLayerOuputFilename = "";
-    auto pDevice = pDeviceManager->createRenderingDevice(gpu_id, createDesc(emptyValidationLayerOuputFilename));
-    if(!pDevice) {
-      LLOG_FTL << "Error getting device from DeviceManager !";
-      continue;
-    }
 
-    auto device_features = pDevice->getFeatures();
-    if(!device_features.empty()) {
-      std::cout << "\tFeatures:\n";  
-      for(const auto& feature: device_features) {
-        std::cout << "\t\t" << feature << std::endl;
+    if(show_features) {
+      const auto device_features = pDeviceManager->getDeviceFeatures(gpu_id, createDesc(emptyValidationLayerOuputFilename));
+      if(!device_features.empty()) {
+        std::cout << "\tFeatures:\n";  
+        for(const auto& feature: device_features) {
+          std::cout << "\t\t" << feature << std::endl;
+        }
       }
     }
   }
@@ -216,6 +213,7 @@ int main(int argc, char** argv){
       ("help,h", "Show help") 
       ("version,v", "Shout version information")
       ("list-devices,L", "List rendering devices")
+      ("list-devices-full", "List rendering devices (features included)")
       ;
 
     // Declare a group of options that will be allowed both on command line and in config file
@@ -308,7 +306,12 @@ int main(int argc, char** argv){
     }
 
     if ( vm.count("list-devices")) {
-      listGPUs();
+      listGPUs(false);
+      exit(EXIT_SUCCESS);
+    }
+
+    if ( vm.count("list-devices-full")) {
+      listGPUs(true);
       exit(EXIT_SUCCESS);
     }
 

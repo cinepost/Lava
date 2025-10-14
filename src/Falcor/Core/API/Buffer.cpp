@@ -188,6 +188,7 @@ uint32_t Buffer::getElementSize() const {
 }
 
 Buffer::~Buffer() {
+	/*
 	if (mpAliasedResource) return;
 
 	if (mDynamicData.pResourceHandle) {
@@ -195,6 +196,8 @@ Buffer::~Buffer() {
 	} else {
 		mpDevice->releaseResource(mApiHandle);
 	}
+	*/
+	mpDevice->releaseResource(mApiHandle);
 }
 
 template<typename ViewClass>

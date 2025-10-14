@@ -184,39 +184,68 @@ void DeviceManager::enumerateDevices() {
     }
 }
 
-Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc, Window::SharedPtr pWindow) {
-    if (!deviceEnumerated(gpuId)) {
-        LLOG_ERR << "Rendering device " << to_string(gpuId) << " not enumerated !!!";
+std::vector<std::string> DeviceManager::getDeviceFeatures(uint8_t gpu_id, const Device::Desc &desc) const {
+    std::vector<std::string> features;
+
+    Device::SharedPtr pDevice;
+    if (deviceEnumerated(gpu_id)) {
+        pDevice = getRenderingDevice(gpu_id);
+        if(!pDevice) {
+            gfx::IDevice::Desc iDesc;
+
+            // VkInstance
+            iDesc.existingDeviceHandles.handles[0].api = gfx::InteropHandleAPI::Vulkan;
+            iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(vulkanInstance());
+
+            // VkPhysicalDevice
+            iDesc.existingDeviceHandles.handles[1].api = gfx::InteropHandleAPI::Vulkan;
+            iDesc.existingDeviceHandles.handles[1].handleValue = reinterpret_cast<uint64_t>(mPhysicalDevices[gpu_id]);
+
+            // VkDevice here is 0, to be created by GFX
+            iDesc.existingDeviceHandles.handles[2].api = gfx::InteropHandleAPI::Vulkan;
+            iDesc.existingDeviceHandles.handles[2].handleValue = 0;
+
+            pDevice = Device::create(nullptr, iDesc, desc);
+        }
+    }
+
+    if (pDevice) features = pDevice->getFeatures();
+
+    return features;
+}
+
+Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpu_id, const Device::Desc &desc, Window::SharedPtr pWindow) {
+    if (!deviceEnumerated(gpu_id)) {
+        LLOG_ERR << "Rendering device " << to_string(gpu_id) << " not enumerated !!!";
         return nullptr;
     }
 
-    Device::SharedPtr pDevice = renderingDevice(gpuId);
+    Device::SharedPtr pDevice = getRenderingDevice(gpu_id);
     if(pDevice) return pDevice;
 
     gfx::IDevice::Desc iDesc;
 
     // VkInstance
     iDesc.existingDeviceHandles.handles[0].api = gfx::InteropHandleAPI::Vulkan;
-    VkInstance instance = vulkanInstance();
-    iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(instance);
+    iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(vulkanInstance());
 
     // VkPhysicalDevice
     iDesc.existingDeviceHandles.handles[1].api = gfx::InteropHandleAPI::Vulkan;
-    iDesc.existingDeviceHandles.handles[1].handleValue = reinterpret_cast<uint64_t>(mPhysicalDevices[gpuId]);
+    iDesc.existingDeviceHandles.handles[1].handleValue = reinterpret_cast<uint64_t>(mPhysicalDevices[gpu_id]);
 
     // VkDevice here is 0, to be created by GFX
     iDesc.existingDeviceHandles.handles[2].api = gfx::InteropHandleAPI::Vulkan;
     iDesc.existingDeviceHandles.handles[2].handleValue = 0;
 
     pDevice = Device::create(pWindow, iDesc, desc);
-    if (!pDevice) {
-        LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";
+    if (!pDevice || !pDevice->init()) {
+        LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpu_id) << " !";
         return nullptr;
     } else {
-        LLOG_DBG << "Rendering device created on gpu id " << std::to_string(gpuId);
+        LLOG_DBG << "Rendering device created on gpu id " << std::to_string(gpu_id);
     }
 
-    mRenderingDevices[gpuId] = pDevice;
+    mRenderingDevices[gpu_id] = pDevice;
     return pDevice;
 }
 

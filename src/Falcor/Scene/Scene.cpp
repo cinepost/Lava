@@ -437,8 +437,13 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, ProgramVar
 
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {
+        printf("!!! rasterize::initGeomDesc !!!\n");
         initGeomDesc(pContext);
+        printf("!!! rasterize::initGeomDesc done !!!\n");
+
+        printf("!!! rasterize::buildBlas !!!\n");
         buildBlas(pContext);
+        printf("!!! rasterize::buildBlas done !!!\n");
     }
 
     // On first execution, when meshes have moved, when there's a new ray type count, or when a BLAS has changed, create/update the TLAS
@@ -450,7 +455,9 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, ProgramVar
     auto tlasIt = mTlasCache.find(rayTypeCount);
     if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject) {
         // We need a hit entry per mesh right now to pass GeometryIndex()
+        printf("!!! rasterize::buildTlas !!!\n");
         buildTlas(pContext, rayTypeCount, true);
+        printf("!!! rasterize::buildTlas done !!!\n");
 
         // If new TLAS was just created, get it so the iterator is valid
         if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
@@ -3062,13 +3069,13 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 // Validate that the ordering is matching our expectations:
                 // InstanceID() + GeometryIndex() should look up the correct mesh instance.
                 
-                #ifdef _DEBUG
+                //#ifdef _DEBUG
                 for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
                     const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
                     assert(instances.size() == instanceCount);
                     assert(instances[instanceIdx] == instanceID + geometryIndex);
                 }
-                #endif // _DEBUG
+                //#endif // _DEBUG
 
                 //const auto& instance = mGeometryInstanceData[instanceID];
                 const auto& instance = mGeometryInstanceData[mMeshIdToInstanceIds[meshID][instanceIdx]];
@@ -3080,7 +3087,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
                 if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;        
 
-                instanceID ++;//= (uint32_t)meshList.size();
+                instanceID++;//= (uint32_t)meshList.size();
 
                 float4x4 transform4x4 = float4x4::identity();
                 if (!isStatic) {
@@ -3108,10 +3115,10 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         }
     }
 
-    #ifdef _DEBUG
+    //#ifdef _DEBUG
     uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mCurveDesc.empty() ? 0 : 1) + getSDFGridGeometryCount() + (mCustomPrimitiveDesc.empty() ? 0 : 1);
     assert((uint32_t)mBlasData.size() == totalBlasCount);
-    #endif // _DEBUG
+    //#endif // _DEBUG
 
 
     size_t blasDataIndex = mMeshGroups.size();
@@ -3272,6 +3279,7 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
                 tlas.pTlasBuffer->setName("Scene TLAS buffer");
             }
         }
+        /*
         if (!mInstanceDescs.empty()) {
             // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
             if (!tlas.pInstanceDescs || tlas.pInstanceDescs->getSize() < mInstanceDescs.size() * sizeof(RtInstanceDesc))
@@ -3282,6 +3290,7 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
                 tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
             }
         }
+        */
 
         RtAccelerationStructure::Desc asCreateDesc = {};
         asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
@@ -3294,17 +3303,29 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
         assert(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
         pContext->uavBarrier(tlas.pTlasBuffer.get());
         pContext->uavBarrier(mpTlasScratch.get());
+        /*
         if (tlas.pInstanceDescs) {
             assert(!mInstanceDescs.empty());
             tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.descCount * sizeof(RtInstanceDesc));
         }
+        */
         asDesc.source = tlas.pTlasObject.get(); // Perform the update in-place
     }
 
     assert(tlas.pTlasBuffer && tlas.pTlasBuffer->getApiHandle() && mpTlasScratch->getApiHandle());
+    
+    /*
     assert(inputs.descCount == 0 || (tlas.pInstanceDescs && tlas.pInstanceDescs->getApiHandle()));
-
     asDesc.inputs.instanceDescs = tlas.pInstanceDescs ? tlas.pInstanceDescs->getGpuAddress() : 0;
+    */
+     // Upload instance data
+    if (inputs.descCount > 0) {
+        GpuMemoryHeap::Allocation allocation = mpDevice->getUploadHeap()->allocate(inputs.descCount * sizeof(RtInstanceDesc), sizeof(RtInstanceDesc));
+        std::memcpy(allocation.pData, mInstanceDescs.data(), inputs.descCount * sizeof(RtInstanceDesc));
+        asDesc.inputs.instanceDescs = allocation.getGpuAddress();
+        mpDevice->getUploadHeap()->release(allocation);
+    }
+
     asDesc.scratchData = mpTlasScratch->getGpuAddress();
     asDesc.dest = tlas.pTlasObject.get();
 
@@ -3314,9 +3335,11 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
     }
 
     // Create TLAS
+    /*
     if (tlas.pInstanceDescs) {
         pContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
     }
+    */
     pContext->buildAccelerationStructure(asDesc, 0, nullptr);
     pContext->uavBarrier(tlas.pTlasBuffer.get());
 
@@ -3336,7 +3359,7 @@ void Scene::initRayTracing() {
 
     mRayTraceInitialized = true;
 }
-
+/*
 void Scene::setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
     if(!mpNullTlasObject) {
         Device::SharedPtr pDevice = pContext->device();
@@ -3371,12 +3394,17 @@ void Scene::setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar
     getCamera()->setShaderData(mpSceneBlock->getRootVar()[kCamera]); // TODO REMOVE: Shouldn't be needed anymore?
     var[kParameterBlockName] = mpSceneBlock;
 }
-
+*/
 void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {
+        printf("!!! setRaytracingShaderData::initGeomDesc !!!\n");
         initGeomDesc(pContext);
+        printf("!!! setRaytracingShaderData::initGeomDesc done !!!\n");
+
+        printf("!!! setRaytracingShaderData::buildBlas !!!\n");
         buildBlas(pContext);
+        printf("!!! setRaytracingShaderData::buildBlas done !!!\n");
     }
 
     // On first execution, when meshes have moved, when there's a new ray type count, or when a BLAS has changed, create/update the TLAS
@@ -3387,7 +3415,10 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     auto tlasIt = mTlasCache.find(rayTypeCount);
     if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject) {
         // We need a hit entry per mesh right now to pass GeometryIndex()
+
+        printf("!!! setRaytracingShaderData::buildTlas !!!\n");
         buildTlas(pContext, rayTypeCount, true);
+        printf("!!! setRaytracingShaderData::buildTlas done !!!\n");
 
         // If new TLAS was just created, get it so the iterator is valid
         if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
@@ -3414,9 +3445,9 @@ std::vector<uint32_t> Scene::getMeshBlasIDs() const {
         }
     }
 
-    #ifdef _DEBUG
+    //#ifdef _DEBUG
     for (auto blasID : blasIDs) assert(blasID != invalidID);
-    #endif // _DEBUG
+    //#endif // _DEBUG
 
     return blasIDs;
 }

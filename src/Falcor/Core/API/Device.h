@@ -218,6 +218,8 @@ class FALCOR_API Device: public std::enable_shared_from_this<Device> {
 
     DeviceApiData* getApiData() const { return mpApiData; }
 
+    size_t getBufferDataAlignment(ResourceBindFlags bindFlags);
+
     const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; }  // ms/tick
 

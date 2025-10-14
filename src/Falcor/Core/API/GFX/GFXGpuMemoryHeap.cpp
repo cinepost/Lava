@@ -66,16 +66,16 @@ namespace {
 }
 
 void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size) {
-    data.pResourceHandle = createBuffer(
+    data.gfxBufferResource  = createBuffer(
         mpDevice,
         getInitState(mType),
         size,
         Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
         getCpuAccess(mType));
     
+    data.size = size;
     data.offset = 0;
-    auto bufferResource = static_cast<gfx::IBufferResource*>(data.pResourceHandle.get());
-    bufferResource->map(nullptr, (void**)&data.pData);
+    FALCOR_GFX_CALL(data.gfxBufferResource->map(nullptr, (void**)&data.pData));
 }
 
 }  // namespace Falcor

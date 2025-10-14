@@ -336,8 +336,8 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     if(shadingRateInShader) {
         if(mpVisibilitySamplesContainer) {
             // Visibility container mode
-            mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
-            mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
+            //mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+            //mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
         } else {
             // Legacy (visibility buffer) mode shading
             mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);    
@@ -345,14 +345,14 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     } else {
         for(uint32_t i = 0; i < mShadingRate; ++i){
             if(mpVisibilitySamplesContainer) {
-                mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
-                mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
+                //mpShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getOpaquePassIndirectionArgsBuffer().get());
+                //mpTransparentShadingPass->executeIndirect(pContext, mpVisibilitySamplesContainer->getTransparentPassIndirectionArgsBuffer().get());
                 auto cb_var = mpTransparentShadingPass->getRootVar()["PerFrameCB"];
                 cb_var["gSampleNumber"] = mSampleNumber;
                 cb_var["gRandomSeed"] = mRandomSeed;
             } else {
                 // Legacy (visibility buffer) mode shading
-                mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+                //mpShadingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
                 auto cb_var = mpShadingPass->getRootVar()["PerFrameCB"];
                 cb_var["gSampleNumber"] = mSampleNumber;
                 cb_var["gRandomSeed"] = mRandomSeed;

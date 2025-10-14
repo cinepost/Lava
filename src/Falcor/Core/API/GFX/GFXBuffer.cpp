@@ -121,10 +121,14 @@ void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
 }
 
 uint64_t Buffer::getGpuAddress() const {
+	return mApiHandle->getDeviceAddress();
+
+	/*
 	gfx::IBufferResource* bufHandle = static_cast<gfx::IBufferResource*>(mApiHandle.get());
 	assert(bufHandle);
 	// slang-gfx backend does not includ the mGpuVaOffset.
 	return mGpuVaOffset + bufHandle->getDeviceAddress();
+	*/
 }
 
 void Buffer::unmap() {

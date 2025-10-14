@@ -28,16 +28,18 @@
 #include "stdafx.h"
 #include "GpuMemoryHeap.h"
 #include "GpuFence.h"
+#include "Device.h"
 
 #include "lava_utils_lib/logging.h"
+
 
 namespace Falcor {
 
     GpuMemoryHeap::~GpuMemoryHeap() {
-        if(mpActivePage && mpActivePage->pResourceHandle.get()) {
-            auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
-            pBufferResource->unmap(nullptr);
-        }
+        //if(mpActivePage && mpActivePage->pResourceHandle.get()) {
+        //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+        //    pBufferResource->unmap(nullptr);
+        //}
         mDeferredReleases = decltype(mDeferredReleases)();
     }
 
@@ -89,7 +91,7 @@ namespace Falcor {
             data.pageID = mCurrentPageId;
             data.offset = currentOffset;
             data.pData = mpActivePage->pData + currentOffset;
-            data.pResourceHandle = mpActivePage->pResourceHandle;
+            data.gfxBufferResource = mpActivePage->gfxBufferResource;
             mpActivePage->currentOffset = currentOffset + size;
             mpActivePage->allocationsCount++;
         }
@@ -98,8 +100,13 @@ namespace Falcor {
         return data;
     }
 
+    GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, ResourceBindFlags bindFlags) {
+        size_t alignment = mpDevice->getBufferDataAlignment(bindFlags);
+        return allocate(align_to(alignment, size), alignment);
+    }
+
     void GpuMemoryHeap::release(Allocation& data) {
-        assert(data.pResourceHandle);
+        assert(data.gfxBufferResource);
         mDeferredReleases.push(data);
     }
 
@@ -114,10 +121,10 @@ namespace Falcor {
                 if (mpActivePage->allocationsCount == 0) {
                     mpActivePage->currentOffset = 0;
 
-                    if(mpActivePage->pResourceHandle.get()) {
-                        auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
-                        pBufferResource->unmap(nullptr);
-                    }
+                    //if(mpActivePage->pResourceHandle.get()) {
+                    //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+                    //    pBufferResource->unmap(nullptr);
+                    //}
                 }
             } else {
                 if (data.pageID != Allocation::kMegaPageId) {
@@ -126,10 +133,10 @@ namespace Falcor {
                     
                     if (pData->allocationsCount == 0) {
 
-                        if(pData->pResourceHandle.get()) {
-                            auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
-                            pBufferResource->unmap(nullptr);
-                        }
+                        //if(pData->pResourceHandle.get()) {
+                        //    auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
+                        //    pBufferResource->unmap(nullptr);
+                        //}
 
                         mAvailablePages.push(std::move(pData));
                         mUsedPages.erase(data.pageID);

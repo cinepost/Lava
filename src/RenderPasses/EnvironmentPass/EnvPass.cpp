@@ -183,7 +183,7 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     cb_var["gOpacity"] = mOpacity;
     cb_var["lightsCount"] = mpScene->getLightCount();
 
-    mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
+    //mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
     
     mDirty = false;
 }

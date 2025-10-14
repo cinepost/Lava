@@ -81,7 +81,7 @@ bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
     return false;
 }
 
-Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
+Device::SharedPtr DeviceManager::getRenderingDevice(uint8_t gpuId) const {
     if (!deviceEnumerated(gpuId)) return nullptr;
 
     auto it = mRenderingDevices.find(gpuId);
@@ -102,11 +102,11 @@ void DeviceManager::printEnumeratedDevices() const {
 }
 
 Device::SharedPtr DeviceManager::defaultRenderingDevice() const {
-    return renderingDevice(mDefaultRenderingDeviceID);
+    return getRenderingDevice(mDefaultRenderingDeviceID);
 }
 
 Device::SharedPtr DeviceManager::defaultDisplayDevice() const {
-    return renderingDevice(mDefaultDisplayDeviceID);
+    return getRenderingDevice(mDefaultDisplayDeviceID);
 }
 
 void DeviceManager::setDefaultRenderingDevice(uint8_t gpuId) {
