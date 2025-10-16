@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "ParameterBlock.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 

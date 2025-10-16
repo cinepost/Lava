@@ -28,25 +28,23 @@
 #ifndef SRC_FALCOR_CORE_API_FBO_H_
 #define SRC_FALCOR_CORE_API_FBO_H_
 
+#include "Falcor/Core/API/ResourceViews.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/Object.h"
+
+#include <vector>
 #include <unordered_set>
 
-#include "Falcor/Core/Object.h"
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/ResourceViews.h"
-
 namespace Falcor {
-
-class Device;
-class FboData;
 
 /** Low level framebuffer object.
     This class abstracts the API's framebuffer creation and management.
 */
 class FALCOR_API Fbo : public Object {
     FALCOR_OBJECT(Fbo)
- public:
+  public:
     class FALCOR_API Desc {
-     public:
+      public:
         Desc();
 
         /** Set a render target to be a color target.
@@ -98,7 +96,6 @@ class FALCOR_API Fbo : public Object {
             bool allowUav = false;
             
             bool operator==(const TargetDesc& other) const {return (format == other.format) && (allowUav == other.allowUav); }
-
             bool operator!=(const TargetDesc& other) const { return !(*this == other); }
         };
 
@@ -106,9 +103,6 @@ class FALCOR_API Fbo : public Object {
         TargetDesc mDepthStencilTarget;
         uint32_t mSampleCount = 1;
     };
-
-    std::shared_ptr<Device> device() { return mpDevice; }
-    std::shared_ptr<Device> device() const { return mpDevice; }
 
     /** Used to tell some functions to attach all array slices of a specific mip-level.
     */
@@ -121,14 +115,14 @@ class FALCOR_API Fbo : public Object {
     /** Create a new empty FBO.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice);
 
     /** Create an FBO from a list of textures. It will bind mip 0 and the all of the array slices.
         \param[in] colors A vector with color textures. The index in the vector corresponds to the render target index in the shader. You can use nullptr for unused indices.
         \param[in] depth An optional depth buffer texture.
         \return A new object. An exception is thrown if creation failed, for example due to texture size mismatch, bind flags issues, illegal formats, etc.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth = nullptr);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth = nullptr);
 
     /** Create a color-only 2D framebuffer.
         \param[in] width Width of the render targets.
@@ -138,7 +132,7 @@ class FALCOR_API Fbo : public Object {
         \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
         \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
     */
-    static SharedPtr create2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
+    static SharedPtr create2D(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
 
     /** Create a color-only cubemap framebuffer.
         \param[in] width width of the render targets.
@@ -148,7 +142,7 @@ class FALCOR_API Fbo : public Object {
         \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
         \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
     */
-    static SharedPtr createCubemap(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
+    static SharedPtr createCubemap(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
 
     /** Creates an FBO with a single color texture (single mip, single array slice), and optionally a depth buffer.
         \param[in] width Width of the render targets.
@@ -157,7 +151,7 @@ class FALCOR_API Fbo : public Object {
         \param[in] depth The depth-format. If a depth-buffer is not required, use ResourceFormat::Unknown.
         \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
     */
-    static SharedPtr create2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth = ResourceFormat::Unknown);
+    static SharedPtr create2D(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth = ResourceFormat::Unknown);
 
     /** Attach a depth-stencil texture.
         An exception is thrown if the texture can't be used as a depth-buffer (usually a format or bind flags issue).
@@ -178,13 +172,14 @@ class FALCOR_API Fbo : public Object {
     */
     void attachColorTarget(const Texture::SharedPtr& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
-    /** Get the object's API handle.      
-    */
-    const ApiHandle& getApiHandle() const;
+    /**
+     * Get the framebuffer.
+     */
+    gfx::IFramebuffer* getGfxFramebuffer() const;
 
     /** Get the maximum number of color targets
     */
-    static uint32_t getMaxColorTargetCount(std::shared_ptr<Device> pDevice = nullptr);
+    static uint32_t getMaxColorTargetCount(Falcor::SharedPtr<Device> pDevice = nullptr);
 
     /** Get an attached color texture. If no texture is attached will return nullptr.
     */

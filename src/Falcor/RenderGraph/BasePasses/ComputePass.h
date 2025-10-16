@@ -38,7 +38,7 @@ namespace Falcor {
 
 class Device;
 
-class FALCOR_API ComputePass : : public Object {
+class FALCOR_API ComputePass : public Object {
     FALCOR_OBJECT(ComputePass)
   public:
     /** Create a new compute pass from file.

@@ -30,10 +30,9 @@
 
 #include <string>
 
-#include "Resource.h"
-#include "GpuMemoryHeap.h"
 #include "Falcor/Core/Enum.h"
-#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/ResourceViews.h"
 
 #include "gfx_lib/slang-gfx.h"
 
@@ -151,10 +150,6 @@ class FALCOR_API Buffer : public Resource {
     */
     uint32_t getElementSize() const;
 
-    /** Get a constant buffer view
-    */
-    ConstantBufferView::SharedPtr getCBV();
-
     /** Update the buffer's data
         \param[in] pData Pointer to the source data.
         \param[in] offset Byte offset into the destination buffer, indicating where to start copy into.
@@ -209,18 +204,7 @@ class FALCOR_API Buffer : public Resource {
 
     /** Get safe offset and size values
     */
-    bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
-        if (offset >= mSize) {
-            LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.";
-            return false;
-        }
-
-        if (offset + size > mSize) {
-            LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size";
-            size = mSize - offset;
-        }
-        return true;
-    }
+    bool adjustSizeOffsetParams(size_t& size, size_t& offset) const;
 
     /** Check if this is a typed buffer
     */

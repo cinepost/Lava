@@ -29,27 +29,30 @@
 #define FALCOR_CORE_API_BLITTOBUFFERCONTEXT_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Core/Program/ProgramVersion.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Program/ProgramReflection.h"
 
-#include "RenderGraph/BasePasses/ComputePass.h"
 
 namespace Falcor {
 
+class Device;
+class Sampler;
+class ComputePass;
+class ParameterBlock;
+
 struct BlitToBufferContext {
-    std::shared_ptr<ComputePass> pPass;
+    Falcor::SharedPtr<ComputePass> mpPass;
 
-    Sampler::SharedPtr pLinearSampler;
-    Sampler::SharedPtr pPointSampler;
-    Sampler::SharedPtr pLinearMinSampler;
-    Sampler::SharedPtr pPointMinSampler;
-    Sampler::SharedPtr pLinearMaxSampler;
-    Sampler::SharedPtr pPointMaxSampler;
+    Falcor::SharedPtr<Sampler> mpLinearSampler;
+    Falcor::SharedPtr<Sampler> mpPointSampler;
+    Falcor::SharedPtr<Sampler> mpLinearMinSampler;
+    Falcor::SharedPtr<Sampler> mpPointMinSampler;
+    Falcor::SharedPtr<Sampler> mpLinearMaxSampler;
+    Falcor::SharedPtr<Sampler> mpPointMaxSampler;
 
-    ParameterBlock::SharedPtr pBlitParamsBuffer;
-    float2 prevSrcRectOffset = float2(0, 0);
-    float2 prevSrcReftScale = float2(0, 0);
+    Falcor::SharedPtr<ParameterBlock> mpBlitParamsBuffer;
+    float2 prevSrcRectOffset = float2(0.0, 0.0);
+    float2 prevSrcReftScale = float2(0.0, 0.0);
 
     // Variable offsets in constant buffer
     TypedShaderVarOffset resolutionVarOffset;
@@ -62,7 +65,7 @@ struct BlitToBufferContext {
     // Parameters for complex blit
     float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
     TypedShaderVarOffset compTransVarOffset[4];
-    BlitToBufferContext(Device::SharedPtr pDevice);
+    BlitToBufferContext(Device* pDevice);
 };
 
 }  // namespace Falcor

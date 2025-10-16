@@ -31,12 +31,10 @@
 
 #include "Falcor/Core/Framework.h"
 
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/API/GFX/GFXFormats.h"
-
+#include "Falcor/Core/API/RenderContext.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -171,7 +169,7 @@ Buffer::Buffer(
 	static const uint32_t zero = 0;
 	if (createCounter) {
 		FALCOR_CHECK(mStructSize > 0, "Can't create a counter buffer with struct size of 0.");
-		mpUAVCounter = std::make_shared<Buffer>(
+		mpUAVCounter = make_shared_ptr<Buffer>(
 			mpDevice,
 			sizeof(uint32_t),
 			sizeof(uint32_t),
@@ -304,17 +302,14 @@ void Buffer::unmap() const {
 	}
 }
 
-bool Buffer::adjustSizeOffsetParams(size_t& size, size_t& offset) const
-{
-    if (offset >= mSize)
-    {
-        logWarning("Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.");
+bool Buffer::adjustSizeOffsetParams(size_t& size, size_t& offset) const {
+    if (offset >= mSize) {
+        LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.";
         return false;
     }
 
-    if (offset + size > mSize)
-    {
-        logWarning("Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size");
+    if (offset + size > mSize) {
+        LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size";
         size = mSize - offset;
     }
     return true;

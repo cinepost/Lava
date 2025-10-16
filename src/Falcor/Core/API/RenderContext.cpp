@@ -31,8 +31,9 @@
 #include "Texture.h"
 
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/BlitToBufferReduction.slangh"
-
+#include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/Core/API/BlitContext.h"
+#include "Falcor/Core/API/BlitToBufferContext.h"
 
 #include "RenderContext.h"
 

@@ -43,14 +43,14 @@ struct BlitContext {
     Falcor::SharedPtr<FullScreenPass> mpPass;
     Fbo::SharedPtr mpFbo;
 
-    Sampler::SharedPtr pLinearSampler;
-    Sampler::SharedPtr pPointSampler;
-    Sampler::SharedPtr pLinearMinSampler;
-    Sampler::SharedPtr pPointMinSampler;
-    Sampler::SharedPtr pLinearMaxSampler;
-    Sampler::SharedPtr pPointMaxSampler;
+    Sampler::SharedPtr mpLinearSampler;
+    Sampler::SharedPtr mpPointSampler;
+    Sampler::SharedPtr mpLinearMinSampler;
+    Sampler::SharedPtr mpPointMinSampler;
+    Sampler::SharedPtr mpLinearMaxSampler;
+    Sampler::SharedPtr mpPointMaxSampler;
 
-    ParameterBlock::SharedPtr pBlitParamsBuffer;
+    ParameterBlock::SharedPtr mpBlitParamsBuffer;
     float2 prevSrcRectOffset = float2(0, 0);
     float2 prevSrcReftScale = float2(0, 0);
 

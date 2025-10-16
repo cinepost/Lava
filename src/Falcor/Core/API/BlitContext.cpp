@@ -48,11 +48,11 @@ BlitContext::BlitContext(Device* pDevice) {
         d.addShaderLibrary("Core/API/BlitReduction.3d.slang").vsEntry("vsMain").psEntry("psMain");
         mpPass = FullScreenPass::create(Falcor::SharedPtr<Device>(pDevice), d, defines);
         mpFbo = Fbo::create(Falcor::SharedPtr<Device>(pDevice));
-        FALCOR_ASSERT(pPass && mpFbo);
+        FALCOR_ASSERT(mpPass && mpFbo);
 
-        pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
-        offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");
-        scaleVarOffset = pBlitParamsBuffer->getVariableOffset("gScale");
+        mpBlitParamsBuffer = mpPass->getVars()->getParameterBlock("BlitParamsCB");
+        offsetVarOffset = mpBlitParamsBuffer->getVariableOffset("gOffset");
+        scaleVarOffset = mpBlitParamsBuffer->getVariableOffset("gScale");
         prevSrcRectOffset = float2(-1.0f);
         prevSrcReftScale = float2(-1.0f);
 
@@ -60,36 +60,39 @@ BlitContext::BlitContext(Device* pDevice) {
         desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         desc.setReductionMode(Sampler::ReductionMode::Standard);
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearSampler = Sampler::create(pDevice, desc);
+        mpLinearSampler = pDevice->createSampler(desc);
         desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointSampler = Sampler::create(pDevice, desc);
+        mpPointSampler = pDevice->createSampler(desc);
         // Min reductions.
         desc.setReductionMode(Sampler::ReductionMode::Min);
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearMinSampler = Sampler::create(pDevice, desc);
+        mpLinearMinSampler = pDevice->createSampler(desc);
         desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointMinSampler = Sampler::create(pDevice, desc);
+        mpPointMinSampler = pDevice->createSampler(desc);
         // Max reductions.
         desc.setReductionMode(Sampler::ReductionMode::Max);
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-        pLinearMaxSampler = Sampler::create(pDevice, desc);
+        mpLinearMaxSampler = pDevice->createSampler(desc);
         desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        pPointMaxSampler = Sampler::create(pDevice, desc);
+        mpPointMaxSampler = pDevice->createSampler(desc);
 
         const auto& pDefaultBlockReflection = mpPass->getProgram()->getReflector()->getDefaultParameterBlock();
         texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
 
         // Complex blit parameters
 
-        compTransVarOffset[0] = pBlitParamsBuffer->getVariableOffset("gCompTransformR");
-        compTransVarOffset[1] = pBlitParamsBuffer->getVariableOffset("gCompTransformG");
-        compTransVarOffset[2] = pBlitParamsBuffer->getVariableOffset("gCompTransformB");
-        compTransVarOffset[3] = pBlitParamsBuffer->getVariableOffset("gCompTransformA");
+        compTransVarOffset[0] = mpBlitParamsBuffer->getVariableOffset("gCompTransformR");
+        compTransVarOffset[1] = mpBlitParamsBuffer->getVariableOffset("gCompTransformG");
+        compTransVarOffset[2] = mpBlitParamsBuffer->getVariableOffset("gCompTransformB");
+        compTransVarOffset[3] = mpBlitParamsBuffer->getVariableOffset("gCompTransformA");
         prevComponentsTransform[0] = float4(1.0f, 0.0f, 0.0f, 0.0f);
         prevComponentsTransform[1] = float4(0.0f, 1.0f, 0.0f, 0.0f);
         prevComponentsTransform[2] = float4(0.0f, 0.0f, 1.0f, 0.0f);
         prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        for (uint32_t i = 0; i < 4; i++) pBlitParamsBuffer->setVariable(compTransVarOffset[i], prevComponentsTransform[i]);
+
+        for (uint32_t i = 0; i < 4; i++) { 
+            mpBlitParamsBuffer->setVariable(compTransVarOffset[i], prevComponentsTransform[i]);
+        }
     }
 }
 

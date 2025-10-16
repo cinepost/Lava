@@ -36,9 +36,6 @@
 #include "Sampler.h"
 #include "ShaderTable.h"
 #include "Falcor/Utils/Math/Vector.h"
-#include "Falcor/Core/State/GraphicsState.h"
-#include "Falcor/Core/API/BlitContext.h"
-#include "Falcor/Core/API/BlitToBufferContext.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 
 #include "gfx_lib/slang-gfx.h"
@@ -47,8 +44,10 @@ namespace Falcor {
 
 class RtProgram;
 class RtProgramVars;
-
+class GraphicsState;
 class FullScreenPass;
+class BlitContext;
+class BlitToBufferContext;
 
 /** The rendering context. Use it to bind state and dispatch calls to the GPU
 */
@@ -206,7 +205,7 @@ class dlldecl RenderContext : public ComputeContext {
 
     /** Submit the command list
     */
-    void flush(bool wait = false) override;
+    void submit(bool wait = false) override;
 
     /** Tell the render context what it should and shouldn't bind before drawing
     */

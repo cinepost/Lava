@@ -46,18 +46,6 @@ LowLevelContextData::~LowLevelContextData() {
     }
 }
 
-NativeHandle LowLevelContextData::getCommandQueueNativeHandle() const {
-    gfx::InteropHandle gfxNativeHandle = {};
-    FALCOR_GFX_CALL(mpGfxCommandQueue->getNativeHandle(&gfxNativeHandle));
-    return NativeHandle(reinterpret_cast<VkQueue>(gfxNativeHandle.handleValue));
-}
-
-NativeHandle LowLevelContextData::getCommandBufferNativeHandle() const {
-    gfx::InteropHandle gfxNativeHandle = {};
-    FALCOR_GFX_CALL(mGfxCommandBuffer->getNativeHandle(&gfxNativeHandle));
-    return NativeHandle(reinterpret_cast<VkCommandBuffer>(gfxNativeHandle.handleValue));
-}
-
 void LowLevelContextData::closeCommandBuffer() {
     mIsCommandBufferOpen = false;
     closeEncoders();

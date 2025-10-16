@@ -442,6 +442,9 @@ private:
     friend class SharedPtr;
 };
 
+template<typename T>
+using ref = SharedPtr<T>;
+
 template<class T, class... Args>
 SharedPtr<T> make_shared_ptr(Args&&... args) {
     return SharedPtr<T>(new T(std::forward<Args>(args)...));
@@ -498,6 +501,9 @@ private:
     SharedPtr<T> mSharedPtr;
     T* mWeakRef = nullptr;
 };
+
+template<typename T>
+using BreakableReference = BreakableSharedPtr<T>;
 
 } // namespace Falcor
 

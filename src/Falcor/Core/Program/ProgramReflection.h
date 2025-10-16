@@ -33,6 +33,7 @@
 #include <slang/slang.h>
 
 #include "Falcor/Core/Enum.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/ShaderResourceType.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
 #include "Falcor/Utils/Math/Vector.h"
@@ -525,11 +526,9 @@ struct TypedShaderVarOffset : ShaderVarOffset {
 
 /** Reflection and layout information for a type in shader code.
 */
-class FALCOR_API ReflectionType : public std::enable_shared_from_this<ReflectionType> {
+class FALCOR_API ReflectionType : public Object {
+        FALCOR_OBJECT(ReflectionType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionType>;
-
         virtual ~ReflectionType() = default;
 
         /** The kind of a type.
@@ -610,7 +609,7 @@ class FALCOR_API ReflectionType : public std::enable_shared_from_this<Reflection
 
         If this type doesn't have fields/members, or doesn't have a field/member matching `name`, then returns null.
         */
-        std::shared_ptr<const ReflectionVar> findMember(std::string_view name) const;
+        Falcor::SharedPtr<const ReflectionVar> findMember(std::string_view name) const;
 
         /** Get the (type and) offset of a field/member with the given `name`.
 
@@ -710,13 +709,12 @@ class FALCOR_API ReflectionType : public std::enable_shared_from_this<Reflection
 
 /** Represents an array type in shader code.
 */
-class FALCOR_API ReflectionArrayType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionArrayType> {
+class FALCOR_API ReflectionArrayType : public ReflectionType {
+        FALCOR_OBJECT(ReflectionArrayType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionArrayType>;
-
         /** Create a new object
         */
-        static ReflectionArrayType::SharedPtr create(
+        static Falcor::SharedPtr<ReflectionArrayType> create(
             uint32_t elementCount,
             uint32_t elementByteStride,
             const ReflectionType::SharedConstPtr& pElementType,
@@ -740,18 +738,18 @@ class FALCOR_API ReflectionArrayType : public ReflectionType, public inherit_sha
 
         /** Get the type of the array elements.
         */
-        const ReflectionType* getElementType() const { return mpElementType.get(); }
+        ReflectionType const* getElementType() const { return mpElementType.get(); }
 
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
 
     public:
         ReflectionArrayType(
-            uint32_t                                elementCount,
-            uint32_t                                elementByteStride,
-            const ReflectionType::SharedConstPtr&   pElementType,
-            ByteSize                                totalByteSize,
-            slang::TypeLayoutReflection*    pSlangTypeLayout);
+            uint32_t                                        elementCount,
+            uint32_t                                        elementByteStride,
+            const Falcor::SharedPtr<const ReflectionType>&  pElementType,
+            ByteSize                                        totalByteSize,
+            slang::TypeLayoutReflection*                    pSlangTypeLayout);
 
     private:
         uint32_t mElementCount = 0;
@@ -761,10 +759,9 @@ class FALCOR_API ReflectionArrayType : public ReflectionType, public inherit_sha
 
 /** Represents a `struct` type in shader code.
 */
-class FALCOR_API ReflectionStructType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionStructType> {
+class FALCOR_API ReflectionStructType : public ReflectionType {
+        FALCOR_OBJECT(ReflectionStructType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionStructType>;
-
         /** Get the name of the struct type
         */
         const std::string& getName() const { return mName; }
@@ -776,12 +773,12 @@ class FALCOR_API ReflectionStructType : public ReflectionType, public inherit_sh
         /**
          * Get member by index
          */
-        const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
+        const Falcor::SharedPtr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
 
         /**
          * Get member by name
          */
-        const std::shared_ptr<const ReflectionVar>& getMember(std::string_view name) const;
+        const Falcor::SharedPtr<const ReflectionVar>& getMember(std::string_view name) const;
 
 
         /** Constant used to indicate that member lookup failed.
@@ -807,7 +804,7 @@ class FALCOR_API ReflectionStructType : public ReflectionType, public inherit_sh
             \param[in] size The size of the struct in bytes
             \param[in] name The name of the struct
         */
-        static ReflectionStructType::SharedPtr create(size_t byteSize, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
+        static Falcor::SharedPtr<ReflectionStructType> create(size_t byteSize, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
 
         struct BuildState {
             uint32_t cbCount = 0;
@@ -818,15 +815,15 @@ class FALCOR_API ReflectionStructType : public ReflectionType, public inherit_sh
 
         /** Add a new member
         */
-        int32_t addMember(const std::shared_ptr<const ReflectionVar>& pVar, BuildState& ioBuildState);
+        int32_t addMember(const Falcor::SharedPtr<const ReflectionVar>& pVar, BuildState& ioBuildState);
 
-        int32_t addMemberIgnoringNameConflicts(const std::shared_ptr<const ReflectionVar>& pVar, BuildState& ioBuildState);
+        int32_t addMemberIgnoringNameConflicts(const Falcor::SharedPtr<const ReflectionVar>& pVar, BuildState& ioBuildState);
 
     public:
         ReflectionStructType(size_t size, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
 
     private:
-        std::vector<std::shared_ptr<const ReflectionVar>> mMembers;           // Struct members
+        std::vector<Falcor::SharedPtr<const ReflectionVar>> mMembers;           // Struct members
         std::map<std::string, int32_t, std::less<>> mNameToIndex; // Translates from a name to an index in mMembers
         std::string mName;
 };
@@ -834,10 +831,8 @@ class FALCOR_API ReflectionStructType : public ReflectionType, public inherit_sh
 /** Reflection object for scalars, vectors and matrices
 */
 class FALCOR_API ReflectionBasicType : public ReflectionType {
+        FALCOR_OBJECT(ReflectionBasicType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionBasicType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionBasicType>;
-
         /** The type of the object
         */
         enum class Type {
@@ -1002,7 +997,7 @@ class FALCOR_API ReflectionBasicType : public ReflectionType {
             \param[in] isRowMajor For matrices, true means row-major, otherwise it's column-major
             \param[in] size The size of the object
         */
-        static ReflectionBasicType::SharedPtr create(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout);
+        static Falcor::SharedPtr<ReflectionBasicType> create(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout);
 
         /** Get the object's type
         */
@@ -1026,10 +1021,8 @@ class FALCOR_API ReflectionBasicType : public ReflectionType {
 /** Reflection object for resources
 */
 class FALCOR_API ReflectionResourceType : public ReflectionType {
+        FALCOR_OBJECT(ReflectionResourceType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionResourceType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
-
         /** Describes how the shader will access the resource
         */
         enum class ShaderAccess {
@@ -1148,7 +1141,7 @@ class FALCOR_API ReflectionResourceType : public ReflectionType {
         
         /** Create a new object
         */
-        static ReflectionResourceType::SharedPtr create(
+        static Falcor::SharedPtr<ReflectionResourceType> create(
             Type type,
             Dimensions dims,
             StructuredType structuredType,
@@ -1159,14 +1152,14 @@ class FALCOR_API ReflectionResourceType : public ReflectionType {
 
         /** For structured- and constant-buffers, set a reflection-type describing the buffer's layout
         */
-        void setStructType(const ReflectionType::SharedConstPtr& pType);
+        void setStructType(const Falcor::SharedPtr<const ReflectionType>& pType);
 
         /** Get the struct-type
         */
         const ReflectionType* getStructType() const { return mpStructType.get(); }
 
-        const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
+        const Falcor::SharedPtr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
+        void setParameterBlockReflector(const Falcor::SharedPtr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
 
 
         /** Get the dimensions
@@ -1212,45 +1205,41 @@ class FALCOR_API ReflectionResourceType : public ReflectionType {
         ReturnType mReturnType;
         ShaderAccess mShaderAccess;
         Type mType;
-        ReflectionType::SharedConstPtr mpStructType;                                // For constant- and structured-buffers
-        std::shared_ptr<const ParameterBlockReflection> mpParameterBlockReflector;  // For constant buffers and parameter blocks
+        Falcor::SharedPtr<const ReflectionType> mpStructType;                         // For constant- and structured-buffers
+        Falcor::SharedPtr<const ParameterBlockReflection> mpParameterBlockReflector;  // For constant buffers and parameter blocks
 };
 
 /** Reflection object for resources
 */
-class FALCOR_API ReflectionInterfaceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionInterfaceType> {
+class FALCOR_API ReflectionInterfaceType : public ReflectionType {
+        FALCOR_OBJECT(ReflectionInterfaceType)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionInterfaceType>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionInterfaceType>;
-
-        static ReflectionInterfaceType::SharedPtr create(slang::TypeLayoutReflection* pSlangTypeLayout);
+        static Falcor::SharedPtr<ReflectionInterfaceType> create(slang::TypeLayoutReflection* pSlangTypeLayout);
 
         bool operator==(const ReflectionInterfaceType& other) const;
         bool operator==(const ReflectionType& other) const override;
 
-        const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
+        const Falcor::SharedPtr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
+        void setParameterBlockReflector(const Falcor::SharedPtr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
 
     public:
-        ReflectionInterfaceType( slang::TypeLayoutReflection*    pSlangTypeLayout);
+        ReflectionInterfaceType( slang::TypeLayoutReflection* pSlangTypeLayout);
 
     private:
-        std::shared_ptr<const ParameterBlockReflection> mpParameterBlockReflector; // For interface types that have been specialized
+        Falcor::SharedPtr<const ParameterBlockReflection> mpParameterBlockReflector; // For interface types that have been specialized
 };
 
 /** An object describing a variable
 */
-class FALCOR_API ReflectionVar : public std::enable_shared_from_this<ReflectionVar> {
+class FALCOR_API ReflectionVar : public Object {
+        FALCOR_OBJECT(ReflectionVar)
     public:
-        using SharedPtr = std::shared_ptr<ReflectionVar>;
-        using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
-
         /** Create a new object
             \param[in] name The name of the variable
             \param[in] pType The type of the variable
             \param[in] bindLocation The offset of the variable relative to the parent object
         */
-        static ReflectionVar::SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, const ShaderVarOffset& bindLocation);
+        static Falcor::SharedPtr<ReflectionVar> create(const std::string& name, const Falcor::SharedPtr<const ReflectionType>& pType, const ShaderVarOffset& bindLocation);
 
         /** Get the variable name
         */
@@ -1270,11 +1259,11 @@ class FALCOR_API ReflectionVar : public std::enable_shared_from_this<ReflectionV
         bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
 
     public:
-        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, const ShaderVarOffset& bindLocation);
+        ReflectionVar(const std::string& name, const Falcor::SharedPtr<const ReflectionType>& pType, const ShaderVarOffset& bindLocation);
 
     private:
         std::string mName;
-        ReflectionType::SharedConstPtr mpType;
+        Falcor::SharedPtr<const ReflectionType> mpType;
         ShaderVarOffset mBindLocation;
 };
 
@@ -1282,27 +1271,25 @@ class ProgramReflection;
 
 /** A reflection object describing a parameter block
 */
-class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<ParameterBlockReflection> {
+class FALCOR_API ParameterBlockReflection :  public Object {
+        FALCOR_OBJECT(ParameterBlockReflection)
     public:
-        using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
-        using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
-
         static const uint32_t kInvalidIndex = 0xffffffff;
 
         /**
          * Create a new parameter block reflector, for the given element type.
          */
-        static ParameterBlockReflection::SharedPtr create(ProgramVersion const* pProgramVersion, const ReflectionType::SharedConstPtr& pElementType);
+        static Falcor::SharedPtr<ParameterBlockReflection> create(ProgramVersion const* pProgramVersion, const Falcor::SharedPtr<const ReflectionType>& pElementType);
 
         /**
          * Create a new shader object reflector, for the given element type.
          */
-        static ParameterBlockReflection::SharedPtr create(ProgramVersion const* pProgramVersion, slang::TypeLayoutReflection* pElementType);
+        static Falcor::SharedPtr<ParameterBlockReflection> create(ProgramVersion const* pProgramVersion, slang::TypeLayoutReflection* pElementType);
 
         /**
          * Get the type of the contents of the parameter block.
          */
-        ReflectionType::SharedConstPtr getElementType() const { return mpElementType; }
+        Falcor::SharedPtr<const ReflectionType> getElementType() const { return mpElementType; }
 
         using BindLocation = TypedShaderVarOffset;
 
@@ -1310,7 +1297,7 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
 
         /** Get the variable for a resource in the block
         */
-        const ReflectionVar::SharedConstPtr getResource(std::string_view name) const;
+        const Falcor::SharedPtr<const ReflectionVar> getResource(std::string_view name) const;
 
         /** Get the bind-location for a resource in the block
         */
@@ -1341,7 +1328,7 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
             uint32_t descriptorSetIndex = kInvalidIndex;    ///< The index of the descriptor set to be bound into, when flavor is Flavor::Simple.
 
             /// The reflection object for a sub-object range.
-            ParameterBlockReflection::SharedConstPtr pSubObjectReflector;
+            Falcor::SharedPtr<const ParameterBlockReflection> pSubObjectReflector;
 
             bool isDescriptorSet() const { return flavor == Flavor::Simple; }
             bool isRootDescriptor() const { return flavor == Flavor::RootDescriptor; }
@@ -1354,9 +1341,9 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
             bool useRootConstants = false;
         };
 
-        static ParameterBlockReflection::SharedPtr createEmpty(ProgramVersion const* pProgramVersion);
+        static Falcor::SharedPtr<ParameterBlockReflection> createEmpty(ProgramVersion const* pProgramVersion);
 
-        void setElementType(const ReflectionType::SharedConstPtr& pElementType);
+        void setElementType(const Falcor::SharedPtr<const ReflectionType>& pElementType);
 
         void addResourceRange(ResourceRangeBindingInfo const& bindingInfo);
 
@@ -1383,11 +1370,9 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
         uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
         uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
 
-        //ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
+        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
 
-        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
-
-        ReflectionVar::SharedConstPtr findMember(std::string_view name) const { return getElementType()->findMember(name); }
+        Falcor::SharedPtr<const ReflectionVar> findMember(std::string_view name) const { return getElementType()->findMember(name); }
 
     public:
         ParameterBlockReflection(ProgramVersion const* pProgramVersion);
@@ -1398,7 +1383,7 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
         /// For a `ConstantBuffer<T>` or `ParameterBlock<T>`,
         /// this will be the type `T`.
         ///
-        ReflectionType::SharedConstPtr mpElementType;
+        Falcor::SharedPtr<const ReflectionType> mpElementType;
 
         /// Binding information for the "default" constant buffer, if needed.
         ///
@@ -1429,19 +1414,16 @@ class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<
         ProgramVersion const* mpProgramVersion = nullptr;
 };
 
-typedef ParameterBlockReflection ParameterBlockReflection;
-
-class FALCOR_API EntryPointGroupReflection : public ParameterBlockReflection, public inherit_shared_from_this<ParameterBlockReflection, EntryPointGroupReflection> {
+class FALCOR_API EntryPointGroupReflection : public ParameterBlockReflection {
+        FALCOR_OBJECT(EntryPointGroupReflection)
     public:
-        using SharedPtr = std::shared_ptr<EntryPointGroupReflection>;
-        using SharedConstPtr = std::shared_ptr<const EntryPointGroupReflection>;
-
-        static EntryPointGroupReflection::SharedPtr create(
+        static Falcor::SharedPtr<EntryPointGroupReflection> create(
             ProgramVersion const* pProgramVersion,
             uint32_t groupIndex,
             const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors
         );
 
+    private:
         EntryPointGroupReflection(ProgramVersion const* pProgramVersion);
 };
 
@@ -1449,11 +1431,9 @@ typedef EntryPointGroupReflection EntryPointBaseReflection;
 
 /** Reflection object for an entire program. Essentially, it's a collection of ParameterBlocks
 */
-class FALCOR_API ProgramReflection : public std::enable_shared_from_this<ProgramReflection> {
+class FALCOR_API ProgramReflection : public Object {
+        FALCOR_OBJECT(ProgramReflection)
     public:
-        using SharedPtr = std::shared_ptr<ProgramReflection>;
-        using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
-
         static const uint32_t kInvalidLocation = -1;
 
         /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
@@ -1476,7 +1456,7 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
 
         /** Create a new object for a Slang reflector object
         */
-        static ProgramReflection::SharedConstPtr create(
+        static Falcor::SharedPtr<const ProgramReflection> create(
             ProgramVersion const* pProgramVersion,
             slang::ShaderReflection* pSlangReflector,
             const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors,
@@ -1485,17 +1465,17 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
 
         void finalize();
 
-        std::shared_ptr<const ProgramVersion> getProgramVersion() const;
+        ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
 
         /**
          * Get parameter block by name
          */
-        ParameterBlockReflection::SharedConstPtr getParameterBlock(std::string_view name) const;
+        Falcor::SharedPtr<const ParameterBlockReflection> getParameterBlock(std::string_view name) const;
 
         /**
          * Get the default (unnamed) parameter block.
          */
-        ParameterBlockReflection::SharedConstPtr getDefaultParameterBlock() const { return mpDefaultBlock; }
+        Falcor::SharedPtr<const ParameterBlockReflection> getDefaultParameterBlock() const { return mpDefaultBlock; }
 
         /** For compute-shaders, return the required thread-group size
         */
@@ -1507,7 +1487,7 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
 
         /** Get a resource from the default parameter block
         */
-        const ReflectionVar::SharedConstPtr getResource(std::string_view name) const;
+        const Falcor::SharedPtr<const ReflectionVar> getResource(std::string_view name) const;
 
         /** Search for a vertex attribute by its semantic name
         */
@@ -1524,13 +1504,13 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
         /** Look up a type by name.
             \return nullptr if the type does not exist.
         */
-        ReflectionType::SharedPtr findType(std::string_view name) const;
+        Falcor::SharedPtr<ReflectionType> findType(std::string_view name) const;
 
-        ReflectionVar::SharedConstPtr findMember(std::string_view name) const;
+        Falcor::SharedPtr<const ReflectionVar> findMember(std::string_view name) const;
 
-        const std::vector<EntryPointGroupReflection::SharedPtr>& getEntryPointGroups() const { return mEntryPointGroups; }
+        const std::vector<Falcor::SharedPtr<EntryPointGroupReflection>>& getEntryPointGroups() const { return mEntryPointGroups; }
 
-        const EntryPointGroupReflection::SharedPtr& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
+        const Falcor::SharedPtr<EntryPointGroupReflection>& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
 
         const std::vector<HashedString>& getHashedStrings() const { return mHashedStrings; }
 
@@ -1544,11 +1524,11 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
         ProgramReflection(const ProgramReflection&) = default;
 
     private:
-        void setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock);
+        void setDefaultParameterBlock(const Falcor::SharedPtr<ParameterBlockReflection>& pBlock);
 
         ProgramVersion const* mpProgramVersion;
 
-        ParameterBlockReflection::SharedPtr mpDefaultBlock;
+        Falcor::SharedPtr<ParameterBlockReflection> mpDefaultBlock;
         uint3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
 
@@ -1557,9 +1537,9 @@ class FALCOR_API ProgramReflection : public std::enable_shared_from_this<Program
         VariableMap mVertAttrBySemantic;
 
         slang::ShaderReflection* mpSlangReflector = nullptr;
-        mutable std::map<std::string, ReflectionType::SharedPtr, std::less<>> mMapNameToType;
+        mutable std::map<std::string, Falcor::SharedPtr<ReflectionType>, std::less<>> mMapNameToType;
 
-        std::vector<EntryPointGroupReflection::SharedPtr> mEntryPointGroups;
+        std::vector<Falcor::SharedPtr<EntryPointGroupReflection>> mEntryPointGroups;
 
         std::vector<HashedString> mHashedStrings;
 };

@@ -33,11 +33,10 @@
 #include <vector>
 #include <unordered_map>
 
-#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/NativeHandle.h"
 #include "Falcor/Core/API/Formats.h"
-
-#include "NativeHandle.h"
-#include "ResourceViews.h"
+#include "Falcor/Core/API/ResourceViews.h"
+#include "Falcor/Core/Object.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
@@ -47,8 +46,9 @@ class Device;
 class Texture;
 class Buffer;
 class ParameterBlock;
+struct ResourceViewInfo;
 
-class dlldecl Resource : public Object {
+class FALCOR_API Resource : public Object {
     FALCOR_OBJECT(Resource)
  public:
 
@@ -99,7 +99,6 @@ class dlldecl Resource : public Object {
     Falcor::SharedPtr<Device> getDevice() const;
 
     size_t id() const { return mID; }
-
 
     /** Get the bind flags
     */
@@ -180,7 +179,7 @@ class dlldecl Resource : public Object {
  protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size);
+    Resource(Falcor::SharedPtr<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size);
 
     Falcor::BreakableSharedPtr<Device> mpDevice;
 

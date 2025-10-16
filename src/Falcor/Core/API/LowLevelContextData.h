@@ -48,20 +48,6 @@ public:
     gfx::ICommandQueue* getGfxCommandQueue() const { return mpGfxCommandQueue; }
     gfx::ICommandBuffer* getGfxCommandBuffer() const { return mGfxCommandBuffer; }
 
-    /**
-     * Returns the native API handle for the command queue:
-     * - D3D12: ID3D12CommandQueue*
-     * - Vulkan: VkQueue (Vulkan)
-     */
-    NativeHandle getCommandQueueNativeHandle() const;
-
-    /**
-     * Returns the native API handle for the command buffer:
-     * - D3D12: ID3D12GraphicsCommandList*
-     * - Vulkan: VkCommandBuffer
-     */
-    NativeHandle getCommandBufferNativeHandle() const;
-
     const Fence::SharedPtr& getFence() const { return mpFence; }
 
     void closeCommandBuffer();

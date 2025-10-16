@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "GpuMemoryHeap.h"
-#include "GpuFence.h"
+#include "Fence.h"
 #include "Device.h"
 
 #include "lava_utils_lib/logging.h"
@@ -36,10 +36,6 @@
 namespace Falcor {
 
     GpuMemoryHeap::~GpuMemoryHeap() {
-        //if(mpActivePage && mpActivePage->pResourceHandle.get()) {
-        //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
-        //    pBufferResource->unmap(nullptr);
-        //}
         mDeferredReleases = decltype(mDeferredReleases)();
     }
 

@@ -37,16 +37,8 @@ namespace Falcor {
 
 class dlldecl ComputeContext : public CopyContext {
  public:
-    using SharedPtr = std::shared_ptr<ComputeContext>;
-    using SharedConstPtr = std::shared_ptr<const ComputeContext>;
-
+    ComputeContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~ComputeContext();
-
-    /** Create a new compute context.
-        \param[in] queue Command queue handle.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Dispatch a compute task
         \param[in] dispatchSize 3D dispatch group size
@@ -77,10 +69,10 @@ class dlldecl ComputeContext : public CopyContext {
 
     /** Submit the command list
     */
-    virtual void flush(bool wait = false) override;
+    virtual void submit(bool wait = false) override;
 
  protected:
-    ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    ComputeContext(gfx::ICommandQueue* pQueue);
 
     const ProgramVars* mpLastBoundComputeVars = nullptr;
 };

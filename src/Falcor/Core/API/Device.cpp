@@ -32,12 +32,12 @@
 #include "Device.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ProgramManager.h"
-
-#include "Sampler.h"
 
 
 namespace Falcor {
@@ -95,9 +95,13 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc&
     return pDevice;
 }
 
-Buffer::SharedPtr Device::createBuffer(size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData)
-{
-    return std::make_shared<Buffer>(this, size, bindFlags, memoryType, pInitData);
+Buffer::SharedPtr Device::createBuffer(size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData) {
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), size, bindFlags, memoryType, pInitData);
+}
+
+
+Sampler::SharedPtr Device::createSampler(const Sampler::Desc& desc) {
+    return make_shared_ptr<Sampler>(Device::SharedPtr(this), desc);
 }
 
 Buffer::SharedPtr Device::createTypedBuffer(
@@ -108,7 +112,7 @@ Buffer::SharedPtr Device::createTypedBuffer(
     const void* pInitData
 )
 {
-    return std::make_shared<Buffer>(this, format, elementCount, bindFlags, memoryType, pInitData);
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), format, elementCount, bindFlags, memoryType, pInitData);
 }
 
 Buffer::SharedPtr Device::createStructuredBuffer(
@@ -119,7 +123,7 @@ Buffer::SharedPtr Device::createStructuredBuffer(
     const void* pInitData,
     bool createCounter
 ){
-    return std::make_shared<Buffer>(this, structSize, elementCount, bindFlags, memoryType, pInitData, createCounter);
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), structSize, elementCount, bindFlags, memoryType, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Device::createStructuredBuffer(
@@ -140,7 +144,7 @@ Buffer::SharedPtr Device::createStructuredBuffer(
     auto structStride = pResourceType->getStructType()->getSlangTypeLayout()->getStride();
 
     FALCOR_ASSERT(structStride <= std::numeric_limits<uint32_t>::max());
-    return std::make_shared<Buffer>(this, (uint32_t)structStride, elementCount, bindFlags, memoryType, pInitData, createCounter);
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), (uint32_t)structStride, elementCount, bindFlags, memoryType, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Device::createStructuredBuffer(
@@ -160,11 +164,11 @@ Buffer::SharedPtr Device::createBufferFromResource(
     ResourceBindFlags bindFlags,
     MemoryType memoryType
 ){
-    return std::make_shared<Buffer>(this, pResource, size, bindFlags, memoryType);
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), pResource, size, bindFlags, memoryType);
 }
 
 Buffer::SharedPtr Device::createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType){
-    return std::make_shared<Buffer>(this, handle, size, bindFlags, memoryType);
+    return make_shared_ptr<Buffer>(Device::SharedPtr(this), handle, size, bindFlags, memoryType);
 }
 
 Texture::SharedPtr Device::createTextureFromResource(
@@ -181,8 +185,8 @@ Texture::SharedPtr Device::createTextureFromResource(
     Resource::State initState
 )
 {
-    return make_ref<Texture>(
-        ref<Device>(this), pResource, type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, initState
+    return make_shared_ptr<Texture>(
+        Device::SharedPtr(this), pResource, type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, initState
     );
 }
 
@@ -225,7 +229,7 @@ bool Device::init() {
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     
-    mpDefaultSampler = Sampler::create(shared_from_this(), desc);
+    mpDefaultSampler = createSampler(desc);
     FALCOR_ASSERT(mpDefaultSampler);
 
     mpRenderContext = RenderContext::create(shared_from_this(), mGfxCommandQueue);

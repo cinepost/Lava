@@ -41,9 +41,12 @@
 
 #include "Falcor/Core/API/NativeHandle.h"
 #include "Falcor/Core/API/LowLevelContextData.h"
-#include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
+
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
 
 #include "gfx_lib/slang-gfx.h"
 #include "gfx_lib/vulkan/vk-device-props.h"
@@ -61,9 +64,8 @@ namespace Falcor {
 struct DeviceApiData;
 
 class Fbo;
-class Buffer;
-class Sampler;
 class ShaderVar;
+class GpuMemoryHeap;
 class CopyContext;
 class RenderContext;
 class TextureManager;
@@ -288,6 +290,8 @@ class FALCOR_API Device: public Object {
         Resource::State initState
     );
 
+    Falcor::SharedPtr<Sampler> createSampler(const Sampler::Desc& desc);
+
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
@@ -368,8 +372,8 @@ class FALCOR_API Device: public Object {
 
     size_t getBufferDataAlignment(ResourceBindFlags bindFlags);
 
-    const GpuMemoryHeap::SharedPtr& getReadBackHeap() const { return mpReadBackHeap; }
-    const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
+    const Falcor::SharedPtr<GpuMemoryHeap>& getReadBackHeap() const { return mpReadBackHeap; }
+    const Falcor::SharedPtr<GpuMemoryHeap>& getUploadHeap() const { return mpUploadHeap; }
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; }  // ms/tick
 
     /** Check if features are supported by the device
@@ -447,8 +451,8 @@ class FALCOR_API Device: public Object {
 
     Desc mDesc;
     Slang::ComPtr<gfx::IDevice> mGfxDevice;
-    GpuMemoryHeap::SharedPtr mpReadBackHeap;
-    GpuMemoryHeap::SharedPtr mpUploadHeap;
+    Falcor::SharedPtr<GpuMemoryHeap> mpReadBackHeap;
+    Falcor::SharedPtr<GpuMemoryHeap> mpUploadHeap;
     Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
 
     bool mIsWindowOccluded = false;
@@ -515,14 +519,8 @@ class FALCOR_API Device: public Object {
     */
     static SharedPtr create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Desc& desc);
 
-
-    const NullResourceViews& nullResourceViews() const { return mNullViews; };
-
   protected:
     bool init();
-
-    void createNullViews();
-    void releaseNullViews();
 
     std::string mPhysicalDeviceName;
 
@@ -533,8 +531,6 @@ class FALCOR_API Device: public Object {
 
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
     bool mInitialized;
-
-    NullResourceViews mNullViews;
 
     std::shared_ptr<TextureManager>  mpTextureManager;
     std::unique_ptr<ProgramManager>  mpProgramManager;

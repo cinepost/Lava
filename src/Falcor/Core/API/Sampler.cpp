@@ -32,6 +32,66 @@
 
 namespace Falcor {
 
+gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode) {
+    switch (mode) {
+        case Sampler::AddressMode::Border:
+            return gfx::TextureAddressingMode::ClampToBorder;
+        case Sampler::AddressMode::Clamp:
+            return gfx::TextureAddressingMode::ClampToEdge;
+        case Sampler::AddressMode::Mirror:
+            return gfx::TextureAddressingMode::MirrorRepeat;
+        case Sampler::AddressMode::MirrorOnce:
+            return gfx::TextureAddressingMode::MirrorOnce;
+        case Sampler::AddressMode::Wrap:
+            return gfx::TextureAddressingMode::Wrap;
+        default:
+            assert(false);
+            return gfx::TextureAddressingMode::ClampToBorder;
+    }
+}
+
+gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter) {
+    switch (filter) {
+        case Sampler::Filter::Cubic:
+            return gfx::TextureFilteringMode::Cubic;
+        case Sampler::Filter::Linear:
+            return gfx::TextureFilteringMode::Linear;
+        case Sampler::Filter::Point:
+            return gfx::TextureFilteringMode::Point;
+        default:
+            assert(false);
+            return gfx::TextureFilteringMode::Point;
+    }
+}
+
+gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode) {
+    switch (mode) {
+        case Falcor::Sampler::ReductionMode::Standard:
+            return gfx::TextureReductionOp::Average;
+        case Falcor::Sampler::ReductionMode::Comparison:
+            return gfx::TextureReductionOp::Comparison;
+        case Falcor::Sampler::ReductionMode::Min:
+            return gfx::TextureReductionOp::Minimum;
+        case Falcor::Sampler::ReductionMode::Max:
+            return gfx::TextureReductionOp::Maximum;
+        default:
+            return gfx::TextureReductionOp::Average;
+            break;
+    }
+}
+
+}  // namespace
+
+gfx::ComparisonFunc getGFXComparisonFunc(ComparisonFunc func);
+
+uint32_t Sampler::getApiMaxAnisotropy() {
+    return 16;
+}
+
+Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) {
+    return make_shared_ptr<Sampler>(pDevice, desc);
+}
+
 Sampler::Sampler(Device::SharedPtr pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc) {
     static const std::string kWrongNormalizedAddressModeU = "VkSamplerCreateInfo unnormalizedCoordinates is VK_TRUE, addressModeU must be either VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE or VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER";
     static const std::string kWrongNormalizedAddressModeV = "VkSamplerCreateInfo unnormalizedCoordinates is VK_TRUE, addressModeV must be either VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE or VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER";

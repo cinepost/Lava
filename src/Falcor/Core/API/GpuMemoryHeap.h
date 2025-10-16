@@ -40,7 +40,7 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl GpuMemoryHeap: public Object {
+class FALCOR_API GpuMemoryHeap: public Object {
     FALCOR_OBJECT(GpuMemoryHeap)
  public:    
     struct BaseData {

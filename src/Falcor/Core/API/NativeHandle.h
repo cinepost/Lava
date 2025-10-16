@@ -28,7 +28,9 @@
 #ifndef SRC_FALCOR_CORE_API_NATIVEHANDLE_H_
 #define SRC_FALCOR_CORE_API_NATIVEHANDLE_H_
 
+#include <type_traits>
 #include <cstdint>
+
 
 namespace Falcor {
 
@@ -74,7 +76,7 @@ public:
 
     template<typename T>
     T as() const {
-        assert(mType == NativeHandleTrait<T>::type);
+        FALCOR_ASSERT(mType == NativeHandleTrait<T>::type);
         return NativeHandleTrait<T>::unpack(mValue);
     }
 

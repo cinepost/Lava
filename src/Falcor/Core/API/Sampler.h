@@ -78,7 +78,7 @@ class FALCOR_API Sampler : public Object {
 
     /** Descriptor used to create a new Sampler object
     */
-    class dlldecl Desc {
+    class Desc {
      public:
         friend class Sampler;
 
@@ -154,7 +154,7 @@ class FALCOR_API Sampler : public Object {
         \param[in] desc Describes sampler settings.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Desc& desc);
 
     /**
      * Get the sampler state.
