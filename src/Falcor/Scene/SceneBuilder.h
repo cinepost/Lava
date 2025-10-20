@@ -28,12 +28,8 @@
 #ifndef SRC_FALCOR_SCENE_SCENEBUILDER_H_
 #define SRC_FALCOR_SCENE_SCENEBUILDER_H_
 
-#include <map>
-#include <bitset>
-#include <string>
-#include <unordered_map>
-#include <atomic>
-
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
 
@@ -49,16 +45,21 @@
 
 #include "Geometry.h"
 
+#include <map>
+#include <bitset>
+#include <string>
+#include <unordered_map>
+#include <atomic>
+
 
 namespace Falcor {
 
 class Device;
 class MeshletBuilder;
 
-class dlldecl SceneBuilder {
- public:
-    using SharedPtr = std::shared_ptr<SceneBuilder>;
-
+class FALCOR_API SceneBuilder : public Object {
+    FALCOR_OBJECT(SceneBuilder)
+  public:
     static constexpr uint32_t kInvalidID = Animatable::kInvalidNode;            ///< Largest uint32 value (-1)
     static constexpr uint32_t kInvalidNodeID = Animatable::kInvalidNode;        ///< Largest uint32 value (-1)
     static constexpr uint32_t kInvalidMeshletID = Animatable::kInvalidNode;     ///< Largest uint32 value (-1)
@@ -214,12 +215,12 @@ class dlldecl SceneBuilder {
 
     using InstanceMatrices = std::vector<float4x4>;
 
-    std::shared_ptr<Device> device() { return mpDevice; };
-    std::shared_ptr<Device> device() const { return mpDevice; };
+    Falcor::SharedPtr<Device> device() { return mpDevice; };
+    Falcor::SharedPtr<Device> device() const { return mpDevice; };
 
     /** Create a new object
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Flags mFlags = Flags::Default);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, Flags mFlags = Flags::Default);
 
     /** Create a new builder and import a scene/model file
         \param filename The filename to load
@@ -227,7 +228,7 @@ class dlldecl SceneBuilder {
         \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
         \return A new object with the imported file already initialized. If an import error occurred, a nullptr will be returned
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
 
     /** Import a scene/model file
         \param filename The filename to load
@@ -539,7 +540,7 @@ public:
     };
 
 protected:
-    SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
+    SceneBuilder(Falcor::SharedPtr<Device> pDevice, Flags buildFlags);
 
     struct InternalNode : Node {
         InternalNode() = default;
@@ -563,7 +564,7 @@ protected:
     using MeshGroupList = std::vector<MeshGroup>;
     using CurveList = std::vector<CurveSpec>;
 
-    std::shared_ptr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
     std::unique_ptr<MeshletBuilder> mpMeshletBuilder;
 
     Scene::SceneData mSceneData;
@@ -577,7 +578,6 @@ protected:
     // Meshes
     MeshList mMeshes;
     MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
-    //std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
     std::unordered_map<std::string, MeshID>   mMeshMap;     // mesh name to SceneBuilder mesh id or it's async future
 
     // Instances

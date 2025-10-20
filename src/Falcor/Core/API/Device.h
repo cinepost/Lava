@@ -263,6 +263,113 @@ class FALCOR_API Device: public Object {
     Falcor::SharedPtr<Buffer> createBufferFromNativeHandle(VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     /**
+     * Create a 1D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTexture1D(
+        uint32_t width,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a 2D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTexture2D(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
+     * Create a 3D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] depth The depth of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTexture3D(
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        ResourceFormat format,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        bool sparse = false
+    );
+
+    /**
+     * Create a cube texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
+     * given then the data for at least that number of miplevels must be provided.
+     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTextureCube(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t arraySize = 1,
+        uint32_t mipLevels = Resource::kMaxPossible,
+        const void* pInitData = nullptr,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+
+    /**
+     * Create a multi-sampled 2D texture.
+     * @param[in] width The width of the texture.
+     * @param[in] height The height of the texture.
+     * @param[in] format The format of the texture.
+     * @param[in] sampleCount The sample count of the texture.
+     * @param[in] arraySize The array size of the texture.
+     * @param[in] bindFlags The requested bind flags for the resource.
+     * @return A pointer to a new texture, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Texture> createTexture2DMS(
+        uint32_t width,
+        uint32_t height,
+        ResourceFormat format,
+        uint32_t sampleCount,
+        uint32_t arraySize = 1,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+    );
+
+    /**
      * Create a new texture from an resource.
      * @param[in] pResource Already allocated resource.
      * @param[in] type The type of texture.

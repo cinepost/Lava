@@ -25,8 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
 
@@ -35,9 +34,9 @@
 
 namespace Falcor {
 
-ResourceCache::ResourceCache(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {}
+ResourceCache::ResourceCache(Device::SharedPtr pDevice): mpDevice(pDevice) {}
 
-ResourceCache::SharedPtr ResourceCache::create(std::shared_ptr<Device> pDevice) {
+ResourceCache::SharedPtr ResourceCache::create(Device::SharedPtr pDevice) {
     return SharedPtr(new ResourceCache(pDevice));
 }
 
@@ -111,7 +110,7 @@ void ResourceCache::registerField(const std::string& name, const RenderPassRefle
     }
 }
 
-Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName) {
+Resource::SharedPtr createResourceForPass(Device::SharedPtr pDevice, const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName) {
     uint32_t width = field.getWidth() ? field.getWidth() : params.dims.x;
     uint32_t height = field.getHeight() ? field.getHeight() : params.dims.y;
     uint32_t depth = field.getDepth() ? field.getDepth() : 1;
@@ -129,7 +128,7 @@ Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const
             bool isOutput = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output);
             bool isInternal = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Internal);
             if (isOutput || isInternal) mask |= Resource::BindFlags::DepthStencil | Resource::BindFlags::RenderTarget;
-            auto supported = getFormatBindFlags(pDevice, format);
+            auto supported = getFormatBindFlags(pDevice.get(), format);
             mask &= supported;
             bindFlags |= mask;
         }

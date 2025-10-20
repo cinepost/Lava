@@ -258,6 +258,7 @@ private:
     gfx::IRenderCommandEncoder* drawCallCommon(GraphicsState* pState, ProgramVars* pVars);
 
     std::unique_ptr<BlitContext> mpBlitContext;
+    std::unique_ptr<BlitToBufferContext> mpBlitToBufferContext;
 
     StateBindFlags mBindFlags = StateBindFlags::All;
     GraphicsStateObject* mpLastBoundGraphicsStateObject = nullptr;

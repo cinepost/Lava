@@ -51,10 +51,8 @@ using namespace Falcor;
     either error compensation (Kahan summation) or double precision math.
 */
 class PASS_API AccumulatePass : public RenderPass {
+    FALCOR_OBJECT(AccumulatePass)
  public:
-    using SharedPtr = std::shared_ptr<AccumulatePass>;
-    using SharedConstPtr = std::shared_ptr<const AccumulatePass>;
-
     using PixelFilterType = Falcor::PixelFilterType;
 
     enum class Precision : uint32_t {

@@ -32,25 +32,33 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Enum.h"
 
 
 namespace Falcor {
 
 /** Rasterizer state
 */
-class dlldecl RasterizerState : public std::enable_shared_from_this<RasterizerState> {
+class FALCOR_API RasterizerState : public Object {
+    FALCOR_OBJECT(RasterizerState)
  public:
-    using SharedPtr = std::shared_ptr<RasterizerState>;
-    using SharedConstPtr = std::shared_ptr<const RasterizerState>;
-
     /** Cull mode
     */
-    enum class CullMode {
+    enum class CullMode : uint32_t {
         None,   ///< No culling
         Front,  ///< Cull front-facing primitives
         Back,   ///< Cull back-facing primitives
     };
+
+    FALCOR_ENUM_INFO(
+        CullMode,
+        {
+            {CullMode::None, "None"},
+            {CullMode::Front, "Front"},
+            {CullMode::Back, "Back"},
+        }
+    );
 
     /** Polygon fill mode
     */
@@ -61,7 +69,7 @@ class dlldecl RasterizerState : public std::enable_shared_from_this<RasterizerSt
 
     /** Rasterizer state descriptor
     */
-    class dlldecl Desc {
+    class FALCOR_API Desc {
      public:
         friend class RasterizerState;
 
@@ -161,15 +169,12 @@ class dlldecl RasterizerState : public std::enable_shared_from_this<RasterizerSt
     */
     uint32_t getForcedSampleCount() const { return mDesc.mForcedSampleCount; }
 
-    /** Get the API handle
-    */
-    const RasterizerStateHandle& getApiHandle() const;
-
  private:
-    RasterizerStateHandle mApiHandle;
     RasterizerState(const Desc& Desc) : mDesc(Desc) {}
     Desc mDesc;
 };
+
+FALCOR_ENUM_REGISTER(RasterizerState::CullMode);
 
 // FIXME: Added "Cull" prefix to the enum values as we can't register "None"
 #define rasterizer_state_cm(a) case RasterizerState::CullMode::a: return "Cull" #a

@@ -289,12 +289,12 @@ namespace Falcor {
         /** Set the parameter block that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at a parameter block.
         */
-        void setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const;
+        void setParameterBlock(const Falcor::SharedPtr<ParameterBlock>& pBlock) const;
 
         /** Get the parameter block that this variable points to.
             Logs an error and returns null if this variable doesn't point at a parameter block.
         */
-        std::shared_ptr<ParameterBlock> getParameterBlock() const;
+        Falcor::SharedPtr<ParameterBlock> getParameterBlock() const;
 
 
         /** Implicit conversion from a shader variable to its offset information.

@@ -29,6 +29,7 @@
 #define SRC_FALCOR_UTILS_IMAGE_BITMAP_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Formats.h"
 
 
@@ -39,7 +40,7 @@ class Texture;
 
 /** A class representing a memory bitmap
 */
-class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
+class FALCOR_API Bitmap {
  public:
     enum class ExportFlags : uint32_t {
         None = 0u,              //< Default
@@ -65,9 +66,9 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
-    static UniqueConstPtr createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
+    static UniqueConstPtr createFromFileOIIO(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
+    static UniqueConstPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
+    static UniqueConstPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
 
     /** Store a memory buffer to a PNG file.
         \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.

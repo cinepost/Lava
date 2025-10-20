@@ -49,11 +49,9 @@ class Scene;
 
 /** Base class for light sources. All light sources should inherit from this.
 */
-class dlldecl Light : public Animatable {
+class FALCOR_API Light : public Animatable {
+    FALCOR_OBJECT(Light)
   public:
-    using SharedPtr = std::shared_ptr<Light>;
-    using SharedConstPtr = std::shared_ptr<const Light>;
-
     static const size_t kInvalidSamplerID = LightData::kInvalidSamplerID;
 
     virtual ~Light() = default;
@@ -225,11 +223,9 @@ class dlldecl Light : public Animatable {
 /** Point light source.
     Simple infinitely-small point light with quadratic attenuation.
 */
-class dlldecl PointLight : public Light {
+class FALCOR_API PointLight : public Light {
+    FALCOR_OBJECT(PointLight)
   public:
-    using SharedPtr = std::shared_ptr<PointLight>;
-    using SharedConstPtr = std::shared_ptr<const PointLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~PointLight() = default;
 
@@ -295,11 +291,9 @@ class dlldecl PointLight : public Light {
 
 /** Directional light source.
 */
-class dlldecl DirectionalLight : public Light {
+class FALCOR_API DirectionalLight : public Light {
+    FALCOR_OBJECT(DirectionalLight)
   public:
-    using SharedPtr = std::shared_ptr<DirectionalLight>;
-    using SharedConstPtr = std::shared_ptr<const DirectionalLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~DirectionalLight() = default;
 
@@ -333,11 +327,9 @@ class dlldecl DirectionalLight : public Light {
 /** Distant light source.
     Same as directional light source but subtending a non-zero solid angle.
 */
-class dlldecl DistantLight : public Light {
+class FALCOR_API DistantLight : public Light {
+    FALCOR_OBJECT(DistantLight)
   public:
-    using SharedPtr = std::shared_ptr<DistantLight>;
-    using SharedConstPtr = std::shared_ptr<const DistantLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~DistantLight() = default;
 
@@ -380,11 +372,9 @@ class dlldecl DistantLight : public Light {
 /** Environment light source.
 */
 
-class dlldecl EnvironmentLight: public Light {
+class FALCOR_API EnvironmentLight: public Light {
+    FALCOR_OBJECT(EnvironmentLight)
   public:
-    using SharedPtr = std::shared_ptr<EnvironmentLight>;
-    using SharedConstPtr = std::shared_ptr<const EnvironmentLight>;
-
     static SharedPtr create(const std::string& name = "", Texture::SharedPtr pTexture = nullptr);
     ~EnvironmentLight() = default;
 
@@ -427,11 +417,9 @@ class dlldecl EnvironmentLight: public Light {
 /** Physical Sun and Sky light source.
 */
 
-class dlldecl PhysicalSunSkyLight: public Light {
+class FALCOR_API PhysicalSunSkyLight: public Light {
+    FALCOR_OBJECT(PhysicalSunSkyLight)
   public:
-    using SharedPtr = std::shared_ptr<PhysicalSunSkyLight>;
-    using SharedConstPtr = std::shared_ptr<const PhysicalSunSkyLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~PhysicalSunSkyLight() = default;
 
@@ -460,11 +448,9 @@ class dlldecl PhysicalSunSkyLight: public Light {
 
 /** Analytic area light source.
 */
-class dlldecl AnalyticAreaLight : public Light {
+class FALCOR_API AnalyticAreaLight : public Light {
+    FALCOR_OBJECT(AnalyticAreaLight)
   public:
-    using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
-    using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
-
     enum class LightSamplingMode {
       MONTE_CARLO,
       SOLID_ANGLE,
@@ -523,11 +509,9 @@ class dlldecl AnalyticAreaLight : public Light {
 
 /** Rectangular area light source.
 */
-class dlldecl RectLight : public AnalyticAreaLight {
+class FALCOR_API RectLight : public AnalyticAreaLight {
+    FALCOR_OBJECT(RectLight)
   public:
-    using SharedPtr = std::shared_ptr<RectLight>;
-    using SharedConstPtr = std::shared_ptr<const RectLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~RectLight() = default;
 
@@ -541,11 +525,9 @@ class dlldecl RectLight : public AnalyticAreaLight {
 
 /** Disc area light source.
 */
-class dlldecl DiscLight : public AnalyticAreaLight {
+class FALCOR_API DiscLight : public AnalyticAreaLight {
+    FALCOR_OBJECT(DiscLight)
   public:
-    using SharedPtr = std::shared_ptr<DiscLight>;
-    using SharedConstPtr = std::shared_ptr<const DiscLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~DiscLight() = default;
 
@@ -559,11 +541,9 @@ class dlldecl DiscLight : public AnalyticAreaLight {
 
 /** Sphere area light source.
 */
-class dlldecl SphereLight : public AnalyticAreaLight {
+class FALCOR_API SphereLight : public AnalyticAreaLight {
+    FALCOR_OBJECT(SphereLight)
   public:
-    using SharedPtr = std::shared_ptr<SphereLight>;
-    using SharedConstPtr = std::shared_ptr<const SphereLight>;
-
     static SharedPtr create(const std::string& name = "");
     ~SphereLight() = default;
 

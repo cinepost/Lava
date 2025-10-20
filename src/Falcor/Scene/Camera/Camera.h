@@ -31,6 +31,7 @@
 #include "CameraData.slang"
 
 #include "Falcor/Core/Framework.h" 
+#include "Falcor/Core/Object.h" 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
@@ -44,11 +45,9 @@ class ParameterBlock;
 
 /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
 */
-class dlldecl Camera : public Animatable {
+class FALCOR_API Camera : public Animatable {
+    FALCOR_OBJECT(Camera)
   public:
-    using SharedPtr = std::shared_ptr<Camera>;
-    using SharedConstPtr = std::shared_ptr<const Camera>;
-
     // Default dimensions of full frame cameras and 35mm film
     static const float kDefaultFrameHeight;
 

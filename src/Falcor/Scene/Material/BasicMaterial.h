@@ -44,11 +44,9 @@ namespace Falcor {
 
 	See additional texture channels defined in derived classes.
 */
-class dlldecl BasicMaterial : public Material {
+class FALCOR_API BasicMaterial : public Material {
+		FALCOR_OBJECT(BasicMaterial)
 	public:
-		using SharedPtr = std::shared_ptr<BasicMaterial>;
-		using SharedConstPtr = std::shared_ptr<const BasicMaterial>;
-
 		/** Update material. This prepares the material for rendering.
 			\param[in] pOwner The material system that this material is used with.
 			\return Updates since last call to update().

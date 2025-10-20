@@ -4,12 +4,14 @@
 #include "stdafx.h"
 #include "LTX_Bitmap.h"
 #include "FreeImage.h"
+
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/StringUtils.h"
 
 namespace Falcor {
 
-bool isRGB32fSupported(std::shared_ptr<Device> pDevice);
+bool isRGB32fSupported(Falcor::SharedPtr<Device> pDevice);
 bool isConvertibleToRGBA32Float(ResourceFormat format);
 
 

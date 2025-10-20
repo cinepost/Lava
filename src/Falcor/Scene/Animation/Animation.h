@@ -28,20 +28,20 @@
 #ifndef SRC_FALCOR_SCENE_ANIMATION_ANIMATION_H_
 #define SRC_FALCOR_SCENE_ANIMATION_ANIMATION_H_
 
-#include <vector>
-
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Utils/Math/Matrix.h"
 #include "Falcor/Utils/Math/Quaternion.h"
 
+#include <vector>
+
+
 namespace Falcor {
 
-
-class dlldecl Animation {
+class FALCOR_API Animation : public Object {
+    FALCOR_OBJECT(Animation)
  public:
-    using SharedPtr = std::shared_ptr<Animation>;
-
     enum class InterpolationMode {
         Linear,
         Hermite,

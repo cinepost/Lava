@@ -14,8 +14,8 @@
 using namespace Falcor;
 
 class PASS_API CryptomattePass : public RenderPass {
+		FALCOR_OBJECT(CryptomattePass)
 	public:
-		using SharedPtr = std::shared_ptr<CryptomattePass>;
 		using CryptomatteMode = CryptomattePassMode;
 		static const Info kInfo;
 

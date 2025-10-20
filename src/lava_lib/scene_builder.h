@@ -24,7 +24,7 @@ namespace lava {
 
 class LAVA_API SceneBuilder: public Falcor::SceneBuilder {
 	public:
-		using SharedPtr = std::shared_ptr<lava::SceneBuilder>;
+		using SharedPtr = Falcor::SharedPtr<lava::SceneBuilder>;
 		using Flags = Falcor::SceneBuilder::Flags;
 
 		static SharedPtr create(Falcor::Device::SharedPtr pDevice, Flags buildFlags = Flags::Default);

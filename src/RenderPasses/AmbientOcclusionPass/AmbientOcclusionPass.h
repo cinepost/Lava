@@ -17,10 +17,8 @@ using namespace Falcor;
 
 */
 class PASS_API AmbientOcclusionPass : public RenderPass {
+		FALCOR_OBJECT(AmbientOcclusionPass)
 	public:
-		using SharedPtr = std::shared_ptr<AmbientOcclusionPass>;
-		using SharedConstPtr = std::shared_ptr<const AmbientOcclusionPass>;
-
 		static const Info kInfo;
 
 		virtual ~AmbientOcclusionPass() = default;
@@ -32,7 +30,7 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
+    	virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
     
 		/** Set shading rate (supersampling)
 		*/

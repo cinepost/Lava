@@ -105,6 +105,12 @@ class FALCOR_API Fbo : public Object {
         uint32_t mSampleCount = 1;
     };
 
+    struct DescHash {
+        std::size_t operator()(const Desc& d) const;
+    };
+
+    using DescCache = std::unordered_set<Fbo::Desc, Fbo::DescHash>;
+
     /** Used to tell some functions to attach all array slices of a specific mip-level.
     */
     static const uint32_t kAttachEntireMipLevel = uint32_t(-1);
@@ -180,7 +186,7 @@ class FALCOR_API Fbo : public Object {
 
     /** Get the maximum number of color targets
     */
-    static uint32_t getMaxColorTargetCount(Falcor::SharedPtr<Device> pDevice = nullptr);
+    static uint32_t getMaxColorTargetCount();
 
     /** Get an attached color texture. If no texture is attached will return nullptr.
     */
@@ -244,21 +250,17 @@ class FALCOR_API Fbo : public Object {
         uint32_t firstArraySlice = 0;
     };
 
-    struct DescHash {
-        std::size_t operator()(const Desc& d) const;
-    };
-
     void breakStrongReferenceToDevice();
 
  private:
     static std::unordered_set<Desc, DescHash> sDescs;
 
-    void verifyAttachment(const Attachment& attachment) const;
+    void validateAttachment(const Attachment& attachment) const;
     void calcAndValidateProperties() const;
 
     void applyColorAttachment(uint32_t rtIndex);
     void applyDepthAttachment();
-    void initApiHandle() const;
+    void initFramebuffer() const;
 
     /** Validates that the framebuffer attachments are OK. Throws an exception on error.
         This function causes the actual HW resources to be generated (RTV/DSV).

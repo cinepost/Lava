@@ -108,6 +108,87 @@ Buffer::SharedPtr Device::createBuffer(size_t size, ResourceBindFlags bindFlags,
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), size, bindFlags, memoryType, pInitData);
 }
 
+Texture::SharedPtr Device::createTexture1D(
+    uint32_t width,
+    ResourceFormat format,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    const void* pInitData,
+    ResourceBindFlags bindFlags)
+{
+    //return make_shared_ptr<Texture>(Device::SharedPtr(this), Resource::Type::Texture1D, format, width, 1, 1, arraySize, mipLevels, 1, bindFlags, pInitData);
+    return Texture::create1D(Device::SharedPtr(this), width, format, arraySize, mipLevels, pInitData, bindFlags);
+}
+
+Texture::SharedPtr Device::createTexture2D(
+    uint32_t width,
+    uint32_t height,
+    ResourceFormat format,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    const void* pInitData,
+    ResourceBindFlags bindFlags)
+{
+    //return make_shared_ptr<Texture>(Device::SharedPtr(this), Resource::Type::Texture2D, format, width, height, 1, arraySize, mipLevels, 1, bindFlags, pInitData);
+    return Texture::create2D(Device::SharedPtr(this), width, height, format, arraySize, mipLevels, pInitData, bindFlags);
+}
+
+Texture::SharedPtr Device::createTexture3D(
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    ResourceFormat format,
+    uint32_t mipLevels,
+    const void* pInitData,
+    ResourceBindFlags bindFlags,
+    bool sparse)
+{
+    //return make_shared_ptr<Texture>(Device::SharedPtr(this), Resource::Type::Texture3D, format, width, height, depth, 1, mipLevels, 1, bindFlags, pInitData);
+    return Texture::create3D(Device::SharedPtr(this), width, height, depth, format, mipLevels, pInitData, bindFlags, sparse);
+
+}
+
+Texture::SharedPtr Device::createTextureCube(
+    uint32_t width,
+    uint32_t height,
+    ResourceFormat format,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    const void* pInitData,
+    ResourceBindFlags bindFlags)
+{
+    //return make_shared_ptr<Texture>(Device::SharedPtr(this), Resource::Type::TextureCube, format, width, height, 1, arraySize, mipLevels, 1, bindFlags, pInitData);
+    return Texture::createCube(Device::SharedPtr(this), width, height, format, arraySize, mipLevels, pInitData, bindFlags);
+}
+
+Texture::SharedPtr Device::createTexture2DMS(
+    uint32_t width,
+    uint32_t height,
+    ResourceFormat format,
+    uint32_t sampleCount,
+    uint32_t arraySize,
+    ResourceBindFlags bindFlags)
+{
+    //return make_shared_ptr<Texture>(Device::SharedPtr(this), Resource::Type::Texture2DMultisample, format, width, height, 1, arraySize, 1, sampleCount, bindFlags, nullptr);
+    return Texture::create2DMS(Device::SharedPtr(this), width, height, format, sampleCount, arraySize, bindFlags);
+}
+
+Texture::SharedPtr Device::createTextureFromResource(
+    gfx::ITextureResource* pResource,
+    Texture::Type type,
+    ResourceFormat format,
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    uint32_t sampleCount,
+    ResourceBindFlags bindFlags,
+    Resource::State initState)
+{
+    return make_shared_ptr<Texture>(Device::SharedPtr(this), pResource, type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, initState);
+}
+
 Sampler::SharedPtr Device::createSampler(const Sampler::Desc& desc) {
     return make_shared_ptr<Sampler>(Device::SharedPtr(this), desc);
 }
@@ -187,25 +268,6 @@ Buffer::SharedPtr Device::createBufferFromResource(
 
 Buffer::SharedPtr Device::createBufferFromNativeHandle(VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType){
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), handle, size, bindFlags, memoryType);
-}
-
-Texture::SharedPtr Device::createTextureFromResource(
-    gfx::ITextureResource* pResource,
-    Texture::Type type,
-    ResourceFormat format,
-    uint32_t width,
-    uint32_t height,
-    uint32_t depth,
-    uint32_t arraySize,
-    uint32_t mipLevels,
-    uint32_t sampleCount,
-    ResourceBindFlags bindFlags,
-    Resource::State initState
-)
-{
-    return make_shared_ptr<Texture>(
-        Device::SharedPtr(this), pResource, type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, initState
-    );
 }
 
 /**

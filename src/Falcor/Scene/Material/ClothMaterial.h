@@ -25,47 +25,49 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_CLOTHMATERIAL_H_ 
+#define SRC_FALCOR_SCENE_MATERIAL_CLOTHMATERIAL_H_
+
 #include "Scene/Material/BasicMaterial.h"
 
-namespace Falcor
-{
-    /** Class representing a cloth material.
+namespace Falcor {
 
-        Texture channel layout:
+/** Class representing a cloth material.
 
-            BaseColor
-                - RGB - Base Color
-                - A   - Opacity
-            Specular
-                - R - Unused
-                - G - Roughness
-                - B - Unused
-                - A - Unused
-            Normal
-                - 3-Channel standard normal map, or 2-Channel BC5 format
+    Texture channel layout:
 
-        See additional texture channels defined in BasicMaterial.
+        BaseColor
+            - RGB - Base Color
+            - A   - Opacity
+        Specular
+            - R - Unused
+            - G - Roughness
+            - B - Unused
+            - A - Unused
+        Normal
+            - 3-Channel standard normal map, or 2-Channel BC5 format
+
+    See additional texture channels defined in BasicMaterial.
+*/
+class FALCOR_API ClothMaterial : public BasicMaterial {
+public:
+    /** Create a new cloth material.
+        \param[in] name The material name.
     */
-    class dlldecl ClothMaterial : public BasicMaterial
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ClothMaterial>;
+    static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "");
 
-        /** Create a new cloth material.
-            \param[in] name The material name.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "");
+    /** Set the roughness.
+    */
+    void setRoughness(float roughness);
 
-        /** Set the roughness.
-        */
-        void setRoughness(float roughness);
+    /** Get the roughness.
+    */
+    float getRoughness() const { return (float)mData.roughness; }
 
-        /** Get the roughness.
-        */
-        float getRoughness() const { return (float)mData.roughness; }
+protected:
+    ClothMaterial(Device::SharedPtr pDevice, const std::string& name);
+};
 
-    protected:
-        ClothMaterial(Device::SharedPtr pDevice, const std::string& name);
-    };
-}
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_MATERIAL_CLOTHMATERIAL_H_

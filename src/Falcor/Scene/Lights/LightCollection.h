@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_LIGHTS_LIGH_COLLECTION_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/State/GraphicsState.h"
@@ -48,24 +49,19 @@ class Scene;
     The LightCollection can be used standalone, but more commonly it will be wrapped
     by an emissive light sampler.
 */
-class dlldecl LightCollection : public std::enable_shared_from_this<LightCollection> {
+class FALCOR_API LightCollection : public Object {
+    FALCOR_OBJECT(LightCollection)
   public:
-    using SharedPtr = std::shared_ptr<LightCollection>;
-    using SharedConstPtr = std::shared_ptr<const LightCollection>;
-
-    enum class UpdateFlags : uint32_t
-    {
+    enum class UpdateFlags : uint32_t {
         None                = 0u,   ///< Nothing was changed.
         MatrixChanged       = 1u,   ///< Mesh instance transform changed.
     };
 
-    struct UpdateStatus
-    {
+    struct UpdateStatus {
         std::vector<UpdateFlags> lightsUpdateInfo;
     };
 
-    struct MeshLightStats
-    {
+    struct MeshLightStats {
         // Stats before pre-processing (input data).
         uint32_t meshLightCount = 0;                ///< Number of mesh lights.
         uint32_t triangleCount = 0;                 ///< Number of mesh light triangles (total).
@@ -81,16 +77,14 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
 
     /** Represents one mesh light triangle vertex.
     */
-    struct MeshLightVertex
-    {
+    struct MeshLightVertex {
         float3 pos;     ///< World-space position.
         float2 uv;      ///< Texture coordinates in emissive texture (if textured).
     };
 
     /** Represents one mesh light triangle.
     */
-    struct MeshLightTriangle
-    {
+    struct MeshLightTriangle {
         // TODO: Perf of indexed vs non-indexed on GPU. We avoid level of indirection, but have more bandwidth non-indexed.
         MeshLightVertex vtx[3];                             ///< Vertices. These are non-indexed for now.
         uint32_t        lightIdx = MeshLightData::kInvalidIndex; ///< Per-triangle index into mesh lights array.
@@ -103,8 +97,7 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
 
         /** Returns the center of the triangle in world space.
         */
-        float3 getCenter() const
-        {
+        float3 getCenter() const {
             return (vtx[0].pos + vtx[1].pos + vtx[2].pos) / 3.0f;
         }
     };
@@ -118,7 +111,7 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
         \param[in] pScene The scene.
         \return Ptr to the created object, or nullptr if an error occured.
     */
-    static SharedPtr create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
+    static SharedPtr create(RenderContext* pRenderContext, const Falcor::SharedPtr<Scene>& pScene);
 
     /** Updates the light collection to the current state of the scene.
         \param[in] pRenderContext The render context.
@@ -168,8 +161,7 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     uint64_t getMemoryUsageInBytes() const;
 
     // Internal update flags. This only public for enum_class_operators() to work.
-    enum class CPUOutOfDateFlags : uint32_t
-    {
+    enum class CPUOutOfDateFlags : uint32_t {
         None         = 0,
         TriangleData = 0x1,
         FluxData     = 0x2,
@@ -178,7 +170,7 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     };
 
 protected:
-    LightCollection(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
+    LightCollection(RenderContext* pRenderContext, const Falcor::SharedPtr<Scene>& pScene);
 
     void initIntegrator(const Scene& scene);
     void setupMeshLights(const Scene& scene);
@@ -196,7 +188,7 @@ protected:
 
     // Internal state
     Device::SharedPtr                       mpDevice;
-    std::weak_ptr<Scene>                    mpScene;                ///< Weak pointer to scene (scene owns LightCollection).
+    Scene*                                  mpScene;                ///< Unowning pointer to scene (scene owns LightCollection).
     
     std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.
     uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.

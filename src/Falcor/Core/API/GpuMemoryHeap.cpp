@@ -39,17 +39,14 @@ GpuMemoryHeap::~GpuMemoryHeap() {
     mDeferredReleases = decltype(mDeferredReleases)();
 }
 
-GpuMemoryHeap::GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence)
-    : mType(type)
-    , mpFence(pFence)
-    , mPageSize(pageSize)
-    , mpDevice(pDevice)
+GpuMemoryHeap::GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, MemoryType memoryType, size_t pageSize, Fence::SharedPtr pFence)
+    : mpDevice(pDevice), mMemoryType(memoryType), mpFence(pFence), mPageSize(pageSize)
 {
     allocateNewPage();
 }
 
-GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence) {
-    return SharedPtr(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
+GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Falcor::SharedPtr<Device> pDevice, MemoryType memoryType, size_t pageSize, Fence::SharedPtr pFence) {
+    return SharedPtr(new GpuMemoryHeap(pDevice, memoryType, pageSize, pFence));
 }
 
 void GpuMemoryHeap::allocateNewPage() {
@@ -92,7 +89,7 @@ GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment)
         mpActivePage->allocationsCount++;
     }
 
-    data.fenceValue = mpFence->getCpuValue();
+    data.fenceValue = mpFence->getSignaledValue();
     return data;
 }
 
@@ -107,20 +104,15 @@ void GpuMemoryHeap::release(Allocation& data) {
 }
 
 void GpuMemoryHeap::executeDeferredReleases() {
-    uint64_t gpuVal = mpFence->getGpuValue();
+    uint64_t currentValue = mpFence->getCurrentValue();
 
-    while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal) {
+    while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= currentValue) {
         const Allocation& data = mDeferredReleases.top();
 
         if (data.pageID == mCurrentPageId) {
             mpActivePage->allocationsCount--;
             if (mpActivePage->allocationsCount == 0) {
                 mpActivePage->currentOffset = 0;
-
-                //if(mpActivePage->pResourceHandle.get()) {
-                //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
-                //    pBufferResource->unmap(nullptr);
-                //}
             }
         } else {
             if (data.pageID != Allocation::kMegaPageId) {
@@ -128,12 +120,6 @@ void GpuMemoryHeap::executeDeferredReleases() {
                 pData->allocationsCount--;
                 
                 if (pData->allocationsCount == 0) {
-
-                    //if(pData->pResourceHandle.get()) {
-                    //    auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
-                    //    pBufferResource->unmap(nullptr);
-                    //}
-
                     mAvailablePages.push(std::move(pData));
                     mUsedPages.erase(data.pageID);
                 }

@@ -25,46 +25,43 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Falcor/Core/API/GpuTimer.h"
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/QueryHeap.h"
+#include "Falcor/Core/API/RenderContext.h"
+
 #include <memory>
 
-#include "Falcor/stdafx.h"
-
-#include "GpuTimer.h"
-#include "Buffer.h"
-#include "Device.h"
-#include "QueryHeap.h"
-#include "RenderContext.h"
 
 namespace Falcor {
 
-std::weak_ptr<QueryHeap> GpuTimer::spHeap;
-
-GpuTimer::SharedPtr GpuTimer::create(std::shared_ptr<Device> pDevice) {
-    return SharedPtr(new GpuTimer(pDevice));
+GpuTimer::SharedPtr GpuTimer::create(Device::SharedPtr pDevice) {
+    return GpuTimer::SharedPtr(new GpuTimer(pDevice));
 }
 
-GpuTimer::GpuTimer(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+GpuTimer::GpuTimer(ref<Device> pDevice) : mpDevice(pDevice) {
+    FALCOR_ASSERT(mpDevice);
+
+    mpResolveBuffer = mpDevice->createBuffer(sizeof(uint64_t) * 2, ResourceBindFlags::None, MemoryType::DeviceLocal, nullptr);
+    mpResolveBuffer->breakStrongReferenceToDevice();
+    mpResolveStagingBuffer = mpDevice->createBuffer(sizeof(uint64_t) * 2, ResourceBindFlags::None, MemoryType::ReadBack, nullptr);
+    mpResolveStagingBuffer->breakStrongReferenceToDevice();
+
     // Create timestamp query heap upon first use.
-    // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
-    if (spHeap.expired()) {
-        spHeap = mpDevice->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
-    }
-    auto pHeap = spHeap.lock();
-    assert(pHeap);
-    mStart = pHeap->allocate();
-    mEnd = pHeap->allocate();
+    mStart = mpDevice->getTimestampQueryHeap()->allocate();
+    mEnd = mpDevice->getTimestampQueryHeap()->allocate();
     if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex) {
-        throw std::runtime_error("Can't create GPU timer, no available timestamp queries.");
+        FALCOR_THROW("Can't create GPU timer, no available timestamp queries.");
     }
-    assert(mEnd == (mStart + 1));
-    mpLowLevelData = mpDevice->getRenderContext()->getLowLevelData();
+    FALCOR_ASSERT(mEnd == (mStart + 1));
 }
 
 GpuTimer::~GpuTimer() {
-    if (auto pHeap = spHeap.lock(); pHeap) {
-        pHeap->release(mStart);
-        pHeap->release(mEnd);
-    }
+    mpDevice->getTimestampQueryHeap()->release(mStart);
+    mpDevice->getTimestampQueryHeap()->release(mEnd);
 }
 
 void GpuTimer::begin() {
@@ -76,34 +73,48 @@ void GpuTimer::begin() {
     if (mStatus == Status::End) {
         LLOG_WRN << "GpuTimer::begin() was followed by a call to GpuTimer::end() without querying the data first. The previous results will be discarded.";
     }
+
+    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mStart);
     mStatus = Status::Begin;
-    apiBegin();
 }
 
 void GpuTimer::end() {
     if (mStatus != Status::Begin) {
-        LLOG_WRN << "GpuTimer::end() was called without a preciding GpuTimer::begin(). Ignoring call.";
+        LLOG_WRN << "GpuTimer::end() was called without a preceding GpuTimer::begin(). Ignoring call.";
         return;
     }
+
+    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(
+        mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mEnd
+    );
     mStatus = Status::End;
-    apiEnd();
 }
 
 void GpuTimer::resolve() {
+    if (mStatus == Status::Idle) {
+        return;
+    }
+
     if (mStatus == Status::Begin) {
-        throw std::runtime_error("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
+        FALCOR_THROW("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
     }
-    else if (mStatus == Status::End)
-    {
-        apiResolve();
 
-        mDataPending = true;
-        mStatus = Status::Idle;
-    }
-    // If idle, do nothing.
-    assert(mStatus == Status::Idle);
+    FALCOR_ASSERT(mStatus == Status::End);
+
+    // TODO: The code here is inefficient as it resolves each timer individually.
+    // This should be batched across all active timers and results copied into a single staging buffer once per frame instead.
+
+    // Resolve timestamps into buffer.
+    auto encoder = mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder();
+
+    encoder->resolveQuery(mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mStart, 2, mpResolveBuffer->getGfxBufferResource(), 0);
+
+    // Copy resolved timestamps to staging buffer for readback. This inserts the necessary barriers.
+    mpDevice->getRenderContext()->copyResource(mpResolveStagingBuffer.get(), mpResolveBuffer.get());
+
+    mDataPending = true;
+    mStatus = Status::Idle;
 }
-
 
 double GpuTimer::getElapsedTime() {
     if (mStatus == Status::Begin) {
@@ -114,10 +125,13 @@ double GpuTimer::getElapsedTime() {
         return 0.0;
     }
 
-    assert(mStatus == Status::Idle);
+    FALCOR_ASSERT(mStatus == Status::Idle);
     if (mDataPending) {
         uint64_t result[2];
-        apiReadback(result);
+        uint64_t* pRes = (uint64_t*)mpResolveStagingBuffer->map();
+        result[0] = pRes[0];
+        result[1] = pRes[1];
+        mpResolveStagingBuffer->unmap();
 
         double start = (double)result[0];
         double end = (double)result[1];
@@ -128,6 +142,9 @@ double GpuTimer::getElapsedTime() {
     return mElapsedTime;
 }
 
+void GpuTimer::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
+}
 #ifdef SCRIPTING
 SCRIPT_BINDING(GpuTimer) {
     pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");

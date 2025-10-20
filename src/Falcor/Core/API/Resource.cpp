@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "Resource.h"
-#include "Texture.h"
-#include "Buffer.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Buffer.h"
 
 #include <atomic>
 
 namespace Falcor {
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size) 
+Resource::Resource(Device::SharedPtr pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size) 
     : mType(type), 
     mBindFlags(bindFlags), 
     mSize(size), 
@@ -45,7 +45,7 @@ Resource::Resource(std::shared_ptr<Device> pDevice, Type type, ResourceBindFlags
 
 Resource::~Resource() = default;
 
-Falcor::SharedPrt<Device> Resource::getDevice() const {
+Device::SharedPtr Resource::getDevice() const {
     return mpDevice;
 }
 
@@ -148,7 +148,7 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
-std::shared_ptr<Texture> Resource::asTexture() {
+Texture::SharedPtr Resource::asTexture() {
     assert(this);
     return Falcor::SharedPtr<Texture>(dynamic_cast<Texture*>(this));
 }

@@ -34,6 +34,7 @@
 #include <set>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ShaderVar.h"
@@ -53,7 +54,6 @@
 
 namespace Falcor {
 
-class Device;
 class Light;
 
 /** Class that holds a collection of bit masks for objects/lights for a scene.
@@ -63,14 +63,12 @@ class Light;
     This class has utility functions for updating and pre-processing the object/light bit masks.
     The LightLinker can be used standalone, but more commonly it will be used by an light helper.
 */
-class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
+class FALCOR_API LightLinker : public Object {
+        FALCOR_OBJECT(LightLinker)
     public:
-        using SharedPtr = std::shared_ptr<LightLinker>;
-        using SharedConstPtr = std::shared_ptr<const LightLinker>;
-
         using StringList     = std::vector<std::string>; // type alias for std::vector<std::string>
         using StringSet      = std::set<std::string>;
-        using LightMap       = std::unordered_map<std::string, std::shared_ptr<Light>>;
+        using LightMap       = std::unordered_map<std::string, Falcor::SharedPtr<Light>>;
 
         static constexpr uint32_t       kInvalidLightSetIndex   = 0xffffffff;
         static constexpr uint32_t       kInvalidTraceSetIndex   = 0xffffffff;
@@ -94,7 +92,7 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
             \param[in] pScene The scene.
             \return Ptr to the created object, or nullptr if an error occured.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene = nullptr);
+        static SharedPtr create(Falcor::SharedPtr<Device> pDevice, Falcor::SharedPtr<Scene> pScene = nullptr);
 
         /** Get default shader defines.
             This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -112,9 +110,9 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         */
         UpdateFlags update(bool forceUpdate);
 
-        uint32_t addLight(const std::shared_ptr<Light>& pLight);
+        uint32_t addLight(const Light::SharedPtr& pLight);
 
-        void     updateLight(const std::shared_ptr<Light>& pLight);
+        void     updateLight(const Light::SharedPtr& pLight);
 
         uint32_t getOrCreateLightSetIndex(const std::string& lightNamesString);
 
@@ -211,14 +209,14 @@ class dlldecl LightLinker : public std::enable_shared_from_this<LightLinker> {
         bool buildLightSetsData(bool force);
 
     protected:
-        LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene = nullptr);
+        LightLinker(Device::SharedPtr pDevice, Falcor::SharedPtr<Scene> pScene = nullptr);
 
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
         void syncCPUData() const;
 
         // Internal state
         Device::SharedPtr                           mpDevice;
-        std::weak_ptr<Scene>                        mpScene;                        ///< Weak pointer to scene (scene owns LightLinker).
+        Scene*                                      mpScene;                        ///<Unowning pointer to scene (scene owns LightLinker).
         
         mutable CPUOutOfDateFlags                   mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                                mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.

@@ -339,7 +339,7 @@ class FALCOR_API Texture : public Resource {
   	Texture(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, ResourceBindFlags bindFlags);
 
   	Texture(
-        ref<Device> pDevice,
+        Falcor::SharedPtr<Device> pDevice,
         gfx::ITextureResource* pResource,
         Type type,
         ResourceFormat format,

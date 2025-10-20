@@ -67,10 +67,9 @@ namespace Falcor {
 
 	See additional texture channels defined in BasicMaterial.
 */
-class dlldecl StandardMaterial : public BasicMaterial {
+class FALCOR_API StandardMaterial : public BasicMaterial {
+		FALCOR_OBJECT(StandardMaterial)
 	public:
-		using SharedPtr = std::shared_ptr<StandardMaterial>;
-
 		/** Create a new standard material.
 			\param[in] name The material name.
 			\param[in] model Shading model.

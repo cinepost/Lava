@@ -34,9 +34,11 @@
 #include "Material.h"
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Utils/Image/TextureManager.h"
+
 
 namespace Falcor {
 
@@ -52,10 +54,9 @@ namespace Falcor {
 	The update() function must be called before using the materials.
 	It ensures all GPU data is uploaded and ready for use.
 */
-class dlldecl MaterialSystem {
+class FALCOR_API MaterialSystem : public Object {
+		FALCOR_OBJECT(MaterialSystem)
 	public:
-		using SharedPtr = std::shared_ptr<MaterialSystem>;
-
 		struct MaterialStats {
 			uint64_t materialTypeCount = 0;             ///< Number of material types.
 			uint64_t materialCount = 0;                 ///< Number of materials.

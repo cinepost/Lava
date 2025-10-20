@@ -34,17 +34,16 @@
 #include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/BlitContext.h"
 #include "Falcor/Core/API/BlitToBufferContext.h"
+#include "Falcor/Core/API/BlitToBufferReduction.slangh"
 
 #include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/RenderGraph/BasePasses/FullScreenPass.h"
+#include "Falcor/RenderGraph/BasePasses/ComputePass.h"
 
 #include "RenderContext.h"
 
 
 namespace Falcor {
-
-RenderContext::SharedPtr RenderContext::create(Device::SharedPtr pDevice, CommandQueueHandle queue) {
-    return SharedPtr(new RenderContext(pDevice, queue));
-}
 
 void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags) {
     bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
@@ -81,11 +80,11 @@ void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor) {
 
     auto bindFlags = pTexture->getBindFlags();
     // Select the right clear based on the texture's binding flags
-    if (is_set(bindFlags, Resource::BindFlags::RenderTarget)) {
+    if (is_set(bindFlags, ResourceBindFlags::RenderTarget)) {
         clearRtv(pTexture->getRTV().get(), clearColor);
-    } else if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess)) {
+    } else if (is_set(bindFlags, ResourceBindFlags::UnorderedAccess)) {
         clearUAV(pTexture->getUAV().get(), clearColor);
-    } else if (is_set(bindFlags, Resource::BindFlags::DepthStencil)) {
+    } else if (is_set(bindFlags, ResourceBindFlags::DepthStencil)) {
         if (isStencilFormat(format) && (clearColor.y != 0)) {
             LLOG_WRN << "RenderContext::clearTexture() - when clearing a depth-stencil texture the stencil value(clearColor.y) must be 0. Received " << std::to_string(clearColor.y) << ". Forcing stencil to 0";
         }
@@ -95,8 +94,8 @@ void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor) {
     }
 }
 
-void RenderContext::flush(bool wait) {
-    ComputeContext::flush(wait);
+void RenderContext::submit(bool wait) {
+    ComputeContext::submit(wait);
     mpLastBoundGraphicsVars = nullptr;
 }
 
@@ -189,10 +188,10 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
     }
 
     // Configure program.
-    blitCtx.pPass->addDefine("SAMPLE_COUNT", std::to_string(sampleCount));
-    blitCtx.pPass->addDefine("COMPLEX_BLIT", complexBlit ? "1" : "0");
-    blitCtx.pPass->addDefine("SRC_INT", isIntegerFormat(pSrcTexture->getFormat()) ? "1" : "0");
-    blitCtx.pPass->addDefine("DST_INT", isIntegerFormat(pDstTexture->getFormat()) ? "1" : "0");
+    blitCtx.mpPass->addDefine("SAMPLE_COUNT", std::to_string(sampleCount));
+    blitCtx.mpPass->addDefine("COMPLEX_BLIT", complexBlit ? "1" : "0");
+    blitCtx.mpPass->addDefine("SRC_INT", isIntegerFormat(pSrcTexture->getFormat()) ? "1" : "0");
+    blitCtx.mpPass->addDefine("DST_INT", isIntegerFormat(pDstTexture->getFormat()) ? "1" : "0");
 
     if (complexBlit) {
         assert(sampleCount <= 1);
@@ -201,25 +200,25 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
         for (uint32_t i = 0; i < 4; i++) {
             assert(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
 
-            if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMinSampler : blitCtx.pPointMinSampler;
-            else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMaxSampler : blitCtx.pPointMaxSampler;
-            else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler;
+            if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearMinSampler : blitCtx.mpPointMinSampler;
+            else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearMaxSampler : blitCtx.mpPointMaxSampler;
+            else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearSampler : blitCtx.mpPointSampler;
         }
 
-        blitCtx.pPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
 
         // Parameters for complex blit
         for (uint32_t i = 0; i < 4; i++) {
             if (blitCtx.prevComponentsTransform[i] != componentsTransform[i]) {
-                blitCtx.pBlitParamsBuffer->setVariable(blitCtx.compTransVarOffset[i], componentsTransform[i]);
+                blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.compTransVarOffset[i], componentsTransform[i]);
                 blitCtx.prevComponentsTransform[i] = componentsTransform[i];
             }
         }
     } else {
-        blitCtx.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler);
+        blitCtx.mpPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearSampler : blitCtx.mpPointSampler);
     }
 
     float2 srcRectOffset(0.0f);
@@ -236,24 +235,24 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
 
     // Update buffer/state
     if (srcRectOffset != blitCtx.prevSrcRectOffset) {
-        blitCtx.pBlitParamsBuffer->setVariable(blitCtx.offsetVarOffset, srcRectOffset);
+        blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.offsetVarOffset, srcRectOffset);
         blitCtx.prevSrcRectOffset = srcRectOffset;
     }
 
     if (srcRectScale != blitCtx.prevSrcReftScale) {
-        blitCtx.pBlitParamsBuffer->setVariable(blitCtx.scaleVarOffset, srcRectScale);
+        blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.scaleVarOffset, srcRectScale);
         blitCtx.prevSrcReftScale = srcRectScale;
     }
 
     Texture::SharedPtr pSharedTex = pDstResource->asTexture();
-    blitCtx.pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
-    blitCtx.pPass->getVars()->setSrv(blitCtx.texBindLoc, pSrc);
-    blitCtx.pPass->getState()->setViewport(0, dstViewport);
-    blitCtx.pPass->execute(this, blitCtx.pFbo, false);
+    blitCtx.mpFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
+    blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, pSrc);
+    blitCtx.mpPass->getState()->setViewport(0, dstViewport);
+    blitCtx.mpPass->execute(this, blitCtx.mpFbo, false);
 
     // Release the resources we bound
-    blitCtx.pFbo->attachColorTarget(nullptr, 0);
-    blitCtx.pPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
+    blitCtx.mpFbo->attachColorTarget(nullptr, 0);
+    blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
 }
 
 void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
@@ -388,13 +387,13 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     }
 
     // Configure program.
-    blitCtx.pPass->addDefine("SAMPLE_COUNT", std::to_string(sampleCount));
-    blitCtx.pPass->addDefine("COMPLEX_BLIT", complexBlit ? "1" : "0");
-    blitCtx.pPass->addDefine("SRC_INT", isIntegerFormat(pSrcTexture->getFormat()) ? "1" : "0");
-    blitCtx.pPass->addDefine("DST_INT", isIntegerFormat(dstFormat) ? "1" : "0");
-    blitCtx.pPass->addDefine("DST_HALF_FLOAT", isDstHalfFormat ? "1" : "0");
-    blitCtx.pPass->addDefine("FORMAT_TYPE", std::to_string(formatType));
-    blitCtx.pPass->addDefine("PIXEL_STRIDE_BYTES", std::to_string(outputPixelStrideBytes));
+    blitCtx.mpPass->addDefine("SAMPLE_COUNT", std::to_string(sampleCount));
+    blitCtx.mpPass->addDefine("COMPLEX_BLIT", complexBlit ? "1" : "0");
+    blitCtx.mpPass->addDefine("SRC_INT", isIntegerFormat(pSrcTexture->getFormat()) ? "1" : "0");
+    blitCtx.mpPass->addDefine("DST_INT", isIntegerFormat(dstFormat) ? "1" : "0");
+    blitCtx.mpPass->addDefine("DST_HALF_FLOAT", isDstHalfFormat ? "1" : "0");
+    blitCtx.mpPass->addDefine("FORMAT_TYPE", std::to_string(formatType));
+    blitCtx.mpPass->addDefine("PIXEL_STRIDE_BYTES", std::to_string(outputPixelStrideBytes));
 
     LLOG_TRC << "DST INT " << ( isIntegerFormat(dstFormat) ? "1" : "0");
     LLOG_TRC << "DST FORMAT " << to_string(dstFormat);
@@ -411,26 +410,26 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
         for (uint32_t i = 0; i < 4; i++) {
             assert(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
 
-            if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMinSampler : blitCtx.pPointMinSampler;
-            else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMaxSampler : blitCtx.pPointMaxSampler;
-            else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler;
+            if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearMinSampler : blitCtx.mpPointMinSampler;
+            else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearMaxSampler : blitCtx.mpPointMaxSampler;
+            else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearSampler : blitCtx.mpPointSampler;
         }
 
-        blitCtx.pPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
-        blitCtx.pPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
+        blitCtx.mpPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
 
         // Parameters for complex blit
         for (uint32_t i = 0; i < 4; i++) {
             if (blitCtx.prevComponentsTransform[i] != componentsTransform[i]) {
-                blitCtx.pBlitParamsBuffer->setVariable(blitCtx.compTransVarOffset[i], componentsTransform[i]);
+                blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.compTransVarOffset[i], componentsTransform[i]);
                 blitCtx.prevComponentsTransform[i] = componentsTransform[i];
             }
         }
     } else {
         LLOG_DBG << "non complexBlit";
-        blitCtx.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler);
+        blitCtx.mpPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitCtx.mpLinearSampler : blitCtx.mpPointSampler);
     }
     
     float2 srcRectOffset(0.0f);
@@ -442,27 +441,27 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
 
     // Update buffer/state
     if (srcRectOffset != blitCtx.prevSrcRectOffset) {
-        blitCtx.pBlitParamsBuffer->setVariable(blitCtx.offsetVarOffset, srcRectOffset);
+        blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.offsetVarOffset, srcRectOffset);
         blitCtx.prevSrcRectOffset = srcRectOffset;
     }
 
     if (srcRectScale != blitCtx.prevSrcReftScale) {
-        blitCtx.pBlitParamsBuffer->setVariable(blitCtx.scaleVarOffset, srcRectScale);
+        blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.scaleVarOffset, srcRectScale);
         blitCtx.prevSrcReftScale = srcRectScale;
     }
 
-    blitCtx.pBlitParamsBuffer->setVariable(blitCtx.resolutionVarOffset, dstSize);
-    blitCtx.pBlitParamsBuffer->setVariable(blitCtx.srcPixelHalfSizeVarOffset, srcHalfPixelSize);
+    blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.resolutionVarOffset, dstSize);
+    blitCtx.mpBlitParamsBuffer->setVariable(blitCtx.srcPixelHalfSizeVarOffset, srcHalfPixelSize);
     
-    blitCtx.pPass->getVars()->setSrv(blitCtx.texBindLoc, pSrc);
-    blitCtx.pPass->getVars()->setBuffer(blitCtx.buffBindLoc, pBuffer);
+    blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, pSrc);
+    blitCtx.mpPass->getVars()->setBuffer(blitCtx.buffBindLoc, pBuffer);
     
     LLOG_TRC << "blitToBuffer::execute()";
-    blitCtx.pPass->execute(this, dstSize.x, dstSize.y);
+    blitCtx.mpPass->execute(this, dstSize.x, dstSize.y);
 
     // Release the resources we bound
-    blitCtx.pPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
-    blitCtx.pPass->getVars()->setBuffer(blitCtx.buffBindLoc, nullptr);
+    blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
+    blitCtx.mpPass->getVars()->setBuffer(blitCtx.buffBindLoc, nullptr);
 }
 
 }  // namespace Falcor

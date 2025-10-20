@@ -29,6 +29,7 @@
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREANALYZER_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
@@ -39,10 +40,9 @@ namespace Falcor {
 	
 /** A class for analyzing texture contents.
 */
-class dlldecl TextureAnalyzer {
+class FALCOR_API TextureAnalyzer : public Object {
+		FALCOR_OBJECT(TextureAnalyzer)
 	public:
-		using SharedPtr = std::shared_ptr<TextureAnalyzer>;
-
 		/** Texture analysis result.
 		*/
 		struct Result {

@@ -31,6 +31,8 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
 
+#include "Falcor/Core/API/GFXAPI.h"
+
 
 namespace Falcor {
 
@@ -42,16 +44,6 @@ enum class RtAccelerationStructurePostBuildInfoQueryType {
   SerializationSize,
   CurrentSize,
 };
-
-#if defined(FALCOR_VK)
-
-struct AccelerationStructureQueryDesc {
-    RtQueryPool::QueryType queryType;
-    RtQueryPool* queryPool; 
-    int firstQueryIndex;
-};
-
-#endif
 
 class FALCOR_API RtAccelerationStructurePostBuildInfoPool : public Object {
     FALCOR_OBJECT(RtAccelerationStructurePostBuildInfoPool)

@@ -216,9 +216,9 @@ public:
 
 	const std::map<const Texture*, size_t>& getVirtualPagesStartMap() const { return mVirtualPagesStartMap;}
 
-private:
-	TextureManager(Falcor::SharedPtr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
+	TextureManager(Device* pDevice, size_t maxTextureCount, size_t threadCount);
 
+private:
 	/** Builds data structures needed for sparse residency management.
 	*/
 	void buildSparseResidencyData();

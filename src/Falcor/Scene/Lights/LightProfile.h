@@ -28,6 +28,8 @@
 #pragma once
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 
@@ -39,11 +41,10 @@ namespace Falcor {
 
 struct ShaderVar;
 
-class FALCOR_API LightProfile {
+class FALCOR_API LightProfile : public Object {
+    FALCOR_OBJECT(LightProfile)
 public:
-    using SharedPtr = std::shared_ptr<LightProfile>;
-
-    static SharedPtr createFromIesProfile(std::shared_ptr<Device> pDevice, const fs::path& filename, bool normalize);
+    static SharedPtr createFromIesProfile(Device::SharedPtr pDevice, const fs::path& filename, bool normalize);
 
     void bake(RenderContext* pRenderContext);
 
@@ -52,9 +53,9 @@ public:
     void setShaderData(const ShaderVar& var) const;
 
 private:
-    LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
+    LightProfile(Device::SharedPtr pDevice, const std::string& name, const std::vector<float>& rawData);
 
-    std::shared_ptr<Device> mpDevice;
+    Device::SharedPtr mpDevice;
     std::string mName;
     std::vector<float> mRawData;
     Texture::SharedPtr mpTexture;

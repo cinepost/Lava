@@ -29,6 +29,7 @@
 #define SRC_FALCOR_CORE_API_BLENDSTATE_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/GFX/FalcorGFX.h"
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -39,11 +40,9 @@ class Device;
 
 /** Blend state
 */
-class dlldecl BlendState : public std::enable_shared_from_this<BlendState> {
+class FALCOR_API BlendState  : public Object {
+    FALCOR_OBJECT(BlendState)
 public:
-    using SharedPtr = std::shared_ptr<BlendState>;
-    using SharedConstPtr = std::shared_ptr<const BlendState>;
-
     /** Defines how to combine the blend inputs
     */
     enum class BlendOp {
@@ -78,9 +77,9 @@ public:
 
     /** Descriptor used to create new blend-state
     */
-    class dlldecl Desc {
+    class FALCOR_API Desc {
      public:
-        Desc(std::shared_ptr<Device> pDevice);
+        Desc();
         friend class BlendState;
 
         /** Set the constant blend factor
@@ -138,9 +137,7 @@ public:
         std::vector<RenderTargetDesc> mRtDesc;
         bool mEnableIndependentBlend = false;
         bool mAlphaToCoverageEnabled = false;
-        float4 mBlendFactor          = float4(0, 0, 0, 0);
-    
-        std::shared_ptr<Device> mpDevice;
+        float4 mBlendFactor          = float4(0, 0, 0, 0);    
     };
 
     ~BlendState();
@@ -199,14 +196,9 @@ public:
     */
     uint32_t getRtCount() const { return (uint32_t)mDesc.mRtDesc.size(); }
 
-    /** Get the API handle
-    */
-    const BlendStateHandle& getApiHandle() const;
-
  private:
     BlendState(const Desc& Desc) : mDesc(Desc) {}
     const Desc mDesc;
-    BlendStateHandle mApiHandle;
 };
 
 }  // namespace Falcor

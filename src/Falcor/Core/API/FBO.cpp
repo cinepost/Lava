@@ -38,12 +38,7 @@ namespace Falcor {
 
 namespace {
 
-void releaseFramebuffer(
-    Device& device,
-    Slang::ComPtr<gfx::IFramebuffer>& framebuffer,
-    Fbo::Attachment& depthStencil,
-    std::vector<Fbo::Attachment>& colorAttachments)
-{
+void releaseFramebuffer(Device& device, Slang::ComPtr<gfx::IFramebuffer>& framebuffer, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments) {
     if (!framebuffer) {
         return;
     }
@@ -183,7 +178,7 @@ Fbo::SharedPtr Fbo::create(Device::SharedPtr pDevice) {
 	return SharedPtr(new Fbo(pDevice));
 }
 
-Fbo::SharedPtr Fbo::create(std::shared_ptr<Device> pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth) {
+Fbo::SharedPtr Fbo::create(Device::SharedPtr pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth) {
 	auto pFbo = create(pDevice);
 	for (uint32_t i = 0 ; i < colors.size() ; i++) {
 		pFbo->attachColorTarget(colors[i], i);
@@ -359,7 +354,7 @@ void Fbo::attachColorTarget(const Texture::SharedPtr& pTexture, uint32_t rtIndex
 }
 
 
-void Fbo::verifyAttachment(const Attachment& attachment) const {
+void Fbo::validateAttachment(const Attachment& attachment) const {
 	const Texture* pTexture = attachment.pTexture.get();
     if (pTexture) {
         // Calculate size
@@ -521,7 +516,7 @@ Fbo::SharedPtr Fbo::createCubemap(
 }
 
 Fbo::SharedPtr Fbo::create2D(Device::SharedPtr pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth) {
-	Desc d(pDevice);
+	Desc d;
 	d.setColorTarget(0, color).setDepthStencilTarget(depth);
 	return create2D(pDevice, width, height, d);
 }

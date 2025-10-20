@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_RTSTATEOBJECT_H_
 #define SRC_FALCOR_CORE_API_RTSTATEOBJECT_H_
 
+#include "Falcor/Core/Object.h"
 #include "Raytracing.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 
@@ -36,7 +37,7 @@ namespace Falcor {
 class Device;
 
 struct RtStateObjectDesc {
-    ProgramKernels::SharedConstPtr pProgramKernels;
+    Falcor::SharedPtr<const ProgramKernels> pProgramKernels;
     uint32_t maxTraceRecursionDepth = 0;
     RtPipelineFlags pipelineFlags = RtPipelineFlags::None;
 
@@ -49,37 +50,23 @@ struct RtStateObjectDesc {
     }
 };
 
-class FALCOR_API RtStateObject: public std::enable_shared_from_this<RtStateObject> {
+class FALCOR_API RtStateObject : public Object {
+    FALCOR_OBJECT(RtStateObject)
 	public:
-		using SharedPtr = std::shared_ptr<RtStateObject>;
-		using SharedConstPtr = std::shared_ptr<const RtStateObject>;
-		using ApiHandle = RaytracingStateHandle;
-		
-		using Desc = RtStateObjectDesc;
-
-		static RtStateObject::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
-		
-        const ApiHandle& getApiHandle() const { return mApiHandle; }
-        gfx::IPipelineState* getGfxPipelineState() const { return mApiHandle; }
-
-		const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.pProgramKernels; };
-		uint32_t getMaxTraceRecursionDepth() const { return mDesc.maxTraceRecursionDepth; }
-
-		void const* getShaderIdentifier(uint32_t index) const { return mEntryPointGroupExportNames[index].c_str(); }
-
-		const Desc& getDesc() const { return mDesc; }
-	
-	public:
-		RtStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+		RtStateObject(Falcor::SharedPtr<Device> pDevice, const RtStateObjectDesc& desc);
         ~RtStateObject();
-        
+
+        gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
+
+	    const Falcor::SharedPtr<const ProgramKernels>& getKernels() const { return mDesc.pProgramKernels; };
+	    uint32_t getMaxTraceRecursionDepth() const { return mDesc.maxTraceRecursionDepth; }
+	    void const* getShaderIdentifier(uint32_t index) const { return mEntryPointGroupExportNames[index].c_str(); }
+	    const RtStateObjectDesc& getDesc() const { return mDesc; }
+	        
 	private:
-		void apiInit();
-
-		std::shared_ptr<Device> mpDevice;
-		Desc mDesc;
-		ApiHandle mApiHandle;
-
+		Falcor::SharedPtr<Device> mpDevice;
+		RtStateObjectDesc mDesc;
+		Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 		std::vector<std::string> mEntryPointGroupExportNames;
 };
 

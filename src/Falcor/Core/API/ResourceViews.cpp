@@ -33,6 +33,7 @@
 
 namespace Falcor {
 
+/*
 NativeHandle ResourceView::getNativeHandle() const {
     FALCOR_ASSERT(mpDevice != nullptr && mpResource != nullptr);
     gfx::InteropHandle gfxNativeHandle = {};
@@ -48,10 +49,10 @@ NativeHandle ResourceView::getNativeHandle() const {
         } else {
             return NativeHandle(reinterpret_cast<VkImageView>(gfxNativeHandle.handleValue));
         }
-    }
-    
+    }  
     return {};
 }
+*/
 
 ResourceView::~ResourceView() {
     if (mGfxResourceView) mpDevice->releaseResource(mGfxResourceView);

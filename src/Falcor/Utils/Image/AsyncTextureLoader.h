@@ -43,7 +43,7 @@ class Barrier;
 
 /** Utility class to load textures asynchronously using multiple worker threads.
 */
-class AsyncTextureLoader {
+class FALCOR_API AsyncTextureLoader {
 	public:
 		using LoadCallback = std::function<void(Falcor::SharedPtr<Texture> pTexture)>;
 

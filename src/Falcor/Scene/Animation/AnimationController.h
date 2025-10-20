@@ -44,22 +44,15 @@ class Scene;
 class Model;
 class AssimpModelImporter;
 
-class dlldecl AnimationController
-{
+class FALCOR_API AnimationController {
 public:
-    using UniquePtr = std::unique_ptr<AnimationController>;
-    using UniqueConstPtr = std::unique_ptr<const AnimationController>;
     static const uint32_t kInvalidBoneID = -1;
     ~AnimationController() = default;
 
     using StaticVertexVector = std::vector<PackedStaticVertexData>;
     using SkinningVertexVector = std::vector<SkinningVertexData>;
 
-    /** Create a new object.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
-
+   
     /** Add animated vertex caches (curves and meshes) to the controller.
     */
     void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData);
@@ -144,9 +137,10 @@ public:
     */
     uint64_t getMemoryUsageInBytes() const;
 
+    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
+
 private:
     friend class SceneBuilder;
-    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
     void initLocalMatrices();
     void updateLocalMatrices(double time);

@@ -37,7 +37,7 @@ BlendState::SharedPtr BlendState::create(const Desc& desc) {
     return SharedPtr(new BlendState(desc));
 }
 
-BlendState::Desc::Desc(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+BlendState::Desc::Desc() {
     mRtDesc.resize(Fbo::getMaxColorTargetCount());
 }
 

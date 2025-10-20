@@ -28,17 +28,17 @@
 #ifndef SRC_FALCOR_CORE_API_DEPTHSTENCILSTATE_H_
 #define SRC_FALCOR_CORE_API_DEPTHSTENCILSTATE_H_
 
-#include "Falcor/Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+
 
 namespace Falcor {
 
 /** Depth-Stencil state
 */
-class dlldecl DepthStencilState : public std::enable_shared_from_this<DepthStencilState> {
+class FALCOR_API DepthStencilState : public Object {
+    FALCOR_OBJECT(DepthStencilState)
 	public:
-		using SharedPtr = std::shared_ptr<DepthStencilState>;
-		using SharedConstPtr = std::shared_ptr<const DepthStencilState>;
-
 		/** Used for stencil control.
 		*/
 		enum class Face {
@@ -75,7 +75,7 @@ class dlldecl DepthStencilState : public std::enable_shared_from_this<DepthStenc
 
 		/** Depth-stencil descriptor
 		*/
-		class dlldecl Desc {
+		class FALCOR_API Desc {
 		public:
 			friend class DepthStencilState;
 
@@ -173,12 +173,7 @@ class dlldecl DepthStencilState : public std::enable_shared_from_this<DepthStenc
 		*/
 		uint8_t getStencilRef() const { return mDesc.mStencilRef; }
 
-		/** Get the API handle
-		*/
-		const DepthStencilStateHandle& getApiHandle() const;
-
 	private:
-		DepthStencilStateHandle mApiHandle;
 		DepthStencilState(const Desc& Desc) : mDesc(Desc) {}
 		Desc mDesc;
 };

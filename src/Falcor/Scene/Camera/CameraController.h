@@ -38,132 +38,118 @@
 
 
 namespace Falcor {
-    struct MouseEvent;
-    struct KeyboardEvent;
 
-    /** Camera controller interface. Camera controllers should inherit from this object.
+struct MouseEvent;
+struct KeyboardEvent;
+
+/** Camera controller interface. Camera controllers should inherit from this object.
+*/
+class FALCOR_API CameraController {
+public:
+    virtual ~CameraController() = default;
+
+    /** Update the camera position and orientation.
+        \return Whether the camera was updated/changed
     */
-    class dlldecl CameraController
-    {
-    public:
-        using SharedPtr = std::shared_ptr<CameraController>;
-        virtual ~CameraController() = default;
+    virtual bool update() = 0;
 
-        /** Update the camera position and orientation.
-            \return Whether the camera was updated/changed
-        */
-        virtual bool update() = 0;
+    /** Set the camera's speed
+        \param[in] Speed Camera speed. Measured in WorldUnits per second.
+    */
+    void setCameraSpeed(float speed) { mSpeed = speed; }
 
-        /** Set the camera's speed
-            \param[in] Speed Camera speed. Measured in WorldUnits per second.
-        */
-        void setCameraSpeed(float speed) { mSpeed = speed; }
+protected:
+    CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
+    Camera::SharedPtr mpCamera;
+    float mSpeed = 1;
+};
 
-    protected:
-        CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
-        Camera::SharedPtr mpCamera = nullptr;
-        float mSpeed = 1;
+/** An orbiter camera controller. Orbits around a given point.
+    To control the camera:
+    * Left mouse click + movement will orbit around the model.
+    * Mouse wheel zooms in/out.
+*/
+class FALCOR_API OrbiterCameraController : public CameraController {
+public:
+    OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
+
+    /** Set the model parameters
+        \param[in] Center The model's center. This is the position in which the camera will orbit around.
+        \param[in] Radius The model's radius. Used to determin the speed of movement when zooming in/out.
+        \param[in] InitialDistanceInRadius The initial distance of the camera from the model, measured in the model's radius.
+    */
+    void setModelParams(const float3& center, float radius, float initialDistanceInRadius);
+
+    /** Update the camera position and orientation.
+        \return Whether the camera was updated/changed
+    */
+    bool update() override;
+
+private:
+    float3 mModelCenter;
+    float mModelRadius;
+    float mCameraDistance;
+    bool mbDirty;
+
+    float3x3 mRotation = float3x3::identity();
+    float3 mLastVector;
+    bool mIsLeftButtonDown = false;
+    bool mShouldRotate = false;
+};
+
+/** First person camera controller.
+    If b6DoF is false, camera will behave like a regular FPS camera. If b6DoF is true, camera will be able to roll as well.
+    Controls:
+    - W/S/A/D to move forward/backward/strafe left/strafe right.
+    - Q/E to move down/up.
+    - Left mouse button + mouse movement to rotate camera.
+    - Right mouse button + mouse movement to roll camera (for 6DoF camera controller only).
+    - Shift for faster movement.
+    - Ctrl for slower movement.
+*/
+template<bool b6DoF>
+class FALCOR_API FirstPersonCameraControllerCommon : public CameraController {
+public:
+    FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);
+    
+    /** Update the camera position and orientation.
+        \return Whether the camera was updated/changed
+    */
+    bool update() override;
+
+private:
+    bool mIsLeftButtonDown = false;
+    bool mIsRightButtonDown = false;
+    bool mShouldRotate = false;
+
+    float2 mLastMousePos;
+    float2 mMouseDelta;
+
+    bool mGamepadPresent = false;
+    float2 mGamepadLeftStick;
+    float2 mGamepadRightStick;
+    float mGamepadLeftTrigger;
+    float mGamepadRightTrigger;
+
+    CpuTimer mTimer;
+
+    enum Direction {
+        Forward,
+        Backward,
+        Right,
+        Left,
+        Up,
+        Down,
+        Count
     };
 
-    /** An orbiter camera controller. Orbits around a given point.
-        To control the camera:
-        * Left mouse click + movement will orbit around the model.
-        * Mouse wheel zooms in/out.
-    */
-    class dlldecl OrbiterCameraController : public CameraController
-    {
-    public:
-        using SharedPtr = std::shared_ptr<OrbiterCameraController>;
-        OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
+    std::bitset<Direction::Count> mMovement;
 
-        /** Create a new object
-        */
-        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
+    float mSpeedModifier = 1.0f;
+};
 
-        /** Set the model parameters
-            \param[in] Center The model's center. This is the position in which the camera will orbit around.
-            \param[in] Radius The model's radius. Used to determin the speed of movement when zooming in/out.
-            \param[in] InitialDistanceInRadius The initial distance of the camera from the model, measured in the model's radius.
-        */
-        void setModelParams(const float3& center, float radius, float initialDistanceInRadius);
-
-        /** Update the camera position and orientation.
-            \return Whether the camera was updated/changed
-        */
-        bool update() override;
-
-    private:
-        float3 mModelCenter;
-        float mModelRadius;
-        float mCameraDistance;
-        bool mbDirty;
-
-        float3x3 mRotation = float3x3::identity();
-        float3 mLastVector;
-        bool mIsLeftButtonDown = false;
-        bool mShouldRotate = false;
-    };
-
-    /** First person camera controller.
-        If b6DoF is false, camera will behave like a regular FPS camera. If b6DoF is true, camera will be able to roll as well.
-        Controls:
-        - W/S/A/D to move forward/backward/strafe left/strafe right.
-        - Q/E to move down/up.
-        - Left mouse button + mouse movement to rotate camera.
-        - Right mouse button + mouse movement to roll camera (for 6DoF camera controller only).
-        - Shift for faster movement.
-        - Ctrl for slower movement.
-    */
-    template<bool b6DoF>
-    class dlldecl FirstPersonCameraControllerCommon : public CameraController
-    {
-    public:
-        FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);
-        using SharedPtr = std::shared_ptr<FirstPersonCameraControllerCommon>;
-
-        /** Create a new object
-        */
-        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
-
-        /** Update the camera position and orientation.
-            \return Whether the camera was updated/changed
-        */
-        bool update() override;
-
-    private:
-        bool mIsLeftButtonDown = false;
-        bool mIsRightButtonDown = false;
-        bool mShouldRotate = false;
-
-        float2 mLastMousePos;
-        float2 mMouseDelta;
-
-        bool mGamepadPresent = false;
-        float2 mGamepadLeftStick;
-        float2 mGamepadRightStick;
-        float mGamepadLeftTrigger;
-        float mGamepadRightTrigger;
-
-        CpuTimer mTimer;
-
-        enum Direction
-        {
-            Forward,
-            Backward,
-            Right,
-            Left,
-            Up,
-            Down,
-            Count
-        };
-
-        std::bitset<Direction::Count> mMovement;
-
-        float mSpeedModifier = 1.0f;
-    };
-
-    using FirstPersonCameraController = FirstPersonCameraControllerCommon<false>;
-    using SixDoFCameraController = FirstPersonCameraControllerCommon<true>;
+using FirstPersonCameraController = FirstPersonCameraControllerCommon<false>;
+using SixDoFCameraController = FirstPersonCameraControllerCommon<true>;
 }
 
 #endif  // SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_

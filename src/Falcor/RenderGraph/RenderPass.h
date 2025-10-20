@@ -28,13 +28,17 @@
 #ifndef FALCOR_RENDERGRAPH_RENDERPASS_H_
 #define FALCOR_RENDERGRAPH_RENDERPASS_H_
 
-#include <memory>
-
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Resource.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/InternalDictionary.h"
 #include "ResourceCache.h"
+
+#include <memory>
+
 
 #if FALCOR_GCC
 // save compiler switches
@@ -48,7 +52,7 @@ class Scene;
 
 /** Helper class that's passed to the user during `RenderPass::execute()`
 */
-class dlldecl RenderData {
+class FALCOR_API RenderData {
  public:
     /** Get a resource
         \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
@@ -118,14 +122,13 @@ class dlldecl RenderData {
     and as part of the render graph compilation their compile() function is called.
     At runtime, execute() is called each frame to generate the pass outputs.
 */
-class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
+class FALCOR_API RenderPass : public Object {
+    FALCOR_OBJECT(RenderPass)
  public:
-    using SharedPtr = std::shared_ptr<RenderPass>;
     virtual ~RenderPass() = default;
 
     // Render pass info.
-    struct Info
-    {
+    struct Info {
         std::string type;   ///< Type name of the render pass. In general this should match the name of the class implementing the render pass.
         std::string desc;   ///< Brief textural description of what the render pass does.
     };

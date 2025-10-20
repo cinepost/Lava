@@ -184,7 +184,7 @@ public:
         \param[in] bindLocation The bind-location in the block
         \param[in] pSrv The unordered-access-view object to bind
     */
-    void setUav(const BindLocation& bindLocation, const Falcor::SharedPtr<ShaderResourceView>& pUav);
+    void setUav(const BindLocation& bindLocation, const Falcor::SharedPtr<UnorderedAccessView>& pUav);
 
     /** Bind an acceleration structure.
         \param[in] bindLocation The bind-location in the block
@@ -282,11 +282,13 @@ public:
 
     void const* getRawData() const;
 
-public:
-    ParameterBlock(Falcor::SharedPtr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
-    ParameterBlock(Falcor::SharedPtr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+
+    const Falcor::SharedPtr<const ProgramVersion>& getProgramVersion() const { return mpProgramVersion; }
 
 protected:
+    ParameterBlock(Falcor::SharedPtr<Device> pDevice, const Falcor::SharedPtr<const ProgramVersion>& pProgramVersion, const Falcor::SharedPtr<const ParameterBlockReflection>& pReflection);
+    ParameterBlock(Falcor::SharedPtr<Device> pDevice, const Falcor::SharedPtr<const ProgramReflection>& pReflector);
+
     void initializeResourceBindings();
     void createConstantBuffers(const ShaderVar& var);
     void checkForNestedTextureArrayResources();

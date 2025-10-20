@@ -29,12 +29,12 @@
 #define SRC_FALCOR_CORE_API_SWAPCHAIN_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Texture.h"
-#include "Formats.h"
-//#include "Core/Macros.h"
+#include "Falcor/Core/Object.h"
 
-//#include <slang-gfx.h>
-#include "Falcor/Core/API/GFX/FalcorGFX.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/API/GFXAPI.h"
+
 #include <memory>
 
 
@@ -42,7 +42,8 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl Swapchain {
+class FALCOR_API Swapchain : public Object {
+    FALCOR_OBJECT(Swapchain)
 public:
     struct Desc {
         ResourceFormat format{ResourceFormat::Unknown};
@@ -57,7 +58,7 @@ public:
      * @param desc Swapchain description.
      * @param windowHandle Handle of window to create swapchain for.
      */
-    Swapchain(std::shared_ptr<Device> pDevice, const Desc& desc, WindowHandle windowHandle);
+    Swapchain(Falcor::SharedPtr<Device> pDevice, const Desc& desc, WindowHandle windowHandle);
 
     const Desc& getDesc() const { return mDesc; }
 
@@ -89,7 +90,7 @@ private:
 
     void prepareImages();
 
-    std::shared_ptr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::ISwapchain> mGfxSwapchain;
     std::vector<Texture::SharedPtr> mImages;

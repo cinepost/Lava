@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_GPUTIMER_H_
 #define SRC_FALCOR_CORE_API_GPUTIMER_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/Buffer.h"
@@ -40,15 +41,13 @@ class Device;
 /** Abstracts GPU timer queries. \n
     This class provides mechanism to get elapsed time in miliseconds between a pair of Begin()/End() calls.
 */
-class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
+class dlldecl GpuTimer : public Object {
+    FALCOR_OBJECT(GpuTimer)
  public:
-    using SharedPtr = std::shared_ptr<GpuTimer>;
-    using SharedConstPtr = std::shared_ptr<const GpuTimer>;
-
     /** Create a new timer object.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice);
 
     /** Destroy a new object
     */
@@ -75,28 +74,26 @@ class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
     */
     double getElapsedTime();
 
- private:
-    GpuTimer(std::shared_ptr<Device> pDevice);
+    void breakStrongReferenceToDevice();
 
-    enum Status {
+ private:
+    GpuTimer(Falcor::SharedPtr<Device> pDevice);
+
+    enum class Status {
         Begin,
         End,
         Idle
-    } mStatus = Idle;
+    };
 
-    static std::weak_ptr<QueryHeap> spHeap;
-    LowLevelContextData::SharedPtr mpLowLevelData;
+    BreakableSharedPtr<Device> mpDevice;
+    Status mStatus = Status::Idle;
     uint32_t mStart = 0;
     uint32_t mEnd = 0;
     double mElapsedTime = 0.0;
     bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
 
-    std::shared_ptr<Device> mpDevice;
-
-    void apiBegin();
-    void apiEnd();
-    void apiResolve();
-    void apiReadback(uint64_t result[2]);
+    Falcor::SharedPtr<Buffer> mpResolveBuffer;        ///< GPU memory used as destination for resolving timestamp queries.
+    Falcor::SharedPtr<Buffer> mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
 };
 
 }  // namespace Falcor

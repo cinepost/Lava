@@ -28,21 +28,17 @@
 #ifndef SRC_FALCOR_SCENE_ANIMATION_ANIMATABLE_H_
 #define SRC_FALCOR_SCENE_ANIMATION_ANIMATABLE_H_
 
-//#include "Falcor.h" 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Animation.h"
 
 namespace Falcor {
     
 /** Represents an object that has a transform which can be animated using a scene graph node.
 */
-class dlldecl Animatable
-{
-public:
-    // While this is an abstract base class, we still need a holder type (shared_ptr)
-    // for pybind11 bindings to work on inherited types.
-    using SharedPtr = std::shared_ptr<Animatable>;
-
+class FALCOR_API Animatable: public Object {
+    FALCOR_OBJECT(Animatable)
+  public:
     static constexpr uint32_t kInvalidNode = -1;
 
     /** Set if object has animation data.

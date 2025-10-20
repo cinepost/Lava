@@ -30,6 +30,7 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 #include "Falcor/Core/API/GFXAPI.h"
 #include "Falcor/Utils/Math/Matrix.h"

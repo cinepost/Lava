@@ -32,9 +32,9 @@
 
 namespace Falcor {
     
-class dlldecl ResolvePass : public RenderPass {
- public:
-    using SharedPtr = std::shared_ptr<ResolvePass>;
+class FALCOR_API ResolvePass : public RenderPass {
+	FALCOR_OBJECT(ResolvePass)
+  public:
     static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});

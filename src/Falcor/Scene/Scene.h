@@ -31,6 +31,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 
 #include "Falcor/Core/API/VAO.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
@@ -116,9 +117,9 @@ class LightLinker;
     - "InstanceID() + GeometryIndex()" is used for indexing into MeshInstanceData for hits on triangle meshes.
     - This is wrapped in getGeometryInstanceID() in Raytracing.slang.
 */
-class dlldecl Scene : public std::enable_shared_from_this<Scene> {
+class FALCOR_API Scene : public Object {
+    FALCOR_OBJECT(Scene)
  public:
-    using SharedPtr = std::shared_ptr<Scene>;
     using GeometryType = Falcor::GeometryType;
     using GeometryTypeFlags = Falcor::GeometryTypeFlags;
 
@@ -134,7 +135,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     //static const FileDialogFilterVec& getFileExtensionFilters();
 
-    std::shared_ptr<Device> device() { return mpDevice; };
+    Falcor::SharedPtr<Device> device() { return mpDevice; };
 
     /** Get default scene defines.
         This is the minimal set of defines needed for a program to compile that imports the scene module.
@@ -792,7 +793,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get LightLinker
     */
 
-    std::shared_ptr<LightLinker>& getLightLinker() { return mpLightLinker; }
+    Falcor::SharedPtr<LightLinker>& getLightLinker() { return mpLightLinker; }
 
     /** Get the environment map or nullptr if it doesn't exist.
     */
@@ -876,7 +877,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Render the scene using raytracing
     */
-    void raytrace(RenderContext* pContext, Program* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
+    void raytrace(RenderContext* pContext, Program* pProgram, const Falcor::SharedPtr<RtProgramVars>& pVars, uint3 dispatchDims);
 
     /** Get the scene's VAO for meshes.
         The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
@@ -935,7 +936,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Set the BLAS geometry index into the local vars for each geometry.
         This is a workaround before GeometryIndex() is supported in shaders.
     */
-    void setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars);
+    void setGeometryIndexIntoRtVars(const Falcor::SharedPtr<RtProgramVars>& pVars);
 
     /** Set the scene ray tracing resources into a shader var.
         The acceleration structure is created lazily, which requires the render context.
@@ -1015,7 +1016,7 @@ public:
         // Lights
         std::vector<Light::SharedPtr>   lights;                 ///< List of light sources.
         LightProfile::SharedPtr         pLightProfile;          ///< Global light profile.
-        std::shared_ptr<LightLinker>    pLightLinker;           ///< Scene lights linker.
+        Falcor::SharedPtr<LightLinker>  pLightLinker;           ///< Scene lights linker.
 
         // Materials
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
@@ -1093,8 +1094,8 @@ public:
         std::vector<AABB> customPrimitiveAABBs;                 ///< List of AABBs for custom primitives in world space. Each custom primitive consists of one AABB.
     };
 
-    static Scene::SharedPtr create(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
-    static Scene::SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
+    static Scene::SharedPtr create(Falcor::SharedPtr<Device> pDevice, SceneData&& sceneData);
+    static Scene::SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::string& filename);
 
     ~Scene();
 
@@ -1237,7 +1238,7 @@ public:
     void updateLightStats();
     void updateGridVolumeStats();
 
-    Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
+    Scene(Falcor::SharedPtr<Device> pDevice, SceneData&& sceneData);
 
     // Scene Geometry
     
@@ -1346,7 +1347,7 @@ public:
     std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
     std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
-    std::shared_ptr<LightLinker>  mpLightLinker;
+    Falcor::SharedPtr<LightLinker>  mpLightLinker;
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
     LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.
@@ -1484,7 +1485,7 @@ public:
     std::string mFilename;
     bool mFinalized = false;                            ///< True if scene is ready to be bound to the GPU.
 
-    std::shared_ptr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
 
     friend class lava::Renderer;
 };

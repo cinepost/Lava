@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 
 #include "MaterialData.slang"
@@ -51,12 +52,9 @@ class BasicMaterial;
 
 /** Abstract base class for materials.
 */
-class dlldecl Material : public std::enable_shared_from_this<Material> {
+class FALCOR_API Material : public Object {
+		FALCOR_OBJECT(Material)
 	public:
-		// While this is an abstract base class, we still need a holder type (shared_ptr)
-		// for pybind11 bindings to work on inherited types.
-		using SharedPtr = std::shared_ptr<Material>;
-
 		/** Flags indicating if and what was updated in the material.
 		*/
 		enum class UpdateFlags : uint32_t {
@@ -284,7 +282,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 		// Temporary convenience function to downcast Material to BasicMaterial.
 		// This is because a large portion of the interface hasn't been ported to the Material base class yet.
 		// TODO: Remove this helper later
-		std::shared_ptr<BasicMaterial> toBasicMaterial();
+		Falcor::SharedPtr<BasicMaterial> toBasicMaterial();
 
 		/** Size of the material instance the material produces.
         Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.

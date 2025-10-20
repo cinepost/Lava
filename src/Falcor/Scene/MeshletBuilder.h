@@ -11,7 +11,7 @@
 
 namespace Falcor {
 
-class dlldecl MeshletBuilder {
+class FALCOR_API MeshletBuilder {
 	public:
 		enum class BuildMode: uint8_t {
 			SCAN,

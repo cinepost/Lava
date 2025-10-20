@@ -90,7 +90,7 @@ private:
     };
 
     Falcor::BreakableSharedPtr<Device> mpDevice;
-    MemoryType mType;
+    MemoryType mMemoryType;
     Fence::SharedPtr mpFence;
     size_t mPageSize = 0;
     size_t mCurrentPageId = 0;

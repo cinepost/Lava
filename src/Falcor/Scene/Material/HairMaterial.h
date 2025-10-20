@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_HAIRMATERIAL_H_ 
+#define SRC_FALCOR_SCENE_MATERIAL_HAIRMATERIAL_H_
+
 #include "Scene/Material/BasicMaterial.h"
 
 namespace Falcor {
@@ -44,10 +46,9 @@ namespace Falcor {
 
     See additional texture channels defined in BasicMaterial.
 */
-class dlldecl HairMaterial : public BasicMaterial {
+class FALCOR_API HairMaterial : public BasicMaterial {
+        FALCOR_OBJECT(HairMaterial)
     public:
-        using SharedPtr = std::shared_ptr<HairMaterial>;
-
         /** Create a new hair material.
             \param[in] name The material name.
         */
@@ -59,4 +60,6 @@ class dlldecl HairMaterial : public BasicMaterial {
         HairMaterial(Device::SharedPtr pDevice, const std::string& name);
 };
 
-}
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_MATERIAL_HAIRMATERIAL_H_

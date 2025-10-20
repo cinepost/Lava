@@ -30,6 +30,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
+#include "Falcor/Core/Program/ProgramReflection.h"
 
 #include <atomic>
 
@@ -124,8 +125,8 @@ ParameterBlock::~ParameterBlock() {
 
 }
 
-ParameterBlock::ParameterBlock(Device* pDevice,  const ProgramReflection::SharedConstPtr& pReflector)
-    : mpDevice(pDevice)
+ParameterBlock::ParameterBlock(Device::SharedPtr pDevice,  const Falcor::SharedPtr<const ProgramReflection>& pReflector)
+    : mpDevice(pDevice.get())
     , mpProgramVersion(pReflector->getProgramVersion())
     , mpReflector(pReflector->getDefaultParameterBlock()) {
     
@@ -141,10 +142,8 @@ ParameterBlock::ParameterBlock(Device* pDevice,  const ProgramReflection::Shared
     createConstantBuffers(getRootVar());
 }
 
-ParameterBlock::ParameterBlock(Device* pDevice,
-    const ProgramVersion::SharedConstPtr& pProgramVersion,
-    const ParameterBlockReflection::SharedConstPtr& pReflection)
-    : mpDevice(pDevice)
+ParameterBlock::ParameterBlock(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
+    : mpDevice(pDevice.get())
     , mpProgramVersion(pProgramVersion)
     , mpReflector(pReflection) {
 
@@ -170,12 +169,8 @@ ParameterBlock::SharedPtr ParameterBlock::create(Device* pDevice, const ProgramV
 }
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
-    return ParameterBlock::create(pDevice.get(), pReflection);
-}
-
-ParameterBlock::SharedPtr ParameterBlock::create(Device* pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
     assert(pReflection);
-    return std::make_shared<ParameterBlock>(pDevice, ProgramVersion::SharedConstPtr(pReflection->getProgramVersion()), pReflection);
+    return Falcor::SharedPtr<ParameterBlock>(new ParameterBlock(pDevice, ProgramVersion::SharedConstPtr(pReflection->getProgramVersion()), pReflection));
 }
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const std::string& typeName) {
@@ -346,8 +341,8 @@ void setVariableInternal(
     ReflectionBasicType::Type implicitType = ReflectionBasicType::Type::Unknown)
 {
     const ReflectionBasicType* basicType = bindLocation.getType()->unwrapArray()->asBasicType();
-    if (!basicType)
-        FALCOR_THROW("Error trying to set a variable that is not a basic type.");
+    if (!basicType) FALCOR_THROW("Error trying to set a variable that is not a basic type.");
+    
     ReflectionBasicType::Type expectedType = basicType->getType();
     // Check types. Allow implicit conversions from signed to unsigned types.
     if (type != expectedType && implicitType != expectedType) {
@@ -572,27 +567,10 @@ bool ParameterBlock::prepareDescriptorSets(CopyContext* pCopyContext) {
     return true;
 }
 
-const ParameterBlock::SharedPtr& ParameterBlock::getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const {
-    static ParameterBlock::SharedPtr pNull = nullptr;
-
-    gfx::ShaderOffset gfxOffset = {};
-    gfxOffset.bindingRangeIndex = resourceRangeIndex;
-    gfxOffset.bindingArrayIndex = arrayIndex;
-    auto iter = mParameterBlocks.find(gfxOffset);
-    if (iter == mParameterBlocks.end()) {
-        return pNull;
-    }
-    return iter->second;
-}
-
 void ParameterBlock::collectSpecializationArgs(SpecializationArgs& ioArgs) const {}
 
 void const* ParameterBlock::getRawData() const {
     return mpShaderObject->getRawData();
-}
-
-const Buffer::SharedPtr& ParameterBlock::getUnderlyingConstantBuffer() const {
-    throw std::runtime_error("unimplemented");
 }
 
 ShaderVar ParameterBlock::getRootVar() const {
@@ -660,7 +638,7 @@ void ParameterBlock::prepareResource(CopyContext* pContext, Resource* pResource,
     }
 
     bool insertBarrier = true;
-    insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
+    insertBarrier = (is_set(pResource->getBindFlags(), ResourceBindFlags::AccelerationStructure) == false);
     if (insertBarrier) {
         insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
     }
