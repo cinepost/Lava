@@ -28,9 +28,11 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_COMPUTESPASS_H_
 #define SRC_FALCOR_RENDERGRAPH_BASEPASSES_COMPUTESPASS_H_
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
-#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/State/ComputeState.h"
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 
 
@@ -81,7 +83,7 @@ class FALCOR_API ComputePass : public Object {
 
     /** Get the vars
     */
-    const ProgramVars::SharedPtr& getVars() const { assert(mpVars); return mpVars; };
+    const Falcor::SharedPtr<ProgramVars>& getVars() const { assert(mpVars); return mpVars; };
 
     ShaderVar getRootVar() const { return mpVars->getRootVar(); }
 
@@ -101,7 +103,7 @@ class FALCOR_API ComputePass : public Object {
         The function throws an exception on error.
         \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new vars object.
     */
-    void setVars(const ProgramVars::SharedPtr& pVars);
+    void setVars(const Falcor::SharedPtr<ProgramVars>& pVars);
 
     /** Get the thread group size from the program
     */
@@ -114,8 +116,8 @@ public:
 
 protected:
     Falcor::SharedPtr<Device> mpDevice;
-    ProgramVars::SharedPtr mpVars;
-    ComputeState::SharedPtr mpState;
+    Falcor::SharedPtr<ProgramVars> mpVars;
+    Falcor::SharedPtr<ComputeState> mpState;
 };
 
 }  // namespace Falcor

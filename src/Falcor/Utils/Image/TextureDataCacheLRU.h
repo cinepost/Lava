@@ -30,6 +30,8 @@
 
 #include <unordered_map>
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/VirtualTexturePage.h"
@@ -37,12 +39,9 @@
 
 namespace Falcor {
 
-class dlldecl TextureDataCacheLRU {
+class FALCOR_API TextureDataCacheLRU : public Object {
+		FALCOR_OBJECT(TextureDataCacheLRU)
 	public:
-		using SharedPtr = std::shared_ptr<TextureDataCacheLRU>;
-
-		//struct 
-
 		~TextureDataCacheLRU();
 
 		/** Create a texture cache.

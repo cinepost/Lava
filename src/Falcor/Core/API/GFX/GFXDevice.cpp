@@ -487,17 +487,11 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		}
 		
 		ICommandQueue::Desc queueDesc = {};
-		queueDesc.type = ICommandQueue::QueueType::Graphics;
-		if (SLANG_FAILED(mGfxDevice->createCommandQueue(queueDesc, mGfxCommandQueue.writeRef()))) return false;
-		for (auto& queue : mCmdQueues) {
-			queue.push_back(mGfxCommandQueue);
-		}
+		queueDesc.type = gfx::ICommandQueue::QueueType::Graphics;
+    	if (SLANG_FAILED(mGfxDevice->createCommandQueue(queueDesc, mGfxCommandQueue.writeRef()))) {
+        	FALCOR_THROW("Failed to create command queue");
+    	}
 
-		for (auto& queue : mCmdNativeQueues) {
-		  gfx::InteropHandle handle = {};
-    		FALCOR_GFX_CALL(mGfxCommandQueue->getNativeHandle(&handle));
-    		queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
-		}
 
 		if (!mHeadless && mpWindow) {
 			if (mpWindow->getClientAreaSize().x == 0 || mpWindow->getClientAreaSize().y == 0) {
@@ -664,8 +658,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 
     	mpDefaultSampler.reset();
     	mpFrameFence.reset();
-
-    	releaseNullViews();
 
     	mpTextureManager.reset();
     	mpProgramManager.reset();

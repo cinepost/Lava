@@ -33,7 +33,7 @@
 
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ShaderVar.h"
-#include "Falcor/Core/API/GFX/GFXFormats.h"
+#include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "lava_utils_lib/logging.h"
@@ -191,7 +191,7 @@ Buffer::Buffer(Device::SharedPtr pDevice, gfx::IBufferResource* pResource, size_
 
 inline Slang::ComPtr<gfx::IBufferResource> gfxResourceFromNativeHandle(
 	Device* pDevice,
-	NativeHandle handle,
+	const VkBuffer& handle,
 	size_t size,
 	ResourceBindFlags bindFlags,
 	MemoryType memoryType)
@@ -201,7 +201,7 @@ inline Slang::ComPtr<gfx::IBufferResource> gfxResourceFromNativeHandle(
 
 	gfx::InteropHandle gfxNativeHandle = {};
 	gfxNativeHandle.api = gfx::InteropHandleAPI::Vulkan;
-	gfxNativeHandle.handleValue = reinterpret_cast<uint64_t>(handle.as<VkBuffer>());
+	gfxNativeHandle.handleValue = reinterpret_cast<uint64_t>(handle);
 	
 	Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
 	FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferFromNativeHandle(gfxNativeHandle, bufDesc, gfxBuffer.writeRef()));
@@ -209,7 +209,7 @@ inline Slang::ComPtr<gfx::IBufferResource> gfxResourceFromNativeHandle(
 	return gfxBuffer;
 }
 
-Buffer::Buffer(Device::SharedPtr pDevice, NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
+Buffer::Buffer(Device::SharedPtr pDevice, VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
 	: Buffer(pDevice, gfxResourceFromNativeHandle(pDevice.get(), handle, size, bindFlags, memoryType), size, bindFlags, memoryType)
 {}
 

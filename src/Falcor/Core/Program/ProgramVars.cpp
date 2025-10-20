@@ -30,6 +30,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ComputeContext.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/ShaderTable.h"
 
 #include "lava_utils_lib/logging.h"
 

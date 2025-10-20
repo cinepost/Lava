@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,36 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_
-#define SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_
-
-#include "stdafx.h"
-
-#include "gfx_lib/slang-gfx.h"
-
-#include "Falcor/Core/API/RtAccelerationStructure.h"
-#include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/ShaderTable.h"
 
 namespace Falcor {
 
-/** A helper class to translate `RtAccelerationStructureBuildInputs` into `gfx::IAccelerationStructure::BuildInputs`.
-*/
-struct GFXAccelerationStructureBuildInputsTranslator {
-    public:
-        gfx::IAccelerationStructure::BuildInputs& translate(const RtAccelerationStructureBuildInputs& buildInputs);
+ShaderTablePtr::~ShaderTablePtr() { 
+    mpDevice->releaseResource(mTable); 
+}
 
-    private:
-        gfx::IAccelerationStructure::BuildInputs mDesc = {};
-        gfx::IAccelerationStructure::PrebuildInfo mPrebuildInfo = {};
-        std::vector<gfx::IAccelerationStructure::GeometryDesc> mGeomDescs;
-
-        gfx::IAccelerationStructure::GeometryFlags::Enum translateGeometryFlags(RtGeometryFlags flags) {
-            return (gfx::IAccelerationStructure::GeometryFlags::Enum)flags;
-        }
-};
-
-gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type);
-
-}  // namespace Falcor
-
-#endif  // SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_
+} // namespace Falcor

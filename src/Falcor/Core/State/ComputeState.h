@@ -25,37 +25,34 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
+#define SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
 
-#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Object.h"
 
 #include "StateGraph.h"
 #include "Falcor/Core/API/ComputeStateObject.h"
 #include "Falcor/Core/Program/Program.h"
-#include "Falcor/Core/Program/ProgramVars.h"
 
 #include <memory>
 
 namespace Falcor {
 
+class Device;
+
 /** Compute state.
     This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
     The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
 */
-class FALCOR_API ComputeState {
+class FALCOR_API ComputeState : public Object {
+    FALCOR_OBJECT(ComputeState)
     public:
-        using SharedPtr = std::shared_ptr<ComputeState>;
-        using SharedConstPtr = std::shared_ptr<const ComputeState>;
         ~ComputeState() = default;
 
         /** Create a new state object.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(Device::SharedPtr pDevice) { return SharedPtr(new ComputeState(pDevice)); }
-
-        /** Copy constructor. Useful if you need to make minor changes to an already existing object
-        */
-        SharedPtr operator=(const SharedPtr& other);
+        static SharedPtr create(Falcor::SharedPtr<Device> pDevice);
 
         /** Bind a program to the pipeline
         */
@@ -70,11 +67,11 @@ class FALCOR_API ComputeState {
         ComputeStateObject::SharedPtr getCSO(const ProgramVars* pVars);
 
     private:
-        ComputeState(Device::SharedPtr pDevice);
+        ComputeState(Falcor::SharedPtr<Device> pDevice);
 
-        Device::SharedPtr mpDevice;
+        Falcor::SharedPtr<Device> mpDevice;
         Program::SharedPtr mpProgram;
-        ComputeStateObject::Desc mDesc;
+        ComputeStateObjectDesc mDesc;
 
         struct CachedData {
             const ProgramKernels* pProgramKernels = nullptr;
@@ -86,3 +83,5 @@ class FALCOR_API ComputeState {
 };
 
 }  // namespace Falcor
+
+#endif // SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_

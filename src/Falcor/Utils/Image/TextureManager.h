@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 #include "Falcor/Utils/ThreadPool.h"
@@ -44,6 +45,7 @@
 namespace Falcor {
 
 class Device;
+class Texture;
 class VirtualTexturePage;
 
 /** Multi-threaded texture manager.
@@ -55,9 +57,9 @@ class VirtualTexturePage;
 	This handle is used in shader code to reference the given texture
 	in the array of GPU texture descriptors.
 */
-class dlldecl TextureManager {
+class FALCOR_API TextureManager {
 public:
-	using SharedPtr = std::shared_ptr<TextureManager>;
+	using UniquePtr = std::unique_ptr<TextureManager>;
 	using TileList = std::vector<std::pair<fs::path, Falcor::uint2>>;
 
 	~TextureManager();
@@ -106,24 +108,17 @@ public:
 	*/
 	struct TextureDesc {
 		TextureState state = TextureState::Invalid;     ///< Current state of the texture.
-		Texture::SharedPtr pTexture;                    ///< Valid texture object when state is 'Loaded', or nullptr if loading failed.
+		Falcor::SharedPtr<Texture> pTexture;            ///< Valid texture object when state is 'Loaded', or nullptr if loading failed.
 
 		bool isValid() const { return state != TextureState::Invalid; }
 	};
-
-	/** Create a texture manager.
-		\param[in] maxTextureCount Maximum number of textures that can be simultaneously managed.
-		\param[in] threadCount Number of worker threads.
-		\return A new object.
-	*/
-	static SharedPtr create(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount = std::thread::hardware_concurrency());
 
 	/** Add a texture to the manager.
 		If the texture is already managed, its existing handle is returned.
 		\param[in] pTexture The texture resource.
 		\return Unique handle to the texture.
 	*/
-	TextureHandle addTexture(const Texture::SharedPtr& pTexture);
+	TextureHandle addTexture(const Falcor::SharedPtr<Texture>& pTexture);
 
 	/** Requst loading a texture from file.
 		This will add the texture to the set of managed textures. The function returns a handle immediately.
@@ -136,11 +131,11 @@ public:
 		\param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
 		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
 	*/
-	bool loadTexture(TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+	bool loadTexture(TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
-	Texture::SharedPtr loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
+	Falcor::SharedPtr<Texture> loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
-	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
+	Falcor::SharedPtr<Texture> loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource);
 
 	/** Wait for a requested texture to load.
 		If the handle is valid, the call blocks until the texture is loaded (or failed to load).
@@ -161,7 +156,7 @@ public:
 		\param[in] handle Texture handle.
 		\return Texture if loaded, or nullptr if handle doesn't exist or texture isn't yet loaded.
 	*/
-	Texture::SharedPtr getTexture(const TextureHandle& handle) const { return getTextureDesc(handle).pTexture; }
+	Falcor::SharedPtr<Texture> getTexture(const TextureHandle& handle) const { return getTextureDesc(handle).pTexture; }
 
 	/** Get a texture desc.
 		\param[in] handle Texture handle.
@@ -195,7 +190,7 @@ public:
 		\param[in] descCount Size of descriptor array.
 	*/
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
-	void setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const;
+	void setShaderData(const ShaderVar& var, const std::vector<Falcor::SharedPtr<Texture>>& textures) const;
 
 	void setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount);
 
@@ -205,24 +200,24 @@ public:
 
 	void finalize();
 
-	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
-	void loadPagesAsync(const std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>>& texturesToPageIDsList);
+	void loadPages(const Falcor::SharedPtr<Texture>& pTexture, const std::vector<uint32_t>& pageIds);
+	void loadPagesAsync(const std::vector<std::pair<Falcor::SharedPtr<Texture>, std::vector<uint32_t>>>& texturesToPageIDsList);
 
 	void updateSparseBindInfo();
 
 	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
 
-	Buffer::SharedPtr getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
-	Buffer::SharedConstPtr getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
+	Falcor::SharedPtr<Buffer> getPagesResidencyBuffer() { return mpVirtualPagesResidencyDataBuffer; }
+	Falcor::SharedPtr<const Buffer> getPagesResidencyBuffer() const { return mpVirtualPagesResidencyDataBuffer; }
 
-	Buffer::SharedPtr getVirtualTexturesDataBuffer() { return mpVirtualTexturesDataBuffer; }
+	Falcor::SharedPtr<Buffer> getVirtualTexturesDataBuffer() { return mpVirtualTexturesDataBuffer; }
 
 	size_t getVirtualTexturePagesStartIndex(const Texture* pTexture);
 
 	const std::map<const Texture*, size_t>& getVirtualPagesStartMap() const { return mVirtualPagesStartMap;}
 
 private:
-	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
+	TextureManager(Falcor::SharedPtr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
 
 	/** Builds data structures needed for sparse residency management.
 	*/
@@ -234,9 +229,9 @@ private:
 		fs::path fullPath;
 		bool generateMipLevels;
 		bool loadAsSRGB;
-		Resource::BindFlags bindFlags;
+		ResourceBindFlags bindFlags;
 
-		TextureKey(const fs::path& path, bool mips, bool srgb, Resource::BindFlags flags)
+		TextureKey(const fs::path& path, bool mips, bool srgb, ResourceBindFlags flags)
 			: fullPath(path), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags)
 		{}
 
@@ -251,9 +246,7 @@ private:
 	TextureHandle addDesc(const TextureDesc& desc, TextureHandle::Mode mode = TextureHandle::Mode::Texture);
 	TextureDesc& getDesc(const TextureHandle& handle);
 
-	Device::SharedPtr mpDevice = nullptr;
-
-	TextureDataCacheLRU::SharedPtr mpTextureDataCache = nullptr;
+	Device* mpDevice;
 
 	lava::ut::data::LRUCache<uint32_t, VirtualTexturePage::PageData>::UniquePtr mpPageDataCache = nullptr;
 
@@ -272,16 +265,16 @@ private:
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
 
-	Buffer::SharedPtr mpExtendedTexturesDataBuffer;
+	Falcor::SharedPtr<Buffer> mpExtendedTexturesDataBuffer;
 
 	std::vector<VirtualTextureData> mVirtualTexturesData;
 	std::vector<uint8_t> mVirtualPagesData;
 	std::map<const Texture*, size_t> mVirtualPagesStartMap;
 
-	Buffer::SharedPtr mpVirtualTexturesDataBuffer;
-	Buffer::SharedPtr mpVirtualPagesResidencyDataBuffer;
+	Falcor::SharedPtr<Buffer> mpVirtualTexturesDataBuffer;
+	Falcor::SharedPtr<Buffer> mpVirtualPagesResidencyDataBuffer;
 
-	Buffer::SharedPtr mpUDIMTextureTilesTableBuffer;
+	Falcor::SharedPtr<Buffer> mpUDIMTextureTilesTableBuffer;
 
 	bool mSparseTexturesEnabled = false;
 	bool mHasSparseTextures = false;
@@ -301,10 +294,12 @@ private:
 	uint32_t mMaxCPUSparseTexturesMemoryCap = 0;                ///< Maximum memory cap used for storing virtual textures page data
 	uint32_t mMaxGPUSparseTexturesMemoryCap = 0;								///< Maximum memory cap used for storing virtual textures page data
 
-	Texture::SharedPtr mNullTexture;
+	Falcor::SharedPtr<Texture> mNullTexture;
 
 	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;
 	std::vector<std::shared_ptr<VirtualTexturePage>>  mSparseDataPages;
+
+	friend class Device;
 };
 
 inline std::string to_string(TextureManager::TextureHandle::Mode mode) {

@@ -28,25 +28,24 @@
 #ifndef SRC_FALCOR_CORE_API_PARAMETERBLOCK_H_
 #define SRC_FALCOR_CORE_API_PARAMETERBLOCK_H_
 
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
 
-#include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Core/Program/ProgramReflection.h"
+#include "Falcor/Core/Program/ShaderVar.h"
 
 #include <slang/slang.h>
+#include <Falcor/Core/API/GFXAPI.h>
 
 
 namespace Falcor {
 
-class Device;
 class ProgramVersion;
 class CopyContext;
-class ShaderResourceView;
-class UnorderedAccessView;
-class Resource;
-class Sampler;
-class RtAccelerationStructure;
 
 
 /** A parameter block. This block stores all the parameter data associated with a specific type in shader code
@@ -287,13 +286,6 @@ public:
     ParameterBlock(Falcor::SharedPtr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
     ParameterBlock(Falcor::SharedPtr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-    //ParameterBlock(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection) {
-    //    ParameterBlock(pDevice.get(), pProgramVersion, pReflection);
-    //}
-    //ParameterBlock(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
-    //    ParameterBlock(pDevice.get(), pReflector);
-    //}
-
 protected:
     void initializeResourceBindings();
     void createConstantBuffers(const ShaderVar& var);
@@ -314,7 +306,7 @@ protected:
     std::map<gfx::ShaderOffset, Falcor::SharedPtr<UnorderedAccessView>> mUAVs;
     std::map<gfx::ShaderOffset, Falcor::SharedPtr<Resource>> mResources;
     std::map<gfx::ShaderOffset, Falcor::SharedPtr<Sampler>> mSamplers;
-    std::map<gfx::ShaderOffset,Falcor::SharedPtr< RtAccelerationStructure>> mAccelerationStructures;
+    std::map<gfx::ShaderOffset, Falcor::SharedPtr< RtAccelerationStructure>> mAccelerationStructures;
 };
 
 template<typename T> void ShaderVar::setImpl(const T& val) const {

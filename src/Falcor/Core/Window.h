@@ -31,6 +31,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 
 struct GLFWwindow;
 
@@ -41,12 +42,11 @@ struct MouseEvent;
 struct GamepadEvent;
 struct GamepadState;
 
-class dlldecl Window {
+class FALCOR_API Window : public Object {
+    FALCOR_OBJECT(Window)
 public:
-    using SharedPtr = std::shared_ptr<Window>;
-    using SharedConstPtr = std::shared_ptr<const Window>;
     using ApiHandle = WindowHandle;
-
+    
     /** Window mode
     */
     enum class WindowMode {
@@ -63,6 +63,7 @@ public:
         std::string title = "Sample";           ///< Window title.
         WindowMode mode = WindowMode::Normal;   ///< Window mode. In full screen mode, width and height will be ignored.
         bool resizableWindow = true;            ///< Allow the user to resize the window.
+        bool enableVSync = false;             ///< Controls vertical-sync.
     };
 
     /** Callbacks interface to be used when creating a new object

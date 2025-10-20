@@ -536,15 +536,13 @@ struct ProgramDesc {
 	This allows simple usage in case different macros are required - for example static vs. animated models.
 */
 class FALCOR_API Program : public Object {
+    FALCOR_OBJECT(Program)
 public:
-    using SharedPtr = Falcor::SharedPtr<Program>;
-    using SharedConstPtr = Falcor::SharedPtr<const Program>;
-
     using Desc = ProgramDesc;
     using DefineList = Falcor::DefineList;
     using TypeConformanceList = Falcor::TypeConformanceList;
 
-	Program(Device::SharedPtr pDevice, ProgramDesc desc, DefineList programDefines);
+	Program(Falcor::SharedPtr<Device> pDevice, ProgramDesc desc, DefineList programDefines);
 	//virtual ~Program();
     ~Program();
 
@@ -556,7 +554,7 @@ public:
    * @param[in] programDefines Optional list of macro definitions to set into the program.
    * @return A new object, or an exception is thrown if creation failed.
    */
-  static Program::SharedPtr create(Device::SharedPtr pDevice, ProgramDesc desc, DefineList programDefines = {}) {
+  static Program::SharedPtr create(Falcor::SharedPtr<Device> pDevice, ProgramDesc desc, DefineList programDefines = {}) {
       return make_shared_ptr<Program>(std::move(pDevice), std::move(desc), std::move(programDefines));
   }
 
@@ -572,7 +570,7 @@ public:
    * @return A new object, or an exception is thrown if creation failed.
    */
   static Program::SharedPtr createCompute(
-      Device::SharedPtr pDevice,
+      Falcor::SharedPtr<Device> pDevice,
       const fs::path& path,
       const std::string& csEntry,
       DefineList programDefines = {},
@@ -603,7 +601,7 @@ public:
    * @return A new object, or an exception is thrown if creation failed.
    */
   static Program::SharedPtr createGraphics(
-      Device::SharedPtr pDevice,
+      Falcor::SharedPtr<Device> pDevice,
       const fs::path& path,
       const std::string& vsEntry,
       const std::string& psEntry,
@@ -718,7 +716,7 @@ protected:
   void validateEntryPoints() const;
   bool linkProgram() const;
 
-  Device::SharedPtr mpDevice;
+  Falcor::SharedPtr<Device> mpDevice;
 
 	// The description used to create this program
   // TODO we should make this const again
@@ -738,8 +736,8 @@ protected:
 
   // We are doing lazy compilation, so these are mutable
   mutable bool mLinkRequired = true;
-  mutable std::map<ProgramVersionKey, ProgramVersion::SharedConstPtr> mProgramVersions;
-  mutable ProgramVersion::SharedConstPtr mpActiveVersion;
+  mutable std::map<ProgramVersionKey, Falcor::SharedPtr<const ProgramVersion>> mProgramVersions;
+  mutable Falcor::SharedPtr<const ProgramVersion> mpActiveVersion;
   void markDirty() { mLinkRequired = true; }
 
   std::string getProgramDescString() const;
@@ -750,7 +748,7 @@ protected:
   bool checkIfFilesChanged();
   void reset();
 
-  using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
+  using StateGraph = Falcor::StateGraph<Falcor::SharedPtr<RtStateObject>, void*>;
   StateGraph mRtsoGraph;
 
 };

@@ -76,16 +76,6 @@ SharedResourceApiHandle Fence::getSharedApiHandle() const {
     return (SharedResourceApiHandle)sharedHandle.handleValue;
 }
 
-NativeHandle Fence::getNativeHandle() const {
-    gfx::InteropHandle gfxNativeHandle = {};
-    FALCOR_GFX_CALL(mGfxFence->getNativeHandle(&gfxNativeHandle));
-
-#if FALCOR_HAS_VULKAN
-        // currently not supported
-#endif
-    return {};
-}
-
 void Fence::breakStrongReferenceToDevice() {
     mpDevice.breakStrongReference();
 }

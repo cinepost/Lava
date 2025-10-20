@@ -28,6 +28,27 @@
 #ifndef SRC_FALCOR_CORE_API_DEVICE_H_
 #define SRC_FALCOR_CORE_API_DEVICE_H_
 
+#include "Falcor/Core/Framework.h"
+
+#include "Falcor/Core/API/Common.h"
+#include "Falcor/Core/API/NativeHandle.h"
+#include "Falcor/Core/API/Formats.h"
+#include "Falcor/Core/API/QueryHeap.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/GpuMemoryHeap.h"
+
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
+
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Window.h"
+
+#include "GFXAPI.h"
+
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
 #include <list>
 #include <string>
 #include <memory>
@@ -35,23 +56,6 @@
 #include <vector>
 #include <atomic>
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/Object.h"
-#include "Falcor/Core/Window.h"
-
-#include "Falcor/Core/API/NativeHandle.h"
-#include "Falcor/Core/API/LowLevelContextData.h"
-#include "Falcor/Core/API/QueryHeap.h"
-#include "Falcor/Core/API/ResourceViews.h"
-
-#include "Falcor/Core/API/Buffer.h"
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/Sampler.h"
-
-#include "gfx_lib/slang-gfx.h"
-#include "gfx_lib/vulkan/vk-device-props.h"
-
-#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 
@@ -65,9 +69,6 @@ struct DeviceApiData;
 
 class Fbo;
 class ShaderVar;
-class GpuMemoryHeap;
-class CopyContext;
-class RenderContext;
 class TextureManager;
 class ProgramManager;
 
@@ -259,7 +260,7 @@ class FALCOR_API Device: public Object {
      * allocated on.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    Falcor::SharedPtr<Buffer> createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+    Falcor::SharedPtr<Buffer> createBufferFromNativeHandle(VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     /**
      * Create a new texture from an resource.
@@ -292,6 +293,18 @@ class FALCOR_API Device: public Object {
 
     Falcor::SharedPtr<Sampler> createSampler(const Sampler::Desc& desc);
 
+    /**
+     * Create a new fence object.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Fence> createFence(const FenceDesc& desc);
+
+    /**
+     * Create a new fence object.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    Falcor::SharedPtr<Fence> createFence(bool shared = false);
+
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
@@ -319,16 +332,6 @@ class FALCOR_API Device: public Object {
     */
     bool isWindowOccluded() const;
 
-    /** Get the FBO object associated with the swap-chain.
-        This can change each frame, depending on the API used
-    */
-    std::shared_ptr<Fbo> getSwapChainFbo() const;
-
-    /** Get the FBO object used for headless rendering.
-        This can change each frame, depending on the API used
-    */
-    std::shared_ptr<Fbo> getOffscreenFbo() const;
-
     /** Get the default render-context.
         The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
     */
@@ -348,25 +351,13 @@ class FALCOR_API Device: public Object {
     */
     bool isVsyncEnabled() const { return mDesc.enableVsync; }
 
-    /** Resize the swap-chain
-        \return A new FBO object
-    */
-    std::shared_ptr<Fbo> resizeSwapChain(uint32_t width, uint32_t height);
-
     /** Get the desc
     */
     const Desc& getDesc() const { return mDesc; }
 
     /** Get default sampler object
     */
-    const std::shared_ptr<Sampler>& getDefaultSampler() const;
-
-    /** Create a new query heap.
-        \param[in] type Type of queries.
-        \param[in] count Number of queries.
-        \return New query heap.
-    */
-    std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
+    const Falcor::SharedPtr<Sampler>& getDefaultSampler() const;
 
     DeviceApiData* getApiData() const { return mpApiData; }
 
@@ -374,6 +365,8 @@ class FALCOR_API Device: public Object {
 
     const Falcor::SharedPtr<GpuMemoryHeap>& getReadBackHeap() const { return mpReadBackHeap; }
     const Falcor::SharedPtr<GpuMemoryHeap>& getUploadHeap() const { return mpUploadHeap; }
+    const Falcor::SharedPtr<QueryHeap>& getTimestampQueryHeap() const { return mpTimestampQueryHeap; }
+
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; }  // ms/tick
 
     /** Check if features are supported by the device
@@ -381,8 +374,6 @@ class FALCOR_API Device: public Object {
     bool isFeatureSupported(SupportedFeatures flags) const;
 
     uint32_t subgroupSize() const;
-
-    void releaseResource(ApiObjectHandle pResource);
 
     /**
      * Return the default shader model to use
@@ -396,7 +387,7 @@ class FALCOR_API Device: public Object {
 
     std::vector<std::string> getFeatures() const { return mGfxDevice->getFeatures(); }
 
-    void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
+    void releaseResource(ISlangUnknown* pResource);
 
     uint64_t getMinAccelerationStructureScratchOffsetAlignment() const;
 
@@ -435,24 +426,21 @@ class FALCOR_API Device: public Object {
     };
 
     uint32_t mCurrentTransientResourceHeapIndex = 0;
-    std::shared_ptr<Sampler> mpDefaultSampler;
+    Falcor::SharedPtr<Sampler> mpDefaultSampler;
     std::queue<ResourceRelease> mDeferredReleases;
 
     uint32_t mCurrentBackBufferIndex;
-    std::shared_ptr<Fbo> mpSwapChainFbos[kInFlightFrameCount];
-    std::shared_ptr<Fbo> mpOffscreenFbo;
+    Falcor::SharedPtr<Fbo> mpSwapChainFbos[kInFlightFrameCount];
+    Falcor::SharedPtr<Fbo> mpOffscreenFbo;
 
     void executeDeferredReleases();
-    void releaseFboData();
     void release();
 
-    bool updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
-    bool updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
-
     Desc mDesc;
-    Slang::ComPtr<gfx::IDevice> mGfxDevice;
-    Falcor::SharedPtr<GpuMemoryHeap> mpReadBackHeap;
-    Falcor::SharedPtr<GpuMemoryHeap> mpUploadHeap;
+    Slang::ComPtr<gfx::IDevice>         mGfxDevice;
+    Falcor::SharedPtr<GpuMemoryHeap>    mpReadBackHeap;
+    Falcor::SharedPtr<GpuMemoryHeap>    mpUploadHeap;
+    Falcor::SharedPtr<QueryHeap>        mpTimestampQueryHeap;
     Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
 
     bool mIsWindowOccluded = false;
@@ -463,7 +451,7 @@ class FALCOR_API Device: public Object {
 
     Window::SharedPtr mpWindow = nullptr;
     DeviceApiData* mpApiData;
-    std::shared_ptr<RenderContext> mpRenderContext = nullptr;
+    std::unique_ptr<RenderContext> mpRenderContext = nullptr;
     size_t mFrameID = 0;
     std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
     double mGpuTimestampFrequency;
@@ -505,7 +493,7 @@ class FALCOR_API Device: public Object {
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(Window::SharedPtr pWindow, const Desc& desc);
+    static SharedPtr create(Falcor::SharedPtr<Window>pWindow, const Desc& desc);
 
     /** Create a new rendering(headless) device.
         \param[in] desc Device configuration descriptor.
@@ -517,7 +505,7 @@ class FALCOR_API Device: public Object {
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Desc& desc);
+    static SharedPtr create(Falcor::SharedPtr<Window> pWindow, const Device::IDesc& idesc, const Desc& desc);
 
   protected:
     bool init();
@@ -532,7 +520,7 @@ class FALCOR_API Device: public Object {
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
     bool mInitialized;
 
-    std::shared_ptr<TextureManager>  mpTextureManager;
+    std::unique_ptr<TextureManager>  mpTextureManager;
     std::unique_ptr<ProgramManager>  mpProgramManager;
 
     friend class DeviceManager;

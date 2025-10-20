@@ -188,7 +188,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 }
 
 
-Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
+Texture::Texture(Device::SharedPtr pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
 	: Resource(pDevice, type, bindFlags, 0), 
 		mWidth(width), 
 		mHeight(height), 
@@ -214,6 +214,50 @@ Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t heigh
 	mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
 
 	gTotalTexturesCount++;
+}
+
+Texture::Texture(
+    Device::SharedPtrpDevice,
+    gfx::ITextureResource* pResource,
+    Type type,
+    ResourceFormat format,
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    uint32_t sampleCount,
+    ResourceBindFlags bindFlags,
+    Resource::State initState
+)
+    : Texture(std::move(pDevice), type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, nullptr)
+{
+    FALCOR_ASSERT(pResource);
+
+    switch (type) {
+	    case Resource::Type::Texture1D:
+	        FALCOR_ASSERT(height == 1 && depth == 1 && sampleCount == 1);
+	        break;
+	    case Resource::Type::Texture2D:
+	        FALCOR_ASSERT(depth == 1 && sampleCount == 1);
+	        break;
+	    case Resource::Type::Texture2DMultisample:
+	        FALCOR_ASSERT(depth == 1);
+	        break;
+	    case Resource::Type::Texture3D:
+	        FALCOR_ASSERT(sampleCount == 1);
+	        break;
+	    case Resource::Type::TextureCube:
+	        FALCOR_ASSERT(depth == 1 && sampleCount == 1);
+	        break;
+	    default:
+	        FALCOR_UNREACHABLE();
+	        break;
+    }
+
+    mGfxTextureResource = pResource;
+    mState.global = initState;
+    mState.isGlobal = true;
 }
 
 template<typename ViewClass>

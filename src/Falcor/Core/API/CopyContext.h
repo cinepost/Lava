@@ -28,12 +28,13 @@
 #ifndef SRC_FALCOR_CORE_API_COPYCONTEXT_H_
 #define SRC_FALCOR_CORE_API_COPYCONTEXT_H_
 
-#include "Resource.h"
-#include "ResourceViews.h"
-#include "Buffer.h"
-#include "Fence.h"
-#include "LowLevelContextData.h"
-#include "VirtualTexturePage.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/ResourceViews.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Fence.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Core/API/VirtualTexturePage.h"
 
 #include <memory>
 
@@ -54,9 +55,10 @@ class FALCOR_API CopyContext {
      public:
         using SharedPtr = std::shared_ptr<ReadTextureTask>;
         static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
-        std::vector<uint8_t> getData();
-        void getData(uint8_t* textureData);
-        void getData(std::vector<uint8_t>& textureData);
+        std::vector<uint8_t> getData() const;
+        void getData(void* pData) const;
+        void getData(void* pData, size_t size) const;
+        void getData(std::vector<uint8_t>& textureData) const;
 
      private:
         ReadTextureTask() = default;

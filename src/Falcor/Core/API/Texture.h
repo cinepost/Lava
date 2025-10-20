@@ -58,7 +58,7 @@ class VirtualTexturePage;
 
 /** Abstracts the API texture objects
 */
-class dlldecl Texture : public Resource {
+class FALCOR_API Texture : public Resource {
 	FALCOR_OBJECT(Texture)
  public:
 	struct UDIMTileInfo {
@@ -337,6 +337,21 @@ class dlldecl Texture : public Resource {
 
   public:
   	Texture(Falcor::SharedPtr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, ResourceBindFlags bindFlags);
+
+  	Texture(
+        ref<Device> pDevice,
+        gfx::ITextureResource* pResource,
+        Type type,
+        ResourceFormat format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t arraySize,
+        uint32_t mipLevels,
+        uint32_t sampleCount,
+        ResourceBindFlags bindFlags,
+        Resource::State initState
+    );
 
   protected:
   		virtual void apiSetName() override;

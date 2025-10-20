@@ -77,6 +77,8 @@ class FALCOR_API GpuMemoryHeap: public Object {
     size_t getPageSize() const { return mPageSize; }
     void executeDeferredReleases();
 
+    void breakStrongReferenceToDevice();
+
 private:
     GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, MemoryType type, size_t pageSize, Fence::SharedPtr pFence);
 

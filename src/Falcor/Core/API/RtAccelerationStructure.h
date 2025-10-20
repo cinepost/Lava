@@ -29,11 +29,15 @@
 #define SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTURE_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+#include "Falcor/Core/API/GFXAPI.h"
 #include "Falcor/Utils/Math/Matrix.h"
 
 namespace Falcor {
+
+class Device;
+class Buffer;
 
 constexpr uint64_t kAccelerationStructureByteAlignment = 256;
 constexpr uint64_t kAccelerationStructureScratchOffsetAlignment = 128;
@@ -59,7 +63,7 @@ enum class RtGeometryInstanceVisibilityFlags : uint32_t {
 	VisibleToPrimaryRays    = 0x00000001,
 	VisibleToShadowRays     = 0x00000002,
 	VisibleToDiffuseRays    = 0x00000004,
-  VisibleToReflectionRays = 0x00000008,
+  	VisibleToReflectionRays = 0x00000008,
 	VisibleToRefractionRays = 0x00000010,
 };
 enum_class_operators(RtGeometryInstanceVisibilityFlags);
@@ -101,14 +105,12 @@ enum class RtAccelerationStructureBuildFlags {
 };
 enum_class_operators(RtAccelerationStructureBuildFlags);
 
-enum class RtGeometryType
-{
+enum class RtGeometryType {
 	Triangles,
 	ProcedurePrimitives
 };
 
-enum class RtGeometryFlags
-{
+enum class RtGeometryFlags {
 	// The enum values are intentionally consistent with
 	// D3D12_RAYTRACING_GEOMETRY_FLAGS.
 	None,
@@ -175,17 +177,16 @@ struct RtAccelerationStructureBuildInputs {
 	of an acceleration structure. It does not own the backing buffer resource, which is similar to
 	a resource view.
 */
-class FALCOR_API RtAccelerationStructure: public std::enable_shared_from_this<RtAccelerationStructure> {
+class FALCOR_API RtAccelerationStructure : public Object {
+	FALCOR_OBJECT(RtAccelerationStructure)
 public:
-	using SharedPtr = std::shared_ptr<RtAccelerationStructure>;
-	using SharedConstPtr = std::shared_ptr<const RtAccelerationStructure>;
-
+	
 	/** Settings for how the scene is updated
-  */
-  enum class UpdateMode {
-    Rebuild,    ///< Recreate acceleration structure when updates are needed
-    Refit       ///< Update acceleration structure when updates are needed
-  };
+  	*/
+  	enum class UpdateMode {
+    	Rebuild,    ///< Recreate acceleration structure when updates are needed
+    	Refit       ///< Update acceleration structure when updates are needed
+  	};
 
 	class FALCOR_API Desc {
 		public:
@@ -201,9 +202,9 @@ public:
 				\param[in] offset The offset within the buffer for the acceleration structure contents.
 				\param[in] offset The size in bytes to use for the acceleration structure.
 			*/
-			Desc& setBuffer(Buffer::SharedPtr buffer, uint64_t offset, uint64_t size);
+			Desc& setBuffer(Falcor::SharedPtr<Buffer> pBuffer, uint64_t offset, uint64_t size);
 
-			Buffer::SharedPtr getBuffer() const { return mBuffer; }
+			Falcor::SharedPtr<Buffer> getBuffer() const { return mpBuffer; }
 
 			uint64_t getOffset() const { return mOffset; }
 
@@ -213,7 +214,7 @@ public:
 
 		protected:
 			RtAccelerationStructureKind mKind = RtAccelerationStructureKind::BottomLevel;
-			Buffer::SharedPtr mBuffer = nullptr;
+			Falcor::SharedPtr<Buffer> mpBuffer = nullptr;
 			uint64_t mOffset = 0;
 			uint64_t mSize = 0;
 	};
@@ -229,9 +230,9 @@ public:
 		\param[in] desc Describes acceleration structure settings.
 		\return A new object, or throws an exception if creation failed.
 	*/
-	static SharedPtr create(Device::SharedPtr pDevice, const Desc& desc);
+	static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Desc& desc);
 
-	static RtAccelerationStructurePrebuildInfo getPrebuildInfo(Device::SharedPtr pDevice, const RtAccelerationStructureBuildInputs& inputs);
+	static RtAccelerationStructurePrebuildInfo getPrebuildInfo(Device* pDevice, const RtAccelerationStructureBuildInputs& inputs);
 
 	~RtAccelerationStructure();
 
@@ -244,13 +245,32 @@ public:
 	gfx::IAccelerationStructure* getGfxAccelerationStructure() const { return mGfxAccelerationStructure; }
 
 protected:
-	RtAccelerationStructure(Device::SharedPtr pDevice, const Desc& desc);
+	RtAccelerationStructure(Falcor::SharedPtr<Device>pDevice, const Desc& desc);
 
-	Device::SharedPtr mpDevice = nullptr;
+	Falcor::SharedPtr<Device> mpDevice ;
 	Desc mDesc;
 
 	Slang::ComPtr<gfx::IAccelerationStructure> mGfxAccelerationStructure;
 };
+
+/**
+ * A helper class to translate `RtAccelerationStructureBuildInputs` into `gfx::IAccelerationStructure::BuildInputs`.
+ */
+struct GFXAccelerationStructureBuildInputsTranslator {
+public:
+    gfx::IAccelerationStructure::BuildInputs& translate(const RtAccelerationStructureBuildInputs& buildInputs);
+
+private:
+    gfx::IAccelerationStructure::BuildInputs mDesc = {};
+    gfx::IAccelerationStructure::PrebuildInfo mPrebuildInfo = {};
+    std::vector<gfx::IAccelerationStructure::GeometryDesc> mGeomDescs;
+
+    gfx::IAccelerationStructure::GeometryFlags::Enum translateGeometryFlags(RtGeometryFlags flags) {
+        return (gfx::IAccelerationStructure::GeometryFlags::Enum)flags;
+    }
+};
+
+gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type);
 
 }  // namespace Falcor
 

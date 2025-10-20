@@ -28,33 +28,55 @@
 #ifndef SRC_FALCOR_CORE_API_RENDERCONTEXT_H_
 #define SRC_FALCOR_CORE_API_RENDERCONTEXT_H_
 
-#include <stack>
-#include <vector>
-#include <memory>
-
-#include "ComputeContext.h"
-#include "Sampler.h"
-#include "ShaderTable.h"
-#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include "gfx_lib/slang-gfx.h"
 
+#include <stack>
+#include <vector>
+#include <memory>
+#include <limits>
+
+
 namespace Falcor {
 
-class RtProgram;
-class RtProgramVars;
+class Fbo;
+class GraphicsStateObject;
 class GraphicsState;
-class FullScreenPass;
-class BlitContext;
-class BlitToBufferContext;
+class ProgramVars;
+class RenderTargetView;
+class Program;
+class RtProgramVars;
+
+struct BlitContext;
+struct BlitToBufferContext;
+
+/**
+ * Framebuffer target flags. Used for clears and copy operations
+ */
+enum class FboAttachmentType {
+    None = 0,    ///< Nothing. Here just for completeness
+    Color = 1,   ///< Operate on the color buffer.
+    Depth = 2,   ///< Operate on the the depth buffer.
+    Stencil = 4, ///< Operate on the the stencil buffer.
+
+    All = Color | Depth | Stencil ///< Operate on all targets
+};
+
+enum_class_operators(FboAttachmentType);
+
 
 /** The rendering context. Use it to bind state and dispatch calls to the GPU
 */
-class dlldecl RenderContext : public ComputeContext {
+class FALCOR_API RenderContext : public ComputeContext {
  public:
-    using SharedPtr = std::shared_ptr<RenderContext>;
-    using SharedConstPtr = std::shared_ptr<const RenderContext>;
+    using SharedPtr = Falcor::SharedPtr<RenderContext>;
+    using SharedConstPtr = Falcor::SharedPtr<const RenderContext>;
 
     /**
         This flag control which aspects of the GraphicState will be bound into the pipeline before drawing.
@@ -75,21 +97,15 @@ class dlldecl RenderContext : public ComputeContext {
 
     /** Controls how an acceleration structure should be copied.
     */
-    enum class RtAccelerationStructureCopyMode
-    {
+    enum class RtAccelerationStructureCopyMode {
         Clone,                ///<Standard clone
         Compact,              ///<Compact acceleration structure and store the result at destination.
     };
 
-    static uint4 kMaxRect;
+    static constexpr uint4 kMaxRect = {0, 0, std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()};
 
+    RenderContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~RenderContext();
-
-    /** Create a new render context.
-        \param[in] queue The command queue.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Clear an FBO.
         \param[in] pFbo The FBO to clear
@@ -187,7 +203,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down].
         \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down].
     */
-    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect = kMaxRect, uint4 dstRect = kMaxRect, Sampler::Filter = Sampler::Filter::Linear);
+    void blit(const Falcor::SharedPtr<ShaderResourceView>& pSrc, const Falcor::SharedPtr<RenderTargetView>& pDst, uint4 srcRect = kMaxRect, uint4 dstRect = kMaxRect, Sampler::Filter = Sampler::Filter::Linear);
 
     /** Complex blits (low-level copy) an SRV into an RTV.
         The source and destination rectangles get clamped to the dimensions of the view.
@@ -199,9 +215,9 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] componentsReduction Reduction mode for each of the input components (Standard, Min, Max). Comparison reduction mode is not supported.
         \param[in] componentsTransform Linear combination factors of the input components for each output component.
     */
-    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+    void blit(const Falcor::SharedPtr<ShaderResourceView>& pSrc, const Falcor::SharedPtr<RenderTargetView>& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
-    void blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+    void blitToBuffer(const Falcor::SharedPtr<ShaderResourceView>& pSrc, const Falcor::SharedPtr<Buffer>& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
     /** Submit the command list
     */
@@ -218,11 +234,11 @@ class dlldecl RenderContext : public ComputeContext {
     /** Resolve an entire multi-sampled resource. The dst and src resources must have the same dimensions, array-size, mip-count and format.
         If any of these properties don't match, you'll have to use `resolveSubresource`
     */
-    void resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst);
+    void resolveResource(const Falcor::SharedPtr<Texture>& pSrc, const Falcor::SharedPtr<Texture>& pDst);
 
     /** Resolve a multi-sampled sub-resource
     */
-    void resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource);
+    void resolveSubresource(const Falcor::SharedPtr<Texture>& pSrc, uint32_t srcSubresource, const Falcor::SharedPtr<Texture>& pDst, uint32_t dstSubresource);
 
     /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same.
     */
@@ -237,17 +253,14 @@ class dlldecl RenderContext : public ComputeContext {
     void copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RtAccelerationStructureCopyMode mode);
 
 private:
-    RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
+    RenderContext(gfx::ICommandQueue* pQueue);
 
-#if defined(FALCOR_VK)
-        bool applyGraphicsVars(ProgramVars* pVars, RootSignature* pRootSignature);
-        bool prepareForDraw(GraphicsState* pState, ProgramVars* pVars);
-#endif
+    gfx::IRenderCommandEncoder* drawCallCommon(GraphicsState* pState, ProgramVars* pVars);
 
     std::unique_ptr<BlitContext> mpBlitContext;
-    std::unique_ptr<BlitToBufferContext> mpBlitToBufferContext;
-        
+
     StateBindFlags mBindFlags = StateBindFlags::All;
+    GraphicsStateObject* mpLastBoundGraphicsStateObject = nullptr;
     ProgramVars* mpLastBoundGraphicsVars = nullptr;
 
 

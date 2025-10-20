@@ -30,7 +30,7 @@
 
 #include <string>
 
-#include "Falcor/Core/Enum.h"
+#include "Falcor/Core/API/Common.h"
 #include "Falcor/Core/API/Resource.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
@@ -42,29 +42,6 @@ namespace Falcor {
 class Device;
 class Program;
 struct ShaderVar;
-
-/// Buffer memory types.
-enum class MemoryType {
-    DeviceLocal, ///< Device local memory. The buffer can be updated using Buffer::setBlob().
-    Upload,      ///< Upload memory. The buffer can be mapped for CPU writes.
-    ReadBack,    ///< Read-back memory. The buffer can be mapped for CPU reads.
-
-    // NOTE: In older version of Falcor this enum used to be Buffer::CpuAccess.
-    // Use the following mapping to update your code:
-    // - CpuAccess::None -> MemoryType::DeviceLocal
-    // - CpuAccess::Write -> MemoryType::Upload
-    // - CpuAccess::Read -> MemoryType::ReadBack
-};
-
-FALCOR_ENUM_INFO(
-    MemoryType,
-    {
-        {MemoryType::DeviceLocal, "DeviceLocal"},
-        {MemoryType::Upload, "Upload"},
-        {MemoryType::ReadBack, "ReadBack"},
-    }
-);
-FALCOR_ENUM_REGISTER(MemoryType);
 
 /** Low-level buffer object
     This class abstracts the API's buffer creation and management
@@ -113,7 +90,7 @@ class FALCOR_API Buffer : public Resource {
     Buffer(Falcor::SharedPtr<Device> pDevice, gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     /// Constructor with native handle.
-    Buffer(Falcor::SharedPtr<Device> pDevice, NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
+    Buffer(Falcor::SharedPtr<Device> pDevice, VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     ~Buffer();
 
@@ -205,6 +182,11 @@ class FALCOR_API Buffer : public Resource {
     /** Get safe offset and size values
     */
     bool adjustSizeOffsetParams(size_t& size, size_t& offset) const;
+
+    /**
+     * Get the memory type
+     */
+    MemoryType getMemoryType() const { return mMemoryType; }
 
     /** Check if this is a typed buffer
     */

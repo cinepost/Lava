@@ -26,7 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/State/ComputeState.h"
+
 #include "ComputeContext.h"
+
 #include "Falcor/Utils/Debug/debug.h"
 
 

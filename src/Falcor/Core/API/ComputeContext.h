@@ -28,14 +28,21 @@
 #ifndef SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_
 #define SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_
 
-#include "CopyContext.h"
-#include "Falcor/Core/Program/ProgramVars.h"
-#include "Falcor/Core/State/ComputeState.h"
+#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/Core/API/Handles.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 
 namespace Falcor {
 
-class dlldecl ComputeContext : public CopyContext {
+class ComputeState;
+class ProgramVars;
+class ProgramKernels;
+class UnorderedAccessView;
+
+class FALCOR_API ComputeContext : public CopyContext {
  public:
     ComputeContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~ComputeContext();

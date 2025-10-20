@@ -28,17 +28,20 @@
 #ifndef SRC_FALCOR_CORE_API_RESOURCE_H_
 #define SRC_FALCOR_CORE_API_RESOURCE_H_
 
-#include <string>
-#include <memory>
-#include <vector>
-#include <unordered_map>
-
 #include "Falcor/Core/API/NativeHandle.h"
 #include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/ResourceViews.h"
 #include "Falcor/Core/Object.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+#include "gfx_lib/slang-gfx.h"
+
+#include <string>
+#include <memory>
+#include <vector>
+#include <unordered_map>
+
 
 namespace Falcor {
 
@@ -210,8 +213,12 @@ class FALCOR_API Resource : public Object {
     mutable std::unordered_map<ResourceViewInfo, UnorderedAccessView::SharedPtr, ViewInfoHashFunc> mUavs;
 };
 
-const std::string dlldecl to_string(Resource::Type);
-const std::string dlldecl to_string(Resource::State);
+gfx::ResourceState getGFXResourceState(Resource::State state);
+void getGFXResourceState(ResourceBindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
+Falcor::Resource::State toFalcorState(gfx::ResourceState state);
+
+const std::string FALCOR_API to_string(Resource::Type);
+const std::string FALCOR_API to_string(Resource::State);
 
 }  // namespace Falcor
 

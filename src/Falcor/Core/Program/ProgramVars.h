@@ -29,9 +29,9 @@
 #define SRC_FALCOR_CORE_PROGRAM_PROGRAMVARS_H_
 
 #include "RtBindingTable.h"
-//#include "Falcor/Core/Macros.h"
-#include "Falcor/Core/API/ParameterBlock.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/ShaderTable.h"
+#include "Falcor/Core/API/ParameterBlock.h"
 
 #include <memory>
 #include <vector>
@@ -47,17 +47,16 @@ class ComputeContext;
 /** This class manages a program's reflection and variable assignment.
     It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
 */
-class FALCOR_API ProgramVars : public ParameterBlock, public inherit_shared_from_this<ParameterBlock, ProgramVars> {
+class FALCOR_API ProgramVars : public ParameterBlock {
+        FALCOR_OBJECT(ProgramVars)
     public:
-        using SharedPtr = std::shared_ptr<ProgramVars>;
-
         /**
          * Create a new graphics vars object.
          * @param[in] pDevice GPU device.
          * @param[in] pReflector A program reflection object containing the requested declarations.
          * @return A new object, or an exception is thrown if creation failed.
          */
-        static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+        static Falcor::SharedPtr<ProgramVars> create(Falcor::SharedPtr<Device> pDevice, const Falcor::SharedPtr<const ProgramReflection>& pReflector);
 
         /**
          * Create a new graphics vars object.
@@ -65,7 +64,7 @@ class FALCOR_API ProgramVars : public ParameterBlock, public inherit_shared_from
          * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
          * @return A new object, or an exception is thrown if creation failed.
          */
-        static ProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program* pProg);
+        static Falcor::SharedPtr<ProgramVars> create(Falcor::SharedPtr<Device> pDevice, const Program* pProg);
 
         /**
          * Get the program reflection interface
@@ -73,10 +72,10 @@ class FALCOR_API ProgramVars : public ParameterBlock, public inherit_shared_from
         const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
     public:
-        ProgramVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+        ProgramVars(Falcor::SharedPtr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
     protected:
-        ProgramReflection::SharedConstPtr mpReflector;
+        Falcor::SharedPtr<const ProgramReflection> mpReflector;
 };
 
 class RtStateObject;
@@ -84,10 +83,9 @@ class RtStateObject;
 /**
  * This class manages a raytracing program's reflection and variable assignment.
  */
-class FALCOR_API RtProgramVars : public ProgramVars, public inherit_shared_from_this<ParameterBlock, RtProgramVars> {
+class FALCOR_API RtProgramVars : public ProgramVars {
+        FALCOR_OBJECT(RtProgramVars)
     public:
-        using SharedPtr = std::shared_ptr<RtProgramVars>;
-
         /**
          * Create a new ray tracing vars object.
          * @param[in] pDevice GPU device.

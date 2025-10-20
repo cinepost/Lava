@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_CORE_API_FORMATS_H_
-#define SRC_FALCOR_CORE_API_FORMATS_H_
+#ifndef SRC_FALCOR_CORE_API_HANDLES_H_
+#define SRC_FALCOR_CORE_API_HANDLES_H_
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Macros.h"
@@ -38,7 +38,9 @@
 #include <memory>
 
 namespace Falcor {
+
 using GpuAddress = uint64_t;
+
 #if FALCOR_WINDOWS
 using SharedResourceApiHandle = void*; // HANDLE
 using SharedFenceApiHandle = void*;    // HANDLE
@@ -46,6 +48,7 @@ using SharedFenceApiHandle = void*;    // HANDLE
 using SharedResourceApiHandle = void*;
 using SharedFenceApiHandle = void*;
 #endif
+
 } // namespace Falcor
 
-#endif // SRC_FALCOR_CORE_API_FORMATS_H_
+#endif // SRC_FALCOR_CORE_API_HANDLES_H_

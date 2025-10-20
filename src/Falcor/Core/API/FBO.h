@@ -28,14 +28,15 @@
 #ifndef SRC_FALCOR_CORE_API_FBO_H_
 #define SRC_FALCOR_CORE_API_FBO_H_
 
-#include "Falcor/Core/API/ResourceViews.h"
-#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/ResourceViews.h"
 
 #include <vector>
 #include <unordered_set>
 
 namespace Falcor {
+
+class Texture;
 
 /** Low level framebuffer object.
     This class abstracts the API's framebuffer creation and management.
@@ -122,7 +123,7 @@ class FALCOR_API Fbo : public Object {
         \param[in] depth An optional depth buffer texture.
         \return A new object. An exception is thrown if creation failed, for example due to texture size mismatch, bind flags issues, illegal formats, etc.
     */
-    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth = nullptr);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::vector<Falcor::SharedPtr<Texture>>& colors, const Falcor::SharedPtr<Texture>& pDepth = nullptr);
 
     /** Create a color-only 2D framebuffer.
         \param[in] width Width of the render targets.
@@ -160,7 +161,7 @@ class FALCOR_API Fbo : public Object {
         \param firstArraySlice The first array-slice to bind
         \param arraySize The number of array sliced to bind, or Fbo#kAttachEntireMipLevel to attach the range [firstArraySlice, pTexture->getArraySize()]
     */
-    void attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
+    void attachDepthStencilTarget(const Falcor::SharedPtr<Texture>& pDepthStencil, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
     /** Attach a color texture.
         An exception is thrown if the texture can't be used as a color-target (usually a format or bind flags issue).
@@ -170,7 +171,7 @@ class FALCOR_API Fbo : public Object {
         \param firstArraySlice The first array-slice to bind
         \param arraySize The number of array sliced to bind, or Fbo#kAttachEntireMipLevel to attach the range [firstArraySlice, pTexture->getArraySize()]
     */
-    void attachColorTarget(const Texture::SharedPtr& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
+    void attachColorTarget(const Falcor::SharedPtr<Texture>& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
     /**
      * Get the framebuffer.
@@ -183,11 +184,11 @@ class FALCOR_API Fbo : public Object {
 
     /** Get an attached color texture. If no texture is attached will return nullptr.
     */
-    Texture::SharedPtr getColorTexture(uint32_t index) const;
+    Falcor::SharedPtr<Texture> getColorTexture(uint32_t index) const;
 
     /** Get the attached depth-stencil texture, or nullptr if no texture is attached.
     */
-    const Texture::SharedPtr& getDepthStencilTexture() const;
+    const Falcor::SharedPtr<Texture>& getDepthStencilTexture() const;
 
     /** Get the width of the FBO
     */

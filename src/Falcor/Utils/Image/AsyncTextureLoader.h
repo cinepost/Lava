@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 
 namespace Falcor {
 
@@ -42,14 +43,14 @@ class Barrier;
 
 /** Utility class to load textures asynchronously using multiple worker threads.
 */
-class dlldecl AsyncTextureLoader {
+class AsyncTextureLoader {
 	public:
-		using LoadCallback = std::function<void(std::shared_ptr<Texture> pTexture)>;
+		using LoadCallback = std::function<void(Falcor::SharedPtr<Texture> pTexture)>;
 
 		/** Constructor.
 			\param[in] threadCount Number of worker threads.
 		*/
-		AsyncTextureLoader(std::shared_ptr<Device> pDevice, size_t threadCount = std::thread::hardware_concurrency());
+		AsyncTextureLoader(Falcor::SharedPtr<Device> pDevice, size_t threadCount = std::thread::hardware_concurrency());
 
 		/** Destructor.
 			Blocks until all threads have terminated.
@@ -64,11 +65,11 @@ class dlldecl AsyncTextureLoader {
 			\param[in] callback Function called after the texture load has finished.
 			\return A future to a new texture, or nullptr if the texture failed to load.
 		*/
-		std::future<std::shared_ptr<Texture>> loadFromFile(
+		std::future<Falcor::SharedPtr<Texture>> loadFromFile(
 			const fs::path& path,
 			bool generateMipLevels,
 			bool loadAsSRGB,
-			Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource,
+			ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
 			LoadCallback callback = {}
 		);
 
@@ -78,18 +79,18 @@ class dlldecl AsyncTextureLoader {
 		void terminateWorkers();
 
 		struct Request {
-			std::shared_ptr<Device> pDevice;
+			Falcor::SharedPtr<Device> 				pDevice;
 			fs::path 								path;
-			bool 										generateMipLevels;
-			bool 										loadAsSRGB;
-			Resource::BindFlags 		bindFlags;
-			LoadCallback 						callback;
+			bool 									generateMipLevels;
+			bool 									loadAsSRGB;
+			ResourceBindFlags	 					bindFlags;
+			LoadCallback 							callback;
 			std::promise<std::shared_ptr<Texture>> 	promise;
 		};
 
-		std::shared_ptr<Device> 	mpDevice = nullptr;
+		Falcor::SharedPtr<Device> 	mpDevice = nullptr;
 
-		std::mutex mMutex;                          ///< Mutex for synchronizing access to shared resources.
+		std::mutex 					mMutex;           ///< Mutex for synchronizing access to shared resources.
 		std::condition_variable  	mCondition;       ///< Condition variable for workers to wait on.
 		std::shared_ptr<Barrier> 	mFlushBarrier;    ///< Barrier for flushing the GPU to upload textures.
 		std::vector<std::thread> 	mThreads;         ///< Worker threads.

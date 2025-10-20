@@ -31,22 +31,20 @@
 
 namespace Falcor {
 
-bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
-    return mpProgramKernels == other.mpProgramKernels;
+ComputeStateObject::ComputeStateObject(ref<Device> pDevice, ComputeStateObjectDesc desc): mpDevice(std::move(pDevice)), mDesc(std::move(desc)) {
+    gfx::ComputePipelineStateDesc computePipelineDesc = {};
+    computePipelineDesc.program = mDesc.pProgramKernels->getGfxProgram();
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createComputePipelineState(computePipelineDesc, mGfxPipelineState.writeRef()));
 }
 
 ComputeStateObject::~ComputeStateObject() {
-	assert(mpDevice);
-    mpDevice->releaseResource(mApiHandle);
+    mpDevice->releaseResource(mGfxPipelineState);
 }
 
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mDesc(desc), mpDevice(pDevice) {
-    apiInit();
-}
-
-ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
-	assert(pDevice);
-    return std::make_shared<ComputeStateObject>(pDevice, desc);
+VkPipeline ComputeStateObject::getNativeHandle() const {
+    gfx::InteropHandle gfxNativeHandle = {};
+    FALCOR_GFX_CALL(mGfxPipelineState->getNativeHandle(&gfxNativeHandle));
+    return reinterpret_cast<VkPipeline>(gfxNativeHandle.handleValue);
 }
 
 }  // namespace Falcor

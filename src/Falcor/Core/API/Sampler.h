@@ -148,6 +148,7 @@ class FALCOR_API Sampler : public Object {
         bool mUnnormalizedCoordinates = false;
     };
 
+    Sampler(Falcor::SharedPtr<Device> pDevice, const Desc& desc);
     ~Sampler();
 
     /** Create a new sampler object.
@@ -220,8 +221,6 @@ class FALCOR_API Sampler : public Object {
     void breakStrongReferenceToDevice();
 
 private:
-    Sampler(Falcor::SharedPtr<Device> pDevice, const Desc& desc);
-
     Falcor::BreakableSharedPtr<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::ISamplerState> mGfxSamplerState;

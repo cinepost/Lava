@@ -28,11 +28,13 @@
 #ifndef SRC_FALCOR_CORE_API_FORMATS_H_
 #define SRC_FALCOR_CORE_API_FORMATS_H_
 
+#include "Falcor/Core/Framework.h"
+
+#include "gfx_lib/slang-gfx.h"
+
 #include <cstdint>
 #include <string>
 #include <cassert>
-
-#include "Falcor/Core/Framework.h"
 
 
 namespace Falcor {
@@ -405,6 +407,8 @@ inline bool doesFormatHasAlpha(ResourceFormat format) {
             return false;
     }
 }
+
+gfx::Format getGFXFormat(ResourceFormat format);
 
 
 /** Get the supported bind-flags for a specific format

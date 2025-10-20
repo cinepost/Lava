@@ -31,6 +31,7 @@
 
 #include "Device.h"
 #include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Core/API/CopyContext.h"
@@ -41,9 +42,12 @@
 
 
 namespace Falcor {
-    
-void createNullViews(Device::SharedPtr pDevice);
-void releaseNullViews(Device::SharedPtr pDevice);
+
+static const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
+
+static const size_t kConstantBufferDataPlacementAlignment = 256;
+// This actually depends on the size of the index, but we can handle losing 2 bytes
+static const size_t kIndexBufferDataPlacementAlignment = 4;
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
@@ -57,8 +61,10 @@ Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mDesc(desc
 Device::SharedPtr Device::create(const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(nullptr, desc));
     pDevice->mUseIDesc = false;
-    if (!pDevice->init())
+    
+    if (!pDevice->apiInit(desc.validationLayerOuputFilename)) {
         return nullptr;
+    }
 
     return pDevice;
 }
@@ -66,8 +72,10 @@ Device::SharedPtr Device::create(const Device::Desc& desc) {
 Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(pWindow, desc));
     pDevice->mUseIDesc = false;
-    if (!pDevice->init())
+
+    if (!pDevice->apiInit(desc.validationLayerOuputFilename)) {
         return nullptr;
+    }
 
     return pDevice;
 }
@@ -77,8 +85,9 @@ Device::SharedPtr Device::create(const Device::IDesc& idesc, const Device::Desc&
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
 
-    if (!pDevice->init())
+    if (!pDevice->apiInit(idesc.validationLayerOuputFilename)) {
         return nullptr;
+    }
 
     return pDevice;
 }
@@ -99,9 +108,18 @@ Buffer::SharedPtr Device::createBuffer(size_t size, ResourceBindFlags bindFlags,
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), size, bindFlags, memoryType, pInitData);
 }
 
-
 Sampler::SharedPtr Device::createSampler(const Sampler::Desc& desc) {
     return make_shared_ptr<Sampler>(Device::SharedPtr(this), desc);
+}
+
+Fence::SharedPtr Device::createFence(const FenceDesc& desc) {
+    return make_shared_ptr<Fence>(Device::SharedPtr(this), desc);
+}
+
+Fence::SharedPtr Device::createFence(bool shared) {
+    FenceDesc desc;
+    desc.shared = shared;
+    return createFence(desc);
 }
 
 Buffer::SharedPtr Device::createTypedBuffer(
@@ -167,7 +185,7 @@ Buffer::SharedPtr Device::createBufferFromResource(
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), pResource, size, bindFlags, memoryType);
 }
 
-Buffer::SharedPtr Device::createBufferFromNativeHandle(NativeHandle handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType){
+Buffer::SharedPtr Device::createBufferFromNativeHandle(VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType){
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), handle, size, bindFlags, memoryType);
 }
 
@@ -194,33 +212,20 @@ Texture::SharedPtr Device::createTextureFromResource(
  * Initialize device
  */
 bool Device::init() {
-    #ifdef _DEBUG
-    const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
-    FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
-    #endif // _DEBUG
+    this->incRef();
 
-    mpFrameFence = GpuFence::create(shared_from_this());
-    FALCOR_ASSERT(mpFrameFence);
+#if FALCOR_ENABLE_REF_TRACKING
+    this->setEnableRefTracking(true);
+#endif
 
-    mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
-    FALCOR_ASSERT(mpUploadHeap);
-    //mpUploadHeap->breakStrongReferenceToDevice();
-
-
-    mpReadBackHeap = GpuMemoryHeap::create(shared_from_this(), MemoryType::ReadBack, 1024 * 1024 * 2, mpFrameFence);
-    FALCOR_ASSERT(mpReadBackHeap);
-    //mpReadBackHeap->breakStrongReferenceToDevice();
-
-    createNullViews();
-
-    size_t maxTextureCount = 1024 * 10;
-    size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
+    mpFrameFence = createFence();
+    mpFrameFence->breakStrongReferenceToDevice();
     
-    mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
-    FALCOR_ASSERT(mpTextureManager);
-
-    mpProgramManager = std::make_unique<ProgramManager>(this);
-    FALCOR_ASSERT(mpProgramManager);
+    mpUploadHeap = GpuMemoryHeap::create(Device::SharedPtr(this), MemoryType::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpUploadHeap->breakStrongReferenceToDevice();
+    
+    mpReadBackHeap = GpuMemoryHeap::create(Device::SharedPtr(this), MemoryType::ReadBack, 1024 * 1024 * 2, mpFrameFence);
+    mpReadBackHeap->breakStrongReferenceToDevice();
 
     // create default sampler
     Sampler::Desc desc;
@@ -230,110 +235,37 @@ bool Device::init() {
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     
     mpDefaultSampler = createSampler(desc);
-    FALCOR_ASSERT(mpDefaultSampler);
+    mpDefaultSampler->breakStrongReferenceToDevice();
 
-    mpRenderContext = RenderContext::create(shared_from_this(), mGfxCommandQueue);
-    FALCOR_ASSERT(mpRenderContext);
+    mpTimestampQueryHeap = QueryHeap::create(Device::SharedPtr(this), QueryHeap::Type::Timestamp, 1024 * 1024);
+    mpTimestampQueryHeap->breakStrongReferenceToDevice();
 
-    mpRenderContext->flush();  // This will bind the descriptor heaps.
-    // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
+    size_t maxTextureCount = 1024 * 10;
+    size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
+    
+    mpTextureManager = std::make_unique<TextureManager>(this, maxTextureCount, threadCount);
+    
+    mpProgramManager = std::make_unique<ProgramManager>(this);
+    
+    mpRenderContext = std::make_unique<RenderContext>(this, mGfxCommandQueue);
 
-    // Update the FBOs or offscreen buffer
-    if (!mHeadless) {
-        if (updateDefaultFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
-            return false;
-        }
-    } else {
-        // Update offscreen buffer
-        if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
-            return false;
-        }
-    }
+    mpRenderContext->submit();  // This will bind the descriptor heaps.
+    // TODO: Do we need to submit here or should RenderContext::create() bind the descriptor heaps automatically without submit? See #749
 
     mInitialized = true;
+
+    this->decRef(false);
+
     return true;
 }
 
-const std::shared_ptr<Sampler>& Device::getDefaultSampler() const { 
+const Falcor::SharedPtr<Sampler>& Device::getDefaultSampler() const { 
     FALCOR_ASSERT(mpDefaultSampler);
     return mpDefaultSampler; 
 }
 
-void Device::releaseFboData() {
-    // First, delete all FBOs
-    if (!mHeadless) {
-        // Delete swapchain FBOs
-        for (auto& pFbo : mpSwapChainFbos) {
-            pFbo->attachColorTarget(nullptr, 0);
-            pFbo->attachDepthStencilTarget(nullptr);
-        }
-    } else {
-        // Delete headless FBO
-        mpOffscreenFbo->attachColorTarget(nullptr, 0);
-        mpOffscreenFbo->attachDepthStencilTarget(nullptr);
-    }
-
-    // Now execute all deferred releases
-    release();
-}
-
 void Device::release() {
     decltype(mDeferredReleases)().swap(mDeferredReleases);  
-}
-
-
-bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    //ResourceHandle apiHandle;
-    //getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
-
-    // Create a texture object
-    auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-    //pColorTex->mApiHandle = apiHandle;
-
-    // Create the FBO if it's required
-    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
-    mpOffscreenFbo->attachColorTarget(pColorTex, 0);
-
-    // Create a depth texture
-    if (depthFormat != ResourceFormat::Unknown) {
-        auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
-        mpOffscreenFbo->attachDepthStencilTarget(pDepth);
-    }
-
-    return true;
-}
-
-bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    //ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
-    //getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
-
-    for (uint32_t i = 0; i < kInFlightFrameCount; i++) {
-        // Create a texture object
-        auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-        //pColorTex->mApiHandle = apiHandles[i];
-        
-        // Create the FBO if it's required
-        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(shared_from_this());
-        mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
-
-        // Create a depth texture
-        if (depthFormat != ResourceFormat::Unknown) {
-            auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
-            mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
-        }
-    }
-    return true;
-}
-
-Fbo::SharedPtr Device::getSwapChainFbo() const {
-    assert(!mHeadless);
-    return mpSwapChainFbos[mCurrentBackBufferIndex];
-}
-
-Fbo::SharedPtr Device::getOffscreenFbo() const {
-    assert(mHeadless);
-    assert(mpOffscreenFbo);
-    return mpOffscreenFbo;
 }
 
 gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
@@ -346,13 +278,7 @@ uint64_t Device::getMinAccelerationStructureScratchOffsetAlignment() const {
     return alignment;
 }
 
-std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(shared_from_this(), type, count);
-    mTimestampQueryHeaps.push_back(pHeap);
-    return pHeap;
-}
-
-void Device::releaseResource(ApiObjectHandle pResource) {
+void Device::releaseResource(ISlangUnknown* pResource) {
     if (pResource) {
         // Some static objects get here when the application exits
 
@@ -361,7 +287,7 @@ void Device::releaseResource(ApiObjectHandle pResource) {
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
 #endif
         if(this) {
-            mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
+            mDeferredReleases.push({mpFrameFence ? mpFrameFence->getSignaledValue() : 0, Slang::ComPtr<ISlangUnknown>(pResource)});
         }
 #if FALCOR_GCC
 #pragma GCC diagnostic pop
@@ -390,7 +316,7 @@ void Device::toggleVSync(bool enable) {
 
 void Device::wait() {
     assert(mpRenderContext); 
-    mpRenderContext->flush(true);
+    mpRenderContext->submit(true);
     mpRenderContext->signal(mpFrameFence.get());
     executeDeferredReleases();
 }
@@ -405,86 +331,6 @@ size_t Device::getBufferDataAlignment(ResourceBindFlags bindFlags) {
 
 bool Device::isShaderModelSupported(ShaderModel shaderModel) const {
     return ((uint32_t)shaderModel <= (uint32_t)mSupportedShaderModel);
-}
-
-Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
-    FALCOR_ASSERT(width > 0 && height > 0);
-
-    mpRenderContext->flush(true);
-
-    // Store the FBO parameters
-    ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
-    const auto& pDepth = mpSwapChainFbos[0]->getDepthStencilTexture();
-    ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
-
-    // updateDefaultFBO() attaches the resized swapchain to new Texture objects, with Undefined resource state.
-    // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
-    // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
-    // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
-    FALCOR_ASSERT(mpSwapChainFbos[0]->getSampleCount() == 1);
-
-    // Delete all the FBOs
-    releaseFboData();
-    apiResizeSwapChain(width, height, colorFormat);
-    updateDefaultFBO(width, height, colorFormat, depthFormat);
-
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX) && !defined(FALCOR_VK)
-#error Verify state handling on swapchain resize for this API
-#endif
-
-    return getSwapChainFbo();
-}
-
-void Device::createNullViews() {
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Buffer] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Buffer);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1DArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMS] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMS);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMSArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMSArray);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture3D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture3D);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCube] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCube);
-    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCubeArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCubeArray);
-
-    if (isFeatureSupported(Device::SupportedFeatures::Raytracing))
-    {
-        mNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::AccelerationStructure);
-    }
-
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Buffer] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Buffer);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1D);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1DArray);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2D);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2DArray);
-    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture3D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture3D);
-
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1D);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1DArray);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2D);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DArray);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMS] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMS);
-    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMSArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMSArray);
-
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Buffer] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Buffer);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1D);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1DArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2D);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMS] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMS);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMSArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMSArray);
-    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture3D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture3D);
-
-    mNullViews.cbv = ConstantBufferView::create(shared_from_this());
-}
-
-void Device::releaseNullViews() {
-    //mNullViews = {};
-    for(auto& srv: mNullViews.srv) srv.reset();
-    for(auto& uav: mNullViews.uav) uav.reset();
-    for(auto& dsv: mNullViews.dsv) dsv.reset();
-    for(auto& rtv: mNullViews.rtv) rtv.reset();
-    mNullViews.cbv.reset();
 }
 
 #ifdef SCRIPTING

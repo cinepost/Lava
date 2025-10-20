@@ -116,13 +116,6 @@ public:
     gfx::IFence* getGfxFence() const { return mGfxFence; }
 
     /**
-     * Returns the native API handle:
-     * - D3D12: ID3D12Fence*
-     * - Vulkan: currently not supported
-     */
-    NativeHandle getNativeHandle() const;
-
-    /**
      * Creates a shared fence API handle.
      */
     SharedResourceApiHandle getSharedApiHandle() const;

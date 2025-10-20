@@ -26,12 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "CopyContext.h"
-#include "Texture.h"
-#include "Buffer.h"
-#include "GpuFence.h"
 
-#include "gfx_lib/slang-gfx.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Fence.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/Core/API/Formats.h"
+
+#include "Falcor/Core/API/GFXAPI.h"
 
 
 namespace Falcor {
@@ -191,7 +194,7 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
     bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
     FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
     uint8_t* dataPtr = (uint8_t*)pData;
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     gfx::ITextureResource::Offset3D gfxOffset = { (int)offset.x, (int)offset.y, (int)offset.z };
     gfx::ITextureResource::Extents gfxSize = { (int)size.x, (int)size.y, (int)size.z };
     gfx::FormatInfo formatInfo = {};
@@ -209,14 +212,13 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
             gfxSize.height = align_to(formatInfo.blockHeight, pTexture->getHeight(subresourceRange.mipLevel));
             gfxSize.depth = pTexture->getDepth(subresourceRange.mipLevel);
         }
-
         gfx::ITextureResource::SubresourceData data = {};
         data.data = dataPtr;
         data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
         data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
         dataPtr += data.strideZ * gfxSize.depth;
 
-        resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
+        resourceEncoder->uploadTextureData(pTexture->getGfxTextureResource(), subresourceRange, gfxOffset, gfxSize, &data, 1);
     }
 
     if (state_changed) {
@@ -225,12 +227,12 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
 }
 
 CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {
-    Device::SharedPtr pDevice = pCtx->device();
+    Device::SharedPtr pDevice = pCtx->getDevice();
     SharedPtr pThis = SharedPtr(new ReadTextureTask);
     pThis->mpContext = pCtx;
     
     //Get footprint
-    gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+    gfx::ITextureResource* srcTexture = pTexture->getGfxTextureResource();
     gfx::FormatInfo formatInfo;
     gfx::gfxGetFormatInfo(srcTexture->getDesc()->format, &formatInfo);
 
@@ -243,11 +245,11 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
     uint64_t size = pTexture->getDepth(mipLevel) * rowCount * pThis->mRowSize;
 
     //Create buffer
-    pThis->mpBuffer = Buffer::create(pDevice, size, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    pThis->mpBuffer = pCtx->getDevice()->createBuffer(size, ResourceBindFlags::None, MemoryType::ReadBack, nullptr);
 
     //Copy from texture to buffer
     pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
-    auto encoder = pCtx->getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto encoder = pCtx->getLowLevelData()->getResourceCommandEncoder();
     gfx::SubresourceRange srcSubresource = {};
     srcSubresource.baseArrayLayer = pTexture->getSubresourceArraySlice(subresourceIndex);
     srcSubresource.mipLevel = mipLevel;
@@ -255,8 +257,8 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
     srcSubresource.mipLevelCount = 1;
 
     encoder->copyTextureToBuffer(
-        static_cast<gfx::IBufferResource*>(pThis->mpBuffer->getApiHandle().get()),
-        pThis->mpBuffer->getGpuAddressOffset(),
+        pThis->mpBuffer->getGfxBufferResource(),
+        0,
         size,
         pThis->mRowSize,
         srcTexture,
@@ -267,68 +269,59 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
     pCtx->setPendingCommands(true);
 
     // Create a fence and signal
-    pThis->mpFence = GpuFence::create(pDevice);
-    pCtx->flush(false);
-    pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
+    pThis->mpFence = pCtx->getDevice()->createFence();
+    pThis->mpFence->breakStrongReferenceToDevice();
+    pCtx->submit(false);
+    pCtx->signal(pThis->mpFence.get());
     pThis->mRowCount = (uint32_t)rowCount;
     pThis->mDepth = pTexture->getDepth(mipLevel);
 
     return pThis;
 }
 
-std::vector<uint8_t> CopyContext::ReadTextureTask::getData() {
-    mpFence->syncCpu();
-    mpContext->getLowLevelData()->closeCommandBuffer();
-    mpContext->device()->getCurrentTransientResourceHeap()->synchronizeAndReset();
-    mpContext->getLowLevelData()->openCommandBuffer();
+void CopyContext::ReadTextureTask::getData(void* pData, size_t size) const {
+    FALCOR_ASSERT(size == size_t(mRowCount) * mActualRowSize * mDepth);
 
-    // Get buffer data
-    std::vector<uint8_t> result;
-    result.resize((size_t)mRowCount * mActualRowSize);
-    uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
+    mpFence->wait();
+
+    uint8_t* pDst = reinterpret_cast<uint8_t*>(pData);
+    const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
 
     for (uint32_t z = 0; z < mDepth; z++) {
-        const uint8_t* pSrcZ = pData + z * (size_t)mRowSize * mRowCount;
-        uint8_t* pDstZ = result.data() + z * (size_t)mActualRowSize * mRowCount;
-        
+        const uint8_t* pSrcZ = pSrc + z * (size_t)mRowSize * mRowCount;
+        uint8_t* pDstZ = pDst + z * (size_t)mActualRowSize * mRowCount;
         for (uint32_t y = 0; y < mRowCount; y++) {
-            const uint8_t* pSrc = pSrcZ + y * (size_t)mRowSize;
-            uint8_t* pDst = pDstZ + y * (size_t)mActualRowSize;
-            memcpy(pDst, pSrc, mActualRowSize);
+            const uint8_t* pSrcY = pSrcZ + y * (size_t)mRowSize;
+            uint8_t* pDstY = pDstZ + y * (size_t)mActualRowSize;
+            std::memcpy(pDstY, pSrcY, mActualRowSize);
         }
     }
 
     mpBuffer->unmap();
+}
+
+void CopyContext::ReadTextureTask::getData(void* pData) const {
+    size_t size = size_t(mRowCount) * mActualRowSize * mDepth;
+    getData(pData, size);
+}
+
+std::vector<uint8_t> CopyContext::ReadTextureTask::getData() const {
+    std::vector<uint8_t> result(size_t(mRowCount) * mActualRowSize * mDepth);
+    getData(result.data(), result.size());
     return result;
 }
 
-void CopyContext::ReadTextureTask::getData(uint8_t* textureData) {
-    mpFence->syncCpu();
-
-    mpContext->getLowLevelData()->closeCommandBuffer();
-    mpContext->device()->getCurrentTransientResourceHeap()->synchronizeAndReset();
-    mpContext->getLowLevelData()->openCommandBuffer();
-    
-    // Get buffer data
-    uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
-
-    memcpy(textureData, pData, (size_t)mRowCount * mActualRowSize);
-    //memmove(textureData, pData, (size_t)mRowCount * mActualRowSize);
-
-    mpBuffer->unmap();
-}
-
-void CopyContext::ReadTextureTask::getData(std::vector<uint8_t>& textureData) {
+void CopyContext::ReadTextureTask::getData(std::vector<uint8_t>& textureData) const {
     textureData.resize((size_t)mRowCount * mActualRowSize);
     getData(textureData.data());
 }
 
 bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState) {
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     bool recorded = false;
 
     if (pTexture->getGlobalState() != newState) {
-        gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+        gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
 
         resourceEncoder->textureBarrier(1, &textureResource, getGFXResourceState(pTexture->getGlobalState()), getGFXResourceState(newState));
         
@@ -342,12 +335,14 @@ bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newSta
 
 bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState) {
     FALCOR_ASSERT(pBuffer);
-    if (pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return false;
-    bool recorded = false;
+    if (pBuffer->getMemoryType() != MemoryType::DeviceLocal) {
+        return false;
+    }
 
+    bool recorded = false;
     if (pBuffer->getGlobalState() != newState) {
-        auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-        gfx::IBufferResource* bufferResource = static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get());
+        auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+        gfx::IBufferResource* bufferResource = pBuffer->getGfxBufferResource();
         resourceEncoder->bufferBarrier(1, &bufferResource, getGFXResourceState(pBuffer->getGlobalState()), getGFXResourceState(newState));
         pBuffer->setGlobalState(newState);
         mCommandsPending = true;
@@ -357,11 +352,11 @@ bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
 }
 
 void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel) {
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     auto subresourceState = pTexture->getSubresourceState(arraySlice, mipLevel);
     
     if (subresourceState != newState) {
-        gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+        gfx::ITextureResource* textureResource = pTexture->getGfxTextureResource();
         gfx::SubresourceRange subresourceRange = {};
         subresourceRange.baseArrayLayer = arraySlice;
         subresourceRange.mipLevel = mipLevel;
@@ -373,13 +368,13 @@ void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State
 }
 
 void CopyContext::uavBarrier(const Resource* pResource) {
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
 
     if (pResource->getType() == Resource::Type::Buffer) {
-        gfx::IBufferResource* bufferResource = static_cast<gfx::IBufferResource*>(pResource->getApiHandle().get());
+        gfx::IBufferResource* bufferResource = static_cast<gfx::IBufferResource*>(pResource->getGfxResource());
         resourceEncoder->bufferBarrier(1, &bufferResource, gfx::ResourceState::UnorderedAccess, gfx::ResourceState::UnorderedAccess);
     } else {
-        gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pResource->getApiHandle().get());
+        gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(pResource->getGfxResource());
         resourceEncoder->textureBarrier(1, &textureResource, gfx::ResourceState::UnorderedAccess, gfx::ResourceState::UnorderedAccess);
     }
     mCommandsPending = true;
@@ -392,26 +387,32 @@ void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc) {
     resourceBarrier(pDst, Resource::State::CopyDest);
     resourceBarrier(pSrc, Resource::State::CopySource);
 
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
 
     if (pDst->getType() == Resource::Type::Buffer) {
         FALCOR_ASSERT(pSrc->getSize() <= pDst->getSize());
 
-        gfx::IBufferResource* srcBuffer = static_cast<gfx::IBufferResource*>(pSrc->getApiHandle().get());
-        gfx::IBufferResource* dstBuffer = static_cast<gfx::IBufferResource*>(pDst->getApiHandle().get());
+        const Buffer* pSrcBuffer = static_cast<const Buffer*>(pSrc);
+        const Buffer* pDstBuffer = static_cast<const Buffer*>(pDst);
 
-        resourceEncoder->copyBuffer(
-            dstBuffer,
-            static_cast<const Buffer*>(pDst)->getGpuAddressOffset(),
-            srcBuffer,
-            static_cast<const Buffer*>(pSrc)->getGpuAddressOffset(),
-            pSrc->getSize());
+        FALCOR_ASSERT(pSrcBuffer->getSize() <= pDstBuffer->getSize());
+
+        resourceEncoder->copyBuffer(pDstBuffer->getGfxBufferResource(), 0, pSrcBuffer->getGfxBufferResource(), 0, pSrcBuffer->getSize());
     } else {
-        gfx::ITextureResource* dstTexture = static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get());
-        gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get());
+        const Texture* pSrcTexture = static_cast<const Texture*>(pSrc);
+        const Texture* pDstTexture = static_cast<const Texture*>(pDst);
         gfx::SubresourceRange subresourceRange = {};
-        resourceEncoder->copyTexture(dstTexture, gfx::ResourceState::CopyDestination, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0),
-            srcTexture, gfx::ResourceState::CopySource, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0), gfx::ITextureResource::Extents{ 0,0,0 });
+        resourceEncoder->copyTexture(
+            pDstTexture->getGfxTextureResource(),
+            gfx::ResourceState::CopyDestination,
+            subresourceRange,
+            gfx::ITextureResource::Offset3D(0, 0, 0),
+            pSrcTexture->getGfxTextureResource(),
+            gfx::ResourceState::CopySource,
+            subresourceRange,
+            gfx::ITextureResource::Offset3D(0, 0, 0),
+            gfx::ITextureResource::Extents{0, 0, 0}
+        );
     }
     mCommandsPending = true;
 }
@@ -430,12 +431,9 @@ void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t 
         return;
     }
 
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-    resourceEncoder->uploadBufferData(
-        static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()),
-        pBuffer->getGpuAddressOffset() + offset,
-        numBytes,
-        (void*)pData);
+    bufferBarrier(pBuffer, Resource::State::CopyDest);
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+    resourceEncoder->uploadBufferData(pBuffer->getGfxBufferResource(), offset, numBytes, (void*)pData);
 
     mCommandsPending = true;
 }
@@ -470,21 +468,14 @@ void CopyContext::copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const
     resourceBarrier(pDst, Resource::State::CopyDest);
     resourceBarrier(pSrc, Resource::State::CopySource);
 
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-    gfx::IBufferResource* dstBuffer = static_cast<gfx::IBufferResource*>(pDst->getApiHandle().get());
-    gfx::IBufferResource* srcBuffer = static_cast<gfx::IBufferResource*>(pSrc->getApiHandle().get());
-
-    resourceEncoder->copyBuffer(dstBuffer, pDst->getGpuAddressOffset() + dstOffset, srcBuffer, pSrc->getGpuAddressOffset() + srcOffset, numBytes);
+     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+    resourceEncoder->copyBuffer(pDst->getGfxBufferResource(), dstOffset, pSrc->getGfxBufferResource(), srcOffset, numBytes);
     mCommandsPending = true;
 }
 
 void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresourceIdx, const Texture* pSrc, uint32_t srcSubresourceIdx, const uint3& dstOffset, const uint3& srcOffset, const uint3& size) {
     resourceBarrier(pDst, Resource::State::CopyDest);
     resourceBarrier(pSrc, Resource::State::CopySource);
-
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-    gfx::ITextureResource* dstTexture = static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get());
-    gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get());
 
     gfx::SubresourceRange dstSubresource = {};
     dstSubresource.baseArrayLayer = pDst->getSubresourceArraySlice(dstSubresourceIdx);
@@ -498,7 +489,7 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
     srcSubresource.mipLevel = pSrc->getSubresourceMipLevel(srcSubresourceIdx);
     srcSubresource.mipLevelCount = 1;
 
-    gfx::ITextureResource::Extents copySize = { (int)size.x, (int)size.y, (int)size.z };
+    gfx::ITextureResource::Extents copySize = {(int)size.x, (int)size.y, (int)size.z};
 
     if (size.x == uint(-1)) {
         copySize.width = pSrc->getWidth(srcSubresource.mipLevel) - srcOffset.x;
@@ -506,16 +497,18 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
         copySize.depth = pSrc->getDepth(srcSubresource.mipLevel) - srcOffset.z;
     }
 
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     resourceEncoder->copyTexture(
-        dstTexture,
+        pDst->getGfxTextureResource(),
         gfx::ResourceState::CopyDestination,
         dstSubresource,
         gfx::ITextureResource::Offset3D(dstOffset.x, dstOffset.y, dstOffset.z),
-        srcTexture,
+        pSrc->getGfxTextureResource(),
         gfx::ResourceState::CopySource,
         srcSubresource,
         gfx::ITextureResource::Offset3D(srcOffset.x, srcOffset.y, srcOffset.z),
-        copySize);
+        copySize
+    );
     mCommandsPending = true;
 }
 
@@ -531,7 +524,7 @@ void CopyContext::fillMipTail(Texture* pTexture, const void* pData, bool tailDat
         mpDevice->getGfxDevice()->allocateTailMemory(pTextureResource);
     }
 
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
 
     gfx::FormatInfo formatInfo = {};
     gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
@@ -576,7 +569,7 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
 
   const Texture* pTexture = pPage->texture().get();
   
-    auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     gfx::IVirtualTexturePageResource::Offset3D gfxOffset = pPage->offsetGFX();
     gfx::IVirtualTexturePageResource::Extent3D gfxSize = pPage->extentGFX();
     gfx::FormatInfo formatInfo = {};
@@ -587,7 +580,7 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
     data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
     data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
 
-    resourceEncoder->uploadTexturePageData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), gfxOffset, gfxSize, pPage->mipLevel(), &data);
+    resourceEncoder->uploadTexturePageData(pTexture->getGfxTextureResource(), gfxOffset, gfxSize, pPage->mipLevel(), &data);
     mCommandsPending = true;
 }
 

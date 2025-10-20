@@ -32,18 +32,17 @@
 #include <string>
 #include <memory>
 
-#include "Falcor/Scene/VertexAttrib.slangh"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Scene/VertexAttrib.slangh"
 
 namespace Falcor {
 
 /** Describes the layout of a vertex buffer that will be bound to a render operation as part of a VAO.
 */
-class dlldecl VertexBufferLayout : public std::enable_shared_from_this<VertexBufferLayout> {
+class dlldecl VertexBufferLayout : public Object {
+    FALCOR_OBJECT(VertexBufferLayout)
  public:
-    using SharedPtr = std::shared_ptr<VertexBufferLayout>;
-    using SharedConstPtr = std::shared_ptr<const VertexBufferLayout>;
-
     enum class InputClass {
         PerVertexData,      ///< Buffer elements will represent per-vertex data
         PerInstanceData     ///< Buffer elements will represent per-instance data
@@ -154,11 +153,9 @@ class dlldecl VertexBufferLayout : public std::enable_shared_from_this<VertexBuf
 
 /** Container to hold layouts for every vertex layout that will be bound at once to a VAO.
 */
-class VertexLayout : public std::enable_shared_from_this<VertexLayout> {
+class VertexLayout : public Object {
+    FALCOR_OBJECT(VertexLayout)
  public:
-    using SharedPtr = std::shared_ptr<VertexLayout>;
-    using SharedConstPtr = std::shared_ptr<const VertexLayout>;
-
     /** Create a new vertex layout object.
         \return New object, or throws an exception on error.
     */
@@ -166,7 +163,7 @@ class VertexLayout : public std::enable_shared_from_this<VertexLayout> {
 
     /** Add a layout description for a buffer.
     */
-    void addBufferLayout(uint32_t index, VertexBufferLayout::SharedConstPtr pLayout) {
+    void addBufferLayout(uint32_t index, VertexBufferLayout::SharedPtr pLayout) {
         if (mpBufferLayouts.size() <= index) {
             mpBufferLayouts.resize(index + 1);
         }
@@ -175,7 +172,7 @@ class VertexLayout : public std::enable_shared_from_this<VertexLayout> {
 
     /** Get a buffer layout.
     */
-    const VertexBufferLayout::SharedConstPtr& getBufferLayout(size_t index) const {
+    const VertexBufferLayout::SharedPtr& getBufferLayout(size_t index) const {
         return mpBufferLayouts[index];
     }
 
@@ -185,7 +182,7 @@ class VertexLayout : public std::enable_shared_from_this<VertexLayout> {
 
  private:
     VertexLayout() { mpBufferLayouts.reserve(16); }
-    std::vector<VertexBufferLayout::SharedConstPtr> mpBufferLayouts;
+    std::vector<VertexBufferLayout::SharedPtr> mpBufferLayouts;
 };
 
 }  // namespace Falcor

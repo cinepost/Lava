@@ -496,6 +496,7 @@ public:
     operator bool() const { return get() != nullptr; }
 
     void breakStrongPtr() { mSharedPtr.reset(); }
+    void breakStrongReference() { mSharedPtr.reset(); }
 
 private:
     SharedPtr<T> mSharedPtr;

@@ -76,7 +76,7 @@ public:
 
     template<typename T>
     T as() const {
-        FALCOR_ASSERT(mType == NativeHandleTrait<T>::type);
+        //FALCOR_ASSERT(mType == NativeHandleTrait<T>::type);
         return NativeHandleTrait<T>::unpack(mValue);
     }
 

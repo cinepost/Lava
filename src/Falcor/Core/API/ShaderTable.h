@@ -28,18 +28,13 @@
 #ifndef SRC_FALCOR_CORE_API_SHADERTABLE_H_
 #define SRC_FALCOR_CORE_API_SHADERTABLE_H_
 
-#include <memory>
+#include "Falcor/Core/Object.h"
+#include "GFXAPI.h"
 
-#include "gfx_lib/slang-gfx.h"
 
 namespace Falcor {
 
 class Device;
-class Scene;
-class Program;
-class RtStateObject;
-class RtProgramVars;
-class RenderContext;
 
 // clang-format off
 /**
@@ -69,23 +64,19 @@ class RenderContext;
 // with the deferred release mechanism.
 class ShaderTablePtr {
 	public:
-    ShaderTablePtr(std::shared_ptr<Device> pDevice) : mpDevice(pDevice) {}
+        ShaderTablePtr(Falcor::SharedPtr<Device> pDevice) : mpDevice(pDevice) {}
 
-    gfx::IShaderTable& operator*() { return *mTable; }
+        gfx::IShaderTable& operator*() { return *mTable; }
+        gfx::IShaderTable* operator->() { return mTable; }
+        gfx::IShaderTable* get() { return mTable.get(); }
+        gfx::IShaderTable** writeRef() { return mTable.writeRef(); }
+        operator gfx::IShaderTable*() { return mTable.get(); }
 
-    gfx::IShaderTable* operator->() { return mTable; }
-
-    gfx::IShaderTable* get() { return mTable.get(); }
-
-    gfx::IShaderTable** writeRef() { return mTable.writeRef(); }
-
-    operator gfx::IShaderTable*() { return mTable.get(); }
-
-    ~ShaderTablePtr() { mpDevice->releaseResource(mTable); }
+        ~ShaderTablePtr();
 
 	private:
-    std::shared_ptr<Device> mpDevice;
-    Slang::ComPtr<gfx::IShaderTable> mTable;
+        Falcor::SharedPtr<Device> mpDevice;
+        Slang::ComPtr<gfx::IShaderTable> mTable;
 };
 
 }  // namespace Falcor 

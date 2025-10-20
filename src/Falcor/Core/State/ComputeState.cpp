@@ -25,12 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/Utils/Timing/SimpleProfiler.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 #include "ComputeState.h"
 
+
 namespace Falcor {
+ComputeState::SharedPtr ComputeState::create(Device::SharedPtr pDevice) {
+    return ComputeState::SharedPtr(new ComputeState(pDevice));
+}
 
 ComputeState::ComputeState(Device::SharedPtr pDevice): mpDevice(pDevice) {
     mpCsoGraph = std::make_unique<ComputeStateGraph>();

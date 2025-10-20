@@ -31,15 +31,16 @@
 #include "Texture.h"
 
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/BlitContext.h"
 #include "Falcor/Core/API/BlitToBufferContext.h"
 
+#include "Falcor/Core/State/GraphicsState.h"
+
 #include "RenderContext.h"
 
-namespace Falcor {
 
-uint4 RenderContext::kMaxRect = { 0, 0, std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
+namespace Falcor {
 
 RenderContext::SharedPtr RenderContext::create(Device::SharedPtr pDevice, CommandQueueHandle queue) {
     return SharedPtr(new RenderContext(pDevice, queue));

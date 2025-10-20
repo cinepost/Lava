@@ -32,6 +32,8 @@
 
 namespace Falcor {
 
+namespace {
+
 gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode) {
     switch (mode) {
         case Sampler::AddressMode::Border:
@@ -180,6 +182,10 @@ Sampler::Desc& Sampler::Desc::setUnnormalizedCoordinates(bool state) {
 Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
     mBorderColor = borderColor;
     return *this;
+}
+
+void Sampler::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
 }
 
 bool Sampler::Desc::operator==(const Sampler::Desc& other) const {

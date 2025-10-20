@@ -80,11 +80,7 @@ namespace {
 	static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
 }
 
-TextureManager::SharedPtr TextureManager::create(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount) {
-	return SharedPtr(new TextureManager(pDevice, maxTextureCount, threadCount));
-}
-
-TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount)
+TextureManager::TextureManager(Device* pDevice, size_t maxTextureCount, size_t threadCount)
 	: mpDevice(pDevice)
 	, mAsyncTextureLoader(mpDevice, threadCount)
 	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
@@ -95,9 +91,6 @@ TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount
 	mSparseTexturesEnabled = true; // TODO: should be dependent on device features !! 
 
 	blosc_init();
-
-	// Init LRU texture data cache
-	mpTextureDataCache = TextureDataCacheLRU::create(mpDevice, 1024, 512);
 }
 
 TextureManager::~TextureManager() {

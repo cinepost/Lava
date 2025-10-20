@@ -31,19 +31,18 @@
 #include <vector>
 #include <memory>
 
-#include "VertexLayout.h"
-#include "Buffer.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/VertexLayout.h"
+#include "Falcor/Core/API/Buffer.h"
 
 namespace Falcor {
 
 /** Abstracts vertex array objects. A VAO must at least specify a primitive topology. You may additionally specify a number of vertex buffer layouts 
 	corresponding to the number of vertex buffers to be bound. The number of vertex buffers to be bound must match the number described in the layout.
 */
-class dlldecl Vao : public std::enable_shared_from_this<Vao> {
- public:
-	using SharedPtr = std::shared_ptr<Vao>;
-	using WeakPtr = std::weak_ptr<Vao>;
-	using SharedConstPtr = std::shared_ptr<const Vao>;
+class dlldecl Vao : public Object {
+    FALCOR_OBJECT(Vao)
+public:
 	~Vao() = default;
 
 	/** Primitive topology
@@ -117,7 +116,6 @@ class dlldecl Vao : public std::enable_shared_from_this<Vao> {
  private:
 	Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology primTopology);
 
-	VaoHandle mApiHandle;
 	VertexLayout::SharedPtr mpVertexLayout;
 	BufferVec mpVBs;
 	Buffer::SharedPtr mpIB;

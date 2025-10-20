@@ -35,112 +35,160 @@
 
 namespace Falcor {
 
-    GpuMemoryHeap::~GpuMemoryHeap() {
-        mDeferredReleases = decltype(mDeferredReleases)();
+GpuMemoryHeap::~GpuMemoryHeap() {
+    mDeferredReleases = decltype(mDeferredReleases)();
+}
+
+GpuMemoryHeap::GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence)
+    : mType(type)
+    , mpFence(pFence)
+    , mPageSize(pageSize)
+    , mpDevice(pDevice)
+{
+    allocateNewPage();
+}
+
+GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence) {
+    return SharedPtr(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
+}
+
+void GpuMemoryHeap::allocateNewPage() {
+    if (mpActivePage) {
+        mUsedPages[mCurrentPageId] = std::move(mpActivePage);
     }
 
-    GpuMemoryHeap::GpuMemoryHeap(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence)
-        : mType(type)
-        , mpFence(pFence)
-        , mPageSize(pageSize)
-        , mpDevice(pDevice)
-    {
-        allocateNewPage();
-    }
-
-    GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Falcor::SharedPtr<Device> pDevice, Type type, size_t pageSize, GpuFence::SharedPtr pFence) {
-        return SharedPtr(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
-    }
-
-    void GpuMemoryHeap::allocateNewPage() {
-        if (mpActivePage) {
-            mUsedPages[mCurrentPageId] = std::move(mpActivePage);
-        }
-
-        if (mAvailablePages.size()) {
-            mpActivePage = std::move(mAvailablePages.front());
-            mAvailablePages.pop();
-            mpActivePage->allocationsCount = 0;
-            mpActivePage->currentOffset = 0;
-        } else {
-            mpActivePage = std::make_unique<PageData>();
-            initBasePageData((*mpActivePage), mPageSize);
-        }
-
+    if (mAvailablePages.size()) {
+        mpActivePage = std::move(mAvailablePages.front());
+        mAvailablePages.pop();
+        mpActivePage->allocationsCount = 0;
         mpActivePage->currentOffset = 0;
-        mCurrentPageId++;
+    } else {
+        mpActivePage = std::make_unique<PageData>();
+        initBasePageData((*mpActivePage), mPageSize);
     }
 
-    GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment) {
-        Allocation data;
-        if (size > mPageSize) {
-            data.pageID = GpuMemoryHeap::Allocation::kMegaPageId;
-            initBasePageData(data, size);
-        } else {
-            // Calculate the start
-            size_t currentOffset = align_to(alignment, mpActivePage->currentOffset);
-            if (currentOffset + size > mPageSize) {
-                currentOffset = 0;
-                allocateNewPage();
-            }
+    mpActivePage->currentOffset = 0;
+    mCurrentPageId++;
+}
 
-            data.pageID = mCurrentPageId;
-            data.offset = currentOffset;
-            data.pData = mpActivePage->pData + currentOffset;
-            data.gfxBufferResource = mpActivePage->gfxBufferResource;
-            mpActivePage->currentOffset = currentOffset + size;
-            mpActivePage->allocationsCount++;
+GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment) {
+    Allocation data;
+    if (size > mPageSize) {
+        data.pageID = GpuMemoryHeap::Allocation::kMegaPageId;
+        initBasePageData(data, size);
+    } else {
+        // Calculate the start
+        size_t currentOffset = align_to(alignment, mpActivePage->currentOffset);
+        if (currentOffset + size > mPageSize) {
+            currentOffset = 0;
+            allocateNewPage();
         }
 
-        data.fenceValue = mpFence->getCpuValue();
-        return data;
+        data.pageID = mCurrentPageId;
+        data.offset = currentOffset;
+        data.pData = mpActivePage->pData + currentOffset;
+        data.gfxBufferResource = mpActivePage->gfxBufferResource;
+        mpActivePage->currentOffset = currentOffset + size;
+        mpActivePage->allocationsCount++;
     }
 
-    GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, ResourceBindFlags bindFlags) {
-        size_t alignment = mpDevice->getBufferDataAlignment(bindFlags);
-        return allocate(align_to(alignment, size), alignment);
-    }
+    data.fenceValue = mpFence->getCpuValue();
+    return data;
+}
 
-    void GpuMemoryHeap::release(Allocation& data) {
-        assert(data.gfxBufferResource);
-        mDeferredReleases.push(data);
-    }
+GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, ResourceBindFlags bindFlags) {
+    size_t alignment = mpDevice->getBufferDataAlignment(bindFlags);
+    return allocate(align_to(alignment, size), alignment);
+}
 
-    void GpuMemoryHeap::executeDeferredReleases() {
-        uint64_t gpuVal = mpFence->getGpuValue();
+void GpuMemoryHeap::release(Allocation& data) {
+    assert(data.gfxBufferResource);
+    mDeferredReleases.push(data);
+}
 
-        while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal) {
-            const Allocation& data = mDeferredReleases.top();
+void GpuMemoryHeap::executeDeferredReleases() {
+    uint64_t gpuVal = mpFence->getGpuValue();
 
-            if (data.pageID == mCurrentPageId) {
-                mpActivePage->allocationsCount--;
-                if (mpActivePage->allocationsCount == 0) {
-                    mpActivePage->currentOffset = 0;
+    while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal) {
+        const Allocation& data = mDeferredReleases.top();
 
-                    //if(mpActivePage->pResourceHandle.get()) {
-                    //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+        if (data.pageID == mCurrentPageId) {
+            mpActivePage->allocationsCount--;
+            if (mpActivePage->allocationsCount == 0) {
+                mpActivePage->currentOffset = 0;
+
+                //if(mpActivePage->pResourceHandle.get()) {
+                //    auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+                //    pBufferResource->unmap(nullptr);
+                //}
+            }
+        } else {
+            if (data.pageID != Allocation::kMegaPageId) {
+                auto& pData = mUsedPages[data.pageID];
+                pData->allocationsCount--;
+                
+                if (pData->allocationsCount == 0) {
+
+                    //if(pData->pResourceHandle.get()) {
+                    //    auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
                     //    pBufferResource->unmap(nullptr);
                     //}
-                }
-            } else {
-                if (data.pageID != Allocation::kMegaPageId) {
-                    auto& pData = mUsedPages[data.pageID];
-                    pData->allocationsCount--;
-                    
-                    if (pData->allocationsCount == 0) {
 
-                        //if(pData->pResourceHandle.get()) {
-                        //    auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
-                        //    pBufferResource->unmap(nullptr);
-                        //}
-
-                        mAvailablePages.push(std::move(pData));
-                        mUsedPages.erase(data.pageID);
-                    }
+                    mAvailablePages.push(std::move(pData));
+                    mUsedPages.erase(data.pageID);
                 }
-                // else it's a mega-page. Popping it will release the resource
             }
-            mDeferredReleases.pop();
+            // else it's a mega-page. Popping it will release the resource
         }
+        mDeferredReleases.pop();
     }
 }
+
+Slang::ComPtr<gfx::IBufferResource> createBufferResource(
+    Falcor::SharedPtr<Device> pDevice,
+    Buffer::State initState,
+    size_t size,
+    size_t elementSize,
+    ResourceFormat format,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType
+);
+
+namespace {
+
+Buffer::State getInitState(MemoryType memoryType) {
+    switch (memoryType) {
+        case MemoryType::DeviceLocal:
+            return Buffer::State::Common;
+        case MemoryType::Upload:
+            return Buffer::State::GenericRead;
+        case MemoryType::ReadBack:
+            return Buffer::State::CopyDest;
+        default:
+            FALCOR_UNREACHABLE();
+            return Buffer::State::Undefined;
+    }
+}
+
+} // namespace
+
+void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size) {
+    data.gfxBufferResource = createBufferResource(
+        mpDevice,
+        getInitState(mMemoryType),
+        size,
+        0,
+        ResourceFormat::Unknown,
+        ResourceBindFlags::Vertex | ResourceBindFlags::Index | ResourceBindFlags::Constant,
+        mMemoryType
+    );
+    data.size = size;
+    data.offset = 0;
+    FALCOR_GFX_CALL(data.gfxBufferResource->map(nullptr, (void**)&data.pData));
+}
+
+void GpuMemoryHeap::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
+}
+
+} // namespace Falcor

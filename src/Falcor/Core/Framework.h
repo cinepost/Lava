@@ -272,19 +272,6 @@ enum class ShadingLanguage {
     Slang,          ///< Slang shading language
 };
 
-/** Framebuffer target flags. Used for clears and copy operations
-*/
-enum class FboAttachmentType {
-    None    = 0,    ///< Nothing. Here just for completeness
-    Color   = 1,    ///< Operate on the color buffer.
-    Depth   = 2,    ///< Operate on the the depth buffer.
-    Stencil = 4,    ///< Operate on the the stencil buffer.
-
-    All = Color | Depth | Stencil  ///< Operate on all targets
-};
-
-enum_class_operators(FboAttachmentType);
-
 enum class DataType {
     int8,
     int16,

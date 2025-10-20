@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,37 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#ifndef SRC_FALCOR_CORE_API_COMMON_H_
+#define SRC_FALCOR_CORE_API_COMMON_H_
 
-#include "GFXRtAccelerationStructure.h"
+#include <string>
 
-#include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
-#include "lava_utils_lib/logging.h"
+#include "Falcor/Core/Enum.h"
 
 namespace Falcor {
 
-RtAccelerationStructurePostBuildInfoPool::RtAccelerationStructurePostBuildInfoPool(Device::SharedPtr pDevice, const Desc& desc): mpDevice(pDevice), mDesc(desc) {
-    gfx::IQueryPool::Desc queryPoolDesc = {};
-    queryPoolDesc.count = desc.elementCount;
-    queryPoolDesc.type = getGFXAccelerationStructurePostBuildQueryType(desc.queryType);
-    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createQueryPool(queryPoolDesc, mpGFXQueryPool.writeRef()));
-}
+/// Buffer memory types.
+enum class MemoryType {
+    DeviceLocal, ///< Device local memory. The buffer can be updated using Buffer::setBlob().
+    Upload,      ///< Upload memory. The buffer can be mapped for CPU writes.
+    ReadBack,    ///< Read-back memory. The buffer can be mapped for CPU reads.
 
-RtAccelerationStructurePostBuildInfoPool::~RtAccelerationStructurePostBuildInfoPool() {}
+    // NOTE: In older version of Falcor this enum used to be Buffer::CpuAccess.
+    // Use the following mapping to update your code:
+    // - CpuAccess::None -> MemoryType::DeviceLocal
+    // - CpuAccess::Write -> MemoryType::Upload
+    // - CpuAccess::Read -> MemoryType::ReadBack
+};
 
-uint64_t RtAccelerationStructurePostBuildInfoPool::getElement(CopyContext* pContext, uint32_t index) {
-    if (mNeedFlush) {
-        pContext->flush(true);
-        mNeedFlush = false;
+FALCOR_ENUM_INFO(
+    MemoryType,
+    {
+        {MemoryType::DeviceLocal, "DeviceLocal"},
+        {MemoryType::Upload, "Upload"},
+        {MemoryType::ReadBack, "ReadBack"},
     }
-    uint64_t result = 0;
-    FALCOR_GFX_CALL(mpGFXQueryPool->getResult(index, 1, &result));
-    return result;
-}
-
-void RtAccelerationStructurePostBuildInfoPool::reset(CopyContext* pContext) {
-    FALCOR_GFX_CALL(mpGFXQueryPool->reset());
-    mNeedFlush = true;
-}
+);
+FALCOR_ENUM_REGISTER(MemoryType);
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_COMMON_H_
