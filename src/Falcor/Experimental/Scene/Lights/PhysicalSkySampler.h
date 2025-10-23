@@ -1,20 +1,20 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_PHYSICALSKYSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_PHYSICALSKYSAMPLER_H_
 
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/RenderGraph/BasePasses/ComputePass.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 
-namespace Falcor {
 
-class Device;
+namespace Falcor {
 
 /** Environment map sampler.
     Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
 */
-class dlldecl PhysicalSkySampler : public std::enable_shared_from_this<PhysicalSkySampler> {
+class FALCOR_API PhysicalSkySampler : public Object {
+    FALCOR_OBJECT(PhysicalSkySampler)
  public:
-    using SharedPtr = std::shared_ptr<PhysicalSkySampler>;
-
     virtual ~PhysicalSkySampler() = default;
 
     /** Create a new object.
@@ -25,7 +25,7 @@ class dlldecl PhysicalSkySampler : public std::enable_shared_from_this<PhysicalS
     /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     const Texture::SharedPtr& getImportanceMap();
 
@@ -53,7 +53,7 @@ class dlldecl PhysicalSkySampler : public std::enable_shared_from_this<PhysicalS
     ComputePass::SharedPtr  mpSkyViewLUTSetupPass;              ///< SkyView LUT creation compute program.
     ComputePass::SharedPtr  mpImportanceMapSetupPass;           ///< Importance map creation compute program.
 
-    std::shared_ptr<Device> mpDevice;
+    Device::SharedPtr       mpDevice;
 
     Texture::SharedPtr      mpSunTransmittanceLUT;
     Texture::SharedPtr      mpMultipleScatteringLUT;

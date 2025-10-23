@@ -69,7 +69,7 @@ void EnvMap::setTint(const float3& tint) {
     mData.tint = tint;
 }
 
-void EnvMap::setShaderData(const ShaderVar& var) const {
+void EnvMap::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.

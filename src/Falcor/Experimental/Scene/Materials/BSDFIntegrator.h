@@ -34,17 +34,11 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Scene/Scene.h"
 
-namespace Falcor
-{
+namespace Falcor {
     /** Utility class for BSDF integration.
     */
-    class dlldecl BSDFIntegrator
-    {
+    class FALCOR_API BSDFIntegrator {
     public:
-        using SharedPtr = std::shared_ptr<BSDFIntegrator>;
-
-        static SharedPtr create(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene);
-
         /** Integrate the BSDF for a material given a single incident direction.
             The BSDF is assumed to be isotropic and is integrated over outgoing directions in the upper hemisphere.
             \param[in] pRenderContext The context.
@@ -63,14 +57,13 @@ namespace Falcor
         */
         std::vector<float3> integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, const std::vector<float>& cosThetas);
 
-    private:
-        BSDFIntegrator(Device::SharedPtr pDevicet, const Scene::SharedPtr& pScene);
+        BSDFIntegrator(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene);
 
+    private:
         void integrationPass(RenderContext* pRenderContext, const uint32_t materialID, const uint32_t gridCount) const;
         void finalPass(RenderContext* pRenderContext, const uint32_t gridCount) const;
 
         Device::SharedPtr mpDevice;
-
         Scene::SharedPtr mpScene;
         ComputePass::SharedPtr mpIntegrationPass;   ///< Integration pass.
         ComputePass::SharedPtr mpFinalPass;         ///< Final reduction pass.
@@ -78,7 +71,6 @@ namespace Falcor
         Buffer::SharedPtr mpResultBuffer;           ///< Buffer for intermediate results.
         Buffer::SharedPtr mpFinalResultBuffer;      ///< Buffer for final results after reduction.
         Buffer::SharedPtr mpStagingBuffer;          ///< Staging buffer for readback of final results.
-        GpuFence::SharedPtr mpFence;                ///< Fence for synchronizing readback.
         uint32_t mResultCount;                      ///< Number of intermediate results per integration grid.
     };
 }

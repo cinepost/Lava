@@ -37,6 +37,9 @@
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "MeshLightData.slang"
 
+#include <sigs/sigs.h>
+
+
 namespace Falcor {
 
 class Scene;
@@ -55,6 +58,7 @@ class FALCOR_API LightCollection : public Object {
     enum class UpdateFlags : uint32_t {
         None                = 0u,   ///< Nothing was changed.
         MatrixChanged       = 1u,   ///< Mesh instance transform changed.
+        LayoutChanged       = 2u,   ///< MeshLightData layouts have changed.
     };
 
     struct UpdateStatus {
@@ -102,16 +106,24 @@ class FALCOR_API LightCollection : public Object {
         }
     };
 
+    using UpdateFlagsSignal = sigs::Signal<void(UpdateFlags)>;
 
+    LightCollection(Falcor::SharedPtr<Device> pDevice, RenderContext* pRenderContext, Scene* pScene);
     ~LightCollection() = default;
+
+    const Falcor::SharedPtr<Device>& getDevice() const { return mpDevice; }
 
     /** Creates a light collection for the given scene.
         Note that update() must be called before the collection is ready to use.
+        \param[in] pDevice GPU device.
         \param[in] pRenderContext The render context.
         \param[in] pScene The scene.
-        \return Ptr to the created object, or nullptr if an error occured.
+        \return A pointer to a new light collection object, or throws an exception if creation failed.
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Falcor::SharedPtr<Scene>& pScene);
+    static LightCollection::SharedPtr create(Falcor::SharedPtr<Device> pDevice, RenderContext* pRenderContext, Scene* pScene) {
+        return make_shared_ptr<LightCollection>(pDevice, pRenderContext, pScene);
+    }
+
 
     /** Updates the light collection to the current state of the scene.
         \param[in] pRenderContext The render context.
@@ -124,11 +136,11 @@ class FALCOR_API LightCollection : public Object {
         \param[in] var The shader variable to set the data into.
         \return True if successful, false otherwise.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     /** Returns the total number of active (non-culled) triangle lights.
     */
-    uint32_t getActiveLightCount() const { return getStats().trianglesActive; }
+    uint32_t getActiveLightCount(RenderContext* pRenderContext) const { return getStats(pRenderContext).trianglesActive; }
 
     /** Returns the total number of triangle lights (may include culled triangles).
     */
@@ -136,13 +148,13 @@ class FALCOR_API LightCollection : public Object {
 
     /** Returns stats.
     */
-    const MeshLightStats& getStats() const { computeStats(); return mMeshLightStats; }
+    const MeshLightStats& getStats(RenderContext* pRenderContext) const { computeStats(pRenderContext); return mMeshLightStats; }
 
     /** Returns a CPU buffer with all emissive triangles in world space.
         Note that update() must have been called before for the data to be valid.
         Call prepareSyncCPUData() ahead of time to avoid stalling the GPU.
     */
-    const std::vector<MeshLightTriangle>& getMeshLightTriangles() const { syncCPUData(); return mMeshLightTriangles; }
+    const std::vector<MeshLightTriangle>& getMeshLightTriangles(RenderContext* pRenderContext) const { syncCPUData(pRenderContext); return mMeshLightTriangles; }
 
     /** Returns a CPU buffer with all mesh lights.
         Note that update() must have been called before for the data to be valid.
@@ -169,22 +181,25 @@ class FALCOR_API LightCollection : public Object {
         All          = TriangleData | FluxData
     };
 
-protected:
-    LightCollection(RenderContext* pRenderContext, const Falcor::SharedPtr<Scene>& pScene);
+    /** Gets a signal interface that is signaled when the LightCollection is updated.
+     */
+    UpdateFlagsSignal::Interface getUpdateFlagsSignal() { return mUpdateFlagsSignal.getInterface(); }
 
-    void initIntegrator(const Scene& scene);
+protected:
+
+    void initIntegrator(RenderContext* pRenderContext, const Scene& scene);
     void setupMeshLights(const Scene& scene);
     void build(RenderContext* pRenderContext, const Scene& scene);
     void prepareTriangleData(RenderContext* pRenderContext, const Scene& scene);
     void prepareMeshData(const Scene& scene);
     void integrateEmissive(RenderContext* pRenderContext, const Scene& scene);
-    void computeStats() const;
+    void computeStats(RenderContext* pRenderContext) const;
     void buildTriangleList(RenderContext* pRenderContext, const Scene& scene);
-    void updateActiveTriangleList();
+    void updateActiveTriangleList(RenderContext* pRenderContext);
     void updateTrianglePositions(RenderContext* pRenderContext, const Scene& scene, const std::vector<uint32_t>& updatedLights);
 
     void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
-    void syncCPUData() const;
+    void syncCPUData(RenderContext* pRenderContext) const;
 
     // Internal state
     Device::SharedPtr                       mpDevice;
@@ -209,7 +224,7 @@ protected:
     Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
 
     mutable Buffer::SharedPtr               mpStagingBuffer;        ///< Staging buffer used for retrieving the vertex positions, texture coordinates and light IDs from the GPU.
-    GpuFence::SharedPtr                     mpStagingFence;         ///< Fence used for waiting on the staging buffer being filled in.
+    Fence::SharedPtr                        mpStagingFence;         ///< Fence used for waiting on the staging buffer being filled in.
 
     Sampler::SharedPtr                      mpSamplerState;         ///< Material sampler for emissive textures.
 
@@ -228,6 +243,8 @@ protected:
 
     mutable CPUOutOfDateFlags               mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
     mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
+
+    UpdateFlagsSignal mUpdateFlagsSignal;
 };
 
 enum_class_operators(LightCollection::CPUOutOfDateFlags);

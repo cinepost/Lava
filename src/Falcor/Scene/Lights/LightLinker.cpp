@@ -48,7 +48,6 @@ namespace {
     static const std::string    kLightNamesDelims       = "\t\n,| ";
 }
 
-
 namespace Falcor {
 
 LightLinker::NameSet::NameSet() {
@@ -82,15 +81,7 @@ bool LightLinker::NameSet::hasName(const std::string& name) const {
     return mNames.find(name) != mNames.end();
 }
 
-LightLinker::SharedPtr LightLinker::create(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene) {
-    return SharedPtr(new LightLinker(pDevice, pScene));
-}
-
-LightLinker::LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene> pScene) {
-    assert(pDevice);
-    mpDevice = pDevice;
-    mpScene = pScene ? pScene : nullptr;
-
+LightLinker::LightLinker(Device::SharedPtr pDevice, Scene* pScene): mpDevice(pDevice), mpScene(pScene) {
     // Global light set (includes all lights)
     LightSet global;
     global.mLightSetData.lightsCount = 0;
@@ -102,14 +93,7 @@ LightLinker::LightLinker(std::shared_ptr<Device> pDevice, std::shared_ptr<Scene>
 }
 
 LightLinker::UpdateFlags LightLinker::update(bool forceUpdate) {
-    PROFILE(mpDevice, "LightLinker::update()");
-
     UpdateFlags flags = UpdateFlags::None;
-
-    auto pScene = mpScene.lock();
-    if(pScene) {
-        
-    }
 
     const bool lightDataChanged = buildActiveLightsData(forceUpdate || mLightsChanged); 
     if(lightDataChanged) flags |= UpdateFlags::LightsChanged;
@@ -172,7 +156,7 @@ void LightLinker::setLightActive(const std::string& name, bool state) {
     }
 }
 
-void LightLinker::setShaderData(const ShaderVar& var) const {
+void LightLinker::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.

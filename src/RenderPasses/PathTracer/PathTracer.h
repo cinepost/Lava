@@ -91,7 +91,7 @@ private:
     bool prepareLighting(RenderContext* pRenderContext);
     void prepareRTXDI(RenderContext* pRenderContext);
     void setNRDData(const ShaderVar& var, const RenderData& renderData) const;
-    void setShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling = true) const;
+    void bindShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling = true) const;
 
     bool beginFrame(RenderContext* pRenderContext, const RenderData& renderData);
     void endFrame(RenderContext* pRenderContext, const RenderData& renderData);

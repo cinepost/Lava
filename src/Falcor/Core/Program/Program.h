@@ -706,6 +706,8 @@ public:
       return mDesc.entryPointGroups[groupIndex].entryPoints[entryPointIndexInGroup].globalIndex;
   }
 
+  void breakStrongReferenceToDevice();
+
   RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
 
 protected:
@@ -716,7 +718,7 @@ protected:
   void validateEntryPoints() const;
   bool linkProgram() const;
 
-  Falcor::SharedPtr<Device> mpDevice;
+  Falcor::BreakableSharedPtr<Device> mpDevice;
 
 	// The description used to create this program
   // TODO we should make this const again

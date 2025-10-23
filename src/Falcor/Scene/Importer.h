@@ -30,60 +30,66 @@
 
 #include "SceneBuilder.h"
 
-namespace Falcor
-{
-    /** This class is a global registry for asset importers.
-        Importers are bound to a set of file extensions. This allows the right importer to
-        be called when importing an asset file.
-    */
-    class dlldecl Importer
-    {
-    public:
-        using ExtensionList = std::vector<std::string>;
-        using ImportFunction = std::function<bool(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)>;
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Plugin.h"
+#include "Falcor/Core/Platform/OS.h"
 
-        /** Description of an importer.
-        */
-        struct Desc
-        {
-            std::string name;
-            ExtensionList extensions;
-            ImportFunction import;
-        };
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
-        /** Returns a list of file extensions filters for all supported file formats.
-        */
-        static const FileDialogFilterVec& getFileExtensionFilters();
 
-        /** Import an asset.
-            \param[in] filename Filename.
-            \param[in] builder Scene builder.
-            \param[in] instances Optional list of instance transforms.
-            \param[in] dict Optional dictionary.
-            \return True if asset was successfully imported, false otherwise.
-        */
-        static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+namespace Falcor {
 
-        /** Registers an importer.
-            \param[in] desc Importer description.
-        */
-        static void registerImporter(const Desc& desc);
+/** Base class for importers.
+    Importers are bound to a set of file extensions. This allows the right importer to
+    be called when importing an asset file.
+*/
+class FALCOR_API Importer {
+public:
+    using PluginCreate = std::function<std::unique_ptr<Importer>()>;
+    struct PluginInfo {
+        std::string desc; ///< Importer description.
+        std::vector<std::string> extensions; ///< List of handled file extensions.
     };
 
-}  // namespace Falcor
+    FALCOR_PLUGIN_BASE_CLASS(Importer);
 
-#ifndef _staticlibrary
-#define REGISTER_IMPORTER(_class_, _extensions_)                                    \
-    static struct RegisterImporter##_class_ {                                       \
-        RegisterImporter##_class_()                                                 \
-        {                                                                           \
-            Importer::registerImporter({#_class_, _extensions_, _class_::import});  \
-        }                                                                           \
-    } gRegisterImporter##_class_;
-#else
-#define REGISTER_IMPORTER(_class_, _extensions_) \
-    static_assert(false, "Using REGISTER_IMPORTER() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
-    "Call 'Importer::registerImporter()' yourself from code that is guarenteed to run.");
-#endif
+    virtual ~Importer() {}
+
+    /** Import a scene.
+        \param[in] path File path.
+        \param[in] builder Scene builder.
+        \param[in] dict Optional dictionary.
+        Throws an ImporterError if something went wrong.
+    */
+    virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName) = 0;
+
+    /** Import a scene from memory.
+        \param[in] buffer Memory buffer.
+        \param[in] byteSize Size in bytes of memory buffer.
+        \param[in] extension File extension for the format the scene is stored in.
+        \param[in] builder Scene builder.
+        \param[in] dict Optional dictionary.
+        Throws an ImporterError if something went wrong.
+    */
+    virtual void importSceneFromMemory(const void* buffer, size_t byteSize, std::string_view extension, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName);
+
+    // Importer factory
+
+    /** Create an importer for a file of an asset with the given file extension.
+        \param extension File extension.
+        \param pm Plugin manager.
+        \return Returns an instance of the importer or nullptr if no compatible importer was found.
+     */
+    static std::unique_ptr<Importer> create(std::string_view extension, const PluginManager& pm = PluginManager::instance());
+
+    /** Return a list of supported file extensions by the current set of loaded importer plugins.
+    */
+    static std::vector<std::string> getSupportedExtensions(const PluginManager& pm = PluginManager::instance());
+};
+
+}  // namespace Falcor
 
 #endif  // SRC_FALCOR_SCENE_IMPORTER_H_

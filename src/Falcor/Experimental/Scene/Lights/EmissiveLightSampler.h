@@ -29,39 +29,44 @@
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVELIGHTSAMPLER_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Scene/Scene.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Program/DefineList.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Scene/Lights/LightCollection.h"
+
 #include "EmissiveLightSamplerType.slangh"
+
+#include "sigs/sigs.h"
+
 
 namespace Falcor {
 
-//class RenderContext;
-//class Program;
+class Device;
+class RenderContext;
 
 /** Base class for emissive light sampler implementations.
 
     All light samplers follows the same interface to make them interchangeable.
     If an unrecoverable error occurs, these functions may throw exceptions.
 */
-class dlldecl EmissiveLightSampler : public std::enable_shared_from_this<EmissiveLightSampler>
-{
+class FALCOR_API EmissiveLightSampler : public Object {
 public:
-    using SharedPtr = std::shared_ptr<EmissiveLightSampler>;
     virtual ~EmissiveLightSampler() = default;
 
     /** Updates the sampler to the current frame.
         \param[in] pRenderContext The render context.
         \return True if the sampler was updated.
     */
-    virtual bool update(RenderContext* pRenderContext) { return false; }
+    virtual bool update(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection) { return false; }
 
     /** Return a list of shader defines to use this light sampler.
     *   \return Returns a list of shader defines.
     */
-    virtual Program::DefineList getDefines() const;
+    virtual DefineList getDefines() const;
 
     /** Bind the light sampler data to a given shader var
     */
-    virtual bool setShaderData(const ShaderVar& var) const { return true; }
+    virtual bool bindShaderData(const ShaderVar& var) const { return true; }
 
     /** Returns the type of emissive light sampler.
         \return The type of the derived class.
@@ -69,11 +74,15 @@ public:
     EmissiveLightSamplerType getType() const { return mType; }
 
 protected:
-    EmissiveLightSampler(EmissiveLightSamplerType type, Scene::SharedPtr pScene) : mType(type), mpScene(pScene) {}
+    EmissiveLightSampler(EmissiveLightSamplerType type, Falcor::SharedPtr<LightCollection> pLightCollection);
+    void setLightCollection(Falcor::SharedPtr<LightCollection> pLightCollection);
 
     // Internal state
     const EmissiveLightSamplerType mType;       ///< Type of emissive sampler. See EmissiveLightSamplerType.slangh.
-    Scene::SharedPtr mpScene;
+    Falcor::SharedPtr<Device> mpDevice;
+    Falcor::SharedPtr<LightCollection> mpLightCollection;
+    sigs::Connection mUpdateFlagsConnection;
+    LightCollection::UpdateFlags mLightCollectionUpdateFlags = LightCollection::UpdateFlags::None;
 };
 
 }

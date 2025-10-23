@@ -25,57 +25,57 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_SDFS_NORMALIZEDDENSESDFGRID_NDSDFGRID_H_
+#define SRC_FALCOR_SCENE_SDFS_NORMALIZEDDENSESDFGRID_NDSDFGRID_H_
 
 #include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Texture.h"
 
-namespace Falcor
-{
-    /** A normalized dense SDF grid, represented as a set of textures. Can only be accessed on the GPU.
+namespace Falcor {
+
+/** A normalized dense SDF grid, represented as a set of textures. Can only be accessed on the GPU.
+*/
+class FALCOR_API NDSDFGrid : public SDFGrid {
+    FALCOR_OBJECT(NDSDFGrid)
+public:
+    struct SharedData;
+
+    /** Create a new, empty normalized dense SDF grid.
+        \param[in] narrowBandThickness NDSDFGrids operate on normalized distances, the distances are normalized so that a normalized distance of +- 1 represents a distance of "narrowBandThickness" voxel diameters. Should not be less than 1.
+        \return NDSDFGrid object, or nullptr if errors occurred.
     */
-    class dlldecl NDSDFGrid : public SDFGrid
-    {
-    public:
-        using SharedPtr = std::shared_ptr<NDSDFGrid>;
+    static Falcor::SharedPtr<NDSDFGrid> create(Falcor::SharedPtr<Device> pDevice, float narrowBandThickness) { return make_shared_ptr<NDSDFGrid>(pDevice, narrowBandThickness); }
 
-        /** Create a new, empty normalized dense SDF grid.
-            \param[in] narrowBandThickness NDSDFGrids operate on normalized distances, the distances are normalized so that a normalized distance of +- 1 represents a distance of "narrowBandThickness" voxel diameters. Should not be less than 1.
-            \return NDSDFGrid object, or nullptr if errors occurred.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice, float narrowBandThickness);
+    NDSDFGrid(Falcor::SharedPtr<Device> pDevice, float narrowBandThickness);
 
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const { return Type::NormalizedDenseGrid; }
+    virtual size_t getSize() const override;
+    virtual uint32_t getMaxPrimitiveIDBits() const override;
+    virtual Type getType() const override { return Type::NormalizedDenseGrid; }
 
 
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
-        virtual const Buffer::SharedPtr& getAABBBuffer() const override { return spNDSDFGridUnitAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return 1; }
-        virtual void setShaderData(const ShaderVar& var) const override;
+    virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+    virtual const Falcor::SharedPtr<Buffer>& getAABBBuffer() const override;
+    virtual uint32_t getAABBCount() const override { return 1; }
+    virtual void bindShaderData(const ShaderVar& var) const override;
 
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
+protected:
+    virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
-        float calculateNormalizationFactor(uint32_t gridWidth) const;
+    float calculateNormalizationFactor(uint32_t gridWidth) const;
 
-    private:
-        NDSDFGrid(Device::SharedPtr pDevice, float narrowBandThickness);
+private:
+    // CPU data.
+    std::vector<std::vector<int8_t>> mValues;
 
-        // CPU data.
-        std::vector<std::vector<int8_t>> mValues;
+    // Specs.
+    uint32_t mCoarsestLODGridWidth = 0;
+    float mCoarsestLODNormalizationFactor = 0.0f;
+    float mNarrowBandThickness = 0.0f;
 
-        // Specs.
-        uint32_t mCoarsestLODGridWidth = 0;
-        float mCoarsestLODNormalizationFactor = 0.0f;
-        float mNarrowBandThickness = 0.0f;
+    // GPU data.
+    std::vector<Falcor::SharedPtr<Texture>> mNDSDFTextures;
+    std::shared_ptr<SharedData> mpSharedData; ///< Shared data among all instances.
+};
 
-        // Resources shared among all NDSDFGrids.
-        static Sampler::SharedPtr spNDSDFGridSampler;
-        static Buffer::SharedPtr spNDSDFGridUnitAABBBuffer;
+} // namespace Falcor
 
-        // GPU data.
-        std::vector<Texture::SharedPtr> mNDSDFTextures;
-    };
-}
+#endif // SRC_FALCOR_SCENE_SDFS_NORMALIZEDDENSESDFGRID_NDSDFGRID_H_

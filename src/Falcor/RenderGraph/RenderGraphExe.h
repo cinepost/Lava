@@ -28,20 +28,20 @@
 #ifndef FALCOR_RENDERGRAPH_RENDERGRAPHEXE_H_
 #define FALCOR_RENDERGRAPH_RENDERGRAPHEXE_H_
 
+#include "Falcor/Core/Object.h"
 #include "ResourceCache.h"
-#include "Utils/InternalDictionary.h"
+#include "Falcor/Utils/Dictionary.h"
 #include "RenderPass.h"
 
 namespace Falcor {
 
 class RenderGraphCompiler;
 
-class dlldecl RenderGraphExe {
- public:
-    using SharedPtr = std::shared_ptr<RenderGraphExe>;
+class FALCOR_API RenderGraphExe : public Object {
+  public:
     struct Context {
         RenderContext* pRenderContext;
-        InternalDictionary::SharedPtr pGraphDictionary;
+        Dictionary& passesDictionary;
         uint2 defaultTexDims;
         ResourceFormat defaultTexFormat;
 
@@ -82,8 +82,6 @@ class dlldecl RenderGraphExe {
 
 private:
     friend class RenderGraphCompiler;
-    static SharedPtr create() { return SharedPtr(new RenderGraphExe); }
-    RenderGraphExe() = default;
 
     void insertPass(const std::string& name, const RenderPass::SharedPtr& pPass);
 
@@ -97,7 +95,7 @@ private:
     };
 
     std::vector<Pass> mExecutionList;
-    ResourceCache::SharedPtr mpResourceCache;
+    std::unique_ptr<ResourceCache> mpResourceCache;
 };
 
 }  // namespace Falcor

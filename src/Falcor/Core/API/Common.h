@@ -35,10 +35,10 @@
 namespace Falcor {
 
 /// Buffer memory types.
-enum class MemoryType {
-    DeviceLocal, ///< Device local memory. The buffer can be updated using Buffer::setBlob().
-    Upload,      ///< Upload memory. The buffer can be mapped for CPU writes.
-    ReadBack,    ///< Read-back memory. The buffer can be mapped for CPU reads.
+enum class MemoryType : uint32_t {
+    DeviceLocal     = 0, ///< Device local memory. The buffer can be updated using Buffer::setBlob().
+    Upload          = 1, ///< Upload memory. The buffer can be mapped for CPU writes.
+    ReadBack        = 2, ///< Read-back memory. The buffer can be mapped for CPU reads.
 
     // NOTE: In older version of Falcor this enum used to be Buffer::CpuAccess.
     // Use the following mapping to update your code:

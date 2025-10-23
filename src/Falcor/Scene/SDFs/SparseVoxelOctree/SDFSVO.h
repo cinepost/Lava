@@ -25,77 +25,81 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_SDFS_SPARSEBVOXELTREE_SDFSVO_H_
+#define SRC_FALCOR_SCENE_SDFS_SPARSEBVOXELTREE_SDFSVO_H_
 
-#include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Scene/SDFs/SDFGrid.h"
 
-namespace Falcor
-{
-    /** SDF Sparse Voxel Octree. Can only be utilized on the GPU.
-    */
-    class dlldecl SDFSVO : public SDFGrid
-    {
-    public:
-        using SharedPtr = std::shared_ptr<SDFSVO>;
+namespace Falcor {
 
-        /** Create a new, empty SDFSVO.
-            \return SDFSVO object, or nullptr if errors occurred.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice);
+class Device;
+class Buffer;
+class Texture;
 
-        uint32_t getSVOIndexBitCount() const { return mSVOIndexBitCount; }
+/** SDF Sparse Voxel Octree. Can only be utilized on the GPU.
+*/
+class FALCOR_API SDFSVO : public SDFGrid {
+    FALCOR_OBJECT(SDFSVO)
+public:
+    struct SharedData;
 
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
+    static Falcor::SharedPtr<SDFSVO> create(Falcor::SharedPtr<Device> pDevice) { return make_shared_ptr<SDFSVO>(pDevice); }
 
-        virtual Type getType() const override { return Type::SparseVoxelOctree; }
+    /// Create an empty SDFSVO.
+    SDFSVO(Falcor::SharedPtr<Device> pDevice);
 
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+    uint32_t getSVOIndexBitCount() const { return mSVOIndexBitCount; }
 
-        virtual const Buffer::SharedPtr& getAABBBuffer() const override { return spSDFSVOGridUnitAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return 1; }
+    virtual size_t getSize() const override;
+    virtual uint32_t getMaxPrimitiveIDBits() const override;
 
-        virtual void setShaderData(const ShaderVar& var) const override;
+    virtual Type getType() const override { return Type::SparseVoxelOctree; }
 
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
+    virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
-    private:
-        SDFSVO(Device::SharedPtr pDevice):SDFGrid(pDevice) {};
+    virtual const Falcor::SharedPtr<Buffer>& getAABBBuffer() const override;
+    virtual uint32_t getAABBCount() const override { return 1; }
 
-        // CPU data.
-        std::vector<int8_t> mValues;
+    virtual void bindShaderData(const ShaderVar& var) const override;
 
-        // Specs.
-        uint32_t mLevelCount = 0;
-        uint32_t mSVOElementCount = 0;
-        uint32_t mVirtualGridWidth = 0;
-        uint32_t mSVOIndexBitCount = 0;
+protected:
+    virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
-        // GPU Data.
-        Buffer::SharedPtr mpSVOBuffer;
+private:
+    // CPU data.
+    std::vector<int8_t> mValues;
 
-        // Resources shared among all SDFSVOs.
-        static Buffer::SharedPtr spSDFSVOGridUnitAABBBuffer;
+    // Specs.
+    uint32_t mLevelCount = 0;
+    uint32_t mSVOElementCount = 0;
+    uint32_t mVirtualGridWidth = 0;
+    uint32_t mSVOIndexBitCount = 0;
 
-        // Compute passes used to build the SVO.
-        ComputePass::SharedPtr mpCountSurfaceVoxelsPass;
-        ComputePass::SharedPtr mpBuildFinestLevelFromDistanceTexturePass;
-        ComputePass::SharedPtr mpBuildLevelFromDistanceTexturePass;
-        ComputePass::SharedPtr mpSortLocationCodesPass;
-        ComputePass::SharedPtr mpWriteSVOOffsetsPass;
-        ComputePass::SharedPtr mpBuildOctreePass;
+    // GPU Data.
+    Falcor::SharedPtr<Buffer> mpSVOBuffer;
+    std::shared_ptr<SharedData> mpSharedData; ///< Shared data among all instances.
 
-        // Scratch data used for building.
-        Texture::SharedPtr mpSDFGridTexture;
-        Buffer::SharedPtr mpSurfaceVoxelCounter;
-        Buffer::SharedPtr mpSurfaceVoxelCounterStagingBuffer;
-        Buffer::SharedPtr mpVoxelCountPerLevelBuffer;
-        Buffer::SharedPtr mpVoxelCountPerLevelStagingBuffer;
-        Buffer::SharedPtr mpHashTableBuffer;
-        Buffer::SharedPtr mpLocationCodesBuffer;
-        GpuFence::SharedPtr mpReadbackFence;
-    };
-}
+    // Compute passes used to build the SVO.
+    Falcor::SharedPtr<ComputePass> mpCountSurfaceVoxelsPass;
+    Falcor::SharedPtr<ComputePass> mpBuildFinestLevelFromDistanceTexturePass;
+    Falcor::SharedPtr<ComputePass> mpBuildLevelFromDistanceTexturePass;
+    Falcor::SharedPtr<ComputePass> mpSortLocationCodesPass;
+    Falcor::SharedPtr<ComputePass> mpWriteSVOOffsetsPass;
+    Falcor::SharedPtr<ComputePass> mpBuildOctreePass;
+
+    // Scratch data used for building.
+    Falcor::SharedPtr<Texture> mpSDFGridTexture;
+    Falcor::SharedPtr<Buffer> mpSurfaceVoxelCounter;
+    Falcor::SharedPtr<Buffer> mpSurfaceVoxelCounterStagingBuffer;
+    Falcor::SharedPtr<Buffer> mpVoxelCountPerLevelBuffer;
+    Falcor::SharedPtr<Buffer> mpVoxelCountPerLevelStagingBuffer;
+    Falcor::SharedPtr<Buffer> mpHashTableBuffer;
+    Falcor::SharedPtr<Buffer> mpLocationCodesBuffer;
+    Falcor::SharedPtr<Fence> mpReadbackFence;
+};
+
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_SDFS_SPARSEBVOXELTREE_SDFSVO_H_

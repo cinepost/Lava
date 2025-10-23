@@ -101,7 +101,7 @@ Grid::SharedPtr Grid::createFromFile(Device::SharedPtr pDevice, const fs::path& 
     }
 }
 
-void Grid::setShaderData(const ShaderVar& var)
+void Grid::bindShaderData(const ShaderVar& var)
 {
     var["buf"] = mpBuffer;
     var["rangeTex"] = mBrickedGrid.range;

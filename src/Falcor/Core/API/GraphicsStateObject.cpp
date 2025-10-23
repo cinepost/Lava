@@ -25,9 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "GraphicsStateObject.h"
-#include "Device.h"
-#include "GFXAPI.h"
+#include "Falcor/Core/API/GraphicsStateObject.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/BlendState.h"
+#include "Falcor/Core/API/DepthStencilState.h"
+#include "Falcor/Core/API/RasterizerState.h"
+#include "Falcor/Core/API/VertexLayout.h"
+#include "Falcor/Core/Program/ProgramVersion.h"
 
 namespace Falcor {
 
@@ -204,9 +208,9 @@ gfx::InputSlotClass getGFXInputSlotClass(VertexBufferLayout::InputClass cls) {
     }
 }
 
-ref<BlendState> GraphicsStateObject::spDefaultBlendState;
-ref<RasterizerState> GraphicsStateObject::spDefaultRasterizerState;
-ref<DepthStencilState> GraphicsStateObject::spDefaultDepthStencilState;
+Falcor::SharedPtr<BlendState> GraphicsStateObject::spDefaultBlendState;
+Falcor::SharedPtr<RasterizerState> GraphicsStateObject::spDefaultRasterizerState;
+Falcor::SharedPtr<DepthStencilState> GraphicsStateObject::spDefaultDepthStencilState;
 
 GraphicsStateObject::~GraphicsStateObject() {
     mpDevice->releaseResource(mGfxPipelineState);

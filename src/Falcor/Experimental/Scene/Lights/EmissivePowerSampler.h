@@ -37,55 +37,39 @@ namespace Falcor {
 
 /** Sample geometry proportionally to its emissive power.
 */
-class dlldecl EmissivePowerSampler : public EmissiveLightSampler
-{
+class FALCOR_API EmissivePowerSampler : public EmissiveLightSampler {
+    FALCOR_OBJECT(EmissivePowerSampler)
 public:
-    using SharedPtr = std::shared_ptr<EmissivePowerSampler>;
-    using SharedConstPtr = std::shared_ptr<const EmissivePowerSampler>;
-
-    struct AliasTable
-    {
+    struct AliasTable {
         float weightSum;                ///< Total weight of all elements used to create the alias table
         uint32_t N;                     ///< Number of entries in the alias table (and # elements in the buffers)
         Buffer::SharedPtr fullTable;    ///< A compressed/packed merged table.  Max 2^24 (16 million) entries per table.
     };
 
+    EmissivePowerSampler(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection);
     virtual ~EmissivePowerSampler() = default;
-
-    /** Creates a EmissivePowerSampler for a given scene.
-        \param[in] pRenderContext The render context.
-        \param[in] pScene The scene.
-        \param[in] options The options to override the default behavior.
-    */
-    static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene);
 
     /** Updates the sampler to the current frame.
         \param[in] pRenderContext The render context.
         \return True if the sampler was updated.
     */
-    virtual bool update(RenderContext* pRenderContext) override;
+    virtual bool update(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection) override;
 
     /** Bind the light sampler data to a given shader variable.
         \param[in] var Shader variable.
         \return True if successful, false otherwise.
     */
-    virtual bool setShaderData(const ShaderVar& var) const override;
+    virtual bool bindShaderData(const ShaderVar& var) const override;
 
 protected:
-    EmissivePowerSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene);
-
     /** Generate an alias table
         \param[in] weights  The weights we'd like to sample each entry proportional to
         \returns The alias table
     */
     AliasTable generateAliasTable(std::vector<float> weights);
 
-    Device::SharedPtr               mpDevice = nullptr;
-
     // Internal state
     bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
-
-    LightCollection::SharedConstPtr mpLightCollection;
 
     std::mt19937                    mAliasTableRng;
     AliasTable                      mTriangleTable;

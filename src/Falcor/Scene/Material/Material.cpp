@@ -63,10 +63,10 @@ Material::Material(Device::SharedPtr pDevice, const std::string& name, MaterialT
     mHeader.setIoR(1.5h);
 }
 
-std::shared_ptr<BasicMaterial> Material::toBasicMaterial() {
+BasicMaterial::SharedPtr Material::toBasicMaterial() {
     if (mHeader.isBasicMaterial()) {
-        assert(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
-        return std::static_pointer_cast<BasicMaterial>(shared_from_this());
+        assert(dynamic_ptr_cast<BasicMaterial>(Material::SharedPtr(this)));
+        return static_ptr_cast<BasicMaterial>(Material::SharedPtr(this));
     }
     return nullptr;
 }
@@ -191,7 +191,7 @@ void Material::loadTexture(TextureSlot slot, const fs::path& path, bool useSrgb)
             // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
             // every texture creation is overly conservative, and will likely lead to performance issues
             // due to the forced CPU/GPU sync.
-            mpDevice->flushAndSync();
+            mpDevice->wait();
         }
     }
 }

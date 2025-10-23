@@ -197,13 +197,13 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
     mRaytrace.pProgram->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mRaytrace.pVars->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 
     // Dispatch the rays.
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
@@ -226,7 +226,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
         //mpScene->setRaytracingShaderData(pRenderContext, var);
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
    // mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
@@ -237,7 +237,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         mpScene->setRaytracingShaderData(pRenderContext, var);
     }
 
-    setShaderData(mpComputePass->getRootVar(), renderData);
+    bindShaderData(mpComputePass->getRootVar(), renderData);
 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 
@@ -269,7 +269,7 @@ Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) co
     return defines;
 }
 
-void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData) {
+void VBufferRT::bindShaderData(const ShaderVar& var, const RenderData& renderData) {
     var["gVBufferRT"]["frameDim"] = mFrameDim;
     var["gVBufferRT"]["frameCount"] = mFrameCount;
 

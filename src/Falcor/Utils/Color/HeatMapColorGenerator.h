@@ -25,7 +25,7 @@ public:
     static SharedPtr create(Device::SharedPtr pDevice);
     static SharedPtr create(Device::SharedPtr pDevice, HeatMapGradientType grad_type);
 
-    void setShaderData(ShaderVar const& var) const;
+    void bindShaderData(ShaderVar const& var) const;
 
 protected:
     HeatMapColorGenerator(Device::SharedPtr pDevice, HeatMapGradientType grad_type);

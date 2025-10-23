@@ -62,7 +62,7 @@ private:
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
     Program::DefineList getShaderDefines(const RenderData& renderData) const;
-    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void bindShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
     VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);

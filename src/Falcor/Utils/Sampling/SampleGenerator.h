@@ -70,7 +70,7 @@ class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenera
             \param[in] pVars ProgramVars of the program to set data into.
             \return false if there was an error, true otherwise.
         */
-        virtual bool setShaderData(ShaderVar const& var) const { return true; }
+        virtual bool bindShaderData(ShaderVar const& var) const { return true; }
 
         /** Register a sample generator type.
             \param[in] type The type of sample generator. See SampleGeneratorType.slangh.

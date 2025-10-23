@@ -25,14 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_SDFS_SDFGRID_H_
+#define SRC_FALCOR_SCENE_SDFS_SDFGRID_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Object.h"
 #include "Scene/SDFs/SDF3DPrimitiveCommon.slang"
 
-namespace Falcor
-{
+namespace Falcor {
+
+    class Device;
+
     /** SDF grid base class, stored by distance values at grid cell/voxel corners.
         The local space of the SDF grid is [-0.5, 0.5]^3 meaning that initial distances used to create the SDF grid should be within the range of [-sqrt(3), sqrt(3)].
 
@@ -57,13 +60,10 @@ namespace Falcor
             out the AABB buffer constructed by the SDFSVO. This can then be used to intersect rays against the SDFSVO.
             Distances stored in the voxels of the octree are normalized to the range [-1, 1] so that a value of 1 represents half of a voxel diagonal.
     */
-    class dlldecl SDFGrid
-    {
+    class FALCOR_API SDFGrid: public Object {
+        FALCOR_OBJECT(SDFGrid)
     public:
-        using SharedPtr = std::shared_ptr<SDFGrid>;
-
-        enum class Type
-        {
+        enum class Type {
             None = 0,
             NormalizedDenseGrid = 1,
             SparseVoxelSet = 2,
@@ -73,8 +73,7 @@ namespace Falcor
 
         /** Flags indicating if and what was updated in the SDF grid.
         */
-        enum class UpdateFlags : uint32_t
-        {
+        enum class UpdateFlags : uint32_t {
             None = 0x0,                 ///< Nothing happened
             AABBsChanged = 0x1,         ///< AABBs changed, requires a BLAS update.
             BuffersReallocated = 0x2,   ///< Buffers were reallocated requiring them to be rebound.
@@ -211,7 +210,15 @@ namespace Falcor
 
         /** Binds the SDF grid into a given shader var.
         */
-        virtual void setShaderData(const ShaderVar& var) const = 0;
+        virtual void bindShaderData(const ShaderVar& var) const = 0;
+
+        /** Return the scaling factor that represent how the grid resolution has changed from when it was loaded. The resolution can change if loaded by the SBS grid and then edited by the SDFEditor.
+        */
+        virtual float getResolutionScalingFactor() const { return 1.0f; };
+
+        /** Sets the resolution scaling factor to 1.0.
+        */
+        virtual void resetResolutionScalingFactor() {};
 
         static std::string getTypeName(Type type);
 
@@ -236,4 +243,7 @@ namespace Falcor
     };
 
     enum_class_operators(SDFGrid::UpdateFlags);
-}
+
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_SDFS_SDFGRID_H_

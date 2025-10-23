@@ -12,7 +12,6 @@
 
 #include "Experimental/Scene/Lights/LightBVHSampler.h"
 #include "Experimental/Scene/Lights/EmissivePowerSampler.h"
-#include "Experimental/Scene/Lights/EnvMapLighting.h"
 #include "Experimental/Scene/Lights/EnvMapSampler.h"
 
 using namespace Falcor;
@@ -131,12 +130,11 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		CPUSampleGenerator::SharedPtr       				mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
 		SampleGenerator::SharedPtr          				mpSampleGenerator;           ///< GPU sample generator.
 		
-		EmissiveLightSampler::SharedPtr 						mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
+		EmissiveLightSampler::SharedPtr 					mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
 
 		Texture::SharedPtr                  				mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
 
-		EnvMapLighting::SharedPtr           				mpEnvMapLighting = nullptr;
-		EnvMapSampler::SharedPtr            				mpEnvMapSampler = nullptr;
+		EnvMapSampler::SharedPtr            				mpEnvMapSampler;
 
 		bool mEnableSuperSampling = false;
 		bool mUseSimplifiedEnvLighting = false;

@@ -43,6 +43,11 @@ class Device;
 class Program;
 struct ShaderVar;
 
+template<typename T>
+struct FormatForElementType
+{};
+
+
 /** Low-level buffer object
     This class abstracts the API's buffer creation and management
 */
@@ -50,6 +55,12 @@ class FALCOR_API Buffer : public Resource {
     FALCOR_OBJECT(Buffer)
   public:
     static constexpr uint64_t kEntireBuffer = ResourceViewInfo::kEntireBuffer;
+
+    enum class CpuAccess : uint32_t  {
+        None    = (uint32_t)MemoryType::DeviceLocal,
+        Write   = (uint32_t)MemoryType::Upload,  
+        Read    = (uint32_t)MemoryType::ReadBack
+    };
 
     /// Constructor.
     Buffer(
@@ -93,6 +104,112 @@ class FALCOR_API Buffer : public Resource {
     Buffer(Falcor::SharedPtr<Device> pDevice, VkBuffer handle, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType);
 
     ~Buffer();
+
+    /* Old API */
+
+    /** Create a new buffer.
+        \param[in] size Size of the buffer in bytes.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(
+        Falcor::SharedPtr<Device> pDevice,
+        size_t size,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const void* pInitData = nullptr);
+
+    /** Create a new typed buffer.
+        \param[in] format Typed buffer format.
+        \param[in] elementCount Number of elements.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr createTyped(
+        Falcor::SharedPtr<Device> pDevice,
+        ResourceFormat format,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const void* pInitData = nullptr);
+
+    /** Create a new typed buffer. The format is deduced from the template parameter.
+        \param[in] elementCount Number of elements.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    template<typename T>
+    static SharedPtr createTyped(
+        Falcor::SharedPtr<Device> pDevice,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const T* pInitData = nullptr)
+    {
+        return createTyped(pDevice, FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
+    }
+
+    /** Create a new structured buffer.
+        \param[in] structSize Size of the struct in bytes.
+        \param[in] elementCount Number of elements.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+        \param[in] createCounter True if the associated UAV counter should be created.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr createStructured(
+        Falcor::SharedPtr<Device> pDevice,
+        uint32_t structSize,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const void* pInitData = nullptr,
+        bool createCounter = true);
+
+    /** Create a new structured buffer.
+        \param[in] pProgram Program declaring the buffer.
+        \param[in] name Variable name in the program.
+        \param[in] elementCount Number of elements.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+        \param[in] createCounter True if the associated UAV counter should be created.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr createStructured(
+        Falcor::SharedPtr<Device> pDevice,
+        const Program* pProgram,
+        const std::string& name,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const void* pInitData = nullptr,
+        bool createCounter = true);
+
+    /** Create a new structured buffer.
+        \param[in] shaderVar ShaderVar pointing to the buffer variable.
+        \param[in] elementCount Number of elements.
+        \param[in] bindFlags Buffer bind flags.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated.
+        \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
+        \param[in] createCounter True if the associated UAV counter should be created.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr createStructured(
+        Falcor::SharedPtr<Device> pDevice,
+        const ShaderVar& shaderVar,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        CpuAccess cpuAccess = Buffer::CpuAccess::None,
+        const void* pInitData = nullptr,
+        bool createCounter = true);
 
 
     gfx::IBufferResource* getGfxBufferResource() const { return mGfxBufferResource; }
@@ -232,10 +349,6 @@ class FALCOR_API Buffer : public Resource {
     mutable void* mMappedPtr = nullptr;
 
 };
-
-template<typename T>
-struct FormatForElementType
-{};
 
 #define CASE(TYPE, FORMAT) template<> struct FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
 

@@ -28,21 +28,19 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/RenderGraph/BasePasses/ComputePass.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 
 namespace Falcor {
 
-class Device;
-
 /** Environment map sampler.
     Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
 */
-class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler> {
+class FALCOR_API EnvMapSampler : public Object {
+    FALCOR_OBJECT(EnvMapSampler)
  public:
-    using SharedPtr = std::shared_ptr<EnvMapSampler>;
-
     virtual ~EnvMapSampler() = default;
 
     /** Create a new object.
@@ -56,7 +54,7 @@ class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler>
     /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
@@ -73,7 +71,7 @@ class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler>
 
     ComputePass::SharedPtr  mpSetupPass;            ///< Compute pass for creating the importance map.
 
-    std::shared_ptr<Device> mpDevice;
+    Device::SharedPtr       mpDevice;
 
     Texture::SharedPtr      mpImportanceMap;        ///< Hierarchical importance map (luminance).
     Sampler::SharedPtr      mpImportanceSampler;

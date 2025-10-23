@@ -259,10 +259,10 @@ void ForwardLightingPass::prepareVars(RenderContext* pContext) {
         if (mUseSimplifiedEnvLighting) {
             mpState->getProgram()->addDefine("_USE_SIMPLIFIED_ENV_LIGHTING");
             mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
-            mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
+            mpEnvMapLighting->bindShaderData(mpVars["gEnvMapLighting"]);
         } else {
             mpEnvMapSampler = EnvMapSampler::create(pContext, pEnvMap);
-            mpEnvMapSampler->setShaderData(mpVars["PerFrameCB"]["gEnvMapSampler"]);
+            mpEnvMapSampler->bindShaderData(mpVars["PerFrameCB"]["gEnvMapSampler"]);
         }
     } else {
         mpState->getProgram()->removeDefine("_USE_ENV_MAP");
@@ -275,7 +275,7 @@ void ForwardLightingPass::prepareVars(RenderContext* pContext) {
     mpVars["gNoiseSampler"]     = mpNoiseSampler;
     mpVars["gNoiseTex"]         = mpBlueNoiseTexture;
     
-    //bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
+    //bool success = mpSampleGenerator->bindShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
     //if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
 
     mEnvMapDirty = false;

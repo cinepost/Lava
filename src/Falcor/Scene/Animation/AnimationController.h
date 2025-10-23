@@ -137,7 +137,7 @@ public:
     */
     uint64_t getMemoryUsageInBytes() const;
 
-    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
+    AnimationController(Falcor::SharedPtr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
 private:
     friend class SceneBuilder;
@@ -197,7 +197,7 @@ private:
     Buffer::SharedPtr mpPrevVertexData;
 
     // Animated vertex caches
-    AnimatedVertexCache::UniquePtr mpVertexCache;
+    std::unique_ptr<AnimatedVertexCache> mpVertexCache;
 };
 
 }  // namespace Falcor

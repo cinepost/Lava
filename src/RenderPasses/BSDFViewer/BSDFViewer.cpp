@@ -161,7 +161,7 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     mParams.cameraViewportScale = std::tan(glm::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
 
     // Set resources.
-    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) throw std::runtime_error("Failed to bind sample generator");
+    if (!mpSampleGenerator->bindShaderData(mpViewerPass->getVars()->getRootVar())) throw std::runtime_error("Failed to bind sample generator");
     mpViewerPass["gOutput"] = renderData[kOutput]->asTexture();
     mpViewerPass["gPixelData"] = mPixelDataBuffer;
     mpViewerPass["PerFrameCB"]["gParams"].setBlob(mParams);
@@ -199,7 +199,7 @@ bool BSDFViewer::loadEnvMap(const std::string& filename)
     }
 
     auto pVars = mpViewerPass->getVars();
-    mpEnvMap->setShaderData(pVars["PerFrameCB"]["gEnvMap"]);
+    mpEnvMap->bindShaderData(pVars["PerFrameCB"]["gEnvMap"]);
 
     return true;
 }

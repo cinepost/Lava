@@ -34,12 +34,6 @@
 
 namespace Falcor {
 
-ResourceCache::ResourceCache(Device::SharedPtr pDevice): mpDevice(pDevice) {}
-
-ResourceCache::SharedPtr ResourceCache::create(Device::SharedPtr pDevice) {
-    return SharedPtr(new ResourceCache(pDevice));
-}
-
 void ResourceCache::reset() {
     mNameToIndex.clear();
     mResourceData.clear();
@@ -67,9 +61,9 @@ const RenderPassReflection::Field& ResourceCache::getResourceReflection(const st
 }
 
 void ResourceCache::registerExternalResource(const std::string& name, const Resource::SharedPtr& pResource) {
-    if(pResource) mExternalResources[name] = pResource;
-    else
-    {
+    if(pResource) {
+        mExternalResources[name] = pResource;
+    } else {
         auto it = mExternalResources.find(name);
         if (it == mExternalResources.end()) {
             LLOG_WRN << "ResourceCache::registerExternalResource: " << name << " does not exist.";
@@ -124,58 +118,54 @@ Resource::SharedPtr createResourceForPass(Device::SharedPtr pDevice, const Resou
     if (field.getType() != RenderPassReflection::Field::Type::RawBuffer) {
         format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
         if (resolveBindFlags) {
-            ResourceBindFlags mask = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
+            ResourceBindFlags mask = ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource;
             bool isOutput = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output);
             bool isInternal = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Internal);
-            if (isOutput || isInternal) mask |= Resource::BindFlags::DepthStencil | Resource::BindFlags::RenderTarget;
+            if (isOutput || isInternal) mask |= ResourceBindFlags::DepthStencil | ResourceBindFlags::RenderTarget;
             auto supported = getFormatBindFlags(pDevice.get(), format);
             mask &= supported;
             bindFlags |= mask;
         }
     } else {
         // RawBuffer
-        if (resolveBindFlags) bindFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
+        if (resolveBindFlags) bindFlags = ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource;
     }
     
     Resource::SharedPtr pResource;
 
     switch (field.getType()) {
         case RenderPassReflection::Field::Type::RawBuffer:
-            pResource = Buffer::create(pDevice, width, bindFlags, Buffer::CpuAccess::None);
+            pResource = pDevice->createBuffer(width, bindFlags, MemoryType::DeviceLocal);
             break;
         case RenderPassReflection::Field::Type::Texture1D:
-            pResource = Texture::create1D(pDevice, width, format, arraySize, mipLevels, nullptr, bindFlags);
+            pResource = pDevice->createTexture1D(width, format, arraySize, mipLevels, nullptr, bindFlags);
             break;
         case RenderPassReflection::Field::Type::Texture2D:
             if (sampleCount > 1) {
-                pResource = Texture::create2DMS(pDevice, width, height, format, sampleCount, arraySize, bindFlags);
+                pResource = pDevice->createTexture2DMS(width, height, format, sampleCount, arraySize, bindFlags);
             } else {
-                pResource = Texture::create2D(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+                pResource = pDevice->createTexture2D(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
             }
             break;
         case RenderPassReflection::Field::Type::Texture3D:
-            pResource = Texture::create3D(pDevice, width, height, depth, format, mipLevels, nullptr, bindFlags);
+            pResource = pDevice->createTexture3D(width, height, depth, format, mipLevels, nullptr, bindFlags);
             break;
         case RenderPassReflection::Field::Type::TextureCube:
-            pResource = Texture::createCube(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+            pResource = pDevice->createTextureCube(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
             break;
         default:
             should_not_get_here();
             return nullptr;
     }
 
-    if(!pResource) {
-        LLOG_FTL << "Error creating resource !!!";
-    }
-
     pResource->setName(resourceName);
     return pResource;
 }
 
-void ResourceCache::allocateResources(const DefaultProperties& params) {
+void ResourceCache::allocateResources(Device::SharedPtr pDevice, const DefaultProperties& params) {
     for (auto& data : mResourceData) {
         if ((data.pResource == nullptr) && (data.field.isValid())) {
-            data.pResource = createResourceForPass(mpDevice, params, data.field, data.resolveBindFlags, data.name);
+            data.pResource = createResourceForPass(pDevice, params, data.field, data.resolveBindFlags, data.name);
         }
     }
 }

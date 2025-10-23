@@ -355,8 +355,8 @@ void RTXGIPass::probeVisualizerPass(RenderContext* pRenderContext, const RenderD
             mVisualizeDirect.pVars = RtProgramVars::create(mVisualizeDirect.pProgram, mVisualizeDirect.pBindingTable);
 
             auto var = mVisualizeDirect.pVars->getRootVar();
-            mpVolume->setShaderData(var);
-            mpVolume->getSampleGenerator()->setShaderData(var);
+            mpVolume->bindShaderData(var);
+            mpVolume->getSampleGenerator()->bindShaderData(var);
         }
 
         // Bind the resources.
@@ -406,10 +406,10 @@ void RTXGIPass::probeVisualizerPass(RenderContext* pRenderContext, const RenderD
         pFbo->attachDepthStencilTarget(pDepthStencil);
         mVisualizeProbes.pState->setFbo(pFbo); // Sets the viewport
 
-        mpVolume->setShaderData(mVisualizeProbes.pVars->getRootVar());
+        mpVolume->bindShaderData(mVisualizeProbes.pVars->getRootVar());
 
         auto var = mVisualizeProbes.pVars->getRootVar()["PerFrameCB"];
-        mpScene->getCamera()->setShaderData(var["gCamera"]);
+        mpScene->getCamera()->bindShaderData(var["gCamera"]);
         var["gVisualizerProbeMode"] = (uint32_t)mVisualizerOptions.probeMode;
         var["gShowProbeStates"] = mVisualizerOptions.showProbeStates;
         var["gHighlightProbe"] = mVisualizerOptions.highlightProbe;
@@ -452,7 +452,7 @@ void RTXGIPass::computeIndirectPass(RenderContext* pRenderContext, const RenderD
     var["CB"]["gFrameDim"] = mFrameDim;
     var["CB"]["gFrameCount"] = mFrameCount;
 
-    mpVolume->setShaderData(var);
+    mpVolume->bindShaderData(var);
 
     // Run the pass
     mpComputeIndirectPass->execute(pRenderContext, uint3(mFrameDim, 1));

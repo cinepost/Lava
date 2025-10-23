@@ -42,6 +42,10 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 
+#include "Falcor/Core/API/GraphicsStateObject.h"
+#include "Falcor/Core/API/ComputeStateObject.h"
+#include "Falcor/Core/API/RtStateObject.h"
+
 #include "Falcor/Core/Object.h"
 #include "Falcor/Core/Window.h"
 
@@ -411,6 +415,15 @@ class FALCOR_API Device: public Object {
      * @return A new object, or throws an exception if creation failed.
      */
     Falcor::SharedPtr<Fence> createFence(bool shared = false);
+
+    /// Create a compute state object.
+    Falcor::SharedPtr<ComputeStateObject> createComputeStateObject(const ComputeStateObjectDesc& desc);
+
+    /// Create a graphics state object.
+    Falcor::SharedPtr<GraphicsStateObject> createGraphicsStateObject(const GraphicsStateObjectDesc& desc);
+
+    /// Create a raytracing state object.
+    Falcor::SharedPtr<RtStateObject> createRtStateObject(const RtStateObjectDesc& desc);
 
     TextureManager* getTextureManager() { return mpTextureManager.get(); }
 

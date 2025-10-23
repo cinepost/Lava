@@ -53,17 +53,16 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ProgramVars* pVars) {
 
     ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
 
-    if(pCso == nullptr) {
-        mDesc.setProgramKernels(pProgramKernels);
+    if (pCso == nullptr) {
+        mDesc.pProgramKernels = pProgramKernels;
 
-        ComputeStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool {
-            return pCso && (desc == pCso->getDesc());
-        };
+        ComputeStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ref<ComputeStateObject> pCso) -> bool
+        { return pCso && (desc == pCso->getDesc()); };
 
         if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
             pCso = mpCsoGraph->getCurrentNode();
         } else {
-            pCso = ComputeStateObject::create(mpDevice, mDesc);
+            pCso = mpDevice->createComputeStateObject(mDesc);
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }

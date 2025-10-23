@@ -29,12 +29,13 @@
 #define FALCOR_RENDERGRAPH_RENDERPASS_H_
 
 #include "Falcor/Core/Object.h"
+#include "Falcor/Core/Plugin.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Resource.h"
-#include "Falcor/Utils/Scripting/Dictionary.h"
-#include "Falcor/Utils/InternalDictionary.h"
+#include "Falcor/Utils/Properties.h"
+#include "Falcor/Utils/Dictionary.h"
 #include "ResourceCache.h"
 
 #include <memory>
@@ -80,11 +81,7 @@ class FALCOR_API RenderData {
 
     /** Get the global dictionary. You can use it to pass data between different passes
     */
-    InternalDictionary& getDictionary() const { return (*mpDictionary); }
-
-    /** Get the global dictionary. You can use it to pass data between different passes
-    */
-    InternalDictionary::SharedPtr getDictionaryPtr() const { return mpDictionary; }
+    Dictionary& getDictionary() const { return mDictionary; }
 
     /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
     */
@@ -96,19 +93,16 @@ class FALCOR_API RenderData {
  protected:
     friend class RenderGraphExe;
     
-    RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
+    RenderData(const std::string& passName, ResourceCache& resourceCache, Dictionary& dict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
         ,uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
     
     const std::string& mName;
-    ResourceCache::SharedPtr mpResources;
-    InternalDictionary::SharedPtr mpDictionary;
+    ResourceCache& mResources;
+    Dictionary& mDictionary;
     uint2 mDefaultTexDims;
     ResourceFormat mDefaultTexFormat;
     uint32_t mFrameNumber;
     uint32_t mSampleNumber;
-
-    Texture::SharedPtr  mpNullTexture;
-    Buffer::SharedPtr   mpNullBuffer;
 };
 
 /** Base class for render passes.
@@ -125,13 +119,15 @@ class FALCOR_API RenderData {
 class FALCOR_API RenderPass : public Object {
     FALCOR_OBJECT(RenderPass)
  public:
+
     virtual ~RenderPass() = default;
 
-    // Render pass info.
-    struct Info {
-        std::string type;   ///< Type name of the render pass. In general this should match the name of the class implementing the render pass.
-        std::string desc;   ///< Brief textural description of what the render pass does.
+    using PluginCreate = std::function<ref<RenderPass>(Falcor::SharedPtr<Device> pDevice, const Properties& props)>;
+    struct PluginInfo {
+        std::string desc; ///< Brief textual description of what the render pass does.
     };
+
+    FALCOR_PLUGIN_BASE_CLASS(RenderPass);
 
     struct CompileData {
         uint2 defaultTexDims;                       ///< Default texture dimension (same as the swap chain size).
@@ -139,17 +135,27 @@ class FALCOR_API RenderPass : public Object {
         RenderPassReflection connectedResources;    ///< Reflection data for connected resources, if available. This field may be empty when reflect() is called.
     };
 
-    /** Get the render pass info data.
-    */
-    const Info& getInfo() const { return mInfo; }
+    /**
+     * Create a render pass object of the given type.
+     * Uses the plugin manager to create the render pass.
+     * If the type is not yet registered, it tries to load a plugin of the same name as the render pass type.
+     */
+    static Falcor::SharedPtr<RenderPass> create(
+        std::string_view type,
+        Falcor::SharedPtr<Device> pDevice,
+        const Properties& props = {},
+        PluginManager& pm = PluginManager::instance()
+    );
 
-    /** Get the render pass type.
-    */
-    const std::string& getType() const { return mInfo.type; }
+    /**
+     * Get the render pass type.
+     */
+    const std::string& getType() const { return getPluginType(); }
 
-    /** Get the render pass description.
-    */
-    const std::string& getDesc() const { return mInfo.desc; }
+    /**
+     * Get the render pass description.
+     */
+    const std::string& getDesc() const { return getPluginInfo().desc; }
 
     /** Called before render graph compilation. Describes I/O requirements of the pass.
         The function may be called repeatedly and should not perform any expensive operations.
@@ -196,9 +202,20 @@ class FALCOR_API RenderPass : public Object {
     */
     virtual void reset() {}
 
+    /**
+     * Set the render pass properties.
+     */
+    virtual void setProperties(const Properties& props) {}
+
+    /**
+     * Get the render pass properties.
+     */
+    virtual Properties getProperties() const { return {}; }
+
+
     /** Set a scene into the render-pass
     */
-    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
+    virtual void setScene(RenderContext* pRenderContext, const Falcor::SharedPtr<Scene>& pScene) {}
 
     /** Called upon hot reload.
         \param[in] reloaded Resources that have been reloaded.
@@ -211,7 +228,7 @@ class FALCOR_API RenderPass : public Object {
 
  protected:
     friend class RenderGraph;
-    RenderPass(Device::SharedPtr pDevice, const Info& info);
+    RenderPass(Device::SharedPtr pDevice) : mpDevice(pDevice) {}
     
     /** Request a recompilation of the render graph.
         Call this function if the I/O requirements of the pass have changed.
@@ -224,7 +241,6 @@ class FALCOR_API RenderPass : public Object {
     virtual void setRandomSeed(int seed) {};
 
     Device::SharedPtr mpDevice;
-    const Info mInfo;
     std::string mName;
     Dictionary  mMetaData;
 

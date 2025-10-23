@@ -61,7 +61,7 @@ namespace {
 	// We keep track of these as an optimization because most scenes do not use this shading model.
 	bool isSpecGloss(const Material::SharedPtr& pMaterial) {
 		if (pMaterial->getType() == MaterialType::Standard) {
-			return std::static_pointer_cast<StandardMaterial>(pMaterial)->getShadingModel() == ShadingModel::SpecGloss;
+			return static_ptr_cast<StandardMaterial>(pMaterial)->getShadingModel() == ShadingModel::SpecGloss;
 		}
 		return false;
 	}
@@ -72,7 +72,7 @@ MaterialSystem::SharedPtr MaterialSystem::create(Device::SharedPtr pDevice) {
 }
 
 MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
-	mpFence = GpuFence::create(mpDevice);
+	mpFence = mpDevice->createFence();
 	mMaterialCountByType.resize((size_t)MaterialType::BuiltinCount, 0);
 
 	// Create a default texture sampler.
@@ -82,10 +82,10 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	//desc.setBorderColor({0.0f, 1.0f, 0.0f, 1.0f});
 	desc.setMaxAnisotropy(16);
 	desc.setLodParams(-1000.0f, 1000.0f, 0.0f);
-	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
+	mpDefaultTextureSampler = mpDevice->createSampler(desc);
 
 	desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-	mpUDIMTileSampler = Sampler::create(mpDevice, desc);
+	mpUDIMTileSampler = mpDevice->createSampler(desc);
 }
 
 void MaterialSystem::finalize() {
@@ -292,21 +292,23 @@ void MaterialSystem::optimizeMaterials() {
 	// Analyze the textures.
 	LLOG_INF << "Analyzing " << std::to_string(textures.size()) << " material textures.";
 
+	RenderContext* pRenderContext = mpDevice->getRenderContext();
+
 	TextureAnalyzer::SharedPtr pAnalyzer = TextureAnalyzer::create(mpDevice);
-	auto pResults = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
+	auto pResults = mpDevice->createBuffer(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
 	pAnalyzer->analyze(mpDevice->getRenderContext(), textures, pResults);
 
 	// Copy result to staging buffer for readback.
 	// This is mostly to avoid a full flush and the associated perf warning.
 	// We do not have any other useful GPU work, but unrelated GPU tasks can be in flight.
-	auto pResultsStaging = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
-	mpDevice->getRenderContext()->copyResource(pResultsStaging.get(), pResults.get());
-	mpDevice->getRenderContext()->flush(false);
-	mpFence->gpuSignal(mpDevice->getRenderContext()->getLowLevelData()->getCommandQueue());
+	auto pResultsStaging = mpDevice->createBuffer(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, MemoryType::DeviceLocal);
+	pRenderContext->copyResource(pResultsStaging.get(), pResults.get());
+	pRenderContext->submit(false);
+	pRenderContext->signal(mpFence.get());
 
 	// Wait for results to become available. Then optimize the materials.
-	mpFence->syncCpu();
-	const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map(Buffer::MapType::Read));
+	mpFence->wait();
+	const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map());
 	Material::TextureOptimizationStats stats = {};
 
 	for (size_t i = 0; i < textures.size(); i++) {
@@ -389,7 +391,7 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 			pMaterial->getTextures(textures, true); // true to append instead of erasing vector
 		}
 
-		getTextureManager()->setShaderData(blockVar[kMaterialTexturesName], mTextureDescCount);
+		getTextureManager()->bindShaderData(blockVar[kMaterialTexturesName], mTextureDescCount);
 		getTextureManager()->setExtendedTexturesShaderData(blockVar[kExtendedTexturesDataName], mTextureDescCount);
 		getTextureManager()->setVirtualTexturesShaderData(blockVar[kVirtualTexturesDataName], blockVar[kVirtualPagesResidencyDataName], mTextureDescCount);
 		getTextureManager()->setUDIMTableShaderData(blockVar[kMaterialUDIMTilesTableBufferName], mUDIMTextureCount * 100);
@@ -517,7 +519,7 @@ void MaterialSystem::createParameterBlock() {
 
 	// Create materials data buffer.
 	if (!mMaterials.empty() && (!mpMaterialDataBuffer || mpMaterialDataBuffer->getElementCount() < mMaterials.size())) {
-		mpMaterialDataBuffer = Buffer::createStructured(mpDevice, blockVar[kMaterialDataName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpMaterialDataBuffer = mpDevice->createStructuredBuffer(blockVar[kMaterialDataName], (uint32_t)mMaterials.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 		mpMaterialDataBuffer->setName("MaterialSystem::mpMaterialDataBuffer");
 	}
 

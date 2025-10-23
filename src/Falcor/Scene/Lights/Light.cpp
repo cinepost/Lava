@@ -198,7 +198,7 @@ Light::Changes Light::beginFrame() {
     return getChanges();
 }
 
-void Light::setShaderData(const ShaderVar& var) {
+void Light::bindShaderData(const ShaderVar& var) {
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
     check_offset(flags);
     check_offset(openingAngle);

@@ -169,13 +169,13 @@ namespace {
 }  // namespace
 
 
-LightProfile::LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
-    : mpDevice(std::move(pDevice))
+LightProfile::LightProfile(Device::SharedPtr pDevice, const std::string& name, const std::vector<float>& rawData)
+    : mpDevice(pDevice)
     , mName(name)
     , mRawData(rawData)
 {}
 
-LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Device> pDevice, const fs::path& filename, bool normalize) {
+LightProfile::SharedPtr LightProfile::createFromIesProfile(Device::SharedPtr pDevice, const fs::path& filename, bool normalize) {
     fs::path fullpath;
     if (!findFileInDataDirectories(filename, fullpath)) {
         LLOG_WRN << "Error when loading light profile. Can't find file \'" << filename << "\'";
@@ -238,7 +238,7 @@ void LightProfile::bake(RenderContext* pRenderContext) {
     mpSampler = Sampler::create(mpDevice, desc);
 }
 
-void LightProfile::setShaderData(const ShaderVar& var) const {
+void LightProfile::bindShaderData(const ShaderVar& var) const {
     var["fluxFactor"] = mFluxFactor;
     var["texture"] = mpTexture;
     var["sampler"] = mpSampler;

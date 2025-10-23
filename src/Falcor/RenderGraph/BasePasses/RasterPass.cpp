@@ -33,19 +33,17 @@
 
 namespace Falcor {
 
-RasterPass::SharedPtr RasterPass::create(Device::SharedPtr pDevice pDevice, const Program::Desc& desc, const Program::DefineList& defines) {
-    assert(pDevice);
-    return SharedPtr(new RasterPass(pDevice, desc, defines));
+RasterPass::SharedPtr RasterPass::create(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines) {
+    return RasterPass::SharedPtr(new RasterPass(pDevice, desc, defines));
 }
 
-RasterPass::SharedPtr RasterPass::create(Device::SharedPtr pDevice pDevice, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
-    assert(pDevice);
+RasterPass::SharedPtr RasterPass::create(Device::SharedPtr pDevice, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
     Program::Desc d;
     d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
     return create(pDevice, d, defines);
 }
 
-RasterPass::RasterPass(Device::SharedPtr pDevice pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+RasterPass::RasterPass(Device::SharedPtr pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
     : BaseGraphicsPass(pDevice, progDesc, programDefines) {
 }
 

@@ -623,7 +623,7 @@ void PathTracer::preparePathTracer(const RenderData& renderData) {
 
     // Bind resources.
     auto var = mpPathTracerBlock->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 }
 
 void PathTracer::resetLighting() {
@@ -761,10 +761,10 @@ void PathTracer::setNRDData(const ShaderVar& var, const RenderData& renderData) 
     var["deltaTransmissionPosW"] = renderData[kOutputNRDDeltaTransmissionPosW]->asTexture();
 }
 
-void PathTracer::setShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling) const {
+void PathTracer::bindShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling) const {
     // Bind static resources that don't change per frame.
     if (mVarsChanged) {
-        if (useLightSampling && mpEnvMapSampler) mpEnvMapSampler->setShaderData(var["envMapSampler"]);
+        if (useLightSampling && mpEnvMapSampler) mpEnvMapSampler->bindShaderData(var["envMapSampler"]);
 
         var["sampleOffset"] = mpSampleOffset; // Can be nullptr
         var["sampleColor"] = mpSampleColor;
@@ -796,7 +796,7 @@ void PathTracer::setShaderData(const ShaderVar& var, const RenderData& renderDat
 
     if (useLightSampling && mpEmissiveSampler) {
         // TODO: Do we have to bind this every frame?
-        mpEmissiveSampler->setShaderData(var["emissiveSampler"]);
+        mpEmissiveSampler->bindShaderData(var["emissiveSampler"]);
     }
 }
 
@@ -967,11 +967,11 @@ void PathTracer::generatePaths(RenderContext* pRenderContext, const RenderData& 
 
     // Bind resources.
     auto var = mpGeneratePaths->getRootVar()["CB"]["gPathGenerator"];
-    setShaderData(var, renderData, false);
+    bindShaderData(var, renderData, false);
 
     mpGeneratePaths["gScene"] = mpScene->getParameterBlock();
 
-    if (mpRTXDI) mpRTXDI->setShaderData(mpGeneratePaths->getRootVar());
+    if (mpRTXDI) mpRTXDI->bindShaderData(mpGeneratePaths->getRootVar());
 
     // Launch one thread per pixel.
     // The dimensions are padded to whole tiles to allow re-indexing the threads in the shader.
@@ -994,8 +994,8 @@ void PathTracer::tracePass(RenderContext* pRenderContext, const RenderData& rend
     auto var = tracePass.pVars->getRootVar();
     mpScene->setRaytracingShaderData(pRenderContext, var);
 
-    if (mVarsChanged) mpSampleGenerator->setShaderData(var);
-    if (mpRTXDI) mpRTXDI->setShaderData(var);
+    if (mVarsChanged) mpSampleGenerator->bindShaderData(var);
+    if (mpRTXDI) mpRTXDI->bindShaderData(var);
 
 #if USE_PIXELSTATS
     mpPixelStats->prepareProgram(tracePass.pProgram, var);

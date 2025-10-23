@@ -37,11 +37,7 @@ namespace Falcor {
 
 static const char kShaderFile[] = "Utils/Algorithm/ParallelReduction.cs.slang";
 
-ParallelReduction::UniquePtr ParallelReduction::create(std::shared_ptr<Device> pDevice) {
-    return std::make_unique<ParallelReduction>(pDevice);
-}
-
-ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice): mpDevice(std::move(pDevice)) {
+ParallelReduction::ParallelReduction(Device::SharedPtr pDevice): mpDevice(pDevice) {
     // Create the programs.
     // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
     Program::DefineList defines = { { "REDUCTION_TYPE", "1" }, { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
@@ -59,13 +55,13 @@ ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice): mpDevice(
 void ParallelReduction::allocate(uint32_t elementCount, uint32_t elementSize) {
     if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount * elementSize) {
         // Buffer 0 has one element per tile.
-        mpBuffers[0] = Buffer::createTyped<uint4>(mpDevice, elementCount * elementSize);
+        mpBuffers[0] = mpDevice->createTypedBuffer<uint4>(elementCount * elementSize);
         mpBuffers[0]->setName("ParallelReduction::mpBuffers[0]");
 
         // Buffer 1 has one element per N elements in buffer 0.
         const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
         if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1 * elementSize) {
-            mpBuffers[1] = Buffer::createTyped<uint4>(mpDevice, numElem1 * elementSize);
+            mpBuffers[1] = mpDevice->createTypedBuffer<uint4>(numElem1 * elementSize);
             mpBuffers[1]->setName("ParallelReduction::mpBuffers[1]");
         }
     }

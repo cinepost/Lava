@@ -314,7 +314,7 @@ void Profiler::Capture::finalize() {
 
 // Profiler
 
-void Profiler::startEvent(const std::string& name, Flags flags) {
+void Profiler::startEvent(RenderContext* pRenderContext, const std::string& name, Flags flags) {
     if (mEnabled && is_set(flags, Flags::Internal)) {
         // '/' is used as a "path delimiter", so it cannot be used in the event name.
         if (name.find('/') != std::string::npos) {
@@ -333,15 +333,12 @@ void Profiler::startEvent(const std::string& name, Flags flags) {
         }
     }
     if (is_set(flags, Flags::Pix)) {
-#if defined(FALCOR_GFX)
-        mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
-#else 
-        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
-#endif
+        FALCOR_ASSERT(pRenderContext);
+        pRenderContext->getLowLevelData()->beginDebugEvent(name.c_str());
     }
 }
 
-void Profiler::endEvent(const std::string& name, Flags flags) {
+void Profiler::endEvent(RenderContext* pRenderContext, const std::string& name, Flags flags) {
     if (mEnabled && is_set(flags, Flags::Internal)) {
         // '/' is used as a "path delimiter", so it cannot be used in the event name.
         if (name.find('/') != std::string::npos) return;
@@ -354,13 +351,8 @@ void Profiler::endEvent(const std::string& name, Flags flags) {
     }
 
     if (is_set(flags, Flags::Pix)) {
-#if defined(FALCOR_D3D12)
-        PIXEndEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
-#elif defined(FALCOR_GFX)
-        mpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
-#else 
-        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
-#endif
+        FALCOR_ASSERT(pRenderContext)
+        pRenderContext->getLowLevelData()->endDebugEvent();
     }
 }
 
@@ -369,21 +361,20 @@ Profiler::Event* Profiler::getEvent(const std::string& name) {
     return event ? event : createEvent(name);
 }
 
-void Profiler::endFrame() {
+void Profiler::endFrame(RenderContext* pRenderContext) {
     if (mPaused) return;
 
     // Wait for GPU timings to be available from last frame.
     // We use a single fence here instead of one per event, which gets too inefficient.
     // TODO: This code should refactored to batch the resolve and readback of timestamps.
-    if (mFenceValue != uint64_t(-1)) mpFence->syncCpu();
+    if (mFenceValue != uint64_t(-1)) mpFence->wait();
 
     for (Event* pEvent : mCurrentFrameEvents) {
         pEvent->endFrame(mFrameIndex);
     }
 
     // Flush and insert signal for synchronization of GPU timings.
-    auto pRenderContext = mpDevice->getRenderContext();
-    pRenderContext->flush(false);
+    pRenderContext->submit(false);
     mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
 
     if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
@@ -392,15 +383,21 @@ void Profiler::endFrame() {
     ++mFrameIndex;
 }
 
+void Profiler::resetStats() {
+    mPendingReset = true;
+}
+
 void Profiler::startCapture(size_t reservedFrames) {
     setEnabled(true);
-    mpCapture = Capture::create(mLastFrameEvents.size(), reservedFrames);
+    mpCapture = std::make_shared<Capture>(mLastFrameEvents.size(), reservedFrames);
 }
 
 Profiler::Capture::SharedPtr Profiler::endCapture() {
-    Capture::SharedPtr pCapture;
+    std::shared_ptr<Capture> pCapture;
     std::swap(pCapture, mpCapture);
-    if (pCapture) pCapture->finalize();
+    if (pCapture) {
+        pCapture->finalize();
+    }
     return pCapture;
 }
 
@@ -435,7 +432,8 @@ const Profiler::SharedPtr& Profiler::instancePtr(std::shared_ptr<Device> pDevice
 }
 
 Profiler::Profiler(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
-    mpFence = GpuFence::create(pDevice);
+    mpFence = mpDevice->createFence();
+    mpFence->breakStrongReferenceToDevice();
 }
 
 Profiler::Event* Profiler::createEvent(const std::string& name) {
@@ -449,8 +447,17 @@ Profiler::Event* Profiler::findEvent(const std::string& name) {
     return (event == mEvents.end()) ? nullptr : event->second.get();
 }
 
-ProfilerEvent::ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags) :mpDevice(pDevice), mName(name), mFlags(flags) { 
-    Profiler::instance(mpDevice).startEvent(mName, mFlags); 
+void Profiler::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
+}
+
+ScopedProfilerEvent::ScopedProfilerEvent(RenderContext* pRenderContext, const std::string& name, Profiler::Flags flags): mpRenderContext(pRenderContext), mName(name), mFlags(flags) {
+    FALCOR_ASSERT(mpRenderContext);
+    mpRenderContext->getProfiler()->startEvent(mpRenderContext, mName, mFlags);
+}
+
+ScopedProfilerEvent::~ScopedProfilerEvent() {
+    mpRenderContext->getProfiler()->endEvent(mpRenderContext, mName, mFlags);
 }
 
 #ifdef SCRIPTING

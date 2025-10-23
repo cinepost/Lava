@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDFSVO.h"
-#include "Scene/SDFs/SDFVoxelTypes.slang"
-#include "Utils/Math/MathHelpers.h"
+
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Scene/SDFs/SDFVoxelTypes.slang"
+#include "Falcor/Utils/Math/MathHelpers.h"
 
 namespace Falcor
 {
@@ -377,9 +379,9 @@ namespace Falcor
         }
     }
 
-    void SDFSVO::setShaderData(const ShaderVar& var) const
+    void SDFSVO::bindShaderData(const ShaderVar& var) const
     {
-        if (!mpSVOBuffer) throw RuntimeError("SDFSVO::setShaderData() can't be called before calling SDFSVO::createResources()!");
+        if (!mpSVOBuffer) throw RuntimeError("SDFSVO::bindShaderData() can't be called before calling SDFSVO::createResources()!");
 
         var["svo"] = mpSVOBuffer;
         var["levelCount"] = mLevelCount;

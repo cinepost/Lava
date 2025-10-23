@@ -25,12 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDFGrid.h"
-#include "Scene/SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
-#include "Scene/SDFs/SparseVoxelSet/SDFSVS.h"
-#include "Scene/SDFs/SparseBrickSet/SDFSBS.h"
-#include "Scene/SDFs/SparseVoxelOctree/SDFSVO.h"
+
+#include "Falcor/Core/API/Device.h"
+
+#include "Falcor/Scene/SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
+#include "Falcor/Scene/SDFs/SparseVoxelSet/SDFSVS.h"
+#include "Falcor/Scene/SDFs/SparseBrickSet/SDFSBS.h"
+#include "Falcor/Scene/SDFs/SparseVoxelOctree/SDFSVO.h"
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -42,140 +44,142 @@
 namespace Falcor {
 
 namespace {
-    const std::string kEvaluateSDFPrimitivesShaderName = "Scene/SDFs/EvaluateSDFPrimitives.cs.slang";
 
-    const char kPrimitiveShapeTypeJSONKey[] = "shape_type";
-    const char kPrimitiveShapeDataJSONKey[] = "shape_data";
-    const char kPrimitiveShapeBlobbingJSONKey[] = "shape_blobbing";
+const std::string kEvaluateSDFPrimitivesShaderName = "Scene/SDFs/EvaluateSDFPrimitives.cs.slang";
 
-    const char kPrimitiveOperationTypeJSONKey[] = "operation_type";
-    const char kPrimitiveOperationSmoothingJSONKey[] = "operation_smoothing";
+const char kPrimitiveShapeTypeJSONKey[] = "shape_type";
+const char kPrimitiveShapeDataJSONKey[] = "shape_data";
+const char kPrimitiveShapeBlobbingJSONKey[] = "shape_blobbing";
 
-    const char kPrimitiveTranslationJSONKey[] = "translation";
-    const char kPrimitiveInvRotationScaleJSONKey[] = "inv_rot_scale";
+const char kPrimitiveOperationTypeJSONKey[] = "operation_type";
+const char kPrimitiveOperationSmoothingJSONKey[] = "operation_smoothing";
 
-    void serializeUint(const char* pKey, uint32_t value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
-        jsonWriter.String(pKey);
-        jsonWriter.Uint(value);
-    };
+const char kPrimitiveTranslationJSONKey[] = "translation";
+const char kPrimitiveInvRotationScaleJSONKey[] = "inv_rot_scale";
 
-    void serializeFloat(const char* pKey, float value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
-        jsonWriter.String(pKey);
-        jsonWriter.Double((double)value);
-    };
+void serializeUint(const char* pKey, uint32_t value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
+    jsonWriter.String(pKey);
+    jsonWriter.Uint(value);
+};
 
-    void serializeFloat3(const char* pKey, const float3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
-        jsonWriter.String(pKey);
-        jsonWriter.StartArray();
-        jsonWriter.Double((double)value.x);
-        jsonWriter.Double((double)value.y);
-        jsonWriter.Double((double)value.z);
-        jsonWriter.EndArray();
-    };
+void serializeFloat(const char* pKey, float value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
+    jsonWriter.String(pKey);
+    jsonWriter.Double((double)value);
+};
 
-    void serializeFloat3x3(const char* pKey, const float3x3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
-        jsonWriter.String(pKey);
-        jsonWriter.StartArray();
-        jsonWriter.Double((double)value[0][0]);
-        jsonWriter.Double((double)value[0][1]);
-        jsonWriter.Double((double)value[0][2]);
-        jsonWriter.Double((double)value[1][0]);
-        jsonWriter.Double((double)value[1][1]);
-        jsonWriter.Double((double)value[1][2]);
-        jsonWriter.Double((double)value[2][0]);
-        jsonWriter.Double((double)value[2][1]);
-        jsonWriter.Double((double)value[2][2]);
-        jsonWriter.EndArray();
-    };
+void serializeFloat3(const char* pKey, const float3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
+    jsonWriter.String(pKey);
+    jsonWriter.StartArray();
+    jsonWriter.Double((double)value.x);
+    jsonWriter.Double((double)value.y);
+    jsonWriter.Double((double)value.z);
+    jsonWriter.EndArray();
+};
 
-    bool deserializeUint(const char* pKey, const rapidjson::Value& jsonPrimitive, uint32_t& value) {
-        const auto jsonMember = jsonPrimitive.FindMember(pKey);
+void serializeFloat3x3(const char* pKey, const float3x3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter) {
+    jsonWriter.String(pKey);
+    jsonWriter.StartArray();
+    jsonWriter.Double((double)value[0][0]);
+    jsonWriter.Double((double)value[0][1]);
+    jsonWriter.Double((double)value[0][2]);
+    jsonWriter.Double((double)value[1][0]);
+    jsonWriter.Double((double)value[1][1]);
+    jsonWriter.Double((double)value[1][2]);
+    jsonWriter.Double((double)value[2][0]);
+    jsonWriter.Double((double)value[2][1]);
+    jsonWriter.Double((double)value[2][2]);
+    jsonWriter.EndArray();
+};
 
-        if (jsonMember == jsonPrimitive.MemberEnd()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!",;
+bool deserializeUint(const char* pKey, const rapidjson::Value& jsonPrimitive, uint32_t& value) {
+    const auto jsonMember = jsonPrimitive.FindMember(pKey);
+
+    if (jsonMember == jsonPrimitive.MemberEnd()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!",;
+        return false;
+    }
+
+    if (!jsonMember->value.IsUint()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type uint!";
+        return false;
+    }
+
+    value = jsonMember->value.GetUint();
+    return true;
+};
+
+bool deserializeFloat(const char* pKey, const rapidjson::Value& jsonPrimitive, float& value) {
+    const auto jsonMember = jsonPrimitive.FindMember(pKey);
+
+    if (jsonMember == jsonPrimitive.MemberEnd()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
+        return false;
+    }
+
+    if (!jsonMember->value.IsNumber()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not a number!";
+        return false;
+    }
+
+    value = jsonMember->value.GetFloat();
+    return true;
+};
+
+bool deserializeFloat3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3& value) {
+    const auto jsonMember = jsonPrimitive.FindMember(pKey);
+
+    if (jsonMember == jsonPrimitive.MemberEnd()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
+        return false;
+    }
+
+    if (!jsonMember->value.IsArray()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type float!";
+        return false;
+    }
+
+    for (uint32_t i = 0; i < 3; i++) {
+        const rapidjson::Value& jsonValue = jsonMember->value[i];
+
+        if (!jsonValue.IsNumber()) {
+            LLOG_WRN << "JSON vector index '" << std::string(i) << "' of member '" << std::string(pKey) << "' is not a number!";
             return false;
         }
 
-        if (!jsonMember->value.IsUint()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type uint!";
+        value[i] = jsonValue.GetFloat();
+    }
+
+    return true;
+};
+
+bool deserializeFloat3x3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3x3& value) {
+    const auto jsonMember = jsonPrimitive.FindMember(pKey);
+
+    if (jsonMember == jsonPrimitive.MemberEnd()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
+        return false;
+    }
+
+    if (!jsonMember->value.IsArray()) {
+        LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type float!";
+        return false;
+    }
+
+    for (uint32_t i = 0; i < 9; i++) {
+        const rapidjson::Value& jsonValue = jsonMember->value[i];
+
+        if (!jsonValue.IsNumber()) {
+            LLOG_WRN << "JSON matrix index '" << std::string(i) << "' of member '" << std::string(pKey) << "'is not a number!";
             return false;
         }
 
-        value = jsonMember->value.GetUint();
-        return true;
-    };
+        value[i / 3][i % 3] = jsonValue.GetFloat();
+    }
 
-    bool deserializeFloat(const char* pKey, const rapidjson::Value& jsonPrimitive, float& value) {
-        const auto jsonMember = jsonPrimitive.FindMember(pKey);
+    return true;
+};
 
-        if (jsonMember == jsonPrimitive.MemberEnd()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
-            return false;
-        }
-
-        if (!jsonMember->value.IsNumber()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not a number!";
-            return false;
-        }
-
-        value = jsonMember->value.GetFloat();
-        return true;
-    };
-
-    bool deserializeFloat3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3& value) {
-        const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-        if (jsonMember == jsonPrimitive.MemberEnd()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
-            return false;
-        }
-
-        if (!jsonMember->value.IsArray()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type float!";
-            return false;
-        }
-
-        for (uint32_t i = 0; i < 3; i++) {
-            const rapidjson::Value& jsonValue = jsonMember->value[i];
-
-            if (!jsonValue.IsNumber()) {
-                LLOG_WRN << "JSON vector index '" << std::string(i) << "' of member '" << std::string(pKey) << "' is not a number!";
-                return false;
-            }
-
-            value[i] = jsonValue.GetFloat();
-        }
-
-        return true;
-    };
-
-    bool deserializeFloat3x3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3x3& value) {
-        const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-        if (jsonMember == jsonPrimitive.MemberEnd()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' could not be found!";
-            return false;
-        }
-
-        if (!jsonMember->value.IsArray()) {
-            LLOG_WRN << "JSON member '" << std::string(pKey) << "' is not of type float!";
-            return false;
-        }
-
-        for (uint32_t i = 0; i < 9; i++) {
-            const rapidjson::Value& jsonValue = jsonMember->value[i];
-
-            if (!jsonValue.IsNumber()) {
-                LLOG_WRN << "JSON matrix index '" << std::string(i) << "' of member '" << std::string(pKey) << "'is not a number!";
-                return false;
-            }
-
-            value[i / 3][i % 3] = jsonValue.GetFloat();
-        }
-
-        return true;
-    };
-}
+} // namespace
 
 void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth) {
     uint32_t dummyBasePrimitiveID;

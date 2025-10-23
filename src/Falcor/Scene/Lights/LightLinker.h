@@ -43,6 +43,7 @@
 
 #include "Falcor/Utils/Math/Float16.h"
 
+#include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Raytracing.h"
 
 #include "LightData.slang"
@@ -54,7 +55,7 @@
 
 namespace Falcor {
 
-class Light;
+class Scene;
 
 /** Class that holds a collection of bit masks for objects/lights for a scene.
 
@@ -64,7 +65,6 @@ class Light;
     The LightLinker can be used standalone, but more commonly it will be used by an light helper.
 */
 class FALCOR_API LightLinker : public Object {
-        FALCOR_OBJECT(LightLinker)
     public:
         using StringList     = std::vector<std::string>; // type alias for std::vector<std::string>
         using StringSet      = std::set<std::string>;
@@ -85,14 +85,6 @@ class FALCOR_API LightLinker : public Object {
         };
 
         ~LightLinker() = default;
-
-        /** Creates a light collection for the given scene.
-            Note that update() must be called before the collection is ready to use.
-            \param[in] pRenderContext The render context.
-            \param[in] pScene The scene.
-            \return Ptr to the created object, or nullptr if an error occured.
-        */
-        static SharedPtr create(Falcor::SharedPtr<Device> pDevice, Falcor::SharedPtr<Scene> pScene = nullptr);
 
         /** Get default shader defines.
             This is the minimal set of defines needed for a program to compile that imports the material system module.
@@ -124,7 +116,7 @@ class FALCOR_API LightLinker : public Object {
             \param[in] var The shader variable to set the data into.
             \return True if successful, false otherwise.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         /** Prepare for syncing the CPU data.
             If the mesh light triangles will be accessed with getMeshLightTriangles()
@@ -208,9 +200,9 @@ class FALCOR_API LightLinker : public Object {
         bool buildLightsIndirectionData(bool force);
         bool buildLightSetsData(bool force);
 
-    protected:
-        LightLinker(Device::SharedPtr pDevice, Falcor::SharedPtr<Scene> pScene = nullptr);
+        LightLinker(Device::SharedPtr pDevice, Scene* pScene);
 
+    protected:
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
         void syncCPUData() const;
 
@@ -244,6 +236,7 @@ class FALCOR_API LightLinker : public Object {
         mutable Buffer::SharedPtr                   mpLightSetsDataBuffer;
         mutable Buffer::SharedPtr                   mpIndirectionTableBuffer;
 
+        friend class Scene;
 };
 
 

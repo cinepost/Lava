@@ -25,111 +25,90 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/SharedCache.h"
+
 #include "FullScreenPass.h"
 
 namespace Falcor {
 
 namespace {
 
-struct FullScreenPassData {
-    Buffer::SharedPtr pVertexBuffer;
-    Vao::SharedPtr pVao;
-    uint64_t objectCount = 0;
-};
-
-FullScreenPassData gFullScreenData;
-
 struct Vertex {
     float2 screenPos;
     float2 texCoord;
 };
 
-#ifdef FALCOR_FLIP_Y
-#define ADJUST_Y(a) (-(a))
-#else
-#define ADJUST_Y(a) a
-#endif
-
 const Vertex kVertices[] = {
-    {float2(-1, ADJUST_Y(1)), float2(0, 0)},
-    {float2(-1, ADJUST_Y(-1)), float2(0, 1)},
-    {float2(1, ADJUST_Y(1)), float2(1, 0)},
-    {float2(1, ADJUST_Y(-1)), float2(1, 1)},
+    {float2(-1, 1), float2(0, 0)},
+    {float2(-1, -1), float2(0, 1)},
+    {float2(1, 1), float2(1, 0)},
+    {float2(1, -1), float2(1, 1)},
 };
-#undef ADJUST_Y
-
-void initFullScreenData(Device::SharedPtr device, Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
-    // First time we got here. create VB and VAO
-    const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
-    pVB = Buffer::create(device, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-    assert(pVB);
-
-    // Create VAO
-    VertexLayout::SharedPtr pLayout = VertexLayout::create();
-    VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-    pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-    pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
-    pLayout->addBufferLayout(0, pBufLayout);
-
-    Vao::BufferVec buffers{ pVB };
-    pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
-    assert(pVao);
-}
 
 }  // namespace
+
+struct FullScreenPass::SharedData {
+    Buffer::SharedPtr pVertexBuffer;
+    Vao::SharedPtr pVao;
+    uint64_t objectCount = 0;
+
+    SharedData(Device::SharedPtr pDevice) {
+        const uint32_t vbSize = (uint32_t)(sizeof(Vertex) * std::size(kVertices));
+        pVertexBuffer = pDevice->createBuffer(vbSize, ResourceBindFlags::Vertex, MemoryType::Upload, (void*)kVertices);
+        pVertexBuffer->breakStrongReferenceToDevice();
+
+        ref<VertexLayout> pLayout = VertexLayout::create();
+        ref<VertexBufferLayout> pBufLayout = VertexBufferLayout::create();
+        pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
+        pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
+        pLayout->addBufferLayout(0, pBufLayout);
+
+        Vao::BufferVec buffers{pVertexBuffer};
+        pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
+    }
+};
+
+static SharedCache<FullScreenPass::SharedData, Device*> sSharedCache;
 
 FullScreenPass::FullScreenPass(Device::SharedPtr pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): 
     BaseGraphicsPass(pDevice, progDesc, programDefines) 
 {
-    gFullScreenData.objectCount++;
+    // Get shared VB and VAO.
+    mpSharedData = sSharedCache.acquire(mpDevice, [this]() { return std::make_shared<SharedData>(mpDevice); });
 
     // Create depth stencil state
-    assert(mpState);
+    FALCOR_ASSERT(mpState);
     auto pDsState = DepthStencilState::create(DepthStencilState::Desc().setDepthEnabled(false));
     mpState->setDepthStencilState(pDsState);
 
-    if (gFullScreenData.pVertexBuffer == nullptr) {
-        initFullScreenData(pDevice, gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
-    }
-    assert(gFullScreenData.pVao);
-    mpState->setVao(gFullScreenData.pVao);
+    mpState->setVao(mpSharedData->pVao);
 }
 
-FullScreenPass::~FullScreenPass() {
-    assert(gFullScreenData.objectCount > 0);
-
-    gFullScreenData.objectCount--;
-
-    if (gFullScreenData.objectCount == 0) {
-        gFullScreenData.pVao = nullptr;
-        gFullScreenData.pVertexBuffer = nullptr;
-    }
-}
+FullScreenPass::~FullScreenPass() = default;
 
 FullScreenPass::SharedPtr FullScreenPass::create(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
-    assert(pDevice);
-    Program::Desc d = desc;
-    Program::DefineList defs = defines;
+    ProgramDesc d = desc;
+    DefineList defs = defines;
     std::string gs;
 
     if (viewportMask) {
         defs.add("_VIEWPORT_MASK", std::to_string(viewportMask));
         defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
-        d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.gs.slang").gsEntry("main");
+        d.addShaderLibrary("Core/Pass/FullScreenPass.gs.slang").gsEntry("main");
     }
-    if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
+    if (!d.hasEntryPoint(ShaderType::Vertex)) {
+        d.addShaderLibrary("Core/Pass/FullScreenPass.vs.slang").vsEntry("main");
+    }
 
-    return SharedPtr(new FullScreenPass(pDevice, d, defs));
+    return FullScreenPass::SharedPtr(new FullScreenPass(pDevice, d, defs));
 }
 
 FullScreenPass::SharedPtr FullScreenPass::create(Device::SharedPtr device, const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
-    Program::Desc d;
-    d.addShaderLibrary(filename).psEntry("main");
-    return create(device, d, defines, viewportMask);
+    Program::Desc desc;
+    desc.addShaderLibrary(filename).psEntry("main");
+    return create(device, desc, defines, viewportMask);
 }
 
 void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const {

@@ -15,7 +15,7 @@ public:
 
     static SharedPtr create(Device::SharedPtr pDevice, uint32_t numColors, const uint32_t* pSeed = nullptr);
 
-    void setShaderData(ShaderVar const& var) const;
+    void bindShaderData(ShaderVar const& var) const;
 
 protected:
     FalseColorGenerator(Device::SharedPtr pDevice, uint32_t numColors, const uint32_t* pSeed = nullptr);

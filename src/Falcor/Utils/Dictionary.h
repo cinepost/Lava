@@ -25,23 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_UTILS_INTERNAL_DICTIONARY_H_
-#define FALCOR_UTILS_INTERNAL_DICTIONARY_H_
+#ifndef FALCOR_UTILS_DICTIONARY_H_
+#define FALCOR_UTILS_DICTIONARY_H_
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include <memory>
 #include <unordered_map>
 #include <any>
 
-#include "Falcor/Utils/Math/Vector.h"
-#include "Falcor/Core/Framework.h"
-
 namespace Falcor {
 
     using uint = uint32_t;
 
-    class dlldecl InternalDictionary {
+    class Dictionary {
      public:
-        class dlldecl Value {
+        class Value {
          public:
             Value() = default;
             Value(std::any& value) : mValue(value) {};
@@ -68,21 +68,20 @@ namespace Falcor {
         };
 
         using Container = std::unordered_map<std::string, Value>;
+        using SharedPtr = std::shared_ptr<Dictionary>;
 
-        using SharedPtr = std::shared_ptr<InternalDictionary>;
-
-        InternalDictionary() = default;
-        InternalDictionary(const InternalDictionary& d) : mContainer(d.mContainer) {}
+        Dictionary() = default;
+        Dictionary(const Dictionary& d) : mContainer(d.mContainer) {}
 
         /** Create a new dictionary.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create() { return SharedPtr(new InternalDictionary); }
+        static SharedPtr create() { return SharedPtr(new Dictionary); }
 
-        InternalDictionary& update(const InternalDictionary& d); 
+        Dictionary& update(const Dictionary& d); 
 
-        bool operator==(const InternalDictionary& other) const;
-        bool operator!=(const InternalDictionary& other) const { return !(other == *this); }
+        bool operator==(const Dictionary& other) const;
+        bool operator!=(const Dictionary& other) const { return !(other == *this); }
 
         Value& operator[](const std::string& key) { return mContainer[key]; }
         const Value& operator[](const std::string& key) const { return mContainer.at(key); }
@@ -130,10 +129,10 @@ namespace Falcor {
         Container mContainer;
     };
 
-inline std::string to_string(InternalDictionary::Value value) {
+inline std::string to_string(Dictionary::Value value) {
     return value;
 }
 
 }  // namespace Falcor
 
-#endif  // FALCOR_UTILS_INTERNAL_DICTIONARY_H_
+#endif  // FALCOR_UTILS_DICTIONARY_H_

@@ -44,15 +44,15 @@ namespace {
     const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
 }
 
-AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
-    : mAnimations(animations)
+AnimationController::AnimationController(Device::SharedPtr pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
+    : mpDevice(pDevice)
+    , mAnimations(animations)
     , mNodesEdited(pScene->mSceneGraph.size())
     , mLocalMatrixLists(pScene->mSceneGraph.size())
     , mGlobalMatrixLists(pScene->mSceneGraph.size())
     , mInvTransposeGlobalMatrixLists(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
     , mpScene(pScene)
-    , mpDevice(pScene->device())
 {
     // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
     // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
@@ -65,7 +65,7 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
             uint32_t staticIndex = skinningVertexData[i].staticIndex;
             prevVertexData[i].position = staticVertexData[staticIndex].position;
         }
-        mpPrevVertexData = Buffer::createStructured(mpDevice, sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
+        mpPrevVertexData = mpDevice->createStructuredBuffer(sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, prevVertexData.data(), false);
         mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
     }
 
@@ -84,27 +84,21 @@ void AnimationController::createBuffers(size_t matrixCount) {
     uint32_t float4Count = (uint32_t)matrixCount * 4;
 
     if(!mpWorldMatricesBuffer || mpWorldMatricesBuffer->getElementCount() != matrixCount) {
-        mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpWorldMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
     }
     if(!mpPrevWorldMatricesBuffer || mpPrevWorldMatricesBuffer->getElementCount() != matrixCount) {
-        mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevWorldMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
     }
     if(!mpInvTransposeWorldMatricesBuffer || mpInvTransposeWorldMatricesBuffer->getElementCount() != matrixCount) {
-        mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpInvTransposeWorldMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
     }
     if(!mpPrevInvTransposeWorldMatricesBuffer || mpPrevInvTransposeWorldMatricesBuffer->getElementCount() != matrixCount) {
-        mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevInvTransposeWorldMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
     }
-}
-
-AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations) {
-    assert(pScene);
-    if(!pScene) return nullptr;
-    return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
 }
 
 void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData) {
@@ -157,7 +151,7 @@ void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cac
         mpPrevVertexData->setBlob(prevVertexData.data(), byteOffset, prevVertexData.size() * sizeof(PrevVertexData));
     }
 
-    mpVertexCache = AnimatedVertexCache::create(mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
+    mpVertexCache = std::make_unique<AnimatedVertexCache>(mpDevice, mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
 
     // Note: It is a workaround to have two pre-infinity behaviors for the cached animation.
     // We need `Cycle` behavior when the length of cached animation is smaller than the length of mesh animation (e.g., tiger forest).
@@ -187,7 +181,7 @@ void AnimationController::initLocalMatrices() {
 }
 
 bool AnimationController::animate(RenderContext* pContext, double currentTime) {
-    PROFILE(mpDevice, "animate");
+    FALCOR_PROFILE(pContext, "animate");
 
     std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
 
@@ -247,8 +241,8 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime) {
         if (edited || hasAnimations()) {
             assert(mpWorldMatricesBuffer && mpPrevWorldMatricesBuffer);
             assert(mpInvTransposeWorldMatricesBuffer && mpPrevInvTransposeWorldMatricesBuffer);
-            swap(mpPrevWorldMatricesBuffer, mpWorldMatricesBuffer);
-            swap(mpPrevInvTransposeWorldMatricesBuffer, mpInvTransposeWorldMatricesBuffer);
+            std::swap(mpPrevWorldMatricesBuffer, mpWorldMatricesBuffer);
+            std::swap(mpPrevInvTransposeWorldMatricesBuffer, mpInvTransposeWorldMatricesBuffer);
             updateLocalMatrices(time);
             updateWorldMatrices();
             uploadWorldMatrices();
@@ -424,9 +418,9 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
         // Bind vertex data.
         assert(staticVertexData.size() <= std::numeric_limits<uint32_t>::max());
         assert(skinningVertexData.size() <= std::numeric_limits<uint32_t>::max());
-        mpStaticVertexData = Buffer::createStructured(mpDevice, block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
+        mpStaticVertexData = mpDevice->createStructuredBuffer(block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, staticVertexData.data(), false);
         mpStaticVertexData->setName("AnimationController::mpStaticVertexData");
-        mpSkinningVertexData = Buffer::createStructured(mpDevice, block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, skinningVertexData.data(), false);
+        mpSkinningVertexData = mpDevice->createStructuredBuffer(block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, skinningVertexData.data(), false);
         mpSkinningVertexData->setName("AnimationController::mpSkinningVertexData");
 
         block["staticData"] = mpStaticVertexData;
@@ -437,13 +431,13 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
         // Bind transforms.
         assert(mSkinningMatrices.size() * 4 < std::numeric_limits<uint32_t>::max());
         uint32_t float4Count = (uint32_t)mSkinningMatrices.size() * 4;
-        mpMeshBindMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshBindMatrices.data(), false);
+        mpMeshBindMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mMeshBindMatrices.data(), false);
         mpMeshBindMatricesBuffer->setName("AnimationController::mpMeshBindMatricesBuffer");
-        mpMeshInvBindMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshInvBindMatrices.data(), false);
+        mpMeshInvBindMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, meshInvBindMatrices.data(), false);
         mpMeshInvBindMatricesBuffer->setName("AnimationController::mpMeshInvBindMatricesBuffer");
-        mpSkinningMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpSkinningMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpSkinningMatricesBuffer->setName("AnimationController::mpSkinningMatricesBuffer");
-        mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpInvTransposeSkinningMatricesBuffer = mpDevice->createStructuredBuffer(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpInvTransposeSkinningMatricesBuffer->setName("AnimationController::mpInvTransposeSkinningMatricesBuffer");
 
         block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);

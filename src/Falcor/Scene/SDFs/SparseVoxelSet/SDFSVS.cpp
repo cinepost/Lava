@@ -25,165 +25,167 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDFSVS.h"
-#include "Scene/SDFs/SDFVoxelTypes.slang"
-#include "Utils/Math/MathHelpers.h"
 
-namespace Falcor
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Scene/SDFs/SDFVoxelTypes.slang"
+#include "Falcor/Utils/Math/MathHelpers.h"
+
+namespace Falcor {
+
+namespace {
+    const std::string kSDFCountSurfaceVoxelsShaderName = "Scene/SDFs/SDFSurfaceVoxelCounter.cs.slang";
+    const std::string kSDFSVSVoxelizerShaderName = "Scene/SDFs/SparseVoxelSet/SDFSVSVoxelizer.cs.slang";
+}
+
+SDFSVS::SharedPtr SDFSVS::create()
 {
-    namespace
+    return SharedPtr(new SDFSVS());
+}
+
+size_t SDFSVS::getSize() const
+{
+    return (mpVoxelBuffer ? mpVoxelBuffer->getSize() : 0) + (mpVoxelAABBBuffer ? mpVoxelAABBBuffer->getSize() : 0);
+}
+
+uint32_t SDFSVS::getMaxPrimitiveIDBits() const
+{
+    return bitScanReverse(uint32_t(mGridWidth * mGridWidth * mGridWidth - 1)) + 1;
+}
+
+void SDFSVS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+{
+    if (!mPrimitives.empty())
     {
-        const std::string kSDFCountSurfaceVoxelsShaderName = "Scene/SDFs/SDFSurfaceVoxelCounter.cs.slang";
-        const std::string kSDFSVSVoxelizerShaderName = "Scene/SDFs/SparseVoxelSet/SDFSVSVoxelizer.cs.slang";
+        throw RuntimeError("An SDFSVS instance cannot be created from primitives!");
     }
 
-    SDFSVS::SharedPtr SDFSVS::create()
+    if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
     {
-        return SharedPtr(new SDFSVS());
+        pRenderContext->updateTextureData(mpSDFGridTexture.get(), mValues.data());
+    }
+    else
+    {
+        mpSDFGridTexture = Texture::create3D(mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
     }
 
-    size_t SDFSVS::getSize() const
+    if (!mpCountSurfaceVoxelsPass)
     {
-        return (mpVoxelBuffer ? mpVoxelBuffer->getSize() : 0) + (mpVoxelAABBBuffer ? mpVoxelAABBBuffer->getSize() : 0);
+        Program::Desc desc;
+        desc.addShaderLibrary(kSDFCountSurfaceVoxelsShaderName).csEntry("main").setShaderModel("6_5");
+        mpCountSurfaceVoxelsPass = ComputePass::create(desc);
     }
 
-    uint32_t SDFSVS::getMaxPrimitiveIDBits() const
+    if (!mpSurfaceVoxelCounter)
     {
-        return bitScanReverse(uint32_t(mGridWidth * mGridWidth * mGridWidth - 1)) + 1;
+        static uint32_t zero = 0;
+        mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+        mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+    }
+    else
+    {
+        pRenderContext->clearUAV(mpSurfaceVoxelCounter->getUAV().get(), uint4(0));
     }
 
-    void SDFSVS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+    if (!mpReadbackFence)
     {
-        if (!mPrimitives.empty())
+        mpReadbackFence = GpuFence::create();
+    }
+
+    // Count the number of surface containing voxels in the texture.
+    {
+        mpCountSurfaceVoxelsPass["CB"]["gGridWidth"] = mGridWidth;
+        mpCountSurfaceVoxelsPass["gSDFGrid"] = mpSDFGridTexture;
+        mpCountSurfaceVoxelsPass["gTotalVoxelCount"] = mpSurfaceVoxelCounter;
+        mpCountSurfaceVoxelsPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
+
+        // Copy surface containing voxels count to staging buffer.
+        pRenderContext->copyResource(mpSurfaceVoxelCounterStagingBuffer.get(), mpSurfaceVoxelCounter.get());
+        pRenderContext->flush(false);
+        mpReadbackFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+
+        // Copy surface containing voxels count from staging buffer to CPU.
+        mpReadbackFence->syncCpu();
+        const uint32_t* pSurfaceContainingVoxels = reinterpret_cast<const uint32_t*>(mpSurfaceVoxelCounterStagingBuffer->map(Buffer::MapType::Read));
+        std::memcpy(&mVoxelCount, pSurfaceContainingVoxels, sizeof(uint32_t));
+        mpSurfaceVoxelCounterStagingBuffer->unmap();
+    }
+
+
+    // Create Buffers
+    {
+        if (!mpVoxelAABBBuffer || mpVoxelAABBBuffer->getElementCount() < mVoxelCount)
         {
-            throw RuntimeError("An SDFSVS instance cannot be created from primitives!");
+            mpVoxelAABBBuffer = Buffer::createStructured(sizeof(AABB), mVoxelCount);
         }
 
-        if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
+        if (!mpVoxelBuffer || mpVoxelBuffer->getElementCount() < mVoxelCount)
         {
-            pRenderContext->updateTextureData(mpSDFGridTexture.get(), mValues.data());
+            mpVoxelBuffer = Buffer::createStructured(sizeof(SDFSVSVoxel), mVoxelCount);
         }
-        else
-        {
-            mpSDFGridTexture = Texture::create3D(mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
-        }
+    }
 
-        if (!mpCountSurfaceVoxelsPass)
+    // Create the Sparse Voxel Set.
+    {
+        if (!mpSDFSVSVoxelizerPass)
         {
             Program::Desc desc;
-            desc.addShaderLibrary(kSDFCountSurfaceVoxelsShaderName).csEntry("main").setShaderModel("6_5");
-            mpCountSurfaceVoxelsPass = ComputePass::create(desc);
+            desc.addShaderLibrary(kSDFSVSVoxelizerShaderName).csEntry("main").setShaderModel("6_5");
+            mpSDFSVSVoxelizerPass = ComputePass::create(desc);
         }
 
-        if (!mpSurfaceVoxelCounter)
-        {
-            static uint32_t zero = 0;
-            mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
-        }
-        else
-        {
-            pRenderContext->clearUAV(mpSurfaceVoxelCounter->getUAV().get(), uint4(0));
-        }
+        pRenderContext->clearUAVCounter(mpVoxelBuffer, 0);
 
-        if (!mpReadbackFence)
-        {
-            mpReadbackFence = GpuFence::create();
-        }
+        mpSDFSVSVoxelizerPass["CB"]["gVirtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
+        mpSDFSVSVoxelizerPass["CB"]["gVirtualGridWidth"] = mGridWidth;
+        mpSDFSVSVoxelizerPass["gSDFGrid"] = mpSDFGridTexture;
 
-        // Count the number of surface containing voxels in the texture.
-        {
-            mpCountSurfaceVoxelsPass["CB"]["gGridWidth"] = mGridWidth;
-            mpCountSurfaceVoxelsPass["gSDFGrid"] = mpSDFGridTexture;
-            mpCountSurfaceVoxelsPass["gTotalVoxelCount"] = mpSurfaceVoxelCounter;
-            mpCountSurfaceVoxelsPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
+        mpSDFSVSVoxelizerPass["gVoxelAABBs"] = mpVoxelAABBBuffer;
+        mpSDFSVSVoxelizerPass["gVoxels"] = mpVoxelBuffer;
 
-            // Copy surface containing voxels count to staging buffer.
-            pRenderContext->copyResource(mpSurfaceVoxelCounterStagingBuffer.get(), mpSurfaceVoxelCounter.get());
-            pRenderContext->flush(false);
-            mpReadbackFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-
-            // Copy surface containing voxels count from staging buffer to CPU.
-            mpReadbackFence->syncCpu();
-            const uint32_t* pSurfaceContainingVoxels = reinterpret_cast<const uint32_t*>(mpSurfaceVoxelCounterStagingBuffer->map(Buffer::MapType::Read));
-            std::memcpy(&mVoxelCount, pSurfaceContainingVoxels, sizeof(uint32_t));
-            mpSurfaceVoxelCounterStagingBuffer->unmap();
-        }
-
-
-        // Create Buffers
-        {
-            if (!mpVoxelAABBBuffer || mpVoxelAABBBuffer->getElementCount() < mVoxelCount)
-            {
-                mpVoxelAABBBuffer = Buffer::createStructured(sizeof(AABB), mVoxelCount);
-            }
-
-            if (!mpVoxelBuffer || mpVoxelBuffer->getElementCount() < mVoxelCount)
-            {
-                mpVoxelBuffer = Buffer::createStructured(sizeof(SDFSVSVoxel), mVoxelCount);
-            }
-        }
-
-        // Create the Sparse Voxel Set.
-        {
-            if (!mpSDFSVSVoxelizerPass)
-            {
-                Program::Desc desc;
-                desc.addShaderLibrary(kSDFSVSVoxelizerShaderName).csEntry("main").setShaderModel("6_5");
-                mpSDFSVSVoxelizerPass = ComputePass::create(desc);
-            }
-
-            pRenderContext->clearUAVCounter(mpVoxelBuffer, 0);
-
-            mpSDFSVSVoxelizerPass["CB"]["gVirtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
-            mpSDFSVSVoxelizerPass["CB"]["gVirtualGridWidth"] = mGridWidth;
-            mpSDFSVSVoxelizerPass["gSDFGrid"] = mpSDFGridTexture;
-
-            mpSDFSVSVoxelizerPass["gVoxelAABBs"] = mpVoxelAABBBuffer;
-            mpSDFSVSVoxelizerPass["gVoxels"] = mpVoxelBuffer;
-
-            mpSDFSVSVoxelizerPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
-        }
-
-        if (deleteScratchData)
-        {
-            mpReadbackFence.reset();
-            mpCountSurfaceVoxelsPass.reset();
-            mpSurfaceVoxelCounter.reset();
-            mpSurfaceVoxelCounterStagingBuffer.reset();
-            mpSDFGridTexture.reset();
-        }
+        mpSDFSVSVoxelizerPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
     }
 
-    void SDFSVS::setShaderData(const ShaderVar& var) const
+    if (deleteScratchData)
     {
-        if (!mpVoxelBuffer || !mpVoxelAABBBuffer)
-        {
-            throw RuntimeError("SDFSVS::setShaderData() can't be called before calling SDFSVS::createResources()!");
-        }
-
-        var["virtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
-        var["virtualGridWidth"] = mGridWidth;
-        var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
-
-        var["aabbs"] = mpVoxelAABBBuffer;
-        var["voxels"] = mpVoxelBuffer;
-    }
-
-    void SDFSVS::setValuesInternal(const std::vector<float>& cornerValues)
-    {
-        uint32_t gridWidthInValues = mGridWidth + 1;
-        uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
-        mValues.resize(valueCount);
-
-        float normalizationMultipler = 2.0f * mGridWidth / glm::root_three<float>();
-        for (uint32_t v = 0; v < valueCount; v++)
-        {
-            float normalizedValue = glm::clamp(cornerValues[v] * normalizationMultipler, -1.0f, 1.0f);
-
-            float integerScale = normalizedValue * float(INT8_MAX);
-            mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
-        }
+        mpReadbackFence.reset();
+        mpCountSurfaceVoxelsPass.reset();
+        mpSurfaceVoxelCounter.reset();
+        mpSurfaceVoxelCounterStagingBuffer.reset();
+        mpSDFGridTexture.reset();
     }
 }
+
+void SDFSVS::bindShaderData(const ShaderVar& var) const
+{
+    if (!mpVoxelBuffer || !mpVoxelAABBBuffer)
+    {
+        throw RuntimeError("SDFSVS::bindShaderData() can't be called before calling SDFSVS::createResources()!");
+    }
+
+    var["virtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
+    var["virtualGridWidth"] = mGridWidth;
+    var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
+
+    var["aabbs"] = mpVoxelAABBBuffer;
+    var["voxels"] = mpVoxelBuffer;
+}
+
+void SDFSVS::setValuesInternal(const std::vector<float>& cornerValues)
+{
+    uint32_t gridWidthInValues = mGridWidth + 1;
+    uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
+    mValues.resize(valueCount);
+
+    float normalizationMultipler = 2.0f * mGridWidth / glm::root_three<float>();
+    for (uint32_t v = 0; v < valueCount; v++)
+    {
+        float normalizedValue = glm::clamp(cornerValues[v] * normalizationMultipler, -1.0f, 1.0f);
+
+        float integerScale = normalizedValue * float(INT8_MAX);
+        mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
+    }
+}
+
+} // namespace Falcor

@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_UTILS_ALGORITHM_PREFIXSUM_H_
 #define SRC_FALCOR_UTILS_ALGORITHM_PREFIXSUM_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/State/ComputeState.h"
 #include "Falcor/Core/Program/Program.h"
@@ -42,16 +43,9 @@ class Device;
         The prefix sum is computed in place using exclusive scan.
         Each new element is y[i] = x[0] + ... + x[i-1], for i=1..N and y[0] = 0.
     */
-    class dlldecl PrefixSum : public std::enable_shared_from_this<PrefixSum> {
+    class FALCOR_API PrefixSum {
      public:
-        using SharedPtr = std::shared_ptr<PrefixSum>;
-        using SharedConstPtr = std::shared_ptr<const PrefixSum>;
-        virtual ~PrefixSum() = default;
-
-        /** Create a new prefix sum object.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice);
+        PrefixSum(Falcor::SharedPtr<Device> pDevice);
 
         /** Computes the parallel prefix sum over an array of uint32_t elements.
             \param[in] pRenderContext The render context.
@@ -61,11 +55,11 @@ class Device;
             \param[in] pTotalSumBuffer (Optional) Buffer on the GPU to which the total sum is copied (uint32_t).
             \param[in] pTotalSumOffset (Optional) Byte offset into pTotalSumBuffer to where the sum should be written.
         */
-        bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
+        void execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
 
     protected:
-        PrefixSum(std::shared_ptr<Device> pDevice);
-
+        Falcor::SharedPtr<Device>   mpDevice;
+        
         ComputeState::SharedPtr     mpComputeState;
 
         Program::SharedPtr          mpPrefixSumGroupProgram;
@@ -74,10 +68,9 @@ class Device;
         Program::SharedPtr          mpPrefixSumFinalizeProgram;
         ProgramVars::SharedPtr      mpPrefixSumFinalizeVars;
 
-        Buffer::SharedPtr           mpPrefixGroupSums;              ///< Temporary buffer for prefix sum computation.
-        
-        std::shared_ptr<Device>     mpDevice;
-
+        Buffer::SharedPtr mpPrefixGroupSums; ///< Temporary buffer for prefix sum computation.
+        Buffer::SharedPtr mpTotalSum;        ///< Temporary buffer for total sum of an iteration.
+        Buffer::SharedPtr mpPrevTotalSum;    ///< Temporary buffer for prev total sum of an iteration.
     };
 
 }  // namespace Falcor

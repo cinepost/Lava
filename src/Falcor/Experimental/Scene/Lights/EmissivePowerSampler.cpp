@@ -37,27 +37,28 @@
 
 namespace Falcor {
 
-EmissivePowerSampler::SharedPtr EmissivePowerSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene) {
-    return SharedPtr(new EmissivePowerSampler(pRenderContext, pScene));
-}
+bool EmissivePowerSampler::update(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection) {        
+    //FALCOR_PROFILE(pRenderContext, "EmissivePowerSampler::update");
 
-bool EmissivePowerSampler::update(RenderContext* pRenderContext) {        
-    //PROFILE("EmissivePowerSampler::update");
+    bool samplerChanged = false;
 
-    bool samplerChanged = false;;
+    if (mpLightCollection != pLightCollection) {
+        setLightCollection(std::move(pLightCollection));
+        mNeedsRebuild = true;
+    }
 
     // Check if light collection has changed.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged))
-    {
+    if (mLightCollectionUpdateFlags != LightCollection::UpdateFlags::None) {
         mNeedsRebuild = true;
+        mLightCollectionUpdateFlags = LightCollection::UpdateFlags::None;
     }
 
     // Rebuild if necessary
     if (mNeedsRebuild) {
         // Get global list of emissive triangles.
-        assert(mpLightCollection);
-        const auto& triangles = mpLightCollection->getMeshLightTriangles();
-   
+        FALCOR_ASSERT(mpLightCollection);
+        const auto& triangles = mpLightCollection->getMeshLightTriangles(pRenderContext);
+
         const size_t numTris = triangles.size();
         std::vector<float> weights(numTris);
         for (size_t i = 0; i < numTris; i++) weights[i] = triangles[i].flux;
@@ -68,10 +69,10 @@ bool EmissivePowerSampler::update(RenderContext* pRenderContext) {
         samplerChanged = true;
     }
 
-    return samplerChanged;        
+    return samplerChanged; 
 }
 
-bool EmissivePowerSampler::setShaderData(const ShaderVar& var) const {
+bool EmissivePowerSampler::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
     
     var["_emissivePower"]["invWeightsSum"] = 1.0f / mTriangleTable.weightSum;
@@ -80,14 +81,9 @@ bool EmissivePowerSampler::setShaderData(const ShaderVar& var) const {
     return true;
 }
 
-EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene)
-    : EmissiveLightSampler(EmissiveLightSamplerType::Power, pScene)
+EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection)
+        : EmissiveLightSampler(EmissiveLightSamplerType::Power, std::move(pLightCollection))
 {
-
-    mpDevice = pRenderContext->device();
-
-    // Make sure the light collection is created.
-    mpLightCollection = pScene->getLightCollection(pRenderContext);
 }
 
 EmissivePowerSampler::AliasTable EmissivePowerSampler::generateAliasTable(std::vector<float> weights) {
@@ -166,7 +162,7 @@ EmissivePowerSampler::AliasTable EmissivePowerSampler::generateAliasTable(std::v
     AliasTable result {
         float(sum),
         N,
-        Buffer::createTyped<uint2>(mpDevice, N),
+        mpDevice->createTypedBuffer<uint2>(N),
     };
 
     result.fullTable->setBlob(&fullTable[0], 0, N * sizeof(uint2));

@@ -431,7 +431,7 @@ bool Camera::isObjectCulled(const AABB& box) const {
 	return !isInside;
 }
 
-void Camera::setShaderData(const ShaderVar& var) const {
+void Camera::bindShaderData(const ShaderVar& var) const {
 	assert(!mXformList.empty());
 
 	calculateCameraParameters();
@@ -444,7 +444,7 @@ void Camera::setShaderData(const ShaderVar& var) const {
 
 	if(!mpXformListBuffer || (mpXformListBuffer->getElementCount() != mXformList.size())) {
 		reUploadBufferData = true;
-		mpXformListBuffer = Buffer::createStructured(mpDevice, sizeof(CameraXformData), (uint32_t)mXformList.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+		mpXformListBuffer = mpDevice->createStructuredBuffer(sizeof(CameraXformData), (uint32_t)mXformList.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 	}
 
 	var["xformListBufferSize"] = mpXformListBuffer ? mpXformListBuffer->getElementCount() : 0;

@@ -231,7 +231,7 @@ class FALCOR_API MaterialSystem : public Object {
 		Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
 		// GPU resources
-		GpuFence::SharedPtr mpFence;
+		Fence::SharedPtr mpFence;
 		ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
 		Buffer::SharedPtr mpMaterialDataBuffer;                     ///< GPU buffer holding all material data.
 		

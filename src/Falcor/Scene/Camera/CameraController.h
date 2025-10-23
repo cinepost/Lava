@@ -44,7 +44,8 @@ struct KeyboardEvent;
 
 /** Camera controller interface. Camera controllers should inherit from this object.
 */
-class FALCOR_API CameraController {
+class FALCOR_API CameraController : public Object {
+    FALCOR_OBJECT(CameraController)
 public:
     virtual ~CameraController() = default;
 
@@ -70,6 +71,7 @@ protected:
     * Mouse wheel zooms in/out.
 */
 class FALCOR_API OrbiterCameraController : public CameraController {
+    FALCOR_OBJECT(OrbiterCameraController)
 public:
     OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
 

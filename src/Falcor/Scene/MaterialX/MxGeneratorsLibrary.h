@@ -1,7 +1,9 @@
 #ifndef SRC_FALCOR_SCENE_MATERIALX_MXGENERATORSLIBRARY_H_
 #define SRC_FALCOR_SCENE_MATERIALX_MXGENERATORSLIBRARY_H_
 
-#include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Utils/Dictionary.h"
 #include "MxGeneratorBase.h"
 
 namespace Falcor {
@@ -15,7 +17,7 @@ struct mx_generator_info_hash_fn {
   }
 };  
 
-class dlldecl MxGeneratorsLibrary {
+class FALCOR_API MxGeneratorsLibrary {
   public:
     MxGeneratorsLibrary() = default;
     MxGeneratorsLibrary(MxGeneratorsLibrary&) = delete;

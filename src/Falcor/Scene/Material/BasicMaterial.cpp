@@ -104,7 +104,7 @@ Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
 void BasicMaterial::update(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
 
-    auto const& pBasicMaterial = std::dynamic_pointer_cast<BasicMaterial>(pMaterial);
+    auto const& pBasicMaterial = dynamic_ptr_cast<BasicMaterial>(pMaterial);
     setAlphaMode(pBasicMaterial->getAlphaMode());
     setAlphaThreshold(pBasicMaterial->getAlphaThreshold());
     setIndexOfRefraction(pBasicMaterial->getIndexOfRefraction());
@@ -361,7 +361,7 @@ void BasicMaterial::prepareDisplacementMapForRendering() {
         // Replace texture with a 4 component one if necessary.
         if (getFormatChannelCount(oldFormat) < 4) {
             Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
-            Resource::BindFlags bf = pDisplacementMap->getBindFlags() | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget;
+            ResourceBindFlags bf = pDisplacementMap->getBindFlags() | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget;
             Texture::SharedPtr newDisplacementTex = Texture::create2D(mpDevice, pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
 
             // Copy base level.
@@ -503,10 +503,10 @@ void BasicMaterial::setVolumeAnisotropy(float volumeAnisotropy) {
 }
 
 bool BasicMaterial::isEqual(const Material::SharedPtr& pOther) const {
-    auto other = std::dynamic_pointer_cast<BasicMaterial>(pOther);
-    if (!other) return false;
-
-    return (*this) == (*other);
+    if (!pOther) return false;
+    const BasicMaterial* pMaterial = static_cast<const BasicMaterial*>(pOther.get());
+    
+    return (*this) == (*pMaterial);
 }
 
 bool BasicMaterial::operator==(const BasicMaterial& other) const {

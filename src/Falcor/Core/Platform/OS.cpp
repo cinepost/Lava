@@ -67,13 +67,11 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "/../shaders",
+            getRuntimeDirectory() / "shaders",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/shaders",
-            getExecutableDirectory() + "/../shaders",
+            getRuntimeDirectory() / "shaders",
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
@@ -84,20 +82,18 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 
-inline std::vector<std::string> getInitialRenderPassDirectories() {
-    static std::vector<std::string> developmentDirectories;
-    static std::vector<std::string> deploymentDirectories;
+inline std::vector<fs::path> getInitialRenderPassDirectories() {
+    static std::vector<fs::path> developmentDirectories;
+    static std::vector<fs::path> deploymentDirectories;
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
             // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-            std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "/../render_passes",
+            getRuntimeDirectory() / "render_passes",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/render_passes",
-            getExecutableDirectory() + "/../render_passes"
+            getRuntimeDirectory() / "render_passes",
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
@@ -110,21 +106,19 @@ inline std::vector<std::string> getInitialRenderPassDirectories() {
 }
 
 static std::vector<fs::path> gShaderDirectories = getInitialShaderDirectories();
-static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDirectories();
+static std::vector<fs::path> gRenderPassDirectories = getInitialRenderPassDirectories();
 
-inline std::vector<std::string> getInitialDataDirectories() {
-    static std::vector<std::string> developmentDirectories;
-    static std::vector<std::string> deploymentDirectories;
+inline std::vector<fs::path> getInitialDataDirectories() {
+    static std::vector<fs::path> developmentDirectories;
+    static std::vector<fs::path> deploymentDirectories;
 
     if( developmentDirectories.empty() || deploymentDirectories.empty()) {
         developmentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "/../data",
+            getRuntimeDirectory() / "data",
         };
 
         deploymentDirectories = {
-            std::string(LAVA_INSTALL_DIR) + "/data",
-            getExecutableDirectory() + "/../data"
+            getRuntimeDirectory() / "data",
         };
 
         if(const char* env_p = std::getenv("LAVA_HOME")) {
@@ -133,14 +127,10 @@ inline std::vector<std::string> getInitialDataDirectories() {
         }
     }
 
-    std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+    std::vector<fs::path> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 
     // Add development media folder.
-#ifdef _MSC_VER
-    directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
-#else
-    directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
-#endif
+    directories.push_back(getRuntimeDirectory() / "Media"); // Relative to Makefile output folder
 
     // Add additional media folders.
     if (auto mediaFolders = getEnvironmentVariable("FALCOR_MEDIA_FOLDERS")) {
@@ -151,9 +141,9 @@ inline std::vector<std::string> getInitialDataDirectories() {
     return directories;
 }
 
-static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
+static std::vector<fs::path> gDataDirectories = getInitialDataDirectories();
 
-const std::vector<std::string>& getDataDirectoriesList() {
+const std::vector<fs::path>& getDataDirectoriesList() {
     return gDataDirectories;
 }
 
@@ -192,7 +182,7 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
     }
 
     for (const auto& dir : gDataDirectories) {
-        fullPath = canonicalizeFilename(dir + '/' + filename);
+        fullPath = canonicalizeFilename(dir.string() + '/' + filename);
         if (doesFileExist(fullPath)) {
             return true;
         }
@@ -303,7 +293,7 @@ bool hasExtension(const fs::path& path, std::string_view ext) {
 
 bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath) {
     for (const auto& dir : gRenderPassDirectories) {
-        fullPath = canonicalizeFilename(dir + '/' + filename);
+        fullPath = canonicalizeFilename(dir.string() + '/' + filename);
         if (doesFileExist(fullPath)) {
             LLOG_DBG << "RenderPass library: " << filename << " found as: " << fullPath;
             return true;
@@ -331,7 +321,7 @@ std::string stripDataDirectories(const std::string& filename) {
     std::string canonFile = canonicalizeFilename(filename);
 
     for (const auto& dir : gDataDirectories) {
-        std::string canonDir = canonicalizeFilename(dir);
+        std::string canonDir = canonicalizeFilename(dir.string());
 
         if (canonDir.size() && hasPrefix(canonFile, canonDir, false)) {
             // canonicalizeFilename adds trailing \\ to drive letters and removes them from paths containing folders

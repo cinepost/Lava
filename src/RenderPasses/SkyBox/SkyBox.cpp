@@ -166,7 +166,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gWorld"] = glm::translate(mpCamera->getPosition()) * mTransformMatrix;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
-    mpCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
+    mpCamera->bindShaderData(mpVars["PerFrameCB"]["gCamera"]);
 
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpVars["PerFrameCB"]["gOpacity"] = mOpacity;

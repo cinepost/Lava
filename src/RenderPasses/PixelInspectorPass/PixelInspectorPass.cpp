@@ -106,7 +106,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
 
     // Set the camera
     Camera::ConstSharedPtrRef pCamera = mpScene->getCamera();
-    pCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
+    pCamera->bindShaderData(mpVars["PerFrameCB"]["gCamera"]);
 
     if (pCamera->getApertureRadius() > 0.f) {
         // TODO: Take view dir as optional input. For now issue warning if DOF is enabled.

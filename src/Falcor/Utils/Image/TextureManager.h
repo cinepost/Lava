@@ -189,8 +189,8 @@ public:
 		\param[in] var Shader var for descriptor array.
 		\param[in] descCount Size of descriptor array.
 	*/
-	void setShaderData(const ShaderVar& var, const size_t descCount) const;
-	void setShaderData(const ShaderVar& var, const std::vector<Falcor::SharedPtr<Texture>>& textures) const;
+	void bindShaderData(const ShaderVar& var, const size_t descCount) const;
+	void bindShaderData(const ShaderVar& var, const std::vector<Falcor::SharedPtr<Texture>>& textures) const;
 
 	void setExtendedTexturesShaderData(const ShaderVar& var, const size_t descCount);
 

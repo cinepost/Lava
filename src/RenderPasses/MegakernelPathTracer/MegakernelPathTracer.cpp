@@ -178,7 +178,7 @@ void MegakernelPathTracer::prepareVars() {
 
     // Bind utility classes into shared data.
     auto pGlobalVars = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(pGlobalVars);
+    bool success = mpSampleGenerator->bindShaderData(pGlobalVars);
     if (!success) throw std::runtime_error("Failed to bind sample generator");
 
     // Create parameter block for shared data.
@@ -190,7 +190,7 @@ void MegakernelPathTracer::prepareVars() {
 
     // Bind static resources to the parameter block here. No need to rebind them every frame if they don't change.
     // Bind the light probe if one is loaded.
-    if (mpEnvMapSampler) mpEnvMapSampler->setShaderData(mTracer.pParameterBlock["envMapSampler"]);
+    if (mpEnvMapSampler) mpEnvMapSampler->bindShaderData(mTracer.pParameterBlock["envMapSampler"]);
 
     // Bind the parameter block to the global program variables.
     mTracer.pVars->setParameterBlock(kParameterBlockName, mTracer.pParameterBlock);
@@ -208,7 +208,7 @@ void MegakernelPathTracer::setTracerData(const RenderData& renderData)
     if (mUseEmissiveSampler)
     {
         assert(mpEmissiveSampler);
-        bool success = mpEmissiveSampler->setShaderData(pBlock["emissiveSampler"]);
+        bool success = mpEmissiveSampler->bindShaderData(pBlock["emissiveSampler"]);
         if (!success) throw std::runtime_error("Failed to bind emissive light sampler");
     }
 }

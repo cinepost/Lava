@@ -394,7 +394,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         }
     
         if(mpSTBNGenerator) {
-            mpSTBNGenerator->setShaderData(mpComputeRasterizerPass->getRootVar()["gNoiseGenerator"]);
+            mpSTBNGenerator->bindShaderData(mpComputeRasterizerPass->getRootVar()["gNoiseGenerator"]);
         }
     }
 

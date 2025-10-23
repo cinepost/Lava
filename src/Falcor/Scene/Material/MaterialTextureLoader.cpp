@@ -49,7 +49,7 @@ bool MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 
 	bool generateMipLevels = true;
 	bool loadAsSRGB = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
-	Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
+	ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource;
 	std::string udim_mask = "<UDIM>";
 	bool async = true;
 

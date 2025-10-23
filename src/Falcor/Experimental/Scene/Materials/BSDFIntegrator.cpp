@@ -41,10 +41,6 @@ namespace {
     const uint2 kGridSize = { 512, 512 };
 }
 
-BSDFIntegrator::SharedPtr BSDFIntegrator::create(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene) {
-    return SharedPtr(new BSDFIntegrator(pDevice, pScene));
-}
-
 BSDFIntegrator::BSDFIntegrator(Device::SharedPtr pDevice, const Scene::SharedPtr& pScene): mpDevice(pDevice), mpScene(pScene) {
     assert((pScene != nullptr) && "'pScene' must be a valid scene");
 
@@ -75,8 +71,6 @@ BSDFIntegrator::BSDFIntegrator(Device::SharedPtr pDevice, const Scene::SharedPtr
     assert(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
     assert(finalGroupSize.x == mResultCount);
     #endif // _DEBUG
-
-    mpFence = GpuFence::create(mpDevice);
 }
 
 float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, float cosTheta) {
@@ -98,7 +92,7 @@ std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderCon
     const uint32_t gridCount = (uint32_t)cosThetas.size();
 
     if (!mpCosThetaBuffer || mpCosThetaBuffer->getElementCount() < gridCount) {
-        mpCosThetaBuffer = Buffer::createStructured(mpDevice, sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
+        mpCosThetaBuffer = mpDevice->createStructuredBuffer(sizeof(float), gridCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, cosThetas.data(), false);
     } else {
         mpCosThetaBuffer->setBlob(cosThetas.data(), 0, cosThetas.size() * sizeof(cosThetas[0]));
     }
@@ -106,12 +100,12 @@ std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderCon
     // Allocate buffer for intermediate and final results.
     uint32_t elemCount = gridCount * mResultCount;
     if (!mpResultBuffer || mpResultBuffer->getElementCount() < elemCount) {
-        mpResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpResultBuffer = mpDevice->createStructuredBuffer(sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
     }
 
     if (!mpFinalResultBuffer || mpFinalResultBuffer->getElementCount() < gridCount) {
-        mpFinalResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpStagingBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+        mpFinalResultBuffer = mpDevice->createStructuredBuffer(sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
+        mpStagingBuffer = mpDevice->createStructuredBuffer(sizeof(float3), gridCount, ResourceBindFlags::None, MemoryType::ReadBack, nullptr, false);
     }
 
     // Execute GPU passes.
@@ -122,12 +116,10 @@ std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderCon
     pRenderContext->copyBufferRegion(mpStagingBuffer.get(), 0, mpFinalResultBuffer.get(), 0, sizeof(float3) * gridCount);
 
     // Flush GPU and wait for results to be available.
-    pRenderContext->flush(false);
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-    mpFence->syncCpu();
+    pRenderContext->submit(false);
 
     // Read back final results.
-    const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map(Buffer::MapType::Read));
+    const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map());
     std::vector<float3> output(finalResults, finalResults + gridCount);
     mpStagingBuffer->unmap();
 
@@ -147,7 +139,7 @@ void BSDFIntegrator::integrationPass(RenderContext* pRenderContext, const uint32
     var["cosThetas"] = mpCosThetaBuffer;
     var["results"] = mpResultBuffer;
 
-    mpIntegrationPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
+    mpScene->bindShaderData(mpIntegrationPass->getRootVar()["gScene"]);
     mpIntegrationPass->execute(pRenderContext, uint3(kGridSize, gridCount));
 }
 
@@ -160,21 +152,6 @@ void BSDFIntegrator::finalPass(RenderContext* pRenderContext, const uint32_t gri
     var["finalResults"] = mpFinalResultBuffer;
 
     mpFinalPass->execute(pRenderContext, uint3(mResultCount, gridCount, 1));
-
-#if 0
-    // DEBUG: Final accumulation on the CPU.
-    const float3* results = reinterpret_cast<const float3*>(mpResultBuffer->map(Buffer::MapType::Read));
-    for (uint32_t gridIdx = 0; gridIdx < gridCount; gridIdx++)
-    {
-        float3 sum = {};
-        for (size_t i = 0; i < mResultCount; i++)
-        {
-            sum += results[mResultCount * gridIdx + i];
-        }
-        float3 result = sum / (float)mResultCount;
-    }
-    mpResultBuffer->unmap();
-#endif
 }
 
 }  // namespace Falcor

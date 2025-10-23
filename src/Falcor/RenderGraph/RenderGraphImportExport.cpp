@@ -29,7 +29,6 @@
 
 #include "Falcor/Utils/StringUtils.h"
 #include "RenderGraphImportExport.h"
-#include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
 #include <fstream>
 
@@ -37,20 +36,20 @@ namespace Falcor {
 
 namespace {
 
-void updateGraphStrings(std::string& graph, std::string& file, std::string& func) {
+void updateGraphStrings(std::string& graph, fs::path& path, std::string& func) {
     graph = graph.empty() ? "renderGraph" : graph;
-    file = file.empty() ? graph + ".py" : file;
+    path = path.empty() ? fs::path(graph + ".py") : path;
     func = func.empty() ? RenderGraphIR::getFuncName(graph) : func;
 }
 
 #ifdef SCRIPTING
-void runScriptFile(const std::string& filename, const std::string& custom) {
-    std::string fullpath;
-    if (findFileInDataDirectories(filename, fullpath) == false) {
-        throw std::runtime_error("Can't find the file: " + filename);
+void runScriptFile(const fs::path& path, const std::string& custom) {
+    fs::path resolvedPath = AssetResolver::getDefaultResolver().resolvePath(path);
+    if (resolvedPath.empty()) {
+        FALCOR_THROW("Can't find the file '{}'", path);
     }
 
-    std::string script = readFile(fullpath) + custom;
+    std::string script = readFile(resolvedPath) + custom;
     Scripting::runScript(script);
 }
 #endif
@@ -65,14 +64,14 @@ bool loadFailed(std::exception e, const std::string& filename) {
     //return (res == MsgBoxButton::No);
 }
 
-RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName) {
+RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, fs::path path, std::string funcName) {
 #ifdef SCRIPTING
     while(true) {
         try {
-            updateGraphStrings(graphName, filename, funcName);
+            updateGraphStrings(graphName, path, funcName);
             std::string custom;
             if (funcName.size()) custom += "\n" + graphName + '=' + funcName + "()";
-            runScriptFile(filename, custom);
+            runScriptFile(path, custom);
 
             auto pGraph = Scripting::getGlobalContext().getObject<RenderGraph::SharedPtr>(graphName);
             if (!pGraph) throw("Unspecified error");
@@ -80,7 +79,7 @@ RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::s
             pGraph->setName(graphName);
             return pGraph;
         } catch (const std::exception& e) {
-            if (loadFailed(e, filename)) return nullptr;
+            if (loadFailed(e, path)) return nullptr;
         }
     }
 #else
@@ -88,11 +87,11 @@ RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::s
 #endif
 }
 
-std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const std::string& filename) {
+std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const fs::path& path) {
 #ifdef SCRIPTING
     while(true) {
         try {
-            runScriptFile(filename, {});
+            runScriptFile(path, {});
             auto scriptObj = Scripting::getGlobalContext().getObjects<RenderGraph::SharedPtr>();
             std::vector<RenderGraph::SharedPtr> res;
             res.reserve(scriptObj.size());
@@ -104,7 +103,7 @@ std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const s
 
             return res;
         } catch (const std::exception& e) {
-            if (loadFailed(e, filename)) return {};
+            if (loadFailed(e, path)) return {};
         }
     }
 #else
@@ -117,47 +116,43 @@ std::string RenderGraphExporter::getFuncName(const std::string& graphName) {
 }
 
 std::string RenderGraphExporter::getIR(const RenderGraph::SharedPtr& pGraph) {
-    RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(pGraph->getName());
-
-    // Register passes that are loaded from dlls
-    auto libNames = RenderPassLibrary::enumerateLibraries();
-    for (const auto& libName : libNames) {
-        pIR->loadPassLibrary(getFilenameFromPath(libName));
-    }
+    RenderGraphIR ir(pGraph->getName());
 
     // Add the passes
     for (const auto& node : pGraph->mNodeData) {
-        const auto& data = node.second;
-        pIR->addPass(getClassTypeName(data.pPass.get()), data.name, data.pPass->getScriptingDictionary());
+        const auto& nodeData = node.second;
+        ir.createPass(nodeData.pPass->getType(), nodeData.name, nodeData.pPass->getProperties());
     }
 
     // Add the edges
     for (const auto& edge : pGraph->mEdgeData) {
-        const auto& data = edge.second;
+        const auto& edgeData = edge.second;
         const auto& srcPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getSourceNode()].name;
         const auto& dstPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getDestNode()].name;
-        std::string src = srcPass + (data.srcField.size() ? '.' + data.srcField : data.srcField);
-        std::string dst = dstPass + (data.dstField.size() ? '.' + data.dstField : data.dstField);
-        pIR->addEdge(src, dst);
+        std::string src = srcPass + (edgeData.srcField.size() ? '.' + edgeData.srcField : edgeData.srcField);
+        std::string dst = dstPass + (edgeData.dstField.size() ? '.' + edgeData.dstField : edgeData.dstField);
+        ir.addEdge(src, dst);
     }
 
     // Graph outputs
     for (const auto& out : pGraph->mOutputs) {
         std::string str = pGraph->mNodeData[out.nodeId].name + '.' + out.field;
-        pIR->markOutput(str);
+        for (auto mask : out.masks) {
+            ir.markOutput(str, mask);
+        }
     }
 
-    return pIR->getIR();
+    return ir.getIR();
 }
 
-bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string filename) {
+bool RenderGraphExporter::save(const RenderGraph::SharedPtr& pGraph, fs::path path) {
     std::string ir = getIR(pGraph);
     std::string funcName;
     std::string graphName = pGraph->getName();
-    updateGraphStrings(graphName, filename, funcName);
+    updateGraphStrings(graphName, path, funcName);
 
     // Save it to file
-    std::ofstream f(filename);
+    std::ofstream f(path);
     f << ir << std::endl;
     f << graphName << " = " << funcName + "()\n";
     // Try adding it to Mogwai

@@ -123,7 +123,7 @@ namespace Falcor
         /** Bind the volume data to a given shader variable.
             \param[in] var Shader variable.
         */
-        void setShaderData(const ShaderVar& var) const { var["gRTXGIVolume"] = mpParameterBlock; }
+        void bindShaderData(const ShaderVar& var) const { var["gRTXGIVolume"] = mpParameterBlock; }
 
         // Accessors to textures.
         const Texture::SharedPtr& getRayDataTexture() const { return mpRayDataTex; }

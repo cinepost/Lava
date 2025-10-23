@@ -52,7 +52,7 @@ class dlldecl AliasTable {
     /** Bind the alias table data to a given shader var.
         \param[in] var The shader variable to set the data into.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     /** Get the number of weights in the table.
     */

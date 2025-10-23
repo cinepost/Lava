@@ -1,10 +1,10 @@
-#include "InternalDictionary.h"
+#include "Dictionary.h"
 #include <sstream>
 
 
 namespace Falcor {
 
-bool InternalDictionary::Value::operator==(const Value& other) const { 
+bool Dictionary::Value::operator==(const Value& other) const { 
     if(type() != other.type()) return false;
     
     if(type() == typeid(std::string))
@@ -40,14 +40,14 @@ bool InternalDictionary::Value::operator==(const Value& other) const {
     if(type() == typeid(Falcor::int4))
         return std::any_cast<Falcor::int4>(mValue) == std::any_cast<Falcor::int4>(other.mValue);
 
-    throw std::runtime_error("InternalDictionary::Value comparison of unimplemented for type !!!");
+    throw std::runtime_error("Dictionary::Value comparison of unimplemented for type !!!");
 }
 
-bool InternalDictionary::operator==(const InternalDictionary& other) const {
+bool Dictionary::operator==(const Dictionary& other) const {
     return mContainer == other.mContainer;
 }
 
-InternalDictionary::Value::operator std::string() const {
+Dictionary::Value::operator std::string() const {
     if(mValue.type() == typeid(std::string))
         return std::any_cast<std::string>(mValue);
 
@@ -84,7 +84,7 @@ InternalDictionary::Value::operator std::string() const {
     return "Unknown";
 }
 
-std::string InternalDictionary::Value::toJsonString() const {
+std::string Dictionary::Value::toJsonString() const {
     if(mValue.type() == typeid(std::string)) {
         #ifdef _WIN32
         // return "\"" + std::string{*this} + "\"";
@@ -103,7 +103,7 @@ std::string InternalDictionary::Value::toJsonString() const {
     #endif
 }
 
-std::string InternalDictionary::toJsonString() const {
+std::string Dictionary::toJsonString() const {
     std::stringstream ss; ss << "{";
     
     size_t i = 0;
@@ -116,13 +116,13 @@ std::string InternalDictionary::toJsonString() const {
     return ss.str();
 }
 
-InternalDictionary& InternalDictionary::update(const InternalDictionary& d) {
+Dictionary& Dictionary::update(const Dictionary& d) {
     for(auto const& e: d) mContainer[e.first] = e.second;
     return *this;
 }
 
 template<>
-InternalDictionary::Value::operator bool() const {
+Dictionary::Value::operator bool() const {
     if (mValue.type() == typeid(bool)) return std::any_cast<bool>(mValue); 
     else if(mValue.type() == typeid(int)) return std::any_cast<int>(mValue) == 0 ? false : true;
     else if(mValue.type() == typeid(float)) return std::any_cast<float>(mValue) == 0.f ? false : true;
@@ -130,7 +130,7 @@ InternalDictionary::Value::operator bool() const {
     return false;
 }
 
-InternalDictionary::Value::operator uint() const {
+Dictionary::Value::operator uint() const {
     if(mValue.type() == typeid(int)) return static_cast<uint>(std::any_cast<int>(mValue));
     else if(mValue.type() == typeid(float)) return static_cast<uint>(std::any_cast<float>(mValue));
     return std::any_cast<uint>(mValue);

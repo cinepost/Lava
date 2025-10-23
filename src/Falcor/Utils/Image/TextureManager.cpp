@@ -918,7 +918,7 @@ void TextureManager::finalize() {
 	mDirty = false;
 }
 
-void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount) const {
+void TextureManager::bindShaderData(const ShaderVar& var, const size_t descCount) const {
 	LLOG_DBG << "Setting shader data for " << to_string(mTextureDescs.size()) << " texture descs";
 	
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -1099,7 +1099,7 @@ void TextureManager::setVirtualTexturesShaderData(const ShaderVar& var, const Sh
 	pagesBufferVar.setBuffer(mpVirtualPagesResidencyDataBuffer);
 }
 
-void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {
+void TextureManager::bindShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {
 	LLOG_DBG << "Setting direct shader data for " << to_string(textures.size()) << " textures";
 	
 	std::lock_guard<std::mutex> lock(mMutex);

@@ -29,24 +29,28 @@
 #define SRC_FALCOR_RENDERGRAPH_RENDERGRAPHCOMPILER_H_
 
 
+#include "Falcor/Core/Object.h"
 #include "ResourceCache.h"
 #include "RenderGraphExe.h"
 
 namespace Falcor {
 
+class Device;
 class RenderGraph;
 
-class dlldecl RenderGraphCompiler {
+
+class FALCOR_API RenderGraphCompiler {
 	public:
 		struct Dependencies {
 			ResourceCache::DefaultProperties defaultResourceProps;
 			ResourceCache::ResourcesMap externalResources;
 		};
-		static RenderGraphExe::SharedPtr compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies);
+		static std::unique_ptr<RenderGraphExe> compile(RenderGraph& graph, RenderContext* pRenderContext, const Dependencies& dependencies);
 
 	private:
 		RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies);
 		RenderGraph& mGraph;
+		Falcor::SharedPtr<Device> mpDevice;
 		const Dependencies& mDependencies;
 
 		struct PassData {
@@ -64,9 +68,9 @@ class dlldecl RenderGraphCompiler {
 		} mCompilationChanges;
 
 		void resolveExecutionOrder();
-		void compilePasses(RenderContext* pContext);
+		void compilePasses(RenderContext* pRenderContext);
 		bool insertAutoPasses();
-		void allocateResources(ResourceCache* pResourceCache);
+		void allocateResources(Falcor::SharedPtr<Device> pDevice, ResourceCache* pResourceCache);
 		void validateGraph() const;
 		void restoreCompilationChanges();
 		RenderPass::CompileData prepPassCompilationData(const PassData& passData);

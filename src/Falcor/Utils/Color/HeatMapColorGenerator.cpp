@@ -21,7 +21,7 @@ HeatMapColorGenerator::SharedPtr HeatMapColorGenerator::create(Device::SharedPtr
     return SharedPtr(new HeatMapColorGenerator(pDevice, grad_type));
 }
 
-void HeatMapColorGenerator::setShaderData(const ShaderVar& var) const {
+void HeatMapColorGenerator::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     var["numColors"] = mNumColors;

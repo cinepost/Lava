@@ -8,6 +8,7 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/GFXAPI.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 

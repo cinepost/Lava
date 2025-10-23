@@ -177,7 +177,7 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   cb["gRotationOffset"] = 0.0f;
 
   //auto pcb = mpHorizonsSearchPass["PerFrameCB"];
-  pCamera->setShaderData(cb["gCamera"]);
+  pCamera->bindShaderData(cb["gCamera"]);
 
   mpHorizonsSearchPass["gPointSampler"] = mpPointSampler;
   mpHorizonsSearchPass["gDepthSampler"] = mpDepthSampler;

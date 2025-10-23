@@ -40,18 +40,10 @@ namespace Falcor {
 
 class DirectedGraph {
  public:
-    using SharedPtr = std::shared_ptr<DirectedGraph>;
     static const uint32_t kInvalidID = (uint32_t)-1;
 
     class Node;
     class Edge;
-
-    /** Create a new graph.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create() {
-        return SharedPtr(new DirectedGraph);
-    }
 
     /** Add a node.
         The returned value is a unique identifier of the node
@@ -167,19 +159,18 @@ class DirectedGraph {
 
     /** Get an edge
     */
-    const Edge* getEdge(uint32_t edgeId) {
+    const Edge* getEdge(uint32_t edgeId) const {
         if (doesEdgeExist(edgeId) == false) {
             LLOG_WRN << "DirectGraph::getEdge() - edge ID doesn't exist";
             return nullptr;
         }
-        return &mEdges[edgeId];
+        return &mEdges.at(edgeId);
     }
 
     uint32_t getCurrentNodeId() const { return mCurrentNodeId; }
     uint32_t getCurrentEdgeId() const { return mCurrentEdgeId; }
+ 
  private:
-    DirectedGraph() = default;
-
     std::unordered_map<uint32_t, Node> mNodes;
     std::unordered_map<uint32_t, Edge> mEdges;
     uint32_t mCurrentNodeId = 0;

@@ -30,7 +30,6 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
-#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/ThreadPool.h"
 
 #include "Scene.h"
@@ -44,6 +43,8 @@
 #include "Falcor/Scene/Lights/LightLinker.h"
 
 #include "Geometry.h"
+
+#include <pybind11/pytypes.h>
 
 #include <map>
 #include <bitset>
@@ -228,14 +229,14 @@ class FALCOR_API SceneBuilder : public Object {
         \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
         \return A new object with the imported file already initialized. If an import error occurred, a nullptr will be returned
     */
-    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const fs::path& path, Flags buildFlags = Flags::Default);
 
     /** Import a scene/model file
         \param filename The filename to load
         \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
         \return true if the import succeeded, otherwise false
     */
-    bool import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
+    bool import(const fs::path& path, const pybind11::dict& dict = pybind11::dict());
 
     /** Get the scene. Make sure to add all the objects before calling this function
         \return nullptr if something went wrong, otherwise a new Scene object
@@ -593,7 +594,6 @@ protected:
     std::vector<uint32_t> mMeshletPrimIndices; ///< Primitive indices in a global scene buffer. It's used in case if meshlet primitives order differs from original mesh.
 
     std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
-    GpuFence::SharedPtr mpFence;
 
     std::vector<Material::SharedPtr> mMaterials;
     std::vector<MaterialX::SharedPtr> mMaterialXs;

@@ -191,13 +191,13 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
     mRaytrace.pProgram->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mRaytrace.pVars->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 
     // Dispatch the rays.
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
@@ -220,13 +220,13 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
     mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mpComputePass->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
@@ -251,7 +251,7 @@ Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) co
     return defines;
 }
 
-void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData) {
+void GBufferRT::bindShaderData(const ShaderVar& var, const RenderData& renderData) {
     var["gGBufferRT"]["frameDim"] = mFrameDim;
     var["gGBufferRT"]["invFrameDim"] = mInvFrameDim;
     var["gGBufferRT"]["frameCount"] = mFrameCount;

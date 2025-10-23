@@ -28,18 +28,19 @@
 #ifndef SRC_FALCOR_UTILS_TIMING_PROFILER_H_
 #define SRC_FALCOR_UTILS_TIMING_PROFILER_H_
 
-#include <stack>
-#include <unordered_map>
-#include <memory>
+#include "CpuTimer.h"
+#include "FrameRate.h"
+#include "Falcor/Core/API/GpuTimer.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/json.hpp>
 namespace fs = boost::filesystem;
 
-#include "CpuTimer.h"
-#include "FrameRate.h"
-#include "Core/API/GpuTimer.h"
-#include "Utils/Scripting/ScriptBindings.h"
+#include <stack>
+#include <unordered_map>
+#include <memory>
+
 
 namespace Falcor {
 
@@ -52,10 +53,8 @@ class GpuTimer;
 	This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
 	ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
 */
-class dlldecl Profiler {
+class FALCOR_API Profiler {
   public:
-	  using SharedPtr = std::shared_ptr<Profiler>;
-
 	  enum class Flags {
 		  None        = 0x0,
 		  Internal    = 0x1,
@@ -69,7 +68,7 @@ class dlldecl Profiler {
 		  float mean;
 		  float stdDev;
 
-		  pybind11::dict 			toPython() const;
+		  pybind11::dict toPython() const;
 		  boost::json::object toBoostJSON() const;
 
 		  static Stats compute(const float* data, size_t len);
@@ -91,7 +90,7 @@ class dlldecl Profiler {
 			private:
 				Event(const std::string& name);
 
-				void start(std::shared_ptr<Device> pDevice, uint32_t frameIndex);
+				void start(Profiler* profiler, uint32_t frameIndex);
 				void end(uint32_t frameIndex);
 				void endFrame(uint32_t frameIndex);
 
@@ -127,8 +126,6 @@ class dlldecl Profiler {
 
 		class Capture {
 			public:
-				using SharedPtr = std::shared_ptr<Capture>;
-
 				enum OuputFactory {
 					PYTHON,
 					BOOST_JSON
@@ -143,16 +140,15 @@ class dlldecl Profiler {
 				size_t getFrameCount() const { return mFrameCount; }
 				const std::vector<Lane>& getLanes() const { return mLanes; }
 
-				pybind11::dict 			toPython() const;
+				pybind11::dict toPython() const;
 				boost::json::object toBoostJSON() const;
 
 				std::string toJsonString() const;
 				void writeToFile(const fs::path& path, Capture::OuputFactory factory=Capture::OuputFactory::BOOST_JSON) const;
 
-			private:
 				Capture(size_t reservedEvents, size_t reservedFrames);
 
-				static SharedPtr create(size_t reservedEvents, size_t reservedFrames);
+			private:
 				void captureEvents(const std::vector<Event*>& events);
 				void finalize();
 
@@ -164,6 +160,13 @@ class dlldecl Profiler {
 
 				friend class Profiler;
 		};
+
+		/**
+     	* Constructor.
+    	*/
+    	Profiler(Falcor::SharedPtr<Device> pDevice);
+
+    	const Device* getDevice() const { return mpDevice.get(); }
 
 		/** Check if the profiler is enabled.
 			\return Returns true if the profiler is enabled.
@@ -193,7 +196,7 @@ class dlldecl Profiler {
 		/** End profile capture.
 			\return Returns the captured data.
 		*/
-		Capture::SharedPtr endCapture();
+		std::shared_ptr<Capture> endCapture();
 
 		/** Check if the profiler is capturing.
 			\return Return true if the profiler is capturing.
@@ -232,15 +235,7 @@ class dlldecl Profiler {
 		*/
 		pybind11::dict getPythonEvents() const;
 
-		/** Global profiler instance pointer.
-		*/
-		static const Profiler::SharedPtr& instancePtr(std::shared_ptr<Device> pDevice);
-
-		/** Global profiler instance.
-		*/
-		static Profiler& instance(std::shared_ptr<Device> pDevice) { return *instancePtr(pDevice); }
-
-		Profiler(std::shared_ptr<Device> pDevice);
+		void breakStrongReferenceToDevice();
 
 	private:
 		/** Create a new event.
@@ -255,7 +250,7 @@ class dlldecl Profiler {
 		*/
 		Event* findEvent(const std::string& name);
 
-		std::shared_ptr<Device> mpDevice = nullptr;
+		BreakableSharedPtr<Device> mpDevice;
 
 		bool mEnabled = false;
 		bool mPaused = false;
@@ -267,13 +262,12 @@ class dlldecl Profiler {
 		uint32_t mCurrentLevel = 0;                         ///< Current nesting level.
 		uint32_t mFrameIndex = 0;                           ///< Current frame index.
 
-		Capture::SharedPtr mpCapture;                       ///< Currently active capture.
+		 std::shared_ptr<Capture> mpCapture; 				///< Currently active capture.
 
-		GpuFence::SharedPtr mpFence;
+		Fence::SharedPtr mpFence;
 		uint64_t mFenceValue = uint64_t(-1);
 };
 
-//enum_class_operators(Profiler::Flags);
 enum_class_operators(Profiler::Flags);
 
 /** Helper class for starting and ending profiling events using RAII.
@@ -281,15 +275,15 @@ enum_class_operators(Profiler::Flags);
 	The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled,
 	and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
 */
-class ProfilerEvent {
+class ScopedProfilerEvent {
   public:
-	  ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default);
-		~ProfilerEvent() { Profiler::instance(mpDevice).endEvent(mName, mFlags); }
+		ScopedProfilerEvent(RenderContext* pRenderContext, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default);
+		~ScopedProfilerEvent();
 
   private:
-  	std::shared_ptr<Device> mpDevice = nullptr;
-	  const std::string mName;
-	  Profiler::Flags mFlags;
+		RenderContext* mpRenderContext;
+		const std::string mName;
+		Profiler::Flags mFlags;
 };
 
 inline std::string to_string(Profiler::Capture::OuputFactory f) {
@@ -307,14 +301,13 @@ inline std::string to_string(Profiler::Capture::OuputFactory f) {
 }  // namespace Falcor
 
 #ifdef FALCOR_ENABLE_PROFILER
-#define PROFILE_DEFAULT(_pDevice, _name) Falcor::ProfilerEvent _profileEvent##__LINE__(_pDevice, _name)
-#define PROFILE_SOME(_pDevice, _name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_pDevice, _name, _flags)
-
-
-#define GET_PROFILE(_1, _2, _3, NAME, ...) NAME
-#define PROFILE(...) GET_PROFILE(__VA_ARGS__, PROFILE_SOME, PROFILE_DEFAULT)(__VA_ARGS__)
+#define FALCOR_PROFILE(_pRenderContext, _name) \
+    Falcor::ScopedProfilerEvent FALCOR_CONCAT_STRINGS(_profileEvent, __LINE__)(_pRenderContext, _name)
+#define FALCOR_PROFILE_CUSTOM(_pRenderContext, _name, _flags) \
+    Falcor::ScopedProfilerEvent FALCOR_CONCAT_STRINGS(_profileEvent, __LINE__)(_pRenderContext, _name, _flags)
 #else
-#define PROFILE(_pDevice, _name, ...)
+#define FALCOR_PROFILE(_pRenderContext, _name)
+#define FALCOR_PROFILE_CUSTOM(_pRenderContext, _name, _flags)
 #endif
 
 #endif  // SRC_FALCOR_UTILS_TIMING_PROFILER_H_

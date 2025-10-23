@@ -383,6 +383,18 @@ void Device::wait() {
     executeDeferredReleases();
 }
 
+Falcor::SharedPtr<ComputeStateObject> Device::createComputeStateObject(const ComputeStateObjectDesc& desc) {
+    return make_shared_ptr<ComputeStateObject>(Device::SharedPtr(this), desc);
+}
+
+Falcor::SharedPtr<GraphicsStateObject> Device::createGraphicsStateObject(const GraphicsStateObjectDesc& desc) {
+    return make_shared_ptr<GraphicsStateObject>(Device::SharedPtr(this), desc);
+}
+
+Falcor::SharedPtr<RtStateObject> Device::createRtStateObject(const RtStateObjectDesc& desc) {
+    return make_shared_ptr<RtStateObject>(Device::SharedPtr(this), desc);
+}
+
 size_t Device::getBufferDataAlignment(ResourceBindFlags bindFlags) {
     if (is_set(bindFlags, ResourceBindFlags::Constant))
         return kConstantBufferDataPlacementAlignment;

@@ -15,8 +15,9 @@ include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
 file( GLOB SOURCES
     ./Core/ErrorHandling.cpp
     ./Core/Framework.cpp
-    ./Core/Window.h
-    ./Core/Object.h
+    ./Core/Window.cpp
+    ./Core/Object.cpp
+    ./Core/Plugin.cpp
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
@@ -42,7 +43,7 @@ file( GLOB SOURCES
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/Math/*.cpp
-    ./Utils/InternalDictionary.cpp
+    ./Utils/Dictionary.cpp
     ./Utils/Geometry/*.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp

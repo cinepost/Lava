@@ -30,47 +30,37 @@
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "RenderGraph.h"
-#include "RenderPassLibrary.h"
-#include "Utils/Algorithm/DirectedGraphTraversal.h"
+#include "Falcor/Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
 #include "Falcor/Scene/Scene.h"
 
 namespace Falcor {
 
-std::vector<RenderGraph*> gRenderGraphs;
 const FileDialogFilterVec RenderGraph::kFileExtensionFilters = { { "py", "Render Graph Files"} };
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name) {
+RenderGraph::SharedPtr RenderGraph::create(Device::SharedPtr pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, pTargetFbo, name));
 }
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const std::string& name) {
+RenderGraph::SharedPtr RenderGraph::create(Device::SharedPtr pDevice, uint2 frame_size, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, frame_size, ResourceFormat::RGBA16Float, name));
 }
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
+RenderGraph::SharedPtr RenderGraph::create(Device::SharedPtr pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, frame_size, format, name));
 }
 
-RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mpDevice(pDevice), mName(name) {
-    mpGraph = DirectedGraph::create();
-    mpPassDictionary = InternalDictionary::create();
-    gRenderGraphs.push_back(this);
+RenderGraph::RenderGraph(Device::SharedPtr pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mpDevice(pDevice), mName(name) {
+    mpGraph = std::make_unique<DirectedGraph>();
     onResize(pTargetFbo.get());
 }
 
-RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mpDevice(pDevice), mName(name) {
-    mpGraph = DirectedGraph::create();
-    mpPassDictionary = InternalDictionary::create();
-    gRenderGraphs.push_back(this);
+RenderGraph::RenderGraph(Device::SharedPtr pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mpDevice(pDevice), mName(name) {
+    mpGraph = std::make_unique<DirectedGraph>();
     resize(frame_size[0], frame_size[1], format);
 }
 
-RenderGraph::~RenderGraph() {
-    auto it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
-    assert(it != gRenderGraphs.end());
-    gRenderGraphs.erase(it);
-}
+RenderGraph::~RenderGraph() { }
 
 uint32_t RenderGraph::getPassIndex(const std::string& name) const {
     auto it = mNameToIndex.find(name);
@@ -145,34 +135,31 @@ void RenderGraph::removePass(const std::string& name) {
     mRecompile = true;
 }
 
-void RenderGraph::updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict) {
+void RenderGraph::updatePass(const std::string& passName, const Properties& props) {
     uint32_t index = getPassIndex(passName);
     const auto pPassIt = mNodeData.find(index);
 
-    if (pPassIt == mNodeData.end()) {
-        LLOG_ERR << "Error in RenderGraph::updatePass(). Unable to find pass " << passName;
-        return;
-    }
+    FALCOR_CHECK(pPassIt != mNodeData.end(), "Can't update render pass '{}'. Pass doesn't exist.", passName);
 
     // Recreate pass without changing graph using new dictionary
     auto pOldPass = pPassIt->second.pPass;
-    std::string passTypeName = getClassTypeName(pOldPass.get());
-    auto pPass = RenderPassLibrary::instance().createPass(pRenderContext, passTypeName.c_str(), dict);
+    std::string passTypeName = pOldPass->getType();
+    auto pPass = RenderPass::create(passTypeName, mpDevice, props);
     pPassIt->second.pPass = pPass;
     pPass->mPassChangedCB = [this]() { mRecompile = true; };
     pPass->mName = pOldPass->getName();
 
-    if (mpScene) pPass->setScene(mpDevice->getRenderContext(), mpScene);
+    if (mpScene) {
+        pPass->setScene(mpDevice->getRenderContext(), mpScene);
+    }
     mRecompile = true;
 }
 
 const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const {
     uint32_t index = getPassIndex(name);
-    if (index == kInvalidIndex) {
-        static RenderPass::SharedPtr pNull;
-        LLOG_ERR << "RenderGraph::getRenderPass() - can't find a pass named `" << name << "`";
-        return pNull;
-    }
+
+    FALCOR_CHECK(index != kInvalidIndex, "Can't find render pass '{}'.", name);
+
     return mNodeData.at(index).pPass;
 }
 
@@ -263,7 +250,7 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst) {
     }
 
     // Make sure that this doesn't create a cycle
-    if (DirectedGraphPathDetector::hasPath(mpGraph, dstIndex, srcIndex)) {
+    if (DirectedGraphPathDetector::hasPath(*mpGraph, dstIndex, srcIndex)) {
         LLOG_ERR << "RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. The edge will create a cycle in the graph which is not allowed";
         return kInvalidIndex;
     }
@@ -374,11 +361,14 @@ void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_
     }
 
     assert(mpExe);
-    RenderGraphExe::Context c;
-    c.pGraphDictionary = mpPassDictionary;
-    c.pRenderContext = pContext;
-    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
-    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    RenderGraphExe::Context c{
+        pContext,
+        mPassDictionary,
+        mCompilerDeps.defaultResourceProps.dims,
+        mCompilerDeps.defaultResourceProps.format,
+        frameNumber,
+        sampleNumber,
+    };
     mpExe->execute(c, frameNumber, sampleNumber);
 }
 
@@ -394,11 +384,14 @@ bool RenderGraph::beginFrame(RenderContext* pContext, uint32_t frameNumber) {
     }
 
     assert(mpExe);
-    RenderGraphExe::Context c;
-    c.pGraphDictionary = mpPassDictionary;
-    c.pRenderContext = pContext;
-    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
-    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    RenderGraphExe::Context c{
+        pContext,
+        mPassDictionary,
+        mCompilerDeps.defaultResourceProps.dims,
+        mCompilerDeps.defaultResourceProps.format,
+        frameNumber,
+        0
+    };
     return mpExe->beginFrame(c, frameNumber);
 }
 
@@ -414,15 +407,17 @@ void RenderGraph::endFrame(RenderContext* pContext, uint32_t frameNumber) {
     }
 
     assert(mpExe);
-    RenderGraphExe::Context c;
-    c.pGraphDictionary = mpPassDictionary;
-    c.pRenderContext = pContext;
-    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
-    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    RenderGraphExe::Context c {
+        pContext,
+        mPassDictionary,
+        mCompilerDeps.defaultResourceProps.dims,
+        mCompilerDeps.defaultResourceProps.format,
+        0, 0
+    };
     mpExe->endFrame(c);
 }
 
-void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
+void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext, uint32_t frameNumber) {
     std::string log;
     if (!compile(pContext, log)) {
         LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::resolvePerFrameSparseResources() call";
@@ -430,15 +425,17 @@ void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
     }
 
     assert(mpExe);
-    RenderGraphExe::Context c;
-    c.pGraphDictionary = mpPassDictionary;
-    c.pRenderContext = pContext;
-    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
-    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    RenderGraphExe::Context c {
+        pContext,
+        mPassDictionary,
+        mCompilerDeps.defaultResourceProps.dims,
+        mCompilerDeps.defaultResourceProps.format,
+        frameNumber, 0
+    };
     mpExe->resolvePerFrameSparseResources(c);
 }
 
-void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext) {
+void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext, uint32_t frameNumber, uint32_t sampleNumber) {
     std::string log;
     if (!compile(pContext, log)) {
         LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::resolvePerSampleSparseResources() call";
@@ -446,11 +443,13 @@ void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext) {
     }
 
     assert(mpExe);
-    RenderGraphExe::Context c;
-    c.pGraphDictionary = mpPassDictionary;
-    c.pRenderContext = pContext;
-    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
-    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    RenderGraphExe::Context c {
+        pContext,
+        mPassDictionary,
+        mCompilerDeps.defaultResourceProps.dims,
+        mCompilerDeps.defaultResourceProps.format,
+        frameNumber, sampleNumber
+    };
     mpExe->resolvePerSampleSparseResources(c);
 }
 
@@ -685,7 +684,7 @@ SCRIPT_BINDING(RenderGraph) {
     pybind11::class_<RenderPass, RenderPass::SharedPtr> renderPass(m, "RenderPass");
 
     // RenderPassLibrary
-    const auto& createRenderPass = [](std::shared_ptr<Device> pDevice, const std::string& passName, pybind11::dict d = {}) {
+    const auto& createRenderPass = [](Device::SharedPtr pDevice, const std::string& passName, pybind11::dict d = {}) {
         auto pPass = RenderPassLibrary::instance().createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
         if (!pPass) { 
             throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
@@ -703,12 +702,12 @@ SCRIPT_BINDING(RenderGraph) {
     };
     m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibraryDefault, "name"_a);
 
-    const auto& loadPassLibrary = [](std::shared_ptr<Device> pDevice, const std::string& library) {
+    const auto& loadPassLibrary = [](Device::SharedPtr pDevice, const std::string& library) {
         return RenderPassLibrary::instance().loadLibrary(pDevice, library);
     };
     m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "device"_a, "name"_a);
 
-    const auto& updateRenderPass = [](std::shared_ptr<Device> pDevice, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
+    const auto& updateRenderPass = [](Device::SharedPtr pDevice, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
         pGraph->updatePass(pDevice->getRenderContext(), passName, Dictionary(d));
     };
     renderGraph.def(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);

@@ -53,7 +53,7 @@ StandardMaterial::StandardMaterial(Device::SharedPtr pDevice, const std::string&
 void StandardMaterial::update(const Material::SharedPtr& pMaterial) {
 	BasicMaterial::update(pMaterial);
 
-	auto const& pStandardMaterial = std::dynamic_pointer_cast<StandardMaterial>(pMaterial);
+	auto const& pStandardMaterial = dynamic_ptr_cast<StandardMaterial>(pMaterial);
 	setShadingModel(pStandardMaterial->getShadingModel());
 	setRoughness(pStandardMaterial->getRoughness());
 	setMetallic(pStandardMaterial->getMetallic());

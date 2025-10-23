@@ -240,10 +240,9 @@ void SceneBuilder::MeshID::operator=(std::shared_future<uint32_t>& f) {
 	mType = IDType::FUTURE; 
 }
 
-SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
-	mpFence = GpuFence::create(mpDevice);
+SceneBuilder::SceneBuilder(Device::SharedPtr pDevice, Flags buildFlags) : mpDevice(pDevice), mFlags(buildFlags) {
 	mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
-	mSceneData.pLightLinker = LightLinker::create(mpDevice);
+	mSceneData.pLightLinker = std::make_unique<LightLinker>(mpDevice);
 
 	if(is_set(mFlags, SceneBuilder::Flags::GenerateMeshlets)) {
 		mpMeshletBuilder = MeshletBuilder::create();
@@ -252,19 +251,19 @@ SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDev
 
 SceneBuilder::~SceneBuilder() = default;
 
-SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags) {
-	return SharedPtr(new SceneBuilder(pDevice, flags));
+SceneBuilder::SharedPtr SceneBuilder::create(Device::SharedPtr pDevice, Flags buildFlags) {
+	return SharedPtr(new SceneBuilder(pDevice, buildFlags));
 }
 
-SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags, const InstanceMatrices& instances) {
+SceneBuilder::SharedPtr SceneBuilder::create(Device::SharedPtr pDevice, const fs::path& path, Flags buildFlags) {
 	auto pBuilder = create(pDevice, buildFlags);
-	return pBuilder->import(filename, instances) ? pBuilder : nullptr;
+	LLOG_ERR << "SceneBuilder creation from file UNIMPLEMENTED !!!";
+	return pBuilder;
 }
 
-bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances, const Dictionary& dict) {
-	bool success = Importer::import(filename, *this, instances, dict);
-	mSceneData.filename = filename;
-	return success;
+bool SceneBuilder::import(const fs::path& path, const pybind11::dict& dict) {
+	LLOG_ERR << "SceneBuilder::import UNIMPLEMENTED !!!";
+	return false;
 }
 
 void SceneBuilder::resetScene(bool reuseExisting) {
@@ -281,12 +280,12 @@ void SceneBuilder::resetScene(bool reuseExisting) {
 		mpScene.reset();
 	} else {
 		LLOG_DBG << "resetScene";
-		if(!mSceneData.pLightLinker) mSceneData.pLightLinker = LightLinker::create(mpDevice);
+		if(!mSceneData.pLightLinker) mSceneData.pLightLinker = std::make_unique<LightLinker>(mpDevice);
 		if(!mSceneData.pMaterialSystem) mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
 	}
 
 	mReBuildMeshGroups = true;
-	LLOG_DBG << "SceneBuilder scene use count: " << mpScene.use_count();
+	LLOG_DBG << "SceneBuilder scene use count: " << mpScene->refCount();
 }
 
 void SceneBuilder::freeTemporaryResources() {
@@ -1275,7 +1274,7 @@ bool SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const MeshI
 	}
 		// We might move for lazy LightLinker creation in the future... So we do this here.
 		if(!pCreationSpec->isolatedLightNames.empty()) {
-			if(!mSceneData.pLightLinker) mSceneData.pLightLinker = LightLinker::create(mpDevice);
+			if(!mSceneData.pLightLinker) mSceneData.pLightLinker = std::make_unique<LightLinker>(mpDevice);
 			assert(mSceneData.pLightLinker && "No light linker present but required !!!");	
 		}
 
@@ -1582,7 +1581,7 @@ bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {
  	pLight->update(newLight);
 
  	// Update light in LightLinker (if present)
- 	LightLinker::SharedPtr pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker;
+ 	LightLinker* pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker.get();
 	if(!pLightLinker) return true;
 
  	pLightLinker->updateLight(pLight);
@@ -1590,21 +1589,21 @@ bool SceneBuilder::updateLight(const std::string& name, const Light& newLight) {
 }
 
 void  SceneBuilder::setLightsActive(bool state) {
-	LightLinker::SharedPtr pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker;
+	LightLinker* pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker.get();
 	if(!pLightLinker) return;
 
  	pLightLinker->setLightsActive(state);
 }
 
 void  SceneBuilder::deleteLight(const std::string& name) {
-	LightLinker::SharedPtr pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker;
+	LightLinker* pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker.get();
 	if(!pLightLinker) return;
 
 	pLightLinker->deleteLight(name);
 }
 
 void  SceneBuilder::setLightActive(const std::string& name, bool state) {
-	LightLinker::SharedPtr pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker;
+	LightLinker* pLightLinker = mpScene ? mpScene->getLightLinker() : mSceneData.pLightLinker.get();
 	if(!pLightLinker) return;
 
 	pLightLinker->setLightActive(name, state);

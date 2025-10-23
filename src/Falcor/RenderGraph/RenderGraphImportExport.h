@@ -25,13 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_
+#define FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_
+
+#include "Falcor/Core/Framework.h"
 #include "RenderGraph.h"
 
-namespace Falcor
-{
-    class dlldecl RenderGraphImporter
-    {
+namespace Falcor {
+
+    class FALCOR_API RenderGraphImporter {
     public:
         /** Import a graph from a file.
             \param[in] graphName The name of the graph to import
@@ -39,18 +41,19 @@ namespace Falcor
             \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
             \return A new render-graph object or nullptr if something went horribly wrong
         */
-        static RenderGraph::SharedPtr import(std::string graphName, std::string filename = {}, std::string funcName = {});
+        static RenderGraph::SharedPtr import(std::string graphName, fs::path path = {}, std::string funcName = {});
 
         /** Import all the graphs found in the script's global namespace
         */
-        static std::vector <RenderGraph::SharedPtr> importAllGraphs(const std::string& filename);
+        static std::vector <RenderGraph::SharedPtr> importAllGraphs(const fs::path& path);
     };
 
-    class dlldecl RenderGraphExporter
-    {
+    class FALCOR_API RenderGraphExporter {
     public:
         static std::string getIR(const RenderGraph::SharedPtr& pGraph);
         static std::string getFuncName(const std::string& graphName);
-        static bool save(const RenderGraph::SharedPtr& pGraph, std::string filename = {});
+        static bool save(const RenderGraph::SharedPtr& pGraph, fs::path path = {});
     };
 }
+
+#endif // FALCOR_RENDERGRAPH_RENDERGRAPHIMPORTEXPORT_H_

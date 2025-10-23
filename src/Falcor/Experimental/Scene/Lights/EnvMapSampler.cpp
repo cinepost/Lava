@@ -49,10 +49,10 @@ EnvMapSampler::SharedPtr EnvMapSampler::create(RenderContext* pRenderContext, Te
 }
 
 EnvMapSampler::SharedPtr EnvMapSampler::create(Texture::SharedPtr pTexture) {
-    return EnvMapSampler::create(pTexture->device()->getRenderContext(), pTexture);
+    return EnvMapSampler::create(pTexture->getDevice()->getRenderContext(), pTexture);
 }
 
-void EnvMapSampler::setShaderData(const ShaderVar& var) const {
+void EnvMapSampler::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.
@@ -60,7 +60,7 @@ void EnvMapSampler::setShaderData(const ShaderVar& var) const {
     var["importanceBaseMip"] = mpImportanceMap->getMipCount() - 1; // The base mip is 1x1 texels
     var["importanceInvDim"] = invDim;
 
-    mpEnvMap->setShaderData(var["envMap"]);
+    mpEnvMap->bindShaderData(var["envMap"]);
 
     // Bind resources.
     var["importanceMap"] = mpImportanceMap;
@@ -70,7 +70,7 @@ void EnvMapSampler::setShaderData(const ShaderVar& var) const {
 EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap) : mpEnvMap(pEnvMap) {
     assert(pEnvMap);
 
-    mpDevice = pRenderContext->device();
+    mpDevice = pRenderContext->getDevice();
 
     // Create compute program for the setup phase.
     mpSetupPass = ComputePass::create(mpDevice, kShaderFilenameSetup, "main");
@@ -90,7 +90,7 @@ EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pE
 EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr pTexture) {
     assert(pTexture);
 
-    mpDevice = pRenderContext->device();
+    mpDevice = pRenderContext->getDevice();
     mpEnvMap = EnvMap::create(mpDevice, pTexture);
 
     // Create compute program for the setup phase.
@@ -111,7 +111,7 @@ EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, Texture::SharedPtr p
 bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples) {
     assert(isPowerOf2(dimension));
     assert(isPowerOf2(samples));
-    assert(pRenderContext->device() == mpDevice);
+    assert(pRenderContext->getDevice() == mpDevice);
 
     // We create log2(N)+1 mips from NxN...1x1 texels resolution.
     uint32_t mips = std::log2(dimension) + 1;
@@ -119,7 +119,7 @@ bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t 
     assert(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 
     // Create importance map. We have to set the RTV flag to be able to use generateMips().
-    mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+    mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess);
     assert(mpImportanceMap);
 
     auto var = mpSetupPass->getRootVar();

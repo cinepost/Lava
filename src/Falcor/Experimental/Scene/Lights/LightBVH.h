@@ -28,11 +28,12 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 #include "LightBVHTypes.slang"
-#include "Utils/Math/AABB.h"
-#include "Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 #include <limits>
 #include <vector>
@@ -51,18 +52,14 @@ class LightBVHBuilder;
     The data can be both used on the CPU (using traverseBVH() or on the GPU by:
       1. import LightBVH;
       2. Declare a variable of type LightBVH in your shader.
-      3. Call setShaderData() to bind the BVH resources.
+      3. Call bindShaderData() to bind the BVH resources.
 
     TODO: Rename all things 'triangle' to 'light' as the BVH can be used for other light types.
 */
-class dlldecl LightBVH
-{
+class FALCOR_API LightBVH : public Object {
+    FALCOR_OBJECT(LightBVH)
 public:
-    using SharedPtr = std::shared_ptr<LightBVH>;
-    using SharedConstPtr = std::shared_ptr<const LightBVH>;
-
-    struct NodeLocation
-    {
+    struct NodeLocation {
         uint32_t nodeIndex;
         uint32_t depth;
 
@@ -70,7 +67,7 @@ public:
         NodeLocation(uint32_t _nodeIndex, uint32_t _depth) : nodeIndex(_nodeIndex), depth(_depth) {}
     };
 
-    std::shared_ptr<Device> device() { return mpDevice; };
+    Falcor::SharedPtr<Device> device() { return mpDevice; };
 
     /** Function called on each node by traverseBVH().
         \param[in] location The location of the node in the tree.
@@ -81,7 +78,7 @@ public:
     /** Creates an empty LightBVH object. Use a LightBVHBuilder to build the BVH.
         \param[in] pLightCollection The light collection around which the BVH will be built.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
 
     /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
         The BVH needs to have been built before trying to refit it.
@@ -96,8 +93,7 @@ public:
     */
     void traverseBVH(const NodeFunction& evalInternal, const NodeFunction& evalLeaf, uint32_t rootNodeIndex = 0);
 
-    struct BVHStats
-    {
+    struct BVHStats {
         std::vector<uint32_t> nodeCountPerLevel;         ///< For each level in the tree, how many nodes are there.
         std::vector<uint32_t> leafCountPerTriangleCount; ///< For each amount of triangles, how many leaf nodes contain that many triangles.
 
@@ -121,14 +117,12 @@ public:
     /** Bind the light BVH into a shader variable.
         \param[in] var The shader variable to set the data into.
     */
-    virtual void setShaderData(ShaderVar const& var) const;
+    virtual void bindShaderData(ShaderVar const& var) const;
 
-private:
-    std::shared_ptr<Device>     mpDevice;
+    LightBVH(Falcor::SharedPtr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
+
 
 protected:
-    LightBVH(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
-
     void finalize();
     void computeStats();
     void updateNodeIndices();
@@ -140,13 +134,13 @@ protected:
     */
     virtual void clear();
 
-    struct RefitEntryInfo
-    {
+    struct RefitEntryInfo {
         uint32_t offset = 0;    ///< Offset into the 'mpNodeIndicesBuffer' buffer.
         uint32_t count = 0;     ///< The number of nodes at each level.
     };
 
     // Internal state
+    Falcor::SharedPtr<Device>             mpDevice;
     const LightCollection::SharedConstPtr mpLightCollection;
 
     ComputePass::SharedPtr                mLeafUpdater;             ///< Compute pass for refitting the leaf nodes.

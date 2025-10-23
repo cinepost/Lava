@@ -51,17 +51,11 @@ namespace Falcor {
 // EntryPointGroupKernels
 //
 
-EntryPointGroupKernels::SharedConstPtr EntryPointGroupKernels::create(
-    EntryPointGroupKernels::Type type,
-    const std::vector<EntryPointKernel::SharedPtr>& kernels,
-    const std::string& exportName)
-{
-    return std::make_shared<EntryPointGroupKernels>(type, kernels, exportName);
+EntryPointGroupKernels::SharedConstPtr EntryPointGroupKernels::create(EntryPointGroupKernels::Type type, const std::vector<EntryPointKernel::SharedPtr>& kernels, const std::string& exportName) {
+    return EntryPointGroupKernels::SharedPtr(new EntryPointGroupKernels(type, kernels, exportName));
 }
 
-EntryPointGroupKernels::EntryPointGroupKernels(Type type, const std::vector<EntryPointKernel::SharedPtr>& kernels, const std::string& exportName)
-    : mType(type), mKernels(kernels), mExportName(exportName)
-{}
+EntryPointGroupKernels::EntryPointGroupKernels(Type newtype, const std::vector<EntryPointKernel::SharedPtr>& kernels, const std::string& exportName) : mType(newtype), mKernels(kernels), mExportName(exportName) {}
 
 const EntryPointKernel* EntryPointGroupKernels::getKernel(ShaderType type) const {
     for (auto& pKernel : mKernels) {
@@ -94,7 +88,7 @@ ProgramKernels::SharedPtr ProgramKernels::create(
     std::string& log,
     const std::string& name)
 {
-    ProgramKernels::SharedPtr pProgram = std::make_shared<ProgramKernels>(pVersion, pReflector, uniqueEntryPointGroups, name);
+    ProgramKernels::SharedPtr pProgram = ProgramKernels::SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
 
     gfx::IShaderProgram::Desc programDesc = {};
     programDesc.linkingStyle = gfx::IShaderProgram::LinkingStyle::SeparateEntryPointCompilation;
@@ -155,45 +149,11 @@ const EntryPointKernel* ProgramKernels::getKernel(ShaderType type) const {
     return nullptr;
 }
 
-ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
-    : mpProgram(pProgram), mpSlangGlobalScope(pSlangGlobalScope)
-{
+ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope) : mpProgram(pProgram), mpSlangGlobalScope(pSlangGlobalScope) {
     FALCOR_ASSERT(pProgram);
     mID = gID++;
 }
 
-/*
-ProgramVersion::~ProgramVersion() {
-    LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " called!";
-
-    LLOG_WRN << "Deleting mDefines";
-    mDefines.clear();
-    LLOG_WRN << "Deleting mDefines done";
-
-    LLOG_WRN << "Deleting mpReflector";
-    mpReflector = nullptr;
-    LLOG_WRN << "Deleting mpReflector done";
-
-    LLOG_WRN << "Deleting mpSlangGlobalScope";
-    mpSlangGlobalScope.setNull();
-    LLOG_WRN << "Deleting mpSlangGlobalScope done";
-
-    LLOG_WRN << "mpSlangEntryPoints.size() " << mpSlangEntryPoints.size();
-    
-    while(!mpSlangEntryPoints.empty()) {
-        size_t ith = mpSlangEntryPoints.size();
-        LLOG_WRN << "Erasing mpSlangEntryPoints " << ith << " element";
-        mpSlangEntryPoints.pop_back();
-        LLOG_WRN << "Erasing mpSlangEntryPoints " << ith << " element done";
-    }
-
-    LLOG_WRN << "Clear mpKernels";
-    mpKernels.clear();
-    LLOG_WRN << "Clear mpKernels done";
-
-    LLOG_WRN << "ProgramVersion::~ProgramVersion() " << mID << " done !!!";
-}
-*/
 
 void ProgramVersion::init(
     const DefineList& defineList,
@@ -209,7 +169,6 @@ void ProgramVersion::init(
 }
 
 ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
-    //return std::make_shared<ProgramVersion>(pProgram, pSlangGlobalScope);
     return ProgramVersion::SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
 }
 

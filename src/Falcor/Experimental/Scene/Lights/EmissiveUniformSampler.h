@@ -31,46 +31,34 @@
 #include "EmissiveLightSampler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 
-namespace Falcor
-{
-    /** Emissive light sampler using uniform sampling of the lights.
+namespace Falcor {
 
-        This class wraps a LightCollection object, which holds the set of lights to sample.
+/** Emissive light sampler using uniform sampling of the lights.
+
+    This class wraps a LightCollection object, which holds the set of lights to sample.
+*/
+class FALCOR_API EmissiveUniformSampler : public EmissiveLightSampler {
+    FALCOR_OBJECT(EmissiveUniformSampler)
+public:
+    /** EmissiveUniformSampler configuration.
+        Note if you change options, please update SCRIPT_BINDING in EmissiveUniformSampler.cpp
     */
-    class dlldecl EmissiveUniformSampler : public EmissiveLightSampler
-    {
-    public:
-        using SharedPtr = std::shared_ptr<EmissiveUniformSampler>;
-        using SharedConstPtr = std::shared_ptr<const EmissiveUniformSampler>;
-
-        /** EmissiveUniformSampler configuration.
-            Note if you change options, please update SCRIPT_BINDING in EmissiveUniformSampler.cpp
-        */
-        struct Options
-        {
-            // TODO
-            //bool        usePreintegration = true;           ///< Use pre-integrated flux per triangle to guide BVH build/sampling. Only relevant if mUseBVHTree == true.
-        };
-
-        virtual ~EmissiveUniformSampler() = default;
-
-        /** Creates a EmissiveUniformSampler for a given scene.
-            \param[in] pRenderContext The render context.
-            \param[in] pScene The scene.
-            \param[in] options The options to override the default behavior.
-        */
-        static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options = Options());
-
-        /** Returns the current configuration.
-        */
-        const Options& getOptions() const { return mOptions; }
-
-    protected:
-        EmissiveUniformSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
-
-        // Configuration
-        Options mOptions;
+    struct Options {
+        // TODO
+        //bool        usePreintegration = true;           ///< Use pre-integrated flux per triangle to guide BVH build/sampling. Only relevant if mUseBVHTree == true.
     };
+
+    EmissiveUniformSampler(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection, const Options& options = Options());
+    virtual ~EmissiveUniformSampler() = default;
+
+    /** Returns the current configuration.
+    */
+    const Options& getOptions() const { return mOptions; }
+
+protected:
+    // Configuration
+    Options mOptions;
+};
 
 }  // namespace Falcor
 

@@ -154,7 +154,7 @@ Program::DefineList RTXDI::getDefines() const {
     return defines;
 }
 
-void RTXDI::setShaderData(const ShaderVar& rootVar) {
+void RTXDI::bindShaderData(const ShaderVar& rootVar) {
 #if FALCOR_ENABLE_RTXDI
     setShaderDataInternal(rootVar, nullptr);
 #endif

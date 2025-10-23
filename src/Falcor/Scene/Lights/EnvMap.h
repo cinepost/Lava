@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_LIGHTS_ENVMAP_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
@@ -44,10 +45,9 @@ namespace Falcor {
 /** Environment map based radiance probe.
     Utily class for evaluating radiance stored in an lat-long environment map.
 */
-class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
+class FALCOR_API EnvMap : public Object {
+    FALCOR_OBJECT(EnvMap)
   public:
-    using SharedPtr = std::shared_ptr<EnvMap>;
-
     virtual ~EnvMap() = default;
 
     /** Create a new object.
@@ -108,7 +108,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     /** Bind the environment map to a given shader variable.
         \param[in] var Shader variable.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     enum class Changes {
         None            = 0x0,

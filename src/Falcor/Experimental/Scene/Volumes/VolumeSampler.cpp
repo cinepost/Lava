@@ -45,7 +45,7 @@ namespace Falcor {
         return defines;
     }
 
-    void VolumeSampler::setShaderData(const ShaderVar& var) const
+    void VolumeSampler::bindShaderData(const ShaderVar& var) const
     {
         assert(var.isValid());
     }

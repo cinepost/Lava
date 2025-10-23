@@ -31,37 +31,29 @@
 
 namespace Falcor {
 
-RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
-	,uint32_t frameNumber, uint32_t sampleNumber)
+RenderData::RenderData(const std::string& passName, ResourceCache& resourceCache, Dictionary& dict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat ,uint32_t frameNumber, uint32_t sampleNumber)
     : mName(passName)
-    , mpResources(pResourceCache)
-    , mpDictionary(pDict)
+    , mResources(resourceCache)
+    , mDictionary(dict)
     , mDefaultTexDims(defaultTexDims)
     , mDefaultTexFormat(defaultTexFormat)
     , mFrameNumber(frameNumber)
     , mSampleNumber(sampleNumber)
-    , mpNullTexture(nullptr)
-    , mpNullBuffer(nullptr)
 {
-    if (!mpDictionary) mpDictionary = InternalDictionary::create();
 }
 
 const Resource::SharedPtr& RenderData::getResource(const std::string& name) const {
-    return mpResources->getResource(mName + '.' + name);
+    return mResources.getResource(mName + '.' + name);
 }
 
 Texture::SharedPtr RenderData::getTexture(const std::string& name) const {
-    const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asTexture() : mpNullTexture;
+    const auto pResource = getResource(name);
+    return pResource ? pResource->asTexture() : nullptr;
 }
 
 Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
-    const auto pResource = mpResources->getResource(mName + '.' + name);
-    return pResource ? pResource->asBuffer() : mpNullBuffer;
-}
-
-RenderPass::RenderPass(Device::SharedPtr pDevice, const Info& info): mpDevice(pDevice), mInfo(info) {
-    assert(pDevice);
+    const auto pResource = getResource(name);
+    return pResource ? pResource->asBuffer() : nullptr;
 }
 
 }  // namespace Falcor

@@ -89,7 +89,7 @@ namespace Falcor
         /** Bind the grid to a given shader var.
             \param[in] var The shader variable to set the data into.
         */
-        void setShaderData(const ShaderVar& var);
+        void bindShaderData(const ShaderVar& var);
 
         /** Get the minimum index stored in the grid.
         */

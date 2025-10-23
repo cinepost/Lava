@@ -45,15 +45,13 @@ const uint32_t kMaxBVHDepth = 64;
 const uint32_t kMaxLeafTriangleCount = 1 << PackedNode::kTriangleCountBits;
 const uint32_t kMaxLeafTriangleOffset = 1 << PackedNode::kTriangleOffsetBits;
 
-inline float safeACos(float v)
-{
+inline float safeACos(float v) {
 	return std::acos(std::clamp(v, -1.0f, 1.0f));
 }
 
 /** Returns sin(a) based on cos(a) for a in [0,pi].
 */
-inline float sinFromCos(float cosAngle)
-{
+inline float sinFromCos(float cosAngle) {
 	return std::sqrt(std::max(0.f, 1.f - cosAngle * cosAngle));
 }
 
@@ -64,11 +62,9 @@ inline float sinFromCos(float cosAngle)
 	TODO: Move to utility header and add unit test.
 	\return The cosine of the spread angle for the new cone.
 */
-float computeCosConeAngle(const float3& coneDir, const float cosTheta, const float3& otherConeDir, const float cosOtherTheta)
-{
+float computeCosConeAngle(const float3& coneDir, const float cosTheta, const float3& otherConeDir, const float cosOtherTheta) {
 	float cosResult = kInvalidCosConeAngle;
-	if (cosTheta != kInvalidCosConeAngle && cosOtherTheta != kInvalidCosConeAngle)
-	{
+	if (cosTheta != kInvalidCosConeAngle && cosOtherTheta != kInvalidCosConeAngle) {
 		const float cosDiffTheta = dot(coneDir, otherConeDir);
 		const float sinDiffTheta = sinFromCos(cosDiffTheta);
 		const float sinOtherTheta = sinFromCos(cosOtherTheta);
@@ -79,8 +75,7 @@ float computeCosConeAngle(const float3& coneDir, const float cosTheta, const flo
 
 		// If the total angle is less than pi, store the new cone angle.
 		// Otherwise, the bounding cone will be deactivated because it would represent the whole sphere.
-		if (sinTotalTheta > 0.f)
-		{
+		if (sinTotalTheta > 0.f) {
 			cosResult = std::min(cosTheta, cosTotalTheta);
 		}
 	}
@@ -92,11 +87,9 @@ float computeCosConeAngle(const float3& coneDir, const float cosTheta, const flo
 	is what was used previously; the cones it returns aren't as tight as
 	those given by coneUnion().
 */
-float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
-{
+float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult) {
 	float3 dir = aDir + bDir;
-	if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || dir == float3(0.0f))
-	{
+	if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || dir == float3(0.0f)) {
 		cosResult = kInvalidCosConeAngle;
 		return float3(0.0f);
 	}
@@ -109,108 +102,15 @@ float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, 
 	return dir;
 }
 
-/** Given two cones specified by direction vectors and the cosine of
-	their spread angles, returns a cone that bounds both of
-	them. Algorithm 1 in the 2018 Sony EGSR light sampling paper.
-*/
-/*
-float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
-{
-	if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle)
-	{
-		cosResult = kInvalidCosConeAngle;
-		return float3(0.0f);
-	}
-
-	// Swap if necessary so that aTheta > bTheta. Note that the test is
-	// reversed since we're testing the cosine of the angles.
-	if (bCosTheta < aCosTheta)
-	{
-		std::swap(aDir, bDir);
-		std::swap(aCosTheta, bCosTheta);
-	}
-
-	// TODO: this could be optimized to use fewer trig functions.
-	const float theta = safeACos(glm::dot(aDir, bDir));
-	const float aTheta = safeACos(aCosTheta), bTheta = safeACos(bCosTheta);
-	if (std::min(theta + bTheta, glm::pi<float>()) <= aTheta)
-	{
-		// a encloses b and we're done.
-		cosResult = aCosTheta;
-		return aDir;
-	}
-
-	// Merge the two cones. First compute the spread angle of the cone
-	// that will fit all of them.
-	float oTheta = (theta + aTheta + bTheta) / 2;
-	if (oTheta > glm::pi<float>())
-	{
-		cosResult = kInvalidCosConeAngle;
-		return float3(0.0f);
-	}
-
-	// Rotate a's axis toward b just enough so that that oTheta covers
-	// both cones.
-	const float rTheta = oTheta - aTheta;
-	const float3 rDir = glm::cross(aDir, bDir);
-	float3 dir;
-	if (glm::dot(rDir, rDir) < 1e-8)
-	{
-		// The two vectors are effectively pointing in opposite directions.
-
-		// Find some vector that's orthogonal to one of them (via
-		// "Building and Orthonormal Basis, Revisited" in jcgt.)
-		const float sign = aDir.z > 0 ? 1.f : -1.f;
-		const float a = -1.f / (sign + aDir.z);
-		const float b = aDir.x * aDir.y * a;
-		dir = float3(1.f + sign * aDir.x * aDir.x * a, sign * b, -sign * aDir.x);
-		// The spread angle needs to be pi/2 to encompass aDir and
-		// bDir, then aTheta / 2 more on top of that. (Recall that
-		// aTheta > bTheta, so we don't need to worry about bTheta).
-		// Note that we could rotate dir around the vector cross(dir,
-		// aTheta) and then be able to use the tighter spread angle
-		// oTheta computed before, but it probably doesn't matter much
-		// in this (rare) case.
-		oTheta = std::min(glm::pi<float>(), glm::half_pi<float>() + aTheta);
-		cosResult = std::cos(oTheta);
-	} else {
-		// Rotate aDir by an angle of rTheta around the axis rDir.
-		const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(), rTheta, rDir);
-		dir = rotationMatrix * float4(aDir, 0);
-		cosResult = std::cos(oTheta);
-	}
-
-	// TODO: write a unit test.
-	// Testing code: make sure both a and b are inside the result.
-	auto checkInside = [&](float3 d, float theta) {
-						   // Make sure that sum of the angle between
-						   // the two cone vectors and the spread angle
-						   // of the given cone is still within the
-						   // extent of the result cone.
-						   float cosDelta = glm::dot(d, dir);
-						   float delta = safeACos(cosDelta);
-						   bool dInCone = (delta + theta <= oTheta * 1.01f ||
-										   delta + theta <= oTheta + 1e-3f);
-						   if (!dInCone) {
-							   LLOG_ERR << "coneUnion error! angle diff " << std::to_string(delta + theta) << " > spread " << std::to_string(oTheta);
-							   assert(dInCone);
-						   }
-					   };
-	checkInside(aDir, aTheta);
-	checkInside(bDir, bTheta);
-
-	return dir;
-}
-*/
-
 /** Returns the volume of a bounding box.
 	\param[in] epsilon Replace dimensions that are zero by this value.
 	\return the volume of the bounding box if it is valid, -inf otherwise.
 */
 float aabbVolume(const AABB& bb, float epsilon) {
 	if (bb.valid() == false) {
-    return -std::numeric_limits<float>::infinity();
+    	return -std::numeric_limits<float>::infinity();
 	}
+
 	const float3 dims = max(float3(epsilon), bb.extent());
 	return dims.x * dims.y * dims.z;
 }
@@ -221,86 +121,83 @@ namespace Falcor {
 
 static_assert(sizeof(PackedNode) % 16 == 0, "PackedNode size should be a multiple of 16");
 
-LightBVHBuilder::SharedPtr LightBVHBuilder::create(const Options& options) {
-	return SharedPtr(new LightBVHBuilder(options));
-}
+void LightBVHBuilder::build(RenderContext* pRenderContext, LightBVH& bvh) {
+	//FALCOR_PROFILE(pRenderContext, "LightBVHBuilder::build()");
 
-void LightBVHBuilder::build(LightBVH& bvh) {
-	auto pDevice = bvh.device();
-	PROFILE(pDevice, "LightBVHBuilder::build()");
+    bvh.clear();
+    FALCOR_ASSERT(!bvh.isValid() && bvh.mNodes.empty());
 
-	bvh.clear();
-	assert(!bvh.isValid() && bvh.mNodes.empty());
+    // Get global list of emissive triangles.
+    FALCOR_ASSERT(bvh.mpLightCollection);
+    const auto& triangles = bvh.mpLightCollection->getMeshLightTriangles(pRenderContext);
+    if (triangles.empty()) return;
 
-	// Get global list of emissive triangles.
-	assert(bvh.mpLightCollection);
-	const auto& triangles = bvh.mpLightCollection->getMeshLightTriangles();
-	if (triangles.empty()) return;
+    // Create list of triangles that should be included in BVH.
+    // For each triangle, precompute data we need for the build.
+    BuildingData data(bvh.mNodes);
+    data.trianglesData.reserve(triangles.size());
 
-	// Create list of triangles that should be included in BVH.
-	// For each triangle, precompute data we need for the build.
-	BuildingData data(bvh.mNodes);
-	data.trianglesData.reserve(triangles.size());
+    for (size_t i = 0; i < triangles.size(); i++) {
+        if (!mOptions.usePreintegration || triangles[i].flux > 0.f) {
+            LightBVHBuilder::TriangleSortData tri;
+            for (uint32_t j = 0; j < 3; j++) {
+                tri.bounds |= triangles[i].vtx[j].pos;
+            }
+            tri.center = triangles[i].getCenter();
+            tri.coneDirection = triangles[i].normal;
+            tri.cosConeAngle = 1.f; // Single flat emitter => normal bounding cone angle is zero.
+            tri.flux = triangles[i].flux;
+            tri.triangleIndex = static_cast<uint32_t>(i);
 
-	for (size_t i = 0; i < triangles.size(); i++) {
-		if (!mOptions.usePreintegration || triangles[i].flux > 0.f) {
-			LightBVHBuilder::TriangleSortData tri;
-			for (uint32_t j = 0; j < 3; j++) {
-				tri.bounds |= triangles[i].vtx[j].pos;
-			}
-			tri.center = triangles[i].getCenter();
-			tri.coneDirection = triangles[i].normal;
-			tri.cosConeAngle = 1.f; // Single flat emitter => normal bounding cone angle is zero.
-			tri.flux = triangles[i].flux;
-			tri.triangleIndex = static_cast<uint32_t>(i);
+            data.trianglesData.push_back(tri);
+        }
+    }
 
-			data.trianglesData.push_back(tri);
-		}
-	}
+    // If there are no non-culled triangles, we're done.
+    if (data.trianglesData.empty()) return;
 
-	// If there are no non-culled triangles, we're done.
-	if (data.trianglesData.empty()) return;
+    // Validate options.
+    if (mOptions.maxTriangleCountPerLeaf > kMaxLeafTriangleCount) {
+        FALCOR_THROW("Max triangle count per leaf exceeds the maximum supported ({})", kMaxLeafTriangleCount);
+    }
 
-	// Validate options.
-	if (mOptions.maxTriangleCountPerLeaf > kMaxLeafTriangleCount) {
-		throw std::runtime_error(("Max triangle count per leaf exceeds the maximum supported (" + std::to_string(kMaxLeafTriangleCount) + ")").c_str());
-	}
-	if (data.trianglesData.size() > kMaxLeafTriangleOffset + kMaxLeafTriangleCount) {
-		throw std::runtime_error(("Emissive triangle count exceeds the maximum supported (" + std::to_string(kMaxLeafTriangleOffset + kMaxLeafTriangleCount) + ")").c_str());
-	}
+    if (data.trianglesData.size() > kMaxLeafTriangleOffset + kMaxLeafTriangleCount) {
+        FALCOR_THROW("Emissive triangle count exceeds the maximum supported ({})", kMaxLeafTriangleOffset + kMaxLeafTriangleCount);
+    }
 
-	// Allocate temporary memory for the BVH build.
-	// To be grossly conservative, assume each triangle requires two nodes.
-	// This is only system RAM and shouldn't be that much, so it's not worth being more careful about it.
-	// TODO: Better estimate of how many nodes we will need.
-	data.nodes.clear();
-	data.nodes.reserve(2 * data.trianglesData.size());
-	data.triangleIndices.reserve(data.trianglesData.size());
+    // Allocate temporary memory for the BVH build.
+    // To be grossly conservative, assume each triangle requires two nodes.
+    // This is only system RAM and shouldn't be that much, so it's not worth being more careful about it.
+    // TODO: Better estimate of how many nodes we will need.
+    data.nodes.clear();
+    data.nodes.reserve(2 * data.trianglesData.size());
+    data.triangleIndices.reserve(data.trianglesData.size());
 
-	const uint64_t invalidBitmask = std::numeric_limits<uint64_t>::max();
-	data.triangleBitmasks.resize(triangles.size(), invalidBitmask); // This is sized based on input triangle count, as it's indexed by global triangle index.
+    const uint64_t invalidBitmask = std::numeric_limits<uint64_t>::max();
+    data.triangleBitmasks.resize(triangles.size(), invalidBitmask); // This is sized based on input triangle count, as it's indexed by global triangle index.
 
-	// Build the tree.
-	SplitHeuristicFunction splitFunc = getSplitFunction(mOptions.splitHeuristicSelection);
-	buildInternal(mOptions, splitFunc, 0ull, 0, Range(0, static_cast<uint32_t>(data.trianglesData.size())), data);
-	assert(!data.nodes.empty());
+    // Build the tree.
+    SplitHeuristicFunction splitFunc = getSplitFunction(mOptions.splitHeuristicSelection);
+    buildInternal(mOptions, splitFunc, 0ull, 0, Range(0, static_cast<uint32_t>(data.trianglesData.size())), data);
+    FALCOR_ASSERT(!data.nodes.empty());
 
-	size_t numValid = 0;
-	for (auto mask : data.triangleBitmasks)
-		if (mask != invalidBitmask) numValid++;
-	assert(numValid == data.trianglesData.size());
+    size_t numValid = 0;
+    for (auto mask : data.triangleBitmasks) {
+        if (mask != invalidBitmask) numValid++;
+    }
+    FALCOR_ASSERT(numValid == data.trianglesData.size());
 
-	// Compute per-node light bounding cones.
-	float cosConeAngle;
-	computeLightingConesInternal(0, data, cosConeAngle);
+    // Compute per-node light bounding cones.
+    float cosConeAngle;
+    computeLightingConesInternal(0, data, cosConeAngle);
 
-	// The BVH is ready, mark it as valid and upload the data.
-	bvh.mIsValid = true;
-	bvh.mMaxTriangleCountPerLeaf = mOptions.maxTriangleCountPerLeaf;
-	bvh.uploadCPUBuffers(data.triangleIndices, data.triangleBitmasks);
+    // The BVH is ready, mark it as valid and upload the data.
+    bvh.mIsValid = true;
+    bvh.mMaxTriangleCountPerLeaf = mOptions.maxTriangleCountPerLeaf;
+    bvh.uploadCPUBuffers(data.triangleIndices, data.triangleBitmasks);
 
-	// Computate metadata.
-	bvh.finalize();
+    // Computate metadata.
+    bvh.finalize();
 }
 
 LightBVHBuilder::LightBVHBuilder(const Options& options) : mOptions(options)
@@ -310,90 +207,83 @@ LightBVHBuilder::LightBVHBuilder(const Options& options) : mOptions(options)
 uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuristicFunction& splitHeuristic, uint64_t bitmask, uint32_t depth, const Range& triangleRange, BuildingData& data) {
 	assert(triangleRange.begin < triangleRange.end);
 
-	// Compute the AABB and total flux of the node.
-	float nodeFlux = 0.f;
-	AABB nodeBounds;
+    // Compute the AABB and total flux of the node.
+    float nodeFlux = 0.f;
+    AABB nodeBounds;
+    for (uint32_t dataIndex = triangleRange.begin; dataIndex < triangleRange.end; ++dataIndex) {
+        nodeBounds |= data.trianglesData[dataIndex].bounds;
+        nodeFlux += data.trianglesData[dataIndex].flux;
+    }
+    FALCOR_ASSERT(nodeBounds.valid());
 
-	for (uint32_t dataIndex = triangleRange.begin; dataIndex < triangleRange.end; ++dataIndex) {
-		nodeBounds |= data.trianglesData[dataIndex].bounds;
-		nodeFlux += data.trianglesData[dataIndex].flux;
-	}
-	assert(nodeBounds.valid());
+    data.currentNodeFlux = nodeFlux;
 
-	data.currentNodeFlux = nodeFlux;
+    bool trySplitting = triangleRange.length() > (options.createLeavesASAP ? options.maxTriangleCountPerLeaf : 1);
+    const SplitResult splitResult = trySplitting ? splitHeuristic(data, triangleRange, nodeBounds, options) : SplitResult();
 
-	bool trySplitting = triangleRange.length() > (options.createLeavesASAP ? options.maxTriangleCountPerLeaf : 1);
-	const SplitResult splitResult = trySplitting ? splitHeuristic(data, triangleRange, nodeBounds, options) : SplitResult();
+    // If we should split, then create an internal node and split.
+    if (splitResult.isValid()) {
+        FALCOR_ASSERT(triangleRange.begin < splitResult.triangleIndex && splitResult.triangleIndex < triangleRange.end);
 
-	// If we should split, then create an internal node and split.
-	if (splitResult.isValid()) {
-		assert(triangleRange.begin < splitResult.triangleIndex && splitResult.triangleIndex < triangleRange.end);
+        // Sort the centroids and update the lists accordingly.
+        auto comp = [dim = splitResult.axis](const TriangleSortData& d1, const TriangleSortData& d2) { return d1.bounds.center()[dim] < d2.bounds.center()[dim]; };
+        std::nth_element(std::begin(data.trianglesData) + triangleRange.begin, std::begin(data.trianglesData) + splitResult.triangleIndex, std::begin(data.trianglesData) + triangleRange.end, comp);
 
-		// Sort the centroids and update the lists accordingly.
-		auto comp = [dim = splitResult.axis](const TriangleSortData& d1, const TriangleSortData& d2) { return d1.bounds.center()[dim] < d2.bounds.center()[dim]; };
-		std::nth_element(std::begin(data.trianglesData) + triangleRange.begin, std::begin(data.trianglesData) + splitResult.triangleIndex, std::begin(data.trianglesData) + triangleRange.end, comp);
+        // Allocate internal node.
+        FALCOR_ASSERT(data.nodes.size() < std::numeric_limits<uint32_t>::max());
+        const uint32_t nodeIndex = (uint32_t)data.nodes.size();
+        data.nodes.push_back({});
 
-		// Allocate internal node.
-		assert(data.nodes.size() < std::numeric_limits<uint32_t>::max());
-		const uint32_t nodeIndex = (uint32_t)data.nodes.size();
-		data.nodes.push_back({});
+        InternalNode node = {};
+        node.attribs.setAABB(nodeBounds.minPoint, nodeBounds.maxPoint);
+        node.attribs.flux = nodeFlux;
+        // The lighting normal bounding cone will be computed later when all leaf nodes have been created.
 
-		InternalNode node = {};
-		node.attribs.setAABB(nodeBounds.minPoint, nodeBounds.maxPoint);
-		node.attribs.flux = nodeFlux;
-		// The lighting normal bounding cone will be computed later when all leaf nodes have been created.
+        if (depth >= kMaxBVHDepth) {
+            // This is an unrecoverable error since we use bit masks to represent the traversal path from
+            // the root node to each leaf node in the tree, which is necessary for pdf computation with MIS.
+            FALCOR_THROW("BVH depth of {} reached. Maximum of {} allowed.", depth + 1, kMaxBVHDepth);
+        }
 
-		if (depth >= kMaxBVHDepth) {
-			// This is an unrecoverable error since we use bit masks to represent the traversal path from
-			// the root node to each leaf node in the tree, which is necessary for pdf computation with MIS.
-			throw std::runtime_error(("BVH depth of " + std::to_string(depth + 1) + " reached; maximum of " + std::to_string(kMaxBVHDepth) + " allowed.").c_str());
-		}
+        uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
+        uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
 
-		#ifdef _DEBUG
-		uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
-		#endif // _DEBUG
-		uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
+        FALCOR_ASSERT(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.
+        node.rightChildIdx = rightIndex;
 
-		#ifdef _DEBUG
-		assert(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.
-		#endif // _DEBUG
-		
-		node.rightChildIdx = rightIndex;
+        data.nodes[nodeIndex].setInternalNode(node);
+        return nodeIndex;
+    } else { 
+    	// No split => create leaf node
+        FALCOR_ASSERT(triangleRange.length() <= options.maxTriangleCountPerLeaf);
 
-		data.nodes[nodeIndex].setInternalNode(node);
-		return nodeIndex;
-	}
-	else // No split => create leaf node
-	{
-		assert(triangleRange.length() <= options.maxTriangleCountPerLeaf);
+        // Allocate leaf node.
+        FALCOR_ASSERT(data.nodes.size() < std::numeric_limits<uint32_t>::max());
+        const uint32_t nodeIndex = (uint32_t)data.nodes.size();
+        data.nodes.push_back({});
 
-		// Allocate leaf node.
-		assert(data.nodes.size() < std::numeric_limits<uint32_t>::max());
-		const uint32_t nodeIndex = (uint32_t)data.nodes.size();
-		data.nodes.push_back({});
+        LeafNode node = {};
+        node.attribs.setAABB(nodeBounds.minPoint, nodeBounds.maxPoint);
+        node.attribs.flux = nodeFlux;
+        float cosTheta;
+        node.attribs.coneDirection = computeLightingCone(triangleRange, data, cosTheta);
+        node.attribs.cosConeAngle = cosTheta;
 
-		LeafNode node = {};
-		node.attribs.setAABB(nodeBounds.minPoint, nodeBounds.maxPoint);
-		node.attribs.flux = nodeFlux;
-		float cosTheta;
-		node.attribs.coneDirection = computeLightingCone(triangleRange, data, cosTheta);
-		node.attribs.cosConeAngle = cosTheta;
+        node.triangleCount = triangleRange.length();
+        node.triangleOffset = (uint32_t)data.triangleIndices.size();
+        FALCOR_ASSERT(node.triangleCount < kMaxLeafTriangleCount);
+        FALCOR_ASSERT(node.triangleOffset < kMaxLeafTriangleOffset);
 
-		node.triangleCount = triangleRange.length();
-		node.triangleOffset = (uint32_t)data.triangleIndices.size();
-		assert(node.triangleCount < kMaxLeafTriangleCount);
-		assert(node.triangleOffset < kMaxLeafTriangleOffset);
+        for (uint32_t triangleIdx = triangleRange.begin, index = 0; triangleIdx < triangleRange.end; ++triangleIdx, ++index) {
+            uint32_t globalTriangleIndex = data.trianglesData[triangleIdx].triangleIndex;
+            data.triangleIndices.push_back(globalTriangleIndex);
+            data.triangleBitmasks[globalTriangleIndex] = bitmask;
+        }
+        FALCOR_ASSERT(data.triangleIndices.size() == node.triangleOffset + node.triangleCount);
 
-		for (uint32_t triangleIdx = triangleRange.begin, index = 0; triangleIdx < triangleRange.end; ++triangleIdx, ++index) {
-			uint32_t globalTriangleIndex = data.trianglesData[triangleIdx].triangleIndex;
-			data.triangleIndices.push_back(globalTriangleIndex);
-			data.triangleBitmasks[globalTriangleIndex] = bitmask;
-		}
-		assert(data.triangleIndices.size() == node.triangleOffset + node.triangleCount);
-
-		data.nodes[nodeIndex].setLeafNode(node);
-		return nodeIndex;
-	}
+        data.nodes[nodeIndex].setLeafNode(node);
+        return nodeIndex;
+    }
 }
 
 float3 LightBVHBuilder::computeLightingConesInternal(const uint32_t nodeIndex, BuildingData& data, float& cosConeAngle) {
@@ -409,9 +299,7 @@ float3 LightBVHBuilder::computeLightingConesInternal(const uint32_t nodeIndex, B
 		float3 rightNodeConeDirection = computeLightingConesInternal(rightIndex, data, rightNodeCosConeAngle);
 
 		// TODO: Asserts in coneUnion
-		//float3 coneDirection = coneUnion(leftNodeConeDirection, leftNodeCosConeAngle,
-		float3 coneDirection = coneUnionOld(leftNodeConeDirection, leftNodeCosConeAngle,
-			rightNodeConeDirection, rightNodeCosConeAngle, cosConeAngle);
+		float3 coneDirection = coneUnionOld(leftNodeConeDirection, leftNodeCosConeAngle, rightNodeConeDirection, rightNodeCosConeAngle, cosConeAngle);
 
 		// Update bounding cone.
 		node.attribs.cosConeAngle = cosConeAngle;
@@ -453,8 +341,7 @@ float3 LightBVHBuilder::computeLightingCone(const Range& triangleRange, const Bu
 LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const AABB& nodeBounds, const Options& /*parameters*/) {
 	// Find the largest dimension.
 	float3 dimensions = nodeBounds.extent();
-	uint32_t dimension = dimensions[2] >= dimensions[0] && dimensions[2] >= dimensions[1] ?
-		2 : (dimensions[1] >= dimensions[0] ? 1 : 0);
+	uint32_t dimension = dimensions[2] >= dimensions[0] && dimensions[2] >= dimensions[1] ? 2 : (dimensions[1] >= dimensions[0] ? 1 : 0);
 
 	// Split the triangle range half-way.
 	SplitResult result;

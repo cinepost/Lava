@@ -25,31 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-
+#include "ResolvePass.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/RenderContext.h"
-#include "ResolvePass.h"
+
 
 namespace Falcor {
-
-const RenderPass::Info ResolvePass::kInfo { "ResolvePass", "Resolve a multi-sampled texture." };
 
 static const std::string kDst = "dst";
 static const std::string kSrc = "src";
 
-ResolvePass::ResolvePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {}
+ResolvePass::ResolvePass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
 
 RenderPassReflection ResolvePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kSrc, "Multi-sampled texture").format(mFormat).texture2D(0, 0, 0);
     reflector.addOutput(kDst, "Destination texture. Must have a single sample").format(mFormat).texture2D(0, 0, 1);
     return reflector;
-}
-
-ResolvePass::SharedPtr ResolvePass::create(RenderContext* pRenderContext, const Dictionary& dictionary) {
-    assert(pRenderContext->device());    
-    return SharedPtr(new ResolvePass(pRenderContext->device()));
 }
 
 void ResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {

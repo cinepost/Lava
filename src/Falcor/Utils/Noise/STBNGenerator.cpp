@@ -90,7 +90,7 @@ DefineList STBNGenerator::getDefines() const {
     return defines;
 }
 
- void STBNGenerator::setShaderData(ShaderVar const& var) const {
+ void STBNGenerator::bindShaderData(ShaderVar const& var) const {
     if(mAsync && mDirty) {
         mGenerateNoiseDataTask.get();
         uploadNoiseData();

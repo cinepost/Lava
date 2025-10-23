@@ -52,7 +52,7 @@ void Object::incRef() const {
 void Object::decRef(bool dealloc) const noexcept {
     uint32_t refCount = mRefCount.fetch_sub(1);
     if (refCount <= 0) {
-        reportFatalErrorAndTerminate("Internal error: Object reference count < 0!");
+        LLOG_ERR << "Internal error: Object reference count < 0!";
     } else if (refCount == 1) {
 #if FALCOR_ENABLE_OBJECT_TRACKING
         {

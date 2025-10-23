@@ -29,21 +29,23 @@
 #define SRC_FALCOR_RENDERGRAPH_RESOURCECACHE_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/RenderGraph/RenderPassReflection.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Resource.h"
+#include "Falcor/RenderGraph/RenderPassReflection.h"
+
 
 namespace Falcor {
 
 class Device;
 
-class dlldecl ResourceCache : public std::enable_shared_from_this<ResourceCache> {
- public:
-    using SharedPtr = std::shared_ptr<ResourceCache>;
+class FALCOR_API ResourceCache : public Object {
+    FALCOR_OBJECT(ResourceCache)
+  public:
     using ResourcesMap = std::unordered_map<std::string, Resource::SharedPtr>;
 
     /** Create a new object
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice);
 
     /** Properties to use during resource creation when its property has not been fully specified.
     */
@@ -78,15 +80,13 @@ class dlldecl ResourceCache : public std::enable_shared_from_this<ResourceCache>
     /** Allocate all resources that need to be created/updated.
         This includes new resources, resources whose properties have been updated since last allocation call.
     */
-    void allocateResources(const DefaultProperties& params);
+    void allocateResources(Falcor::SharedPtr<Device> pDevice, const DefaultProperties& params);
 
     /** Clears all registered field/resource properties and allocated resources.
     */
     void reset();
 
  private:
-    ResourceCache(std::shared_ptr<Device> pDevice);// = default;
-
     struct ResourceData {
         RenderPassReflection::Field field;      // Holds merged properties for aliased resources
         std::pair<uint32_t, uint32_t> lifetime; // Time range where this resource is being used
@@ -101,8 +101,6 @@ class dlldecl ResourceCache : public std::enable_shared_from_this<ResourceCache>
 
     // References to output resources not to be allocated by the render graph
     ResourcesMap mExternalResources;
-
-    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

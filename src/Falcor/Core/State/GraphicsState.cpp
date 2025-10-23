@@ -32,19 +32,19 @@
 
 namespace Falcor {
 
-static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t) {
+static GraphicsStateObjectDesc::PrimitiveType topology2Type(Vao::Topology t) {
     switch (t) {
         case Vao::Topology::PointList:
-            return GraphicsStateObject::PrimitiveType::Point;
+            return GraphicsStateObjectDesc::PrimitiveType::Point;
         case Vao::Topology::LineList:
         case Vao::Topology::LineStrip:
-            return GraphicsStateObject::PrimitiveType::Line;
+            return GraphicsStateObjectDesc::PrimitiveType::Line;
         case Vao::Topology::TriangleList:
         case Vao::Topology::TriangleStrip:
-            return GraphicsStateObject::PrimitiveType::Triangle;
+            return GraphicsStateObjectDesc::PrimitiveType::Triangle;
         default:
             FALCOR_UNREACHABLE();
-            return GraphicsStateObject::PrimitiveType::Undefined;
+            return GraphicsStateObjectDesc::PrimitiveType::Undefined;
     }
 }
 
@@ -52,7 +52,7 @@ Falcor::SharedPtr<GraphicsState> GraphicsState::create(Falcor::SharedPtr<Device>
     return Falcor::SharedPtr<GraphicsState>(new GraphicsState(pDevice));
 }
 
-GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDesc(pDevice) {
+GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice) {
     uint32_t vpCount = getMaxViewportCount();
 
     // Create the viewports
@@ -129,7 +129,7 @@ void GraphicsState::popFbo(bool setVp0Sc0) {
     mFboStack.pop();
 }
 
-GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao) {
+GraphicsState& GraphicsState::setVao(const Falcor::SharedPtr<Vao>& pVao) {
     if (mpVao != pVao) {
         mpVao = pVao;
         mpGsoGraph->walk(pVao ? (void*)pVao->getVertexLayout().get() : nullptr);

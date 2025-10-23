@@ -123,8 +123,6 @@ class FALCOR_API Scene : public Object {
     using GeometryType = Falcor::GeometryType;
     using GeometryTypeFlags = Falcor::GeometryTypeFlags;
 
-    using UpdateCallback = std::function<void(const Scene::SharedPtr& pScene, double currentTime)>;
-
     static const uint32_t kMaxBonesPerVertex = 4;
     static const uint32_t kInvalidBone = -1;
     static const uint32_t kInvalidGrid = -1;
@@ -135,7 +133,13 @@ class FALCOR_API Scene : public Object {
 
     //static const FileDialogFilterVec& getFileExtensionFilters();
 
-    Falcor::SharedPtr<Device> device() { return mpDevice; };
+    const Falcor::SharedPtr<Device>& getDevice() { return mpDevice; };
+
+    /** Bind the scene to a given shader var.
+        Note that the scene may change between calls to update().
+        The caller should rebind the scene data before executing any program that accesses the scene.
+    */
+    void bindShaderData(const ShaderVar& sceneVar) const { sceneVar = mpSceneBlock; }
 
     /** Get default scene defines.
         This is the minimal set of defines needed for a program to compile that imports the scene module.
@@ -426,14 +430,6 @@ class FALCOR_API Scene : public Object {
     /** Get the metadata.
     */
     const Metadata& getMetadata() { return mMetadata; }
-
-    /** Get the scene update callback.
-    */
-    UpdateCallback getUpdateCallback() const { return mUpdateCallback; }
-
-    /** Set the scene update callback.
-    */
-    void setUpdateCallback(UpdateCallback updateCallback) { mUpdateCallback = updateCallback; }
 
     /** Access the scene's currently selected camera to change properties or to use elsewhere.
     */
@@ -793,7 +789,7 @@ class FALCOR_API Scene : public Object {
     /** Get LightLinker
     */
 
-    Falcor::SharedPtr<LightLinker>& getLightLinker() { return mpLightLinker; }
+    LightLinker* getLightLinker() { return mpLightLinker.get(); }
 
     /** Get the environment map or nullptr if it doesn't exist.
     */
@@ -877,7 +873,7 @@ class FALCOR_API Scene : public Object {
 
     /** Render the scene using raytracing
     */
-    void raytrace(RenderContext* pContext, Program* pProgram, const Falcor::SharedPtr<RtProgramVars>& pVars, uint3 dispatchDims);
+    void raytrace(RenderContext* pRenderContext, Program* pProgram, const Falcor::SharedPtr<RtProgramVars>& pVars, uint3 dispatchDims);
 
     /** Get the scene's VAO for meshes.
         The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
@@ -977,8 +973,6 @@ class FALCOR_API Scene : public Object {
     */
     uint32_t getParentNodeID(uint32_t nodeID) const;
 
-    static void nullTracePass(RenderContext* pContext, const uint2& dim);
-
     std::string getScript(const std::string& sceneVar);
 
   private:
@@ -1016,7 +1010,7 @@ public:
         // Lights
         std::vector<Light::SharedPtr>   lights;                 ///< List of light sources.
         LightProfile::SharedPtr         pLightProfile;          ///< Global light profile.
-        Falcor::SharedPtr<LightLinker>  pLightLinker;           ///< Scene lights linker.
+        std::unique_ptr<LightLinker>    pLightLinker;           ///< Scene lights linker.
 
         // Materials
         MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
@@ -1225,10 +1219,10 @@ public:
     UpdateFlags updateEnvMap(bool forceUpdate);
     UpdateFlags updateMaterials(bool forceUpdate);
     UpdateFlags updateLightLinker(bool forceUpdate);
-    UpdateFlags updateGeometry(bool forceUpdate);
+    UpdateFlags updateGeometry(RenderContext* pRenderContext, bool forceUpdate);
     UpdateFlags updateProceduralPrimitives(bool forceUpdate);
     UpdateFlags updateRaytracingAABBData(bool forceUpdate);
-    UpdateFlags updateDisplacement(bool forceUpdate);
+    UpdateFlags updateDisplacement(RenderContext* pRenderContext, bool forceUpdate);
     UpdateFlags updateSDFGrids(RenderContext* pRenderContext);
 
     void updateGeometryStats();
@@ -1347,7 +1341,7 @@ public:
     std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
     std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
     LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
-    Falcor::SharedPtr<LightLinker>  mpLightLinker;
+    std::unique_ptr<LightLinker>  mpLightLinker;
     EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
     bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
     LightProfile::SharedPtr mpLightProfile;                     ///< Global light profile.
@@ -1363,8 +1357,7 @@ public:
     Metadata mMetadata;                                         ///< Importer-provided metadata.
     RenderSettings mRenderSettings;                             ///< Render settings.
     RenderSettings mPrevRenderSettings;
-    UpdateCallback mUpdateCallback;                             ///< Scene update callback.
-
+    
     // Scene block resources
     Buffer::SharedPtr mpGeometryInstancesBuffer;
     Buffer::SharedPtr mpMeshesBuffer;
@@ -1390,7 +1383,7 @@ public:
 
     // Camera
     CameraControllerType mCamCtrlType = CameraControllerType::FirstPerson;
-    CameraController::SharedPtr mpCamCtrl;
+    std::unique_ptr<CameraController> mpCamCtrl;
     std::vector<Camera::SharedPtr> mCameras;
     uint32_t mSelectedCamera = 0;
     float mCameraSpeed = 1.0f;
@@ -1411,7 +1404,7 @@ public:
     std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontClockwiseRS;
     std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontCounterClockwiseRS;
     UpdateFlags mUpdates = UpdateFlags::All;
-    AnimationController::UniquePtr mpAnimationController;
+    std::unique_ptr<AnimationController> mpAnimationController;
 
     // Raytracing data
     RtAccelerationStructure::UpdateMode mTlasUpdateMode = RtAccelerationStructure::UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene

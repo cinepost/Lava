@@ -66,7 +66,7 @@ namespace Falcor {
         /** Bind the volume sampler to a given shader variable.
             \param[in] var Shader variable.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         /** Returns the current configuration.
         */

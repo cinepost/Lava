@@ -184,7 +184,7 @@ Texture::SharedPtr SSAO::generateAOMap(RenderContext* pContext, const Camera* pC
 
     {
         ShaderVar var = mpSSAOPass["PerFrameCB"];
-        pCamera->setShaderData(var["gCamera"]);
+        pCamera->bindShaderData(var["gCamera"]);
     }
 
     // Update state/vars

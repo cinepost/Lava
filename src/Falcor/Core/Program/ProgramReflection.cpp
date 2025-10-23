@@ -1111,15 +1111,11 @@ ProgramReflection::SharedConstPtr ProgramReflection::create(
     const std::vector<slang::EntryPointLayout*>& pSlangEntryPointReflectors,
     std::string& log)
 {
-    return std::make_shared<ProgramReflection>(pProgramVersion, pSlangReflector, pSlangEntryPointReflectors, log);
+    return make_shared_ptr<ProgramReflection>(pProgramVersion, pSlangReflector, pSlangEntryPointReflectors, log);
 }
 
 void ProgramReflection::finalize(){
     mpDefaultBlock->finalize();
-}
-
-ProgramVersion::SharedConstPtr ProgramReflection::getProgramVersion() const {
-    return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedConstPtr();
 }
 
 ProgramReflection::ProgramReflection(ProgramVersion const* pProgramVersion) : mpProgramVersion(pProgramVersion) {
@@ -1223,7 +1219,7 @@ EntryPointGroupReflection::SharedPtr EntryPointGroupReflection::create(
         }
     }
 
-    auto pGroup = std::make_shared<EntryPointGroupReflection>(pProgramVersion);
+    auto pGroup = EntryPointGroupReflection::SharedPtr(new EntryPointGroupReflection(pProgramVersion));
 
     // The layout for an entry point either represents a Slang `struct` type
     // for the entry-point parameters, or it represents a Slang `ConstantBuffer<X>`
@@ -1531,12 +1527,8 @@ int32_t ReflectionStructType::addMember(const ReflectionVar::SharedConstPtr& pVa
     return memberIndex;
 }
 
-ReflectionVar::SharedPtr ReflectionVar::create(
-    const std::string& name,
-    const ReflectionType::SharedConstPtr& pType,
-    const ShaderVarOffset& bindLocation)
-{
-    return std::make_shared<ReflectionVar>(name, pType, bindLocation);
+ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, const ShaderVarOffset& bindLocation) {
+    return make_shared_ptr<ReflectionVar>(name, pType, bindLocation);
 }
 
 ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, const ShaderVarOffset& bindLocation)
@@ -1548,7 +1540,7 @@ ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::Shar
 ParameterBlockReflection::ParameterBlockReflection(ProgramVersion const* pProgramVersion) : mpProgramVersion(pProgramVersion) {}
 
 ParameterBlockReflection::SharedPtr ParameterBlockReflection::createEmpty(ProgramVersion const* pProgramVersion) {
-    return std::make_shared<ParameterBlockReflection>(pProgramVersion);
+    return make_shared_ptr<ParameterBlockReflection>(pProgramVersion);
 }
 
 void ParameterBlockReflection::setElementType(const ReflectionType::SharedConstPtr& pElementType) {
@@ -1652,10 +1644,6 @@ const ParameterBlockReflection::DefaultConstantBufferBindingInfo& ParameterBlock
 
 void ParameterBlockReflection::finalize() {
     FALCOR_ASSERT(getElementType()->getResourceRangeCount() == mResourceRanges.size());
-}
-
-std::shared_ptr<const ProgramVersion> ParameterBlockReflection::getProgramVersion() const {
-    return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedPtr();
 }
 
 ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(std::string_view name) const {
@@ -1781,7 +1769,7 @@ ReflectionArrayType::SharedPtr ReflectionArrayType::create(
     ByteSize byteSize,
     slang::TypeLayoutReflection* pSlangTypeLayout)
 {
-    return std::make_shared<ReflectionArrayType>(arraySize, arrayStride, pType, byteSize, pSlangTypeLayout);
+    return make_shared_ptr<ReflectionArrayType>(arraySize, arrayStride, pType, byteSize, pSlangTypeLayout);
 }
 
 ReflectionArrayType::ReflectionArrayType(
@@ -1812,7 +1800,7 @@ ReflectionResourceType::SharedPtr ReflectionResourceType::create(
     ShaderAccess shaderAccess,
     slang::TypeLayoutReflection* pSlangTypeLayout)
 {
-    return std::make_shared<ReflectionResourceType>(type, dims, structuredType, retType, shaderAccess, pSlangTypeLayout);
+    return make_shared_ptr<ReflectionResourceType>(type, dims, structuredType, retType, shaderAccess, pSlangTypeLayout);
 }
 
 ReflectionResourceType::ReflectionResourceType(
@@ -1842,7 +1830,7 @@ void ReflectionResourceType::setStructType(const ReflectionType::SharedConstPtr&
 }
 
 ReflectionBasicType::SharedPtr ReflectionBasicType::create(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout) {
-    return std::make_shared<ReflectionBasicType>(type, isRowMajor, size, pSlangTypeLayout);
+    return make_shared_ptr<ReflectionBasicType>(type, isRowMajor, size, pSlangTypeLayout);
 }
 
 ReflectionBasicType::ReflectionBasicType(Type type, bool isRowMajor, size_t size, slang::TypeLayoutReflection* pSlangTypeLayout)
@@ -1850,7 +1838,7 @@ ReflectionBasicType::ReflectionBasicType(Type type, bool isRowMajor, size_t size
 {}
 
 ReflectionStructType::SharedPtr ReflectionStructType::create(size_t size, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout) {
-    return std::make_shared<ReflectionStructType>(size, name, pSlangTypeLayout);
+    return make_shared_ptr<ReflectionStructType>(size, name, pSlangTypeLayout);
 }
 
 ReflectionStructType::ReflectionStructType(size_t size, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout)
@@ -2001,7 +1989,7 @@ ReflectionVar::SharedConstPtr ProgramReflection::findMember(std::string_view nam
 }
 
 ReflectionInterfaceType::SharedPtr ReflectionInterfaceType::create(slang::TypeLayoutReflection* pSlangTypeLayout) {
-    return std::make_shared<ReflectionInterfaceType>(pSlangTypeLayout);
+    return make_shared_ptr<ReflectionInterfaceType>(pSlangTypeLayout);
 }
 
 ReflectionInterfaceType::ReflectionInterfaceType(slang::TypeLayoutReflection* pSlangTypeLayout): ReflectionType(Kind::Interface, 0, pSlangTypeLayout) {

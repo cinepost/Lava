@@ -109,11 +109,11 @@ namespace Falcor
         allocatePrimitiveBits();
     }
 
-    void SDFSBS::setShaderData(const ShaderVar& var) const
+    void SDFSBS::bindShaderData(const ShaderVar& var) const
     {
         if (!mpBrickAABBsBuffer || !mpIndirectionTexture || !mpBrickTexture)
         {
-            throw RuntimeError("SDFSBS::setShaderData() can't be called before calling SDFSBS::createResources()!");
+            throw RuntimeError("SDFSBS::bindShaderData() can't be called before calling SDFSBS::createResources()!");
         }
 
         var["aabbs"] = mpBrickAABBsBuffer;

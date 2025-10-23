@@ -28,47 +28,53 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_RENDERGRAPH_H_
 #define SRC_FALCOR_RENDERGRAPH_RENDERGRAPH_H_
 
-#include <memory>
-
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/FBO.h"
 #include "RenderPassReflection.h"
 #include "ResourceCache.h"
 #include "RenderPass.h"
-#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"
 #include "RenderGraphCompiler.h"
 
+#include <memory>
+
+
 namespace Falcor {
 
-    using uint = uint32_t;
+using uint = uint32_t;
 
 class Device;
 class Scene;
 
-class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
+class FALCOR_API RenderGraph : public Object {
+    FALCOR_OBJECT(RenderGraph)
  public:
-    using SharedPtr = std::shared_ptr<RenderGraph>;
-    using SharedConstPtr = std::shared_ptr<const RenderGraph>;
     static const FileDialogFilterVec kFileExtensionFilters;
 
     static const uint32_t kInvalidIndex = -1;
 
     ~RenderGraph();
 
-    std::shared_ptr<Device>& device() { return mpDevice; }
+    Falcor::SharedPtr<Device>& device() { return mpDevice; }
 
     /** Create a new render graph.
         \param[in] name Name of the render graph.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name = "");
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name = "");
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const std::string& name = "");
-    static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name = "");
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, uint2 frame_size, const std::string& name = "");
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name = "");
+
+    /**
+     * Return the associated GPU device.
+     */
+    Falcor::SharedPtr<Device> getDevice() const { return mpDevice; }
 
     /** Set a scene
     */
-    void setScene(const std::shared_ptr<Scene>& pScene);
+    void setScene(const Falcor::SharedPtr<Scene>& pScene);
 
     /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
     */
@@ -84,7 +90,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Update dictionary for specified render pass.
     */
-    void updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict);
+    void updatePass(const std::string& passName, const Properties& props);
 
     /** Insert an edge from a render-pass' output into a different render-pass input.
         The render passes must be different, the graph must be a DAG.
@@ -121,11 +127,11 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Resolves graph's per frame sparse resources
     */
-    void resolvePerFrameSparseResources(RenderContext* pContext);
+    void resolvePerFrameSparseResources(RenderContext* pContext, uint32_t frameNumber = 0);
 
     /** Resolves graph's per sample sparse resources
     */
-    void resolvePerSampleSparseResources(RenderContext* pContext);
+    void resolvePerSampleSparseResources(RenderContext* pContext, uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
 
     /** Update graph based on another graph's topology
     */
@@ -191,7 +197,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the attached scene
     */
-    const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+    const Falcor::SharedPtr<Scene>& getScene() const { return mpScene; }
 
     /** Get an graph output name from the graph outputs
     */
@@ -218,7 +224,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the dictionary objects used to communicate app data to the render-passes
     */
-    const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+    const Dictionary& getPassesDictionary() const { return mPassDictionary; }
 
     /** Get the name
     */
@@ -241,8 +247,8 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Special consturctors for rendering without gpFramework
      */
-    RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name);
-    RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name);
+    RenderGraph(Falcor::SharedPtr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name);
+    RenderGraph(Falcor::SharedPtr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name);
 
     struct EdgeData {
         std::string srcField;
@@ -274,18 +280,18 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
     bool isGraphOutput(const GraphOut& graphOut) const;
 
-    std::shared_ptr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
     std::string mName;
-    std::shared_ptr<Scene> mpScene;
+    Falcor::SharedPtr<Scene> mpScene;
     
-    DirectedGraph::SharedPtr mpGraph;
+    std::unique_ptr<DirectedGraph> mpGraph;
     std::unordered_map<std::string, uint32_t> mNameToIndex;
     std::unordered_map<uint32_t, EdgeData> mEdgeData;
     std::unordered_map<uint32_t, NodeData> mNodeData;
     std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-    InternalDictionary::SharedPtr mpPassDictionary;
-    RenderGraphExe::SharedPtr mpExe;
+    Dictionary mPassDictionary;
+    std::unique_ptr<RenderGraphExe> mpExe;
     RenderGraphCompiler::Dependencies mCompilerDeps;
     bool mRecompile = false;
 

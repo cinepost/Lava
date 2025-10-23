@@ -30,34 +30,28 @@
 
 namespace Falcor {
 
-namespace {
-	static std::vector<Importer::Desc> sImporters;
-	static std::unordered_map<std::string, Importer::ImportFunction> sImportFunctions;
-	static FileDialogFilterVec sFileExtensionsFilters;
+std::unique_ptr<Importer> Importer::create(std::string_view extension, const PluginManager& pm) {
+    for (const auto& [type, info] : pm.getInfos<Importer>())
+        if (std::find(info.extensions.begin(), info.extensions.end(), extension) != info.extensions.end())
+            return pm.createClass<Importer>(type);
+    return nullptr;
 }
 
-const FileDialogFilterVec& Importer::getFileExtensionFilters() {
-	return sFileExtensionsFilters;
+std::vector<std::string> Importer::getSupportedExtensions(const PluginManager& pm) {
+    std::vector<std::string> extensions;
+    for (const auto& [type, info] : pm.getInfos<Importer>())
+        extensions.insert(extensions.end(), info.extensions.begin(), info.extensions.end());
+    return extensions;
 }
 
-bool Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict) {
-	auto ext = getExtensionFromFile(filename);
-	auto it = sImportFunctions.find(ext);
-	if (it == sImportFunctions.end()) {
-		LLOG_ERR << "Error when loading '" << filename << "'. Unknown file extension.";
-		return false;
-	}
-	return it->second(filename, builder, instances, dict);
+void Importer::importSceneFromMemory(const void* buffer, size_t byteSize, std::string_view extension, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName) {
+    FALCOR_THROW("Not implemented.");
 }
 
-void Importer::registerImporter(const Desc& desc) {
-	sImporters.push_back(desc);
-
-	for (const auto& ext : desc.extensions) {
-		assert(sImportFunctions.find(ext) == sImportFunctions.end());
-		sImportFunctions[ext] = desc.import;
-		sFileExtensionsFilters.push_back(ext);
-	}
+#ifdef SCRIPTING
+FALCOR_SCRIPT_BINDING(Importer) {
+    pybind11::register_exception<ImporterError>(m, "ImporterError");
 }
+#endif // SCRIPTING
 
 }  // namespace Falcor

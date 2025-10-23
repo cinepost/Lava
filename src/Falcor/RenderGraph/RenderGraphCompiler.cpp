@@ -41,29 +41,34 @@ namespace {
     }
 }  // namespace
 
-RenderGraphCompiler::RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies) : mGraph(graph), mDependencies(dependencies) {}
+RenderGraphCompiler::RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies)
+    : mGraph(graph), mpDevice(graph.getDevice()), mDependencies(dependencies)
+{}
 
-RenderGraphExe::SharedPtr RenderGraphCompiler::compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies) {
+
+std::unique_ptr<RenderGraphExe> RenderGraphCompiler::compile(RenderGraph& graph, RenderContext* pRenderContext, const Dependencies& dependencies) {
     RenderGraphCompiler c = RenderGraphCompiler(graph, dependencies);
 
     // Register the external resources
-    auto pResourcesCache = ResourceCache::create(graph.device());
-    for (const auto&[name, pRes] : dependencies.externalResources) pResourcesCache->registerExternalResource(name, pRes);
+    auto pResourcesCache = std::make_unique<ResourceCache>();
+    for (const auto&[name, pRes] : dependencies.externalResources) {
+        pResourcesCache->registerExternalResource(name, pRes);
+    }
 
     c.resolveExecutionOrder();
-    c.compilePasses(pContext);
+    c.compilePasses(pRenderContext);
     if (c.insertAutoPasses()) c.resolveExecutionOrder();
     c.validateGraph();
-    c.allocateResources(pResourcesCache.get());
+    c.allocateResources(pRenderContext->getDevice(), pResourcesCache.get());
 
-    auto pExe = RenderGraphExe::create();
+    auto pExe = std::make_unique<RenderGraphExe>();
     pExe->mExecutionList.reserve(c.mExecutionList.size());
 
     for (auto e : c.mExecutionList) {
         pExe->insertPass(e.name, e.pPass);
     }
     c.restoreCompilationChanges();
-    pExe->mpResourceCache = pResourcesCache;
+    pExe->mpResourceCache = std::move(pResourcesCache);;
     return pExe;
 }
 
@@ -120,7 +125,7 @@ void RenderGraphCompiler::resolveExecutionOrder() {
     std::unordered_set<uint32_t> participatingPasses;
     for (auto& o : mandatoryPasses) {
         uint32_t nodeId = o;
-        auto dfs = DirectedGraphDfsTraversal(mGraph.mpGraph, nodeId, DirectedGraphDfsTraversal::Flags::IgnoreVisited | DirectedGraphDfsTraversal::Flags::Reverse);
+        auto dfs = DirectedGraphDfsTraversal(*mGraph.mpGraph, nodeId, DirectedGraphDfsTraversal::Flags::IgnoreVisited | DirectedGraphDfsTraversal::Flags::Reverse);
         while (nodeId != DirectedGraph::kInvalidID) {
             participatingPasses.insert(nodeId);
             nodeId = dfs.traverse();
@@ -128,7 +133,7 @@ void RenderGraphCompiler::resolveExecutionOrder() {
     }
 
     // Run topological sort
-    auto topologicalSort = DirectedGraphTopologicalSort::sort(mGraph.mpGraph.get());
+    auto topologicalSort = DirectedGraphTopologicalSort::sort(*mGraph.mpGraph);
 
     // For each object in the vector, if it's being used in the execution, put it in the list
     RenderPass::CompileData compileData;
@@ -171,8 +176,7 @@ bool RenderGraphCompiler::insertAutoPasses() {
                     const std::string& dstPassName = mGraph.mNodeData.at(pEdge->getDestNode()).name;
 
                     // If edge is connected to something that isn't executed, ignore
-                    auto getPassReflection = [&](uint32_t index) -> std::optional<RenderPassReflection>
-                    {
+                    auto getPassReflection = [&](uint32_t index) -> std::optional<RenderPassReflection> {
                         for (const auto& e : mExecutionList) if (e.index == index) return e.reflector;
                         return std::nullopt;
                     };
@@ -192,7 +196,7 @@ bool RenderGraphCompiler::insertAutoPasses() {
             // If there are connections to add MSAA Resolve
             if (dstFieldNames.size() > 0) {
                 // One resolve pass is made for every output that requires it
-                auto pResolvePass = ResolvePass::create();
+                auto pResolvePass = ResolvePass::create(mpDevice);
                 pResolvePass->setFormat(srcField.getFormat()); // Match input texture format
 
                 // Create pass and attach src to it
@@ -220,7 +224,7 @@ bool RenderGraphCompiler::insertAutoPasses() {
     return addedPasses;
 }
 
-void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
+void RenderGraphCompiler::allocateResources(Device::SharedPtr pDevice, ResourceCache* pResourceCache) {
     // Build list to look up execution order index from the pass
     std::unordered_map<RenderPass*, uint32_t> passToIndex;
     for (size_t i = 0; i < mExecutionList.size(); i++) {
@@ -231,16 +235,22 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
         uint32_t nodeIndex = mExecutionList[i].index;
 
         const DirectedGraph::Node* pNode = mGraph.mpGraph->getNode(nodeIndex);
-        assert(pNode);
+        FALCOR_ASSERT(pNode);
+        RenderPass* pCurrPass = mGraph.mNodeData[nodeIndex].pPass.get();
         const auto& passReflection = mExecutionList[i].reflector;
 
         auto isResourceUsed = [&](auto field) {
-            if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) return true;
-            if (mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
-            {
+            if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) {
+                return true;
+            }
+            if (mGraph.isGraphOutput({nodeIndex, field.getName()})) {
+                return true;
+            }
+            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++) {
                 const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
-                if (edgeData.srcField == field.getName()) return true;
+                if (edgeData.srcField == field.getName()) {
+                    return true;
+                }
             }
             return false;
         };
@@ -252,12 +262,16 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
 
             // Skip input resources, we never allocate them
             if (!is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Input)) {
-                if (isResourceUsed(field) == false) continue;
+                if (isResourceUsed(field) == false) {
+                    continue;
+                }
 
                 // Resource lifetime for graph outputs must extend to end of graph execution
-                bool graphOutput = mGraph.isGraphOutput({ nodeIndex, field.getName() });
+                bool graphOutput = mGraph.isGraphOutput({nodeIndex, field.getName()});
                 uint32_t lifetime = graphOutput ? uint32_t(-1) : uint32_t(i);
-                if (graphOutput && field.getBindFlags() != ResourceBindFlags::None) field.bindFlags(field.getBindFlags() | ResourceBindFlags::ShaderResource); // Adding ShaderResource for graph outputs
+                if (graphOutput && field.getBindFlags() != ResourceBindFlags::None) {
+                    field.bindFlags(field.getBindFlags() | ResourceBindFlags::ShaderResource); // Adding ShaderResource for graph outputs
+                }
                 pResourceCache->registerField(fullFieldName, field, lifetime);
             }
         }
@@ -270,23 +284,24 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
 
             // Skip execution-edges
             if (edgeData.dstField.empty()) {
-                assert(edgeData.srcField.empty());
+                FALCOR_ASSERT(edgeData.srcField.empty());
                 continue;
             }
 
             const auto& dstField = *passReflection.getField(edgeData.dstField);
-            assert(dstField.isValid() && is_set(dstField.getVisibility(), RenderPassReflection::Field::Visibility::Input));
+            FALCOR_ASSERT(dstField.isValid() && is_set(dstField.getVisibility(), RenderPassReflection::Field::Visibility::Input));
 
             // Merge dst/input field into same resource data
             std::string srcFieldName = mGraph.mNodeData[pEdge->getSourceNode()].name + '.' + edgeData.srcField;
             std::string dstFieldName = mGraph.mNodeData[nodeIndex].name + '.' + dstField.getName();
 
             const auto& pSrcPass = mGraph.mNodeData[pEdge->getSourceNode()].pPass.get();
+            const auto& srcReflection = mExecutionList[passToIndex.at(pSrcPass)].reflector;
             pResourceCache->registerField(dstFieldName, dstField, passToIndex[pSrcPass], srcFieldName);
         }
     }
 
-    pResourceCache->allocateResources(mDependencies.defaultResourceProps);
+    pResourceCache->allocateResources(pDevice, mDependencies.defaultResourceProps);
 }
 
 

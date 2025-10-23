@@ -14,7 +14,7 @@ FalseColorGenerator::SharedPtr FalseColorGenerator::create(Device::SharedPtr pDe
     return SharedPtr(new FalseColorGenerator(pDevice, numColors, pSeed));
 }
 
-void FalseColorGenerator::setShaderData(const ShaderVar& var) const {
+void FalseColorGenerator::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.

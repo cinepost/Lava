@@ -50,7 +50,7 @@ public:
 
     /** Set the light profile into a shader var.
     */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
 private:
     LightProfile(Device::SharedPtr pDevice, const std::string& name, const std::vector<float>& rawData);

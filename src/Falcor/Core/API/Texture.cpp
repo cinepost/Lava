@@ -198,7 +198,7 @@ Texture::Texture(
     ResourceBindFlags bindFlags,
     Resource::State initState
 )
-    : Texture(std::move(pDevice), type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, nullptr)
+    : Texture(std::move(pDevice), width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags)
 {
     FALCOR_ASSERT(pResource);
 
@@ -275,7 +275,7 @@ DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArr
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return DepthStencilView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
+		return DepthStencilView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
@@ -285,7 +285,7 @@ UnorderedAccessView::SharedPtr Texture::getUAV(uint32_t mipLevel, uint32_t first
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return UnorderedAccessView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
+		return UnorderedAccessView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
@@ -304,8 +304,7 @@ UnorderedAccessView::SharedPtr Texture::getUAV() {
 RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		assert(pTexture->device());
-		return RenderTargetView::create(pTexture->device(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
+		return RenderTargetView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
 	};
 
 	auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
@@ -319,7 +318,7 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
 	assert(!mIsUDIMTexture && "UDIM texture placeholder !");
 	auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-		return ShaderResourceView::create(pTexture->device(), pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
+		return ShaderResourceView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
 	};
 
 	if(isSparse()) {
@@ -392,8 +391,9 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 		std::vector<float> testData(getWidth(0) * getHeight(0) *3);
 		for (size_t i = 0; i < testData.size(); i+=3) testData[i]=1.0f;
 
-		Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-	
+        //Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+		Buffer::SharedPtr pBuffer = mpDevice->createBuffer(elementCount * getFormatBytesPerBlock(dstResourceFormat), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal); 
+
 		uint4 srcRect = {0, 0, getWidth(0), getHeight(0)};
 		uint4 dstRect = {0, 0, getWidth(0), getHeight(0)};
 		uint32_t bufferWidthPixels = getWidth(0);
@@ -402,7 +402,7 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
     	const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
 		
 		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
-		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
+		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map());
 
 		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
 
@@ -596,13 +596,7 @@ Texture::~Texture() {
 			mpDevice->getGfxDevice()->releaseTailMemory(getGfxTextureResource());
 		}
 
-		//ApiObjectHandle objectHandle;
-		//mApiHandle->queryInterface(SLANG_UUID_ISlangUnknown, (void**)objectHandle.writeRef());
-		//mpDevice->releaseResource(objectHandle);
-		
-		mpDevice->releaseResource(mApiHandle);
-
-		//mApiHandle.setNull();
+		mpDevice->releaseResource(mGfxTextureResource);
 	}
 	LLOG_TRC << ++gDeletedTexturesCount << " textures deleted out of " << gTotalTexturesCount;
 }

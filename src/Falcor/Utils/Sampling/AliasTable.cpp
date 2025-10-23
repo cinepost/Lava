@@ -37,7 +37,7 @@ namespace Falcor
         return SharedPtr(new AliasTable(pDevice, std::move(weights), rng));
     }
 
-    void AliasTable::setShaderData(const ShaderVar& var) const
+    void AliasTable::bindShaderData(const ShaderVar& var) const
     {
         var["items"] = mpItems;
         var["weights"] = mpWeights;

@@ -50,7 +50,7 @@ PhysicalSkySampler::SharedPtr PhysicalSkySampler::create(RenderContext* pRenderC
     return SharedPtr(new PhysicalSkySampler(pRenderContext));
 }
 
-void PhysicalSkySampler::setShaderData(const ShaderVar& var) const {
+void PhysicalSkySampler::bindShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.
@@ -64,7 +64,7 @@ void PhysicalSkySampler::setShaderData(const ShaderVar& var) const {
 }
 
 PhysicalSkySampler::PhysicalSkySampler(RenderContext* pRenderContext) {
-    mpDevice = pRenderContext->device();
+    mpDevice = pRenderContext->getDevice();
 
     // Multiple scattering LUT creation compute program.
     mpSunTransmittanceLUTSetupPass = ComputePass::create(mpDevice, kSTShaderFilenameSetup, "main");
@@ -83,7 +83,7 @@ PhysicalSkySampler::PhysicalSkySampler(RenderContext* pRenderContext) {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpImportanceSampler = Sampler::create(mpDevice, samplerDesc);
+        mpImportanceSampler = mpDevice->createSampler(samplerDesc);
     }
 
     // Create lut map sampler.
@@ -91,7 +91,7 @@ PhysicalSkySampler::PhysicalSkySampler(RenderContext* pRenderContext) {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpLUTSampler = Sampler::create(mpDevice, samplerDesc);
+        mpLUTSampler = mpDevice->createSampler(samplerDesc);
     }
 }
 
@@ -100,7 +100,7 @@ bool PhysicalSkySampler::createSunTransmittanceLUT(RenderContext* pRenderContext
     mMS_LUT_Dirty = true;
     mIS_LUT_Dirty = true;
 
-    static const Resource::BindFlags flags = Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess;
+    static const ResourceBindFlags flags = ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess;
     uint32_t mipLevels = 1;
     uint32_t mapWidth = mSunTrasmittanceLUTRes[0];
     uint32_t mapHeight = mSunTrasmittanceLUTRes[1];
@@ -139,7 +139,7 @@ bool PhysicalSkySampler::createMultipleScatteringLUT(RenderContext* pRenderConte
     mSV_LUT_Dirty = true;
     mIS_LUT_Dirty = true;
 
-    static const Resource::BindFlags flags = Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess;
+    static const ResourceBindFlags flags = ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess;
     uint32_t mipLevels = 1;
     uint32_t mapWidth = mMultipleScatteringLUTRes[0];
     uint32_t mapHeight = mMultipleScatteringLUTRes[1];
@@ -181,7 +181,7 @@ bool PhysicalSkySampler::createSkyViewLUT(RenderContext* pRenderContext) {
     if(!mSV_LUT_Dirty && !mDirty) return true;
     mIS_LUT_Dirty = true;
     
-    static const Resource::BindFlags flags = Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess;
+    static const ResourceBindFlags flags = ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess;
     uint32_t mipLevels = 1;
     uint32_t mapWidth = mSkyViewLUTRes[0];
     uint32_t mapHeight = mSkyViewLUTRes[1];
@@ -240,7 +240,6 @@ bool PhysicalSkySampler::createImportanceMap(RenderContext* pRenderContext, uint
 
     assert(isPowerOf2(dimension));
     assert(isPowerOf2(samples));
-    assert(pRenderContext->device() == mpDevice);
 
     // We create log2(N)+1 mips from NxN...1x1 texels resolution.
     uint32_t mips = std::log2(dimension) + 1;
@@ -248,7 +247,7 @@ bool PhysicalSkySampler::createImportanceMap(RenderContext* pRenderContext, uint
     assert(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 
     // Create importance map. We have to set the RTV flag to be able to use generateMips().
-    mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+    mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess);
     assert(mpImportanceMap);
 
     auto var = mpImportanceMapSetupPass->getRootVar();

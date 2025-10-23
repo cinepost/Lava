@@ -33,9 +33,9 @@
 
 namespace Falcor {
 
-class dlldecl RenderPassReflection {
+class FALCOR_API RenderPassReflection {
 public:
-    class dlldecl Field {
+    class FALCOR_API Field {
     public:
         /** The type of visibility the field has
         */

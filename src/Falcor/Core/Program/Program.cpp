@@ -286,14 +286,11 @@ bool Program::linkProgram() const {
         if (!log.empty()) {
             LLOG_WRN << "Warnings in program:\n" << getProgramDescString() << "\n" << log;
         }
-
         mpActiveVersion = pVersion;
-
         return true;
     }
     
     LLOG_ERR << "Program::linkProgram for " << getProgramDescString() << " failed.";
-
     return false;
 }
 
@@ -302,6 +299,10 @@ void Program::reset() {
   mProgramVersions.clear();
   mFileTimeMap.clear();
   mLinkRequired = true;
+}
+
+void Program::breakStrongReferenceToDevice() {
+    mpDevice.breakStrongReference();
 }
 
 RtStateObject::SharedPtr Program::getRtso(RtProgramVars* pVars) {
@@ -323,7 +324,7 @@ RtStateObject::SharedPtr Program::getRtso(RtProgramVars* pVars) {
       if (mRtsoGraph.scanForMatchingNode(cmpFunc)) {
           pRtso = mRtsoGraph.getCurrentNode();
       } else {
-          pRtso = RtStateObject::create(mpDevice, desc);
+          pRtso = mpDevice->createRtStateObject(desc);
           mRtsoGraph.setCurrentNodeData(pRtso);
       }
   }

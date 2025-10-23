@@ -248,6 +248,6 @@ void MinimalPathTracer::prepareVars() {
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(var);
+    bool success = mpSampleGenerator->bindShaderData(var);
     if (!success) throw std::runtime_error("Failed to bind sample generator");
 }

@@ -238,8 +238,8 @@ void DebugShadingPass::execute(RenderContext* pContext, const RenderData& render
 
     auto var = mpShadingPass->getRootVar();
 
-    if(mpFalseColorGenerator) mpFalseColorGenerator->setShaderData(var["gFalseColorGenerator"]);
-    if(mpHeatMapColorGenerator) mpHeatMapColorGenerator->setShaderData(var["gHeatMapColorGenerator"]);
+    if(mpFalseColorGenerator) mpFalseColorGenerator->bindShaderData(var["gFalseColorGenerator"]);
+    if(mpHeatMapColorGenerator) mpHeatMapColorGenerator->bindShaderData(var["gHeatMapColorGenerator"]);
 
     auto cb_var = var["PerFrameCB"];
     cb_var["gFrameDim"] = mFrameDim;

@@ -39,6 +39,8 @@ namespace Falcor {
 class FALCOR_API FullScreenPass : public BaseGraphicsPass {
     FALCOR_OBJECT(FullScreenPass)
  public:
+    struct SharedData;
+
     virtual ~FullScreenPass();
 
     /** Create a new fullscreen pass from file.
@@ -64,8 +66,12 @@ class FALCOR_API FullScreenPass : public BaseGraphicsPass {
     */
     virtual void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc = true) const;
 
- protected:
+  protected:
     FullScreenPass(Falcor::SharedPtr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+
+  private:
+    std::shared_ptr<SharedData> mpSharedData;
+
 };
 
 }  // namespace Falcor

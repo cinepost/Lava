@@ -190,7 +190,7 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
 
     var["vbuffer"] = pVBuffer;
     var["frameDim"] = mFrameDim;
-    mpRTXDI->setShaderData(mpPrepareSurfaceDataPass->getRootVar());
+    mpRTXDI->bindShaderData(mpPrepareSurfaceDataPass->getRootVar());
 
     mpPrepareSurfaceDataPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
@@ -228,7 +228,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
 
     var["vbuffer"] = pVBuffer;
     var["frameDim"] = mFrameDim;
-    mpRTXDI->setShaderData(mpFinalShadingPass->getRootVar());
+    mpRTXDI->bindShaderData(mpFinalShadingPass->getRootVar());
 
     // Bind output channels as UAV buffers.
     var = mpFinalShadingPass->getRootVar();

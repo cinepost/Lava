@@ -28,20 +28,21 @@
 #ifndef SRC_FALCOR_CORE_API_GRAPHICSSTATEOBJECT_H_
 #define SRC_FALCOR_CORE_API_GRAPHICSSTATEOBJECT_H_
 
-#include "Falcor/Core/API/Handles.h"
 #include "Falcor/Core/Object.h"
-#include "Falcor/Core/API/VertexLayout.h"
+#include "Falcor/Core/API/Handles.h"
 #include "Falcor/Core/API/FBO.h"
-#include "Falcor/Core/API/RasterizerState.h"
-#include "Falcor/Core/API/DepthStencilState.h"
-#include "Falcor/Core/API/BlendState.h"
-#include "Falcor/Core/Program/ProgramVersion.h"
+#include "Falcor/Core/API/GFXAPI.h"
 
 
 namespace Falcor {
 
 class Device;
 class GraphicsState;
+class DepthStencilState;
+class BlendState;
+class RasterizerState;
+class VertexLayout;
+class ProgramKernels;
 
 struct GraphicsStateObjectDesc {
     static constexpr uint32_t kSampleMaskAll = -1;

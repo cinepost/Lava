@@ -28,57 +28,56 @@
 #ifndef SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_
 #define SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_
 
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/State/ComputeState.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
+#include <memory>
+
+
 namespace Falcor {
 
 class Device;
+class RenderContext;
 
-#ifdef _ENABLE_NVAPI
-    /** In-place bitonic sort in chunks of N elements.
+/**
+ * In-place bitonic sort in chunks of N elements.
+ *
+ * This sort method is efficient for sorting shorter sequences.
+ * The time complexity is O(N*log^2(N)), but it parallelizes very well and has practically no branching.
+ * The sort is implemented using horizontal operations within warps, and shared memory across warps.
+ *
+ * This code requires an NVIDIA GPU and NVAPI.
+ */
+class FALCOR_API BitonicSort {
+  public:
+    /// Constructor. Throws an exception on error.
+    BitonicSort(Falcor::SharedPtr<Device> pDevice);
 
-        This sort method is efficient for sorting shorter sequences.
-        The time complexity is O(N*log^2(N)), but it parallelizes very well and has practically no branching.
-        The sort is implemented using horizontal operations within warps, and shared memory across warps.
+    /**
+     * In-place bitonic sort in chunks of N elements. Each chunk is sorted in ascending order.
+     * @param[in] pRenderContext The render context.
+     * @param[in] pData The data buffer to sort in-place.
+     * @param[in] totalSize The total number of elements in the buffer. This does _not_ have to be a multiple of chunkSize.
+     * @param[in] chunkSize The number of elements per chunk. Each chunk is individually sorted. Must be a power-of-two in the range [1,
+     * groupSize].
+     * @param[in] groupSize Thread group size. Must be a power-of-two in the range [1,1024]. The default group size of 256 is generally the
+     * fastest.
+     * @return True if successful, false if an error occured.
+     */
+    bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize = 256);
 
-        This code requires an NVIDIA GPU and NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.
-    */
-    class dlldecl BitonicSort : public std::enable_shared_from_this<BitonicSort>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<BitonicSort>;
-        using SharedConstPtr = std::shared_ptr<const BitonicSort>;
-        virtual ~BitonicSort() = default;
+private:
+    alcor::SharedPtr<Device> mpDevice;
 
-        /** Create a new bitonic sort object.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice);
-
-        /** In-place bitonic sort in chunks of N elements. Each chunk is sorted in ascending order.
-            \param[in] pRenderContext The render context.
-            \param[in] pData The data buffer to sort in-place.
-            \param[in] totalSize The total number of elements in the buffer. This does _not_ have to be a multiple of chunkSize.
-            \param[in] chunkSize The number of elements per chunk. Each chunk is individually sorted. Must be a power-of-two in the range [1, groupSize].
-            \param[in] groupSize Thread group size. Must be a power-of-two in the range [1,1024]. The default group size of 256 is generally the fastest.
-            \return True if successful, false if an error occured.
-        */
-        bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize = 256);
-
-    protected:
-        BitonicSort(std::shared_ptr<Device> pDevice);
-
-        struct {
-            ComputeState::SharedPtr pState;
-            Program::SharedPtr      pProgram;
-            ProgramVars::SharedPtr  pVars;
-        } mSort;
-
-        std::shared_ptr<Device> mpDevice;        
-    };
-#endif
+    struct {
+        ComputeState::SharedPtr pState;
+        Program::SharedPtr pProgram;
+        ProgramVars::SharedPtr pVars;
+    } mSort;
+};
 
 }  // namespace Falcor
 

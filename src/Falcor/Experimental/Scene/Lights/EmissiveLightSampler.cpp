@@ -29,16 +29,26 @@
 
 namespace Falcor {
 
+EmissiveLightSampler::EmissiveLightSampler(EmissiveLightSamplerType type, LightCollection::SharedPtr pLightCollection) : mType(type), mpDevice(pLightCollection->getDevice()) {
+    setLightCollection(std::move(pLightCollection));
+}
+
+void EmissiveLightSampler::setLightCollection(LightCollection::SharedPtr pLightCollection) {
+    if (mpLightCollection == pLightCollection) {
+        return;
+    }
+
+    mUpdateFlagsConnection.reset();
+
+    mpLightCollection = std::move(pLightCollection);
+
+    if (mpLightCollection) {
+        mUpdateFlagsConnection = mpLightCollection->getUpdateFlagsSignal().connect([&](LightCollection::UpdateFlags flags) { mLightCollectionUpdateFlags |= flags; });
+    }
+}
+
 Program::DefineList EmissiveLightSampler::getDefines() const {
     return {{ "_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType) }};
 }
-
-#ifdef SCRIPTING
-SCRIPT_BINDING(EmissiveLightSampler) {
-    pybind11::enum_<EmissiveLightSamplerType> type(m, "EmissiveLightSamplerType");
-    type.value("Uniform", EmissiveLightSamplerType::Uniform);
-    type.value("LightBVH", EmissiveLightSamplerType::LightBVH);
-}
-#endif
 
 }  // namespace Falcor

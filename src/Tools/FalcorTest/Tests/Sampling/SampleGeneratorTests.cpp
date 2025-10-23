@@ -87,7 +87,7 @@ namespace Falcor
             pSampleGenerator->prepareProgram(ctx.getProgram());
 
             ctx.createVars();
-            pSampleGenerator->setShaderData(ctx.vars().getRootVar());
+            pSampleGenerator->bindShaderData(ctx.vars().getRootVar());
 
             const size_t numSamples = kDispatchDim.x * kDispatchDim.y * kDispatchDim.z * kDimensions;
             ctx.allocateStructuredBuffer("result", uint32_t(numSamples));

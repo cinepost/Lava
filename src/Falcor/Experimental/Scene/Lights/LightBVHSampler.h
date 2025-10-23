@@ -49,17 +49,12 @@ namespace Falcor
         This class wraps a LightCollection object, which holds the set of lights to sample.
         Internally, the class build a BVH over the light sources.
     */
-    class dlldecl LightBVHSampler : public EmissiveLightSampler
-    {
+    class FALCOR_API LightBVHSampler : public EmissiveLightSampler {
     public:
-        using SharedPtr = std::shared_ptr<LightBVHSampler>;
-        using SharedConstPtr = std::shared_ptr<const LightBVHSampler>;
-
         /** LightBVHSampler configuration.
             Note if you change options, please update SCRIPT_BINDING in LightBVHSampler.cpp
         */
-        struct Options
-        {
+        struct Options {
             Options() noexcept {};
             // Build options
             LightBVHBuilder::Options buildOptions;
@@ -75,18 +70,11 @@ namespace Falcor
 
         virtual ~LightBVHSampler() = default;
 
-        /** Creates a LightBVHSampler for a given scene.
-            \param[in] pRenderContext The render context.
-            \param[in] pScene The scene.
-            \param[in] options The options to override the default behavior.
-        */
-        static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options = Options());
-
         /** Updates the sampler to the current frame.
             \param[in] pRenderContext The render context.
             \return True if the sampler was updated.
         */
-        virtual bool update(RenderContext* pRenderContext) override;
+        virtual bool update(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection) override;
 
         /** Return a list of shader defines to use this light sampler.
         *   \return Returns a list of shader defines.
@@ -97,28 +85,29 @@ namespace Falcor
             \param[in] var Shader variable.
             \return True if successful, false otherwise.
         */
-        virtual bool setShaderData(const ShaderVar& var) const override;
+        virtual bool bindShaderData(const ShaderVar& var) const override;
 
         /** Returns the current configuration.
         */
         const Options& getOptions() const { return mOptions; }
+
+        void setOptions(const Options& options);
 
         /** Returns the light BVH acceleration structure.
             \return Light BVH object or nullptr if BVH is not valid.
         */
         LightBVH::SharedConstPtr getBVH() const;
 
-    protected:
-        LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
+        LightBVHSampler(RenderContext* pRenderContext, LightCollection::SharedPtr pLightCollection, const Options& options = Options());
 
-        std::shared_ptr<Device>         mpDevice = nullptr;
+    protected:
 
         // Configuration
         Options                         mOptions;               ///< Current configuration options.
 
         // Internal state
-        LightBVHBuilder::SharedPtr      mpBVHBuilder;           ///< The light BVH builder.
-        LightBVH::SharedPtr             mpBVH;                  ///< The light BVH.
+        std::unique_ptr<LightBVHBuilder> mpBVHBuilder;
+        std::unique_ptr<LightBVH> mpBVH;
         bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
     };
 }

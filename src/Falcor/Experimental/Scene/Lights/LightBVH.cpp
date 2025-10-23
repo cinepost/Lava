@@ -37,25 +37,22 @@ namespace {
 
 namespace Falcor {
 
-LightBVH::SharedPtr LightBVH::create(Device::SharedPtr pDevice, const LightCollection::SharedConstPtr& pLightCollection)
-{
+LightBVH::SharedPtr LightBVH::create(Device::SharedPtr pDevice, const LightCollection::SharedConstPtr& pLightCollection) {
     return SharedPtr(new LightBVH(pDevice, pLightCollection));
 }
 
 // TODO: Only update the ones that moved.
-void LightBVH::refit(RenderContext* pRenderContext)
-{
+void LightBVH::refit(RenderContext* pRenderContext) {
     assert(mpDevice);
-
-    PROFILE(mpDevice, "LightBVH::refit()");
-
     assert(mIsValid);
 
+    //FALCOR_PROFILE(pRenderContext, "LightBVH::refit()");
+    
     // Update all leaf nodes.
     {
         auto var = mLeafUpdater->getRootVar()["CB"];
-        mpLightCollection->setShaderData(var["gLights"]);
-        setShaderData(var["gLightBVH"]);
+        mpLightCollection->bindShaderData(var["gLights"]);
+        bindShaderData(var["gLightBVH"]);
         var["gNodeIndices"] = mpNodeIndicesBuffer;
 
         const uint32_t nodeCount = mPerDepthRefitEntryInfo.back().count;
@@ -69,13 +66,12 @@ void LightBVH::refit(RenderContext* pRenderContext)
     // Update all internal nodes.
     {
         auto var = mInternalUpdater->getRootVar()["CB"];
-        mpLightCollection->setShaderData(var["gLights"]);
-        setShaderData(var["gLightBVH"]);
+        mpLightCollection->bindShaderData(var["gLights"]);
+        bindShaderData(var["gLightBVH"]);
         var["gNodeIndices"] = mpNodeIndicesBuffer;
 
         // Note that mBVHStats.treeHeight may be 0, in which case there is a single leaf and no internal nodes.
-        for (int depth = (int)mBVHStats.treeHeight - 1; depth >= 0; --depth)
-        {
+        for (int depth = (int)mBVHStats.treeHeight - 1; depth >= 0; --depth) {
             const uint32_t nodeCount = mPerDepthRefitEntryInfo[depth].count;
             assert(nodeCount > 0);
             var["gFirstNodeOffset"] = mPerDepthRefitEntryInfo[depth].offset;
@@ -88,8 +84,7 @@ void LightBVH::refit(RenderContext* pRenderContext)
     mIsCpuDataValid = false;
 }
 
-void LightBVH::clear()
-{
+void LightBVH::clear() {
     // Reset all CPU data.
     mNodes.clear();
     mNodeIndices.clear();
@@ -100,27 +95,21 @@ void LightBVH::clear()
     mIsCpuDataValid = false;
 }
 
-LightBVH::LightBVH(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection) : mpDevice(pDevice), mpLightCollection(pLightCollection)
-{
+LightBVH::LightBVH(Device::SharedPtr pDevice, const LightCollection::SharedConstPtr& pLightCollection) : mpDevice(pDevice), mpLightCollection(pLightCollection) {
     assert(mpDevice);
     mLeafUpdater = ComputePass::create(mpDevice, kShaderFile, "updateLeafNodes");
     mInternalUpdater = ComputePass::create(mpDevice, kShaderFile, "updateInternalNodes");
 }
 
-void LightBVH::traverseBVH(const NodeFunction& evalInternal, const NodeFunction& evalLeaf, uint32_t rootNodeIndex)
-{
+void LightBVH::traverseBVH(const NodeFunction& evalInternal, const NodeFunction& evalLeaf, uint32_t rootNodeIndex) {
     std::stack<NodeLocation> stack({ NodeLocation{ rootNodeIndex, 0 } });
-    while (!stack.empty())
-    {
+    while (!stack.empty()) {
         const NodeLocation location = stack.top();
         stack.pop();
 
-        if (mNodes[location.nodeIndex].isLeaf())
-        {
+        if (mNodes[location.nodeIndex].isLeaf()) {
             if (!evalLeaf(location)) break;
-        }
-        else
-        {
+        } else {
             if (!evalInternal(location)) break;
 
             // Push the children nodes onto the stack.
@@ -131,20 +120,20 @@ void LightBVH::traverseBVH(const NodeFunction& evalInternal, const NodeFunction&
     }
 }
 
-void LightBVH::finalize()
-{
+void LightBVH::finalize() {
     // This function is called after BVH build has finished.
     computeStats();
     updateNodeIndices();
 }
 
-void LightBVH::computeStats()
-{
+void LightBVH::computeStats() {
     assert(isValid());
+
     mBVHStats.nodeCountPerLevel.clear();
     mBVHStats.nodeCountPerLevel.reserve(32);
 
     assert(mMaxTriangleCountPerLeaf > 0);
+    
     mBVHStats.leafCountPerTriangleCount.clear();
     mBVHStats.leafCountPerTriangleCount.resize(mMaxTriangleCountPerLeaf + 1, 0);
 
@@ -154,16 +143,15 @@ void LightBVH::computeStats()
     mBVHStats.leafNodeCount = 0;
     mBVHStats.triangleCount = 0;
 
-    auto evalInternal = [&](const NodeLocation& location)
-    {
+    auto evalInternal = [&](const NodeLocation& location) {
         if (mBVHStats.nodeCountPerLevel.size() <= location.depth) mBVHStats.nodeCountPerLevel.push_back(1);
         else ++mBVHStats.nodeCountPerLevel[location.depth];
 
         ++mBVHStats.internalNodeCount;
         return true;
     };
-    auto evalLeaf = [&](const NodeLocation& location)
-    {
+
+    auto evalLeaf = [&](const NodeLocation& location) {
         const auto node = mNodes[location.nodeIndex].getLeafNode();
 
         if (mBVHStats.nodeCountPerLevel.size() <= location.depth) mBVHStats.nodeCountPerLevel.push_back(1);
@@ -177,13 +165,13 @@ void LightBVH::computeStats()
         mBVHStats.triangleCount += node.triangleCount;
         return true;
     };
+
     traverseBVH(evalInternal, evalLeaf);
 
     mBVHStats.byteSize = (uint32_t)(mNodes.size() * sizeof(mNodes[0]));
 }
 
-void LightBVH::updateNodeIndices()
-{
+void LightBVH::updateNodeIndices() {
     assert(mpDevice);
     // The nodes of the BVH are stored in depth-first order. To simplify the work of the refit kernels,
     // they are first run on all leaf nodes, and then on all internal nodes on a per level basis.
@@ -199,8 +187,8 @@ void LightBVH::updateNodeIndices()
     );
 
     std::vector<uint32_t> perDepthOffset(mPerDepthRefitEntryInfo.size(), 0);
-    for (std::size_t i = 1; i < mPerDepthRefitEntryInfo.size(); ++i)
-    {
+
+    for (std::size_t i = 1; i < mPerDepthRefitEntryInfo.size(); ++i) {
         uint32_t currentOffset = mPerDepthRefitEntryInfo[i - 1].offset + mPerDepthRefitEntryInfo[i - 1].count;
         perDepthOffset[i] = mPerDepthRefitEntryInfo[i].offset = currentOffset;
     }
@@ -208,8 +196,7 @@ void LightBVH::updateNodeIndices()
     // For validation purposes
     {
         uint32_t currentOffset = 0;
-        for (const RefitEntryInfo& info : mPerDepthRefitEntryInfo)
-        {
+        for (const RefitEntryInfo& info : mPerDepthRefitEntryInfo) {
             assert(info.offset == currentOffset);
             currentOffset += info.count;
         }
@@ -227,33 +214,30 @@ void LightBVH::updateNodeIndices()
         [&](const NodeLocation& location) { mNodeIndices[perDepthOffset.back()++] = location.nodeIndex; return true; }
     );
 
-    if (!mpNodeIndicesBuffer || mpNodeIndicesBuffer->getElementCount() < mNodeIndices.size())
-    {
-        mpNodeIndicesBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    if (!mpNodeIndicesBuffer || mpNodeIndicesBuffer->getElementCount() < mNodeIndices.size()) {
+        mpNodeIndicesBuffer = mpDevice->createStructuredBuffer(sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpNodeIndicesBuffer->setName("LightBVH::mpNodeIndicesBuffer");
     }
 
     mpNodeIndicesBuffer->setBlob(mNodeIndices.data(), 0, mNodeIndices.size() * sizeof(uint32_t));
 }
 
-void LightBVH::uploadCPUBuffers(const std::vector<uint32_t>& triangleIndices, const std::vector<uint64_t>& triangleBitmasks)
-{
+void LightBVH::uploadCPUBuffers(const std::vector<uint32_t>& triangleIndices, const std::vector<uint64_t>& triangleBitmasks) {
     assert(mpDevice);
     // Reallocate buffers if size requirements have changed.
     auto var = mLeafUpdater->getRootVar()["CB"]["gLightBVH"];
-    if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getElementCount() < mNodes.size())
-    {
-        mpBVHNodesBuffer = Buffer::createStructured(mpDevice, var["nodes"], (uint32_t)mNodes.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+    if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getElementCount() < mNodes.size()) {
+        mpBVHNodesBuffer = mpDevice->createStructuredBuffer(var["nodes"], (uint32_t)mNodes.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
         mpBVHNodesBuffer->setName("LightBVH::mpBVHNodesBuffer");
     }
-    if (!mpTriangleIndicesBuffer || mpTriangleIndicesBuffer->getElementCount() < triangleIndices.size())
-    {
-        mpTriangleIndicesBuffer = Buffer::createStructured(mpDevice, var["triangleIndices"], (uint32_t)triangleIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+
+    if (!mpTriangleIndicesBuffer || mpTriangleIndicesBuffer->getElementCount() < triangleIndices.size()) {
+        mpTriangleIndicesBuffer = mpDevice->createStructuredBuffer(var["triangleIndices"], (uint32_t)triangleIndices.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpTriangleIndicesBuffer->setName("LightBVH::mpTriangleIndicesBuffer");
     }
-    if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size())
-    {
-        mpTriangleBitmasksBuffer = Buffer::createStructured(mpDevice, var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    
+    if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size()) {
+        mpTriangleBitmasksBuffer = mpDevice->createStructuredBuffer(var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
         mpTriangleBitmasksBuffer->setName("LightBVH::mpTriangleBitmasksBuffer");
     }
 
@@ -271,23 +255,18 @@ void LightBVH::uploadCPUBuffers(const std::vector<uint32_t>& triangleIndices, co
     mIsCpuDataValid = true;
 }
 
-void LightBVH::syncDataToCPU() const
-{
+void LightBVH::syncDataToCPU() const {
     if (!mIsValid || mIsCpuDataValid) return;
 
     // TODO: This is slow because of the flush. We should copy to a staging buffer
     // after the data is updated on the GPU and map the staging buffer here instead.
-    const void* const ptr = mpBVHNodesBuffer->map(Buffer::MapType::Read);
-    assert(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
-    std::memcpy(mNodes.data(), ptr, mNodes.size() * sizeof(mNodes[0]));
-    mpBVHNodesBuffer->unmap();
+    FALCOR_ASSERT(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
+    mpBVHNodesBuffer->getBlob(mNodes.data(), 0, mNodes.size() * sizeof(PackedNode));;
     mIsCpuDataValid = true;
 }
 
-void LightBVH::setShaderData(const ShaderVar& var) const
-{
-    if (isValid())
-    {
+void LightBVH::bindShaderData(const ShaderVar& var) const {
+    if (isValid()) {
         assert(var.isValid());
         var["nodes"] = mpBVHNodesBuffer;
         var["triangleIndices"] = mpTriangleIndicesBuffer;

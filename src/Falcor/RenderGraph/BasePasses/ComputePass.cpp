@@ -53,7 +53,7 @@ ComputePass::SharedPtr ComputePass::create(Device::SharedPtr pDevice, const std:
 
 ComputePass::SharedPtr ComputePass::create(Device::SharedPtr pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
     assert(pDevice);
-    return  std::make_shared<ComputePass>(pDevice, desc, defines, createVars);    
+    return  make_shared_ptr<ComputePass>(pDevice, desc, defines, createVars);    
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {

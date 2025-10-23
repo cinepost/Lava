@@ -399,14 +399,14 @@ public:
     eraseEntries([sig = &signal](auto it) { return it->signal() == sig; });
   }
 
-  void operator()(Args &&...args) noexcept
+  void operator()(const Args &...args) noexcept
   {
     if (blocked()) return;
 
     Lock lock(entriesMutex);
     for (auto &entry : entries) {
       if (auto *sig = entry.signal(); sig) {
-        (*sig)(std::forward<Args>(args)...);
+        (*sig)(std::forward<const Args>(args)...);
       }
       else {
         entry.slot()(std::forward<const Args>(args)...);
@@ -415,7 +415,7 @@ public:
   }
 
   template <typename RetFunc = typename detail::VoidableFunction<ReturnType>::func>
-  void operator()(const RetFunc &retFunc, Args &&...args) noexcept
+  void operator()(const RetFunc &retFunc, const Args &...args) noexcept
   {
     static_assert(!std::is_void_v<ReturnType>, "Must have non-void return type!");
 
@@ -424,17 +424,17 @@ public:
     Lock lock(entriesMutex);
     for (auto &entry : entries) {
       if (auto *sig = entry.signal(); sig) {
-        (*sig)(retFunc, std::forward<Args>(args)...);
+        (*sig)(retFunc, args...);
       }
       else {
-        retFunc(entry.slot()(std::forward<const Args>(args)...));
+        retFunc(entry.slot()(args...));
       }
     }
   }
 
-  [[nodiscard]] inline std::unique_ptr<Interface> interface() noexcept
+  [[nodiscard]] inline Interface getInterface() noexcept
   {
-    return std::make_unique<Interface>(this);
+    return Interface(this);
   }
 
   /// Returns the previous blocked state.

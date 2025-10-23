@@ -157,33 +157,44 @@ std::string getTempFilename() {
     return filePath;
 }
 
-const std::string& getExecutableDirectory() {
-    char result[PATH_MAX] = { 0 };
-    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-    std::string path;
-    if (count != -1) {
-        fs::path p(result);
-        path = p.parent_path().string().c_str();
-    }
-    static std::string strpath(path);
-    return strpath;
+const fs::path& getExecutablePath() {
+    static std::filesystem::path path(
+        []() {
+            char pathStr[PATH_MAX] = {0};
+            if (readlink("/proc/self/exe", pathStr, PATH_MAX) == -1) {
+                FALCOR_THROW("Failed to get the executable path.");
+            }
+            return fs::path(pathStr);
+        }()
+    );
+    return path;
 }
 
-const std::string getWorkingDirectory() {
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-        return std::string(cwd);
-    }
-
-    return std::string();
+const fs::path& getRuntimeDirectory() {
+    static fs::path path(
+        []() {
+            Dl_info info;
+            if (dladdr((void*)&getRuntimeDirectory, &info) == 0) {
+                FALCOR_THROW("Failed to get the falcor directory. dladdr() failed.");
+            }
+            return fs::path(info.dli_fname).parent_path();
+        }()
+    );
+    return path;
 }
 
-const std::string getAppDataDirectory() {
-    //assert(0);
-    //return std::string();
-    return "/home/max/dev/Falcor/src/Falcor/Data/";
+const fs::path& getAppDataDirectory() {
+    static fs::path path(
+        []() {
+            const char* homeDir;
+            if ((homeDir = getenv("HOME")) == nullptr) {
+                homeDir = getpwuid(getuid())->pw_dir;
+            }
+            return fs::path(homeDir) / ".falcor";
+        }()
+    );
+    return path;
 }
-
 const std::string& getExecutableName() {
     static std::string filename = fs::path(program_invocation_name).filename().string();
     return filename;
@@ -352,24 +363,32 @@ uint32_t popcount(uint32_t a) {
 }
 
 DllHandle loadDll(const std::string& libPath) {
-    void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
-    
-    if (!handle) {
-        LLOG_ERR << "Cannot open library: " << dlerror();
-        return nullptr;
-    }
-    
-    return handle;
+    return dlopen(libPath.c_str(), RTLD_LAZY);
+}
+
+SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path) {
+    return dlopen(path.c_str(), RTLD_LAZY);
 }
 
 void releaseDll(DllHandle dll) {
     dlclose(dll);
 }
 
+void releaseSharedLibrary(SharedLibraryHandle library) {
+    dlclose(library);
+}
+
 /** Get a function pointer from a library
 */
 void* getDllProcAddress(DllHandle dll, const std::string& funcName) {
     return dlsym(dll, funcName.c_str());
+}
+
+/**
+ * Get a function pointer from a library
+ */
+void* getProcAddress(SharedLibraryHandle library, const std::string& funcName) {
+    return dlsym(library, funcName.c_str());
 }
 
 void postQuitMessage(int32_t exitCode) {

@@ -93,7 +93,7 @@ class FALCOR_API RtProgramVars : public ProgramVars {
          * @param[in] pBindingTable The raytracing binding table.
          * @return A new object, or an exception is thrown if creation failed.
          */
-        static RtProgramVars::SharedPtr create(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+        static RtProgramVars::SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
         bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
 
@@ -106,7 +106,7 @@ class FALCOR_API RtProgramVars : public ProgramVars {
         const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
 
     public:
-        RtProgramVars(std::shared_ptr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+        RtProgramVars(Falcor::SharedPtr<Device> pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
     private:
         struct EntryPointGroupInfo {

@@ -58,7 +58,7 @@ namespace Falcor {
     - When compiling shaders using this module, ensure you add the shader preprocessor
       defines provided by RTXDI::getDefines().
     - When executing shaders using this module, ensure you set the shader data
-      using RTXDI::setShaderData().
+      using RTXDI::bindShaderData().
 
     To render a frame, the following steps need to occur:
 
@@ -183,7 +183,7 @@ public:
         Note: RTXDI is always bound to the global "gRTXDI" variable, so we expect a root shader variable here.
         \param[in] rootVar The root shader variable to set the data into.
     */
-    void setShaderData(const ShaderVar& rootVar);
+    void bindShaderData(const ShaderVar& rootVar);
 
     /** Begin a frame.
         Must be called once at the beginning of each frame.

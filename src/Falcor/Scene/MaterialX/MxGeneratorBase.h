@@ -4,9 +4,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
-
-#include "Falcor/Utils/Scripting/Dictionary.h"
-#include "Falcor/Utils/InternalDictionary.h"
+#include "Falcor/Utils/Dictionary.h"
 
 #include "MxNode.h"
 

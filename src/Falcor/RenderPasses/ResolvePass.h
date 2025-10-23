@@ -28,23 +28,33 @@
 #ifndef SRC_FALCOR_RENDERPASSES_RESOLVEPASS_H_
 #define SRC_FALCOR_RENDERPASSES_RESOLVEPASS_H_
 
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/API/Formats.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
+#include <memory>
+
+
 namespace Falcor {
-    
+
+class Device;
+
 class FALCOR_API ResolvePass : public RenderPass {
 	FALCOR_OBJECT(ResolvePass)
   public:
-    static const Info kInfo;
+    // This pass is not dynamically loaded from a plugin library,
+    // but we still need to provide plugin type and info fields.
+    FALCOR_PLUGIN_CLASS(ResolvePass, "ResolvePass", "Resolve a multi-sampled texture.");
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Properties& props = {}) { return make_shared_ptr<ResolvePass>(pDevice); }
+
+    ResolvePass(Device::SharedPtr pDevice);
 
     void setFormat(ResourceFormat format) { mFormat = format; }
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 
  private:
-    ResolvePass(Device::SharedPtr pDevice);
     ResourceFormat mFormat = ResourceFormat::Unknown;
 };
 

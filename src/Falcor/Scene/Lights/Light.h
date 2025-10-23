@@ -58,7 +58,7 @@ class FALCOR_API Light : public Animatable {
 
     /** Set the light parameters into a shader variable. To use this you need to include/import 'ShaderCommon' inside your shader.
     */
-    virtual void setShaderData(const ShaderVar& var);
+    virtual void bindShaderData(const ShaderVar& var);
 
 
     virtual void update(const Light& light); 

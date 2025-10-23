@@ -34,25 +34,23 @@
 namespace Falcor {
 
     void RenderGraphExe::execute(const Context& ctx, uint32_t frameNumber, uint32_t sampleNumber) {
-        auto pDevice = ctx.pRenderContext->device();
-        PROFILE(pDevice, "RenderGraphExe::execute()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::execute()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(pDevice, pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
             
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, sampleNumber);
+            RenderData renderData(pass.name, *mpResourceCache, ctx.passesDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, sampleNumber);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }
     }
 
     bool RenderGraphExe::beginFrame(const Context& ctx, uint32_t frameNumber) {
-        auto pDevice = ctx.pRenderContext->device();
-        PROFILE(pDevice, "RenderGraphExe::beginFrame()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::beginFrame()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(pDevice, pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
             
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
+            RenderData renderData(pass.name, *mpResourceCache, ctx.passesDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
             if(!pass.pPass->beginFrame(ctx.pRenderContext, renderData)) {
                 LLOG_ERR << "Error beginning frame for pass " << pass.name;
                 return false;
@@ -63,37 +61,34 @@ namespace Falcor {
     }
 
     void RenderGraphExe::endFrame(const Context& ctx, uint32_t frameNumber) {
-        auto pDevice = ctx.pRenderContext->device();
-        PROFILE(pDevice, "RenderGraphExe::endFrame()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::endFrame()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(pDevice, pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
             
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
+            RenderData renderData(pass.name, *mpResourceCache, ctx.passesDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, 0);
             pass.pPass->endFrame(ctx.pRenderContext, renderData);
         }
     }
 
     void RenderGraphExe::resolvePerFrameSparseResources(const Context& ctx) {
-        auto pDevice = ctx.pRenderContext->device();
-        PROFILE(pDevice, "RenderGraphExe::resolvePerFrameSparseResources()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::resolvePerFrameSparseResources()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(pDevice, pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
 
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            RenderData renderData(pass.name, *mpResourceCache, ctx.passesDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->resolvePerFrameSparseResources(ctx.pRenderContext, renderData);
         }
     }
 
     void RenderGraphExe::resolvePerSampleSparseResources(const Context& ctx) {
-        auto pDevice = ctx.pRenderContext->device();
-        PROFILE(pDevice, "RenderGraphExe::resolvePerSampleSparseResources()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::resolvePerSampleSparseResources()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(pDevice, pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
 
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            RenderData renderData(pass.name, *mpResourceCache, ctx.passesDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->resolvePerSampleSparseResources(ctx.pRenderContext, renderData);
         }
     }

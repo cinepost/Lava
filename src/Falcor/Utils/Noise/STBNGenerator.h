@@ -45,7 +45,7 @@ class dlldecl STBNGenerator {
             \param[in] pVars ProgramVars of the program to set data into.
             \return false if there was an error, true otherwise.
         */
-        void setShaderData(ShaderVar const& var) const;
+        void bindShaderData(ShaderVar const& var) const;
 
         const uint3& getDims() const { return mDims; }
 

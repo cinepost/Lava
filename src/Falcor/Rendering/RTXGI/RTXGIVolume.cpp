@@ -732,7 +732,7 @@ namespace Falcor
             mDebug.pData = Buffer::createStructured(var["gDebugData"], 1);
             var["gDebugData"] = mDebug.pData;
 
-            mpSampleGenerator->setShaderData(var);
+            mpSampleGenerator->bindShaderData(var);
         }
 
         // Bind the resources.
@@ -748,30 +748,26 @@ namespace Falcor
         mpScene->raytrace(pRenderContext, mpProbeUpdateProgram.get(), mpProbeUpdateVars, mProbeUpdateDispatchDims);
     }
 
-    Program::DefineList RTXGIVolume::getDirectLightingDefines() const
-    {
+    Program::DefineList RTXGIVolume::getDirectLightingDefines() const {
         Program::DefineList defines;
         if (mpEmissiveSampler) defines.add(mpEmissiveSampler->getDefines());
         return defines;
     }
 
-    void RTXGIVolume::setDirectLightingShaderData(ShaderVar var) const
-    {
+    void RTXGIVolume::setDirectLightingShaderData(ShaderVar var) const {
         var["enableEnvMap"] = mOptions.enableEnvMap && mpEnvMapSampler != nullptr;
         var["enableAnalyticLights"] = mOptions.enableAnalyticLights;
         var["enableEmissiveLights"] = mOptions.enableEmissiveLights;
         var["emissiveSampleCount"] = mUseEmissiveSampler ? mOptions.emissiveSampleCount : 0;
 
-        if (mpEnvMapSampler)
-        {
-            mpEnvMapSampler->setShaderData(var["envMapSampler"]);
+        if (mpEnvMapSampler) {
+            mpEnvMapSampler->bindShaderData(var["envMapSampler"]);
         }
 
-        if (mUseEmissiveSampler && mOptions.emissiveSampleCount > 0)
-        {
+        if (mUseEmissiveSampler && mOptions.emissiveSampleCount > 0) {
             // TODO: Do we have to bind this every frame?
             FALCOR_ASSERT(mpEmissiveSampler);
-            mpEmissiveSampler->setShaderData(var["emissiveSampler"]);
+            mpEmissiveSampler->bindShaderData(var["emissiveSampler"]);
         }
     }
 

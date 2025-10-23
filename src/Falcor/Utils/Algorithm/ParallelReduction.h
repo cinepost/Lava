@@ -28,23 +28,22 @@
 #ifndef SRC_FALCOR_UTILS_ALGORITHM_PARALLELREDUCTION_H_
 #define SRC_FALCOR_UTILS_ALGORITHM_PARALLELREDUCTION_H_
 
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/CopyContext.h"
-#include "Falcor/RenderGraph/BasePasses/FullScreenPass.h"
+#include "Falcor/Core/State/ComputeState.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+
 
 namespace Falcor {
 
-class dlldecl ParallelReduction {
+class FALCOR_API ParallelReduction {
  public:
-    using UniquePtr = std::unique_ptr<ParallelReduction>;
-
     enum class Type {
         Sum,
         MinMax,
     };
 
-    static UniquePtr create(std::shared_ptr<Device> pDevice);
-
-    ParallelReduction(std::shared_ptr<Device> pDevice);
+    ParallelReduction(Falcor::SharedPtr<Device> pDevice);
 
     /** Perform parallel reduction.
         The computations are performed in type T, which must be compatible with the texture format:
@@ -70,7 +69,7 @@ class dlldecl ParallelReduction {
 private:
     void allocate(uint32_t elementCount, uint32_t elementSize);
 
-    std::shared_ptr<Device>             mpDevice;
+    Falcor::SharedPtr<Device>           mpDevice;
 
     ComputeState::SharedPtr             mpState;
     Program::SharedPtr                  mpInitialProgram;

@@ -177,7 +177,7 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     cb_var["gScale"] = mScale;
     cb_var["frameNumber"] = mFrameNumber++;
 
-    mpCamera->setShaderData(cb_var["gCamera"]);
+    mpCamera->bindShaderData(cb_var["gCamera"]);
 
     cb_var["gIntensity"] = mIntensity;
     cb_var["gOpacity"] = mOpacity;

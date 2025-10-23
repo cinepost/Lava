@@ -25,59 +25,62 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_SDFS_SPARSEVOXELSET_SDFSVS_H_
+#define SRC_FALCOR_SCENE_SDFS_SPARSEVOXELSET_SDFSVS_H_
 
-#include "Scene/SDFs/SDFGrid.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
+#include "Falcor/Scene/SDFs/SDFGrid.h"
 
-namespace Falcor
-{
-    /** A single SDF Sparse Voxel Set. Can only be utilized on the GPU.
+
+namespace Falcor {
+
+class Device;
+class Buffer;
+class Texture;
+
+/** A single SDF Sparse Voxel Set. Can only be utilized on the GPU.
+*/
+class FALCOR_API SDFSVS : public SDFGrid {
+    FALCOR_OBJECT(SDFSVS)
+public:
+    /** Create a new, empty SDF sparse voxel set.
+        \return SDFSVS object, or nullptr if errors occurred.
     */
-    class dlldecl SDFSVS : public SDFGrid
-    {
-    public:
-        using SharedPtr = std::shared_ptr<SDFSVS>;
+    static SharedPtr create(Falcor::SharedPtr<Device> pDevice);
 
-        /** Create a new, empty SDF sparse voxel set.
-            \return SDFSVS object, or nullptr if errors occurred.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice);
+    virtual size_t getSize() const override;
+    virtual uint32_t getMaxPrimitiveIDBits() const override;
+    virtual Type getType() const { return Type::SparseVoxelSet; }
 
-        virtual size_t getSize() const override;
-        virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const { return Type::SparseVoxelSet; }
+    virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
-        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+    virtual const Falcor::SharedPtr<Buffer>& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
+    virtual uint32_t getAABBCount() const override { return mVoxelCount; }
 
-        virtual const Buffer::SharedPtr& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
-        virtual uint32_t getAABBCount() const override { return mVoxelCount; }
+    virtual void bindShaderData(const ShaderVar& var) const override;
 
-        virtual void setShaderData(const ShaderVar& var) const override;
+protected:
+    virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
-    protected:
-        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
+private:
+    SDFSVS(Falcor::SharedPtr<Device> pDevice):SDFGrid(pDevice) {};
 
-    private:
-        SDFSVS(Device::SharedPtr pDevice):SDFGrid(pDevice) {};
+    // CPU data.
+    std::vector<int8_t> mValues;
 
-        // CPU data.
-        std::vector<int8_t> mValues;
+    // Specs.
+    Falcor::SharedPtr<Buffer> mpVoxelAABBBuffer;
+    Falcor::SharedPtr<Buffer> mpVoxelBuffer;
+    uint32_t mVoxelCount = 0;
 
-        // Specs.
-        Buffer::SharedPtr mpVoxelAABBBuffer;
-        Buffer::SharedPtr mpVoxelBuffer;
-        uint32_t mVoxelCount = 0;
+    // Compute passes used to build the SVS.
+    Falcor::SharedPtr<ComputePass> mpCountSurfaceVoxelsPass;
+    Falcor::SharedPtr<ComputePass> mpSDFSVSVoxelizerPass;
 
-        // Compute passes used to build the SVS.
-        ComputePass::SharedPtr mpCountSurfaceVoxelsPass;
-        ComputePass::SharedPtr mpSDFSVSVoxelizerPass;
+    // Scratch data used for building.
+    Falcor::SharedPtr<Buffer> mpSurfaceVoxelCounter;
+    Falcor::SharedPtr<Texture> mpSDFGridTexture;
+};
 
-        // Scratch data used for building.
-        GpuFence::SharedPtr mpReadbackFence;
-        Buffer::SharedPtr mpSurfaceVoxelCounter;
-        Buffer::SharedPtr mpSurfaceVoxelCounterStagingBuffer;
-        Texture::SharedPtr mpSDFGridTexture;
-    };
-}
+} // namespace Falcor
+
+#endif // SRC_FALCOR_SCENE_SDFS_SPARSEVOXELSET_SDFSVS_H_

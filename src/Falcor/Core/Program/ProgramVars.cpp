@@ -40,13 +40,13 @@
 
 namespace Falcor {
 
-ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): ParameterBlock(pDevice.get(), pReflector), mpReflector(pReflector) {
+ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): ParameterBlock(pDevice, pReflector), mpReflector(pReflector) {
     FALCOR_ASSERT(pReflector);
 }
 
 ProgramVars::SharedPtr ProgramVars::create(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
     FALCOR_CHECK(pReflector, "Can't create a ProgramVars object without a program reflector");
-    return std::make_shared<ProgramVars>(pDevice, pReflector);
+    return ProgramVars::SharedPtr(new ProgramVars(pDevice, pReflector));
 }
 
 ProgramVars::SharedPtr ProgramVars::create(Device::SharedPtr pDevice, const Program* pProg) {
@@ -64,7 +64,7 @@ RtProgramVars::RtProgramVars(Device::SharedPtr pDevice, const Program::SharedPtr
 }
 
 RtProgramVars::SharedPtr RtProgramVars::create(Device::SharedPtr pDevice, const Program::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable) {
-    return std::make_shared<RtProgramVars>(pDevice, pProgram, pBindingTable);
+    return RtProgramVars::SharedPtr(new RtProgramVars(pDevice, pProgram, pBindingTable));
 }
 
 void RtProgramVars::init(const RtBindingTable::SharedPtr& pBindingTable) {

@@ -184,7 +184,7 @@ Texture::SharedPtr CACAO::generateAOMap(RenderContext* pContext, const Camera* p
 
     {
         ShaderVar var = mpCACAOPass["PerFrameCB"];
-        pCamera->setShaderData(var["gCamera"]);
+        pCamera->bindShaderData(var["gCamera"]);
     }
 
     // Update state/vars

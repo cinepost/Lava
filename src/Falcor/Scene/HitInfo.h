@@ -47,7 +47,7 @@ class Scene;
 
 	See HitInfo.slang for more information.
 */
-class dlldecl FALCOR_API {
+class FALCOR_API HitInfo {
 	public:
 		static const uint32_t kMaxPackedSizeInBytes = 16;
 		static const ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
