@@ -139,9 +139,9 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
 
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSuperSampleCount);
-    reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(Resource::BindFlags::DepthStencil);
+    reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(ResourceBindFlags::DepthStencil);
 
-    addRenderPassOutputs(reflector, kForwardLightingPassExtraChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kForwardLightingPassExtraChannels, ResourceBindFlags::UnorderedAccess);
 
     return reflector;
 }
@@ -178,7 +178,7 @@ void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& r
     } else {
         mpState->setDepthStencilState(nullptr);
         if (mpFbo->getDepthStencilTexture() == nullptr) {
-            auto pDepth = Texture::create2D(pContext->device(), mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(pContext->device(), mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil);
             mpFbo->attachDepthStencilTarget(pDepth);
         }
     }

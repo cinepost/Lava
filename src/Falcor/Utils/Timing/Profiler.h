@@ -87,10 +87,12 @@ class FALCOR_API Profiler {
 				Stats computeCpuTimeStats() const;
 				Stats computeGpuTimeStats() const;
 
+				void resetStats();
+
 			private:
 				Event(const std::string& name);
 
-				void start(Profiler* profiler, uint32_t frameIndex);
+				void start(Profiler& profiler, uint32_t frameIndex);
 				void end(uint32_t frameIndex);
 				void endFrame(uint32_t frameIndex);
 
@@ -206,19 +208,23 @@ class FALCOR_API Profiler {
 		/** Finish profiling for the entire frame.
 			Note: Must be called once at the end of each frame.
 		*/
-		void endFrame();
+		void endFrame(RenderContext* pRenderContext);
 
-		/** Start profiling a new event and update the events hierarchies.
-			\param[in] name The event name.
-			\param[in] flags The event flags.
-		*/
-		void startEvent(const std::string& name, Flags flags = Flags::Default);
+		/**
+	     * Start profiling a new event and update the events hierarchies.
+	     * @param[in] pRenderContext Render context for measuring GPU time.
+	     * @param[in] name The event name.
+	     * @param[in] flags The event flags.
+	     */
+	    void startEvent(RenderContext* pRenderContext, const std::string& name, Flags flags = Flags::Default);
 
-		/** Finish profiling a new event and update the events hierarchies.
-			\param[in] name The event name.
-			\param[in] flags The event flags.
-		*/
-		void endEvent(const std::string& name, Flags flags = Flags::Default);
+	    /**
+	     * Finish profiling a new event and update the events hierarchies.
+	     * @param[in] pRenderContext Render context for measuring GPU time.
+	     * @param[in] name The event name.
+	     * @param[in] flags The event flags.
+	     */
+	    void endEvent(RenderContext* pRenderContext, const std::string& name, Flags flags = Flags::Default);
 
 		/** Get the event, or create a new one if the event does not yet exist.
 			This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
@@ -234,6 +240,8 @@ class FALCOR_API Profiler {
 		/** Get the profiler events (previous frame) as a python dictionary.
 		*/
 		pybind11::dict getPythonEvents() const;
+
+		void resetStats();
 
 		void breakStrongReferenceToDevice();
 
@@ -261,8 +269,9 @@ class FALCOR_API Profiler {
 		std::string mCurrentEventName;                      ///< Current nested event name.
 		uint32_t mCurrentLevel = 0;                         ///< Current nesting level.
 		uint32_t mFrameIndex = 0;                           ///< Current frame index.
+		bool mPendingReset = false;                                      ///< Reset profiler stats at the next call to endFrame().
 
-		 std::shared_ptr<Capture> mpCapture; 				///< Currently active capture.
+		std::shared_ptr<Capture> mpCapture; 				///< Currently active capture.
 
 		Fence::SharedPtr mpFence;
 		uint64_t mFenceValue = uint64_t(-1);

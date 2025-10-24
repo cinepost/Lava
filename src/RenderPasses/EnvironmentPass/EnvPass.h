@@ -39,10 +39,9 @@
 using namespace Falcor;
 
 class PASS_API EnvPass : public RenderPass {
+    FALCOR_OBJECT(EnvPass)
+    FALCOR_PLUGIN_CLASS(EnvPass, "EnvPass", "Render a backdrop image and/or scene lights.");
   public:
-    using SharedPtr = std::shared_ptr<EnvPass>;
-    static const Info kInfo;
-
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     virtual Dictionary getScriptingDictionary() override;

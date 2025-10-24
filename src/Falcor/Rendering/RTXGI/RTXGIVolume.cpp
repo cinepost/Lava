@@ -551,7 +551,7 @@ namespace Falcor
         ResourceFormat format = ResourceFormat::Unknown;
 
         // The constant buffer
-        mpDDGIVolumeBlockSDK = Buffer::createStructured(sizeof(rtxgi::DDGIVolumeDescGPUPacked), 1, Resource::BindFlags::ShaderResource);
+        mpDDGIVolumeBlockSDK = Buffer::createStructured(sizeof(rtxgi::DDGIVolumeDescGPUPacked), 1, ResourceBindFlags::ShaderResource);
         mpSet->setSrv(0, 0, mpDDGIVolumeBlockSDK->getSRV().get());
         mpDDGIVolumeBlockSDK->setName("mpDDGIVolumeBlockSDK");
 

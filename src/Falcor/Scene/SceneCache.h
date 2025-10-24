@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_SCENE_SCENE_CACHE_H_
 #define SRC_FALCOR_SCENE_SCENE_CACHE_H_
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Material/MaterialTextureLoader.h"
 #include "Utils/CryptoUtils.h"
@@ -38,13 +39,6 @@
 #include "Falcor/Scene/Material/HairMaterial.h"
 #include "Falcor/Scene/Material/ClothMaterial.h"
 
-// #ifdef _WIN32
-// #include <filesystem>
-// namespace fs = std::filesystem;
-// #else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-// #endif
 
 namespace Falcor {
 
@@ -54,7 +48,7 @@ class Scene;
     The scene cache is used to heavily reduce load times of more complex assets.
     The cache stores a binary representation of `Scene::SceneData` which contains everything to re-create a `Scene`.
 */
-class dlldecl SceneCache {
+class FALCOR_API SceneCache {
 public:
     using Key = SHA1::MD;
 

@@ -31,16 +31,8 @@
 
 #include "ToneMapperPass.h"
 
-
-const RenderPass::Info ToneMapperPass::kInfo
-{
-    "ToneMapperPass",
-
-    "Computes Tone-mapped image.\n"
-    ""
-};
-
 namespace {
+
     const std::string kSrc = "input";
     const std::string kDst = "output";
     const std::string kLuminanceTex = "luminanceTex";
@@ -103,10 +95,10 @@ ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operat
     mpLinearSampler = Sampler::create(pDevice, samplerDesc);
 }
 
-ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, const Properties& props) {
     auto pThis = SharedPtr(new ToneMapperPass(pRenderContext->device(), Operator::HableUc2, ResourceFormat::Unknown));
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kExposureCompensation) pThis->setExposureCompensation(value);
         else if (key == kAutoExposure) pThis->setAutoExposure(value);
         else if (key == kExposureValue) pThis->setExposureValue(value);
@@ -123,20 +115,20 @@ ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, 
     return pThis;
 }
 
-Dictionary ToneMapperPass::getScriptingDictionary() {
-    Dictionary d;
-    if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
-    d[kExposureCompensation] = mExposureCompensation;
-    d[kAutoExposure] = mAutoExposure;
-    d[kExposureValue] = mExposureValue;
-    d[kFilmSpeed] = mFilmSpeed;
-    d[kWhiteBalance] = mWhiteBalance;
-    d[kWhitePoint] = mWhitePoint;
-    d[kOperator] = mOperator;
-    d[kClamp] = mClamp;
-    d[kWhiteMaxLuminance] = mWhiteMaxLuminance;
-    d[kWhiteScale] = mWhiteScale;
-    return d;
+Properties ToneMapperPass::getProperties() const {
+    Properties props;
+    props[kOutputFormat] = mOutputFormat;
+    props[kExposureCompensation] = mExposureCompensation;
+    props[kAutoExposure] = mAutoExposure;
+    props[kExposureValue] = mExposureValue;
+    props[kFilmSpeed] = mFilmSpeed;
+    props[kWhiteBalance] = mWhiteBalance;
+    props[kWhitePoint] = mWhitePoint;
+    props[kOperator] = mOperator;
+    props[kClamp] = mClamp;
+    props[kWhiteMaxLuminance] = mWhiteMaxLuminance;
+    props[kWhiteScale] = mWhiteScale;
+    return props;
 }
 
 RenderPassReflection ToneMapperPass::reflect(const CompileData& compileData) {

@@ -184,7 +184,7 @@ void RTXGIPass::compile(RenderContext* pRenderContext, const CompileData& compil
     mpDepthStencil = nullptr;
     if (!compileData.connectedResources.getField(kDepthChannel))
     {
-        mpDepthStencil = Texture::create2D(mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
+        mpDepthStencil = Texture::create2D(mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil);
     }
 }
 

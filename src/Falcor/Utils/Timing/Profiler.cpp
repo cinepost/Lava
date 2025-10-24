@@ -120,7 +120,7 @@ Profiler::Stats Profiler::Event::computeGpuTimeStats() const {
     return Stats::compute(mGpuTimeHistory.data(), mHistorySize);
 }
 
-void Profiler::Event::start(std::shared_ptr<Device> pDevice, uint32_t frameIndex) {
+void Profiler::Event::start(Profiler& profiler, uint32_t frameIndex) {
     if (++mTriggered > 1) {
         LLOG_WRN <<"Profiler event '{" << mName << "}' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.";
         return;
@@ -136,7 +136,9 @@ void Profiler::Event::start(std::shared_ptr<Device> pDevice, uint32_t frameIndex
     assert(frameData.currentTimer <= frameData.pTimers.size());
 
     if (frameData.currentTimer == frameData.pTimers.size()) {
-        frameData.pTimers.push_back(GpuTimer::create(pDevice));
+        GpuTimer::SharedPtr timer = GpuTimer::create(profiler.mpDevice);
+        timer->breakStrongReferenceToDevice();
+        frameData.pTimers.push_back(timer);
     }
     frameData.pActiveTimer = frameData.pTimers[frameData.currentTimer++].get();
     frameData.pActiveTimer->begin();
@@ -270,10 +272,6 @@ Profiler::Capture::Capture(size_t reservedEvents, size_t reservedFrames): mReser
     for (auto& lane : mLanes) lane.records.reserve(reservedFrames);
 }
 
-Profiler::Capture::SharedPtr Profiler::Capture::create(size_t reservedEvents, size_t reservedFrames) {
-    return SharedPtr(new Capture(reservedEvents, reservedFrames));
-}
-
 void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
     if (events.empty()) {
         return;
@@ -326,7 +324,7 @@ void Profiler::startEvent(RenderContext* pRenderContext, const std::string& name
 
         Event* pEvent = getEvent(mCurrentEventName);
         assert(pEvent != nullptr);
-        if (!mPaused) pEvent->start(mpDevice, mFrameIndex);
+        if (!mPaused) pEvent->start(*this, mFrameIndex);
 
         if (std::find(mCurrentFrameEvents.begin(), mCurrentFrameEvents.end(), pEvent) == mCurrentFrameEvents.end()) {
             mCurrentFrameEvents.push_back(pEvent);
@@ -375,7 +373,7 @@ void Profiler::endFrame(RenderContext* pRenderContext) {
 
     // Flush and insert signal for synchronization of GPU timings.
     pRenderContext->submit(false);
-    mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    mFenceValue = pRenderContext->signal(mpFence.get());
 
     if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
 
@@ -392,7 +390,7 @@ void Profiler::startCapture(size_t reservedFrames) {
     mpCapture = std::make_shared<Capture>(mLastFrameEvents.size(), reservedFrames);
 }
 
-Profiler::Capture::SharedPtr Profiler::endCapture() {
+std::shared_ptr<Profiler::Capture> Profiler::endCapture() {
     std::shared_ptr<Capture> pCapture;
     std::swap(pCapture, mpCapture);
     if (pCapture) {
@@ -425,13 +423,7 @@ pybind11::dict Profiler::getPythonEvents() const {
     return result;
 }
 
-const Profiler::SharedPtr& Profiler::instancePtr(std::shared_ptr<Device> pDevice) {
-    static std::array<Profiler::SharedPtr, 256> pInstances;
-    if (!pInstances[pDevice->uid()]) pInstances[pDevice->uid()] = std::make_shared<Profiler>(pDevice);
-    return pInstances[pDevice->uid()];
-}
-
-Profiler::Profiler(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+Profiler::Profiler(Device::SharedPtr pDevice): mpDevice(pDevice) {
     mpFence = mpDevice->createFence();
     mpFence->breakStrongReferenceToDevice();
 }

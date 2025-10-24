@@ -39,7 +39,7 @@
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/Program/ProgramManager.h"
-
+#include "Falcor/Utils/Timing/Profiler.h"
 
 namespace Falcor {
 
@@ -246,6 +246,24 @@ Buffer::SharedPtr Device::createStructuredBuffer(
     return make_shared_ptr<Buffer>(Device::SharedPtr(this), (uint32_t)structStride, elementCount, bindFlags, memoryType, pInitData, createCounter);
 }
 
+Falcor::SharedPtr<Buffer> Device::createStructuredBuffer(
+    const Program* pProgram,
+    const std::string& name,
+    uint32_t elementCount,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData,
+    bool createCounter
+){
+    const auto& pDefaultBlock = pProgram->getReflector()->getDefaultParameterBlock();
+    const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
+    if (pVar == nullptr) {
+        throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
+    }
+    return createStructuredBuffer(pVar->getType(), elementCount, bindFlags, memoryType, pInitData, createCounter);
+}
+
+
 Buffer::SharedPtr Device::createStructuredBuffer(
     const ShaderVar& shaderVar,
     uint32_t elementCount,
@@ -295,6 +313,9 @@ bool Device::init() {
     desc.setLodParams(0.0f, 1000.0f, -0.0f);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    
+    mpProfiler = std::make_unique<Profiler>(Device::SharedPtr(this));
+    mpProfiler->breakStrongReferenceToDevice();
     
     mpDefaultSampler = createSampler(desc);
     mpDefaultSampler->breakStrongReferenceToDevice();

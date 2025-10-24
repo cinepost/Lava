@@ -36,9 +36,6 @@
 
 #include "Falcor/Scene/Lights/LightData.slang"
 
-const RenderPass::Info EnvPass::kInfo { "EnvPass", "Render a backdrop image and/or scene lights." };
-
-
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -89,14 +86,14 @@ EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     setupCamera();
 }
 
-EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Properties& props) {
     SharedPtr pEnvPass = SharedPtr(new EnvPass(pRenderContext->device()));
     
     auto pDevice = pRenderContext->device();
 
     std::string backdropImageName;
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kBackdropImageName) backdropImageName = value.operator std::string();
         else if (key == kLoadAsSrgb) pEnvPass->mBackdropImageLoadSrgb = value;
         else if (key == kFilter) pEnvPass->setFilter(value);
@@ -110,15 +107,15 @@ EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Dictiona
     return pEnvPass;
 }
 
-Dictionary EnvPass::getScriptingDictionary() {
-    Dictionary dict;
-    dict[kBackdropImageName] = mpBackdropTexture ? mpBackdropTexture->getSourceFilename() : std::string();
-    dict[kLoadAsSrgb] = mBackdropImageLoadSrgb;
-    dict[kFilter] = mFilter;
-    dict[kIntensity] = mIntensity;
-    dict[kOpacity] = mOpacity;
-    dict[kUseDOF] = mUseDOF;
-    return dict;
+Properties EnvPass::getProperties() const {
+    Properties props;
+    props[kBackdropImageName] = mpBackdropTexture ? mpBackdropTexture->getSourceFilename() : std::string();
+    props[kLoadAsSrgb] = mBackdropImageLoadSrgb;
+    props[kFilter] = mFilter;
+    props[kIntensity] = mIntensity;
+    props[kOpacity] = mOpacity;
+    props[kUseDOF] = mUseDOF;
+    return props;
 }
 
 RenderPassReflection EnvPass::reflect(const CompileData& compileData) {

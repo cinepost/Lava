@@ -25,6 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "LTX_Bitmap.h"
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Texture.h"
+
+#include "Falcor/Utils/Image/Bitmap.h"
+#include "Falcor/Utils/Image/BitmapUtils.h"
+#include "Falcor/Utils/Image/LTX_BitmapAlgo.h"
+#include "Falcor/Utils/Image/LTX_BitmapUtils.h"
+
+#include "Falcor/Utils/Debug/debug.h"
+
+#include "lava_utils_lib/logging.h"
+
 #include <stdlib.h>
 #include <algorithm>
 
@@ -32,27 +47,12 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
-#include <boost/filesystem.hpp>
-namespace fs = boost::filesystem;
-
 #include "blosc.h"
-
-#include "stdafx.h"
-#include "Bitmap.h"
-#include "LTX_Bitmap.h"
-#include "BitmapUtils.h"
-#include "LTX_BitmapAlgo.h"
-#include "LTX_BitmapUtils.h"
-
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Utils/Debug/debug.h"
-
-#include "lava_utils_lib/logging.h"
 
 
 namespace Falcor {
 
-	using uint = uint32_t;
+using uint = uint32_t;
 
 namespace oiio = OIIO;
 
@@ -171,11 +171,11 @@ static inline int _readCompressedPageData(FILE * pFile, size_t dataOffset, size_
 	return blosc_decompress_ctx(pScratchBuffer, pData, kLtxPageSize, 1);
 }
 
-LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(Device::SharedPtr pDevice, const std::string& filename, bool isTopDown) {
 	return createFromFile(pDevice, fs::path(filename), isTopDown);
 }
 
-LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool isTopDown) {
+LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(Device::SharedPtr pDevice, const fs::path& path, bool isTopDown) {
 	if(!checkFileMagic(path, true)) {
 		LLOG_ERR << "Wrong LTX bitmap " << path << " file magic!";
 		return nullptr;
@@ -441,7 +441,7 @@ static void fixBlackAlpha(oiio::ImageBuf& buff, oiio::ROI roi = {}) {
 }
 */
 
-bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
+bool LTX_Bitmap::convertToLtxFile(Device* pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
 	oiio::ImageSpec config;
 
 	config.attribute("oiio:UnassociatedAlpha", 1);

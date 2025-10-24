@@ -75,9 +75,9 @@ Dictionary ComparisonPass::getScriptingDictionary() {
 
 RenderPassReflection ComparisonPass::reflect(const CompileData& compileData) {
     RenderPassReflection r;
-    r.addInput(kLeftInput, "Left side image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    r.addInput(kRightInput, "Right side image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    r.addOutput(kOutput, "Output image").bindFlags(Falcor::Resource::BindFlags::RenderTarget).texture2D(0, 0);
+    r.addInput(kLeftInput, "Left side image").bindFlags(Falcor::ResourceBindFlags::ShaderResource).texture2D(0, 0);
+    r.addInput(kRightInput, "Right side image").bindFlags(Falcor::ResourceBindFlags::ShaderResource).texture2D(0, 0);
+    r.addOutput(kOutput, "Output image").bindFlags(Falcor::ResourceBindFlags::RenderTarget).texture2D(0, 0);
     return r;
 }
 

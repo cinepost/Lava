@@ -1,11 +1,8 @@
 #ifndef SRC_FALCOR_SCENE_UTILS_VISIBILITYSAMPLESCONTAINER_H_ 
 #define SRC_FALCOR_SCENE_UTILS_VISIBILITYSAMPLESCONTAINER_H_
 
-#include <set>
-#include <mutex>
-#include <algorithm>
-
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
@@ -16,17 +13,19 @@
 
 #include "VisibilitySamplesContainer.slangh"
 
+#include <set>
+#include <mutex>
+#include <algorithm>
+
 
 namespace Falcor {
 
-class dlldecl VisibilitySamplesContainer {
+class FALCOR_API VisibilitySamplesContainer : public Object {
+		FALCOR_OBJECT(VisibilitySamplesContainer)
 	public:
 		static const bool kDefaultStoreNormals = false;
 		static const bool kDefaultStoreTextureGradients = false;
 		static const bool kDefaultLimitTransparentSamplesCountPP = false;
-
-		using SharedPtr = std::shared_ptr<VisibilitySamplesContainer>;
-		using SharedConstPtr = std::shared_ptr<const VisibilitySamplesContainer>;
 
 		/** Create a material system.
 			\return New object, or throws an exception if creation failed.
@@ -111,10 +110,9 @@ class dlldecl VisibilitySamplesContainer {
 		bool  hasCombinedNormals() const;
 
 		~VisibilitySamplesContainer();
-
-	private:
 		VisibilitySamplesContainer(Device::SharedPtr pDevice, uint2 resolution, uint maxTransparentSamplesCountPP = 1);
 
+	private:
 		void createParameterBlock();
 		void clearParameterBlock();
 		void createBuffers();
@@ -129,8 +127,8 @@ class dlldecl VisibilitySamplesContainer {
 		// Internal state
 
 		uint2 mResolution;
-		uint 	mMaxTransparentSamplesCountPP;
-		uint 	mTransparentSamplesBufferSize;
+		uint  mMaxTransparentSamplesCountPP;
+		uint  mTransparentSamplesBufferSize;
 		uint  mResolution1D;
 		bool  mSortingEnabled = true;
 		bool  mSortingEnabledPP = true;
@@ -141,8 +139,8 @@ class dlldecl VisibilitySamplesContainer {
 		uint3 mShadingThreadGroupSize;
 
 		float mAlphaThresholdMin;
-    float mAlphaThresholdMax;
-    bool  mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
+    	float mAlphaThresholdMax;
+    	bool  mLimitTransparentSamplesCountPP = kDefaultLimitTransparentSamplesCountPP;
 
 		Device::SharedPtr mpDevice;
 		Scene::SharedPtr  mpScene;
@@ -150,7 +148,7 @@ class dlldecl VisibilitySamplesContainer {
 		VisibilitySamplesContainerFlags mFlags;
 
 		// GPU resources internal
-		GpuFence::SharedPtr mpFence;
+		Fence::SharedPtr mpFence;
 		mutable ParameterBlock::SharedPtr mpParameterBlock;                 ///< Parameter block for binding all resources.
 
 		// GPU resources

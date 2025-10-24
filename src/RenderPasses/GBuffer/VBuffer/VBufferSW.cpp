@@ -174,10 +174,10 @@ void VBufferSW::parseDictionary(const Dictionary& dict) {
 RenderPassReflection VBufferSW::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     // Add the required output. This always exists.
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(ResourceBindFlags::UnorderedAccess).format(mVBufferFormat);
 
     // Add all the other input-outputs.
-    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     // Add all the other outputs.
     addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
@@ -290,7 +290,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
     createJitterTexture();
 
     if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
-        mpThreadLockBuffer = Buffer::create(pRenderContext->device(), mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpThreadLockBuffer = Buffer::create(pRenderContext->device(), mFrameDim.y * sizeof(uint32_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
 
     if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
@@ -520,15 +520,15 @@ void VBufferSW::createBuffers() {
     createMicroTrianglesBuffer();
     
     if(mUseD64) {
-        mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint64_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     } else {
-        mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpLocalDepthBuffer = Buffer::create(mpDevice, mFrameDim.x * mFrameDim.y * sizeof(uint32_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
 
     // Opacity shifts buffer
     if(mpScene && mpScene->materialSystem()->hasTransparentMaterials()) {
         size_t opacityShiftsBufferSize = ((mFrameDim.x * mFrameDim.y * sizeof(uint8_t)) << 2) >> 2;
-        mpOpacityShiftsBuffer = Buffer::create(mpDevice, opacityShiftsBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpOpacityShiftsBuffer = Buffer::create(mpDevice, opacityShiftsBufferSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
 
     // Opacity transparent visibility samples buffer
@@ -550,7 +550,7 @@ void VBufferSW::createMicroTrianglesBuffer() {
 
     static bool createCounter = true;
 
-    static const Resource::BindFlags flags = Resource::BindFlags::None;
+    static const ResourceBindFlags flags = ResourceBindFlags::None;
 
     mpMicroTrianglesBuffer = Buffer::createStructured(mpDevice, sizeof(MicroTriangle), maxMicroTrianglesCount, flags, Buffer::CpuAccess::None, nullptr, createCounter);
 
@@ -636,7 +636,7 @@ void VBufferSW::createMeshletDrawList() {
 
     if(!meshletsDrawList.empty()) {
         mpMeshletDrawListBuffer = Buffer::createStructured(
-            mpDevice, sizeof(MeshletDraw), meshletsDrawList.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, 
+            mpDevice, sizeof(MeshletDraw), meshletsDrawList.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, 
             meshletsDrawList.data()
         );
     } else {

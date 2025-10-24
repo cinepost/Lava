@@ -40,7 +40,7 @@ const uint32_t elems = 256;
 Buffer::SharedPtr createTestBuffer(Buffer::CpuAccess cpuAccess, bool initialize = true) {
     std::vector<uint32_t> initData(elems);
     for (uint32_t i = 0; i < elems; i++) initData[i] = i;
-    return Buffer::create(elems * sizeof(uint32_t), Resource::BindFlags::ShaderResource, cpuAccess, initialize ? initData.data() : nullptr);
+    return Buffer::create(elems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, cpuAccess, initialize ? initData.data() : nullptr);
 }
 
 /** Tests readback from buffer created with the given CPU access flag work.
@@ -76,7 +76,7 @@ void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess) {
 
         // Copy buffer to staging buffer on the GPU.
         // Note we have to use copyBufferRegion() as our buffer is allocated within a page on the upload heap.
-        auto pStaging = Buffer::create(elems * sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        auto pStaging = Buffer::create(elems * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
         ctx.getRenderContext()->copyBufferRegion(pStaging.get(), 0, pBuf.get(), 0, elems * sizeof(uint32_t));
 
         // We have to flush here so that the copy is guaranteed to have finished by the time we map.

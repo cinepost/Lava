@@ -81,7 +81,7 @@ bool LightLinker::NameSet::hasName(const std::string& name) const {
     return mNames.find(name) != mNames.end();
 }
 
-LightLinker::LightLinker(Device::SharedPtr pDevice, Scene* pScene): mpDevice(pDevice), mpScene(pScene) {
+LightLinker::LightLinker(Device::SharedPtr pDevice): mpDevice(pDevice) {
     // Global light set (includes all lights)
     LightSet global;
     global.mLightSetData.lightsCount = 0;

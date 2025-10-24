@@ -38,18 +38,16 @@
 using namespace Falcor;
 
 class PASS_API ToneMapperPass : public RenderPass {
+		FALCOR_OBJECT(ToneMapperPass)
+    	FALCOR_PLUGIN_CLASS(ToneMapperPass, "ToneMapperPass", "Computes Tone-mapped image.");
 	public:
-		using SharedPtr = std::shared_ptr<ToneMapperPass>;
-		using SharedConstPtr = std::shared_ptr<const ToneMapperPass>;
-		static const Info kInfo;
-
 		using Operator = ToneMapperOperator;
 
 		/** Create a new object
 		*/
-		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& props = {});
 
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

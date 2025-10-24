@@ -25,17 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <algorithm>
-
-#include "Falcor/stdafx.h"
-
-#include "Dictionary.h"
-#include "Scripting.h"
-#include "ScriptBindings.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Utils/Scripting/Scripting.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 #include <pybind11/embed.h>
 
-#include "Falcor/Utils/Debug/debug.h"
+#include <algorithm>
+
 
 /*
 namespace pybind11::detail {

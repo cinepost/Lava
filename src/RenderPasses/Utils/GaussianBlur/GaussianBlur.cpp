@@ -183,7 +183,7 @@ void GaussianBlur::updateKernel() {
         sum += (i == 0) ? weights[i] : 2 * weights[i];
     }
 
-    Buffer::SharedPtr pBuf = Buffer::createTyped<float>(mpDevice, mKernelWidth, Resource::BindFlags::ShaderResource);
+    Buffer::SharedPtr pBuf = Buffer::createTyped<float>(mpDevice, mKernelWidth, ResourceBindFlags::ShaderResource);
 
     for (uint32_t i = 0; i <= center; i++) {
         float w = weights[i] / sum;

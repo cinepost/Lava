@@ -148,7 +148,7 @@ Dictionary SkyBox::getScriptingDictionary() {
 RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kTarget, "Color buffer");//.format(ResourceFormat::RGBA16Float);
-    auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass");//.bindFlags(Resource::BindFlags::DepthStencil);
+    auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass");//.bindFlags(ResourceBindFlags::DepthStencil);
     return reflector;
 }
 
@@ -235,7 +235,7 @@ Buffer::SharedPtr SkyBox::lightsBuffer() {
         for(size_t i = 0; i < mSceneLights.size(); ++i) {
             lightsData[i] = mSceneLights[i]->getData();
         }
-        mpLightsBuffer = Buffer::createStructured(mpDevice, sizeof(LightData), (uint32_t)lightsData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, lightsData.data(), false);
+        mpLightsBuffer = Buffer::createStructured(mpDevice, sizeof(LightData), (uint32_t)lightsData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lightsData.data(), false);
         mpLightsBuffer->setName("SkyBox::mpLightsBuffer");
     }
     return mpLightsBuffer;

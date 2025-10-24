@@ -154,20 +154,20 @@ RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileDat
     //reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
 
     addRenderPassInputs(reflector, kExtraInputChannels);
-    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
-    addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, ResourceBindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     if(mpVisibilitySamplesContainer) {
         static const ChannelList kOutputChannels = {
             { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::RGBA16Float        },
         };
 
-        addRenderPassOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+        addRenderPassOutputs(reflector, kOutputChannels, ResourceBindFlags::UnorderedAccess);
     } else {
         static const ChannelList kOutputChannels = {
             { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         };
-        addRenderPassInputOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+        addRenderPassInputOutputs(reflector, kOutputChannels, ResourceBindFlags::UnorderedAccess);
     }
 
     return reflector;
@@ -378,7 +378,7 @@ void DeferredLightingPass::createBuffers(RenderContext* pContext, const RenderDa
 
     if(mUseVariance) {
         // RGB - Last fram sum, A - variance
-        mpLastFrameSum = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpLastFrameSum = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         pContext->clearUAV(mpLastFrameSum->getUAV().get(), float4(0.f, 0.f, 0.f, 1.f));
     } else {
         mpLastFrameSum = nullptr;

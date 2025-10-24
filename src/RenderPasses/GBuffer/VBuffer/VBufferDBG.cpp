@@ -76,7 +76,7 @@ VBufferDBG::VBufferDBG(Device::SharedPtr pDevice, const Dictionary& dict): GBuff
 RenderPassReflection VBufferDBG::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     // Add the required output. This always exists.
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(ResourceBindFlags::UnorderedAccess).format(mVBufferFormat);
     // Add extra outputs.
     addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
     return reflector;

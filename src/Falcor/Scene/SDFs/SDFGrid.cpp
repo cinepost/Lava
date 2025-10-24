@@ -385,7 +385,7 @@ bool SDFGrid::writeValuesFromPrimitivesToFile(const std::string& filePath, Rende
     uint32_t gridWidthInValues = mOriginalGridWidth + 1;
     uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
     Buffer::SharedPtr pValuesBuffer = Buffer::createTyped<float>(mpDevice, valueCount);
-    Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice, valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+    Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice, valueCount, ResourceBindFlags::None, Buffer::CpuAccess::Read);
     GpuFence::SharedPtr pFence = GpuFence::create(mpDevice);
 
     mpEvaluatePrimitivesPass["CB"]["gGridWidth"] = mOriginalGridWidth;

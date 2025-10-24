@@ -78,27 +78,27 @@ namespace Falcor
             {
                 bufA[j].resize(kNumElems);
                 for (uint32_t i = 0; i < kNumElems; i++) bufA[j][i] = r();
-                block["bufA"][j] = Buffer::create(kNumElems * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, bufA[j].data());
+                block["bufA"][j] = Buffer::create(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, bufA[j].data());
             }
             std::vector<float> bufB[3];
             for (uint32_t j = 0; j < 3; j++)
             {
                 bufB[j].resize(kNumElems);
                 for (uint32_t i = 0; i < kNumElems; i++) bufB[j][i] = (float)r();
-                block["bufB"][j] = Buffer::createTyped<float>(kNumElems, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, bufB[j].data());
+                block["bufB"][j] = Buffer::createTyped<float>(kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, bufB[j].data());
             }
             std::vector<uint32_t> bufC[4];
             for (uint32_t j = 0; j < 4; j++) {
                 bufC[j].resize(kNumElems);
                 for (uint32_t i = 0; i < kNumElems; i++) bufC[j][i] = r();
-                block["bufC"][j] = Buffer::createTyped<uint32_t>(kNumElems, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, bufC[j].data());
+                block["bufC"][j] = Buffer::createTyped<uint32_t>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, bufC[j].data());
             }
 
             // Bind root buffer to the parameter block.
             std::vector<uint32_t> testBuffer(kNumElems);
             {
                 for (uint32_t i = 0; i < kNumElems; i++) testBuffer[i] = r();
-                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? Resource::BindFlags::UnorderedAccess : Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
+                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
                 bool ret = pParamBlock->setBuffer(kRootBufferName, pTestBuffer);
                 EXPECT(ret);
 
@@ -119,12 +119,12 @@ namespace Falcor
             {
                 globalBufA.resize(kNumElems);
                 for (uint32_t i = 0; i < kNumElems; i++) globalBufA[i] = r();
-                var["globalBufA"] = Buffer::createTyped<uint32_t>(kNumElems, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, globalBufA.data());
+                var["globalBufA"] = Buffer::createTyped<uint32_t>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, globalBufA.data());
             }
             std::vector<uint32_t> globalTestBuffer(kNumElems);
             {
                 for (uint32_t i = 0; i < kNumElems; i++) globalTestBuffer[i] = r();
-                var[kGlobalRootBufferName] = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? Resource::BindFlags::UnorderedAccess : Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, globalTestBuffer.data());
+                var[kGlobalRootBufferName] = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, globalTestBuffer.data());
             }
 
             // Test that reading from all the resources in the block works.

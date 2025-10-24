@@ -32,8 +32,6 @@
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "DepthPass.h"
 
-const RenderPass::Info DepthPass::kInfo { "DepthPass", "Creates a depth-buffer using the scene's active camera." };
-
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -46,31 +44,31 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 namespace {
     const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.3d.slang";
-    
+
     const std::string kDepth = "depth";
     const std::string kDepthFormat = "depthFormat";
     const std::string kDisableAlphaTest = "disableAlphaTest";
 }  // namespace
 
-void DepthPass::parseDictionary(const Dictionary& dict) {
-    for (const auto& [key, value] : dict) {
+void DepthPass::parseDictionary(const Properties& props) {
+    for (const auto& [key, value] : props) {
         if (key == kDepthFormat) setDepthBufferFormat(value);
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
     }
 }
 
-Dictionary DepthPass::getScriptingDictionary() {
-    Dictionary d;
+Properties DepthPass::getProperties() const {
+    Properties d;
     d[kDepthFormat] = mDepthFormat;
     d[kDisableAlphaTest] = mAlphaTestDisabled;
     return d;
 }
 
-DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new DepthPass(pRenderContext->device(), dict));
+DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new DepthPass(pRenderContext->device(), props));
 }
 
-DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+DepthPass::DepthPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, kInfo) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     
@@ -105,7 +103,7 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
 
 RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
-    reflector.addOutput(kDepth, "Depth-buffer").bindFlags(Resource::BindFlags::DepthStencil).format(mDepthFormat); //.texture2D(mOutputSize.x, mOutputSize.y);
+    reflector.addOutput(kDepth, "Depth-buffer").bindFlags(ResourceBindFlags::DepthStencil).format(mDepthFormat); //.texture2D(mOutputSize.x, mOutputSize.y);
     return reflector;
 }
 

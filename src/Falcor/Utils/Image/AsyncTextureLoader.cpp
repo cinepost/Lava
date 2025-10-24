@@ -40,16 +40,17 @@ namespace {
 	constexpr size_t kUploadsPerFlush = 16; ///< Number of texture uploads before issuing a flush (to keep upload heap from growing).
 }
 
-AsyncTextureLoader::AsyncTextureLoader(Device::SharedPtr pDevice, size_t threadCount):mpDevice(pDevice) {
+AsyncTextureLoader::AsyncTextureLoader(Device* pDevice, size_t threadCount): mpDevice(pDevice) {
+	assert(pDevice);
 	runWorkers(threadCount);
 }
 
 AsyncTextureLoader::~AsyncTextureLoader() {
 	terminateWorkers();
-	mpDevice->flushAndSync();
+	mpDevice->wait();
 }
 
-std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const fs::path& path, bool generateMipLevels, bool loadAsSrgb, Resource::BindFlags bindFlags, LoadCallback callback) {
+std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const fs::path& path, bool generateMipLevels, bool loadAsSrgb, ResourceBindFlags bindFlags, LoadCallback callback) {
 	LLOG_DBG << "AsyncTextureLoader::loadFromFile";
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -62,7 +63,7 @@ std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const fs::path&
 void AsyncTextureLoader::runWorkers(size_t threadCount) {
 	// Create a barrier to synchronize worker threads before issuing a global flush.
 	mFlushBarrier = std::make_shared<Barrier>(threadCount, [&]() {
-		mpDevice->flushAndSync();
+		mpDevice->wait();
 		mFlushPending = false;
 		mUploadCounter = 0;
 		});
@@ -104,7 +105,7 @@ void AsyncTextureLoader::runWorker() {
 		lock.unlock();
 
 		// Load the textures (this part is running in parallel).
-		Texture::SharedPtr pTexture = Texture::createFromFile(mpDevice, request.path, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
+		Texture::SharedPtr pTexture = Texture::createFromFile(Device::SharedPtr(request.pDevice), request.path, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
 		request.promise.set_value(pTexture);
 
 		if (request.callback) {

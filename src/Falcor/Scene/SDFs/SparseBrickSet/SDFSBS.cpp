@@ -474,7 +474,7 @@ namespace Falcor
                     // Compression scheme may change the actual width and height to something else.
                     mBrickTextureDimensions = uint2(mpBrickTexture->getWidth(), mpBrickTexture->getHeight());
 
-                    mpBrickScratchTexture = Texture::create2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess);
+                    mpBrickScratchTexture = Texture::create2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
                 }
                 else
                 {
@@ -658,7 +658,7 @@ namespace Falcor
                     // Compression scheme may change the actual width and height to something else.
                     mBrickTextureDimensions = uint2(mpBrickTexture->getWidth(), mpBrickTexture->getHeight());
 
-                    mpBrickScratchTexture = Texture::create2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess);
+                    mpBrickScratchTexture = Texture::create2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
                 }
                 else
                 {

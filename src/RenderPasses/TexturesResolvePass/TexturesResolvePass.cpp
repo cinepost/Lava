@@ -12,8 +12,6 @@
 
 static_assert(sizeof(VirtualTextureData) % 16 == 0, "MeshDesc size should be a multiple of 16");
 
-const RenderPass::Info TexturesResolvePass::kInfo { "TexturesResolve", "Resolves sparse textures tiles to be loaded" };
-
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
 	return PROJECT_DIR;
@@ -40,8 +38,8 @@ namespace {
 
 }  // namespace
 
-void TexturesResolvePass::parseDictionary(const Dictionary& dict) {
-	for (const auto& [key, value] : dict) {
+void TexturesResolvePass::parseProperties(const Properties& props) {
+	for (const auto& [key, value] : props) {
         if (key == kRayReflectLimit) setRayReflectLimit(value);
         else if (key == kRayRefractLimit) setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) setRayDiffuseLimit(value);
@@ -49,15 +47,15 @@ void TexturesResolvePass::parseDictionary(const Dictionary& dict) {
     }
 }
 
-Dictionary TexturesResolvePass::getScriptingDictionary() {
-	Dictionary d;
+Properties TexturesResolvePass::getProperties() const {
+	Properties d;
 	return d;
 }
 
-TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-	auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->device(), dict);
+TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRenderContext, const Properties& props) {
+	auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->device(), props);
 
-	pTexturesResolvePass->parseDictionary(dict);
+	pTexturesResolvePass->parseProperties(props);
 
 	// Create calibration textures
 	pTexturesResolvePass->createMipCalibrationTexture(pRenderContext);
@@ -65,7 +63,7 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
 	return SharedPtr(pTexturesResolvePass);
 }
 
-TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, kInfo) {
 	
 	//Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
 	Program::Desc desc;
@@ -84,7 +82,7 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 
 	mpState->setProgram(mpProgram);
 
-	parseDictionary(dict);
+	parseProperties(props);
 }
 
 RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData) {
@@ -92,7 +90,7 @@ RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData
 
 	reflector.addOutput(kOutput, "DebugOutput-buffer").format(mTileDataDebugFormat).texture2D(0, 0, 0);
 	reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass")
-		.bindFlags(Resource::BindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
+		.bindFlags(ResourceBindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
 	return reflector;
 }
 
@@ -190,7 +188,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		}
 	}
 
-	auto pDataToResolveBuffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
+	auto pDataToResolveBuffer = mpDevice->createStructuredBuffer(sizeof(MaterialResolveData), materialsCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, materialsResolveBuffer.data(), true);
 	mpVars->setBuffer("materialsResolveDataBuffer", pDataToResolveBuffer);
 
 	uint32_t resolvedTexturesCount = currTextureResolveID + 1;
@@ -244,7 +242,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	// Test resolved data
 	Buffer::SharedPtr pPagesBuffer = pTextureManager->getPagesResidencyBuffer();
 	
-	const int8_t* pOutPagesData = pPagesBuffer ? reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read)) : nullptr;
+	const int8_t* pOutPagesData = pPagesBuffer ? reinterpret_cast<const int8_t*>(pPagesBuffer->map()) : nullptr;
 
 	// Load texture pages
 	auto started = std::chrono::high_resolution_clock::now();

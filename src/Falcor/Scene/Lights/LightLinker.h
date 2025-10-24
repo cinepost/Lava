@@ -84,6 +84,7 @@ class FALCOR_API LightLinker : public Object {
             std::vector<UpdateFlags> linksUpdateInfo;
         };
 
+        LightLinker(Device::SharedPtr pDevice);
         ~LightLinker() = default;
 
         /** Get default shader defines.
@@ -200,15 +201,12 @@ class FALCOR_API LightLinker : public Object {
         bool buildLightsIndirectionData(bool force);
         bool buildLightSetsData(bool force);
 
-        LightLinker(Device::SharedPtr pDevice, Scene* pScene);
-
     protected:
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
         void syncCPUData() const;
 
         // Internal state
         Device::SharedPtr                           mpDevice;
-        Scene*                                      mpScene;                        ///<Unowning pointer to scene (scene owns LightLinker).
         
         mutable CPUOutOfDateFlags                   mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                                mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.

@@ -32,6 +32,7 @@
 
 #include "Falcor/Core/Framework.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramVars.h"
@@ -61,16 +62,11 @@ class Device;
     The shader code is disabled (using macros) when debugging is off.
     When enabled, async readback is used but expect a minor perf loss.
 */
-class dlldecl PixelDebug {
+class FALCOR_API PixelDebug {
  public:
-    using SharedPtr = std::shared_ptr<PixelDebug>;
     virtual ~PixelDebug() = default;
 
-    /** Create debug object.
-        \param[in] logSize Number of shader print() and assert() statements per frame.
-        \return New object, or throws an exception on error.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t logSize = 100);
+    PixelDebug(Device::SharedPtr pDevice, uint32_t logSize) : mLogSize(logSize), mpDevice(pDevice) {}
 
     void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
     void endFrame(RenderContext* pRenderContext);
@@ -78,16 +74,17 @@ class dlldecl PixelDebug {
     void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
 
  protected:
-    PixelDebug(std::shared_ptr<Device> pDevice, uint32_t logSize) : mLogSize(logSize), mpDevice(pDevice) {}
     void copyDataToCPU();
 
     // Internal state
+    Device::SharedPtr           mpDevice;
+
     Program::SharedPtr          mpReflectProgram;               ///< Program for reflection of types.
     Buffer::SharedPtr           mpPixelLog;                     ///< Pixel log on the GPU with UAV counter.
     Buffer::SharedPtr           mpAssertLog;                    ///< Assert log on the GPU with UAV counter.
     Buffer::SharedPtr           mpCounterBuffer;                ///< Staging buffer for async readback of UAV counters.
     Buffer::SharedPtr           mpDataBuffer;                   ///< Staging buffer for async readback of logged data.
-    GpuFence::SharedPtr         mpFence;                        ///< GPU fence for sychronizing readback.
+    Fence::SharedPtr            mpFence;                        ///< GPU fence for sychronizing readback.
 
     // Configuration
     bool                        mEnabled = false;               ///< Enables debugging features.
@@ -104,8 +101,6 @@ class dlldecl PixelDebug {
     std::vector<AssertLogValue> mAssertLogData;                 ///< Assert log data read back from the GPU.
 
     const uint32_t              mLogSize = 0;                   ///< Size of the log buffers in elements.
-
-    std::shared_ptr<Device>     mpDevice;
 };
 
 }  // namespace Falcor

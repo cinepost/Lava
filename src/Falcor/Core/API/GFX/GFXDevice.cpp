@@ -28,18 +28,12 @@
 #include "stdafx.h"
 
 #include "GFXDeviceApiData.h"
-#include "GFXFormats.h"
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/Program/ProgramManager.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/RenderContext.h"
 
-#if FALCOR_ENABLE_NVAPI && FALCOR_D3D12_AVAILABLE
-#include "Core/API/D3D12/D3D12NvApiExDesc.h"
-#define FALCOR_NVAPI_AVAILABLE 1
-#else
 #define FALCOR_NVAPI_AVAILABLE 0
-#endif
 
 #include "gfx_lib/vulkan/vk-api.h"
 #include "gfx_lib/renderer-shared.h"

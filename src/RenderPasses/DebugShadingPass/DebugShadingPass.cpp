@@ -114,21 +114,21 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
     reflector.addInputOutput(kInputColor, "Color buffer").format(ResourceFormat::Unknown);
     
     addRenderPassInputs(reflector, kExtraInputChannels);
-    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, Resource::BindFlags::UnorderedAccess);
-    addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassInputOutputs(reflector, kExtraInputOutputChannels, ResourceBindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     if(mpVisibilitySamplesContainer) {
         static const ChannelList kOutputChannels = {
             { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::RGBA16Float        },
         };
 
-        addRenderPassOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+        addRenderPassOutputs(reflector, kOutputChannels, ResourceBindFlags::UnorderedAccess);
     } else {
         static const ChannelList kOutputChannels = {
             { kInputTexGrads,           "gTextureGrads",        "Texture gradients",                        true /* optional */, ResourceFormat::Unknown        },
         };
 
-        addRenderPassInputOutputs(reflector, kOutputChannels, Resource::BindFlags::UnorderedAccess);
+        addRenderPassInputOutputs(reflector, kOutputChannels, ResourceBindFlags::UnorderedAccess);
     }
 
     return reflector;

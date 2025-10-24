@@ -68,7 +68,7 @@ void HeatMapColorGenerator::generateColorsTexture() {
     float numColorsF = static_cast<float>(mNumColors);
     mUVScale = 1.0f - (1.0f / numColorsF);
 
-    mpGradientColorsTexture = Texture::create1D(mpDevice, mNumColors, ResourceFormat::RGBA32Float, 1, 1, colors.data(), Resource::BindFlags::ShaderResource);
+    mpGradientColorsTexture = Texture::create1D(mpDevice, mNumColors, ResourceFormat::RGBA32Float, 1, 1, colors.data(), ResourceBindFlags::ShaderResource);
 }
 
 }  // namespace Falcor

@@ -50,7 +50,7 @@ class FALCOR_API AsyncTextureLoader {
 		/** Constructor.
 			\param[in] threadCount Number of worker threads.
 		*/
-		AsyncTextureLoader(Falcor::SharedPtr<Device> pDevice, size_t threadCount = std::thread::hardware_concurrency());
+		AsyncTextureLoader(Device* pDevice, size_t threadCount = std::thread::hardware_concurrency());
 
 		/** Destructor.
 			Blocks until all threads have terminated.
@@ -79,16 +79,16 @@ class FALCOR_API AsyncTextureLoader {
 		void terminateWorkers();
 
 		struct Request {
-			Falcor::SharedPtr<Device> 				pDevice;
+			Device*					 				pDevice;
 			fs::path 								path;
 			bool 									generateMipLevels;
 			bool 									loadAsSRGB;
 			ResourceBindFlags	 					bindFlags;
 			LoadCallback 							callback;
-			std::promise<std::shared_ptr<Texture>> 	promise;
+			std::promise<Texture::SharedPtr> 		promise;
 		};
 
-		Falcor::SharedPtr<Device> 	mpDevice = nullptr;
+		Device* 					mpDevice;
 
 		std::mutex 					mMutex;           ///< Mutex for synchronizing access to shared resources.
 		std::condition_variable  	mCondition;       ///< Condition variable for workers to wait on.

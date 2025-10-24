@@ -25,22 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Scripting/Scripting.h"
+
+#include "pybind11/embed.h"
+
 #include <vector>
 #include <string>
 
-// #ifdef _WIN32
-// #include <filesystem>
-// namespace fs = std::filesystem;
-// #else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-// #endif
-
-#include "Falcor/stdafx.h"
-#include "Dictionary.h"
-#include "Scripting.h"
-
-#include "pybind11/embed.h"
 
 namespace Falcor {
 
@@ -118,11 +110,6 @@ static std::string runScript(const std::string& script, pybind11::dict& locals) 
     return rs;
 }
 
-template<>
-std::string Scripting::getArgString(const Dictionary& dictionary) {
-    return dictionary.toString();
-}
-
 std::string Scripting::runScript(const std::string& script) {
     auto ref = pybind11::globals();
     return Falcor::runScript(script, ref);
@@ -138,8 +125,7 @@ Scripting::Context Scripting::getGlobalContext() {
     return c;
 }
 
-std::string Scripting::runScriptFromFile(const std::string& filename, Context& context)
-{
+std::string Scripting::runScriptFromFile(const std::string& filename, Context& context) {
     if (fs::exists(filename)) return Scripting::runScript(readFile(filename), context);
     throw std::runtime_error(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
 }

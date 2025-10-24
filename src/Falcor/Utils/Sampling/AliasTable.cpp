@@ -66,7 +66,7 @@ namespace Falcor
 
         std::uniform_int_distribution<uint32_t> rngDist;
 
-        mpWeights = Buffer::createStructured(mpDevice, sizeof(float), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, weights.data());
+        mpWeights = Buffer::createStructured(mpDevice, sizeof(float), mCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, weights.data());
 
         // Our working set / intermediate buffers (underweight & overweight); initialize to "invalid"
         std::vector<uint32_t> lowIdx(mCount, 0xFFFFFFFFu);
@@ -144,6 +144,6 @@ namespace Falcor
         // correct location in the alias table.
 
         // Stash the alias table in our GPU buffer
-        mpItems = Buffer::createStructured(mpDevice, sizeof(AliasTable::Item), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, items.data());
+        mpItems = Buffer::createStructured(mpDevice, sizeof(AliasTable::Item), mCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, items.data());
     }
 }

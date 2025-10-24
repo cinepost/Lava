@@ -105,7 +105,7 @@ void TAA::allocatePrevColor(RenderContext* pContext, const Texture* pColorOut) {
     allocate = allocate || (mpPrevColor->getFormat() != pColorOut->getFormat());
     assert(pColorOut->getSampleCount() == 1);
 
-    if (allocate) mpPrevColor = Texture::create2D(pContext->device(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+    if (allocate) mpPrevColor = Texture::create2D(pContext->device(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
 }
 
 void TAA::renderUI(Gui::Widgets& widget) {

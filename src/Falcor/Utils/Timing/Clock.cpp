@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,9 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "Falcor/Utils/Scripting/Scripting.h"
 #include "Clock.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Utils/Scripting/ScriptWriter.h"
+
+#include "lava_utils_lib/logging.h"
+
 
 namespace Falcor {
 
@@ -39,13 +42,15 @@ constexpr char kFramerate[] = "framerate";
 constexpr char kTimeScale[] = "timeScale";
 constexpr char kExitTime[] = "exitTime";
 constexpr char kExitFrame[] = "exitFrame";
+constexpr char kStartTime[] = "startTime";
+constexpr char kEndTime[] = "endTime";
 constexpr char kPause[] = "pause";
 constexpr char kPlay[] = "play";
 constexpr char kStop[] = "stop";
 constexpr char kStep[] = "step";
 
-
-constexpr uint64_t kTicksPerSecond = 14400 * (1 << 16); // 14400 is a common multiple of our supported frame-rates. 2^16 gives 64K intra-frame steps
+constexpr uint64_t kTicksPerSecond = 14400 * (1 << 16); // 14400 is a common multiple of our supported frame-rates. 2^16 gives 64K
+                                                        // intra-frame steps
 
 double timeFromFrame(uint64_t frame, uint64_t ticksPerFrame) {
     return double(frame * ticksPerFrame) / (double)kTicksPerSecond;
@@ -55,23 +60,24 @@ uint64_t frameFromTime(double seconds, uint64_t ticksPerFrame) {
     return uint64_t(seconds * (double)kTicksPerSecond) / ticksPerFrame;
 }
 
-}  // namespace
+} // namespace
 
-Clock::Clock(std::shared_ptr<Device> pDevice): mpDevice(pDevice) { setTime(0); }
-
-Clock::~Clock() {
-    mClockTextures = {};
+Clock::Clock() {
+    setTime(0);
 }
 
 Clock& Clock::setFramerate(uint32_t fps) {
     mFramerate = fps;
     mTicksPerFrame = 0;
-    if(fps) {
-        if (kTicksPerSecond % fps) LLOG_WRN << "Clock::setFramerate() - requested FPS can't be accurately representated. Expect roudning errors";
+    if (fps) {
+        if (kTicksPerSecond % fps) {
+            LLOG_WRN << "Clock::setFramerate() - requested FPS can't be accurately represented. Expect rounding errors";
+        }
         mTicksPerFrame = kTicksPerSecond / fps;
     }
 
-    if(!mDeferredFrameID && !mDeferredTime) setTime(mTime.now);
+    if (!mDeferredFrameID && !mDeferredTime)
+        setTime(mTime.now);
     return *this;
 }
 
@@ -92,10 +98,35 @@ bool Clock::shouldExit() const {
 }
 
 Clock& Clock::tick() {
-    if (mDeferredFrameID) setFrame(mDeferredFrameID.value());
-    else if (mDeferredTime) setTime(mDeferredTime.value());
-    else if(!mPaused) step();
+    if (mDeferredFrameID) {
+        setFrame(mDeferredFrameID.value());
+    } else if (mDeferredTime) {
+        setTime(mDeferredTime.value());
+    } else if (!mPaused) {
+        step();
+    }
     return *this;
+}
+
+bool Clock::setStartTime(double time) {
+    if (time <= 0.) {
+        mStartTime = 0.;
+        return true;
+    }
+
+    if (mEndTime < 0. || time < mEndTime) {
+        mStartTime = time;
+        return true;
+    }
+    return false;
+}
+
+bool Clock::setEndTime(double time) {
+    if (time < 0. || mStartTime <= 0.f || time > mStartTime) {
+        mEndTime = time;
+        return true;
+    }
+    return false;
 }
 
 void Clock::updateTimer() {
@@ -111,6 +142,8 @@ void Clock::resetDeferredObjects() {
 Clock& Clock::setTime(double seconds, bool deferToNextTick) {
     resetDeferredObjects();
 
+    seconds = clampTime(seconds);
+
     if (deferToNextTick) {
         mDeferredTime = seconds;
     } else {
@@ -118,8 +151,13 @@ Clock& Clock::setTime(double seconds, bool deferToNextTick) {
         if (mFramerate) {
             mFrames = frameFromTime(seconds, mTicksPerFrame);
             seconds = timeFromFrame(mFrames, mTicksPerFrame);
+        } else {
+            mFrames = 0;
         }
-        else mFrames = 0;
+
+        if (mTime.delta < 0) {
+            mTime.delta = 0;
+        }
 
         mTime.delta = mTime.now - seconds;
         mTime.now = seconds;
@@ -136,9 +174,19 @@ Clock& Clock::setFrame(uint64_t f, bool deferToNextTick) {
         updateTimer();
         mFrames = f;
         if (mFramerate) {
-            double secs = timeFromFrame(mFrames, mTicksPerFrame);
-            mTime.delta = mTime.now - secs;
-            mTime.now = secs;
+            double orgSecs = timeFromFrame(mFrames, mTicksPerFrame);
+            // TODO: The clamping really should be on ticks, as should everything else
+            // except when we actually ask for the actual floating time (e.g., for interpolation).
+            // Otherwise the rounding will be a terrible mess.
+            double newSecs = clampTime(orgSecs);
+            if (newSecs != orgSecs) {
+                mFrames = frameFromTime(newSecs, mTicksPerFrame);
+            }
+
+            mTime.delta = mTime.now - newSecs;
+            if (mTime.delta < 0)
+                mTime.delta = 0;
+            mTime.now = newSecs;
         }
     }
     return *this;
@@ -151,26 +199,33 @@ Clock& Clock::play() {
 }
 
 Clock& Clock::step(int64_t frames) {
-    if (frames < 0 && uint64_t(-frames) > mFrames) mFrames = 0;
-    else mFrames += frames;
+    if (frames < 0 && uint64_t(-frames) > mFrames) {
+        mFrames = 0;
+    } else {
+        mFrames += frames;
+    }
 
     updateTimer();
     double t = isSimulatingFps() ? timeFromFrame(mFrames, mTicksPerFrame) : ((mTimer.delta() * mScale) + mTime.now);
+    t = clampTime(t);
     mTime.update(t);
     return *this;
 }
 
-
 #ifdef SCRIPTING
-SCRIPT_BINDING(Clock) {
+FALCOR_SCRIPT_BINDING(Clock) {
+    using namespace pybind11::literals;
+
     pybind11::class_<Clock> clock(m, "Clock");
 
-    auto setTime = [](Clock* pClock, double t) {pClock->setTime(t, true); };
+    auto setTime = [](Clock* pClock, double t) { pClock->setTime(t, true); };
     clock.def_property(kTime, &Clock::getTime, setTime);
-    auto setFrame = [](Clock* pClock, uint64_t f) {pClock->setFrame(f, true); };
+    auto setFrame = [](Clock* pClock, uint64_t f) { pClock->setFrame(f, true); };
     clock.def_property(kFrame, &Clock::getFrame, setFrame);
     clock.def_property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
     clock.def_property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
+    clock.def_property(kStartTime, &Clock::getStartTime, &Clock::setStartTime);
+    clock.def_property(kEndTime, &Clock::getEndTime, &Clock::setEndTime);
     clock.def_property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
     clock.def_property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
 
@@ -179,44 +234,23 @@ SCRIPT_BINDING(Clock) {
     clock.def(kStop, &Clock::stop);
     clock.def(kStep, &Clock::step, "frames"_a = 1);
 }
-#endif
-
-void Clock::start() {
-    auto loadTexture = [](std::shared_ptr<Device> pDevice, const std::string& tex) {
-        auto pTex = Texture::createFromFile(pDevice, "Framework/Textures/" + tex, false, true);
-        if (!pTex) {
-            LLOG_ERR << "Error loading texture: Framework/Textures/" << tex;
-            #ifdef _WIN32 
-            throw std::exception("Failed to load texture");
-            #else
-            throw std::runtime_error("Failed to load texture " + tex);
-            #endif
-        }
-        return pTex;
-    };
-
-    mClockTextures.pRewind = loadTexture(mpDevice, "Rewind.jpg");
-    mClockTextures.pPlay = loadTexture(mpDevice, "Play.jpg");
-    mClockTextures.pPause = loadTexture(mpDevice, "Pause.jpg");
-    mClockTextures.pStop = loadTexture(mpDevice, "Stop.jpg");
-    mClockTextures.pNextFrame = loadTexture(mpDevice, "NextFrame.jpg");
-    mClockTextures.pPrevFrame = loadTexture(mpDevice, "PrevFrame.jpg");
-}
-
-void Clock::shutdown() {
-    mClockTextures = {};
-}
+#endif // SCRIPTING
 
 std::string Clock::getScript(const std::string& var) const {
     std::string s;
-    s += Scripting::makeSetProperty(var, kTime, 0);
-    s += Scripting::makeSetProperty(var, kFramerate, mFramerate);
-    if (mExitTime) s += Scripting::makeSetProperty(var, kExitTime, mExitTime);
-    if (mExitFrame) s += Scripting::makeSetProperty(var, kExitFrame, mExitFrame);
+    s += ScriptWriter::makeSetProperty(var, kTime, 0);
+    s += ScriptWriter::makeSetProperty(var, kFramerate, mFramerate);
+    if (mExitTime) {
+        s += ScriptWriter::makeSetProperty(var, kExitTime, mExitTime);
+    }
+    if (mExitFrame) {
+        s += ScriptWriter::makeSetProperty(var, kExitFrame, mExitFrame);
+    }
     s += std::string("# If ") + kFramerate + " is not zero, you can use the frame property to set the start frame\n";
-    s += "# " + Scripting::makeSetProperty(var, kFrame, 0);
-    if (mPaused) s += Scripting::makeMemberFunc(var, kPause);
+    s += "# " + ScriptWriter::makeSetProperty(var, kFrame, 0);
+    if (mPaused) {
+        s += ScriptWriter::makeMemberFunc(var, kPause);
+    }
     return s;
 }
-
-}  // namespace Falcor
+} // namespace Falcor

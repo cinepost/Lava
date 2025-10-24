@@ -180,7 +180,7 @@ class FALCOR_API LTX_Bitmap : public Object {
     friend class TextureManager;
 
  public:
-    static bool convertToLtxFile(Falcor::SharedPtr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown = true);
+    static bool convertToLtxFile(Device* pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown = true);
     static LTX_Header::TopLevelCompression getTLCFromString(const std::string& name);
     static bool checkFileMagic(const std::string& filename, bool strict = false);
     static bool checkFileMagic(const fs::path& path, bool strict = false);

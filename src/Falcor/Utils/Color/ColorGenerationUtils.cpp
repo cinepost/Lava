@@ -66,7 +66,7 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF16(Device::SharedPtr 
 
     }
 
-    return Buffer::create(pDevice, sizeof(float16_t) * colorVector.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, colorVector.data());
+    return pDevice->createBuffer(sizeof(float16_t) * colorVector.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, colorVector.data());
 }
 
 static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha, const uint32_t* pSeed) {
@@ -98,7 +98,7 @@ static inline Buffer::SharedPtr generateRandomColorsBufferF32(Device::SharedPtr 
         prevColorVal = colorVal;
     }
 
-    return Buffer::create(pDevice, sizeof(float32_t4) * colorVector.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, colorVector.data());
+    return pDevice->createBuffer(sizeof(float32_t4) * colorVector.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, colorVector.data());
 }
 
 static inline Buffer::SharedPtr generateRandomColorsBufferUInt32(Device::SharedPtr pDevice, uint32_t elementsCount, bool solidAlpha) {

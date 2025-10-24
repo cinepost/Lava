@@ -442,13 +442,13 @@ void SceneCache::writeLight(OutputStream& stream, const Light::SharedPtr& pLight
         case LightType::Directional:
             break;
         case LightType::Distant:
-            stream.write(std::static_pointer_cast<DistantLight>(pLight)->mAngle);
+            stream.write(static_ptr_cast<DistantLight>(pLight)->mAngle);
             break;
         case LightType::Rect:
         case LightType::Disc:
         case LightType::Sphere:
-            stream.write(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mScaling);
-            stream.write(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
+            stream.write(static_ptr_cast<AnalyticAreaLight>(pLight)->mScaling);
+            stream.write(static_ptr_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
             break;
         default:
             LLOG_WRN << "SceneCache::writeLight(...) unsupported light type: " << to_string(light_type);
@@ -497,13 +497,13 @@ Light::SharedPtr SceneCache::readLight(InputStream& stream) {
         case LightType::Directional:
             break;
         case LightType::Distant:
-            stream.read(std::static_pointer_cast<DistantLight>(pLight)->mAngle);
+            stream.read(static_ptr_cast<DistantLight>(pLight)->mAngle);
             break;
         case LightType::Rect:
         case LightType::Disc:
         case LightType::Sphere:
-            stream.read(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mScaling);
-            stream.read(std::static_pointer_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
+            stream.read(static_ptr_cast<AnalyticAreaLight>(pLight)->mScaling);
+            stream.read(static_ptr_cast<AnalyticAreaLight>(pLight)->mTransformMatrix);
             break;
         default:
             LLOG_WRN << "SceneCache::readLight(...) unsupported light type: " << to_string(light_type);
@@ -644,7 +644,7 @@ Sampler::SharedPtr SceneCache::readSampler(Device::SharedPtr pDevice, InputStrea
     bool valid = stream.read<bool>();
     if (valid) {
         auto desc = stream.read<Sampler::Desc>();
-        return Sampler::create(pDevice, desc);
+        return pDevice->createSampler(desc);
     }
     return nullptr;
 }

@@ -48,7 +48,7 @@ namespace Falcor
         if (!spNDSDFGridUnitAABBBuffer)
         {
             RtAABB unitAABB { float3(-0.5f), float3(0.5f) };
-            spNDSDFGridUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
+            spNDSDFGridUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
         }
 
         return SharedPtr(new NDSDFGrid(normalizationFactor));

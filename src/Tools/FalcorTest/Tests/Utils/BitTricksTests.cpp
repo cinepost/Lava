@@ -60,7 +60,7 @@ namespace Falcor
         std::mt19937 r;
         for (auto& it : testData) it = r();
 
-        Buffer::SharedPtr pTestDataBuffer = Buffer::create(n * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, testData.data());
+        Buffer::SharedPtr pTestDataBuffer = Buffer::create(n * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testData.data());
 
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/BitTricksTests.cs.slang", "testBitInterleave");

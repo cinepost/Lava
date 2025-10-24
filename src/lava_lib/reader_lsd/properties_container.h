@@ -8,7 +8,7 @@
 #include <string>
 #include <regex>
 
-#include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/Dictionary.h"
 
 #include "../scene_reader_base.h"
 #include "grammar_lsd.h"

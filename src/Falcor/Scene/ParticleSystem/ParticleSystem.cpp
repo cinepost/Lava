@@ -104,7 +104,7 @@ namespace Falcor
         mpAliveList = Buffer::createStructured(device, pSimulateCs.get(), "aliveList", mMaxParticles);
 
         // Indirect args
-        Resource::BindFlags indirectBindFlags = Resource::BindFlags::IndirectArg | Resource::BindFlags::UnorderedAccess;
+        ResourceBindFlags indirectBindFlags = ResourceBindFlags::IndirectArg | ResourceBindFlags::UnorderedAccess;
         mpIndirectArgs = Buffer::createStructured(device, pSimulateCs.get(), "drawArgs", 1, indirectBindFlags);
 
         //initialize the first member of the args, vert count per instance, to be 4 for particle billboards

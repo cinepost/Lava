@@ -28,12 +28,15 @@
 #ifndef SRC_FALCOR_UTILS_SCRIPTING_SCRIPTING_H_
 #define SRC_FALCOR_UTILS_SCRIPTING_SCRIPTING_H_
 
+#include "ScriptBindings.h"
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/StringUtils.h"
+
+
 #include <functional>
 #include <vector>
 
-#include "ScriptBindings.h"
-#include "Falcor/Utils/StringUtils.h"
-#include "Falcor/Core/Framework.h"
 
 using namespace pybind11::literals;
 
@@ -41,7 +44,7 @@ namespace Falcor {
 
 class Gui;
 
-class dlldecl Scripting {
+class FALCOR_API Scripting {
     public:
         static const FileDialogFilterVec kFileExtensionFilters;
 
@@ -97,11 +100,6 @@ class dlldecl Scripting {
 
         static std::string makeFunc(const std::string& func) {
             return func + "()\n";
-        }
-
-        template<typename T>
-        static std::string getArgString(const T& arg) {
-            return ScriptBindings::repr(arg);
         }
 
         template<typename Arg, typename...Args>

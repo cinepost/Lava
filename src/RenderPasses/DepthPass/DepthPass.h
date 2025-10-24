@@ -46,20 +46,19 @@ using namespace Falcor;
 #define dllpassdecl falcorimport
 #endif
 
-class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass> {
+class PASS_API DepthPass : public RenderPass {
+      FALCOR_OBJECT(DepthPass)
+      FALCOR_PLUGIN_CLASS(DepthPass, "DepthPass", "Creates a depth-buffer using the scene's active camera.");
    public:
-      using SharedPtr = std::shared_ptr<DepthPass>;
-      using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
-      static const Info kInfo;
 
       /** Create a new object
       */
-      static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+      static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
       virtual RenderPassReflection reflect(const CompileData& compileData) override;
       virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
       virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-      virtual Dictionary getScriptingDictionary() override;
+      virtual Properties getProperties() const override;
 
       DepthPass& setDepthBufferFormat(ResourceFormat format);
       DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
@@ -69,8 +68,8 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
       void setOutputSize(const uint2& outputSize);
 
    private:
-      DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
-      void parseDictionary(const Dictionary& dict);
+      DepthPass(Device::SharedPtr pDevice, const Properties& props);
+      void parseProperties(const Properties& props);
 
       uint32_t mFrameSampleCount = 16;
       uint32_t mSuperSampleCount = 1;  // MSAA stuff

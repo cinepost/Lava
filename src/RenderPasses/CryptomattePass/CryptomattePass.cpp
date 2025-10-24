@@ -9,15 +9,6 @@
 
 #include "CryptomattePass.h"
 
-
-const RenderPass::Info CryptomattePass::kInfo
-{
-    "CryptomattePass",
-
-    "Computes direct and indirect illumination and applies shadows for the current scene (if visibility map is provided).\n"
-    "The pass can output the world-space normals and screen-space motion vectors, both are optional."
-};
-
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -87,11 +78,11 @@ RenderPassReflection CryptomattePass::reflect(const CompileData& compileData) {
     //const auto& texDims = compileData.defaultTexDims;
 
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
-    addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     LLOG_DBG << "CryptomattePass " << to_string(mMode) << " data layers count " << dataLayersCount();
     for(uint32_t i = 0; i < dataLayersCount(); i++) {
-        reflector.addOutput(kDataOutputNames[i], "Cryptomatte data layer").format(ResourceFormat::RGBA32Float).bindFlags(Resource::BindFlags::UnorderedAccess).flags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addOutput(kDataOutputNames[i], "Cryptomatte data layer").format(ResourceFormat::RGBA32Float).bindFlags(ResourceBindFlags::UnorderedAccess).flags(RenderPassReflection::Field::Flags::Optional);
     }
 
     return reflector;
@@ -255,11 +246,11 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 for(size_t i = 0; i < materialHashBuffer.size(); i++) {
                     materialPreviewColorBuffer[i] = saturate(util_hash_to_rgb(materialHashBuffer[i]));
                 }
-                mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, materialPreviewColorBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialPreviewColorBuffer.data());
+                mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, materialPreviewColorBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, materialPreviewColorBuffer.data());
             }
 
-            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, materialHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashBuffer.data());
-            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
+            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, materialHashBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashBuffer.data());
+            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, materialHashFloatBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, materialHashFloatBuffer.data());
             
             std::string mainfest_string = manifest.toJsonString();
 
@@ -304,11 +295,11 @@ void CryptomattePass::calculateHashTables( const RenderData& renderData) {
                 for(size_t i = 0; i < instanceHashBuffer.size(); i++) {
                     instancePreviewColorBuffer[i] = saturate(util_hash_to_rgb(instanceHashBuffer[i]));
                 }
-                mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, instancePreviewColorBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instancePreviewColorBuffer.data());
+                mpPreviewHashColorBuffer = Buffer::createTyped<float3>(mpDevice, instancePreviewColorBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instancePreviewColorBuffer.data());
             }
 
-            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, instanceHashBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashBuffer.data());
-            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
+            mpHashBuffer = Buffer::createTyped<uint32_t>(mpDevice, instanceHashBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashBuffer.data());
+            mpFloatHashBuffer = Buffer::createTyped<float>(mpDevice, instanceHashFloatBuffer.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceHashFloatBuffer.data());
             
             std::string mainfest_string = manifest.toJsonString();
 
@@ -340,7 +331,7 @@ void CryptomattePass::createSortingBuffers() {
 
     for(size_t i = 0; i < mDataSortingBuffers.size(); ++i) {
         mDataSortingBuffers[i] = 
-            Buffer::createStructured(mpDevice, sizeof(SortingPair), clearBuffer.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, clearBuffer.data());
+            Buffer::createStructured(mpDevice, sizeof(SortingPair), clearBuffer.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, clearBuffer.data());
     }   
 }
 

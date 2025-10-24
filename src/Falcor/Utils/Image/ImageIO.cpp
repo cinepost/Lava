@@ -514,7 +514,7 @@ void loadDDS(const std::filesystem::path& path, bool loadAsSrgb, ImportData& dat
 }  // namespace
 
 #ifdef WIN32_SKIP
-Bitmap::UniqueConstPtr ImageIO::loadBitmapFromDDS(const fs::path& path) {
+std::unique_ptr<const Bitmap> ImageIO::loadBitmapFromDDS(const fs::path& path) {
     std::filesystem::path fullPath;
     if (!findFileInDataDirectories(path, fullPath)) {
         LLOG_ERR << "Failed to load DDS image from '" << path << "': Can't find file.";

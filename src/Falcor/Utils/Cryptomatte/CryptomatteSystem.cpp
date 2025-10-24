@@ -133,7 +133,7 @@ void CryptomatteSystem::createParameterBlock() {
 
 	// Create materials data buffer.
 	//if (!mMaterials.empty() && (!mpMaterialDataBuffer || mpMaterialDataBuffer->getElementCount() < mMaterials.size())) {
-	//	mpMaterialDataBuffer = Buffer::createStructured(mpDevice, mpCryptomatteBlock[kMaterialDataName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	//	mpMaterialDataBuffer = Buffer::createStructured(mpDevice, mpCryptomatteBlock[kMaterialDataName], (uint32_t)mMaterials.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	//	mpMaterialDataBuffer->setName("CryptomatteSystem::mpMaterialDataBuffer");
 	//}
 

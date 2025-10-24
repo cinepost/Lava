@@ -44,6 +44,7 @@ namespace Falcor {
 class Device;
 class Texture;
 class TextureManager;
+class Profiler;
 
 uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format);
 
@@ -75,6 +76,8 @@ class FALCOR_API CopyContext {
     virtual ~CopyContext();
 
     Falcor::SharedPtr<Device> getDevice() const;
+
+    Profiler* getProfiler() const;
 
     /** Flush the command list. This doesn't reset the command allocator, just submits the commands
         \param[in] wait If true, will block execution until the GPU finished processing the commands

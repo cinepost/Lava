@@ -61,12 +61,12 @@ RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
     RenderPassReflection reflector;
 
     // Add the required depth output. This always exists.
-    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil);
+    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(ResourceBindFlags::DepthStencil);
 
     // Add all the other outputs.
     // The default channels are written as render targets, the rest as UAVs as there is way to assign/pack render targets yet.
-    addRenderPassOutputs(reflector, kGBufferChannels, Resource::BindFlags::RenderTarget);
-    addRenderPassOutputs(reflector, kGBufferExtraChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kGBufferChannels, ResourceBindFlags::RenderTarget);
+    addRenderPassOutputs(reflector, kGBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
 
     return reflector;
 }

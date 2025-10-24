@@ -148,15 +148,15 @@ RenderPassReflection SVGFPass::reflect(const CompileData& compileData) {
 
     reflector.addInternal(kInternalBufferPreviousLinearZAndNormal, "Previous Linear Z and Packed Normal")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource)
+        .bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource)
         ;
     reflector.addInternal(kInternalBufferPreviousLighting, "Previous Filtered Lighting")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource)
+        .bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource)
         ;
     reflector.addInternal(kInternalBufferPreviousMoments, "Previous Moments")
         .format(ResourceFormat::RG32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource)
+        .bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource)
         ;
 
     reflector.addOutput(kOutputBufferFilteredImage, "Filtered image").format(ResourceFormat::RGBA16Float);

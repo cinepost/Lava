@@ -33,13 +33,6 @@
 #include "OpenDenoisePass.h"
 
 
-const RenderPass::Info OpenDenoisePass::kInfo {
-    "OpenDenoisePass",
-
-    "Denoise image using Intel Open Image Denoiser.\n"
-    ""
-};
-
 namespace {
     const std::string kInput = "input";
     const std::string kOutput = "output";
@@ -131,25 +124,25 @@ OpenDenoisePass::OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outpu
     mOidnDevice.commit();
 }
 
-OpenDenoisePass::SharedPtr OpenDenoisePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+OpenDenoisePass::SharedPtr OpenDenoisePass::create(RenderContext* pRenderContext, const Properties& props) {
     // outputFormat can only be set on construction
     ResourceFormat outputFormat = ResourceFormat::Unknown;
-    if (dict.keyExists(kOutputFormat)) outputFormat = dict[kOutputFormat];
+    if (props.keyExists(kOutputFormat)) outputFormat = props[kOutputFormat];
 
     OpenDenoisePass* pThis = new OpenDenoisePass(pRenderContext->device(), outputFormat);
 
-    pThis->parseDictionary(dict);
+    pThis->parseProperties(props);
 
     return OpenDenoisePass::SharedPtr(pThis);
 }
 
-Dictionary OpenDenoisePass::getScriptingDictionary() {
-    Dictionary d;
-    return d;
+Properties OpenDenoisePass::getProperties() const {
+    Properties props;
+    return props;
 }
 
-void OpenDenoisePass::parseDictionary(const Dictionary& dict) {
-    for (const auto& [key, value] : dict) {
+void OpenDenoisePass::parseProperties(const Properties& props) {
+    for (const auto& [key, value] : props) {
         if (key == kOutputFormat) setOutputFormat(value);
         else if (key == kUseAlbedo) useAlbedo(static_cast<bool>(value));
         else if (key == kUseNormal) useNormal(static_cast<bool>(value));

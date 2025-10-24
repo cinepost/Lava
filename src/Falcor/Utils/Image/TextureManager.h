@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"

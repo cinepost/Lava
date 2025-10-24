@@ -32,6 +32,8 @@
 #include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Formats.h"
 
+#include <memory>
+
 
 namespace Falcor {
 
@@ -58,17 +60,14 @@ class FALCOR_API Bitmap {
         ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
     };
 
-    using UniquePtr = std::unique_ptr<Bitmap>;
-    using UniqueConstPtr = std::unique_ptr<const Bitmap>;
-
     /** Create a new object from file.
         \param[in] filename Filename, including a path. If the file can't be found relative to the current directory, Falcor will search for it in the common directories.
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
-    static UniqueConstPtr createFromFileOIIO(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
-    static UniqueConstPtr createFromFile(Falcor::SharedPtr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
+    static std::unique_ptr<const Bitmap> createFromFileOIIO(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
+    static std::unique_ptr<const Bitmap> createFromFile(Falcor::SharedPtr<Device> pDevice, const std::string& filename, bool isTopDown);
+    static std::unique_ptr<const Bitmap> createFromFile(Falcor::SharedPtr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
 
     /** Store a memory buffer to a PNG file.
         \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
@@ -137,8 +136,9 @@ class FALCOR_API Bitmap {
     */
     static FileFormat getFormatFromFileExtension(const std::string& ext);
 
- private:
     Bitmap() = default;
+
+  private:
     uint8_t* mpData = nullptr;
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;

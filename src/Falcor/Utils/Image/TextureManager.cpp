@@ -168,7 +168,7 @@ TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPt
 	return handle;
 }
 
-Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags) {
+Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags) {
 	const std::string srcExt = path.extension().string();
 
 	if (srcExt == ".dds") {
@@ -214,7 +214,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 		}
 	}
 	
-	auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
+	auto pLtxBitmap = LTX_Bitmap::createFromFile(Device::SharedPtr(mpDevice), ltxPath, true);
 	if (!pLtxBitmap) {
 		LLOG_ERR << "Error loading LTX texture from " << ltxPath;
 		return nullptr;
@@ -228,7 +228,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 		} else {
 			LLOG_INF << "Re-conversion done for source texture: " << path;
 		}
-		pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
+		pLtxBitmap = LTX_Bitmap::createFromFile(Device::SharedPtr(mpDevice), ltxPath, true);
 	}
 
 
@@ -240,7 +240,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 
 	uint32_t arraySize = 1;
 	Texture::SharedPtr pTexture = Texture::SharedPtr(
-		new Texture(mpDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
+		new Texture(Device::SharedPtr(mpDevice), pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
 	);
 
 	if( !pTexture ) return nullptr;
@@ -295,7 +295,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 	}
 
 	auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
-	auto pContext = pTexture->device()->getRenderContext();
+	auto pContext = pTexture->getDevice()->getRenderContext();
 
 	std::vector<uint32_t> _pageIds = pageIds;
 	std::sort(_pageIds.begin(), _pageIds.end());
@@ -398,7 +398,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 
 	if(state_changed) pContext->resourceBarrier(pTexture.get(), oldState);
 
-	pContext->flush(true);
+	pContext->submit(true);
 
   	fclose(pFile);
 }
@@ -418,7 +418,7 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 		auto pTexture = textureToPagesPair.first;
 		if(!pTexture) continue;
 
-		auto pContext = pTexture->device()->getRenderContext();
+		auto pContext = pTexture->getDevice()->getRenderContext();
 
 		uint32_t textureID = pTexture->id();
 
@@ -552,7 +552,7 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 		if(!pPage) continue;
 
 		auto pTexture = pPage->texture().get();
-		auto pContext = pTexture->device()->getRenderContext();
+		auto pContext = pTexture->getDevice()->getRenderContext();
 
 		auto oldState = pTexture->getGlobalState();
 		const bool state_changed = pContext->resourceBarrier(pTexture, Resource::State::CopyDest);
@@ -567,14 +567,14 @@ void TextureManager::loadPagesAsync(const std::vector<std::pair<Texture::SharedP
 		auto pTexture = simpleTailCacheItem.first;
 		if(!pTexture) continue;
 
-		auto pContext = pTexture->device()->getRenderContext();
+		auto pContext = pTexture->getDevice()->getRenderContext();
 		auto pLtxBitmap = mTextureLTXBitmapsMap[pTexture->id()];
 		pContext->fillMipTail(pTexture, simpleTailCacheItem.second.data(), is_set(pLtxBitmap->getFlags(), LTX_Header::Flags::ONE_PAGE_MIP_TAIL));
   	}
 
   	for(Texture* pTexture: pTextures) {
-		auto pContext = pTexture->device()->getRenderContext();
-		pContext->flush(true);
+		auto pContext = pTexture->getDevice()->getRenderContext();
+		pContext->submit(true);
   	}
 }
 
@@ -659,7 +659,7 @@ static bool findUdimTextureTiles(const fs::path& path, const std::string& udimMa
 	return result;
 }
 
-Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, const std::string& udimMask, bool loadAsSparse) {
+Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags, const std::string& udimMask, bool loadAsSparse) {
 	bool async = false;
 	TextureHandle handle;
 	if(loadTexture(handle, path, generateMipLevels, loadAsSRGB, bindFlags, async, udimMask, loadAsSparse)) {
@@ -668,7 +668,7 @@ Texture::SharedPtr TextureManager::loadTexture(const fs::path& path, bool genera
 	return nullptr;
 }
 
-bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const std::string& udimMask, bool loadAsSparse) {
+bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, ResourceBindFlags bindFlags, bool async, const std::string& udimMask, bool loadAsSparse) {
 	// Find the full path to the texture if it's not a UDIM.
 	fs::path fullPath;
 
@@ -746,7 +746,7 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 			Texture::SharedPtr pTexture = nullptr;
 
 			if(!loadAsSparse && (fullPath.extension() != kLtxExtension)) {
-				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
+				pTexture = Texture::createFromFile(Device::SharedPtr(mpDevice), fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
 				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			}
@@ -767,7 +767,7 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 		} else {
 
 			// Load UDIM texture tiles
-			Texture::SharedPtr pUDIMTexture = Texture::createUDIMFromFile(mpDevice, fullPath);
+			Texture::SharedPtr pUDIMTexture = Texture::createUDIMFromFile(Device::SharedPtr(mpDevice), fullPath);
 
 			// Add epmty texture tileset desc.
 			TextureDesc desc = { TextureState::Loaded, pUDIMTexture };
@@ -799,7 +799,7 @@ bool TextureManager::loadTexture(TextureManager::TextureHandle& handle, const fs
 					Texture::SharedPtr pUdimTileTex = nullptr;
 
 					if(!loadAsSparse) {
-						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
+						pUdimTileTex = Texture::createFromFile(Device::SharedPtr(mpDevice), udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
 						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					}
@@ -852,7 +852,7 @@ void TextureManager::waitForTextureLoading(const TextureHandle& handle) {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mCondition.wait(lock, [&]() { return getDesc(handle).state == TextureState::Loaded; });
 
-	mpDevice->flushAndSync();
+	mpDevice->wait();
 }
 
 void TextureManager::waitForAllTexturesLoading() {
@@ -860,7 +860,7 @@ void TextureManager::waitForAllTexturesLoading() {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mCondition.wait(lock, [&]() { return mLoadRequestsInProgress == 0; });
 
-	mpDevice->flushAndSync();
+	mpDevice->wait();
 }
 
 void TextureManager::removeTexture(const TextureHandle& handle) {
@@ -985,7 +985,7 @@ void TextureManager::setExtendedTexturesShaderData(const ShaderVar& var, const s
 
 		if( extendedTexturesData.empty()) return;
 
-		mpExtendedTexturesDataBuffer = Buffer::createStructured(mpDevice, var, (uint32_t)extendedTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, extendedTexturesData.data(), false);
+		mpExtendedTexturesDataBuffer = mpDevice->createStructuredBuffer(var, (uint32_t)extendedTexturesData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, extendedTexturesData.data(), false);
 	}
 	var.setBuffer(mpExtendedTexturesDataBuffer);
 }
@@ -1061,9 +1061,9 @@ void TextureManager::buildSparseResidencyData() {
 	LLOG_DBG << "Virtual pages data size " << mVirtualPagesData.size();
 
 	mpVirtualTexturesDataBuffer = 
-		Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), (uint32_t)mVirtualTexturesData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mVirtualTexturesData.data(), false);
+		mpDevice->createStructuredBuffer(sizeof(VirtualTextureData), (uint32_t)mVirtualTexturesData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mVirtualTexturesData.data(), false);
 	mpVirtualPagesResidencyDataBuffer = mVirtualPagesData.size() > 0 ?
-		Buffer::create(mpDevice, mVirtualPagesData.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mVirtualPagesData.data()) : nullptr;
+		mpDevice->createBuffer(mVirtualPagesData.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, mVirtualPagesData.data()) : nullptr;
 
 	mDirtySparseResidency = false;
 }
@@ -1153,7 +1153,7 @@ void TextureManager::setUDIMTableShaderData(const ShaderVar& var, size_t descCou
 				}
 			}
 		}
-		mpUDIMTextureTilesTableBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t), (uint32_t)udimTextureTilesTable.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, udimTextureTilesTable.data(), false);
+		mpUDIMTextureTilesTableBuffer = mpDevice->createStructuredBuffer(sizeof(uint16_t), (uint32_t)udimTextureTilesTable.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, udimTextureTilesTable.data(), false);
 	}
 	var.setBuffer(mpUDIMTextureTilesTableBuffer);
 }

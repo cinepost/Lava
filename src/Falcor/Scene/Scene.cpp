@@ -1733,7 +1733,7 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
                 break;
         }
     }
-    //pEnvLightSamplersBuffer = Buffer::createStructured(mpDevice, vars[kEnvMapSamplersBufferName], (uint32_t)mMeshletPrimIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    //pEnvLightSamplersBuffer = Buffer::createStructured(mpDevice, vars[kEnvMapSamplersBufferName], (uint32_t)mMeshletPrimIndices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     //pEnvLightSamplersBuffer->setName("Scene::pEnvLightSamplersBuffer");
 
     //mpSceneBlock->setBuffer(kEnvMapSamplersBufferName, mpGeometryInstancesBuffer);

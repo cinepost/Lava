@@ -38,19 +38,17 @@
 using namespace Falcor;
 
 class PASS_API OpenDenoisePass : public RenderPass {
-	public:
+        FALCOR_OBJECT(OpenDenoisePass)
+        FALCOR_PLUGIN_CLASS(OpenDenoisePass, "OpenDenoisePass", "Denoises image using Intel Open Image Denoiser.");
+    public:
         enum class Quality : uint32_t {                
             Fast = 0,
             High = 1, 
         };
 
-		using SharedPtr = std::shared_ptr<OpenDenoisePass>;
-		using SharedConstPtr = std::shared_ptr<const OpenDenoisePass>;
-		static const Info kInfo;
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& dict = {});
 
-		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
-
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -70,7 +68,7 @@ class PASS_API OpenDenoisePass : public RenderPass {
   private:
 		OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outputFormat);
 
-        void parseDictionary(const Dictionary& dict);
+        void parseProperties(const Properties& dict);
         
         // Bypasses denoising by just copying input image to output
         void bypass(RenderContext* pRenderContext, const RenderData& renderData);

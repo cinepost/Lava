@@ -1,7 +1,4 @@
-#include "stdafx.h"
-
-#include <numeric>
-
+#include "VisibilitySamplesContainer.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/IndirectCommands.h"
 
@@ -9,7 +6,8 @@
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 #include "lava_utils_lib/logging.h"
-#include "VisibilitySamplesContainer.h"
+
+#include <numeric>
 
 
 namespace Falcor {
@@ -63,7 +61,7 @@ VisibilitySamplesContainer::VisibilitySamplesContainer(Device::SharedPtr pDevice
 	mpOpaqueDepthExternalTexture = nullptr;
 	mpOpaqueDepthExternalBuffer = nullptr;
 
-	mpInfoBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), kInfoBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+	mpInfoBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), kInfoBufferSize, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 	mpInfoBuffer->setName("VisibilitySamplesContainer::infoBuffer");
 
 	mShadingThreadGroupSize = {32, 1, 1};
@@ -217,16 +215,16 @@ void VisibilitySamplesContainer::createBuffers() {
 	assert(mpParameterBlock);
 
 	if (!mpOpaquePassIndirectionArgsBuffer) {
-    mpOpaquePassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &kBaseIndirectArgs);
+    mpOpaquePassIndirectionArgsBuffer = mpDevice->createBuffer(sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, MemoryType::DeviceLocal, &kBaseIndirectArgs);
   }
 
   if (!mpTransparentPassIndirectionArgsBuffer) {
-    mpTransparentPassIndirectionArgsBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &kBaseIndirectArgs);
+    mpTransparentPassIndirectionArgsBuffer = mpDevice->createBuffer(sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, MemoryType::DeviceLocal, &kBaseIndirectArgs);
   }
 
   if(!mpOpaqueSamplesExternalTexture) {
 		if(!mpOpaqueSamplesBuffer || mpOpaqueSamplesBuffer->getElementCount() != mResolution1D) {
-			mpOpaqueSamplesBuffer = Buffer::createStructured(mpDevice, mpParameterBlock->getRootVar()[kOpaqueSamplesDataName], mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpOpaqueSamplesBuffer = mpDevice->createStructuredBuffer(mpParameterBlock->getRootVar()[kOpaqueSamplesDataName], mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 			mpOpaqueSamplesBuffer->setName("VisibilitySamplesContainer::opaqueSamplesBuffer");	
 		}
 	} else {
@@ -234,27 +232,27 @@ void VisibilitySamplesContainer::createBuffers() {
 	}
 
 	if(!mpOpaqueVisibilitySamplesPositionBufferPP || mpOpaqueVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
-		mpOpaqueVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpOpaqueVisibilitySamplesPositionBufferPP = mpDevice->createStructuredBuffer(sizeof(uint32_t), mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 		mpOpaqueVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::opaqueVisibilitySamplePositionBuffer");	
 	}
 
 	if(!mpRootTransparentSampleOffsetBufferPP || mpRootTransparentSampleOffsetBufferPP->getElementCount() != mResolution1D) {
-		mpRootTransparentSampleOffsetBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpRootTransparentSampleOffsetBufferPP = mpDevice->createStructuredBuffer(sizeof(uint32_t), mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 		mpRootTransparentSampleOffsetBufferPP->setName("VisibilitySamplesContainer::rootTransparentSampleOffsetBufferPP");	
 	}
 
 	if(!mpTransparentVisibilitySamplesBuffer || mpTransparentVisibilitySamplesBuffer->getElementCount() != mTransparentSamplesBufferSize) {
-		mpTransparentVisibilitySamplesBuffer = Buffer::createStructured(mpDevice, sizeof(TransparentVisibilitySampleData), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesBuffer = mpDevice->createStructuredBuffer(sizeof(TransparentVisibilitySampleData), mTransparentSamplesBufferSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 		mpTransparentVisibilitySamplesBuffer->setName("VisibilitySamplesContainer::transparentVisibilitySamplesBuffer");
 	}
 
 	if(!mpTransparentVisibilitySamplesCountBufferPP || mpTransparentVisibilitySamplesCountBufferPP->getElementCount() != mResolution1D) {
-		mpTransparentVisibilitySamplesCountBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesCountBufferPP = mpDevice->createStructuredBuffer(sizeof(uint32_t), mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 		mpTransparentVisibilitySamplesCountBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplesCountBuffer");	
 	}
 
 	if(!mpTransparentVisibilitySamplesPositionBufferPP || mpTransparentVisibilitySamplesPositionBufferPP->getElementCount() != mResolution1D) {
-		mpTransparentVisibilitySamplesPositionBufferPP = Buffer::createStructured(mpDevice, sizeof(uint32_t), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+		mpTransparentVisibilitySamplesPositionBufferPP = mpDevice->createStructuredBuffer(sizeof(uint32_t), mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 		mpTransparentVisibilitySamplesPositionBufferPP->setName("VisibilitySamplesContainer::transparentVisibilitySamplePositionBuffer");	
 	}
 
@@ -262,7 +260,7 @@ void VisibilitySamplesContainer::createBuffers() {
 	if(mStoreCombinedNormals) {
 		if(!mpOpaqueCombinedNormalsExternalTexture) {
 			if (!mpOpaqueCombinedNormalsBuffer || mpOpaqueCombinedNormalsBuffer->getElementCount() != mResolution1D) {
-				mpOpaqueCombinedNormalsBuffer = Buffer::createStructured(mpDevice, sizeof(uint4), mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+				mpOpaqueCombinedNormalsBuffer = mpDevice->createStructuredBuffer(sizeof(uint4), mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 				mpOpaqueCombinedNormalsBuffer->setName("VisibilitySamplesContainer::opaqueCombinedNormalsBuffer");	
 			}
 		} else {
@@ -270,7 +268,7 @@ void VisibilitySamplesContainer::createBuffers() {
 		}
 
 		if(!mpTransparentCombinedNormalsBuffer || mpTransparentCombinedNormalsBuffer->getElementCount() != mTransparentSamplesBufferSize) {
-			mpTransparentCombinedNormalsBuffer = Buffer::createStructured(mpDevice, sizeof(uint4), mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpTransparentCombinedNormalsBuffer = mpDevice->createStructuredBuffer(sizeof(uint4), mTransparentSamplesBufferSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 			mpTransparentCombinedNormalsBuffer->setName("VisibilitySamplesContainer::transparentCombinedNormalsBuffer");
 		} else {
 			mpTransparentCombinedNormalsBuffer = nullptr;
@@ -280,12 +278,12 @@ void VisibilitySamplesContainer::createBuffers() {
 	// Optional texture gradients
 	if(mStoreTextureGradients) {
 		if(!mpOpaqueTextureGradientsBuffer || mpOpaqueTextureGradientsBuffer->getElementCount() != mResolution1D) {
-			mpOpaqueTextureGradientsBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t) * 4, mResolution1D, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpOpaqueTextureGradientsBuffer = mpDevice->createStructuredBuffer(sizeof(uint16_t) * 4, mResolution1D, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 			mpOpaqueTextureGradientsBuffer->setName("VisibilitySamplesContainer::opaqueTextureGradientsBuffer");	
 		}
 	
 		if(!mpTransparentTextureGradientsBuffer || mpTransparentTextureGradientsBuffer->getElementCount() != mTransparentSamplesBufferSize) {
-			mpTransparentTextureGradientsBuffer = Buffer::createStructured(mpDevice, sizeof(uint16_t) * 4, mTransparentSamplesBufferSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+			mpTransparentTextureGradientsBuffer = mpDevice->createStructuredBuffer(sizeof(uint16_t) * 4, mTransparentSamplesBufferSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
 			mpTransparentTextureGradientsBuffer->setName("VisibilitySamplesContainer::transparentTextureGradientsBuffer");
 		}
 	}
@@ -325,8 +323,8 @@ void VisibilitySamplesContainer::createParameterBlock() {
 	auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gVisibilitySamplesContainer");
 	assert(pReflector);
 
-  mpParameterBlock = ParameterBlock::create(mpDevice, pReflector);
-  assert(mpParameterBlock);
+	mpParameterBlock = ParameterBlock::create(mpDevice, pReflector);
+	assert(mpParameterBlock);
   
    // Create / re-create buffers.
 	createBuffers();
@@ -440,7 +438,7 @@ void VisibilitySamplesContainer::beginFrame() {
 	//if(mpOpaqueVisibilitySamplesPositionBufferPP) pRenderContext->clearUAV(mpOpaqueVisibilitySamplesPositionBufferPP->getUAV().get(), uint4(0));
 	//if(mpTransparentVisibilitySamplesPositionBufferPP) pRenderContext->clearUAV(mpTransparentVisibilitySamplesPositionBufferPP->getUAV().get(), uint4(0));
 
-	//pRenderContext->flush(true);
+	//pRenderContext->submit(true);
 }
 
 void VisibilitySamplesContainer::beginFrame() const {
@@ -467,8 +465,8 @@ void VisibilitySamplesContainer::setLimitTransparentSamplesCountPP(bool limit) {
 void VisibilitySamplesContainer::readInfoBufferData() const {
 	if(!mpInfoBufferData.empty()) return;
 
-	mpDevice->getRenderContext()->flush();
-	const uint32_t* pInfoBufferData = reinterpret_cast<const uint32_t*>(mpInfoBuffer->map(Buffer::MapType::Read));
+	mpDevice->getRenderContext()->submit();
+	const uint32_t* pInfoBufferData = reinterpret_cast<const uint32_t*>(mpInfoBuffer->map());
 
 	mpInfoBufferData.resize(kInfoBufferSize);
 	for(size_t i = 0; i < kInfoBufferSize; ++i) mpInfoBufferData[i] = pInfoBufferData[i];

@@ -44,8 +44,19 @@
 namespace fs = boost::filesystem;
 
 
-namespace Falcor
-{
+namespace Falcor {
+
+// Append extention to file path
+inline fs::path appendExtension(const fs::path& path, const fs::path& ext) {
+    auto sz_ext = ext.c_str();
+    if ('.' == *sz_ext) ++sz_ext;
+#ifdef _WIN32
+    return path.string<std::wstring>() + L"." + sz_ext;
+#else
+    return path.string<std::string>() + "." + sz_ext;
+#endif
+}
+
 /**
  * Check is a string starts with another string
  * @param[in] str String to check in

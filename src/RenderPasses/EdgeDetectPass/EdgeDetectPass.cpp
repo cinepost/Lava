@@ -379,7 +379,7 @@ void EdgeDetectPass::prepareBuffers(RenderContext* pRenderContext, uint2 resolut
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
             mDirty = true;
-            pBuf = Texture::create2D(mpDevice, width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            pBuf = Texture::create2D(mpDevice, width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             assert(pBuf);
             
             if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
@@ -438,8 +438,8 @@ void EdgeDetectPass::prepareKernelTextures() {
                     break;
             }
 
-            pBufU = Texture::create1D(mpDevice, kernelSize, format, 1, 1, pDataU, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
-            pBufV = Texture::create1D(mpDevice, kernelSize, format, 1, 1, pDataV, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            pBufU = Texture::create1D(mpDevice, kernelSize, format, 1, 1, pDataU, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            pBufV = Texture::create1D(mpDevice, kernelSize, format, 1, 1, pDataV, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             assert(pBufU && pBufV);
         }
     };

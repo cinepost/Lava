@@ -83,7 +83,7 @@ namespace Falcor
             for (auto& it : seed) it = rng();
 
             // Upload seeds to the GPU.
-            Buffer::SharedPtr pSeedBuf = Buffer::create(seed.size() * sizeof(seed[0]), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, seed.data());
+            Buffer::SharedPtr pSeedBuf = Buffer::create(seed.size() * sizeof(seed[0]), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, seed.data());
             assert(pSeedBuf);
             return pSeedBuf;
         }

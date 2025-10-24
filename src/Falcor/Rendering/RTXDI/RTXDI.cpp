@@ -412,7 +412,7 @@ void RTXDI::updateLights(RenderContext* pRenderContext) {
         if (!mpLocalLightPdfTexture || mpLocalLightPdfTexture->getWidth() != width || mpLocalLightPdfTexture->getHeight() != height || mpLocalLightPdfTexture->getMipCount() != mipLevels) {
             mpLocalLightPdfTexture = Texture::create2D(mpDevice, width, height,
                 ResourceFormat::R16Float, 1, mipLevels, nullptr,
-                Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
+                ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget);
         }
     }
 
@@ -484,14 +484,14 @@ void RTXDI::updateEnvLight(RenderContext* pRenderContext) {
         if (!pLuminanceTexture || pLuminanceTexture->getWidth() != width || pLuminanceTexture->getHeight() != height) {
             pLuminanceTexture = Texture::create2D(mpDevice,
                 width, height, ResourceFormat::R32Float, 1, 1, nullptr,
-                Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
+                ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget);
         }
 
         // Create pdf texture if it doesn't exist yet or has the wrong dimensions.
         if (!pPdfTexture || pPdfTexture->getWidth() != width || pPdfTexture->getHeight() != height) {
             pPdfTexture = Texture::create2D(mpDevice, 
                 width, height, ResourceFormat::R32Float, 1, Resource::kMaxPossible, nullptr,
-                Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
+                ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget);
         }
 
         // Update env light textures.
@@ -711,7 +711,7 @@ void RTXDI::prepareResources(RenderContext* pRenderContext) {
         mpRTXDIContext->FillNeighborOffsetBuffer(offsets.data());
         mpNeighborOffsetsBuffer = Buffer::createTyped(mpDevice, ResourceFormat::RG8Snorm,
             mRTXGIContextParams.NeighborOffsetCount,
-            Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
             Buffer::CpuAccess::None,
             offsets.data());
     }

@@ -15,19 +15,19 @@ using namespace Falcor;
 
 class PASS_API CryptomattePass : public RenderPass {
 		FALCOR_OBJECT(CryptomattePass)
+		FALCOR_PLUGIN_CLASS(CryptomattePass, "CryptomattePass", "Cryptomatte.");
 	public:
 		using CryptomatteMode = CryptomattePassMode;
-		static const Info kInfo;
 
 		/** Create a new object
 		*/
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual bool hasMetaData() override { return true; };
 		virtual void reset() override;
 

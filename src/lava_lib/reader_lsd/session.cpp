@@ -255,7 +255,7 @@ void Session::cmdReset() {
 }
 
 bool Session::cmdRaytrace() {
-	PROFILE(mpDevice, "cmdRaytrace");
+	FALCOR_PROFILE(mpDevice->getRenderContext(), "cmdRaytrace");
 
 	if(!mpRenderer) return false;
 
@@ -788,7 +788,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			bool loadAsSRGB = false;
 			bool loadAsSparse = false;
 			bool generateMipLevels = true;
-			Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
+			ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource;
 			std::string udimMask = "<UDIM>";	
     	pEnvMapTexture = pDevice->getTextureManager()->loadTexture(texture_file_name, generateMipLevels, loadAsSRGB, bindFlags, udimMask, loadAsSparse);
     }

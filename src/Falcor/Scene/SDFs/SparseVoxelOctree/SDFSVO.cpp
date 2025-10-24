@@ -67,7 +67,7 @@ namespace Falcor
         if (!spSDFSVOGridUnitAABBBuffer)
         {
             RtAABB unitAABB { float3(-0.5f), float3(0.5f) };
-            spSDFSVOGridUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
+            spSDFSVOGridUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
         }
 
         return SharedPtr(new SDFSVO(pDevice));
@@ -112,8 +112,8 @@ namespace Falcor
             mpReadbackFence = GpuFence::create();
 
             static const uint32_t zero = 0;
-            mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+            mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
         }
         else
         {
@@ -199,8 +199,8 @@ namespace Falcor
         std::vector<uint32_t> voxelCountsPerLevel(mLevelCount, 0);
         voxelCountsPerLevel.back() = finestLevelVoxelCount;
         {
-            mpVoxelCountPerLevelBuffer = Buffer::create(sizeof(uint32_t) * (mLevelCount - 1), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, voxelCountsPerLevel.data());
-            mpVoxelCountPerLevelStagingBuffer = Buffer::create(sizeof(uint32_t) * (mLevelCount - 1), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+            mpVoxelCountPerLevelBuffer = Buffer::create(sizeof(uint32_t) * (mLevelCount - 1), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, voxelCountsPerLevel.data());
+            mpVoxelCountPerLevelStagingBuffer = Buffer::create(sizeof(uint32_t) * (mLevelCount - 1), ResourceBindFlags::None, Buffer::CpuAccess::Read);
         }
 
         // Create voxels for all the other levels, a voxel is only created if a child voxel has been created for that voxel.

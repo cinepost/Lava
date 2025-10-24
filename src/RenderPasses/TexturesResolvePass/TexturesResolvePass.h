@@ -49,21 +49,20 @@ using namespace Falcor;
 #define dllpassdecl falcorimport
 #endif
 
-class dllpassdecl TexturesResolvePass : public RenderPass {
+class PASS_API TexturesResolvePass : public RenderPass {
+		FALCOR_OBJECT(TexturesResolvePass)
+    	FALCOR_PLUGIN_CLASS(TexturesResolvePass, "TexturesResolve", "Resolves sparse textures tiles to be loaded");
 	public:
-		using SharedPtr = std::shared_ptr<TexturesResolvePass>;
 		using TextureSlot = Material::TextureSlot;
-
-		static const Info kInfo;
 
 		/** Create a new object
 		*/
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 
 		TexturesResolvePass& 	setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
 		TexturesResolvePass& 	setRasterizerState(const RasterizerState::SharedPtr& pRsState);
@@ -75,8 +74,8 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		TexturesResolvePass&  setAsyncLoading(bool mode);
 		
 	private:
-		TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
-		void parseDictionary(const Dictionary& dict);
+		TexturesResolvePass(Device::SharedPtr pDevice, const Properties& props);
+		void parseProperties(const Properties& props);
 
 		void initDepth(RenderContext* pContext, const RenderData& renderData);
 		void updateTexturesResolveData();

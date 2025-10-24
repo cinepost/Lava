@@ -1,6 +1,6 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
-#include "LTX_BitmapAlgo.h"
+#include "Falcor/Utils/Image/LTX_BitmapAlgo.h"
 
 #include <OpenImageIO/filter.h>
 #include <OpenImageIO/color.h>
@@ -9,7 +9,7 @@
 
 namespace Falcor {
 
-	using uint = uint32_t;
+using uint = uint32_t;
 
 static int32_t gBloscForceBlocksize = 0;
 

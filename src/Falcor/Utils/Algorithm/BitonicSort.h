@@ -70,7 +70,7 @@ class FALCOR_API BitonicSort {
     bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize = 256);
 
 private:
-    alcor::SharedPtr<Device> mpDevice;
+    Falcor::SharedPtr<Device> mpDevice;
 
     struct {
         ComputeState::SharedPtr pState;

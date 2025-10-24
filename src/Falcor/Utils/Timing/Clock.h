@@ -32,182 +32,184 @@
 #include "Falcor/Core/API/Texture.h"
 #include "CpuTimer.h"
 
+#include <optional>
+#include <string>
+#include <cstdint>
+
+
 namespace Falcor {
+/**
+ * A clock. This class supports both real-time clock (based on the system's clock) and a fixed time-step clock (based on tick count)
+ */
+class FALCOR_API Clock {
+public:
+    Clock();
 
-class Device;
-
-/** A clock. This class supports both real-time clock (based on the system's clock) and a fixed time-step clock (based on tick count)
-*/
-class dlldecl Clock {
- public:
-    Clock(std::shared_ptr<Device> pDevice);
-    ~Clock();
-
-    /** Start the system
-    */
-    void start();
-
-    /** End the system
-    */
-    void shutdown();
-
-    /** Set the current time
-        \param[in] seconds The time in seconds
-        \param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
-    */
+    /**
+     * Set the current time
+     * @param[in] seconds The time in seconds
+     * @param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
+     */
     Clock& setTime(double seconds, bool deferToNextTick = false);
 
-    deprecate("4.0.1", "Use setTime() instead.")
-    Clock& now(double seconds, bool deferToNextTick = false) { return setTime(seconds, deferToNextTick); }
-
-    /** Get the time of the last `tick()` call
-    */
+    /**
+     * Get the time of the last `tick()` call
+     */
     double getTime() const { return mTime.now; }
 
-    deprecate("4.0.1", "Use getTime() instead.")
-    double now() const { return getTime(); }
-
-    /** Get the time delta between the 2 previous ticks. This function respects the FPS simulation setting
-        Note that due to floating-point precision, this function won't necessarily return exactly (1/FPS) when simulating framerate.
-        This function will potentially return a negative number, for example when resetting the time to zero
-    */
+    /**
+     * Get the time delta between the 2 previous ticks. This function respects the FPS simulation setting
+     * Note that due to floating-point precision, this function won't necessarily return exactly (1/FPS) when simulating framerate.
+     * This function will potentially return a negative number, for example when resetting the time to zero
+     */
     double getDelta() const { return mTime.delta; }
 
-    deprecate("4.0.1", "Use getDelta() instead.")
-    double delta() const { return getDelta(); }
-
-    /** Set the current frame ID. Calling this will cause the next `tick()` call to be skipped
-        When running in real-time mode, it will only change the frame number without affecting the time
-        When simulating FPS, it will change the time to match the current frame ID
-        \param[in] seconds The frame ID
-        \param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
-    */
+    /**
+     * Set the current frame ID. Calling this will cause the next `tick()` call to be skipped
+     * When running in real-time mode, it will only change the frame number without affecting the time
+     * When simulating FPS, it will change the time to match the current frame ID
+     * @param[in] seconds The frame ID
+     * @param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
+     */
     Clock& setFrame(uint64_t f, bool deferToNextTick = false);
 
-    deprecate("4.0.1", "Use setFame() instead.")
-    Clock& frame(uint64_t f, bool deferToNextTick = false) { return setFrame(f, deferToNextTick); }
-
-    /** Get the current frame ID.
-        When running in real-time mode, this is the number of frames since the last time the time was set.
-        When simulating FPS, the number of frames according to the time
-    */
+    /**
+     * Get the current frame ID.
+     * When running in real-time mode, this is the number of frames since the last time the time was set.
+     * When simulating FPS, the number of frames according to the time
+     */
     uint64_t getFrame() const { return mFrames; }
 
-    deprecate("4.0.1", "Use getFrame() instead.")
-    uint64_t frame() const { return getFrame(); }
-
-    /** Get the real-time delta between the 2 previous ticks.
-        This function returns the actual time that passed between the 2 `tick()` calls. It doesn't any time-manipulation setting like time-scaling and FPS simulation
-    */
+    /**
+     * Get the real-time delta between the 2 previous ticks.
+     * This function returns the actual time that passed between the 2 `tick()` calls. It doesn't any time-manipulation setting like
+     * time-scaling and FPS simulation
+     */
     double getRealTimeDelta() const { return mRealtime.delta; }
 
-    deprecate("4.0.1", "Use getRealTimeDelta() instead.")
-    double realTimeDelta() const { return getRealTimeDelta(); }
-
-    /** Set the time at which to terminate the application.
-    */
+    /**
+     * Set the time at which to terminate the application.
+     */
     Clock& setExitTime(double seconds);
 
-    /** Get the time at which to terminate the application.
-    */
+    /**
+     * Get the time at which to terminate the application.
+     */
     double getExitTime() const { return mExitTime; }
 
-    /** Set the frame at which to terminate the application.
-    */
+    /**
+     * Set the frame at which to terminate the application.
+     */
     Clock& setExitFrame(uint64_t frame);
 
-    /** Get the frame at which to terminate the application.
-    */
+    /**
+     * Get the frame at which to terminate the application.
+     */
     uint64_t getExitFrame() const { return mExitFrame; }
 
-    /** Check if the application should be terminated.
-    */
+    /**
+     * Check if the application should be terminated.
+     */
     bool shouldExit() const;
 
-    /** Tick the clock. Calling this function has no effect if the clock is paused
-    */
+    /**
+     * Sets the start time of an endless time loop. Needs end time to be set to work correctly.
+     * Time then loops from Start Time to End Time (jumping back rather than reverting)
+     */
+    bool setStartTime(double startTime);
+    double getStartTime() const { return mStartTime; }
+
+    /**
+     * Sets the end time of an endless time loop. Needs start time to be set to work correctly.
+     * Time then loops from Start Time to End Time (jumping back rather than reverting)
+     */
+    bool setEndTime(double endTime);
+    double getEndTime() const { return mEndTime; }
+
+    /**
+     * Tick the clock. Calling this function has no effect if the clock is paused
+     */
     Clock& tick();
 
-    /** Set the requested FPS to simulate, or disable FPS simulation.
-        When enabling FPS simulation, calls to tick() will change the time by `1/FPS` seconds.
-        If FPS simulation is disabled, calling `tick()` will add the actual time that passed since the previous `tick()` call
-    */
+    /**
+     * Set the requested FPS to simulate, or disable FPS simulation.
+     * When enabling FPS simulation, calls to tick() will change the time by `1/FPS` seconds.
+     * If FPS simulation is disabled, calling `tick()` will add the actual time that passed since the previous `tick()` call
+     */
     Clock& setFramerate(uint32_t fps);
 
-    deprecate("4.0.1", "Use setFramerate() instead.")
-    Clock& framerate(uint32_t fps) { return setFramerate(fps); }
-
-    /** Get the requested FPS value
-    */
+    /**
+     * Get the requested FPS value
+     */
     uint32_t getFramerate() const { return mFramerate; }
 
-    deprecate("4.0.1", "Use getFramerate() instead.")
-    uint32_t framerate() const { return getFramerate(); }
+    /**
+     * Pause the clock
+     */
+    Clock& pause() {
+        mPaused = true;
+        return *this;
+    }
 
-    /** Pause the clock
-    */
-    Clock& pause() { mPaused = true; return *this; }
-
-    /** Resume the clock
-    */
+    /**
+     * Resume the clock
+     */
     Clock& play();
 
-    /** Stop the clock (pause + reset)
-    */
-    Clock& stop() { setTime(0); return pause(); }
+    /**
+     * Stop the clock (pause + reset)
+     */
+    Clock& stop() {
+        setTime(0);
+        return pause();
+    }
 
-    /** Step forward or backward. Ignored if the Clock is running or not in FPS simulation mode
-        \param[in] frames The number of frames to step. Can be negative
-        The function will not step backward beyond frame zero
-    */
+    /**
+     * Step forward or backward. Ignored if the Clock is running or not in FPS simulation mode
+     * @param[in] frames The number of frames to step. Can be negative
+     * The function will not step backward beyond frame zero
+     */
     Clock& step(int64_t frames = 1);
 
-    /** Set the time scale. This value is ignored when simulating FPS
-    */
-    Clock& setTimeScale(double scale) { mScale = scale; return *this; }
+    /**
+     * Set the time scale. This value is ignored when simulating FPS
+     */
+    Clock& setTimeScale(double scale) {
+        mScale = scale;
+        return *this;
+    }
 
-    deprecate("4.0.1", "Use setTimeScale() instead.")
-    Clock& timeScale(double scale) { return setTimeScale(scale); }
-
-    /** Get the scale
-    */
+    /**
+     * Get the scale
+     */
     double getTimeScale() const { return mScale; }
 
-    deprecate("4.0.1", "Use getTimeScale() instead.")
-    double timeScale() const { return getTimeScale(); }
-
-    /** Check if the clock is paused
-    */
+    /**
+     * Check if the clock is paused
+     */
     bool isPaused() const { return mPaused; }
 
-    /** Check if the clock is in real-time mode
-    */
+    /**
+     * Check if the clock is in real-time mode
+     */
     bool isSimulatingFps() const { return mFramerate != 0; }
 
-    deprecate("4.0.1", "Use isSimulatingFps() instead.")
-    bool simulatingFps() const { return isSimulatingFps(); }
-
-    /** Get the script string
-    */
+    /**
+     * Get the script string
+     */
     std::string getScript(const std::string& var) const;
- private:
+
+private:
     struct Time {
         double now = 0;
         double delta = 0;
         void update(double time) {
             delta = time - now;
+            if (delta < 0)
+                delta = 0;
             now = time;
         }
     } mRealtime, mTime;
-
-    struct ClockTextures {
-        Texture::SharedPtr pPlay;
-        Texture::SharedPtr pPause;
-        Texture::SharedPtr pRewind;
-        Texture::SharedPtr pStop;
-        Texture::SharedPtr pNextFrame;
-        Texture::SharedPtr pPrevFrame;
-    } mClockTextures;
 
     uint32_t mFramerate = 0;
     uint64_t mFrames = 0;
@@ -222,12 +224,17 @@ class dlldecl Clock {
     double mExitTime = 0.0;
     uint64_t mExitFrame = 0;
 
-    std::shared_ptr<Device> mpDevice;
-
     void updateTimer();
     void resetDeferredObjects();
+    double mStartTime = 0;
+    double mEndTime = -1;
+    double clampTime(double time) {
+        if (time < mStartTime) {
+            return mStartTime;
+        }
+        return (mEndTime < 0 || time < mEndTime) ? time : mStartTime + time - mEndTime;
+    }
 };
+} // namespace Falcor
 
-}  // namespace Falcor
-
-#endif  // SRC_FALCOR_UTILS_TIMING_CLOCK_H_
+#endif // SRC_FALCOR_UTILS_TIMING_CLOCK_H_

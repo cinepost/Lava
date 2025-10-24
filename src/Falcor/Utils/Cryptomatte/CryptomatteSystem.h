@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
@@ -42,12 +43,12 @@ class MaterialSystem;
 	It holds a collection of material and instance hashes.
 */
 
-class dlldecl CryptomatteSystem {
+class FALCOR_API CryptomatteSystem : public Object {
+		FALCOR_OBJECT(CryptomatteSystem)
 	public:
 		using MaterialID = uint32_t;
 		using InstanceID = uint32_t;
-		using SharedPtr = std::shared_ptr<CryptomatteSystem>;
-
+		
 		/** Create a cryptomatte system.
 			\return New object, or throws an exception if creation failed.
 		*/
@@ -121,7 +122,6 @@ class dlldecl CryptomatteSystem {
 		Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
 		// GPU resources
-		GpuFence::SharedPtr mpFence;
 		ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
 		Buffer::SharedPtr mpMaterialHashesBuffer;                   ///< GPU buffer holding all material hashes data.
 		Buffer::SharedPtr mpInstanceHashesBuffer;                   ///< GPU buffer holding all instance hashes data.

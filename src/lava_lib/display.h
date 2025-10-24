@@ -8,9 +8,8 @@
 #include <vector>
 #include <memory>
 
-//#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Formats.h"
-#include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/Dictionary.h"
 #include "prman/ndspy.h"
 
 namespace lava {

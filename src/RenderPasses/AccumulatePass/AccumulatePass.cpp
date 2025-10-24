@@ -46,9 +46,6 @@ const uint32_t kPixelFilterKernelMinTextureSize = 3u;
 const uint32_t kPixelFilterKernelMaxTextureSize = 19u;
 const uint32_t kPixelFilterKernelTextureHalfSize = 64u;
 
-const RenderPass::Info AccumulatePass::kInfo { "AccumulatePass", "Buffer accumulation." };
-
-
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -111,13 +108,13 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
     return SharedPtr(new AccumulatePass(pRenderContext->device(), dict));
 }
 
-AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, props) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("AccumulatePass requires Shader Model 6.5 support.");
     }
 
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kEnableAccumulation) mEnableAccumulation = value;
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = value;
@@ -145,13 +142,13 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
     mpState = ComputeState::create(pDevice);
 }
 
-Dictionary AccumulatePass::getScriptingDictionary() {
-    Dictionary dict;
-    dict[kEnableAccumulation] = mEnableAccumulation;
-    dict[kAutoReset] = mAutoReset;
-    dict[kPrecisionMode] = mPrecisionMode;
-    dict[kSubFrameCount] = mSubFrameCount;
-    return dict;
+Properties AccumulatePass::getProperties() const {
+    Properties props;
+    props[kEnableAccumulation] = mEnableAccumulation;
+    props[kAutoReset] = mAutoReset;
+    props[kPrecisionMode] = mPrecisionMode;
+    props[kSubFrameCount] = mSubFrameCount;
+    return props;
 }
 
 RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
@@ -452,7 +449,7 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
 
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             assert(pBuf);
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
@@ -585,14 +582,14 @@ void AccumulatePass::prepareFilteredTextures(const Texture::SharedPtr& pSrc, con
             // Create/Recreate itermediate image data buffer
             if(!mpTmpFilteredImage || (mpTmpFilteredImage->getFormat() != format) || (mpTmpFilteredImage->getWidth(0) != width) || (mpTmpFilteredImage->getWidth(0) != height)) {
                 mpTmpFilteredImage = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, 
-                    Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                    ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
         }
 
         // Create/Recreate final filtered color data buffer
         if(!mpFilteredImage || (mpFilteredImage->getFormat() != format) || (mpFilteredImage->getWidth(0) != width) || (mpFilteredImage->getWidth(0) == height)) {
             mpFilteredImage = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, 
-                Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         }
     }
  
@@ -607,13 +604,13 @@ void AccumulatePass::prepareFilteredTextures(const Texture::SharedPtr& pSrc, con
 
             if(!mpFilteredDepth || (mpFilteredDepth->getFormat() != depthFormat) || (mpFilteredDepth->getWidth(0) != depthWidth) || (mpFilteredDepth->getWidth(0) != depthHeight)) {
                 mpFilteredDepth = Texture::create2D(pDevice, depthWidth, depthHeight, depthFormat, 1, 1, nullptr, 
-                    Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                    ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
             if (mDoHorizontalFiltering && mDoVerticalFiltering ) {
                 if(!mpTmpFilteredDepth || (mpTmpFilteredDepth->getFormat() != depthFormat) || (mpTmpFilteredDepth->getWidth(0) != depthWidth) || (mpTmpFilteredDepth->getWidth(0) != depthHeight)) {
                     mpTmpFilteredDepth = Texture::create2D(pDevice, depthWidth, depthHeight, depthFormat, 1, 1, nullptr, 
-                        Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                        ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 }
             }
         }

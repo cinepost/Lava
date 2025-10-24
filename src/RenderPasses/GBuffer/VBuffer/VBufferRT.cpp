@@ -70,7 +70,7 @@ VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Dict
 RenderPassReflection VBufferRT::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     // Add the required output. This always exists.
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(ResourceBindFlags::UnorderedAccess).format(mVBufferFormat);
 
     // Add all the other outputs.
     addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess);

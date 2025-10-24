@@ -33,6 +33,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/Formats.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 
 #include "Falcor/Core/API/GFXAPI.h"
 
@@ -68,6 +69,10 @@ CopyContext::CopyContext(Device* pDevice, gfx::ICommandQueue* pQueue): mpDevice(
 
 Device::SharedPtr CopyContext::getDevice() const {
     return Device::SharedPtr(mpDevice);
+}
+
+Profiler* CopyContext::getProfiler() const {
+    return mpDevice->getProfiler();
 }
 
 void CopyContext::submit(bool wait) {

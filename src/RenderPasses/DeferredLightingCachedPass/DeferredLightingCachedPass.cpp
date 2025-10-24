@@ -134,7 +134,7 @@ RenderPassReflection DeferredLightingCachedPass::reflect(const CompileData& comp
         reflector.addInternal(kDirectBuffer, "Direct illumination buffer").format(ResourceFormat::RGBA16Float);
 
     addRenderPassInputs(reflector, kExtraInputChannels);
-    addRenderPassOutputs(reflector, kExtraOutputChannels, Resource::BindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kExtraOutputChannels, ResourceBindFlags::UnorderedAccess);
 
     return reflector;
 }

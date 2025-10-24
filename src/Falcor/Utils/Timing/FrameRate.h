@@ -28,8 +28,9 @@
 #ifndef SRC_FALCOR_UTILS_TIMING_FRAMERATE_H_
 #define SRC_FALCOR_UTILS_TIMING_FRAMERATE_H_
 
-#include <vector>
+#include "Falcor/Core/Framework.h"
 #include "Clock.h"
+#include <vector>
 
 
 namespace Falcor {
@@ -38,16 +39,11 @@ class Device;
 
 /** Framerate calculator
 */
-class dlldecl FrameRate {
+class FALCOR_API FrameRate {
 public:
-    FrameRate(std::shared_ptr<Device> pDevice) {
-        mClock = new Clock(pDevice);
+    FrameRate() {
         mFrameTimes.resize(sFrameWindow);
         reset();
-    }
-
-    ~FrameRate() {
-        delete mClock;
     }
 
     /** Resets the FPS
@@ -55,7 +51,7 @@ public:
     */
     void reset() {
         mFrameCount = 0;
-        mClock->setTime(0).tick();
+        mClock.setTime(0).tick();
     }
 
     /** Tick the timer.
@@ -63,8 +59,8 @@ public:
     */
     void newFrame() {
         mFrameCount++;
-        mFrameTimes[mFrameCount % sFrameWindow] = mClock->tick().getRealTimeDelta();
-        mClock->setTime(0).tick();
+        mFrameTimes[mFrameCount % sFrameWindow] = mClock.tick().getRealTimeDelta();
+        mClock.setTime(0).tick();
     }
 
     /** Get the time in ms it took to render a frame
@@ -92,7 +88,7 @@ public:
     std::string getMsg(bool vsyncOn = false) const;
 
 private:
-    Clock *mClock;
+    Clock mClock;
     std::vector<double> mFrameTimes;
     uint64_t mFrameCount = 0;
     static const uint64_t sFrameWindow;

@@ -75,6 +75,7 @@ class Fbo;
 class ShaderVar;
 class TextureManager;
 class ProgramManager;
+class Profiler;
 
 class FALCOR_API Device: public Object {
     FALCOR_OBJECT(Device)
@@ -242,6 +243,16 @@ class FALCOR_API Device: public Object {
         MemoryType memoryType = MemoryType::DeviceLocal,
         const void* pInitData = nullptr,
         bool createCounter = false
+    );
+
+    Falcor::SharedPtr<Buffer> createStructuredBuffer(
+        const Program* pProgram,
+        const std::string& name,
+        uint32_t elementCount,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType memoryType = MemoryType::DeviceLocal,
+        const void* pInitData = nullptr,
+        bool createCounter = true
     );
 
     /**
@@ -429,6 +440,8 @@ class FALCOR_API Device: public Object {
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
 
+    Profiler* getProfiler() const { return mpProfiler.get(); }
+
     bool setShaderCache(const std::string& shaderCachePath, int maxShaderCacheEntryCount = 0);
 
     gfx::ShaderCacheStats getShaderCacheStats() const;
@@ -557,11 +570,11 @@ class FALCOR_API Device: public Object {
     void release();
 
     Desc mDesc;
-    Slang::ComPtr<gfx::IDevice>         mGfxDevice;
-    Falcor::SharedPtr<GpuMemoryHeap>    mpReadBackHeap;
-    Falcor::SharedPtr<GpuMemoryHeap>    mpUploadHeap;
-    Falcor::SharedPtr<QueryHeap>        mpTimestampQueryHeap;
-    Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
+    Slang::ComPtr<gfx::IDevice>             mGfxDevice;
+    Falcor::SharedPtr<GpuMemoryHeap>        mpReadBackHeap;
+    Falcor::SharedPtr<GpuMemoryHeap>        mpUploadHeap;
+    Falcor::SharedPtr<QueryHeap>            mpTimestampQueryHeap;
+    Slang::ComPtr<slang::IGlobalSession>    mSlangGlobalSession;
 
     bool mIsWindowOccluded = false;
     Fence::SharedPtr mpFrameFence;
@@ -642,6 +655,7 @@ class FALCOR_API Device: public Object {
 
     std::unique_ptr<TextureManager>  mpTextureManager;
     std::unique_ptr<ProgramManager>  mpProgramManager;
+    std::unique_ptr<Profiler> mpProfiler;
 
     friend class DeviceManager;
     friend class ResourceManager;

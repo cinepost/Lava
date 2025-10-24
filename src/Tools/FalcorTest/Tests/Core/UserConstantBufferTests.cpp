@@ -52,7 +52,7 @@ namespace Falcor
 
         // Creating and binding a constant buffer manually is expected to fail. It should give a hard error.
         // TODO: We should add a test for this error condition if possible (i.e. catch exception).
-        //auto pBuf = Buffer::create(12, Resource::BindFlags::Constant, Buffer::CpuAccess::None, initData.data());
+        //auto pBuf = Buffer::create(12, ResourceBindFlags::Constant, Buffer::CpuAccess::None, initData.data());
         //ctx["params"] = pBuf;
 
         // Create a parameter block instead to replace the automatically allocated block.

@@ -52,6 +52,7 @@ using namespace Falcor;
 */
 class PASS_API AccumulatePass : public RenderPass {
     FALCOR_OBJECT(AccumulatePass)
+    FALCOR_PLUGIN_CLASS(AccumulatePass, "AccumulatePass", "Temporal accumulation.");
  public:
     using PixelFilterType = Falcor::PixelFilterType;
 
@@ -67,13 +68,11 @@ class PASS_API AccumulatePass : public RenderPass {
         ComputeState::SharedPtr     pState;
     };
 
-    static const Info kInfo;
-
     virtual ~AccumulatePass() = default;
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

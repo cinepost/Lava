@@ -69,7 +69,7 @@ void ParallelReduction::allocate(uint32_t elementCount, uint32_t elementSize) {
 
 template<typename T>
 void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset) {
-    PROFILE(pRenderContext, "ParallelReduction::execute");
+    FALCOR_PROFILE(pRenderContext, "ParallelReduction::execute");
 
     // Check texture array/mip/sample count.
     if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1) {
@@ -191,7 +191,7 @@ void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::Sh
 
     // Read back the result to the CPU.
     if (pResult) {
-        const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map(Buffer::MapType::Read));
+        const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map());
         FALCOR_ASSERT(pBuf);
         std::memcpy(pResult, pBuf, resultSize);
         mpBuffers[inputsBufferIndex]->unmap();

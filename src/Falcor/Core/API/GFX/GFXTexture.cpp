@@ -131,7 +131,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	desc.optimalClearValue = &clearValue;
 
 	// shared resource
-	if (is_set(mBindFlags, Resource::BindFlags::Shared)) {
+	if (is_set(mBindFlags, ResourceBindFlags::Shared)) {
 		desc.isShared = true;
 	}
 

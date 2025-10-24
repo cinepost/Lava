@@ -36,7 +36,7 @@ namespace Falcor
     void MockedD3D12StagingBuffer::resize(size_t size)
     {
         mData.resize(size);
-        mpGpuBuffer = Buffer::create(size, Resource::BindFlags::Constant | Resource::BindFlags::ShaderResource, Falcor::Buffer::CpuAccess::Write);
+        mpGpuBuffer = Buffer::create(size, ResourceBindFlags::Constant | ResourceBindFlags::ShaderResource, Falcor::Buffer::CpuAccess::Write);
     }
 
     HRESULT __stdcall MockedD3D12StagingBuffer::QueryInterface(REFIID riid, void** ppvObject)

@@ -25,17 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Bitmap.h"
 #include "BitmapUtils.h"
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Utils/StringUtils.h"
 
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
 #include "FreeImage.h"
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Utils/StringUtils.h"
 
 namespace oiio = OIIO;
 
@@ -46,7 +47,7 @@ static inline void genError(const std::string& errMsg, const std::string& filena
     LLOG_ERR << err;
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+std::unique_ptr<const Bitmap> Bitmap::createFromFileOIIO(Device::SharedPtr pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
@@ -134,14 +135,14 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
     oiio::ROI roi(0, spec.width, 0, spec.height, 0, 1, /*chans:*/ 0, spec.nchannels);
     srcBuff.get_pixels(roi, spec.format, pBmp->mpData, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-    return UniqueConstPtr(pBmp);
+    return std::unique_ptr<const Bitmap>(pBmp);
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown) {
+std::unique_ptr<const Bitmap> Bitmap::createFromFile(Device::SharedPtr pDevice, const fs::path& fullpath, bool isTopDown) {
     return createFromFile(pDevice, fullpath.string(), isTopDown);
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+std::unique_ptr<const Bitmap> Bitmap::createFromFile(Device::SharedPtr pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
@@ -260,12 +261,13 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
     FreeImage_ConvertToRawBits(pBmp->mpData, pDib, pBmp->mWidth * bytesPerPixel, bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
 
     FreeImage_Unload(pDib);
-    return UniqueConstPtr(pBmp);
+    return std::unique_ptr<const Bitmap>(pBmp);
 }
 
 size_t Bitmap::getDataSize() const {
-    if (mpData)
+    if (mpData) {
         return sizeof(mpData);
+    }
 
     return 0;
 }

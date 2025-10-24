@@ -77,15 +77,15 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     const auto& texDims = compileData.defaultTexDims;
 
     //reflector.addInputOutput(kDepthName, "Pre-initialized depth-buffer")
-    //    .format(ResourceFormat::Unknown).bindFlags(Resource::BindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
+    //    .format(ResourceFormat::Unknown).bindFlags(ResourceBindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
 
     reflector.addOutput(kDepthName, "Depth-buffer")
-        .format(mDepthFormat).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);
+        .format(mDepthFormat).bindFlags(ResourceBindFlags::DepthStencil).texture2D(texDims);
 
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
 
     // Add extra outputs.
-    addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, Resource::BindFlags::UnorderedAccess, texDims);
+    addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, ResourceBindFlags::UnorderedAccess, texDims);
 
     return reflector;
 }
@@ -170,7 +170,7 @@ void VBufferRaster::initDepth(RenderContext* pContext, const RenderData& renderD
         // Using own generated depth buffer texture
         LLOG_DBG << "VBufferRaster using internal depth buffer";
         
-        //mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource);
+        //mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil | ResourceBindFlags::ShaderResource);
 
         DepthStencilState::Desc dsDesc;
 
@@ -187,8 +187,8 @@ void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& ren
     if(!mDirty) return;
 
     if(mHighpDepthEnabled) {
-        mpHighpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
-        //mpTestTexture = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        mpHighpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        //mpTestTexture = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
     } else {
         mpHighpDepth = nullptr;
     }
@@ -383,11 +383,11 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
         bool isDepth = isDepthStencilFormat(format);
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            Resource::BindFlags bindFlags;
+            ResourceBindFlags bindFlags;
             if (isDepth) {
-                bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::DepthStencil;
+                bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::DepthStencil;
             } else {
-                bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess;
+                bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess;
             }
 
             pBuf = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, bindFlags);

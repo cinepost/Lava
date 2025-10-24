@@ -566,7 +566,7 @@ void CSM::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer) {
     } else if (pTex == nullptr) {
         rebind = true;
         ResourceFormat format = getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades);
-        pTex = Texture::create2D(mpDevice, mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+        pTex = Texture::create2D(mpDevice, mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
     }
 
     if (rebind) mVisibilityPass.pFbo->attachColorTarget(pTex, 0);

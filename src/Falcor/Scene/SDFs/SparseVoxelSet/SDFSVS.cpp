@@ -80,8 +80,8 @@ void SDFSVS::createResources(RenderContext* pRenderContext, bool deleteScratchDa
     if (!mpSurfaceVoxelCounter)
     {
         static uint32_t zero = 0;
-        mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-        mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+        mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
     }
     else
     {

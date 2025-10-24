@@ -140,7 +140,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 			LLOG_ERR << "Error loading texture '" << fullPath << "': " << e.what();
 		}
 	} else {
-		Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullPath, kTopDown);
+		std::unique_ptr<const Bitmap> pBitmap = Bitmap::createFromFile(pDevice, fullPath, kTopDown);
 		if (pBitmap) {
 			ResourceFormat texFormat = pBitmap->getFormat();
 			if (loadAsSrgb) {

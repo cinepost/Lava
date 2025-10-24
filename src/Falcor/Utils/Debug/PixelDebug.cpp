@@ -42,10 +42,6 @@ namespace {
     const char kReflectPixelDebugTypesFile[] = "Utils/Debug/ReflectPixelDebugTypes.cs.slang";
 }
 
-PixelDebug::SharedPtr PixelDebug::create(std::shared_ptr<Device> pDevice, uint32_t logSize) {
-    return SharedPtr(new PixelDebug(pDevice, logSize));
-}
-
 void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim) {
     mFrameDim = frameDim;
     if (mRunning) {
@@ -63,19 +59,22 @@ void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim
     if (mEnabled) {
         // Prepare log buffers.
         if (!mpPixelLog || mpPixelLog->getElementCount() != mLogSize) {
+
+            const Device::SharedPtr& pDevice = pRenderContext->getDevice();
+
             // Create program for type reflection.
-            if (!mpReflectProgram) mpReflectProgram = Program::createCompute(mpDevice, kReflectPixelDebugTypesFile, "main");
+            if (!mpReflectProgram) mpReflectProgram = Program::createCompute(pDevice, kReflectPixelDebugTypesFile, "main");
 
             // Allocate GPU buffers.
-            mpPixelLog = Buffer::createStructured(mpDevice, mpReflectProgram.get(), "gPixelLog", mLogSize);
+            mpPixelLog = pDevice->createStructuredBuffer(mpReflectProgram.get(), "gPixelLog", mLogSize);
             if (mpPixelLog->getStructSize() != sizeof(PixelLogValue)) throw std::runtime_error("Struct PixelLogValue size mismatch between CPU/GPU");
 
-            mpAssertLog = Buffer::createStructured(mpDevice, mpReflectProgram.get(), "gAssertLog", mLogSize);
+            mpAssertLog = pDevice->createStructuredBuffer(mpReflectProgram.get(), "gAssertLog", mLogSize);
             if (mpAssertLog->getStructSize() != sizeof(AssertLogValue)) throw std::runtime_error("Struct AssertLogValue size mismatch between CPU/GPU");
 
             // Allocate staging buffers for readback. These are shared, the data is stored consecutively.
-            mpCounterBuffer = Buffer::create(mpDevice, 2 * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
-            mpDataBuffer = Buffer::create(mpDevice, mpPixelLog->getSize() + mpAssertLog->getSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+            mpCounterBuffer = pDevice->createBuffer(2 * sizeof(uint32_t), ResourceBindFlags::None, MemoryType::ReadBack);
+            mpDataBuffer = pDevice->createBuffer(mpPixelLog->getSize() + mpAssertLog->getSize(), ResourceBindFlags::None, MemoryType::ReadBack);
         }
 
         pRenderContext->clearUAVCounter(mpPixelLog, 0);
@@ -98,11 +97,11 @@ void PixelDebug::endFrame(RenderContext* pRenderContext) {
         pRenderContext->copyBufferRegion(mpDataBuffer.get(), mpPixelLog->getSize(), mpAssertLog.get(), 0, mpAssertLog->getSize());
 
         // Create fence first time we need it.
-        if (!mpFence) mpFence = GpuFence::create(mpDevice);
+        if (!mpFence) mpFence = mpDevice->createFence();
 
         // Submit command list and insert signal.
-        pRenderContext->flush(false);
-        mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+        pRenderContext->submit(false);
+        pRenderContext->signal(mpFence.get());
 
         mWaitingForData = true;
     }
@@ -127,18 +126,18 @@ void PixelDebug::copyDataToCPU() {
     assert(!mRunning);
     if (mWaitingForData) {
         // Wait for signal.
-        mpFence->syncCpu();
+        mpFence->wait();
         mWaitingForData = false;
 
         if (mEnabled) {
             // Map counter buffer. This tells us how many print() and assert() calls were made.
-            uint32_t* uavCounters = (uint32_t*)mpCounterBuffer->map(Buffer::MapType::Read);
+            uint32_t* uavCounters = (uint32_t*)mpCounterBuffer->map();
             const uint32_t printCount = std::min(mpPixelLog->getElementCount(), uavCounters[0]);
             const uint32_t assertCount = std::min(mpAssertLog->getElementCount(), uavCounters[1]);
             mpCounterBuffer->unmap();
 
             // Map the data buffer and copy the relevant sections.
-            byte* pLog = (byte*)mpDataBuffer->map(Buffer::MapType::Read);
+            byte* pLog = (byte*)mpDataBuffer->map();
 
             mPixelLogData.resize(printCount);
             for (uint32_t i = 0; i < printCount; i++) mPixelLogData[i] = ((PixelLogValue*)pLog)[i];

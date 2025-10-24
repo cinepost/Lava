@@ -43,7 +43,7 @@ STBNGenerator::SharedPtr STBNGenerator::create(Device::SharedPtr pDevice, uint3 
 }
 
 STBNGenerator::STBNGenerator(Device::SharedPtr pDevice, uint3 dims, Type type, ResourceFormat format, bool async) : mpDevice(pDevice), mDims(dims), mType(type), mFormat(format), mAsync(async), mDirty(true) {
-    mpNoiseTexture = Texture::create3D(mpDevice, mDims[0], mDims[1], mDims[2], mFormat, 1, nullptr, Resource::BindFlags::ShaderResource, false);
+    mpNoiseTexture = Texture::create3D(mpDevice, mDims[0], mDims[1], mDims[2], mFormat, 1, nullptr, ResourceBindFlags::ShaderResource, false);
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)

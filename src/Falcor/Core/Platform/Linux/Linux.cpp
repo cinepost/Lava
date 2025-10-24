@@ -25,31 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-// #include "Utils/StringUtils.h"
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Platform/OS.h"
-// #include "Utils/Logger.h"
-//
-
-#ifdef _DEBUG
-    #include <sys/types.h>
-    #include <sys/ptrace.h>
-#endif
-
-#include <sys/stat.h>
-// #include <gtk/gtk.h>
-// #include <fstream>
-#include <fcntl.h>
-// #include <libgen.h>
-// #include <errno.h>
-// #include <algorithm>
-#include <dlfcn.h>
 
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
+#ifdef _DEBUG
+    #include <sys/ptrace.h>
+#endif
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <fcntl.h>
+#include <dlfcn.h>
 
 
 namespace Falcor {
@@ -90,7 +80,7 @@ std::string exec(const std::string& cmd) {
 }
 
 size_t executeProcess(const std::string& appName, const std::string& commandLineArgs) {
-    std::string linuxAppName = getExecutableDirectory(); linuxAppName += "/" + appName;
+    std::string linuxAppName = getRuntimeDirectory().string(); linuxAppName += "/" + appName;
     std::vector<const char*> argv;
     std::vector<std::string> argvStrings;
 
@@ -158,7 +148,7 @@ std::string getTempFilename() {
 }
 
 const fs::path& getExecutablePath() {
-    static std::filesystem::path path(
+    static fs::path path(
         []() {
             char pathStr[PATH_MAX] = {0};
             if (readlink("/proc/self/exe", pathStr, PATH_MAX) == -1) {
@@ -366,7 +356,7 @@ DllHandle loadDll(const std::string& libPath) {
     return dlopen(libPath.c_str(), RTLD_LAZY);
 }
 
-SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path) {
+SharedLibraryHandle loadSharedLibrary(const fs::path& path) {
     return dlopen(path.c_str(), RTLD_LAZY);
 }
 

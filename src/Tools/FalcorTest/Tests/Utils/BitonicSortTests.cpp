@@ -51,7 +51,7 @@ namespace Falcor
             std::mt19937 r;
             for (auto& it : testData) it = r();
 
-            Buffer::SharedPtr pTestDataBuffer = Buffer::create(n * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data());
+            Buffer::SharedPtr pTestDataBuffer = Buffer::create(n * sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data());
 
             // Execute sort on the GPU.
             uint32_t groupSize = std::max(chunkSize, 256u);
