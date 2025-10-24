@@ -45,6 +45,71 @@
 
 namespace Falcor {
 
+namespace {
+
+void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo) {
+    if (pFbo) {
+        for (uint32_t i = 0; i < pFbo->getMaxColorTargetCount(); i++) {
+            auto pTexture = pFbo->getColorTexture(i);
+            if (pTexture) {
+                auto pRTV = pFbo->getRenderTargetView(i);
+                pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget, &pRTV->getViewInfo());
+            }
+        }
+
+        auto& pTexture = pFbo->getDepthStencilTexture();
+        
+        if (pTexture) {
+            auto pDSV = pFbo->getDepthStencilView();
+            pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil, &pDSV->getViewInfo());
+        }
+    }
+}
+
+
+gfx::PrimitiveTopology getGFXPrimitiveTopology(Vao::Topology topology) {
+    switch (topology) {
+        case Vao::Topology::Undefined:
+            return gfx::PrimitiveTopology::TriangleList;
+        case Vao::Topology::PointList:
+            return gfx::PrimitiveTopology::PointList;
+        case Vao::Topology::LineList:
+            return gfx::PrimitiveTopology::LineList;
+        case Vao::Topology::LineStrip:
+            return gfx::PrimitiveTopology::LineStrip;
+        case Vao::Topology::TriangleList:
+            return gfx::PrimitiveTopology::TriangleList;
+        case Vao::Topology::TriangleStrip:
+            return gfx::PrimitiveTopology::TriangleStrip;
+        default:
+            FALCOR_UNREACHABLE();
+            return gfx::PrimitiveTopology::TriangleList;
+    }
+}
+
+gfx::AccelerationStructureCopyMode getGFXAcclerationStructureCopyMode(RenderContext::RtAccelerationStructureCopyMode mode) {
+    switch (mode) {
+        case RenderContext::RtAccelerationStructureCopyMode::Clone:
+            return gfx::AccelerationStructureCopyMode::Clone;
+        case RenderContext::RtAccelerationStructureCopyMode::Compact:
+            return gfx::AccelerationStructureCopyMode::Compact;
+        default:
+            FALCOR_UNREACHABLE();
+            return gfx::AccelerationStructureCopyMode::Clone;
+    }
+}
+
+} // namespace
+
+RenderContext::RenderContext(Device* pDevice, gfx::ICommandQueue* pQueue): ComputeContext(pDevice, pQueue) {
+    mpBlitContext = std::make_unique<BlitContext>(pDevice);
+    mpBlitToBufferContext = std::make_unique<BlitToBufferContext>(pDevice);
+}
+
+RenderContext::~RenderContext() {
+
+}
+
 void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags) {
     bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
     ResourceFormat depthStencilFormat = hasDepthStencilTexture ? pFbo->getDepthStencilTexture()->getFormat() : ResourceFormat::Unknown;
@@ -65,7 +130,6 @@ void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, 
         clearDsv(pFbo->getDepthStencilView().get(), depth, stencil, clearDepth, clearStencil);
     }
 }
-
 
 void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor) {
     assert(pTexture);
@@ -99,8 +163,7 @@ void RenderContext::submit(bool wait) {
     mpLastBoundGraphicsVars = nullptr;
 }
 
-void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter)
-{
+void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter) {
     const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
     const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
 
@@ -108,8 +171,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
 }
 
 
-void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
-{
+void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]) {
     assert(mpBlitContext);
     auto& blitCtx = *mpBlitContext;
 
@@ -255,8 +317,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
     blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
 }
 
-void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
-{
+void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]) {
     assert(mpBlitToBufferContext);
     auto& blitCtx = *mpBlitToBufferContext;
 
@@ -462,6 +523,220 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     // Release the resources we bound
     blitCtx.mpPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
     blitCtx.mpPass->getVars()->setBuffer(blitCtx.buffBindLoc, nullptr);
+}
+
+void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
+    resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
+    gfx::ClearValue clearValue = {};
+    memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
+    auto encoder = getLowLevelData()->getResourceCommandEncoder();
+    encoder->clearResourceView(pRtv->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
+    mCommandsPending = true;
+}
+
+void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
+    resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
+    gfx::ClearValue clearValue = {};
+    clearValue.depthStencil.depth = depth;
+    clearValue.depthStencil.stencil = stencil;
+    auto encoder = getLowLevelData()->getResourceCommandEncoder();
+    gfx::ClearResourceViewFlags::Enum flags = gfx::ClearResourceViewFlags::None;
+    if (clearDepth) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearDepth);
+    if (clearStencil) flags = (gfx::ClearResourceViewFlags::Enum)((int)flags | gfx::ClearResourceViewFlags::ClearStencil);
+    encoder->clearResourceView(pDsv->getGfxResourceView(), &clearValue, flags);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
+    auto encoder = drawCallCommon(pState, pVars);
+    encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
+    auto encoder = drawCallCommon(pState, pVars);
+    encoder->draw(vertexCount, startVertexLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexedInstanced(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
+    auto encoder = drawCallCommon(pState, pVars);
+    encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexed(GraphicsState* pState, ProgramVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
+    auto encoder = drawCallCommon(pState, pVars);
+    encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+    auto encoder = drawCallCommon(pState, pVars);
+    encoder->drawIndirect(
+        maxCommandCount,
+        pArgBuffer->getGfxBufferResource(),
+        argBufferOffset,
+        pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
+        countBufferOffset);
+    mCommandsPending = true;
+}
+
+void RenderContext::drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+    auto encoder = drawCallCommon(pState, pVars);
+    FALCOR_GFX_CALL(encoder->drawIndexedIndirect(
+        maxCommandCount,
+        pArgBuffer->getGfxBufferResource(),
+        argBufferOffset,
+        pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
+        countBufferOffset
+    ));
+    mCommandsPending = true;
+}
+
+void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
+    auto pRtso = pProgram->getRtso(pVars);
+
+    pVars->prepareShaderTable(this, pRtso.get());
+    pVars->prepareDescriptorSets(this);
+
+    auto rtEncoder = mpLowLevelData->getRayTracingCommandEncoder();
+    FALCOR_GFX_CALL(rtEncoder->bindPipelineWithRootObject(pRtso->getGfxPipelineState(), pVars->getShaderObject()));
+    FALCOR_GFX_CALL(rtEncoder->dispatchRays(0, pVars->getShaderTable(), width, height, depth));
+    mCommandsPending = true;
+}
+
+void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource) {
+    // TODO it would be better to just use barriers on the subresources.
+    resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+    resourceBarrier(pDst.get(), Resource::State::ResolveDest);
+
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+    gfx::SubresourceRange srcRange = {};
+    srcRange.baseArrayLayer = pSrc->getSubresourceArraySlice(srcSubresource);
+    srcRange.layerCount = 1;
+    srcRange.mipLevel = pSrc->getSubresourceMipLevel(srcSubresource);
+    srcRange.mipLevelCount = 1;
+
+    gfx::SubresourceRange dstRange = {};
+    dstRange.baseArrayLayer = pDst->getSubresourceArraySlice(dstSubresource);
+    dstRange.layerCount = 1;
+    dstRange.mipLevel = pDst->getSubresourceMipLevel(dstSubresource);
+    dstRange.mipLevelCount = 1;
+
+    resourceEncoder->resolveResource(
+        pSrc->getGfxTextureResource(),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        pDst->getGfxTextureResource(),
+        gfx::ResourceState::ResolveDestination,
+        dstRange);
+    mCommandsPending = true;
+}
+
+void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst) {
+    resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+    resourceBarrier(pDst.get(), Resource::State::ResolveDest);
+
+    auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
+
+    gfx::SubresourceRange srcRange = {};
+    srcRange.layerCount = pSrc->getArraySize();
+    srcRange.mipLevelCount = pSrc->getMipCount();
+    gfx::SubresourceRange dstRange = {};
+    dstRange.layerCount = pDst->getArraySize();
+    dstRange.mipLevelCount = pDst->getMipCount();
+
+    resourceEncoder->resolveResource(
+        pSrc->getGfxTextureResource(),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        pDst->getGfxTextureResource(),
+        gfx::ResourceState::ResolveDestination,
+        dstRange
+    );
+    mCommandsPending = true;
+}
+
+void RenderContext::buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs) {
+    GFXAccelerationStructureBuildInputsTranslator translator = {};
+
+    gfx::IAccelerationStructure::BuildDesc buildDesc = {};
+    buildDesc.dest = desc.dest->getGfxAccelerationStructure();
+    buildDesc.scratchData = desc.scratchData;
+    buildDesc.source = desc.source ? desc.source->getGfxAccelerationStructure() : nullptr;
+    buildDesc.inputs = translator.translate(desc.inputs);
+
+    std::vector<gfx::AccelerationStructureQueryDesc> queryDescs(postBuildInfoCount);
+    for (uint32_t i = 0; i < postBuildInfoCount; i++) {
+        queryDescs[i].firstQueryIndex = pPostBuildInfoDescs[i].index;
+        queryDescs[i].queryPool = pPostBuildInfoDescs[i].pool->getGFXQueryPool();
+        queryDescs[i].queryType = getGFXAccelerationStructurePostBuildQueryType(pPostBuildInfoDescs[i].type);
+    }
+    auto rtEncoder = getLowLevelData()->getRayTracingCommandEncoder();
+    rtEncoder->buildAccelerationStructure(buildDesc, (int)postBuildInfoCount, queryDescs.data());
+    mCommandsPending = true;
+}
+
+void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode) {
+    auto rtEncoder = getLowLevelData()->getRayTracingCommandEncoder();
+    rtEncoder->copyAccelerationStructure(dest->getGfxAccelerationStructure(), source->getGfxAccelerationStructure(), getGFXAcclerationStructureCopyMode(mode));
+    mCommandsPending = true;
+}
+
+gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState, ProgramVars* pVars) {
+    // Insert barriers for bound resources.
+    pVars->prepareDescriptorSets(this);
+
+    // Insert barriers for render targets.
+    ensureFboAttachmentResourceStates(this, pState->getFbo().get());
+
+    // Insert barriers for vertex/index buffers.
+    auto pGso = pState->getGSO(pVars).get();
+    if (pGso != mpLastBoundGraphicsStateObject) {
+        auto pVao = pState->getVao().get();
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
+        }
+        if (pVao->getIndexBuffer()) {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
+        }
+    }
+
+    bool isNewEncoder = false;
+    auto encoder = getLowLevelData()->getRenderCommandEncoder(
+        pGso->getGFXRenderPassLayout(), pState->getFbo() ? pState->getFbo()->getGfxFramebuffer() : nullptr, isNewEncoder
+    );
+
+    FALCOR_GFX_CALL(encoder->bindPipelineWithRootObject(pGso->getGfxPipelineState(), pVars->getShaderObject()));
+
+    if (isNewEncoder || pGso != mpLastBoundGraphicsStateObject) {
+        mpLastBoundGraphicsStateObject = pGso;
+        auto pVao = pState->getVao().get();
+        auto pVertexLayout = pVao->getVertexLayout().get();
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
+            auto bufferLayout = pVertexLayout->getBufferLayout(i);
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            encoder->setVertexBuffer(i, pVao->getVertexBuffer(i)->getGfxBufferResource(), bufferLayout->getElementOffset(0));
+        }
+        if (pVao->getIndexBuffer()) {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            encoder->setIndexBuffer(indexBuffer->getGfxBufferResource(), getGFXFormat(pVao->getIndexBufferFormat()));
+        }
+        encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
+        encoder->setViewports(
+            (uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data())
+        );
+        encoder->setScissorRects(
+            (uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data())
+        );
+    }
+
+    return encoder;
 }
 
 }  // namespace Falcor

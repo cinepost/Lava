@@ -18,14 +18,13 @@ using namespace Falcor;
 */
 class PASS_API AmbientOcclusionPass : public RenderPass {
 		FALCOR_OBJECT(AmbientOcclusionPass)
+		FALCOR_PLUGIN_CLASS(AmbientOcclusionPass, "AmbientOcclusionPass", "Ambient occlusion.");
 	public:
-		static const Info kInfo;
-
 		virtual ~AmbientOcclusionPass() = default;
 
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -46,11 +45,11 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		const Falcor::ResourceFormat& format() const { return mOutputFormat; }
 	
 	protected:
-
 		virtual void setRandomSeed(int seed) override;
+		void parseProperties(const Properties& props);
 
 	private:
-		AmbientOcclusionPass(Device::SharedPtr pDevice);
+		AmbientOcclusionPass(Device::SharedPtr pDevice, const Properties& props = {});
 
 		// Internal state
 		Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
@@ -58,7 +57,7 @@ class PASS_API AmbientOcclusionPass : public RenderPass {
 		ComputePass::SharedPtr      mpPassRayTrace;
 		
 		ResourceFormat              mOutputFormat = ResourceFormat::R16Float;
-		SampleGenerator::SharedPtr  mpSampleGenerator;           		///< GPU sample generator.
+		SampleGenerator::SharedPtr  mpSampleGenerator;           	///< GPU sample generator.
 
 		bool                        mDirty = true;
 

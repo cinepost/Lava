@@ -63,7 +63,7 @@ RenderPassReflection ImageLoaderPass::reflect(const CompileData& compileData) {
 }
 
 ImageLoaderPass::SharedPtr ImageLoaderPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new ImageLoaderPass(pRenderContext->device()));
+    SharedPtr pPass = SharedPtr(new ImageLoaderPass(pRenderContext->getDevice()));
 
     for (const auto& [key, value] : dict) {
         if (key == kImage) pPass->mImageName = value.operator fs::path();
@@ -103,7 +103,7 @@ void ImageLoaderPass::execute(RenderContext* pContext, const RenderData& renderD
     if (mImageName.empty()) {
         pContext->clearRtv(pDstTexture->getRTV().get(), float4(0.f));
     } else {
-        auto pSrcTex = Texture::createFromFile(pContext->device(), mImageName, mGenerateMips, mLoadSRGB);
+        auto pSrcTex = Texture::createFromFile(pContext->getDevice(), mImageName, mGenerateMips, mLoadSRGB);
         pContext->blit(pSrcTex->getSRV(0, 1, 0, 1), pDstTexture->getRTV(0, 0, 1));
     }
 

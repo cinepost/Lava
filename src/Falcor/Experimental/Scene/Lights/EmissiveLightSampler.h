@@ -50,6 +50,7 @@ class RenderContext;
     If an unrecoverable error occurs, these functions may throw exceptions.
 */
 class FALCOR_API EmissiveLightSampler : public Object {
+    FALCOR_OBJECT(EmissiveLightSampler)
 public:
     virtual ~EmissiveLightSampler() = default;
 

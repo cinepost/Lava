@@ -18,25 +18,23 @@ file( GLOB SOURCES
     ./Core/Window.cpp
     ./Core/Object.cpp
     ./Core/Plugin.cpp
+    
     ./Core/API/*.cpp
-    ./Core/API/BlitToBufferContext.cpp
+    
     ./Core/Platform/*.cpp
     ./Core/Program/*.cpp
-    ./Core/Program/DefineList.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
+
     ./RenderGraph/*.cpp
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
     #./Rendering/RTXDI/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
-    ./Scene/GeoHash.cpp
-    ./Scene/Geometry.cpp
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
     ./Scene/Lights/*.cpp
-    ./Scene/Lights/LightLinker.cpp
     ./Scene/Material/*.cpp
     ./Scene/MaterialX/*.cpp
     ./Scene/Volume/*.cpp
@@ -48,11 +46,8 @@ file( GLOB SOURCES
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
-    ./Utils/Debug/DebugMemAlloc.cpp
     ./Utils/Image/*.cpp
-    ./Utils/Image/TextureDataCacheLRU.cpp
     ./Utils/Textures/*.cpp
-    ./Utils/Textures/FilterKernelsLUT.cpp
     ./Utils/Perception/*.cpp
     ./Utils/Noise/pcg_basic.c
     ./Utils/Noise/STBN.cpp
@@ -65,18 +60,12 @@ file( GLOB SOURCES
     #./Utils/SampleGenerators/PoissonSamplePattern.cpp
 
     ./Utils/Color/*.cpp
-    ./Utils/Color/FalseColorGenerator.cpp
-    ./Utils/Color/HeatMapColorGenerator.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Sampling/*.cpp
-    ./Utils/Sampling/VisibilitySamplesContainer.cpp
-    ./Utils/Sampling/Pseudorandom/*.cpp
     ./Utils/Shading/*.cpp
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
-    ./Utils/Timing/SimpleProfiler.cpp
     ./Experimental/Scene/Lights/*.cpp
-    ./Experimental/Scene/Lights/PhysicalSkySampler.cpp
     ./Experimental/Scene/Materials/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c

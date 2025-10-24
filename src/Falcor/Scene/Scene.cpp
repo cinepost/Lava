@@ -475,7 +475,7 @@ void Scene::rasterize(RenderContext* pRenderContext, GraphicsState* pState, Prog
         }
         
         // Draw the primitives.
-        if (isIndexed) pRenderContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
+        if (isIndexed) pRenderContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
         else pRenderContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
     
         //auto loop_stop = std::chrono::high_resolution_clock::now();
@@ -515,8 +515,7 @@ void Scene::rasterizeX(RenderContext* pRenderContext, GraphicsState* pState, Pro
 
                 // Draw the primitives.
                 if (isIndexed) {
-                    //pRenderContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
-                    pRenderContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
+                    pRenderContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
                 } else {
                     pRenderContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
                 }
@@ -3344,7 +3343,7 @@ void Scene::initRayTracing() {
 /*
 void Scene::setNullRaytracingShaderData(RenderContext* pRenderContext, const ShaderVar& var, uint32_t rayTypeCount) {
     if(!mpNullTlasObject) {
-        Device::SharedPtr pDevice = pRenderContext->device();
+        Device::SharedPtr pDevice = pRenderContext->getDevice();
 
         RtAccelerationStructureBuildInputs inputs = {};
         inputs.kind = RtAccelerationStructureKind::TopLevel;

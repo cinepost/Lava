@@ -77,7 +77,7 @@ bool Renderer::loadScript(const std::string& file_name) {
 void Renderer::registerBindings(pybind11::module& m) {
     pybind11::class_<Renderer> renderer(m, "Renderer");
 
-    auto getDevice = [](Renderer::SharedPrt pRenderer) { return pRenderer->device(); };
+    auto getDevice = [](Renderer::SharedPrt pRenderer) { return pRenderer->getDevice(); };
     renderer.def(kGetDevice.c_str(), getDevice);
 
     renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);

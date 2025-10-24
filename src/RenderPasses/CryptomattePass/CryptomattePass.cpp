@@ -2,20 +2,20 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Cryptomatte/MurmurHash.h"
 
 #include "lava_utils_lib/ut_string.h"
 
 #include "CryptomattePass.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void regCryptomattePass(pybind11::module& m) {
+    pybind11::class_<CryptomattePass, RenderPass> pass(m, "CryptomattePass");
+    //pybind11::class_<CryptomattePass, RenderPass, CryptomattePass::SharedPtr> pass(m, "CryptomattePass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(CryptomattePass::kInfo, CryptomattePass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, CryptomattePass>();
+    ScriptBindings::registerBinding(regCryptomattePass);
 }
 
 namespace {
@@ -40,14 +40,13 @@ namespace {
     const std::string kManifestFilename = "manifestFilename";
     const std::string kSamplesPerFrame = "samplesPerFrame";
 
-    const std::array<std::string, kMaxDataLayersCount> kDataOutputNames = 
-        {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07"};
+    const std::array<std::string, kMaxDataLayersCount> kDataOutputNames = {"output00", "output01", "output02", "output03", "output04", "output05", "output06", "output07"};
 }
 
-CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new CryptomattePass(pRenderContext->device()));
+CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext, const Properties& props) {
+    auto pThis = SharedPtr(new CryptomattePass(pRenderContext->getDevice()));
         
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kMode) pThis->setMode(static_cast<CryptomatteMode>((uint32_t)value));
         else if (key == kRank) pThis->setRank(value);
         else if (key == kOutputPreview) pThis->setOutputPreviewColor(value);
@@ -59,12 +58,12 @@ CryptomattePass::SharedPtr CryptomattePass::create(RenderContext* pRenderContext
     return pThis;
 }
 
-Dictionary CryptomattePass::getScriptingDictionary() {
-    Dictionary d;
-    return d;
+Properties CryptomattePass::getProperties() const {
+    Properties props;
+    return props;
 }
 
-CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+CryptomattePass::CryptomattePass(Device::SharedPtr pDevice): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("CryptomattePass requires Shader Model 6.5 support.");
     }

@@ -30,7 +30,6 @@
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 
 #include "Falcor/Utils/Textures/FilterKernelsLUT.h"
@@ -46,13 +45,10 @@ const uint32_t kPixelFilterKernelMinTextureSize = 3u;
 const uint32_t kPixelFilterKernelMaxTextureSize = 19u;
 const uint32_t kPixelFilterKernelTextureHalfSize = 64u;
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
-
 static void regAccumulatePass(pybind11::module& m) {
-    pybind11::class_<AccumulatePass, RenderPass, AccumulatePass::SharedPtr> pass(m, "AccumulatePass");
+    pybind11::class_<AccumulatePass, RenderPass> pass(m, "AccumulatePass");
+    //pybind11::class_<AccumulatePass, RenderPass, Falcor::SharedPtr<AccumulatePass>> pass(m, "AccumulatePass");
+
     pass.def("reset", &AccumulatePass::reset);
 
     pybind11::enum_<AccumulatePass::Precision> precision(m, "AccumulatePrecision");
@@ -61,8 +57,8 @@ static void regAccumulatePass(pybind11::module& m) {
     precision.value("SingleCompensated", AccumulatePass::Precision::SingleCompensated);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(AccumulatePass::kInfo, AccumulatePass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, AccumulatePass>();
     ScriptBindings::registerBinding(regAccumulatePass);
 }
 
@@ -104,11 +100,11 @@ static bool isDepthDependentFilterType(AccumulatePass::PixelFilterType filterTyp
     }
 }
 
-AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new AccumulatePass(pRenderContext->device(), dict));
+AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new AccumulatePass(pRenderContext->getDevice(), props));
 }
 
-AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, props) {
+AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("AccumulatePass requires Shader Model 6.5 support.");
     }
@@ -163,7 +159,7 @@ RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
 }
 
 void AccumulatePass::compile(RenderContext* pContext, const CompileData& compileData) {
-    assert(mpDevice == pContext->device());
+    assert(mpDevice == pContext->getDevice());
 
     // Reset accumulation when resolution changes.
     if (compileData.defaultTexDims != mFrameDim) {
@@ -423,7 +419,7 @@ void AccumulatePass::setScene(const Scene::SharedPtr& pScene) {
 }
 
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    if(pRenderContext->device() != pScene->device()) {
+    if(pRenderContext->getDevice() != pScene->getDevice()) {
         LLOG_ERR << "Unable to set scene created on different device!";
         mpScene = nullptr;
     }
@@ -449,7 +445,7 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
 
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            pBuf = Texture::create2D(pRenderContext->getDevice(), width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             assert(pBuf);
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
@@ -519,7 +515,7 @@ void AccumulatePass::clearAccumulationBuffers(RenderContext* pRenderContext) {
 void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderContext) {
     if(!mDirty) return;
     
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
     uint32_t kernelTextureLUTWidth = 64; // We opt for constant kernel texture size for now ...
     
     bool createHalfTable = true;
@@ -568,7 +564,7 @@ void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderConte
 void AccumulatePass::prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
     if (!mDirty || !pSrc || (!mDoHorizontalFiltering && !mDoVerticalFiltering)) return;
 
-    auto pDevice = pSrc->device();
+    auto pDevice = pSrc->getDevice();
 
     // Filtered spatial color data buffers
     if (mDoHorizontalFiltering || mDoVerticalFiltering ) {
@@ -626,7 +622,7 @@ void AccumulatePass::prepareImageSampler(RenderContext* pContext) {
     desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     desc.setUnnormalizedCoordinates(true);
-    mpImageSampler = Sampler::create(pContext->device(), desc);
+    mpImageSampler = Sampler::create(pContext->getDevice(), desc);
 }
 
 void AccumulatePass::setOutputFormat(ResourceFormat format) {

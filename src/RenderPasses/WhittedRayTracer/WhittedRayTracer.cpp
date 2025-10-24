@@ -77,7 +77,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary & lib)
 
 WhittedRayTracer::SharedPtr WhittedRayTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new WhittedRayTracer(pRenderContext->device(), dict));
+    return SharedPtr(new WhittedRayTracer(pRenderContext->getDevice(), dict));
 }
 
 WhittedRayTracer::WhittedRayTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {

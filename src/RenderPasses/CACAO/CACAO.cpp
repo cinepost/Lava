@@ -96,7 +96,7 @@ CACAO::CACAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 CACAO::SharedPtr CACAO::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pCACAO = SharedPtr(new CACAO(pRenderContext->device()));
+    SharedPtr pCACAO = SharedPtr(new CACAO(pRenderContext->getDevice()));
     Dictionary blurDict;
     //for (const auto& v : dict) {
     //    if (v.key() == kAoMapSize) pCACAO->mAoMapSize = (uint2)v.val();
@@ -136,7 +136,7 @@ RenderPassReflection CACAO::reflect(const CompileData& compileData) {
 }
 
 void CACAO::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
     Fbo::Desc fboDesc(pDevice);
     fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
     mpAOFbo = Fbo::create2D(pDevice, mAoMapSize.x, mAoMapSize.y, fboDesc);

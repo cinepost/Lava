@@ -36,7 +36,6 @@
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 
@@ -47,8 +46,6 @@
 
 
 using namespace Falcor;
-
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
@@ -64,7 +61,7 @@ class PASS_API GBufferBase : public RenderPass {
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual void setCullMode(RasterizerState::CullMode mode);
 		virtual void setTransparencySamplesCount(uint count);
@@ -76,8 +73,8 @@ class PASS_API GBufferBase : public RenderPass {
 		static const std::string& to_define_string(RasterizerState::CullMode mode);
 		
  protected:
-		GBufferBase(Device::SharedPtr pDevice, Info info);
-		virtual void parseDictionary(const Dictionary& dict);
+		GBufferBase(Device::SharedPtr pDevice);
+		virtual void parseProperties(const Properties& props);
 		void updateFrameDim(const uint2 frameDim);
 		void updateSamplePattern();
 
@@ -96,7 +93,7 @@ class PASS_API GBufferBase : public RenderPass {
 		ResourceFormat                  mDepthFormat = ResourceFormat::D32Float;
 		ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
-		uint 									  mTransparencySamplesCount = 1;
+		uint 							mTransparencySamplesCount = 1;
 
 		SamplePattern                   mSamplePattern = SamplePattern::Stratified; ///< Which camera jitter sample pattern to use.
 		uint32_t                        mSampleCount = 1024;                        ///< Sample count for camera jitter.
@@ -107,9 +104,6 @@ class PASS_API GBufferBase : public RenderPass {
 		bool                            mOptionsChanged = false;
 
 		bool                            mDirty = true; ///< Pass parameters/resources changed
-
-		static void registerBindings(pybind11::module& m);
-		friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_

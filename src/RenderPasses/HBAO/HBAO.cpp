@@ -110,7 +110,7 @@ HBAO::HBAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 HBAO::SharedPtr HBAO::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pHBAO = SharedPtr(new HBAO(pRenderContext->device()));
+    SharedPtr pHBAO = SharedPtr(new HBAO(pRenderContext->getDevice()));
     Dictionary blurDict;
     
     for (const auto& [key, value] : dict) {
@@ -145,7 +145,7 @@ RenderPassReflection HBAO::reflect(const CompileData& compileData) {
 
 void HBAO::compile(RenderContext* pRenderContext, const CompileData& compileData) {
   mFrameDim = compileData.defaultTexDims;
-  auto pDevice = pRenderContext->device();
+  auto pDevice = pRenderContext->getDevice();
 
   mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
   mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
@@ -154,7 +154,7 @@ void HBAO::compile(RenderContext* pRenderContext, const CompileData& compileData
 void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) {
   if (!mpScene) return;
 
-  auto pDevice = pRenderContext->device();
+  auto pDevice = pRenderContext->getDevice();
   auto pCamera = mpScene->getCamera();
 
   const auto pHiMaxZTex = renderData[kHiMaxZ]->asTexture();

@@ -42,9 +42,9 @@ class PASS_API EnvPass : public RenderPass {
     FALCOR_OBJECT(EnvPass)
     FALCOR_PLUGIN_CLASS(EnvPass, "EnvPass", "Render a backdrop image and/or scene lights.");
   public:
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;

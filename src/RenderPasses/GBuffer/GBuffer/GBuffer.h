@@ -39,12 +39,12 @@ class GBuffer : public GBufferBase {
  public:
     virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
  protected:
-    GBuffer(Device::SharedPtr pDevice, Info info);
-    virtual void parseDictionary(const Dictionary& dict) override;
+    GBuffer(Device::SharedPtr pDevice);
+    virtual void parseProperties(const Properties& dict);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
 
     // Constants used in derived classes

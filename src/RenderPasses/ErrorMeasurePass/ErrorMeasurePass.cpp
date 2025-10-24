@@ -73,7 +73,7 @@ const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly 
 };
 
 ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new ErrorMeasurePass(pRenderContext->device(), dict));
+    return SharedPtr(new ErrorMeasurePass(pRenderContext->getDevice(), dict));
 }
 
 ErrorMeasurePass::ErrorMeasurePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
@@ -133,7 +133,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     if (!mpDifferenceTexture || mpDifferenceTexture->getWidth() != width ||
         mpDifferenceTexture->getHeight() != height)
     {
-        mpDifferenceTexture = Texture::create2D(pRenderContext->device(), width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        mpDifferenceTexture = Texture::create2D(pRenderContext->getDevice(), width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         assert(mpDifferenceTexture);
     }
 

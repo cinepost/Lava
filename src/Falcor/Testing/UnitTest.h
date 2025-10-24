@@ -97,7 +97,7 @@ class Device;
 
     class dlldecl GPUUnitTestContext : public UnitTestContext {
      public:
-        GPUUnitTestContext(RenderContext* pContext) : mpContext(pContext) { mpDevice = pContext->device(); }
+        GPUUnitTestContext(RenderContext* pContext) : mpContext(pContext) { mpDevice = pContext->getDevice(); }
 
         /** createProgram creates a compute program from the source code at the
             given path.  The entrypoint is assumed to be |main()| unless

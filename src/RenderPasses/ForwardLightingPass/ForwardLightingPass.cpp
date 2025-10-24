@@ -82,7 +82,7 @@ namespace {
 }
 
 ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
+    auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->getDevice()));
     pThis->setColorFormat(ResourceFormat::RGBA32Float).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
         //.setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
 
@@ -149,7 +149,7 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
 void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 
     mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
     mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
@@ -178,7 +178,7 @@ void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& r
     } else {
         mpState->setDepthStencilState(nullptr);
         if (mpFbo->getDepthStencilTexture() == nullptr) {
-            auto pDepth = Texture::create2D(pContext->device(), mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(pContext->getDevice(), mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil);
             mpFbo->attachDepthStencilTarget(pDepth);
         }
     }
@@ -219,7 +219,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
 
     // Create program vars.
     if (!mpVars) {
-        mpVars = GraphicsVars::create(pContext->device(), mpState->getProgram()->getReflector());
+        mpVars = GraphicsVars::create(pContext->getDevice(), mpState->getProgram()->getReflector());
     }
 
     // Prepare program vars. This may trigger shader compilation.

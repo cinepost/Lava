@@ -226,9 +226,9 @@ CSM::CSM(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    assert(pRenderContext->device() && "No device in RenderContext !!!");
+    assert(pRenderContext->getDevice() && "No device in RenderContext !!!");
 
-    auto pCSM = SharedPtr(new CSM(pRenderContext->device()));
+    auto pCSM = SharedPtr(new CSM(pRenderContext->getDevice()));
     for (const auto& [key, value] : dict)
     {
         if (key == kMapSize) pCSM->mMapSize = value;

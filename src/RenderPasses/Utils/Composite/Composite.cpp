@@ -43,7 +43,7 @@ namespace {
 }
 
 Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new Composite(pRenderContext->device(), dict));
+    return SharedPtr(new Composite(pRenderContext->getDevice(), dict));
 }
 
 Composite::Composite(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {

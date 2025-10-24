@@ -32,6 +32,8 @@
 #include "Falcor/Core/Program/ProgramManager.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 
 #define FALCOR_NVAPI_AVAILABLE 0
 
@@ -235,36 +237,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 	};
 #endif // FALCOR_NVAPI_AVAILABLE
 
-	CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const {
-		return mCmdQueues[(uint32_t)type][index];
-	}
-
-#if FALCOR_GFX_VK
-  VkQueue Device::getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const {
-  	return mCmdNativeQueues[(uint32_t)type][index];
-  }
-#endif  // FALCOR_GFX_VK
-
-	ApiCommandQueueType Device::getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const {
-		switch (type) {
-		case LowLevelContextData::CommandQueueType::Copy:
-			return ApiCommandQueueType::Graphics;
-		case LowLevelContextData::CommandQueueType::Compute:
-			return ApiCommandQueueType::Graphics;
-		case LowLevelContextData::CommandQueueType::Direct:
-			return ApiCommandQueueType::Graphics;
-		default:
-			throw std::runtime_error("Unknown command queue type");
-		}
-	}
-
-	VkPhysicalDevice Device::getApiNativeHandle() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
-		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
-
-		return pDevice->getVkPhysicalDevice();
-	}
-
 	bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kInFlightFrameCount], uint32_t& currentBackBufferIndex) {
 		for (uint32_t i = 0; i < kInFlightFrameCount; i++) {
 			Slang::ComPtr<gfx::ITextureResource> imageHandle;
@@ -326,27 +298,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 }
 
 	void Device::toggleFullScreen(bool fullscreen) {}
-
-	void Device::present() {
-		assert(!mHeadless);
-		mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
-		mpRenderContext->flush();
-		mpApiData->pSwapChain->present();
-		// Call to acquireNextImage will block until the next image in the swapchain is ready for present and all the
-		// GPU tasks associated with rendering the next image in the swapchain has already completed.
-		mCurrentBackBufferIndex = mpApiData->pSwapChain->acquireNextImage();
-		if (mCurrentBackBufferIndex != kInvalidBackbufferIndex) {
-			mpRenderContext->getLowLevelData()->closeCommandBuffer();
-			getCurrentTransientResourceHeap()->synchronizeAndReset();
-			mpRenderContext->getLowLevelData()->openCommandBuffer();
-		}
-		// Since call to `acquireNextImage` already included a fence wait inside GFX, we don't need to wait again.
-		// Instead we just signal `mpFrameFence` from the host.
-		mpFrameFence->externalSignal();
-		if (mpFrameFence->getCpuValue() >= kInFlightFrameCount) mpFrameFence->setGpuValue(mpFrameFence->getCpuValue() - kInFlightFrameCount);
-		executeDeferredReleases();
-		mFrameID++;
-	}
 
 	Device::SupportedFeatures querySupportedFeatures(DeviceHandle pDevice) {
 		Device::SupportedFeatures result = Device::SupportedFeatures::None;
@@ -452,13 +403,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
     	}
 
 		if (SLANG_FAILED(gfxCreateDevice(&desc, mGfxDevice.writeRef()))) return false;
-
-		gfx::IDevice::InteropHandles interopHandles = {};
-		mGfxDevice->getNativeDeviceHandles(&interopHandles);
-
-		mVkInstance = reinterpret_cast<VkInstance>(interopHandles.handles[0].handleValue);
-		mVkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(interopHandles.handles[1].handleValue);
-		mVkDevice = reinterpret_cast<VkDevice>(interopHandles.handles[2].handleValue);
 
 		mGpuTimestampFrequency = 1000.0 / (double)mGfxDevice->getDeviceInfo().timestampFrequency;
 		mSupportedFeatures = querySupportedFeatures(mGfxDevice);
@@ -609,24 +553,9 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 		return mCurrentBackBufferIndex == kInvalidBackbufferIndex;
 	}
 
-	const VkPhysicalDeviceProperties& Device::getPhysicalDeviceProperties() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
-		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
-
-		return pDevice->getPhysicalDeviceProperties();
-	}
-
-	uint32_t Device::subgroupSize() const {
-		auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
-		auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
-
-		auto& vk_api = pDevice->vkAPI();
-		return vk_api.m_deviceSubgroupProperties.subgroupSize;
-	}
-
 	Device::~Device() {
 		toggleFullScreen(false);
-    	mpRenderContext->flush(true);
+    	mpRenderContext->submit(true);
 
     	// Release all the bound resources. Need to do that before deleting the RenderContext
     	mGfxCommandQueue.setNull();
@@ -637,11 +566,6 @@ GFXDebugCallBack gGFXDebugCallBack; // TODO: REMOVEGLOBAL
 
     	for (size_t i = 0; i < kInFlightFrameCount; ++i) {
     		mpTransientResourceHeaps[i].setNull();
-    	}
-
-    	for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
-        	mCmdQueues[i].clear();
-        	mCmdNativeQueues[i].clear();
     	}
 
     	if(mHeadless) {

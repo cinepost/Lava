@@ -37,18 +37,15 @@ using namespace Falcor;
     The visibility buffer encodes the mesh instance ID and primitive index,
     as well as the barycentrics at the hit point.
 */
-class PASS_API VBufferRT : public GBufferBase
-{
+class PASS_API VBufferRT : public GBufferBase {
+        FALCOR_OBJECT(VBufferRT)
+        FALCOR_PLUGIN_CLASS(VBufferRT, "VBufferRT", "Ray traced V-buffer generation pass.");
 public:
-    using SharedPtr = std::shared_ptr<VBufferRT>;
-
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(RenderContext* pRenderContext, const Properties& props);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    Dictionary getScriptingDictionary() override;
+    Properties getProperties() const override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
     void setPerPixelJitter(bool value);
@@ -65,8 +62,8 @@ private:
     void bindShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
-    VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);
-    void parseDictionary(const Dictionary& dict) override;
+    VBufferRT(Device::SharedPtr pDevice, const Properties& props);
+    void parseProperties(const Properties& props) override;
 
     // Internal state
     bool mUsePerPixelJitter = false;

@@ -96,7 +96,7 @@ SSAO::SSAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 SSAO::SharedPtr SSAO::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pSSAO = SharedPtr(new SSAO(pRenderContext->device()));
+    SharedPtr pSSAO = SharedPtr(new SSAO(pRenderContext->getDevice()));
     Dictionary blurDict;
     for (const auto& v : dict) {
         if (v.key() == kAoMapSize) pSSAO->mAoMapSize = (uint2)v.val();
@@ -136,7 +136,7 @@ RenderPassReflection SSAO::reflect(const CompileData& compileData) {
 }
 
 void SSAO::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
     Fbo::Desc fboDesc(pDevice);
     fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
     mpAOFbo = Fbo::create2D(pDevice, mAoMapSize.x, mAoMapSize.y, fboDesc);

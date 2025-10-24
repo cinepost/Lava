@@ -1,8 +1,9 @@
 #ifndef SRC_FALCOR_RENDERPASSES_EDGEDETECTPASS_EDGEDETECTPASS_H_
 #define SRC_FALCOR_RENDERPASSES_EDGEDETECTPASS_EDGEDETECTPASS_H_
 
-#include "Falcor/Falcor.h"
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Plugin.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
@@ -19,20 +20,17 @@ using namespace Falcor;
 
 */
 class PASS_API EdgeDetectPass : public RenderPass {
+      FALCOR_OBJECT(EdgeDetectPass)
+      FALCOR_PLUGIN_CLASS(EdgeDetectPass, "EdgeDetectPass", "Edge detection.");
 	public:
-		using SharedPtr = std::shared_ptr<EdgeDetectPass>;
-		using SharedConstPtr = std::shared_ptr<const EdgeDetectPass>;
-
 		using EdgeDetectFlags = EdgeDetectTraceFlags;
 		using EdgeKernelType = EdgeDetectKernelType;
 
-		static const Info kInfo;
-
 		virtual ~EdgeDetectPass() = default;
 
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -68,7 +66,7 @@ class PASS_API EdgeDetectPass : public RenderPass {
 		inline Falcor::ResourceFormat format() const { return mOutputFormat; }
 
 	protected:
-		EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict);
+		EdgeDetectPass(Device::SharedPtr pDevice, const Properties& props);
 
 		void prepareBuffers(RenderContext* pRenderContext, uint2 resolution);
 		void prepareKernelTextures();

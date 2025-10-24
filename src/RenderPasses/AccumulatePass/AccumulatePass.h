@@ -97,7 +97,7 @@ class PASS_API AccumulatePass : public RenderPass {
     static size_t pixelFilterSingularValueCountSVD(PixelFilterType pixelFilterType, uint32_t width, uint32_t height);
 
  protected:
-    AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict);
+    AccumulatePass(Device::SharedPtr pDevice, const Properties& props);
     void prepareBuffers(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void preparePixelFilterKernelTexture(RenderContext* pRenderContext);
     void prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);

@@ -40,7 +40,7 @@ InvalidPixelDetectionPass::InvalidPixelDetectionPass(Device::SharedPtr pDevice):
 }
 
 InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass(pRenderContext->device()));
+    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass(pRenderContext->getDevice()));
     return pPass;
 }
 
@@ -73,7 +73,7 @@ RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compi
 }
 
 void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileData& compileData) {
-    assert(mpDevice == pContext->device());
+    assert(mpDevice == pContext->getDevice());
     if (!mReady) throw std::runtime_error("InvalidPixelDetectionPass::compile - missing incoming reflection data");
 }
 

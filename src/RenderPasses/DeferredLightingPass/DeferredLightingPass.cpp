@@ -5,127 +5,119 @@
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 
 #include "DeferredLightingPass.h"
 
 
-const RenderPass::Info DeferredLightingPass::kInfo
-{
-    "DeferredLightingPass",
-
-    "Computes direct and indirect illumination and applies shadows for the current scene (if visibility map is provided).\n"
-    "The pass can output the world-space normals and screen-space motion vectors, both are optional."
-};
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void regDeferredLightingPass(pybind11::module& m) {
+    pybind11::class_<DeferredLightingPass, RenderPass> pass(m, "DeferredLightingPass");
+    //pybind11::class_<DeferredLightingPass, RenderPass, DeferredLightingPass::SharedPtr> pass(m, "DeferredLightingPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(DeferredLightingPass::kInfo, DeferredLightingPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, DeferredLightingPass>();
+    ScriptBindings::registerBinding(regDeferredLightingPass);
 }
 
 namespace {
-    const char kShaderFile[] = "RenderPasses/DeferredLightingPass/DeferredLightingPass.cs.slang";
 
-    const std::string kInputColor = "color";
-    const std::string kInputVBuffer = "vbuffer";
-    const std::string kInputDepth = "depth";
-    const std::string kInputTexGrads = "texGrads";
-    const std::string kInputNormalW = "normW";
+const char kShaderFile[] = "RenderPasses/DeferredLightingPass/DeferredLightingPass.cs.slang";
 
-    const std::string kInputMotionVectors = "mvec";
-    const std::string kUseDOF = "useDOF";
+const std::string kInputColor = "color";
+const std::string kInputVBuffer = "vbuffer";
+const std::string kInputDepth = "depth";
+const std::string kInputTexGrads = "texGrads";
+const std::string kInputNormalW = "normW";
 
-    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
+const std::string kInputMotionVectors = "mvec";
+const std::string kUseDOF = "useDOF";
 
-    const ChannelList kExtraInputChannels = {
-        { kInputVBuffer,          "gVBuffer",       "Visibility buffer in packed format",   true /* optional */, ResourceFormat::RGBA32Uint },
-        { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
-        { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
-        //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
-    };
+const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
-    const ChannelList kExtraInputOutputChannels = {
+const ChannelList kExtraInputChannels = {
+    { kInputVBuffer,          "gVBuffer",       "Visibility buffer in packed format",   true /* optional */, ResourceFormat::RGBA32Uint },
+    { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
+    { kInputNormalW,          "gNormW",         "Shading normal in world space",        true /* optional */, ResourceFormat::Unknown },
+    //{ kInputMotionVectors,    "gMotionVector",       "Motion vector buffer (float format)", true /* optional */ },
+};
 
-    };
+const ChannelList kExtraInputOutputChannels = {
 
-    const ChannelList kExtraOutputChannels = {
-        { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
-        { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float },
-        { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
-        { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
-        { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
-        { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
-        { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
-        { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
-        { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
-        { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
-        { "fresnel",          "gOutFresnel",        "Surface fresnel buffer",        true /* optional */, ResourceFormat::R16Float },
-        { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
-        
-        // Service outputs
-        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
-        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
-        { "variance",         "gVariance",          "Ray variance buffer",           true /* optional */, ResourceFormat::R16Float },
-        { "uv",               "gUV",                "Texture coordinates buffer",    true /* optional */, ResourceFormat::RG16Float },
-    };
+};
 
-    const std::string kFrameSampleCount = "frameSampleCount";
-    const std::string kSuperSampleCount = "superSampleCount";
-    const std::string kSuperSampling = "enableSuperSampling";
-    const std::string kColorLimit = "colorLimit";
-    const std::string kIndirectColorLimit = "indirectColorLimit";
-    const std::string kUseSTBN = "useSTBN";
-    const std::string kRayBias = "rayBias";
-    const std::string kShadingRate = "shadingRate";
-    const std::string kRayReflectLimit = "rayReflectLimit";
-    const std::string kRayRefractLimit = "rayRefractLimit";
-    const std::string kRayDiffuseLimit = "rayDiffuseLimit";
-    const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
-    const std::string kRussianRouletteLevel = "russRoulleteLevel";
-    const std::string kRayContributionThreshold = "rayContribThreshold";
+const ChannelList kExtraOutputChannels = {
+    { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
+    { "face_normals",     "gOutFaceNormals",    "Face Normals buffer",           true /* optional */, ResourceFormat::RGBA16Float },
+    { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
+    { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
+    { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
+    { "emission",         "gOutEmission",       "Emission color buffer",         true /* optional */, ResourceFormat::RGBA16Float },
+    { "roughness",        "gOutRoughness",      "Roughness buffer",              true /* optional */, ResourceFormat::R16Float },
+    { "tangent_normals",  "gOutTangentNormals", "Tangent space normals buffer",  true /* optional */, ResourceFormat::RGBA16Float },
+    { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
+    { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
+    { "fresnel",          "gOutFresnel",        "Surface fresnel buffer",        true /* optional */, ResourceFormat::R16Float },
+    { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
+    
+    // Service outputs
+    { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
+    { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
+    { "variance",         "gVariance",          "Ray variance buffer",           true /* optional */, ResourceFormat::R16Float },
+    { "uv",               "gUV",                "Texture coordinates buffer",    true /* optional */, ResourceFormat::RG16Float },
+};
+
+const std::string kFrameSampleCount = "frameSampleCount";
+const std::string kSuperSampleCount = "superSampleCount";
+const std::string kSuperSampling = "enableSuperSampling";
+const std::string kColorLimit = "colorLimit";
+const std::string kIndirectColorLimit = "indirectColorLimit";
+const std::string kUseSTBN = "useSTBN";
+const std::string kRayBias = "rayBias";
+const std::string kShadingRate = "shadingRate";
+const std::string kRayReflectLimit = "rayReflectLimit";
+const std::string kRayRefractLimit = "rayRefractLimit";
+const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
+const std::string kRussianRouletteLevel = "russRoulleteLevel";
+const std::string kRayContributionThreshold = "rayContribThreshold";
+
+} // namespace
+
+DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new DeferredLightingPass(pRenderContext->getDevice(), props));
 }
 
-DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new DeferredLightingPass(pRenderContext->device()));
-        
-    for (const auto& [key, value] : dict) {
-        if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
-        else if (key == kColorLimit) pThis->setColorLimit(value);
-        else if (key == kIndirectColorLimit) pThis->setIndirectColorLimit(value);
-        else if (key == kUseSTBN) pThis->setSTBNSampling(value);
-        else if (key == kRayBias) pThis->setRayBias(value);
-        else if (key == kShadingRate) pThis->setShadingRate(value);
-        else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
-        else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
-        else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
-        #ifdef _WIN32
-        // else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string{value});
-        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(value.operator std::string());
-        // else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(static_cast<const std::string&>(value));
-        #else
-        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
-        #endif
-        else if (key == kRussianRouletteLevel) pThis->setRussRoulleteLevel((uint)value);
-        else if (key == kRayContributionThreshold) pThis->setRayContribThreshold(value);
-        else if (key == kUseDOF) pThis->enableDepthOfField(static_cast<bool>(value));
-    }
-
-    return pThis;
-}
-
-Dictionary DeferredLightingPass::getScriptingDictionary() {
-    Dictionary d;
+Properties DeferredLightingPass::getProperties() const {
+    Properties d;
     d[kFrameSampleCount] = mFrameSampleCount;
     d[kSuperSampleCount] = mSuperSampleCount;
     d[kSuperSampling] = mEnableSuperSampling;
     return d;
 }
 
-DeferredLightingPass::DeferredLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+void DeferredLightingPass::parseProperties(const Properties& props) {
+    for (const auto& [key, value] : props) {
+        if (key == kFrameSampleCount) setFrameSampleCount(value);
+        else if (key == kColorLimit) setColorLimit(value);
+        else if (key == kIndirectColorLimit) setIndirectColorLimit(value);
+        else if (key == kUseSTBN) setSTBNSampling(value);
+        else if (key == kRayBias) setRayBias(value);
+        else if (key == kShadingRate) setShadingRate(value);
+        else if (key == kRayReflectLimit) setRayReflectLimit(value);
+        else if (key == kRayRefractLimit) setRayRefractLimit(value);
+        else if (key == kRayDiffuseLimit) setRayDiffuseLimit(value);
+    #ifdef _WIN32
+        else if (key == kAreaLightsSamplingMode) setAreaLightsSamplingMode(value.operator std::string());
+    #else
+        else if (key == kAreaLightsSamplingMode) setAreaLightsSamplingMode(std::string(value));
+    #endif
+        else if (key == kRussianRouletteLevel) setRussRoulleteLevel((uint)value);
+        else if (key == kRayContributionThreshold) setRayContribThreshold(value);
+        else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
+    }
+}
+
+DeferredLightingPass::DeferredLightingPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("DeferredLightingPass requires Shader Model 6.5 support.");
     }
@@ -133,6 +125,8 @@ DeferredLightingPass::DeferredLightingPass(Device::SharedPtr pDevice): RenderPas
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
         FALCOR_THROW("DeferredLightingPass: Raytracing Tier 1.1 is not supported by the current device");
     }
+
+    parseProperties(props);
 
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -176,7 +170,7 @@ RenderPassReflection DeferredLightingPass::reflect(const CompileData& compileDat
 void DeferredLightingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 
     mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
     mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);

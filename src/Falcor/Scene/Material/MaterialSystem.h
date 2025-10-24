@@ -159,8 +159,8 @@ class FALCOR_API MaterialSystem : public Object {
 		uint32_t getMaterialCount() const { return (uint32_t)mMaterials.size(); }
 
 		/** Get the number of materials of the given type.
-    */
-    uint32_t getMaterialCountByType(const MaterialType type) const;
+    	*/
+    	uint32_t getMaterialCountByType(const MaterialType type) const;
 
 		/** Get the set of all material types used.
 		*/

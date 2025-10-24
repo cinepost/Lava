@@ -25,12 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <algorithm>
-#include <pybind11/embed.h>
+#include "AmbientOcclusionPass.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 
 #include "Falcor/Utils/Debug/debug.h"
@@ -38,75 +36,71 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "AmbientOcclusionPass.h"
+#include <algorithm>
+#include <pybind11/embed.h>
 
-
-const RenderPass::Info AmbientOcclusionPass::kInfo { "AmbientOcclusionPass", "Ambient occlusion." };
-
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
 
 static void regAmbientOcclusionPass(pybind11::module& m) {
-    pybind11::class_<AmbientOcclusionPass, RenderPass, AmbientOcclusionPass::SharedPtr> pass(m, "AmbientOcclusionPass");
+    pybind11::class_<AmbientOcclusionPass, RenderPass> pass(m, "AmbientOcclusionPass");
+    //pybind11::class_<AmbientOcclusionPass, RenderPass, Falcor::SharedPtr<AmbientOcclusionPass>> pass(m, "AmbientOcclusionPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(AmbientOcclusionPass::kInfo, AmbientOcclusionPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, AmbientOcclusionPass>();
     ScriptBindings::registerBinding(regAmbientOcclusionPass);
 }
 
 namespace {
 
-    const char kShaderFile[] = "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.raytrace.cs.slang";
-    const char kOutputChannel[]         = "output";
-    
-    const char kInputDepthChannel[]     = "depth";
-    const char kInputNormalChannel[]    = "normal";
-    const char kInputVBufferChannel[]   = "vbuffer";
+const char kShaderFile[] = "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.raytrace.cs.slang";
+const char kOutputChannel[]         = "output";
 
-    const ChannelList kEdgeDetectPassExtraInputChannels = {
-        { kInputDepthChannel,            "gDepth",            "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
-        { kInputNormalChannel,           "gNormal",           "Normal buffer",                 true /* optional */, ResourceFormat::Unknown },
-        { kInputVBufferChannel,          "gVBuffer",          "VBuffer",                       true /* optional */, HitInfo::kDefaultFormat },
-    };
+const char kInputDepthChannel[]     = "depth";
+const char kInputNormalChannel[]    = "normal";
+const char kInputVBufferChannel[]   = "vbuffer";
 
-    const std::string kShadingRate = "shadingRate";
-    const std::string kDistanceRange = "distanceRange";
-    const std::string kIgnoreBackface = "ignoreBackface";
-    const std::string kRayBias = "rayBias";
+const ChannelList kEdgeDetectPassExtraInputChannels = {
+    { kInputDepthChannel,            "gDepth",            "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
+    { kInputNormalChannel,           "gNormal",           "Normal buffer",                 true /* optional */, ResourceFormat::Unknown },
+    { kInputVBufferChannel,          "gVBuffer",          "VBuffer",                       true /* optional */, HitInfo::kDefaultFormat },
+};
+
+const std::string kShadingRate = "shadingRate";
+const std::string kDistanceRange = "distanceRange";
+const std::string kIgnoreBackface = "ignoreBackface";
+const std::string kRayBias = "rayBias";
     
 }
 
-AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new AmbientOcclusionPass(pRenderContext->device()));
-
-    for (const auto& [key, value] : dict) {
-        if (key == kShadingRate) pThis->setShadingRate(value);
-        else if (key == kDistanceRange) pThis->setDistanceRange(value);
-        else if (key == kIgnoreBackface) pThis->setIgnoreBackface(value);
-        else if (key == kRayBias) pThis->setRayBias(value);
+void AmbientOcclusionPass::parseProperties(const Properties& props) {
+    for (const auto& [key, value] : props) {
+        if (key == kShadingRate) setShadingRate(value);
+        else if (key == kDistanceRange) setDistanceRange(value);
+        else if (key == kIgnoreBackface) setIgnoreBackface(value);
+        else if (key == kRayBias) setRayBias(value);
     }
-
-    return pThis;
 }
 
-AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+AmbientOcclusionPass::SharedPtr AmbientOcclusionPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new AmbientOcclusionPass(pRenderContext->getDevice(), props));
+}
+
+AmbientOcclusionPass::AmbientOcclusionPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("AmbientOcclusionPass requires Shader Model 6.5 support.");
     }
 
     mSampleNumber = 0;
 
+    parseProperties(props);
+
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 }
 
-Dictionary AmbientOcclusionPass::getScriptingDictionary() {
-    Dictionary dict;
-    return dict;
+Properties AmbientOcclusionPass::getProperties() const {
+    Properties props;
+    return props;
 }
 
 RenderPassReflection AmbientOcclusionPass::reflect(const CompileData& compileData) {
@@ -199,7 +193,7 @@ bool AmbientOcclusionPass::beginFrame(RenderContext *pContext, const RenderData&
 }
 
 void AmbientOcclusionPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    if(pRenderContext->device() != pScene->device()) {
+    if(pRenderContext->getDevice() != pScene->getDevice()) {
         LLOG_ERR << "Unable to set scene created on different device!";
         mpScene = nullptr;
     }

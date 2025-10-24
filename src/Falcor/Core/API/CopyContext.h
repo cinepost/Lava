@@ -48,12 +48,11 @@ class Profiler;
 
 uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format);
 
-class FALCOR_API CopyContext {
+class FALCOR_API CopyContext : public Object {
+    FALCOR_OBJECT(CopyContext)
  public:
-    using SharedPtr = std::shared_ptr<CopyContext>;
-
     class FALCOR_API ReadTextureTask {
-     public:
+    public:
         using SharedPtr = std::shared_ptr<ReadTextureTask>;
         static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
         std::vector<uint8_t> getData() const;

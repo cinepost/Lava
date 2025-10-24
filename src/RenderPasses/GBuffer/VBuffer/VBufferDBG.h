@@ -41,19 +41,17 @@ using namespace Falcor;
 /** Software rasterized V-buffer pass.
 */
 class PASS_API VBufferDBG : public GBufferBase {
+    	FALCOR_OBJECT(VBufferDBG)
+    	FALCOR_PLUGIN_CLASS(VBufferDBG, "VBufferDBG", "Debug V-buffer generation pass.");
 	public:
-		using SharedPtr = std::shared_ptr<VBufferDBG>;
-		
-		static const Info kInfo;
-
-		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& props);
 
 		RenderPassReflection reflect(const CompileData& compileData) override;
 		void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 	private:
-		VBufferDBG(Device::SharedPtr pDevice, const Dictionary& dict);
+		VBufferDBG(Device::SharedPtr pDevice, const Properties& props);
 
 		bool                    mDirty;
 		ComputePass::SharedPtr 	mpComputePass;

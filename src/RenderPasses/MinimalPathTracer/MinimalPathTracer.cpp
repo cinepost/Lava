@@ -81,7 +81,7 @@ namespace
 MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict) {
     LOG_WARN("MinimalPathTracer::create");
 
-    return SharedPtr(new MinimalPathTracer(pRenderContext->device(), dict));
+    return SharedPtr(new MinimalPathTracer(pRenderContext->getDevice(), dict));
 }
 
 MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {

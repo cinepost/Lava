@@ -78,7 +78,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 }
 
 RTXDIPass::SharedPtr RTXDIPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return RTXDIPass::SharedPtr(new RTXDIPass(pRenderContext->device(), dict));
+    return RTXDIPass::SharedPtr(new RTXDIPass(pRenderContext->getDevice(), dict));
 }
 
 RenderPassReflection RTXDIPass::reflect(const CompileData& compileData) {

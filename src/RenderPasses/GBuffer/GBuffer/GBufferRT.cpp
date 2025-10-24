@@ -25,49 +25,46 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor.h"
-
+#include "GBufferRT.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
-#include "GBufferRT.h"
-
-const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
 
 namespace {
-    const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
 
-    // Scripting options.
-    const char kUseTraceRayInline[] = "useTraceRayInline";
-    const char kUseDOF[] = "useDOF";
+const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
+const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
 
-    // Ray tracing settings that affect the traversal stack size. Set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 4;
-    const uint32_t kMaxRecursionDepth = 1;
+// Scripting options.
+const char kUseTraceRayInline[] = "useTraceRayInline";
+const char kUseDOF[] = "useDOF";
 
-    // Scripting options
-    const std::string kLODMode = "texLOD";
+// Ray tracing settings that affect the traversal stack size. Set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 4;
+const uint32_t kMaxRecursionDepth = 1;
 
-    // Additional output channels.
-    const std::string kVBufferName = "vbuffer";
-    const ChannelList kGBufferExtraChannels =
-    {
-        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
-        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                   true /* optional */, ResourceFormat::R32Float     },
-        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                   true /* optional */, ResourceFormat::RG32Float    },
-        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                         true /* optional */, ResourceFormat::RGBA16Float  },
-        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Normal in world space, roughness, and material ID",    true /* optional */, ResourceFormat::RGB10A2Unorm },
-        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                true /* optional */, ResourceFormat::RGBA32Float  },
-        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                   true /* optional */, ResourceFormat::RGBA32Float  },
-        { "emissive",                   "gEmissive",                    "Emissive color",                                       true /* optional */, ResourceFormat::RGBA32Float  },
-        { "viewW",                      "gViewW",                       "View direction in world space",                        true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",                       "gTime",                        "Per-pixel execution time",                             true /* optional */, ResourceFormat::R32Uint      },
-        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                    true /* optional */, ResourceFormat::R32Float     },
-    };
+// Scripting options
+const std::string kLODMode = "texLOD";
+
+// Additional output channels.
+const std::string kVBufferName = "vbuffer";
+const ChannelList kGBufferExtraChannels = {
+    { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+    { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                   true /* optional */, ResourceFormat::R32Float     },
+    { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                   true /* optional */, ResourceFormat::RG32Float    },
+    { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                         true /* optional */, ResourceFormat::RGBA16Float  },
+    { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Normal in world space, roughness, and material ID",    true /* optional */, ResourceFormat::RGB10A2Unorm },
+    { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                true /* optional */, ResourceFormat::RGBA32Float  },
+    { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                   true /* optional */, ResourceFormat::RGBA32Float  },
+    { "emissive",                   "gEmissive",                    "Emissive color",                                       true /* optional */, ResourceFormat::RGBA32Float  },
+    { "viewW",                      "gViewW",                       "View direction in world space",                        true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
+    { "time",                       "gTime",                        "Per-pixel execution time",                             true /* optional */, ResourceFormat::R32Uint      },
+    { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                    true /* optional */, ResourceFormat::R32Float     },
 };
 
-GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new GBufferRT(pRenderContext->device(), dict));
+};
+
+GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Properties& dict) {
+    return SharedPtr(new GBufferRT(pRenderContext->getDevice(), dict));
 }
 
 RenderPassReflection GBufferRT::reflect(const CompileData& compileData) {
@@ -128,14 +125,6 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
 
     mFrameCount++;
-}
-
-Dictionary GBufferRT::getScriptingDictionary() {
-    Dictionary dict = GBuffer::getScriptingDictionary();
-    dict[kLODMode] = mLODMode;
-    dict[kUseTraceRayInline] = mUseTraceRayInline;
-    dict[kUseDOF] = mUseDOF;
-    return dict;
 }
 
 void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -266,7 +255,7 @@ void GBufferRT::bindShaderData(const ShaderVar& var, const RenderData& renderDat
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
 }
 
-GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict) : GBuffer(pDevice, kInfo) {
+GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Properties& props) : GBuffer(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("GBufferRT: requires Shader Model 6.5 support.");
     }
@@ -275,16 +264,16 @@ GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict) : GBuffe
         FALCOR_THROW("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create random engine
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
 }
 
-void GBufferRT::parseDictionary(const Dictionary& dict) {
-    GBuffer::parseDictionary(dict);
+void GBufferRT::parseProperties(const Properties& props) {
+    GBuffer::parseProperties(props);
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kLODMode) mLODMode = value;
         else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
         else if (key == kUseDOF) mUseDOF = value;

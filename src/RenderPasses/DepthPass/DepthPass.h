@@ -50,7 +50,6 @@ class PASS_API DepthPass : public RenderPass {
       FALCOR_OBJECT(DepthPass)
       FALCOR_PLUGIN_CLASS(DepthPass, "DepthPass", "Creates a depth-buffer using the scene's active camera.");
    public:
-
       /** Create a new object
       */
       static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});

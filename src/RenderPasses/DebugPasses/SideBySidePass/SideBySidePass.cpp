@@ -39,7 +39,7 @@ SideBySidePass::SideBySidePass(Device::SharedPtr pDevice): ComparisonPass(pDevic
 }
 
 SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new SideBySidePass(pRenderContext->device()));
+    SharedPtr pPass = SharedPtr(new SideBySidePass(pRenderContext->getDevice()));
     for (const auto& v : dict) {
         if (v.key() == kImageLeftBound) pPass->mImageLeftBound = v.val();
         else if (!pPass->parseKeyValuePair(v.key(), v.val())) {

@@ -13,20 +13,18 @@
 using namespace Falcor;
 
 class PASS_API DebugShadingPass : public RenderPass {
+		FALCOR_OBJECT(DebugShadingPass)
+		FALCOR_PLUGIN_CLASS(DebugShadingPass, "DebugShadingPass", "Debug shading pass.");
 	public:
-		using SharedPtr = std::shared_ptr<DebugShadingPass>;
-
-		static const Info kInfo;
-
 		/** Create a new object
 		*/
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 
 
 		/** Set the color target format. This is always enabled
@@ -36,11 +34,11 @@ class PASS_API DebugShadingPass : public RenderPass {
 		void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
 
 	private:
-		DebugShadingPass(Device::SharedPtr pDevice);
+		DebugShadingPass(Device::SharedPtr pDevice, const Properties& props = {});
 
 		void generateMeshletColorBuffer(const RenderData& renderData);
 		
-		Buffer::SharedPtr 	mpOpaquePassIndirectionArgsBuffer;
+		Buffer::SharedPtr 					mpOpaquePassIndirectionArgsBuffer;
 		
 		Scene::SharedPtr                	mpScene;
 		ComputePass::SharedPtr          	mpShadingPass;
@@ -52,7 +50,7 @@ class PASS_API DebugShadingPass : public RenderPass {
 		ResourceFormat                  	mFalseColorFormat = ResourceFormat::RGBA16Float;
 
 		FalseColorGenerator::SharedPtr  	mpFalseColorGenerator;
-		HeatMapColorGenerator::SharedPtr  mpHeatMapColorGenerator;
+		HeatMapColorGenerator::SharedPtr  	mpHeatMapColorGenerator;
 		Buffer::SharedPtr               	mpMeshletColorBuffer;
 
 		uint2 mFrameDim = { 0, 0 };

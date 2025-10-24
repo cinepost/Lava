@@ -43,6 +43,7 @@ class ProgramKernels;
 class UnorderedAccessView;
 
 class FALCOR_API ComputeContext : public CopyContext {
+    FALCOR_OBJECT(ComputeContext)
  public:
     ComputeContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     ~ComputeContext();

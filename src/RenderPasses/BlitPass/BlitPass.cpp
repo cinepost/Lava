@@ -60,7 +60,7 @@ void BlitPass::parseDictionary(const Dictionary& dict) {
 }
 
 BlitPass::SharedPtr BlitPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new BlitPass(pRenderContext->device(), dict));
+    return SharedPtr(new BlitPass(pRenderContext->getDevice(), dict));
 }
 
 BlitPass::BlitPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {

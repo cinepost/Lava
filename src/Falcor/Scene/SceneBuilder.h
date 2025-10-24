@@ -216,8 +216,8 @@ class FALCOR_API SceneBuilder : public Object {
 
     using InstanceMatrices = std::vector<float4x4>;
 
-    Falcor::SharedPtr<Device> device() { return mpDevice; };
-    Falcor::SharedPtr<Device> device() const { return mpDevice; };
+    Falcor::SharedPtr<Device> getDevice() { return mpDevice; };
+    //Falcor::SharedPtr<Device> getDevice() const { return mpDevice; };
 
     /** Create a new object
     */

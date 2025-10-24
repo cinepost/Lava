@@ -30,27 +30,23 @@
 #include <pybind11/embed.h>
 
 #include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "Falcor/Scene/Lights/LightData.slang"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
-
 static void regEnvPass(pybind11::module& m) {
-    pybind11::class_<EnvPass, RenderPass, EnvPass::SharedPtr> pass(m, "EnvPass");
+    pybind11::class_<EnvPass, RenderPass> pass(m, "EnvPass");
+    //pybind11::class_<EnvPass, RenderPass, EnvPass::SharedPtr> pass(m, "EnvPass");
+
     pass.def_property("scale", &EnvPass::getScale, &EnvPass::setScale);
     pass.def_property("filter", &EnvPass::getFilter, &EnvPass::setFilter);
     pass.def_property("intensity", &EnvPass::getIntensity, &EnvPass::setIntensity);
     pass.def_property("opacity", &EnvPass::getOpacity, &EnvPass::setOpacity);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(EnvPass::kInfo, EnvPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, EnvPass>();
     ScriptBindings::registerBinding(regEnvPass);
 }
 
@@ -87,9 +83,9 @@ EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
 }
 
 EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Properties& props) {
-    SharedPtr pEnvPass = SharedPtr(new EnvPass(pRenderContext->device()));
+    SharedPtr pEnvPass = SharedPtr(new EnvPass(pRenderContext->getDevice()));
     
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 
     std::string backdropImageName;
 

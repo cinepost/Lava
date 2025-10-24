@@ -32,6 +32,7 @@
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Scene/Scene.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -64,14 +65,14 @@ class PASS_API TexturesResolvePass : public RenderPass {
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual Properties getProperties() const override;
 
-		TexturesResolvePass& 	setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-		TexturesResolvePass& 	setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+		TexturesResolvePass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+		TexturesResolvePass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
-		TexturesResolvePass& 	setRayReflectLimit(int limit);
-		TexturesResolvePass& 	setRayRefractLimit(int limit);
-		TexturesResolvePass&  setRayDiffuseLimit(int limit);
+		TexturesResolvePass& setRayReflectLimit(int limit);
+		TexturesResolvePass& setRayRefractLimit(int limit);
+		TexturesResolvePass& setRayDiffuseLimit(int limit);
 		
-		TexturesResolvePass&  setAsyncLoading(bool mode);
+		TexturesResolvePass& setAsyncLoading(bool mode);
 		
 	private:
 		TexturesResolvePass(Device::SharedPtr pDevice, const Properties& props);
@@ -90,7 +91,7 @@ class PASS_API TexturesResolvePass : public RenderPass {
 		RasterizerState::SharedPtr  mpRsState;
 		Scene::SharedPtr            mpScene;
 
-		std::vector<int8_t> 			  mPagesInitDataVetcor;
+		std::vector<int8_t> 		mPagesInitDataVetcor;
 
 		Sampler::SharedPtr          mpSampler = nullptr;
 		Sampler::SharedPtr          mpMinSampler = nullptr;

@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "VBufferDBG.h"
 
-#include "Scene/HitInfo.h"
+#include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/IndirectCommands.h"
@@ -38,34 +38,31 @@
 #include "Falcor/Scene/SceneDefines.slangh"
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
-
 #include <limits>
 
-const RenderPass::Info VBufferDBG::kInfo { "VBufferDBG", "Debug V-buffer generation pass." };
 
 namespace {
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferDBG.cs.slang";
 
-    // Scripting options.
+const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferDBG.cs.slang";
 
+// Ray tracing settings that affect the traversal stack size. Set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
+const uint32_t kMaxRecursionDepth = 1;
 
-    // Ray tracing settings that affect the traversal stack size. Set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
-    const uint32_t kMaxRecursionDepth = 1;
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
-
-    const ChannelList kVBufferExtraChannels = {
-        { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
-    };
+const ChannelList kVBufferExtraChannels = {
+    { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
 };
 
-VBufferDBG::SharedPtr VBufferDBG::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferDBG(pRenderContext->device(), dict));
+};
+
+VBufferDBG::SharedPtr VBufferDBG::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new VBufferDBG(pRenderContext->getDevice(), props));
 }
 
-VBufferDBG::VBufferDBG(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mDirty(true) {
+VBufferDBG::VBufferDBG(Device::SharedPtr pDevice, const Properties& dict): GBufferBase(pDevice), mDirty(true) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6)) {
         FALCOR_THROW("VBufferDBG: requires Shader Model 6.6 support.");
     }

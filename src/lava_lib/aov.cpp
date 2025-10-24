@@ -323,7 +323,7 @@ void AOVPlane::createInternalRenderGraph(Falcor::RenderContext* pContext, bool f
 
 	std::string internalGraphName = name() + " internal graph";
 
-	mpInternalRenderGraph = RenderGraph::create(pContext->device(), mpRenderGraph->dims(), internalGraphName);
+	mpInternalRenderGraph = RenderGraph::create(pContext->getDevice(), mpRenderGraph->dims(), internalGraphName);
 	if (! mpInternalRenderGraph) {
 		LLOG_ERR << "Error creating internal render graph " << internalGraphName;
 	}

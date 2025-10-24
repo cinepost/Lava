@@ -55,7 +55,7 @@ GaussianBlur::GaussianBlur(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 GaussianBlur::SharedPtr GaussianBlur::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pBlur = SharedPtr(new GaussianBlur(pRenderContext->device()));
+    SharedPtr pBlur = SharedPtr(new GaussianBlur(pRenderContext->getDevice()));
     for (const auto& [key, value] : dict)
     {
         if (key == kKernelWidth) pBlur->mKernelWidth = value;

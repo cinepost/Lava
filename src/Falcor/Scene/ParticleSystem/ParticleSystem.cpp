@@ -50,7 +50,7 @@ namespace Falcor
         std::string drawPixelShader, std::string simulateComputeShader, bool sorted)
     {
 
-        std::shared_ptr<Device> device = pCtx->device();
+        std::shared_ptr<Device> device = pCtx->getDevice();
 
         mShouldSort = sorted;
         mMaxEmitPerFrame = maxEmitPerFrame;

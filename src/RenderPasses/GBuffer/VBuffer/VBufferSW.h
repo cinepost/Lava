@@ -43,23 +43,22 @@ using namespace Falcor;
 /** Software rasterized V-buffer pass.
 */
 class PASS_API VBufferSW : public GBufferBase {
+        FALCOR_OBJECT(VBufferSW)
+        FALCOR_PLUGIN_CLASS(VBufferSW, "VBufferSW", "Software rasterizer V-buffer generation pass.");
 	public:
-		using SharedPtr = std::shared_ptr<VBufferSW>;
 		using VerticesList = std::vector<uint32_t>;
 		using TrianglesList = std::vector<uint32_t>;
-
-		static const Info kInfo;
 
 		static const uint32_t kMaxGroupThreads;
 		static const uint32_t kMeshletMaxVertices;
 		static const uint32_t kMeshletMaxTriangles;
 
-		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& props);
 
 		RenderPassReflection reflect(const CompileData& compileData) override;
 		void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-		Dictionary getScriptingDictionary() override;
+		Properties getProperties() const override;
 		void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
 		virtual void setCullMode(RasterizerState::CullMode mode) override;
@@ -92,8 +91,8 @@ class PASS_API VBufferSW : public GBufferBase {
 		void createMeshletDrawList();
 		void createMicroTrianglesBuffer();
 
-		VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict);
-		void parseDictionary(const Dictionary& dict) override;
+		VBufferSW(Device::SharedPtr pDevice, const Properties& props);
+		void parseProperties(const Properties& props) override;
 
 		// Helper functions
 		bool isOpaqueMaterial(const Material::SharedPtr& pMaterial);

@@ -32,32 +32,30 @@
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 
-const RenderPass::Info GBufferRaster::kInfo { "GBufferRaster", "Rasterized G-buffer generation pass." };
 
 namespace {
 
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
-    const std::string shaderModel = "450";
-    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
+const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+const std::string shaderModel = "450";
+const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
-    
-    // Additional output channels.
-    // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
-    const std::string kVBufferName = "vbuffer";
-    const ChannelList kGBufferExtraChannels = {
-        { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
-        { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
-        { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
-        { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
-        { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R16Float    },
-    };
 
-    const std::string kDepthName = "depth";
+// Additional output channels.
+// TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
+const std::string kVBufferName = "vbuffer";
+const ChannelList kGBufferExtraChannels = {
+    { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
+    { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+    { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+    { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
+    { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
+    { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R16Float    },
+};
+
+const std::string kDepthName = "depth";
 }
 
-RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
-{
+RenderPassReflection GBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     // Add the required depth output. This always exists.
@@ -71,11 +69,11 @@ RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
     return reflector;
 }
 
-GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new GBufferRaster(pRenderContext->device(), dict));
+GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new GBufferRaster(pRenderContext->getDevice(), props));
 }
 
-GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice, kInfo) {
+GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Properties& props): GBuffer(pDevice) {
     // Check for required features.
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
         FALCOR_THROW("GBufferRaster: Pixel shader barycentrics are not supported by the current device");
@@ -84,7 +82,7 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
         FALCOR_THROW("GBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create raster program
     Program::DefineList defines = { { "_DEFAULT_ALPHA_TEST", "" }, {"DISABLE_RAYTRACING", ""} };
@@ -111,14 +109,14 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
 void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
-    mpDepthPrePassGraph = RenderGraph::create(pContext->device(), mGBufferParams.frameSize, ResourceFormat::D32Float , "Depth Pre-Pass");
+    mpDepthPrePassGraph = RenderGraph::create(pContext->getDevice(), mGBufferParams.frameSize, ResourceFormat::D32Float , "Depth Pre-Pass");
     mpDepthPrePass = DepthPass::create(pContext);
     mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
     mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
     mpDepthPrePassGraph->setScene(mpScene);
 
-    //mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), mGBufferParams.frameSize, ResourceFormat::RGBA16Float , "Sparse textures resolve Pre-Pass");
+    //mpTexturesResolvePassGraph = RenderGraph::create(pContext->getDevice(), mGBufferParams.frameSize, ResourceFormat::RGBA16Float , "Sparse textures resolve Pre-Pass");
     //mpTexturesResolvePass = TexturesResolvePass::create(pContext);
     //mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
     // //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));

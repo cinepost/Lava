@@ -113,9 +113,9 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
 }
 
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pSkyBox = SharedPtr(new SkyBox(pRenderContext->device()));
+    SharedPtr pSkyBox = SharedPtr(new SkyBox(pRenderContext->getDevice()));
     
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 
     for (const auto& [key, value] : dict) {
         if (key == kTexName) pSkyBox->mTexName = value.operator std::string();
@@ -128,7 +128,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
 
     std::shared_ptr<Texture> pTexture;
     if (pSkyBox->mTexName.size() != 0) {
-        pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
+        pTexture = Texture::createFromFile(pRenderContext->getDevice(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
         if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
         pSkyBox->setTexture(pTexture);
     }

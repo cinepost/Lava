@@ -39,12 +39,10 @@ using namespace Falcor;
     as well as the barycentrics at the hit point.
 */
 class PASS_API VBufferRaster : public GBufferBase {
+        FALCOR_OBJECT(VBufferRaster)
+        FALCOR_PLUGIN_CLASS(VBufferRaster, "VBufferRaster", "Rasterized V-buffer generation pass.");
   public:
-    using SharedPtr = std::shared_ptr<VBufferRaster>;
-
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(RenderContext* pRenderContext, const Properties& props);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
@@ -65,9 +63,9 @@ class PASS_API VBufferRaster : public GBufferBase {
       CPUSampleGenerator::SharedPtr pSampleGenerator;
     };
 
-    VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
+    VBufferRaster(Device::SharedPtr pDevice, const Properties& dict);
 
-    virtual void parseDictionary(const Dictionary& dict) override;
+    virtual void parseProperties(const Properties& props) override;
     void initDepth(RenderContext* pContext, const RenderData& renderData);
     void initFineDepth(RenderContext* pContext, const RenderData& renderData);
     void initQuarterBuffers(RenderContext* pContext, const RenderData& renderData);
@@ -99,9 +97,6 @@ class PASS_API VBufferRaster : public GBufferBase {
       Program::SharedPtr        pProgram;
       ProgramVars::SharedPtr    pVars;
     } mRaster;
-
-    static const char* kDesc;
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_

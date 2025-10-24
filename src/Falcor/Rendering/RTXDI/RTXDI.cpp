@@ -92,8 +92,8 @@ RTXDI::SharedPtr RTXDI::create(const Scene::SharedPtr& pScene, const Options& op
 RTXDI::RTXDI(const Scene::SharedPtr& pScene, const Options& options): mpScene(pScene), mOptions(options){
     assert(pScene);
 
-    mpDevice = mpScene->device();
-    mpPixelDebug = PixelDebug::create(pScene->device());
+    mpDevice = mpScene->getDevice();
+    mpPixelDebug = PixelDebug::create(mpScene);
 
     setOptions(options);
     if (!isInstalled()) LLOG_WRN << "RTXDI SDK is not installed.";

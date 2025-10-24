@@ -83,7 +83,7 @@ namespace {
 }
 
 DeferredLightingCachedPass::SharedPtr DeferredLightingCachedPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new DeferredLightingCachedPass(pRenderContext->device()));
+    auto pThis = SharedPtr(new DeferredLightingCachedPass(pRenderContext->getDevice()));
         
     for (const auto& [key, value] : dict) {
         if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
@@ -142,7 +142,7 @@ RenderPassReflection DeferredLightingCachedPass::reflect(const CompileData& comp
 void DeferredLightingCachedPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 
     mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
     mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);

@@ -25,115 +25,111 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "OpenDenoisePass.h"
+
 #include "Falcor/Utils/Color/ColorUtils.h"
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
-#include "OpenDenoisePass.h"
 
+static void regOpenDenoisePass(pybind11::module& m) {
+    pybind11::class_<OpenDenoisePass, RenderPass> pass(m, "OpenDenoisePass");
+    //pybind11::class_<OpenDenoisePass, RenderPass, OpenDenoisePass::SharedPtr> pass(m, "OpenDenoisePass");
+}
+
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, OpenDenoisePass>();
+    ScriptBindings::registerBinding(regOpenDenoisePass);
+}
 
 namespace {
-    const std::string kInput = "input";
-    const std::string kOutput = "output";
 
-    const std::string kAlbedoInput = "albedo";
-    const std::string kNormalInput = "normal";
+const std::string kInput = "input";
+const std::string kOutput = "output";
 
-    const std::string kOutputFormat = "outputFormat";
-    const std::string kUseAlbedo = "useAlbedo";
-    const std::string kUseNormal = "useNormal";
-    const std::string kQuality   = "quality";
+const std::string kAlbedoInput = "albedo";
+const std::string kNormalInput = "normal";
 
-    const ChannelList kExtraInputChannels = {
-        { kAlbedoInput,           "gTextureAlbedo",            "Albedo auxiliary texture", true /* optional */, ResourceFormat::Unknown },
-        { kNormalInput,           "gTextureNormal",            "Normal auxiliary texture", true /* optional */, ResourceFormat::Unknown },
-    };
+const std::string kOutputFormat = "outputFormat";
+const std::string kUseAlbedo = "useAlbedo";
+const std::string kUseNormal = "useNormal";
+const std::string kQuality   = "quality";
 
-    inline oidn::Format toOIDNFormat(ResourceFormat format) {
-        bool isHalf = isHalfFloatFormat(format);
-        bool isFloat = isFloatFormat(format) && !isHalf;
-        if(!isFloat && !isHalf) return oidn::Format::Undefined;
+const ChannelList kExtraInputChannels = {
+    { kAlbedoInput,           "gTextureAlbedo",            "Albedo auxiliary texture", true /* optional */, ResourceFormat::Unknown },
+    { kNormalInput,           "gTextureNormal",            "Normal auxiliary texture", true /* optional */, ResourceFormat::Unknown },
+};
 
-        auto channelCount = getFormatChannelCount(format);
-        switch (channelCount) {
-            case 1:
-                return isFloat ? oidn::Format::Float : oidn::Format::Half;
-            case 2:
-                return isFloat ? oidn::Format::Float2 : oidn::Format::Half2;
-            case 3:
-                return isFloat ? oidn::Format::Float3 : oidn::Format::Half3;
-            case 4:
-                return isFloat ? oidn::Format::Float4 : oidn::Format::Half4;
-            default:
-                break;
-        }
-        return oidn::Format::Undefined;
+inline oidn::Format toOIDNFormat(ResourceFormat format) {
+    bool isHalf = isHalfFloatFormat(format);
+    bool isFloat = isFloatFormat(format) && !isHalf;
+    if(!isFloat && !isHalf) return oidn::Format::Undefined;
+
+    auto channelCount = getFormatChannelCount(format);
+    switch (channelCount) {
+        case 1:
+            return isFloat ? oidn::Format::Float : oidn::Format::Half;
+        case 2:
+            return isFloat ? oidn::Format::Float2 : oidn::Format::Half2;
+        case 3:
+            return isFloat ? oidn::Format::Float3 : oidn::Format::Half3;
+        case 4:
+            return isFloat ? oidn::Format::Float4 : oidn::Format::Half4;
+        default:
+            break;
     }
+    return oidn::Format::Undefined;
+}
 
-    oidn::Quality toOIDNQuality(OpenDenoisePass::Quality quality) {
-        switch(quality) {
-            case OpenDenoisePass::Quality::High:
-                return oidn::Quality::High;
-            default:
-                return oidn::Quality::Balanced;
-        }
+oidn::Quality toOIDNQuality(OpenDenoisePass::Quality quality) {
+    switch(quality) {
+        case OpenDenoisePass::Quality::High:
+            return oidn::Quality::High;
+        default:
+            return oidn::Quality::Balanced;
     }
+}
 
-    inline std::string to_string(oidn::Quality quality) {
-        if(quality == oidn::Quality::High) return "high";
-        return "balanced";
-    }
+inline std::string to_string(oidn::Quality quality) {
+    if(quality == oidn::Quality::High) return "high";
+    return "balanced";
+}
 
-    inline std::string to_string(OpenDenoisePass::Quality quality) {
-        if(quality == OpenDenoisePass::Quality::High) return "high";
-        return "balanced";
-    }
+inline std::string to_string(OpenDenoisePass::Quality quality) {
+    if(quality == OpenDenoisePass::Quality::High) return "high";
+    return "balanced";
+}
 
 #define str(a) case oidn::Format::a: return #a
-    inline std::string to_string(oidn::Format type) {
-        switch (type) {
-            str(Float);
-            str(Float2);
-            str(Float3);
-            str(Float4);
-            str(Half);
-            str(Half2);
-            str(Half3);
-            str(Half4);
-        default:
-            should_not_get_here();
-            return "oidn::Format::Undefined";
-        }
+inline std::string to_string(oidn::Format type) {
+    switch (type) {
+        str(Float);
+        str(Float2);
+        str(Float3);
+        str(Float4);
+        str(Half);
+        str(Half2);
+        str(Half3);
+        str(Half4);
+    default:
+        should_not_get_here();
+        return "oidn::Format::Undefined";
     }
+}
 #undef str
 
-}
+} // namespace
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
-
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(OpenDenoisePass::kInfo, OpenDenoisePass::create);
-}
-
-OpenDenoisePass::OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outputFormat) : RenderPass(pDevice, kInfo), mOutputFormat(outputFormat) {
+OpenDenoisePass::OpenDenoisePass(Device::SharedPtr pDevice, const Properties& props) : RenderPass(pDevice), mOutputFormat(ResourceFormat::Unknown) {
     mOidnDevice = oidn::newDevice(oidn::DeviceType::CPU);
     mOidnDevice.commit();
+
+    parseProperties(props);
 }
 
 OpenDenoisePass::SharedPtr OpenDenoisePass::create(RenderContext* pRenderContext, const Properties& props) {
-    // outputFormat can only be set on construction
-    ResourceFormat outputFormat = ResourceFormat::Unknown;
-    if (props.keyExists(kOutputFormat)) outputFormat = props[kOutputFormat];
-
-    OpenDenoisePass* pThis = new OpenDenoisePass(pRenderContext->device(), outputFormat);
-
-    pThis->parseProperties(props);
-
-    return OpenDenoisePass::SharedPtr(pThis);
+    return OpenDenoisePass::SharedPtr(new OpenDenoisePass(pRenderContext->getDevice(), props));
 }
 
 Properties OpenDenoisePass::getProperties() const {

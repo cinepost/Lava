@@ -50,6 +50,7 @@ class FALCOR_API ResolvePass : public RenderPass {
 
     ResolvePass(Device::SharedPtr pDevice);
 
+    virtual Properties getProperties() const { return Properties(); };
     void setFormat(ResourceFormat format) { mFormat = format; }
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;

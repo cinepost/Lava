@@ -61,7 +61,7 @@ const char kOutputChannel[] = "gPixelDataBuffer";
 }
 
 PixelInspectorPass::SharedPtr PixelInspectorPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new PixelInspectorPass(pRenderContext->device()));
+    return SharedPtr(new PixelInspectorPass(pRenderContext->getDevice()));
 }
 
 PixelInspectorPass::PixelInspectorPass(Device::SharedPtr pDevice): RenderPass(pDevice) {

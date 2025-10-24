@@ -77,7 +77,7 @@ Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
 
 Session::Session(std::shared_ptr<Renderer> pRenderer):mFirstRun(true) { 
 	mpRenderer = pRenderer;
-	mpDevice = mpRenderer->device();
+	mpDevice = mpRenderer->getDevice();
 }
 
 Session::~Session() {
@@ -559,7 +559,7 @@ bool Session::cmdRaytrace() {
 			}
 		}
 
-		mpRenderer->device()->getRenderContext()->flush(true);
+		mpRenderer->getDevice()->getRenderContext()->submit(true);
 		renderingTimeReport.measure("Image rendering time");
 		LLOG_INF << renderingTimeReport.printToString();
 		
@@ -701,7 +701,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		auto pDirectionalLight = Falcor::DirectionalLight::create("noname_distant");
 		pDirectionalLight->setWorldDirection(light_dir);
 
-		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
+		pLight = dynamic_ptr_cast<Falcor::Light>(pDirectionalLight);
 	} else if (light_type == "sun") {
 		// Distant/Sun light
 
@@ -711,7 +711,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		const float env_angle = pLightScope->getPropertyValue(ast::Style::LIGHT, "envangle", float(5.0));
 		pDistantLight->setAngleDegrees(env_angle);
 
-		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
+		pLight = dynamic_ptr_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
 		// Point/Spot light
 
@@ -740,7 +740,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			pPointLight->setPenumbraHalfAngle(conedelta_degrees * halfC);
 		}
 
-		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
+		pLight = dynamic_ptr_cast<Falcor::Light>(pPointLight);
 	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
 		// Area lights
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
@@ -774,14 +774,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pAreaLight->setSingleSided(singleSidedLight);
 		pAreaLight->setNormalizeArea(area_normalize);
 
-		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
+		pLight = dynamic_ptr_cast<Falcor::Light>(pAreaLight);
 	} else if( light_type == "env") {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
 		bool is_physical_sky = pLightScope->getPropertyValue(ast::Style::LIGHT, "physical_sky", bool(false));
 
-		auto pDevice = pSceneBuilder->device();
+		auto pDevice = pSceneBuilder->getDevice();
 		
 		Texture::SharedPtr pEnvMapTexture;
 		if (!is_physical_sky && texture_file_name.size() > 0) {
@@ -799,13 +799,13 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
   		pEnvLight->setDevice(pDevice);
   		LLOG_WRN << "Physical Sky Ligth build " << (pEnvLight->buildTest() ? "done!" : "failed!" );
-  		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+  		pLight = dynamic_ptr_cast<Falcor::Light>(pEnvLight);
   	} else {
   		auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
   		pEnvLight->setTransformMatrix(transform);
 			
   		if(pEnvMapTexture) pEnvLight->setTexture(pEnvMapTexture);
-  		pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+  		pLight = dynamic_ptr_cast<Falcor::Light>(pEnvLight);
   	}
 
 	} else { 
@@ -1395,7 +1395,7 @@ Falcor::StandardMaterial::SharedPtr Session::createStandardMaterialFromLSD(const
   }
 
     
-	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
+	Falcor::StandardMaterial::SharedPtr pMaterial = dynamic_ptr_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
 	if (!pMaterial) {
 		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
@@ -1550,7 +1550,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj, bool upda
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
   	std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
-	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
+	Falcor::StandardMaterial::SharedPtr pMaterial = dynamic_ptr_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
 	if(update) {
 		// Update material if needed

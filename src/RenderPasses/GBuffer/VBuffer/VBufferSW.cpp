@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "VBufferSW.h"
 
-#include "Scene/HitInfo.h"
+#include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/IndirectCommands.h"
@@ -42,7 +42,6 @@
 
 #include <limits>
 
-const RenderPass::Info VBufferSW::kInfo { "VBufferSW", "Software rasterizer V-buffer generation pass." };
 const uint32_t VBufferSW::kMaxGroupThreads = 128;
 const uint32_t VBufferSW::kMeshletMaxTriangles = VBufferSW::kMaxGroupThreads;
 const uint32_t VBufferSW::kMeshletMaxVertices = VBufferSW::kMaxGroupThreads * 2;
@@ -55,76 +54,78 @@ static const size_t   kSTBNOffsetsCount = 64;
 #endif 
 
 namespace {
-    const std::string kProgramComputeSubdivDataBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.SubdivDataBuilder.cs.slang";
-    const std::string kProgramComputeJitterGenFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.jittergen.cs.slang";
-    const std::string kProgramComputeRasterizerFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.rasterizer.cs.slang";
-    const std::string kProgramComputeTesselatorFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.tesselator.cs.slang";
-    const std::string kProgramComputeReconstructFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.reconstruct.cs.slang";
-    const std::string kProgramComputeMeshletsBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.builder.cs.slang";
 
-    // Scripting options.
-    const char kUseD64[] = "highp_depth";
-    const char kPerPixelJitterRaster[] = "per_pixel_jitter";
-    const char kCullMode[] = "cullMode";
-    const char kUseCompute[] = "useCompute";
-    const char kUseDOF[] = "useDOF";
-    const char kUseMotionBlur[] = "useMotionBlur";
-    const char kUseSubdivisions[] = "useSubdivisions";
-    const char kUseDisplacement[] = "useDisplacement";
-    const char kMaxSubdivLevel[] = "maxSubdivLevel";
-    const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
-    const char kOpacityLimit[] = "opacityLimit";
+const std::string kProgramComputeSubdivDataBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.SubdivDataBuilder.cs.slang";
+const std::string kProgramComputeJitterGenFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.jittergen.cs.slang";
+const std::string kProgramComputeRasterizerFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.rasterizer.cs.slang";
+const std::string kProgramComputeTesselatorFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.tesselator.cs.slang";
+const std::string kProgramComputeReconstructFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.reconstruct.cs.slang";
+const std::string kProgramComputeMeshletsBuilderFile = "RenderPasses/GBuffer/VBuffer/VBufferSW.builder.cs.slang";
 
-    // Ray tracing settings that affect the traversal stack size. Set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
-    const uint32_t kMaxRecursionDepth = 1;
+// Scripting options.
+const char kUseD64[] = "highp_depth";
+const char kPerPixelJitterRaster[] = "per_pixel_jitter";
+const char kCullMode[] = "cullMode";
+const char kUseCompute[] = "useCompute";
+const char kUseDOF[] = "useDOF";
+const char kUseMotionBlur[] = "useMotionBlur";
+const char kUseSubdivisions[] = "useSubdivisions";
+const char kUseDisplacement[] = "useDisplacement";
+const char kMaxSubdivLevel[] = "maxSubdivLevel";
+const char kMinScreenEdgeLen[] = "minScreenEdgeLen";
+const char kOpacityLimit[] = "opacityLimit";
 
-    const std::string kInputDepth = "depth";
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+// Ray tracing settings that affect the traversal stack size. Set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
+const uint32_t kMaxRecursionDepth = 1;
 
-    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
+const std::string kInputDepth = "depth";
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const std::string kOuputOITStartOffset = "oit_start_offset";
-    const std::string kOuputTime       = "time";
-    const std::string kOuputAUX        = "aux";
-    const std::string kOutputDrawCount = "drawCount";
-    const std::string kOutputNormal    = "normW";
+const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
-    const ChannelList kExtraInputOutputChannels = {
-        { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
-    };
+const std::string kOuputOITStartOffset = "oit_start_offset";
+const std::string kOuputTime       = "time";
+const std::string kOuputAUX        = "aux";
+const std::string kOutputDrawCount = "drawCount";
+const std::string kOutputNormal    = "normW";
 
-    // Additional output channels.
-    const ChannelList kVBufferExtraOutputChannels = {
-        { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
-        { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "texGrads",           "gTextureGrads",    "Texture coordinate gradients",    true /* optional */, ResourceFormat::RGBA16Float },
-
-        { "meshlet_id",         "gMeshletID",       "Meshlet id",                      true /* optional */, ResourceFormat::R32Uint     },
-        { "micropoly_id",       "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
-
-        // OIT channels
-        { kOuputOITStartOffset, "gOITStartOffset",  "OIT start offset buffer",         true /* optional */, ResourceFormat::R32Uint     },
-
-        // Debug channels
-        { kOuputAUX,            "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
-        { kOuputTime,           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
-        { kOutputDrawCount,     "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
-    };
-
-    // Additional output channels.
-    const ChannelList kVBufferExtraSubdChannels = {
-        { kOutputNormal,         "gNormW",          "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint  },
-    };
+const ChannelList kExtraInputOutputChannels = {
+    { kInputDepth,            "gDepth",         "Depth buffer",                         true /* optional */, ResourceFormat::Unknown },
 };
 
-VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferSW(pRenderContext->device(), dict));
+// Additional output channels.
+const ChannelList kVBufferExtraOutputChannels = {
+    { "vbuffer",            "gVBuffer",         kVBufferDesc,                      true /* optional */, ResourceFormat::RGBA32Uint  },
+    { "mvec",               "gMotionVector",    "Motion vector",                   true /* optional */, ResourceFormat::RG32Float   },
+    { "viewW",              "gViewW",           "View direction in world space",   true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+    { "texGrads",           "gTextureGrads",    "Texture coordinate gradients",    true /* optional */, ResourceFormat::RGBA16Float },
+
+    { "meshlet_id",         "gMeshletID",       "Meshlet id",                      true /* optional */, ResourceFormat::R32Uint     },
+    { "micropoly_id",       "gMicroPolyID",     "MicroPolygon id",                 true /* optional */, ResourceFormat::R32Uint     },
+
+    // OIT channels
+    { kOuputOITStartOffset, "gOITStartOffset",  "OIT start offset buffer",         true /* optional */, ResourceFormat::R32Uint     },
+
+    // Debug channels
+    { kOuputAUX,            "gAUX",             "Auxiliary debug buffer",          true /* optional */, ResourceFormat::RGBA32Float },
+    { kOuputTime,           "gTime",            "Per-pixel execution time",        true /* optional */, ResourceFormat::R32Uint     },
+    { kOutputDrawCount,     "gDrawCount",       "Draw count debug buffer",         true /* optional */, ResourceFormat::R32Uint     },
+};
+
+// Additional output channels.
+const ChannelList kVBufferExtraSubdChannels = {
+    { kOutputNormal,         "gNormW",          "Surface normal in world space",   true /* optional */, ResourceFormat::RGBA32Uint  },
+};
+
+} // namespace
+
+VBufferSW::SharedPtr VBufferSW::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new VBufferSW(pRenderContext->getDevice(), props));
 }
 
-VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mpCamera(nullptr) {
+VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Properties& props): GBufferBase(pDevice), mpCamera(nullptr) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("VBufferSW: requires Shader Model 6.5 support.");
     }
@@ -133,7 +134,7 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     mSubgroupSize = mpDevice->subgroupSize();
     setMaxSubdivLevel(3u);
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
@@ -152,10 +153,10 @@ VBufferSW::VBufferSW(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
     mDirty = true;
 }
 
-void VBufferSW::parseDictionary(const Dictionary& dict) {
-    GBufferBase::parseDictionary(dict);
+void VBufferSW::parseProperties(const Properties& props) {
+    GBufferBase::parseProperties(props);
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kUseCompute) mUseCompute = static_cast<bool>(value);
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
         else if (key == kUseSubdivisions) enableSubdivisions(static_cast<bool>(value));
@@ -276,21 +277,21 @@ void VBufferSW::execute(RenderContext* pRenderContext, const RenderData& renderD
     mDirty = false;
 }
 
-Dictionary VBufferSW::getScriptingDictionary() {
-    Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kUseCompute] = mUseCompute;
-    dict[kUseSubdivisions] = mUseSubdivisions;
-    dict[kUseDisplacement] = mUseDisplacement;
-    dict[kUseDOF] = mUseDOF;
+Properties VBufferSW::getProperties() const {
+    Properties props = GBufferBase::getProperties();
+    props[kUseCompute] = mUseCompute;
+    props[kUseSubdivisions] = mUseSubdivisions;
+    props[kUseDisplacement] = mUseDisplacement;
+    props[kUseDOF] = mUseDOF;
 
-    return dict;
+    return props;
 }
 
 void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& renderData) {
     createJitterTexture();
 
     if(!mpThreadLockBuffer || mpThreadLockBuffer->getElementCount() != mFrameDim.y) {
-        mpThreadLockBuffer = Buffer::create(pRenderContext->device(), mFrameDim.y * sizeof(uint32_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpThreadLockBuffer = Buffer::create(pRenderContext->getDevice(), mFrameDim.y * sizeof(uint32_t), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
     }
 
     if(mpThreadLockBuffer) pRenderContext->clearUAV(mpThreadLockBuffer->getUAV().get(), uint4(0));
@@ -657,7 +658,7 @@ void VBufferSW::createJitterTexture() {
         format = ResourceFormat::RGBA32Float;
     }
 
-    mpJitterTexture = Texture::create2D(mpDevice, 256, 256, format, 1, 1, nullptr, Texture::BindFlags::ShaderResource | Texture::BindFlags::UnorderedAccess);
+    mpJitterTexture = Texture::create2D(mpDevice, 256, 256, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 }
 
 void VBufferSW::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

@@ -28,16 +28,15 @@
 #ifndef SRC_FALCOR_UTILS_TEXTURES_BLUENOISETEXTURE_H_
 #define SRC_FALCOR_UTILS_TEXTURES_BLUENOISETEXTURE_H_
 
-#include <memory>
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Texture.h"
+
 
 namespace Falcor {
 
-class Device;
-class Texture;
-
 namespace BlueNoiseTexture {
 
-std::shared_ptr<Texture> dlldecl create(std::shared_ptr<Device> pDevice);
+Texture::SharedPtr create(Device::SharedPtr pDevice);
 
 }
 

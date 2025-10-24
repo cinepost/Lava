@@ -26,45 +26,44 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VBufferRT.h"
-#include "Scene/HitInfo.h"
+#include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
-const RenderPass::Info VBufferRT::kInfo { "VBufferRT", "Ray traced V-buffer generation pass." };
 
-namespace
-{
-    const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.rt.slang";
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.cs.slang";
+namespace {
 
-    // Scripting options.
-    const char kPerPixelJitterRaster[] = "per_pixel_jitter";
-    const char kUseCompute[] = "useCompute";
-    const char kUseMotionBlur[] = "useMotionBlur";
-    const char kUseDOF[] = "useDOF";
+const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.rt.slang";
+const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.cs.slang";
 
-    // Ray tracing settings that affect the traversal stack size. Set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
-    const uint32_t kMaxRecursionDepth = 1;
+// Scripting options.
+const char kPerPixelJitterRaster[] = "per_pixel_jitter";
+const char kUseCompute[] = "useCompute";
+const char kUseMotionBlur[] = "useMotionBlur";
+const char kUseDOF[] = "useDOF";
 
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+// Ray tracing settings that affect the traversal stack size. Set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 4; // TODO: The shader doesn't need a payload, set this to zero if it's possible to pass a null payload to TraceRay()
+const uint32_t kMaxRecursionDepth = 1;
 
-    // Additional output channels.
-    const ChannelList kVBufferExtraChannels =
-    {
-        { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
-        { "mvec",           "gMotionVector",    "Motion vector",                    true /* optional */, ResourceFormat::RG32Float   },
-        { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
-    };
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+
+// Additional output channels.
+const ChannelList kVBufferExtraChannels = {
+    { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
+    { "mvec",           "gMotionVector",    "Motion vector",                    true /* optional */, ResourceFormat::RG32Float   },
+    { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+    { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
 };
 
-VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferRT(pRenderContext->device(), dict));
+};
+
+VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new VBufferRT(pRenderContext->getDevice(), props));
 }
 
 RenderPassReflection VBufferRT::reflect(const CompileData& compileData) {
@@ -115,20 +114,20 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 }
 
 
-Dictionary VBufferRT::getScriptingDictionary() {
-    Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kUseCompute] = mUseCompute;
-    dict[kUseDOF] = mUseDOF;
-    dict[kPerPixelJitterRaster] = mUsePerPixelJitter;
-    dict[kUseMotionBlur] = mUseMotionBlur;
+Properties VBufferRT::getProperties() const {
+    Properties props = GBufferBase::getProperties();
+    props[kUseCompute] = mUseCompute;
+    props[kUseDOF] = mUseDOF;
+    props[kPerPixelJitterRaster] = mUsePerPixelJitter;
+    props[kUseMotionBlur] = mUseMotionBlur;
 
-    return dict;
+    return props;
 }
 
-void VBufferRT::parseDictionary(const Dictionary& dict) {
-    GBufferBase::parseDictionary(dict);
+void VBufferRT::parseProperties(const Properties& props) {
+    GBufferBase::parseProperties(props);
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kUseCompute) mUseCompute = value;
         else if (key == kUseDOF) enableDepthOfField(static_cast<bool>(value));
         else if (key == kPerPixelJitterRaster) setPerPixelJitter(static_cast<bool>(value));
@@ -284,7 +283,7 @@ void VBufferRT::bindShaderData(const ShaderVar& var, const RenderData& renderDat
     for (const auto& channel : kVBufferExtraChannels) bind(channel);
 }
 
-VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo) {
+VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Properties& props): GBufferBase(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("VBufferRT: requires Shader Model 6.5 support.");
     }
@@ -293,7 +292,7 @@ VBufferRT::VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer
         FALCOR_THROW("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);

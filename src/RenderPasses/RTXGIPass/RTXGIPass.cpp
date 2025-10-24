@@ -89,7 +89,7 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 
 RTXGIPass::SharedPtr RTXGIPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new RTXGIPass(pRenderContext->device(), dict));
+    return SharedPtr(new RTXGIPass(pRenderContext->getDevice(), dict));
 }
 
 RTXGIPass::RTXGIPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo)

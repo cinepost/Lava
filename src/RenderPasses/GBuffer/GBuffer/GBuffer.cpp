@@ -41,33 +41,25 @@ const ChannelList GBuffer::kGBufferChannels = {
     { "matlExtra",      "gMatlExtra",       "additional material data",     true /* optional */, ResourceFormat::RGBA32Float },
 };
 
-namespace
-{
-    // Scripting options.
-    const char kForceCullMode[] = "forceCullMode";
-    const char kCullMode[] = "cull";
+namespace {
+
+const char kForceCullMode[] = "forceCullMode";
+const char kCullMode[] = "cull";
+
 }
 
-GBuffer::GBuffer(Device::SharedPtr pDevice, Info info) : GBufferBase(pDevice, info), mGBufferParams{} {
+GBuffer::GBuffer(Device::SharedPtr pDevice) : GBufferBase(pDevice), mGBufferParams{} {
     assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }
 
-void GBuffer::parseDictionary(const Dictionary& dict) {
-    GBufferBase::parseDictionary(dict);
+void GBuffer::parseProperties(const Properties& props) {
+    GBufferBase::parseProperties(props);
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kForceCullMode) mForceCullMode = value;
         else if (key == kCullMode) mCullMode = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
-}
-
-Dictionary GBuffer::getScriptingDictionary()
-{
-    Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kForceCullMode] = mForceCullMode;
-    dict[kCullMode] = mCullMode;
-    return dict;
 }
 
 void GBuffer::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {

@@ -83,7 +83,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 }
 
 SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new SVGFPass(pRenderContext->device(), dict));
+    return SharedPtr(new SVGFPass(pRenderContext->getDevice(), dict));
 }
 
 SVGFPass::SVGFPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
@@ -236,7 +236,7 @@ void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 }
 
 void SVGFPass::allocateFbos(uint2 dim, RenderContext* pRenderContext) {
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
     {
         // Screen-size FBOs with 3 MRTs: one that is RGBA32F, one that is
         // RG32F for the luminance moments, and one that is R16F.

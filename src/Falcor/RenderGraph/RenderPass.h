@@ -210,7 +210,7 @@ class FALCOR_API RenderPass : public Object {
     /**
      * Get the render pass properties.
      */
-    virtual Properties getProperties() const { return {}; }
+    virtual Properties getProperties() const = 0;
 
 
     /** Set a scene into the render-pass

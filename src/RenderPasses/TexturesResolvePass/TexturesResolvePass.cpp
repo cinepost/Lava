@@ -3,7 +3,6 @@
 #include <unordered_set>
 
 #include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Scene/Material/BasicMaterial.h"
@@ -12,13 +11,13 @@
 
 static_assert(sizeof(VirtualTextureData) % 16 == 0, "MeshDesc size should be a multiple of 16");
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-	return PROJECT_DIR;
+static void regTexturesResolvePass(pybind11::module& m) {
+    //pybind11::class_<TexturesResolvePass, RenderPass, Falcor::SharedPtr<TexturesResolvePass>> pass(m, "TexturesResolvePass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-	lib.registerPass(TexturesResolvePass::kInfo, TexturesResolvePass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, TexturesResolvePass>();
+    ScriptBindings::registerBinding(regTexturesResolvePass);
 }
 
 namespace {
@@ -53,7 +52,7 @@ Properties TexturesResolvePass::getProperties() const {
 }
 
 TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRenderContext, const Properties& props) {
-	auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->device(), props);
+	auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->getDevice(), props);
 
 	pTexturesResolvePass->parseProperties(props);
 
@@ -63,7 +62,7 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
 	return SharedPtr(pTexturesResolvePass);
 }
 
-TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, kInfo) {
+TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
 	
 	//Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
 	Program::Desc desc;
@@ -107,7 +106,7 @@ void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::S
 		mpState->getProgram()->setTypeConformances(pScene->getTypeConformances());
 		updateTexturesResolveData();
 	}
-	mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+	mpVars = ProgramVars::create(pRenderContext->getDevice(), mpState->getProgram()->getReflector());
 	mDirty = true;
 }
 
@@ -219,7 +218,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	var["gCalibrationMaxSampler"] = mpMaxSampler;
 
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
-	pContext->flush(true);
+	pContext->submit(true);
 
 	// test //
 /*
@@ -260,7 +259,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	}
 
-	if(mLoadPagesAsync) mpDevice->flushAndSync();
+	if(mLoadPagesAsync) mpDevice->wait();
 
 	std::vector<std::pair<Texture::SharedPtr, std::vector<uint32_t>>> texturesToPageIDsList;
 	texturesToPageIDsList.reserve(textures.size()); 
@@ -332,7 +331,7 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 
 	// We use 8 mip levels calibration texture (128 x 128)
 
-	mpMipCalibrationTexture = Texture::create2D(pRenderContext->device(), 128, 128, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+	mpMipCalibrationTexture = Texture::create2D(pRenderContext->getDevice(), 128, 128, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, ResourceBindFlags::ShaderResource);
 	if (!mpMipCalibrationTexture) LLOG_ERR << "Error creating MIP calibration texture !!!";
 
 	for(uint32_t mipLevel = 0; mipLevel < mpMipCalibrationTexture->getMipCount(); mipLevel++) {
@@ -355,7 +354,7 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 
 	for(uint32_t i = 0; i < mpMipCalibrationTexture->getMipCount(); i++) {
 		mMipCalibrationTextures[i] = nullptr;
-		auto pMipCalibrationTexture = Texture::create2D(pRenderContext->device(), mpMipCalibrationTexture->getWidth(),  mpMipCalibrationTexture->getHeight(), ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+		auto pMipCalibrationTexture = Texture::create2D(pRenderContext->getDevice(), mpMipCalibrationTexture->getWidth(),  mpMipCalibrationTexture->getHeight(), ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, ResourceBindFlags::ShaderResource);
 		if (!pMipCalibrationTexture) {
 			LLOG_ERR << "Error creating calibration texture for mip level " << std::to_string(i) << " !!!";
 			continue;

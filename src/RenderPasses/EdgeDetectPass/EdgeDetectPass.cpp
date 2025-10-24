@@ -25,12 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <algorithm>
-#include <pybind11/embed.h>
+#include "EdgeDetectPass.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 
 #include "Falcor/Utils/Debug/debug.h"
@@ -38,81 +36,76 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "EdgeDetectPass.h"
+#include <algorithm>
+#include <pybind11/embed.h>
+
 #include "EdgeDetectPass.slangh"
 
 
-const RenderPass::Info EdgeDetectPass::kInfo { "EdgeDetectPass", "Edge detection." };
-
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
-
 static void regEdgeDetectPass(pybind11::module& m) {
-    pybind11::class_<EdgeDetectPass, RenderPass, EdgeDetectPass::SharedPtr> pass(m, "EdgeDetectPass");
+    pybind11::class_<EdgeDetectPass, RenderPass> pass(m, "EdgeDetectPass");
+    //pybind11::class_<EdgeDetectPass, RenderPass, EdgeDetectPass::SharedPtr> pass(m, "EdgeDetectPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(EdgeDetectPass::kInfo, EdgeDetectPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, EdgeDetectPass>();
     ScriptBindings::registerBinding(regEdgeDetectPass);
 }
+
+namespace {
+
+const char kShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.cs.slang";
+const char kLowPassShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.lowpass.cs.slang";
+
+const char kOutputChannel[]      = "output";
+
+const char kInputDepthChannel[]  = "depth";
+const char kInputNormalChannel[] = "normal";
+const char kInputVBufferChannel[] = "vbuffer";
+const char kInputMaterialIDChannel[] = "materialID";
+const char kInputInstanceIDChannel[] = "instanceID";
+
+const ChannelList kEdgeDetectPassExtraInputChannels = {
+    { kInputVBufferChannel,          "gVBuffer",          "VBuffer",                       true /* optional */, HitInfo::kDefaultFormat },
+    // We work with either VBuffer or with followind ...
+    { kInputDepthChannel,            "gDepth",            "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
+    { kInputNormalChannel,           "gNormal",           "Normal buffer",                 true /* optional */, ResourceFormat::Unknown },
+    { kInputMaterialIDChannel,       "gMaterialID",       "Material ID buffer",            true /* optional */, ResourceFormat::Unknown },
+    { kInputInstanceIDChannel,       "gInstanceID",       "Instance ID buffer",            true /* optional */, ResourceFormat::Unknown },
+};
+
+const std::string kTraceDepth = "traceDepth";
+const std::string kTraceNormal = "traceNormal";
+const std::string kTraceMaterialID = "traceMaterialID";
+const std::string kTraceInstanceID = "traceInstanceID";
+const std::string kIgnoreAlpha = "ignoreAlpha";
+
+const std::string kDepthDistanceRange = "depthDistanceRange";
+const std::string kNormalThresholdRange = "normalThresholdRange";
+
+const std::string kDepthKernelSize = "depthKernelSize";
+const std::string kNormalKernelSize = "normalKernelSize";
+const std::string kMaterialKernelSize = "materialKernelSize";
+const std::string kInstanceKernelSize = "instanceKernelSize";
+
+const std::string kDepthOuputChannel = "depthOuputChannel";
+const std::string kNormalOuputChannel = "normalOuputChannel";
+const std::string kMaterialOuputChannel = "materialOuputChannel";
+const std::string kInstanceOuputChannel = "instanceOuputChannel";
+
+const std::string kLowPassFilterSize = "lowPassFilterSize";
+
+} // namespace Falcor 
 
 static inline bool validChannel(uint value) {
     if(value < static_cast<uint>(EdgeDetectOutputChannel::Count)) return true;
     return false;
 }
 
+EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Properties& props) {
+    auto pThis = SharedPtr(new EdgeDetectPass(pRenderContext->getDevice(), props));
 
-namespace {
-
-    const char kShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.cs.slang";
-    const char kLowPassShaderFile[] = "RenderPasses/EdgeDetectPass/EdgeDetect.lowpass.cs.slang";
-
-    const char kOutputChannel[]      = "output";
-    
-    const char kInputDepthChannel[]  = "depth";
-    const char kInputNormalChannel[] = "normal";
-    const char kInputVBufferChannel[] = "vbuffer";
-    const char kInputMaterialIDChannel[] = "materialID";
-    const char kInputInstanceIDChannel[] = "instanceID";
-
-    const ChannelList kEdgeDetectPassExtraInputChannels = {
-        { kInputVBufferChannel,          "gVBuffer",          "VBuffer",                       true /* optional */, HitInfo::kDefaultFormat },
-        // We work with either VBuffer or with followind ...
-        { kInputDepthChannel,            "gDepth",            "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
-        { kInputNormalChannel,           "gNormal",           "Normal buffer",                 true /* optional */, ResourceFormat::Unknown },
-        { kInputMaterialIDChannel,       "gMaterialID",       "Material ID buffer",            true /* optional */, ResourceFormat::Unknown },
-        { kInputInstanceIDChannel,       "gInstanceID",       "Instance ID buffer",            true /* optional */, ResourceFormat::Unknown },
-    };
-
-    const std::string kTraceDepth = "traceDepth";
-    const std::string kTraceNormal = "traceNormal";
-    const std::string kTraceMaterialID = "traceMaterialID";
-    const std::string kTraceInstanceID = "traceInstanceID";
-    const std::string kIgnoreAlpha = "ignoreAlpha";
-    
-    const std::string kDepthDistanceRange = "depthDistanceRange";
-    const std::string kNormalThresholdRange = "normalThresholdRange";
-    
-    const std::string kDepthKernelSize = "depthKernelSize";
-    const std::string kNormalKernelSize = "normalKernelSize";
-    const std::string kMaterialKernelSize = "materialKernelSize";
-    const std::string kInstanceKernelSize = "instanceKernelSize";
-
-    const std::string kDepthOuputChannel = "depthOuputChannel";
-    const std::string kNormalOuputChannel = "normalOuputChannel";
-    const std::string kMaterialOuputChannel = "materialOuputChannel";
-    const std::string kInstanceOuputChannel = "instanceOuputChannel";
-    
-    const std::string kLowPassFilterSize = "lowPassFilterSize";
-}
-
-EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new EdgeDetectPass(pRenderContext->device(), dict));
-
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kTraceDepth) pThis->setTraceDepth(value);
         else if (key == kTraceNormal) pThis->setTraceNormal(value);
         else if (key == kTraceMaterialID) pThis->setTraceMaterialID(value);
@@ -137,15 +130,15 @@ EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, 
     return pThis;
 }
 
-EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
+EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!pDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("EdgeDetectPass requires Shader Model 6.5 support.");
     }
 }
 
-Dictionary EdgeDetectPass::getScriptingDictionary() {
-    Dictionary dict;
-    return dict;
+Properties EdgeDetectPass::getProperties() const {
+    Properties props;
+    return props;
 }
 
 RenderPassReflection EdgeDetectPass::reflect(const CompileData& compileData) {
@@ -451,7 +444,7 @@ void EdgeDetectPass::prepareKernelTextures() {
 }
 
 void EdgeDetectPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    if(pRenderContext->device() != pScene->device()) {
+    if(pRenderContext->getDevice() != pScene->getDevice()) {
         LLOG_ERR << "Unable to set scene created on different device!";
         mpScene = nullptr;
     }

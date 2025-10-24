@@ -50,7 +50,7 @@ TAA::TAA(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 TAA::SharedPtr TAA::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pTAA = SharedPtr(new TAA(pRenderContext->device()));
+    SharedPtr pTAA = SharedPtr(new TAA(pRenderContext->getDevice()));
     for (const auto& v : dict) {
         if (v.key() == kAlpha) pTAA->mControls.alpha = v.val();
         else if (v.key() == kColorBoxSigma) pTAA->mControls.colorBoxSigma = v.val();
@@ -105,7 +105,7 @@ void TAA::allocatePrevColor(RenderContext* pContext, const Texture* pColorOut) {
     allocate = allocate || (mpPrevColor->getFormat() != pColorOut->getFormat());
     assert(pColorOut->getSampleCount() == 1);
 
-    if (allocate) mpPrevColor = Texture::create2D(pContext->device(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
+    if (allocate) mpPrevColor = Texture::create2D(pContext->getDevice(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
 }
 
 void TAA::renderUI(Gui::Widgets& widget) {

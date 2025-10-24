@@ -8,26 +8,20 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 
 static const uint32_t meshletColorCycleSize = 1024;
 
-const RenderPass::Info DebugShadingPass::kInfo
-{
-    "DebugShadingPass",
-    "Debug pass."
-};
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void regDebugShadingPass(pybind11::module& m) {
+    pybind11::class_<DebugShadingPass, RenderPass> pass(m, "DebugShadingPass");
+    //pybind11::class_<DebugShadingPass, RenderPass, DebugShadingPass::SharedPtr> pass(m, "DebugShadingPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(DebugShadingPass::kInfo, DebugShadingPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, DebugShadingPass>();
+    ScriptBindings::registerBinding(regDebugShadingPass);
 }
 
 namespace {
@@ -83,27 +77,24 @@ namespace {
     };
 }
 
-DebugShadingPass::SharedPtr DebugShadingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new DebugShadingPass(pRenderContext->device()));
-        
-    //for (const auto& [key, value] : dict) {
-    //}
-
-    return pThis;
+DebugShadingPass::SharedPtr DebugShadingPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new DebugShadingPass(pRenderContext->getDevice(), props));
 }
 
-Dictionary DebugShadingPass::getScriptingDictionary() {
-    Dictionary d;
-
+Properties DebugShadingPass::getProperties() const {
+    Properties d;
     return d;
 }
 
-DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+DebugShadingPass::DebugShadingPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("DebugShadingPass requires Shader Model 6.5 support.");
     }
 
     mpFalseColorGenerator = nullptr;
+
+    //for (const auto& [key, value] : dict) {
+    //}
 }
 
 RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
@@ -137,7 +128,7 @@ RenderPassReflection DebugShadingPass::reflect(const CompileData& compileData) {
 void DebugShadingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     mDirty = true;
     mFrameDim = compileData.defaultTexDims;
-    auto pDevice = pRenderContext->device();
+    auto pDevice = pRenderContext->getDevice();
 }
 
 void DebugShadingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

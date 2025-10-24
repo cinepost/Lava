@@ -39,17 +39,15 @@ using namespace Falcor;
 /** Ray traced G-buffer pass.
     This pass renders a fixed set of G-buffer channels using ray tracing.
 */
-class GBufferRT : public GBuffer {
+class PASS_API GBufferRT : public GBuffer {
+    FALCOR_OBJECT(GBufferRT)
+    FALCOR_PLUGIN_CLASS(GBufferRT, "GBufferRT", "Ray traced G-buffer generation pass.");
   public:
-    using SharedPtr = std::shared_ptr<GBufferRT>;
-
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    Dictionary getScriptingDictionary() override;
+    Properties getProperties() const override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
     enum class LODMode {
@@ -66,8 +64,8 @@ class GBufferRT : public GBuffer {
     void bindShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
-    GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);
-    void parseDictionary(const Dictionary& dict) override;
+    GBufferRT(Device::SharedPtr pDevice, const Properties& props);
+    void parseProperties(const Properties& props) override;
 
     // Internal state
     bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.

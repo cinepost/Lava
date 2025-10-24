@@ -78,10 +78,12 @@ class PASS_API ToneMapperPass : public RenderPass {
 		float getWhiteScale() const { return mWhiteScale; }
 
   private:
-		ToneMapperPass(Device::SharedPtr pDevice, Operator op, ResourceFormat outputFormat);
+		ToneMapperPass(Device::SharedPtr pDevice, Operator op, ResourceFormat outputFormat, const Properties& props = {});
 
-		void createToneMapPass(std::shared_ptr<Device> pDevice);
-		void createLuminancePass(std::shared_ptr<Device> pDevice);
+		void parseProperties(const Properties& props);
+
+		void createToneMapPass();
+		void createLuminancePass();
 
 		void updateWhiteBalanceTransform();
 		void updateColorTransform();

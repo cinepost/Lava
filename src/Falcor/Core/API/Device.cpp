@@ -316,7 +316,7 @@ bool Device::init() {
     
     mpProfiler = std::make_unique<Profiler>(Device::SharedPtr(this));
     mpProfiler->breakStrongReferenceToDevice();
-    
+
     mpDefaultSampler = createSampler(desc);
     mpDefaultSampler->breakStrongReferenceToDevice();
 
@@ -347,9 +347,72 @@ const Falcor::SharedPtr<Sampler>& Device::getDefaultSampler() const {
     return mpDefaultSampler; 
 }
 
+void Device::endFrame() {
+    mpRenderContext->submit();
+
+    // Wait on past frames.
+    if (mpFrameFence->getSignaledValue() > kInFlightFrameCount) {
+        mpFrameFence->wait(mpFrameFence->getSignaledValue() - kInFlightFrameCount);
+    }
+
+    // Flush ray tracing validation if enabled
+    flushRaytracingValidation();
+
+    // Switch to next transient resource heap.
+    getCurrentTransientResourceHeap()->finish();
+    mCurrentTransientResourceHeapIndex = (mCurrentTransientResourceHeapIndex + 1) % kInFlightFrameCount;
+    mpRenderContext->getLowLevelData()->closeCommandBuffer();
+    getCurrentTransientResourceHeap()->synchronizeAndReset();
+    mpRenderContext->getLowLevelData()->openCommandBuffer();
+
+    // Signal frame fence for new frame.
+    mpRenderContext->signal(mpFrameFence.get());
+
+    // Release resources from past frames.
+    executeDeferredReleases();
+}
+
+void Device::flushRaytracingValidation() {
+    return;
+}
+
 void Device::release() {
     decltype(mDeferredReleases)().swap(mDeferredReleases);  
 }
+
+VkInstance Device::getVkInstance() const {
+    gfx::IDevice::InteropHandles interopHandles = {};
+    mGfxDevice->getNativeDeviceHandles(&interopHandles);
+    return reinterpret_cast<VkInstance>(interopHandles.handles[0].handleValue);
+}
+
+VkPhysicalDevice Device::getVkPhysicalDevice() const {
+    gfx::IDevice::InteropHandles interopHandles = {};
+    mGfxDevice->getNativeDeviceHandles(&interopHandles);
+    return reinterpret_cast<VkPhysicalDevice>(interopHandles.handles[1].handleValue);
+}
+
+VkDevice Device::getVkDevice() const {
+    gfx::IDevice::InteropHandles interopHandles = {};
+    mGfxDevice->getNativeDeviceHandles(&interopHandles);
+    return reinterpret_cast<VkDevice>(interopHandles.handles[2].handleValue);
+}
+
+uint32_t Device::subgroupSize() const {
+    auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+    auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
+    auto& vk_api = pDevice->getVkAPI();
+    return vk_api.m_deviceSubgroupProperties.subgroupSize;
+}
+
+const VkPhysicalDeviceProperties& Device::getPhysicalDeviceProperties() const {
+    auto pRendererBase = static_cast<gfx::RendererBase*>(mGfxDevice.get());
+    auto pDevice = static_cast<gfx::vk::DeviceImpl*>(pRendererBase);
+
+    return pDevice->getPhysicalDeviceProperties();
+}
+
 
 gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap() {
     return mpTransientResourceHeaps[mCurrentTransientResourceHeapIndex].get();

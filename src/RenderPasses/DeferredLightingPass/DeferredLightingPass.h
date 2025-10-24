@@ -19,21 +19,19 @@ using namespace Falcor;
 //static constexpr float16_t MAX_COLOR_COMPONENT_VALUE = std::numeric_limits<float16_t>::max();
 
 class PASS_API DeferredLightingPass : public RenderPass {
+		FALCOR_OBJECT(DeferredLightingPass)
+		FALCOR_PLUGIN_CLASS(DeferredLightingPass, "DeferredLightingPass", "Computes direct and indirect illumination and applies shadows for the current scene (if visibility map is provided).\nThe pass can output the world-space normals and screen-space motion vectors, both are optional.");
 	public:
-		using SharedPtr = std::shared_ptr<DeferredLightingPass>;
-
-		static const Info kInfo;
-
 		/** Create a new object
 		*/
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual bool beginFrame(RenderContext *pContext, const RenderData& renderData) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 
 		/** Set samples per frame count
 		*/
@@ -83,16 +81,16 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		void enableDepthOfField(bool value);
 
 		void setRayContribThreshold(float value = 0.1f);
-    void setRussRoulleteLevel(uint value = 2u);
+    	void setRussRoulleteLevel(uint value = 2u);
 
-    void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
+    	void setVisibilitySamplesContainer(VisibilitySamplesContainer::SharedConstPtr pVisibilitySamplesContainer);
 
 	protected:
-
 		virtual void setRandomSeed(int seed) override;
+		void parseProperties(const Properties& props);
 
 	private:
-		DeferredLightingPass(Device::SharedPtr pDevice);
+		DeferredLightingPass(Device::SharedPtr pDevice, const Properties& props = {});
 		
 		void createBuffers(RenderContext* pContext, const RenderData& renderData);
 
@@ -100,24 +98,24 @@ class PASS_API DeferredLightingPass : public RenderPass {
 		ComputePass::SharedPtr          mpShadingPass;
 		ComputePass::SharedPtr          mpTransparentShadingPass;
 
-		uint2 			mFrameDim = { 0, 0 };
-		uint32_t 		mFrameSampleCount = 16;
-		uint32_t 		mSuperSampleCount = 1;
+		uint2 		mFrameDim = { 0, 0 };
+		uint32_t 	mFrameSampleCount = 16;
+		uint32_t 	mSuperSampleCount = 1;
 
-		uint32_t 		mSampleNumber = 0;
+		uint32_t 	mSampleNumber = 0;
 		float16_t3  mColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
 		float16_t3  mIndirectColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
-		bool     		mUseSTBN = false;
-		float    		mRayBias = 0.001f;
+		bool     	mUseSTBN = false;
+		float    	mRayBias = 0.001f;
 		uint      	mShadingRate = 1;
-		uint 				mRayReflectLimit = 0;
-		uint 				mRayRefractLimit = 0;
+		uint 		mRayReflectLimit = 0;
+		uint 		mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
 
 		bool        mUseDOF = false;
 		bool      	mUseVariance = true;
 
-		float 			mRayContribThreshold = 0.1f;
+		float 		mRayContribThreshold = 0.1f;
 		uint      	mRussRouletteLevel = 2u;
 
 		int         mRandomSeed = 0;
@@ -127,12 +125,12 @@ class PASS_API DeferredLightingPass : public RenderPass {
 
 		Sampler::SharedPtr                  				mpNoiseSampler;
 		Texture::SharedPtr                  				mpBlueNoiseTexture;
-		CPUSampleGenerator::SharedPtr       				mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
-		SampleGenerator::SharedPtr          				mpSampleGenerator;           ///< GPU sample generator.
+		CPUSampleGenerator::SharedPtr       				mpNoiseOffsetGenerator;     ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
+		SampleGenerator::SharedPtr          				mpSampleGenerator;          ///< GPU sample generator.
 		
 		EmissiveLightSampler::SharedPtr 					mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
 
-		Texture::SharedPtr                  				mpLastFrameSum;              ///< RGB - Last fram sum, A - variance
+		Texture::SharedPtr                  				mpLastFrameSum;             ///< RGB - Last fram sum, A - variance
 
 		EnvMapSampler::SharedPtr            				mpEnvMapSampler;
 

@@ -63,7 +63,7 @@ SplitScreenPass::SplitScreenPass(Device::SharedPtr pDevice): ComparisonPass(pDev
 }
 
 SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new SplitScreenPass(pRenderContext->device()));
+    SharedPtr pPass = SharedPtr(new SplitScreenPass(pRenderContext->getDevice()));
     for (const auto& v : dict) {
         if (!pPass->parseKeyValuePair(v.key(), v.val())) {
             logWarning("Unknown field `" + v.key() + "` in a SplitScreenPass dictionary");

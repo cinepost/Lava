@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "VBufferNULL.h"
 
-#include "Scene/HitInfo.h"
+#include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/IndirectCommands.h"
@@ -37,26 +37,26 @@
 #include "Falcor/Scene/SceneDefines.slangh"
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
-
 #include <limits>
 
-const RenderPass::Info VBufferNULL::kInfo { "VBufferNULL", "Debug V-buffer generation pass." };
 
 namespace {
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferNULL.cs.slang";
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const ChannelList kVBufferExtraChannels = {
-        { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
-    };
+const std::string kProgramComputeFile = "RenderPasses/GBuffer/VBuffer/VBufferNULL.cs.slang";
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+
+const ChannelList kVBufferExtraChannels = {
+    { "depth",          "gDepth",           "Depth buffer (NDC)",               true /* optional */, ResourceFormat::R32Float    },
 };
 
-VBufferNULL::SharedPtr VBufferNULL::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferNULL(pRenderContext->device(), dict));
+};
+
+VBufferNULL::SharedPtr VBufferNULL::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new VBufferNULL(pRenderContext->getDevice(), props));
 }
 
-VBufferNULL::VBufferNULL(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice, kInfo), mDirty(true) {
+VBufferNULL::VBufferNULL(Device::SharedPtr pDevice, const Properties& props): GBufferBase(pDevice), mDirty(true) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6)) {
         FALCOR_THROW("VBufferNULL: requires Shader Model 6.6 support.");
     }

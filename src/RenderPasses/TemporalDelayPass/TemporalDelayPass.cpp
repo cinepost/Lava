@@ -54,7 +54,7 @@ const char* TemporalDelayPass::kDesc = "Delays frame rendering by a specified am
 TemporalDelayPass::TemporalDelayPass(Device::SharedPtr pDevice): RenderBass(pDevice) {}
 
 TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new TemporalDelayPass(pRenderContext->device()));
+    SharedPtr pPass = SharedPtr(new TemporalDelayPass(pRenderContext->getDevice()));
     for (const auto& v : dict) {
         if (v.key() == kDelay) pPass->mDelay = (uint32_t) v.val();
         else logWarning("Unknown field `" + v.key() + "` in a TemporalDelayPass dictionary");

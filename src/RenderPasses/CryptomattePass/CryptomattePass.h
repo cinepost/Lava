@@ -15,8 +15,8 @@ using namespace Falcor;
 
 class PASS_API CryptomattePass : public RenderPass {
 		FALCOR_OBJECT(CryptomattePass)
-		FALCOR_PLUGIN_CLASS(CryptomattePass, "CryptomattePass", "Cryptomatte.");
 	public:
+		FALCOR_PLUGIN_CLASS(CryptomattePass, "CryptomattePass", "Cryptomatte.");
 		using CryptomatteMode = CryptomattePassMode;
 
 		/** Create a new object

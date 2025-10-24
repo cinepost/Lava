@@ -66,7 +66,7 @@ class PASS_API OpenDenoisePass : public RenderPass {
         bool enabledHDRInput() const { return !mDisableHDRInput; }
 
   private:
-		OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outputFormat);
+		OpenDenoisePass(Device::SharedPtr pDevice, const Properties& dict = {});
 
         void parseProperties(const Properties& dict);
         

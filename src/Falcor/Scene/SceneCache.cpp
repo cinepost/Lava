@@ -627,9 +627,9 @@ void SceneCache::readBasicMaterial(InputStream& stream, MaterialTextureLoader& m
     stream.read(pMaterial->mIsTexturedAlphaConstant);
     stream.read(pMaterial->mDisplacementMapChanged);
 
-    pMaterial->mpDefaultSampler = readSampler(pMaterial->device(), stream);
-    pMaterial->mpDisplacementMinSampler = readSampler(pMaterial->device(), stream);
-    pMaterial->mpDisplacementMaxSampler = readSampler(pMaterial->device(), stream);
+    pMaterial->mpDefaultSampler = readSampler(pMaterial->getDevice(), stream);
+    pMaterial->mpDisplacementMinSampler = readSampler(pMaterial->getDevice(), stream);
+    pMaterial->mpDisplacementMaxSampler = readSampler(pMaterial->getDevice(), stream);
 }
 
 void SceneCache::writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler) {

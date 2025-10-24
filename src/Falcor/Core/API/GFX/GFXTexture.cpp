@@ -31,12 +31,10 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Formats.h"
 
-#include "GFXFormats.h"
-#include "GFXResource.h"
-
 namespace Falcor {
 
 namespace {
+
 inline gfx::IResource::Type getResourceType(Texture::Type type) {
 	switch (type) {
 		case Texture::Type::Texture1D:
@@ -54,7 +52,7 @@ inline gfx::IResource::Type getResourceType(Texture::Type type) {
 	}
 }
 
-}
+} // namespace
 
 uint64_t Texture::getTextureSizeInBytes() const {
 
@@ -67,7 +65,7 @@ uint64_t Texture::getTextureSizeInBytes() const {
 	size_t outSizeBytes = 0, outAlignment = 0;
 
 	//Slang::ComPtr<gfx::IDevice> iDevicePtr = mpDevice->getApiHandle();
-	gfx::ITextureResource* textureResource = static_cast<gfx::ITextureResource*>(getApiHandle().get());
+	gfx::ITextureResource* textureResource = getGfxTextureResource();
 	FALCOR_ASSERT(textureResource);
 
 	gfx::ITextureResource::Desc *desc = textureResource->getDesc();
@@ -123,8 +121,8 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 
 	// clear value
 	gfx::ClearValue clearValue;
-	if ((mBindFlags & (Texture::BindFlags::RenderTarget | Texture::BindFlags::DepthStencil)) != Texture::BindFlags::None) {
-		if ((mBindFlags & Texture::BindFlags::DepthStencil) != Texture::BindFlags::None) {
+	if ((mBindFlags & (ResourceBindFlags::RenderTarget | ResourceBindFlags::DepthStencil)) != ResourceBindFlags::None) {
+		if ((mBindFlags & ResourceBindFlags::DepthStencil) != ResourceBindFlags::None) {
 			clearValue.depthStencil.depth = 1.0f;
 		}
 	}
@@ -140,19 +138,15 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	assert(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	Slang::ComPtr<gfx::ITextureResource> pApiHandle;
-	if(SLANG_FAILED(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, pApiHandle.writeRef()))) {
+	if(SLANG_FAILED(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, mGfxTextureResource.writeRef()))) {
 		LLOG_FTL << "Error creating texture " << to_string(desc);
 		return;
 	}
-	assert(pApiHandle);
-	mApiHandle = pApiHandle;
-
-	gfx::ITextureResource* ptx = static_cast<gfx::ITextureResource*>(mApiHandle.get());
+	
+	gfx::ITextureResource* ptx = getGfxTextureResource();
 	gfx::vk::TextureResourceImpl* pTextureResourceImpl = static_cast<gfx::vk::TextureResourceImpl*>(ptx);
 
 	if(sparse) {
-		assert(mApiHandle);
 		const VkSparseImageMemoryRequirements& sparseImageMemoryRequirements = pTextureResourceImpl->getSparseImageMemoryRequirements();
 
 		const VkExtent3D& imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
@@ -236,7 +230,7 @@ bool Texture::addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint3
   
   const auto& memRequirements = getGfxVKTextureResource()->getMemoryRequirements();
 
-  auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer, index, memRequirements.alignment, memRequirements.memoryTypeBits);
+  auto pPage = VirtualTexturePage::create(Texture::SharedPtr(this), offset, extent, mipLevel, layer, index, memRequirements.alignment, memRequirements.memoryTypeBits);
   if (!pPage) return false;
 
   //LLOG_DBG << "VirtualTexturePage id: " << std::to_string(index) << " offset: " << to_string(offset) << " extent: " << to_string(extent);
@@ -247,7 +241,6 @@ bool Texture::addTexturePage(int3 offset, uint3 extent, uint32_t mipLevel, uint3
 
 
 void Texture::updateSparseBindInfo() {
-
 	std::vector<const gfx::IVirtualTexturePageResource*> gfxTexturePages(mSparseDataPages.size());
 	for(size_t i = 0; i < mSparseDataPages.size(); ++i) {
 		gfxTexturePages[i] = mSparseDataPages[i]->getGfxTexturePageResource();

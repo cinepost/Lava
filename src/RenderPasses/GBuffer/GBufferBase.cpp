@@ -31,33 +31,11 @@
 #include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRT.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
-}
-
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    
-    lib.registerPass(GBufferRaster::kInfo, GBufferRaster::create);
-    lib.registerPass(GBufferRT::kInfo, GBufferRT::create);
-    lib.registerPass(VBufferRaster::kInfo, VBufferRaster::create);
-    lib.registerPass(VBufferRT::kInfo, VBufferRT::create);
-
-    Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
-    Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
-}
-
-GBufferBase::GBufferBase(Device::SharedPtr pDevice, Info info): RenderPass(pDevice, info) {
-    assert(pDevice);
-    mTransparencySamplesCount = 1;
-}
-
-void GBufferBase::registerBindings(pybind11::module& m) {
-    pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
-    samplePattern.value("Center", GBufferBase::SamplePattern::Center);
-    samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
-    samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
-    samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, GBufferRaster>();
+    //registry.registerClass<RenderPass, GBufferRT>();
+    //registry.registerClass<RenderPass, VBufferRaster>();
+    //registry.registerClass<RenderPass, VBufferRT>();
 }
 
 namespace {
@@ -72,8 +50,13 @@ namespace {
     const char kIOTSamplesCount[] = "iotSamplesCount";
 }
 
-void GBufferBase::parseDictionary(const Dictionary& dict) {
-    for (const auto& [key, value] : dict) {
+GBufferBase::GBufferBase(Device::SharedPtr pDevice) : RenderPass(pDevice) {
+    assert(pDevice);
+    mTransparencySamplesCount = 1;
+}
+
+void GBufferBase::parseProperties(const Properties& props) {
+    for (const auto& [key, value] : props) {
         if (key == kSamplePattern) mSamplePattern = value;
         else if (key == kSampleCount) mSampleCount = value;
         else if (key == kUseAlphaTest) mUseAlphaTest = value;
@@ -85,18 +68,18 @@ void GBufferBase::parseDictionary(const Dictionary& dict) {
     }
 
     // Handle deprecated "disableAlphaTest" value.
-    if (dict.keyExists(kDisableAlphaTest) && !dict.keyExists(kUseAlphaTest)) mUseAlphaTest = !dict[kDisableAlphaTest];
+    if (props.has(kDisableAlphaTest) && !props.has(kUseAlphaTest)) mUseAlphaTest = !props[kDisableAlphaTest];
 }
 
-Dictionary GBufferBase::getScriptingDictionary() {
-    Dictionary dict;
-    dict[kSamplePattern] = mSamplePattern;
-    dict[kSampleCount] = mSampleCount;
-    dict[kUseAlphaTest] = mUseAlphaTest;
-    dict[kAdjustShadingNormals] = mAdjustShadingNormals;
-    dict[kForceCullMode] = mForceCullMode;
-    dict[kCullMode] = mCullMode;
-    return dict;
+Properties GBufferBase::getProperties() const {
+    Properties props;
+    props[kSamplePattern] = mSamplePattern;
+    props[kSampleCount] = mSampleCount;
+    props[kUseAlphaTest] = mUseAlphaTest;
+    props[kAdjustShadingNormals] = mAdjustShadingNormals;
+    props[kForceCullMode] = mForceCullMode;
+    props[kCullMode] = mCullMode;
+    return props;
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {
@@ -114,16 +97,16 @@ void GBufferBase::resolvePerFrameSparseResources(RenderContext* pRenderContext, 
 
 void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Update refresh flag if options that affect the output have changed.
-    auto& dict = renderData.getDictionary();
+    auto& props = renderData.getDictionary();
     if (mOptionsChanged) {
-        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
-        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
+        auto flags = props.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        props[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
     // Pass flag for adjust shading normals to subsequent passes via the dictionary.
     // Adjusted shading normals cannot be passed via the VBuffer, so this flag allows consuming passes to compute them when enabled.
-    dict[Falcor::kRenderPassGBufferAdjustShadingNormals] = mAdjustShadingNormals;
+    props[Falcor::kRenderPassGBufferAdjustShadingNormals] = mAdjustShadingNormals;
 
 
     // Setup camera with sample generator.

@@ -37,13 +37,11 @@ using namespace Falcor;
 /** Raster G-buffer pass.
     This pass renders a fixed set of G-buffer channels using rasterization.
 */
-class GBufferRaster : public GBuffer {
- public:
-    using SharedPtr = std::shared_ptr<GBufferRaster>;
-
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+class PASS_API GBufferRaster : public GBuffer {
+    FALCOR_OBJECT(GBufferRaster)
+    FALCOR_PLUGIN_CLASS(GBufferRaster, "GBufferRaster", "Rasterized G-buffer generation pass.");
+  public:
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Properties& props = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -51,8 +49,8 @@ class GBufferRaster : public GBuffer {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 
- private:
-    GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
+  private:
+    GBufferRaster(Device::SharedPtr pDevice, const Properties& props);
 
     // Internal state
     DepthPass::SharedPtr            mpDepthPrePass;
@@ -68,9 +66,6 @@ class GBufferRaster : public GBuffer {
         Program::SharedPtr pProgram;
         ProgramVars::SharedPtr pVars;
     } mRaster;
-
-    static const char* kDesc;
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_

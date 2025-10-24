@@ -28,29 +28,31 @@
 #include <chrono>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
 #include "Falcor/Core/API/RenderContext.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "DepthPass.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void regDepthPass(pybind11::module& m) {
+    pybind11::class_<DepthPass, RenderPass> pass(m, "DepthPass");
+    //pybind11::class_<DepthPass, RenderPass, DepthPass::SharedPtr> pass(m, "DepthPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(DepthPass::kInfo, DepthPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, DepthPass>();
+    ScriptBindings::registerBinding(regDepthPass);
 }
 
 
 namespace {
-    const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.3d.slang";
 
-    const std::string kDepth = "depth";
-    const std::string kDepthFormat = "depthFormat";
-    const std::string kDisableAlphaTest = "disableAlphaTest";
+const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.3d.slang";
+const std::string kDepth = "depth";
+const std::string kDepthFormat = "depthFormat";
+const std::string kDisableAlphaTest = "disableAlphaTest";
+
 }  // namespace
 
-void DepthPass::parseDictionary(const Properties& props) {
+void DepthPass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
         if (key == kDepthFormat) setDepthBufferFormat(value);
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
@@ -65,10 +67,10 @@ Properties DepthPass::getProperties() const {
 }
 
 DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Properties& props) {
-    return SharedPtr(new DepthPass(pRenderContext->device(), props));
+    return SharedPtr(new DepthPass(pRenderContext->getDevice(), props));
 }
 
-DepthPass::DepthPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice, kInfo) {
+DepthPass::DepthPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     
@@ -98,7 +100,7 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Properties& props): Render
 
     mSampleNumber = 0;
 
-    parseDictionary(dict);
+    parseProperties(props);
 }
 
 RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
@@ -125,7 +127,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
         pProgram->addDefines(mpSampleGenerator->getDefines());
         pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         pProgram->setTypeConformances(mpScene->getTypeConformances());            
-        mpVars = ProgramVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+        mpVars = ProgramVars::create(pRenderContext->getDevice(), mpState->getProgram()->getReflector());
     }
 
     mpState->setFbo(mpFbo);

@@ -448,7 +448,6 @@ class FALCOR_API Device: public Object {
 
     bool resetShaderCacheStats();
 
-
     /** Enable/disable vertical sync
     */
     void toggleVSync(bool enable);
@@ -470,11 +469,19 @@ class FALCOR_API Device: public Object {
     */
     RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
-    VkPhysicalDevice getApiNativeHandle() const;
+    VkInstance getVkInstance() const;
 
-    /** Present the back-buffer to the window
-    */
-    void present();
+    VkPhysicalDevice getVkPhysicalDevice() const;
+    
+    VkDevice getVkDevice() const;    
+
+    /**
+     * End a frame.
+     * This closes the current command buffer, switches to a new heap for transient resources and opens a new command buffer.
+     * This also executes deferred releases of resources from past frames.
+     */
+    void endFrame();
+
 
     /** Flushes pipeline, releases resources, and blocks until completion
     */
@@ -549,6 +556,8 @@ class FALCOR_API Device: public Object {
     gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
 
     Window::SharedPtr getWindow() { return mpWindow; }
+
+    void flushRaytracingValidation();
 
  private:
     Device(Window::SharedPtr pWindow, const Desc& desc);

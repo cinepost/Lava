@@ -74,10 +74,8 @@ enum_class_operators(FboAttachmentType);
 /** The rendering context. Use it to bind state and dispatch calls to the GPU
 */
 class FALCOR_API RenderContext : public ComputeContext {
+    FALCOR_OBJECT(RenderContext)
  public:
-    using SharedPtr = Falcor::SharedPtr<RenderContext>;
-    using SharedConstPtr = Falcor::SharedPtr<const RenderContext>;
-
     /**
         This flag control which aspects of the GraphicState will be bound into the pipeline before drawing.
         It is useful in cases where the user wants to set a specific object using a raw-API call before calling one of the draw functions
@@ -178,22 +176,17 @@ class FALCOR_API RenderContext : public ComputeContext {
     */
     void drawIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
-    /** Executes an indirect draw-indexed call.
-        \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
-        \param[in] pArgBuffer Buffer containing draw arguments
-        \param[in] argBufferOffset Offset into buffer to read arguments from
-    */
-    void drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset);
-
-    /** Executes an indirect draw-indexed call.
-        \param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of maxCommandCount and the value contained in pCountBuffer
-        \param[in] pArgBuffer Buffer containing draw arguments
-        \param[in] argBufferOffset Offset into buffer to read arguments from
-        \param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have to be a dedicated buffer
-        \param[in] countBufferOffset Offset into pCountBuffer to read the value from
-    */
-    void drawIndexedIndirectCount(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
-
+    /**
+     * Executes an indirect draw-indexed call.
+     * @param[in] maxCommandCount If pCountBuffer is null, this specifies the command count. Otherwise, command count is minimum of
+     * maxCommandCount and the value contained in pCountBuffer
+     * @param[in] pArgBuffer Buffer containing draw arguments
+     * @param[in] argBufferOffset Offset into buffer to read arguments from
+     * @param[in] pCountBuffer Optional. A GPU buffer that contains a uint32 value specifying the command count. This can, but does not have
+     * to be a dedicated buffer
+     * @param[in] countBufferOffset Offset into pCountBuffer to read the value from
+     */
+    void drawIndexedIndirect(GraphicsState* pState, ProgramVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset );
 
     /** Blits (low-level copy) an SRV into an RTV.
         The source and destination rectangles get clamped to the dimensions of the view.

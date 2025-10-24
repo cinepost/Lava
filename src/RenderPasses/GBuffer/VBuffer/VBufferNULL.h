@@ -37,19 +37,17 @@ using namespace Falcor;
 /** Software rasterized V-buffer pass.
 */
 class PASS_API VBufferNULL : public GBufferBase {
+    	FALCOR_OBJECT(VBufferNULL)
+    	FALCOR_PLUGIN_CLASS(VBufferNULL, "VBufferNULL", "Bypass V-buffer generation pass.");
 	public:
-		using SharedPtr = std::shared_ptr<VBufferNULL>;
-		
-		static const Info kInfo;
-
-		static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& props);
 
 		RenderPassReflection reflect(const CompileData& compileData) override;
 		void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 	private:
-		VBufferNULL(Device::SharedPtr pDevice, const Dictionary& dict);
+		VBufferNULL(Device::SharedPtr pDevice, const Properties& props);
 
 		bool                    mDirty;
 		ComputePass::SharedPtr 	mpComputePass;

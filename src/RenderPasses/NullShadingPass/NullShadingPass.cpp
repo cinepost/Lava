@@ -6,51 +6,46 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
 
 
 static const uint32_t meshletColorCycleSize = 1024;
 
-const RenderPass::Info NullShadingPass::kInfo
-{
-    "NullShadingPass",
-    "Null shading pass."
-};
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void regNullShadingPass(pybind11::module& m) {
+    pybind11::class_<NullShadingPass, RenderPass> pass(m, "NullShadingPass");
+    //pybind11::class_<NullShadingPass, RenderPass, NullShadingPass::SharedPtr> pass(m, "NullShadingPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(NullShadingPass::kInfo, NullShadingPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, NullShadingPass>();
+    ScriptBindings::registerBinding(regNullShadingPass);
 }
 
 namespace {
-    const char kShaderFile[] = "RenderPasses/NullShadingPass/NullShadingPass.cs.slang";
 
-    const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
+const char kShaderFile[] = "RenderPasses/NullShadingPass/NullShadingPass.cs.slang";
 
-    const std::string kInputColor           = "color";
-    const std::string kInputVBuffer         = "vbuffer";
-    const std::string kInputDepth           = "depth";
-  
+const std::string kVisibilityContainerParameterBlockName = "gVisibilityContainer";
 
-    const ChannelList kExtraInputChannels = {
-        { kInputVBuffer,            "gVBuffer",             "Visibility buffer in packed format",       true /* optional */, ResourceFormat::RGBA32Uint     },
-        { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
-    };
+const std::string kInputColor           = "color";
+const std::string kInputVBuffer         = "vbuffer";
+const std::string kInputDepth           = "depth";
 
+
+const ChannelList kExtraInputChannels = {
+    { kInputVBuffer,            "gVBuffer",             "Visibility buffer in packed format",       true /* optional */, ResourceFormat::RGBA32Uint     },
+    { kInputDepth,              "gDepth",               "Depth buffer",                             true /* optional */, ResourceFormat::Unknown        },
+};
+
+} // namespace
+
+NullShadingPass::SharedPtr NullShadingPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new NullShadingPass(pRenderContext->getDevice()));
 }
 
-NullShadingPass::SharedPtr NullShadingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    auto pThis = SharedPtr(new NullShadingPass(pRenderContext->device()));
-    return pThis;
-}
-
-NullShadingPass::NullShadingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+NullShadingPass::NullShadingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("NullShadingPass requires Shader Model 6.5 support.");
     }

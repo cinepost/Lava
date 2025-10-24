@@ -192,12 +192,12 @@ class FALCOR_API Material : public Object {
 		virtual uint32_t getNestedPriority() const { return mHeader.getNestedPriority(); }
 
 		/** Set the index of refraction.
-    */
-    virtual void setIndexOfRefraction(float IoR);
+		*/
+		virtual void setIndexOfRefraction(float IoR);
 
-    /** Get the index of refraction.
-    */
-    virtual float getIndexOfRefraction() const { return (float)mHeader.getIoR(); }
+		/** Get the index of refraction.
+		*/
+		virtual float getIndexOfRefraction() const { return (float)mHeader.getIoR(); }
 
 		/** Get information about a texture slot.
 			\param[in] slot The texture slot.
@@ -287,10 +287,10 @@ class FALCOR_API Material : public Object {
 		/** Size of the material instance the material produces.
         Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.
         Large material instances can have a singificant performance impact.
-    */
-    virtual size_t getMaterialInstanceByteSize() { return 128; }
+    	*/
+    	virtual size_t getMaterialInstanceByteSize() { return 128; }
 
-		inline Device::SharedPtr device() const { return mpDevice; }
+		Device::SharedPtr getDevice() const { return mpDevice; }
 
 		size_t getTextureCount() const;
 

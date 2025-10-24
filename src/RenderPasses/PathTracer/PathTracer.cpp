@@ -185,7 +185,7 @@ void PathTracer::registerBindings(pybind11::module& m) {
 }
 
 PathTracer::SharedPtr PathTracer::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new PathTracer(pRenderContext->device(), dict));
+    return SharedPtr(new PathTracer(pRenderContext->getDevice(), dict));
 }
 
 PathTracer::PathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {

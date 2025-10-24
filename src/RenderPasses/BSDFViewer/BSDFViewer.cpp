@@ -49,7 +49,7 @@ const char* BSDFViewer::sDesc = "BSDF Viewer";
 
 BSDFViewer::SharedPtr BSDFViewer::create(RenderContext* pRenderContext, const Dictionary& dict)
 { 
-    return SharedPtr(new BSDFViewer(pRenderContext->device(), dict));
+    return SharedPtr(new BSDFViewer(pRenderContext->getDevice(), dict));
 }
 
 BSDFViewer::BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice)

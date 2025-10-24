@@ -617,7 +617,7 @@ SCRIPT_BINDING(Texture) {
 	texture.def_property_readonly("format", &Texture::getFormat);
 
 	auto data = [](Texture* pTexture, uint32_t subresource) {
-		return pTexture->device()->getRenderContext()->readTextureSubresource(pTexture, subresource);
+		return pTexture->getDevice()->getRenderContext()->readTextureSubresource(pTexture, subresource);
 	};
 	texture.def("data", data, "subresource"_a);
 }

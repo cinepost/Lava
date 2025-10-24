@@ -69,7 +69,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 
 MegakernelPathTracer::SharedPtr MegakernelPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new MegakernelPathTracer(pRenderContext->device(), dict));
+    return SharedPtr(new MegakernelPathTracer(pRenderContext->getDevice(), dict));
 }
 
 MegakernelPathTracer::MegakernelPathTracer(Device::SharedPtr pDevice, const Dictionary& dict)
@@ -104,7 +104,7 @@ void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::
         sbt->setHitGroupByType(kRayTypeScatter, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
         sbt->setHitGroupByType(kRayTypeShadow, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
 
-        mTracer.pProgram = RtProgram::create(pRenderContext->device(), desc);
+        mTracer.pProgram = RtProgram::create(pRenderContext->getDevice(), desc);
     }
 }
 

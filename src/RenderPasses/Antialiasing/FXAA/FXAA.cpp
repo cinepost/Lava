@@ -52,7 +52,7 @@ FXAA::FXAA(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pFXAA = SharedPtr(new FXAA(pRenderContext->device()));
+    SharedPtr pFXAA = SharedPtr(new FXAA(pRenderContext->getDevice()));
     for (const auto& v : dict) {
         if (v.key() == kQualitySubPix) pFXAA->mQualitySubPix = v.val();
         else if (v.key() == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = v.val();

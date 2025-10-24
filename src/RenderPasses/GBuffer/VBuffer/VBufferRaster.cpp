@@ -34,36 +34,37 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 
-const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buffer generation pass." };
 
 namespace {
-    const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
-    const std::string kQuadCombineFile = "RenderPasses/GBuffer/VBuffer/QuadInterleaveCombiner.cs.slang";
-    const std::string kShaderModel = "6_2";
 
-    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::None;
+const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
+const std::string kQuadCombineFile = "RenderPasses/GBuffer/VBuffer/QuadInterleaveCombiner.cs.slang";
+const std::string kShaderModel = "6_2";
 
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
-    const std::string kDepthName   = "depth";
+const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::None;
 
-    // Scripting options.
-    const char kPerPixelJitterRaster[] = "per_pixel_jitter";
-    const char kHighPrecisionDeph[] = "highp_depth";
-    const char kUseMotionBlur[] = "useMotionBlur";
-    const char kCullMode[] = "cullMode";
-    
-    // Extra output channels.
-    const ChannelList kVBufferExtraOutputChannels = {
-        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
-        { "texGrads",         "gTextureGrads",      "Texture coordinate gradients",     true /* optional */, ResourceFormat::RGBA16Float },
-    };
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+const std::string kDepthName   = "depth";
+
+// Scripting options.
+const char kPerPixelJitterRaster[] = "per_pixel_jitter";
+const char kHighPrecisionDeph[] = "highp_depth";
+const char kUseMotionBlur[] = "useMotionBlur";
+const char kCullMode[] = "cullMode";
+
+// Extra output channels.
+const ChannelList kVBufferExtraOutputChannels = {
+    { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
+    { "texGrads",         "gTextureGrads",      "Texture coordinate gradients",     true /* optional */, ResourceFormat::RGBA16Float },
+};
+
 }
 
-void VBufferRaster::parseDictionary(const Dictionary& dict) {
-    GBufferBase::parseDictionary(dict);
+void VBufferRaster::parseProperties(const Properties& props) {
+    GBufferBase::parseProperties(props);
 
-    for (const auto& [key, value] : dict) {
+    for (const auto& [key, value] : props) {
         if (key == kPerPixelJitterRaster) setPerPixelJitterRaster(static_cast<bool>(value));
         else if (key == kHighPrecisionDeph) setHighpDepth(static_cast<bool>(value));
         else if (key == kUseMotionBlur) enableMotionBlur(static_cast<bool>(value));
@@ -90,10 +91,10 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     return reflector;
 }
 
-VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
+VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new VBufferRaster(pRenderContext->getDevice(), props));
 }
-VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice, kInfo) {
+VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Properties& props) : GBufferBase(pDevice) {
     // Check for required features.
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_2)) {
         FALCOR_THROW("VBufferRaster requires Shader Model 6.2 support.");
@@ -105,7 +106,7 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
         FALCOR_THROW("Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     mpSampleGenerator = StratifiedSamplePattern::create(1024);
     mpTJSampleGenerator = StratifiedSamplePattern::create(1024);
@@ -170,7 +171,7 @@ void VBufferRaster::initDepth(RenderContext* pContext, const RenderData& renderD
         // Using own generated depth buffer texture
         LLOG_DBG << "VBufferRaster using internal depth buffer";
         
-        //mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil | ResourceBindFlags::ShaderResource);
+        //mpDepth = Texture::create2D(pContext->getDevice(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, ResourceBindFlags::DepthStencil | ResourceBindFlags::ShaderResource);
 
         DepthStencilState::Desc dsDesc;
 
@@ -187,8 +188,8 @@ void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& ren
     if(!mDirty) return;
 
     if(mHighpDepthEnabled) {
-        mpHighpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
-        //mpTestTexture = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        mpHighpDepth = Texture::create2D(pContext->getDevice(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        //mpTestTexture = Texture::create2D(pContext->getDevice(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
     } else {
         mpHighpDepth = nullptr;
     }
@@ -372,7 +373,7 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
     if(!pOutput || !pDepth) return;
 
     auto depthFormat = pDepth->getFormat();
-    auto pDevice = pContext->device();
+    auto pDevice = pContext->getDevice();
 
     auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed) {
         if (!bufUsed) {

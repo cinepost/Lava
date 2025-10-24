@@ -102,7 +102,7 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
 
   public:
     static SharedPtr create(Device::SharedPtr pDevice);
-    Falcor::Device::SharedPtr device() const { return mpDevice; };
+    Falcor::Device::SharedPtr getDevice() const { return mpDevice; };
 
  	  bool loadScript(const std::string& file_name);
  	  

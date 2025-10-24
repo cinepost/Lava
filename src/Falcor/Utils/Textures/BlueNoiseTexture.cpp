@@ -1,7 +1,3 @@
-#include "stdafx.h"
-
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Formats.h"
 
 #include "BlueNoiseData.h"
