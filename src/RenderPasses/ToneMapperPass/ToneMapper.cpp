@@ -89,7 +89,7 @@ void ToneMapperPass::parseProperties(const Properties& props) {
         else if (key == kFilmSpeed) setFilmSpeed(value);
         else if (key == kWhiteBalance) setWhiteBalance(value);
         else if (key == kWhitePoint) setWhitePoint(value);
-        else if (key == kOperator) setOperator(value);
+        else if (key == kOperator) setOperator(static_cast<ToneMapperOperator>((uint32_t)value));
         else if (key == kClamp) setClamp(value);
         else if (key == kWhiteMaxLuminance) setWhiteMaxLuminance(value);
         else if (key == kWhiteScale) setWhiteScale(value);
@@ -133,7 +133,7 @@ Properties ToneMapperPass::getProperties() const {
     props[kFilmSpeed] = mFilmSpeed;
     props[kWhiteBalance] = mWhiteBalance;
     props[kWhitePoint] = mWhitePoint;
-    props[kOperator] = mOperator;
+    props[kOperator] = static_cast<uint32_t>(mOperator);
     props[kClamp] = mClamp;
     props[kWhiteMaxLuminance] = mWhiteMaxLuminance;
     props[kWhiteScale] = mWhiteScale;

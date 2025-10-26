@@ -522,6 +522,12 @@ class FALCOR_API Device: public Object {
 
     gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
 
+    /**
+     * Get the supported bind-flags for a specific format.
+     */
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format);
+
+
     /// Returns the global slang session.
     slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
 

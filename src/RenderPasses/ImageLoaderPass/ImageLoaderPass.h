@@ -28,35 +28,39 @@
 #ifndef SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_
 #define SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_
 
-#include "Falcor/Falcor.h"
-#include "FalcorExperimental.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Object.h"
+#include "Falcor/Core/Plugin.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+
 
 using namespace Falcor;
 
 class PASS_API ImageLoaderPass : public RenderPass {
+        FALCOR_OBJECT(ImageLoaderPass)
+        FALCOR_PLUGIN_CLASS(ImageLoaderPass, "ImageLoaderPass", "Loads image data from file.");
 	public:
-		using SharedPtr = std::shared_ptr<ImageLoaderPass>;
-		using SharedConstPtr = std::shared_ptr<const ImageLoaderPass>;
-		static const Info kInfo;
-
-		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext, const Properties& props = {});
 
 		virtual RenderPassReflection reflect(const CompileData& compileData) override;
 		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-		virtual Dictionary getScriptingDictionary() override;
+		virtual Properties getProperties() const override;
 
 	private:
-		ImageLoaderPass(Device::SharedPtr pDevice);
+		ImageLoaderPass(Device::SharedPtr pDevice, const Properties& props = {});
 
-		fs::path		 				mImageName;
+		void parseProperties(const Properties& props);
+
+		fs::path	mImageName;
 		
 		uint32_t 	mArraySlice = 0;
 		uint32_t 	mMipLevel = 0;
 		
-		bool 	mGenerateMips = false;
-		bool 	mLoadSRGB = true;
-		bool  mDirty = true;
+		bool 		mGenerateMips = false;
+		bool 		mLoadSRGB = true;
+		bool  		mDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_

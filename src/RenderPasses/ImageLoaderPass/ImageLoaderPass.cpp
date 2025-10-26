@@ -25,35 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/RenderGraph/RenderPassHelpers.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
-
 #include "ImageLoaderPass.h"
 
-const RenderPass::Info ImageLoaderPass::kInfo {
-    "ImageLoaderPass",
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
-    "Loads image data from file.\n"
-    ""
-};
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir() {
-    return PROJECT_DIR;
+static void registerPass(pybind11::module& m) {
+    pybind11::class_<ImageLoaderPass, RenderPass> pass(m, "ImageLoaderPass");
+    //pybind11::class_<ImageLoaderPass, RenderPass, ImageLoaderPass::SharedPtr> pass(m, "ImageLoaderPass");
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerPass(ImageLoaderPass::kInfo, ImageLoaderPass::create);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry) {
+    //registry.registerClass<RenderPass, ImageLoaderPass>();
+    ScriptBindings::registerBinding(registerPass);
 }
 
 namespace {
-    const std::string kDst   = "output";
-    const std::string kImage = "filename";
-    const std::string kMips  = "mips";
-    const std::string kSrgb  = "srgb";
-    const std::string kArraySlice = "arrayIndex";
-    const std::string kMipLevel   = "mipLevel";
-}
+
+const std::string kDst   = "output";
+const std::string kImage = "filename";
+const std::string kMips  = "mips";
+const std::string kSrgb  = "srgb";
+const std::string kArraySlice = "arrayIndex";
+const std::string kMipLevel   = "mipLevel";
+
+} // namespace
 
 RenderPassReflection ImageLoaderPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
@@ -62,32 +59,32 @@ RenderPassReflection ImageLoaderPass::reflect(const CompileData& compileData) {
     return reflector;
 }
 
-ImageLoaderPass::SharedPtr ImageLoaderPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    SharedPtr pPass = SharedPtr(new ImageLoaderPass(pRenderContext->getDevice()));
+ImageLoaderPass::SharedPtr ImageLoaderPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new ImageLoaderPass(pRenderContext->getDevice(), props));
+}
 
-    for (const auto& [key, value] : dict) {
-        if (key == kImage) pPass->mImageName = value.operator fs::path();
-        else if (key == kSrgb) pPass->mLoadSRGB = value;
-        else if (key == kMips) pPass->mGenerateMips = value;
-        else if (key == kArraySlice) pPass->mArraySlice = value;
-        else if (key == kMipLevel) pPass->mMipLevel = value;
+void ImageLoaderPass::parseProperties(const Properties& props) {
+    for (const auto& [key, value] : props) {
+        if (key == kImage) mImageName = value.operator fs::path();
+        else if (key == kSrgb) mLoadSRGB = value;
+        else if (key == kMips) mGenerateMips = value;
+        else if (key == kArraySlice) mArraySlice = value;
+        else if (key == kMipLevel) mMipLevel = value;
     }
-    
-    return pPass;
 }
 
-Dictionary ImageLoaderPass::getScriptingDictionary() {
-    Dictionary dict;
-    dict[kImage] = mImageName;
-    dict[kMips] = mGenerateMips;
-    dict[kSrgb] = mLoadSRGB;
-    dict[kArraySlice] = mArraySlice;
-    dict[kMipLevel] = mMipLevel;
-    return dict;
+Properties ImageLoaderPass::getProperties() const {
+    Properties props;
+    props[kImage] = mImageName;
+    props[kMips] = mGenerateMips;
+    props[kSrgb] = mLoadSRGB;
+    props[kArraySlice] = mArraySlice;
+    props[kMipLevel] = mMipLevel;
+    return props;
 }
 
-ImageLoaderPass::ImageLoaderPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo), mDirty(true) {
-
+ImageLoaderPass::ImageLoaderPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice), mDirty(true) {
+    parseProperties(props);
 }
 
 void ImageLoaderPass::compile(RenderContext* pContext, const CompileData& compileData) {
@@ -99,7 +96,6 @@ void ImageLoaderPass::execute(RenderContext* pContext, const RenderData& renderD
 
     if(!mDirty || !pDstTexture) return;
 
-    
     if (mImageName.empty()) {
         pContext->clearRtv(pDstTexture->getRTV().get(), float4(0.f));
     } else {

@@ -224,7 +224,7 @@ class FALCOR_API RenderGraph : public Object {
 
     /** Get the dictionary objects used to communicate app data to the render-passes
     */
-    const Dictionary& getPassesDictionary() const { return mPassDictionary; }
+    Dictionary& getPassesDictionary() { return mPassDictionary; }
 
     /** Get the name
     */

@@ -21,7 +21,7 @@ class PASS_API NullShadingPass : public RenderPass {
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 
-		virtual Properties getProperties() const { return Properties(); };
+		virtual Properties getProperties() const override { return Properties(); };
 
 	private:
 		NullShadingPass(Device::SharedPtr pDevice);

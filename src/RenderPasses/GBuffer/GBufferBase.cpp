@@ -57,7 +57,7 @@ GBufferBase::GBufferBase(Device::SharedPtr pDevice) : RenderPass(pDevice) {
 
 void GBufferBase::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
-        if (key == kSamplePattern) mSamplePattern = value;
+        if (key == kSamplePattern) mSamplePattern = static_cast<SamplePattern>((uint32_t)value);
         else if (key == kSampleCount) mSampleCount = value;
         else if (key == kUseAlphaTest) mUseAlphaTest = value;
         else if (key == kAdjustShadingNormals) mAdjustShadingNormals = value;
@@ -73,7 +73,7 @@ void GBufferBase::parseProperties(const Properties& props) {
 
 Properties GBufferBase::getProperties() const {
     Properties props;
-    props[kSamplePattern] = mSamplePattern;
+    props[kSamplePattern] = static_cast<uint32_t>(mSamplePattern);
     props[kSampleCount] = mSampleCount;
     props[kUseAlphaTest] = mUseAlphaTest;
     props[kAdjustShadingNormals] = mAdjustShadingNormals;

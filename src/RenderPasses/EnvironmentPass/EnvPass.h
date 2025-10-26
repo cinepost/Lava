@@ -59,13 +59,16 @@ class PASS_API EnvPass : public RenderPass {
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
-    void setBackdropImage(const std::string& imageName, bool loadAsSrgb = true);
+    void setBackdropImagePath(const std::string& imageName);
     void setBackdropTexture(const Texture::SharedPtr& pTexture);
     void setTransformMatrix(const float4x4& mtx) { mTransformMatrix = mtx; /*update();*/  }
+    void setLoadBackdropAsSRGB(bool mode);
 
   private:
     EnvPass(Device::SharedPtr pDevice);
     void setupCamera();
+    void parseProperties(const Properties& props);
+    void loadBackdropImage();
 
     float4x4 mTransformMatrix;
 

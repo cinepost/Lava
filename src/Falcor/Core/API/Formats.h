@@ -412,11 +412,6 @@ inline bool doesFormatHasAlpha(ResourceFormat format) {
 
 gfx::Format getGFXFormat(ResourceFormat format);
 
-
-/** Get the supported bind-flags for a specific format
-*/
-ResourceBindFlags getFormatBindFlags(Device* pDevice, ResourceFormat format);
-
 inline const std::string& to_string(ResourceFormat format) {
     assert(kFormatDesc[(uint32_t)format].format == format);
     return kFormatDesc[(uint32_t)format].name;

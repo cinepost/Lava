@@ -149,18 +149,21 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 #pragma GCC optimize ("O0")
 
 Texture::SharedPtr Resource::asTexture() {
-    assert(this);
-    return Falcor::SharedPtr<Texture>(dynamic_cast<Texture*>(this));
+    static const Falcor::SharedPtr<Texture> pNullTexture = nullptr;
+    //assert(this);
+    return this ? Falcor::SharedPtr<Texture>(dynamic_cast<Texture*>(this)) : pNullTexture;
 }
 
 Falcor::SharedPtr<const Texture> Resource::asTexture() const {
-    assert(this);
-    return Falcor::SharedPtr<const Texture>(dynamic_cast<const Texture*>(this));
+    static const Falcor::SharedPtr<const Texture> pNullTexture = nullptr;
+    //assert(this);
+    return this ? Falcor::SharedPtr<const Texture>(dynamic_cast<const Texture*>(this)) : pNullTexture;
 }
 
 Buffer::SharedPtr Resource::asBuffer() {
-    assert(this);
-    return Falcor::SharedPtr<Buffer>(dynamic_cast<Buffer*>(this));
+    static const Falcor::SharedPtr<Buffer> pNullBuffer = nullptr;
+    //assert(this);
+    return this ? Falcor::SharedPtr<Buffer>(dynamic_cast<Buffer*>(this)) : pNullBuffer;
 }
 
 #pragma GCC pop_options

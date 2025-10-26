@@ -123,8 +123,8 @@ class Session {
     ast::IPRMode mIPRmode = ast::IPRMode::DEFAULT;
 
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
-    Renderer::SharedPtr 	         mpRenderer = nullptr;
-    Device::SharedPtr              mpDevice   = nullptr;
+    Renderer::SharedPtr 	         mpRenderer;
+    Device::SharedPtr              mpDevice;
 
     std::map<std::string, std::string>  mEnvmap;
 
@@ -143,7 +143,7 @@ class Session {
 
     Renderer::Config                mRendererConfig;
 
-    std::set<std::string> mTemporaryGeometriesPaths;
+    std::set<std::string>           mTemporaryGeometriesPaths;
 
     std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id TODO: move to SceneBuilder asap!
 };

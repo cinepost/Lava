@@ -491,6 +491,45 @@ bool Device::isShaderModelSupported(ShaderModel shaderModel) const {
     return ((uint32_t)shaderModel <= (uint32_t)mSupportedShaderModel);
 }
 
+ResourceBindFlags Device::getFormatBindFlags(ResourceFormat format) {
+    gfx::ResourceStateSet stateSet;
+    FALCOR_GFX_CALL(mGfxDevice->getFormatSupportedResourceStates(getGFXFormat(format), &stateSet));
+
+    ResourceBindFlags flags = ResourceBindFlags::None;
+    if (stateSet.contains(gfx::ResourceState::ConstantBuffer)) {
+        flags |= ResourceBindFlags::Constant;
+    }
+    if (stateSet.contains(gfx::ResourceState::VertexBuffer)) {
+        flags |= ResourceBindFlags::Vertex;
+    }
+    if (stateSet.contains(gfx::ResourceState::IndexBuffer)) {
+        flags |= ResourceBindFlags::Index;
+    }
+    if (stateSet.contains(gfx::ResourceState::IndirectArgument)) {
+        flags |= ResourceBindFlags::IndirectArg;
+    }
+    if (stateSet.contains(gfx::ResourceState::StreamOutput)) {
+        flags |= ResourceBindFlags::StreamOutput;
+    }
+    if (stateSet.contains(gfx::ResourceState::ShaderResource)) {
+        flags |= ResourceBindFlags::ShaderResource;
+    }
+    if (stateSet.contains(gfx::ResourceState::RenderTarget)) {
+        flags |= ResourceBindFlags::RenderTarget;
+    }
+    if (stateSet.contains(gfx::ResourceState::DepthRead) || stateSet.contains(gfx::ResourceState::DepthWrite)) {
+        flags |= ResourceBindFlags::DepthStencil;
+    }
+    if (stateSet.contains(gfx::ResourceState::UnorderedAccess)) {
+        flags |= ResourceBindFlags::UnorderedAccess;
+    }
+    if (stateSet.contains(gfx::ResourceState::AccelerationStructure)) {
+        flags |= ResourceBindFlags::AccelerationStructure;
+    }
+    flags |= ResourceBindFlags::Shared;
+    return flags;
+}
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(Device) {
     ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");

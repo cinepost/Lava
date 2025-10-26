@@ -56,4 +56,13 @@ Buffer::SharedPtr RenderData::getBuffer(const std::string& name) const {
     return pResource ? pResource->asBuffer() : nullptr;
 }
 
+RenderPass::SharedPtr RenderPass::create(std::string_view type, Device::SharedPtr pDevice, const Properties& props, PluginManager& pm) {
+    // Try to load a plugin of the same name, if render pass class is not registered yet.
+    if (!pm.hasClass<RenderPass>(type)) {
+        pm.loadPluginByName(type);
+    }
+
+    return pm.createClass<RenderPass>(type, pDevice, props);
+}
+
 }  // namespace Falcor

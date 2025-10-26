@@ -97,12 +97,16 @@ Slang::ComPtr<gfx::IBufferResource> createBufferResource(
 	return pApiHandle;
 }
 
-Buffer::SharedPtr Buffer::create(Falcor::SharedPtr<Device> pDevice, size_t size, ResourceBindFlags bindFlags, Buffer::CpuAccess cpuAccess, const void* pInitData) {
+Buffer::SharedPtr Buffer::create(Device::SharedPtr pDevice, size_t size, ResourceBindFlags bindFlags, Buffer::CpuAccess cpuAccess, const void* pInitData) {
 	return pDevice->createBuffer(size, bindFlags, static_cast<MemoryType>(cpuAccess), pInitData);
 }
 
-Buffer::SharedPtr Buffer::createTyped(Falcor::SharedPtr<Device> pDevice, ResourceFormat format, uint32_t elementCount, ResourceBindFlags bindFlags, Buffer::CpuAccess cpuAccess, const void* pInitData) {
+Buffer::SharedPtr Buffer::createTyped(Device::SharedPtr pDevice, ResourceFormat format, uint32_t elementCount, ResourceBindFlags bindFlags, Buffer::CpuAccess cpuAccess, const void* pInitData) {
 	return pDevice->createTypedBuffer(format, elementCount, bindFlags, static_cast<MemoryType>(cpuAccess), pInitData);
+}
+
+Buffer::SharedPtr Buffer::createStructured(Device::SharedPtr pDevice, uint32_t structSize, uint32_t elementCount, ResourceBindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData, bool createCounter) {
+	return make_shared_ptr<Buffer>(pDevice, structSize, elementCount, bindFlags, static_cast<MemoryType>(cpuAccess), pInitData, createCounter);
 }
 
 Buffer::Buffer(

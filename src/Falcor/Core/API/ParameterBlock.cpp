@@ -159,26 +159,21 @@ ParameterBlock::ParameterBlock(Device::SharedPtr pDevice, const ProgramVersion::
 }
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
-    return create(pDevice.get(), pProgramVersion, pElementType);
-}
-
-ParameterBlock::SharedPtr ParameterBlock::create(Device* pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
-    if (!pElementType) throw std::runtime_error("Can't create a parameter block without type information");
+    FALCOR_CHECK(pElementType, "Can't create a parameter block without type information");
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
     return create(pDevice, pReflection);
 }
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
-    assert(pReflection);
-    return Falcor::SharedPtr<ParameterBlock>(new ParameterBlock(pDevice, ProgramVersion::SharedConstPtr(pReflection->getProgramVersion()), pReflection));
+    FALCOR_ASSERT(pReflection);
+    // TODO(@skallweit) we convert the weak pointer to a shared pointer here because we tie
+    // the lifetime of the parameter block to the lifetime of the program version.
+    // The ownership for programs/versions/kernels and parameter blocks needs to be revisited.
+    return ParameterBlock::SharedPtr(new ParameterBlock(pDevice, Falcor::SharedPtr<const ProgramVersion>(pReflection->getProgramVersion()), pReflection));
 }
 
 ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const std::string& typeName) {
-    return ParameterBlock::create(pDevice.get(), pProgramVersion, typeName);
-}
-
-ParameterBlock::SharedPtr ParameterBlock::create(Device* pDevice, const ProgramVersion::SharedConstPtr& pProgramVersion, const std::string& typeName) {
-    assert(pProgramVersion);
+    FALCOR_ASSERT(pProgramVersion);
     return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
 }
 
@@ -611,7 +606,7 @@ void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
             switch (pResourceType->getType()) {
                 case ReflectionResourceType::Type::ConstantBuffer:
                 {
-                    auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
+                    auto pCB = ParameterBlock::create(Device::SharedPtr(mpDevice), pResourceType->getParameterBlockReflector());
                     var.setParameterBlock(pCB);
                 }
                 break;

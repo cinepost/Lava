@@ -267,62 +267,62 @@ bool Session::cmdRaytrace() {
 	const bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
 	// Renderer and it's rendergraph configuration
-	auto& confDict = mpRenderer->getRendererConfDict();
-	confDict["primaryraygentype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "primaryraygentype", std::string("hwraster"));
-	confDict["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
-	confDict["visibilitycontainer"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainer", bool(false));
-	confDict["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(false));
-	confDict["visibilitycontainersort"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersort", bool(true));
-	confDict["visibilitycontainersortpp"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersortpp", bool(true));
+	auto& confProps = mpRenderer->getRendererConfProps();
+	confProps["primaryraygentype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "primaryraygentype", std::string("hwraster"));
+	confProps["shadingpasstype"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "shadingpasstype", std::string("deferred"));
+	confProps["visibilitycontainer"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainer", bool(false));
+	confProps["visibilitycontainerlimit"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainerlimit", bool(false));
+	confProps["visibilitycontainersort"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersort", bool(true));
+	confProps["visibilitycontainersortpp"] = mpGlobal->getPropertyValue(ast::Style::RENDERER, "visibilitycontainersortpp", bool(true));
 
 	// Rendering passes configuration
-	auto& passDict = mpRenderer->getRenderPassesDict();
+	auto& passProps = mpRenderer->getRenderPassesProps();
 
 	const int random_seed = mpGlobal->getPropertyValue(ast::Style::IMAGE, "randomseed", int(0));
 	const bool auto_ray_bias = mpGlobal->getPropertyValue(ast::Style::RENDERER, "autoraybias", bool(true));
 
-	passDict["rayBias"] = auto_ray_bias ? 0.0f : mpGlobal->getPropertyValue(ast::Style::RENDERER, "raybias", float(0.0f));
+	passProps["rayBias"] = auto_ray_bias ? 0.0f : mpGlobal->getPropertyValue(ast::Style::RENDERER, "raybias", float(0.0f));
 
-  	passDict["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
-  	passDict["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
-	passDict["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
-	passDict["useMotionBlur"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usemblur", bool(false));
-	passDict["cullMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "cullmode", std::string("back"));
-	passDict["useSubdivisions"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usesubdivs", bool(false));
-	passDict["useDisplacement"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedisplace", bool(false));
-	passDict["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
-	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
+  	passProps["russRoulleteLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "rrouletlevel", int(2));
+  	passProps["rayContribThreshold"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raythreshold", float(0.1f));
+	passProps["useDOF"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedof", bool(false));
+	passProps["useMotionBlur"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usemblur", bool(false));
+	passProps["cullMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "cullmode", std::string("back"));
+	passProps["useSubdivisions"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usesubdivs", bool(false));
+	passProps["useDisplacement"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "usedisplace", bool(false));
+	passProps["useSTBN"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "stbn_sampling", bool(false));
+	passProps["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 
-	passDict["maxSubdivLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "maxsubdlevel", int(3));
-	passDict["minScreenEdgeLen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "minscreenedgelen", float(2.f));
+	passProps["maxSubdivLevel"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "maxsubdlevel", int(3));
+	passProps["minScreenEdgeLen"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "minscreenedgelen", float(2.f));
 
-	passDict["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));
+	passProps["asyncLtxLoading"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "asyncltxloading", bool(true));
 
-	passDict["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(4));
+	passProps["iotSamplesCount"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "transparentsamples", int(4));
 
-	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
-	passDict["opacityLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "opacitylimit", float(0.995f));
+	passProps["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
+	passProps["opacityLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "opacitylimit", float(0.995f));
 
-	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
-	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
-	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
-	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
-	passDict["areaLightsSamplingMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "areasampling", std::string("urena"));
+	passProps["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
+	passProps["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
+	passProps["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
+	passProps["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
+	passProps["areaLightsSamplingMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "areasampling", std::string("urena"));
 
-	passDict["MAIN.ToneMappingPass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.enable", bool(false));
-	passDict["MAIN.ToneMappingPass.operator"] = (uint32_t)mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.operator", int(4));
+	passProps["MAIN.ToneMappingPass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.enable", bool(false));
+	passProps["MAIN.ToneMappingPass.operator"] = (uint32_t)mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.operator", int(4));
 
-	passDict["MAIN.ToneMappingPass.filmSpeed"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.filmSpeed", float(100.0));
-	passDict["MAIN.ToneMappingPass.exposureValue"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.exposureValue", float(0.0));
-	passDict["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
+	passProps["MAIN.ToneMappingPass.filmSpeed"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.filmSpeed", float(100.0));
+	passProps["MAIN.ToneMappingPass.exposureValue"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.exposureValue", float(0.0));
+	passProps["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
 
-	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
-	passDict["MAIN.OpenDenoisePass.quality"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.quality", int(0));
-	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
-	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
+	passProps["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
+	passProps["MAIN.OpenDenoisePass.quality"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.quality", int(0));
+	passProps["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
+	passProps["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 
-	passDict["MAIN.VBufferRasterPass.highp_depth"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.highp_depth", bool(false));
-	passDict["MAIN.VBufferRasterPass.better_aa"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.better_aa", bool(false));
+	passProps["MAIN.VBufferRasterPass.highp_depth"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.highp_depth", bool(false));
+	passProps["MAIN.VBufferRasterPass.better_aa"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "VBufferRasterPass.better_aa", bool(false));
 
 	mpRenderer->setRandomSeed(random_seed);
 
@@ -1167,7 +1167,7 @@ bool Session::cmdEnd() {
 					LLOG_FTL << "Error creating output plane " << pPlane->name();
 					return false;
 				}
-				translateLSDPlanePropertiesToLavaDict(pScopePlane, pPlane->getRenderPassesDict());
+				translateLSDPlanePropertiesToLavaProps(pScopePlane, pPlane->getRenderPassesProps());
 			}
 			break;
 		case ast::Style::LIGHT:

@@ -60,20 +60,17 @@ public:
     /** Create a new object that holds a value of the given type.
     */
     static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Falcor::SharedPtr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
-    static SharedPtr create(Device* pDevice, const Falcor::SharedPtr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
-
+    
     /** Create a new object that holds a value described by the given reflector.
     */
     static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection);
-    static SharedPtr create(Device* pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection);
-
+    
     /** Create a new object that holds a value of the type with the given name in the given program.
         \param[in] pProgramVersion Program version object.
         \param[in] typeName Name of the type. If the type does not exist an exception is thrown.
     */
     static SharedPtr create(Falcor::SharedPtr<Device> pDevice, const Falcor::SharedPtr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
-    static SharedPtr create(Device* pDevice, const Falcor::SharedPtr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
-
+    
     gfx::IShaderObject* getShaderObject() const { return mpShaderObject.get(); }
 
     /** Set a variable into the block.

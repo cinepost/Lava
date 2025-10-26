@@ -115,10 +115,8 @@ class FALCOR_API ResourceView: public Object {
 };
 
 class FALCOR_API ShaderResourceView : public ResourceView {
+        FALCOR_OBJECT(ShaderResourceView)
     public:
-        using SharedPtr = Falcor::SharedPtr<ShaderResourceView>;
-        using SharedConstPtr = Falcor::SharedPtr<const ShaderResourceView>;
-
         static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
         static SharedPtr create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
         static SharedPtr create(Device* pDevice, Dimension dimension);
@@ -134,10 +132,8 @@ class FALCOR_API ShaderResourceView : public ResourceView {
 };
 
 class FALCOR_API DepthStencilView : public ResourceView {
+    FALCOR_OBJECT(DepthStencilView)
  public:
-    using SharedPtr = Falcor::SharedPtr<DepthStencilView>;
-    using SharedConstPtr = Falcor::SharedPtr<const DepthStencilView>;
-
     static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(Device* pDevice, Dimension dimension);
 
@@ -146,10 +142,8 @@ class FALCOR_API DepthStencilView : public ResourceView {
 };
 
 class FALCOR_API UnorderedAccessView : public ResourceView {
+    FALCOR_OBJECT(UnorderedAccessView)
  public:
-    using SharedPtr = Falcor::SharedPtr<UnorderedAccessView>;
-    using SharedConstPtr = Falcor::SharedPtr<const UnorderedAccessView>;
-
     static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
     static SharedPtr create(Device* pDevice, Dimension dimension);
@@ -162,14 +156,10 @@ class FALCOR_API UnorderedAccessView : public ResourceView {
 };
 
 class FALCOR_API RenderTargetView : public ResourceView {
+    FALCOR_OBJECT(RenderTargetView)
  public:
-    using SharedPtr = Falcor::SharedPtr<RenderTargetView>;
-    using SharedConstPtr = Falcor::SharedPtr<const RenderTargetView>;
-
     static SharedPtr create(Device* pDevice, Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(Device* pDevice, Dimension dimension);
-
-    ~RenderTargetView();
 
     RenderTargetView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
         ResourceView(pDevice, pResource, gfxResourceView, mipLevel, 1, firstArraySlice, arraySize) {}

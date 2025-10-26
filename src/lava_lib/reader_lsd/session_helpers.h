@@ -1,12 +1,6 @@
 #ifndef SRC_LAVA_LIB_READER_LSD_SESSION_HELPERS_H_
 #define SRC_LAVA_LIB_READER_LSD_SESSION_HELPERS_H_
 
-#include <memory>
-#include <variant>
-#include <future>
-#include <map>
-#include <unordered_map>
-
 #include "grammar_lsd.h"
 #include "../reader_bgeo/bgeo/Bgeo.h"
 #include "../renderer.h"
@@ -16,6 +10,12 @@
 
 #include "Falcor/Core/API/Formats.h"
 #include "session.h"
+
+#include <memory>
+#include <variant>
+#include <future>
+#include <map>
+#include <unordered_map>
 
 namespace lava {
 
@@ -35,7 +35,7 @@ void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize
 bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane);
 bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameInfo& frameInfo, AOVPlane* pAOVPlane);
 
-void translateLSDPlanePropertiesToLavaDict(scope::Plane::SharedConstPtr pScope, Falcor::Dictionary& dict);
+void translateLSDPlanePropertiesToLavaProps(scope::Plane::SharedConstPtr pScope, Falcor::Properties& props);
 
 }  // namespace lsd
 

@@ -251,6 +251,10 @@ public:
             mProperties.set(mName, value);
         }
 
+        void operator=(const Value& v) const {
+            mProperties = v.mProperties;
+        }
+
         template<typename T>
         operator T() const {
             return mProperties.get<T>(mName);
@@ -320,6 +324,8 @@ public:
 
     ConstIterator begin() const;
     ConstIterator end() const;
+
+    void update(const Properties& props);
 
 private:
     template<typename T>

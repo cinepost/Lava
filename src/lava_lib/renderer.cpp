@@ -3,15 +3,15 @@
 #include "renderer.h"
 
 #include "Falcor/Utils/Threading.h"
-#include "Falcor/RenderGraph/RenderPassLibrary.h"
 
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
 #include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
 
+#include "Falcor/Utils/Dictionary.h"
+#include "Falcor/Utils/Properties.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
-#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "Falcor/Utils/ConfigStore.h"
@@ -24,7 +24,6 @@
 #include "RenderPasses/NullShadingPass/NullShadingPass.h"
 #include "RenderPasses/DebugShadingPass/DebugShadingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
-#include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
 #include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
 #include "RenderPasses/AmbientOcclusionPass/AmbientOcclusionPass.h"
@@ -133,7 +132,7 @@ Renderer::~Renderer() {
 
 	Falcor::Threading::shutdown();
 
-	mpDevice->flushAndSync();
+	mpDevice->wait();
 
 	mGraphs.clear();
 
@@ -142,7 +141,6 @@ Renderer::~Renderer() {
 	mpSampler = nullptr;
 
 	Falcor::Scripting::shutdown();
-	Falcor::RenderPassLibrary::instance().shutdown();
 
 	mpTargetFBO.reset();
 
@@ -266,24 +264,24 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->setScene(pScene);
 
 	// Depth pass
-	Falcor::Dictionary depthPassDictionary(mRenderPassesDict);
-	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
+	Falcor::Properties depthPassProperties(mRenderPassesProps);
+	depthPassProperties["disableAlphaTest"] = false; // take texture alpha into account
 
-	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
+	mpDepthPass = DepthPass::create(pRenderContext, depthPassProperties);
 	//mpDepthPass->setScene(pRenderContext, pScene);
 	mpDepthPass->setCullMode(cullMode);
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
 
 	// Lighting (shading) pass
-	Falcor::Dictionary lightingPassDictionary(mRenderPassesDict);
+	Falcor::Properties lightingPassProperties(mRenderPassesProps);
 
-	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
+	lightingPassProperties["frameSampleCount"] = frame_info.imageSamples;
 
-	const std::string shadingPassType = mRendererConfDict.getValue("shadingpasstype", std::string("deferred"));
-	const bool useVisibilitySamplesContainer = mRendererConfDict.getValue("visibilitycontainer", bool(false));
-	const bool visibilitySamplesContainerLimit = mRendererConfDict.getValue("visibilitycontainerlimit", bool(false));
-	const bool visibilitySamplesContainerSort = mRendererConfDict.getValue("visibilitycontainersort", bool(true));
-	const bool visibilitySamplesContainerSortPP = mRendererConfDict.getValue("visibilitycontainersortpp", bool(true));
+	const std::string shadingPassType = mRendererConfProps.get("shadingpasstype", std::string("deferred"));
+	const bool useVisibilitySamplesContainer = mRendererConfProps.get("visibilitycontainer", bool(false));
+	const bool visibilitySamplesContainerLimit = mRendererConfProps.get("visibilitycontainerlimit", bool(false));
+	const bool visibilitySamplesContainerSort = mRendererConfProps.get("visibilitycontainersort", bool(true));
+	const bool visibilitySamplesContainerSortPP = mRendererConfProps.get("visibilitycontainersortpp", bool(true));
 
 	if(useVisibilitySamplesContainer) {
 		mpVisibilitySamplesContainer = VisibilitySamplesContainer::create(mpDevice, renderRegionDims);
@@ -302,7 +300,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
   } else if (shadingPassType == std::string("deferred")) {
 
-		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+		auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassProperties);
 		pDeferredLightingPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 		mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
 
@@ -325,59 +323,59 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 
 	// VBuffer
-	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDict);
+	Falcor::Properties vbufferPassProperties(mRenderPassesProps);
 	
 	static const std::string kPrimaryRayGenTypeKey = "primaryraygentype";
-	const std::string primaryRaygenType = mRendererConfDict.getValue<std::string>(kPrimaryRayGenTypeKey);
+	const std::string primaryRaygenType = mRendererConfProps.get<std::string>(kPrimaryRayGenTypeKey);
 	LLOG_INF << "Primary ray generation type set to \"" << primaryRaygenType << "\"";
 
 	if( primaryRaygenType == std::string("compute")) {
 
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
-			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+		if(mRenderPassesProps.has("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassProperties["per_pixel_jitter"] = mRenderPassesProps["MAIN.VBufferRasterPass.better_aa"];
 
 		// Compute raytraced (rayquery) vbuffer generator
-		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassDictionary);
+		auto pVBufferPass = VBufferRT::create(pRenderContext, vbufferPassProperties);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("hwraster")) {
 
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
-			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+		if(mRenderPassesProps.has("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassProperties["highp_depth"] = mRenderPassesProps["MAIN.VBufferRasterPass.highp_depth"];
 
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
-			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+		if(mRenderPassesProps.has("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassProperties["per_pixel_jitter"] = mRenderPassesProps["MAIN.VBufferRasterPass.better_aa"];
 
 		// Hardware rasterizer vbuffer generator
-		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+		auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassProperties);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("swraster")) {
 
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.highp_depth"))
-			vbufferPassDictionary["highp_depth"] = mRenderPassesDict["MAIN.VBufferRasterPass.highp_depth"];
+		if(mRenderPassesProps.has("MAIN.VBufferRasterPass.highp_depth"))
+			vbufferPassProperties["highp_depth"] = mRenderPassesProps["MAIN.VBufferRasterPass.highp_depth"];
 
-		if(mRenderPassesDict.keyExists("MAIN.VBufferRasterPass.better_aa"))
-			vbufferPassDictionary["per_pixel_jitter"] = mRenderPassesDict["MAIN.VBufferRasterPass.better_aa"];
+		if(mRenderPassesProps.has("MAIN.VBufferRasterPass.better_aa"))
+			vbufferPassProperties["per_pixel_jitter"] = mRenderPassesProps["MAIN.VBufferRasterPass.better_aa"];
 
 		// Compute shader rasterizer vbuffer generator
-		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassDictionary);
+		auto pVBufferPass = VBufferSW::create(pRenderContext, vbufferPassProperties);
 		pVBufferPass->setVisibilitySamplesContainer(mpVisibilitySamplesContainer);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("debug")) {
 
 		// Compute shader debug vbuffer generator
-		auto pVBufferPass = VBufferDBG::create(pRenderContext, vbufferPassDictionary);
+		auto pVBufferPass = VBufferDBG::create(pRenderContext, vbufferPassProperties);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	} else if ( primaryRaygenType == std::string("null")) {
 
 		// Compute shader debug vbuffer generator
-		auto pVBufferPass = VBufferNULL::create(pRenderContext, vbufferPassDictionary);
+		auto pVBufferPass = VBufferNULL::create(pRenderContext, vbufferPassProperties);
 		mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
-	}else {
+	} else {
 
 		LLOG_FTL << "Unsupported primary ray (vbuffer) generator type \"" << primaryRaygenType << "\" requested!!!";
 		mpRenderGraph = nullptr;
@@ -391,18 +389,18 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
 		// Depth pre-pass
-		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDict);
-		depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
+		Falcor::Properties depthPrePassProperties(mRenderPassesProps);
+		depthPrePassProperties["disableAlphaTest"] = true; // no virtual textures loaded at this point
 
-		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
+		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassProperties);
 		pDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
 		//pDepthPrePass->setScene(pRenderContext, pScene);
 		pDepthPrePass->setCullMode(cullMode);
 		mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
 
 		// Vitrual textures resolve pass
-		Falcor::Dictionary texturesResolvePassDictionary(mRenderPassesDict);
-		mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext, texturesResolvePassDictionary);
+		Falcor::Properties texturesResolvePassProperties(mRenderPassesProps);
+		mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext, texturesResolvePassProperties);
 		mpTexturesResolvePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
 		mpTexturesResolvePass->setScene(pRenderContext, pScene);
 
@@ -416,7 +414,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	}
 
 	// RTXDIPass
-	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDict);
+	//Falcor::Properties rtxdiPassProperties(mRenderPassesProps);
 	//auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
 	//pRTXDIPass->setScene(pRenderContext, pScene);
 	//mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
@@ -476,7 +474,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Optional edgedetect pass
 		if (renderPassName == "EdgeDetectPass") {
-			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesDict());
+			auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pPlane->getRenderPassesProps());
 			mpRenderGraph->addPass(pEdgeDetectPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -489,10 +487,10 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Optional ambient occlusion pass
 		if (renderPassName == "AmbientOcclusionPass") {
-			Dictionary d(mRenderPassesDict);
-			d.update(pPlane->getRenderPassesDict());
+			Properties props(mRenderPassesProps);
+			props.update(pPlane->getRenderPassesProps());
 
-			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, d);
+			auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, props);
 			mpRenderGraph->addPass(pAmbientOcclusionPass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -505,7 +503,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 		// Optional cryptomatte pass
 		if (renderPassName == "CryptomattePass") {
-			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesDict());
+			auto pCryptomattePass = CryptomattePass::create(pRenderContext, pPlane->getRenderPassesProps());
 			mpRenderGraph->addPass(pCryptomattePass, planeName);
 			mpRenderGraph->addEdge("VBufferPass.vbuffer", planeName + ".vbuffer");
 
@@ -733,37 +731,37 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Once rendering graph compiled we can create additional AOV processing (tonemapping, denoising, etc.) if required
 
 	// MAIN (Beauty) pass image processing
-	if(mRenderPassesDict.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
-		Falcor::Dictionary tonemapPassDictionary({});
+	if(mRenderPassesProps.get<bool>("MAIN.ToneMappingPass.enable", false) == true) {
+		Falcor::Properties tonemapPassProperties = {};
 
-		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.operator"))
-			tonemapPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDict["MAIN.ToneMappingPass.operator"]));
+		if(mRenderPassesProps.has("MAIN.ToneMappingPass.operator"))
+			tonemapPassProperties["operator"] = (uint32_t)mRenderPassesProps["MAIN.ToneMappingPass.operator"];
 
-		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.filmSpeed"))
-			tonemapPassDictionary["filmSpeed"] = mRenderPassesDict["MAIN.ToneMappingPass.filmSpeed"];
+		if(mRenderPassesProps.has("MAIN.ToneMappingPass.filmSpeed"))
+			tonemapPassProperties["filmSpeed"] = mRenderPassesProps["MAIN.ToneMappingPass.filmSpeed"];
 
-		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.exposureValue"))
-			tonemapPassDictionary["exposureValue"] = mRenderPassesDict["MAIN.ToneMappingPass.exposureValue"];
+		if(mRenderPassesProps.has("MAIN.ToneMappingPass.exposureValue"))
+			tonemapPassProperties["exposureValue"] = mRenderPassesProps["MAIN.ToneMappingPass.exposureValue"];
 
-		if(mRenderPassesDict.keyExists("MAIN.ToneMappingPass.autoExposure"))
-			tonemapPassDictionary["autoExposure"] = mRenderPassesDict["MAIN.ToneMappingPass.autoExposure"];
+		if(mRenderPassesProps.has("MAIN.ToneMappingPass.autoExposure"))
+			tonemapPassProperties["autoExposure"] = mRenderPassesProps["MAIN.ToneMappingPass.autoExposure"];
 	
-		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, tonemapPassDictionary);
+		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, tonemapPassProperties);
 	}
 
-	if(mRenderPassesDict.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
-		Falcor::Dictionary denoisePassDictionary({});
+	if(mRenderPassesProps.get<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
+		Falcor::Properties denoisePassProperties = {};
 
-		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.quality"))
-			denoisePassDictionary["quality"] = static_cast<OpenDenoisePass::Quality>(int(mRenderPassesDict["MAIN.OpenDenoisePass.quality"]));
+		if(mRenderPassesProps.has("MAIN.OpenDenoisePass.quality"))
+			denoisePassProperties["quality"] = (uint32_t)mRenderPassesProps["MAIN.OpenDenoisePass.quality"];
 
-		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useAlbedo"))
-			denoisePassDictionary["useAlbedo"] = mRenderPassesDict["MAIN.OpenDenoisePass.useAlbedo"];
+		if(mRenderPassesProps.has("MAIN.OpenDenoisePass.useAlbedo"))
+			denoisePassProperties["useAlbedo"] = mRenderPassesProps["MAIN.OpenDenoisePass.useAlbedo"];
 
-		if(mRenderPassesDict.keyExists("MAIN.OpenDenoisePass.useNormal"))
-			denoisePassDictionary["useNormal"] = mRenderPassesDict["MAIN.OpenDenoisePass.useNormal"];
+		if(mRenderPassesProps.has("MAIN.OpenDenoisePass.useNormal"))
+			denoisePassProperties["useNormal"] = mRenderPassesProps["MAIN.OpenDenoisePass.useNormal"];
 
-		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, denoisePassDictionary);
+		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, denoisePassProperties);
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
 			const auto pToneMapperPass = pMainAOV->tonemappingPass();
@@ -831,7 +829,7 @@ void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContex
 	LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
-	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
+	(pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
 	pGraph->resolvePerFrameSparseResources(pRenderContext);
 
 	//mpSceneBuilder->finalize();
@@ -849,7 +847,7 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
 	LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraphID].mainOutput;
 
 	// Execute graph.
-	(*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
+	(pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
 	//pGraph->resolvePerSampleSparseResources(pRenderContext);
 	pGraph->execute(pRenderContext);
 }
@@ -924,9 +922,9 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	auto renderRegionDims = frame_info.renderRegionDims();
 	finalizeScene(frame_info);
 
-	if(mRenderPassesDict != mPrevRenderPassesDict) {
+	if(mRenderPassesProps != mPrevRenderPassesProps) {
 		mpRenderGraph.reset();
-		mPrevRenderPassesDict = mRenderPassesDict;
+		mPrevRenderPassesProps = mRenderPassesProps;
 	}
 
 	auto pRenderContext = mpDevice->getRenderContext();
@@ -979,7 +977,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 		return false;
 	} 
 
-	pRenderContext->flush(true);
+	pRenderContext->submit(true);
 	mDirty = false;
 
 	// Debug test

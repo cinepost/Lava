@@ -47,54 +47,34 @@ static const bool kTopDown = true; // Memory layout when loading from file
 static std::atomic<uint32_t> gTotalTexturesCount = 0;
 static std::atomic<uint32_t> gDeletedTexturesCount = 0;
 
-ResourceBindFlags updateBindFlags(Device::SharedPtr pDevice, ResourceBindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
-	if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
-		flags |= ResourceBindFlags::RenderTarget;
-	}
-
-	ResourceBindFlags supported = getFormatBindFlags(pDevice.get(), format);
-	supported |= ResourceBindFlags::Shared;
-	if ((flags & supported) != flags) {
-		throw std::runtime_error("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported. Requested = (" 
-									+ to_string(flags) + "), supported = (" +to_string(supported) + ").");
-		flags = flags & supported;
-	}
-
-	return flags;
-}
 
 }  // namespace
 
 Texture::SharedPtr Texture::create1D(Device::SharedPtr device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
-	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create2D(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
-	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create3D(Device::SharedPtr device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags, bool sparse) {
-	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::createCube(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
-	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create2DMS(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, ResourceBindFlags bindFlags) {
-	bindFlags = updateBindFlags(device, bindFlags, false, 1, format, "Texture2DMultisample");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags);
 	pTexture->apiInit(nullptr, false);
 	return pTexture;
@@ -157,15 +137,15 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 
 
 Texture::Texture(Device::SharedPtr pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, ResourceBindFlags bindFlags)
-	: Resource(pDevice, type, bindFlags, 0), 
-		mWidth(width), 
-		mHeight(height), 
-		mDepth(depth), 
-		mMipLevels(mipLevels), 
-		mSampleCount(sampleCount), 
-		mArraySize(arraySize), 
-		mFormat(format), 
-		mIsSolid(false)
+  : Resource(pDevice, type, bindFlags, 0), 
+	mWidth(width), 
+	mHeight(height), 
+	mDepth(depth), 
+	mMipLevels(mipLevels), 
+	mSampleCount(sampleCount), 
+	mArraySize(arraySize), 
+	mFormat(format), 
+	mIsSolid(false)
 {
 	
 	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 

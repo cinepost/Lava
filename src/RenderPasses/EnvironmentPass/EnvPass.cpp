@@ -73,7 +73,7 @@ namespace {
     };
 }
 
-EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
     if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("EnvPass: requires Shader Model 6.5 support.");
     }
@@ -82,30 +82,24 @@ EnvPass::EnvPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     setupCamera();
 }
 
-EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Properties& props) {
-    SharedPtr pEnvPass = SharedPtr(new EnvPass(pRenderContext->getDevice()));
-    
-    auto pDevice = pRenderContext->getDevice();
-
-    std::string backdropImageName;
-
+void EnvPass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
-        if (key == kBackdropImageName) backdropImageName = value.operator std::string();
-        else if (key == kLoadAsSrgb) pEnvPass->mBackdropImageLoadSrgb = value;
-        else if (key == kFilter) pEnvPass->setFilter(value);
-        else if (key == kIntensity) pEnvPass->setIntensity(value);
-        else if (key == kOpacity) pEnvPass->setOpacity(value);
+        if (key == kBackdropImageName) setBackdropImagePath(value);
+        else if (key == kLoadAsSrgb) setLoadBackdropAsSRGB(value);
+        else if (key == kFilter) setFilter(value);
+        else if (key == kIntensity) setIntensity(value);
+        else if (key == kOpacity) setOpacity(value);
         else LLOG_WRN << "Unknown field '" << key << "' in an EnvPass dictionary";
     }
+}
 
-    pEnvPass->setBackdropImage(backdropImageName, pEnvPass->mBackdropImageLoadSrgb);
-    
-    return pEnvPass;
+EnvPass::SharedPtr EnvPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new EnvPass(pRenderContext->getDevice()));
 }
 
 Properties EnvPass::getProperties() const {
     Properties props;
-    props[kBackdropImageName] = mpBackdropTexture ? mpBackdropTexture->getSourceFilename() : std::string();
+    props[kBackdropImageName] = mpBackdropTexture ? mpBackdropTexture->getSourceFilename() : mBackdropImagePath;
     props[kLoadAsSrgb] = mBackdropImageLoadSrgb;
     props[kFilter] = mFilter;
     props[kIntensity] = mIntensity;
@@ -133,6 +127,8 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     }
 
     if (!mpComputePass || mDirty) {
+        loadBackdropImage();
+
         Program::Desc desc;
         desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -176,9 +172,15 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     cb_var["gOpacity"] = mOpacity;
     cb_var["lightsCount"] = mpScene->getLightCount();
 
-    //mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
+    mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
     
     mDirty = false;
+}
+
+void EnvPass::loadBackdropImage() {
+    if (!mDirty || mBackdropImagePath.empty()) return;
+
+    setBackdropTexture(Texture::createFromFile(mpDevice, mBackdropImagePath, false, mBackdropImageLoadSrgb));
 }
 
 void EnvPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -198,7 +200,7 @@ void EnvPass::setupCamera() {
     Camera::SharedPtr pCamera;
     if(mpScene) {
         pCamera = mpScene->getCamera();
-        setBackdropImage(pCamera->getBackgroundImageFilename(), mBackdropImageLoadSrgb);
+        setBackdropImagePath(pCamera->getBackgroundImageFilename());
     } else {
         pCamera = Camera::create();
     }
@@ -207,11 +209,16 @@ void EnvPass::setupCamera() {
     mpCamera = pCamera;
 }
 
-void EnvPass::setBackdropImage(const std::string& imageName, bool loadAsSrgb) {
-    std::shared_ptr<Texture> pTexture;
-    if (!imageName.empty()) {
-        setBackdropTexture(Texture::createFromFile(mpDevice, imageName, false, loadAsSrgb));
-    }
+void EnvPass::setLoadBackdropAsSRGB(bool mode) {
+    if(mBackdropImageLoadSrgb == mode) return;
+    mBackdropImageLoadSrgb = mode;
+    mDirty = true;
+}
+
+void EnvPass::setBackdropImagePath(const std::string& imageName) {
+    if (mBackdropImagePath == imageName) return;
+    mBackdropImagePath = imageName;
+    mDirty = true;
 }
 
 void EnvPass::setBackdropTexture(const Texture::SharedPtr& pTexture) {

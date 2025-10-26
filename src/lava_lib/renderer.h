@@ -3,17 +3,9 @@
 
 #include "lava_dll.h"
 
-#include <cstddef>
-#include <string>
-#include <vector>
-#include <memory>
-
-#include "types.h"
-
-#include "Falcor/Falcor.h"
-#include "Falcor/FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DeviceManager.h"
+#include "Falcor/Utils/Properties.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include "Falcor/Utils/Sampling/VisibilitySamplesContainer.h"
 
@@ -31,6 +23,14 @@
 
 #include "aov.h"
 #include "scene_builder.h"
+
+#include <cstddef>
+#include <string>
+#include <vector>
+#include <memory>
+
+#include "types.h"
+
 
 namespace lava {
 
@@ -146,11 +146,11 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
       \return Dictionary.
     */ 
 
-    Falcor::Dictionary& getRenderPassesDict() { mDirty = true; return mRenderPassesDict; };
-    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDict; };
+    Falcor::Properties& getRenderPassesProps() { mDirty = true; return mRenderPassesProps; };
+    const Falcor::Properties& getRenderPassesProps() const { return mRenderPassesProps; };
 
-    Falcor::Dictionary& getRendererConfDict() { mDirty = true; return mRendererConfDict; }
-    const Falcor::Dictionary& getRendererConfDict() const { return mRendererConfDict; };
+    Falcor::Properties& getRendererConfProps() { mDirty = true; return mRendererConfProps; }
+    const Falcor::Properties& getRendererConfProps() const { return mRendererConfProps; };
   
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
@@ -220,10 +220,10 @@ class LAVA_API Renderer: public std::enable_shared_from_this<Renderer> {
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass;
     ///
 
-    Falcor::Dictionary              mRendererConfDict;
-    Falcor::Dictionary              mRenderPassesDict;
+    Falcor::Properties              mRendererConfProps;
+    Falcor::Properties              mRenderPassesProps;
 
-    Falcor::Dictionary              mPrevRenderPassesDict;
+    Falcor::Properties              mPrevRenderPassesProps;
 
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 

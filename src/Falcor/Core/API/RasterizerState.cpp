@@ -35,6 +35,8 @@ RasterizerState::SharedPtr RasterizerState::create(const Desc& desc) {
     return SharedPtr(new RasterizerState(desc));
 }
 
+RasterizerState::~RasterizerState() = default;
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(RasterizerState) {
     pybind11::class_<RasterizerState, Falcor::SharedPtr<RasterizerState>>(m, "RasterizerState");

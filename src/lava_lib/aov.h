@@ -3,6 +3,16 @@
 
 #include "lava_dll.h"
 
+#include "Falcor/Utils/Properties.h"
+#include "Falcor/RenderGraph/RenderGraph.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+
+#include "display.h"
+
+#include "RenderPasses/AccumulatePass/AccumulatePass.h"
+#include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
+#include "RenderPasses/OpenDenoisePass/OpenDenoisePass.h"
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -12,14 +22,6 @@
 #include "types.h"
 #include "boost/variant.hpp"
 
-#include "Falcor/RenderGraph/RenderGraph.h"
-#include "Falcor/RenderGraph/RenderPass.h"
-
-#include "display.h"
-
-#include "RenderPasses/AccumulatePass/AccumulatePass.h"
-#include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
-#include "RenderPasses/OpenDenoisePass/OpenDenoisePass.h"
 
 namespace lava {
 
@@ -215,8 +217,8 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     bool isBound() const;
 
-    Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
-    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
+    Falcor::Properties& getRenderPassesProps() { return mRenderPassesProperties; };
+    const Falcor::Properties& getRenderPassesProps() const { return mRenderPassesProperties; };
 
     bool isEnabled() const { return (mState == State::Enabled); }
     State getState() const { return mState; }
@@ -227,9 +229,9 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     bool bindToTexture(Falcor::Texture::SharedPtr pTexture);
 
-    AccumulatePass::SharedPtr        createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Dictionary& dict = {});
-    ToneMapperPass::SharedPtr        createTonemappingPass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
-    OpenDenoisePass::SharedPtr       createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict = {});
+    AccumulatePass::SharedPtr        createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Properties& props = {});
+    ToneMapperPass::SharedPtr        createTonemappingPass( Falcor::RenderContext* pContext, const Falcor::Properties& props = {});
+    OpenDenoisePass::SharedPtr       createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Properties& props = {});
 
     AccumulatePass::SharedPtr        accumulationPass() { return mpAccumulatePass; }
     AccumulatePass::SharedConstPtr   accumulationPass() const { return mpAccumulatePass; }
@@ -274,7 +276,7 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     std::string                         mProcessedPassOutputName;
 
-    Falcor::Dictionary                  mRenderPassesDictionary;
+    Falcor::Properties                  mRenderPassesProperties;
 
     std::vector<uint8_t>                mOutputData;
     Falcor::Dictionary                  mMetaData;

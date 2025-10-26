@@ -32,6 +32,7 @@
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 
+#include "Falcor/Utils/Properties.h"
 #include "Falcor/Utils/Textures/FilterKernelsLUT.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Timing/SimpleProfiler.h"
@@ -113,7 +114,7 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& prop
     for (const auto& [key, value] : props) {
         if (key == kEnableAccumulation) mEnableAccumulation = value;
         else if (key == kAutoReset) mAutoReset = value;
-        else if (key == kPrecisionMode) mPrecisionMode = value;
+        else if (key == kPrecisionMode) mPrecisionMode = static_cast<Precision>((uint32_t)value);
         else if (key == kSubFrameCount) mSubFrameCount = value;
         else LLOG_WRN << "Unknown field '" << key << "' in AccumulatePass dictionary";
     }
@@ -142,7 +143,7 @@ Properties AccumulatePass::getProperties() const {
     Properties props;
     props[kEnableAccumulation] = mEnableAccumulation;
     props[kAutoReset] = mAutoReset;
-    props[kPrecisionMode] = mPrecisionMode;
+    props[kPrecisionMode] = static_cast<uint32_t>(mPrecisionMode);
     props[kSubFrameCount] = mSubFrameCount;
     return props;
 }

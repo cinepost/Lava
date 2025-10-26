@@ -122,7 +122,7 @@ Resource::SharedPtr createResourceForPass(Device::SharedPtr pDevice, const Resou
             bool isOutput = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output);
             bool isInternal = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Internal);
             if (isOutput || isInternal) mask |= ResourceBindFlags::DepthStencil | ResourceBindFlags::RenderTarget;
-            auto supported = getFormatBindFlags(pDevice.get(), format);
+            auto supported = pDevice->getFormatBindFlags(format);
             mask &= supported;
             bindFlags |= mask;
         }

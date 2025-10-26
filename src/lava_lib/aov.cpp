@@ -170,7 +170,7 @@ void AOVPlane::setFormat(Falcor::ResourceFormat format) {
 	if (format == pTexture->getFormat()) return;
 }
 
-AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Dictionary& dict) {
+AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Properties& props) {
 	assert(pGraph);
 
 	if (mpAccumulatePass) {
@@ -180,7 +180,7 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
 
 	mpRenderGraph = pGraph;
 	
-	mpAccumulatePass = AccumulatePass::create(pContext, dict);
+	mpAccumulatePass = AccumulatePass::create(pContext, props);
 	if (!mpAccumulatePass) {
 		LLOG_ERR << "Error creating accumulation pass for AOV plane " << mInfo.name << " !!!";
 		return nullptr;
@@ -207,7 +207,7 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
 	return mpAccumulatePass;
 }
 
-ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext* pContext, const Falcor::Dictionary& dict) {
+ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext* pContext, const Falcor::Properties& props) {
 	if (mpToneMapperPass) {
 		LLOG_WRN << "Accumulation pass for AOV plane " << mInfo.name << " already created !!!";
 		return mpToneMapperPass;
@@ -220,7 +220,7 @@ ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext*
 
 	LLOG_DBG << "Creating ToneMapperPass";
 
-	mpToneMapperPass = ToneMapperPass::create(pContext, dict);
+	mpToneMapperPass = ToneMapperPass::create(pContext, props);
 	if (!mpToneMapperPass) {
 		LLOG_ERR << "Error creating tonemapper pass for AOV plane " << mInfo.name << " !!!";
 		return nullptr;
@@ -255,7 +255,7 @@ ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext*
 	return mpToneMapperPass;
 }
 
-OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict) {
+OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Properties& props) {
 	if (mpDenoiserPass) {
 		LLOG_WRN << "Denoiser pass for AOV plane " << mInfo.name << " already created !!!";
 		return mpDenoiserPass;
@@ -268,7 +268,7 @@ OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContex
 
 	LLOG_DBG << "Creating OpenDenoiserPass";
 
-	mpDenoiserPass = OpenDenoisePass::create(pContext, dict);
+	mpDenoiserPass = OpenDenoisePass::create(pContext, props);
 	if (!mpDenoiserPass) {
 		LLOG_ERR << "Error creating denoiser pass for AOV plane " << mInfo.name << " !!!";
 		return nullptr;

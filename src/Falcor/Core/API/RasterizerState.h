@@ -28,13 +28,12 @@
 #ifndef SRC_FALCOR_CORE_API_RASTERIZERSTATE_H_
 #define SRC_FALCOR_CORE_API_RASTERIZERSTATE_H_
 
-#include <string>
-#include <memory>
-
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/Object.h"
 #include "Falcor/Core/Enum.h"
 
+#include <string>
+#include <memory>
 
 namespace Falcor {
 

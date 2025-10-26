@@ -63,6 +63,11 @@ const ChannelList kGBufferExtraChannels = {
 
 };
 
+Properties GBufferRT::getProperties() const {
+    Properties props;
+    return props;
+}
+
 GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Properties& dict) {
     return SharedPtr(new GBufferRT(pRenderContext->getDevice(), dict));
 }
@@ -274,7 +279,7 @@ void GBufferRT::parseProperties(const Properties& props) {
     GBuffer::parseProperties(props);
 
     for (const auto& [key, value] : props) {
-        if (key == kLODMode) mLODMode = value;
+        if (key == kLODMode) mLODMode = static_cast<TexLODMode>((uint32_t)value);
         else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
         else if (key == kUseDOF) mUseDOF = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
