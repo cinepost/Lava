@@ -28,13 +28,14 @@
 #ifndef SRC_FALCOR_CORE_API_GPUMEMORYHEAP_H_
 #define SRC_FALCOR_CORE_API_GPUMEMORYHEAP_H_
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Fence.h"
+
 #include <queue>
 #include <memory>
 #include <unordered_map>
 
-#include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Buffer.h"
-#include "Falcor/Core/API/Fence.h"
 
 namespace Falcor {
 
@@ -50,6 +51,8 @@ class FALCOR_API GpuMemoryHeap: public Object {
         uint8_t* pData = nullptr;
 
         uint64_t getGpuAddress() const { return gfxBufferResource->getDeviceAddress() + offset; }
+
+        ~BaseData();
     };
 
     struct Allocation : public BaseData {
@@ -58,6 +61,7 @@ class FALCOR_API GpuMemoryHeap: public Object {
 
         static const uint64_t kMegaPageId = -1;
         bool operator<(const Allocation& other)  const { return fenceValue > other.fenceValue; }
+
     };
 
     ~GpuMemoryHeap();

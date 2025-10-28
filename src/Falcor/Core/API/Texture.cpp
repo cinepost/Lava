@@ -47,36 +47,71 @@ static const bool kTopDown = true; // Memory layout when loading from file
 static std::atomic<uint32_t> gTotalTexturesCount = 0;
 static std::atomic<uint32_t> gDeletedTexturesCount = 0;
 
+inline bool autoGenerateMipMaps(const void* pInitData, uint32_t mipLevels) {
+	return pInitData && (mipLevels == Texture::kMaxPossible);
+}
+
+inline ResourceBindFlags updateBindFlags(Device::SharedPtr pDevice, ResourceBindFlags bindFlags, bool autoGenMips, ResourceFormat format, const std::string& texType) {
+	if (autoGenMips) {
+		bindFlags |= ResourceBindFlags::RenderTarget;
+	}
+
+	ResourceBindFlags supported = pDevice->getFormatBindFlags(format);
+    supported |= ResourceBindFlags::Shared;
+
+    if ((bindFlags & supported) != bindFlags) {
+        FALCOR_THROW(
+            "Error when creating {} of format {}. The requested bind-flags are not supported. Requested = ({}), supported = ({}).",
+            texType,
+            to_string(format),
+            to_string(bindFlags),
+            to_string(supported)
+        );
+    }
+
+	return bindFlags;
+}
+
 
 }  // namespace
 
-Texture::SharedPtr Texture::create1D(Device::SharedPtr device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
+Texture::SharedPtr Texture::create1D(Device::SharedPtr device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pInitData, ResourceBindFlags bindFlags) {
+	const bool autoGenMips = autoGenerateMipMaps(pInitData, mipLevels);
+	bindFlags = updateBindFlags(device, bindFlags, autoGenMips, format, "Texture1D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags);
-	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
+	pTexture->apiInit(pInitData, autoGenMips);
 	return pTexture;
 }
 
-Texture::SharedPtr Texture::create2D(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
+Texture::SharedPtr Texture::create2D(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pInitData, ResourceBindFlags bindFlags) {
+	const bool autoGenMips = autoGenerateMipMaps(pInitData, mipLevels);
+	bindFlags = updateBindFlags(device, bindFlags, autoGenMips, format, "Texture2D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags);
-	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
+	pTexture->apiInit(pInitData, autoGenMips);
 	return pTexture;
 }
 
-Texture::SharedPtr Texture::create3D(Device::SharedPtr device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags, bool sparse) {
+Texture::SharedPtr Texture::create3D(Device::SharedPtr device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pInitData, ResourceBindFlags bindFlags, bool sparse) {
+	const bool autoGenMips = autoGenerateMipMaps(pInitData, mipLevels);
+	bindFlags = updateBindFlags(device, bindFlags, autoGenMips, format, "Texture3D");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags);
-	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
+	pTexture->apiInit(pInitData, autoGenMips);
 	return pTexture;
 }
 
-Texture::SharedPtr Texture::createCube(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, ResourceBindFlags bindFlags) {
+Texture::SharedPtr Texture::createCube(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pInitData, ResourceBindFlags bindFlags) {
+	const bool autoGenMips = autoGenerateMipMaps(pInitData, mipLevels);
+	bindFlags = updateBindFlags(device, bindFlags, autoGenMips, format, "TextureCube");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags);
-	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
+	pTexture->apiInit(pInitData, autoGenMips);
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create2DMS(Device::SharedPtr device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, ResourceBindFlags bindFlags) {
+	const bool autoGenMips = false;
+	bindFlags = updateBindFlags(device, bindFlags, autoGenMips, format, "Texture2DMultisample");
 	Texture::SharedPtr pTexture = make_shared_ptr<Texture>(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags);
-	pTexture->apiInit(nullptr, false);
+	pTexture->apiInit(nullptr, autoGenMips);
 	return pTexture;
 }
 
@@ -136,7 +171,18 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 }
 
 
-Texture::Texture(Device::SharedPtr pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, ResourceBindFlags bindFlags)
+Texture::Texture(
+	Device::SharedPtr pDevice, 
+	uint32_t width, 
+	uint32_t height, 
+	uint32_t depth, 
+	uint32_t arraySize, 
+	uint32_t mipLevels, 
+	uint32_t sampleCount, 
+	ResourceFormat format, 
+	Type type, 
+	ResourceBindFlags bindFlags
+)
   : Resource(pDevice, type, bindFlags, 0), 
 	mWidth(width), 
 	mHeight(height), 
@@ -151,9 +197,10 @@ Texture::Texture(Device::SharedPtr pDevice, uint32_t width, uint32_t height, uin
 	LLOG_TRC << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
 
-	assert(width > 0 && height > 0 && depth > 0);
-	assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
-	assert(format != ResourceFormat::Unknown);
+	assert(mType != Type::Buffer);
+	assert(mFormat != ResourceFormat::Unknown);
+	assert(mWidth > 0 && mHeight > 0 && mDepth > 0);
+	assert(mArraySize > 0 && mMipLevels > 0 && mSampleCount > 0);
 
 	if (mMipLevels == kMaxPossible) {
 		uint32_t dims = width | height | depth;
@@ -353,6 +400,7 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 }
 
 void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* pTextureData, ResourceFormat dstResourceFormat) {
+	LLOG_ERR << "Texture::readConvertedTextureData!";
 	assert(pTextureData);
 	assert(mType == Type::Texture2D);
 	if(mIsUDIMTexture) {

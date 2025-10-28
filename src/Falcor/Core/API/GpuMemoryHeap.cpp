@@ -36,6 +36,9 @@
 namespace Falcor {
 
 GpuMemoryHeap::~GpuMemoryHeap() {
+    //if(mpActivePage && mpActivePage->gfxBufferResource) {
+    //    mpActivePage->gfxBufferResource->unmap(nullptr);
+    //}
     mDeferredReleases = decltype(mDeferredReleases)();
 }
 
@@ -103,6 +106,12 @@ void GpuMemoryHeap::release(Allocation& data) {
     mDeferredReleases.push(data);
 }
 
+GpuMemoryHeap::BaseData::~BaseData() {
+    if(!gfxBufferResource) return;
+    
+    gfxBufferResource->unmap(nullptr);
+}
+
 void GpuMemoryHeap::executeDeferredReleases() {
     uint64_t currentValue = mpFence->getCurrentValue();
 
@@ -113,6 +122,10 @@ void GpuMemoryHeap::executeDeferredReleases() {
             mpActivePage->allocationsCount--;
             if (mpActivePage->allocationsCount == 0) {
                 mpActivePage->currentOffset = 0;
+
+                //if(mpActivePage->gfxBufferResource) {
+                //    mpActivePage->gfxBufferResource->unmap(nullptr);
+                //}
             }
         } else {
             if (data.pageID != Allocation::kMegaPageId) {
@@ -120,6 +133,10 @@ void GpuMemoryHeap::executeDeferredReleases() {
                 pData->allocationsCount--;
                 
                 if (pData->allocationsCount == 0) {
+                    //if(pData->gfxBufferResource) {
+                    //    pData->gfxBufferResource->unmap(nullptr);
+                    //}
+
                     mAvailablePages.push(std::move(pData));
                     mUsedPages.erase(data.pageID);
                 }

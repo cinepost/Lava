@@ -232,7 +232,6 @@ void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t fi
 }
 
 CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {
-    Device::SharedPtr pDevice = pCtx->getDevice();
     SharedPtr pThis = SharedPtr(new ReadTextureTask);
     pThis->mpContext = pCtx;
     
@@ -244,7 +243,7 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
     auto mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
     pThis->mActualRowSize = (pTexture->getWidth(mipLevel) + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
     size_t rowAlignment = 1;
-    pDevice->getGfxDevice()->getTextureRowAlignment(&rowAlignment);
+    pCtx->mpDevice->getGfxDevice()->getTextureRowAlignment(&rowAlignment);
     pThis->mRowSize = align_to(static_cast<uint32_t>(rowAlignment), pThis->mActualRowSize);
     uint64_t rowCount =  (pTexture->getHeight(mipLevel) + formatInfo.blockHeight - 1) / formatInfo.blockHeight;
     uint64_t size = pTexture->getDepth(mipLevel) * rowCount * pThis->mRowSize;
@@ -290,19 +289,27 @@ void CopyContext::ReadTextureTask::getData(void* pData, size_t size) const {
     mpFence->wait();
 
     uint8_t* pDst = reinterpret_cast<uint8_t*>(pData);
-    const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
 
-    for (uint32_t z = 0; z < mDepth; z++) {
-        const uint8_t* pSrcZ = pSrc + z * (size_t)mRowSize * mRowCount;
-        uint8_t* pDstZ = pDst + z * (size_t)mActualRowSize * mRowCount;
-        for (uint32_t y = 0; y < mRowCount; y++) {
-            const uint8_t* pSrcY = pSrcZ + y * (size_t)mRowSize;
-            uint8_t* pDstY = pDstZ + y * (size_t)mActualRowSize;
-            std::memcpy(pDstY, pSrcY, mActualRowSize);
+
+    if (mpBuffer->getMemoryType() == MemoryType::DeviceLocal) {
+        mpContext->readBuffer(mpBuffer.get(), pDst, 0, size);
+    } else {
+        const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
+
+        for (uint32_t z = 0; z < mDepth; z++) {
+            const uint8_t* pSrcZ = pSrc + z * (size_t)mRowSize * mRowCount;
+            uint8_t* pDstZ = pDst + z * (size_t)mActualRowSize * mRowCount;
+            for (uint32_t y = 0; y < mRowCount; y++) {
+                const uint8_t* pSrcY = pSrcZ + y * (size_t)mRowSize;
+                uint8_t* pDstY = pDstZ + y * (size_t)mActualRowSize;
+                std::memcpy(pDstY, pSrcY, mActualRowSize);
+                //std::memset(pDstY, y, mActualRowSize);
+            }
         }
+
+        mpBuffer->unmap();
     }
 
-    mpBuffer->unmap();
 }
 
 void CopyContext::ReadTextureTask::getData(void* pData) const {

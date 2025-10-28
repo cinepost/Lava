@@ -78,10 +78,9 @@ SamplerState gKernelSampler;
 */
 [shader("compute")]
 [numthreads(16, 16, 1)]
-void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
-{
+void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(dispatchThreadId.xy >= gResolution)) return;
-    const uint2 pixelPos = dispatchThreadId.xy;    
+    const uint2 pixelPos = dispatchThreadId.xy;   
 
     #if is_valid(gDepth) && ((_FILTER_TYPE == SF_TYPE_CLOSEST) || (_FILTER_TYPE == SF_TYPE_FARTHEST))
     
@@ -140,8 +139,7 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 */
 [shader("compute")]
 [numthreads(16, 16, 1)]
-void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
-{
+void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;
     const float4 curColor = gCurFrame[pixelPos];
@@ -165,8 +163,7 @@ void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
 */
 [shader("compute")]
 [numthreads(16, 16, 1)]
-void accumulateDouble(uint3 dispatchThreadId : SV_DispatchThreadID)
-{
+void accumulateDouble(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;
     const float4 curColor = gCurFrame[pixelPos];
@@ -179,8 +176,7 @@ void accumulateDouble(uint3 dispatchThreadId : SV_DispatchThreadID)
     double sum[4];
     float4 output;
 
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         sum[i] = asdouble(sumLo[i], sumHi[i]);
         sum[i] += (double)curColor[i];
         asuint(sum[i], sumLo[i], sumHi[i]);

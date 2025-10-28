@@ -4,16 +4,13 @@
 #include "vk-base.h"
 #include "vk-device.h"
 
-namespace gfx
-{
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-class VKBufferHandleRAII
-{
+class VKBufferHandleRAII {
 public:
     /// Initialize a buffer with specified size, and memory props
     Result init(
@@ -27,19 +24,20 @@ public:
     /// Returns true if has been initialized
     bool isInitialized() const { return m_api != nullptr; }
 
-    VKBufferHandleRAII(): m_api(nullptr){}
+    VKBufferHandleRAII(): m_api(nullptr), m_is_mapped(false){}
 
     ~VKBufferHandleRAII();
     
-    VkBuffer        m_buffer;
+    VkBuffer            m_buffer;
 
-    VmaAllocationInfo mAllocationInfo = {};
-    VmaAllocation     mAllocation = {};
-    const VulkanApi*  m_api;
+    VmaAllocationInfo   mAllocationInfo = {};
+    VmaAllocation       mAllocation = {};
+    const VulkanApi*    m_api;
+    bool                m_is_mapped;
+
 };
 
-class BufferResourceImpl : public BufferResource
-{
+class BufferResourceImpl : public BufferResource {
 public:
     typedef BufferResource Parent;
 

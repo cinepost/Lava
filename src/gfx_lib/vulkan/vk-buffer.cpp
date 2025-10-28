@@ -127,15 +127,16 @@ Result BufferResourceImpl::getSharedHandle(InteropHandle* outHandle) {
 
 Result BufferResourceImpl::map(MemoryRange* rangeToRead, void** outPointer) {
     SLANG_UNUSED(rangeToRead);
-    auto api = m_buffer.m_api;
-    SLANG_VK_RETURN_ON_FAIL( vmaMapMemory(api->mVmaAllocator, m_buffer.mAllocation, outPointer));
+    SLANG_VK_RETURN_ON_FAIL( vmaMapMemory(m_buffer.m_api->mVmaAllocator, m_buffer.mAllocation, outPointer));
+    m_buffer.m_is_mapped = true;
     return SLANG_OK;
 }
 
 Result BufferResourceImpl::unmap(MemoryRange* writtenRange) {
+    if(!m_buffer.m_is_mapped) return SLANG_OK;
     SLANG_UNUSED(writtenRange);
-    auto api = m_buffer.m_api;
-    vmaUnmapMemory(api->mVmaAllocator, m_buffer.mAllocation);
+    vmaUnmapMemory(m_buffer.m_api->mVmaAllocator, m_buffer.mAllocation);
+    m_buffer.m_is_mapped = false;
     return SLANG_OK;
 }
 

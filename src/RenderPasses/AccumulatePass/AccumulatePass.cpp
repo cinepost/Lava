@@ -398,7 +398,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pAccProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pAccProgram);
 
-    //pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
+    pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
     mLastSampleDistanceUniform = sampleDistanceUniform;
 
     mDirty = false;

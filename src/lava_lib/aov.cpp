@@ -82,7 +82,6 @@ const uint8_t* AOVPlane::getTextureData(Texture* pTexture) {
 	const uint32_t textureDataSize = pTexture->getWidth(0) * pTexture->getHeight(0) * Falcor::getFormatBytesPerBlock(mInfo.format);
 	if (mOutputData.size() != textureDataSize) mOutputData.resize(textureDataSize);
 
-
 	if (mInfo.format == pTexture->getFormat()) {
 		// Requested and available resource formats are the same
 		pTexture->readTextureData(0, 0, mOutputData.data());
