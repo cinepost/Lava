@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "Properties.h"
 
-#include "Falcor/Core/API/Formats.h"
-#include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Utils/Dictionary.h"
 
 #include <nlohmann/json.hpp>
@@ -427,6 +425,7 @@ EXPORT_PROPERTY_ACCESSOR(float2)
 EXPORT_PROPERTY_ACCESSOR(float3)
 EXPORT_PROPERTY_ACCESSOR(float4)
 EXPORT_PROPERTY_ACCESSOR(Properties)
+EXPORT_PROPERTY_ACCESSOR(Dictionary::Value)
 
 #undef EXPORT_PROPERTY_ACCESSOR
 
