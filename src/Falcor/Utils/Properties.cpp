@@ -61,6 +61,24 @@ json valueToJson(const T& value) {
         return vecToJson(value);
     } else {
 #ifdef _WIN32
+        if constexpr (std::is_same_v<T, Dictionary::Value>) {
+            const std::type_info& vt = value.type();
+            if (vt == typeid(std::string)) return json(to_string(value));
+            if (vt == typeid(bool)) return json(static_cast<bool>(value));
+            if (vt == typeid(int)) return json(static_cast<int>(value));
+            if (vt == typeid(uint)) return json(static_cast<uint>(value));
+            if (vt == typeid(float)) return json(static_cast<float>(value));
+            if (vt == typeid(Falcor::int2)) return vecToJson(static_cast<Falcor::int2>(value));
+            if (vt == typeid(Falcor::int3)) return vecToJson(static_cast<Falcor::int3>(value));
+            if (vt == typeid(Falcor::int4)) return vecToJson(static_cast<Falcor::int4>(value));
+            if (vt == typeid(Falcor::uint2)) return vecToJson(static_cast<Falcor::uint2>(value));
+            if (vt == typeid(Falcor::uint3)) return vecToJson(static_cast<Falcor::uint3>(value));
+            if (vt == typeid(Falcor::uint4)) return vecToJson(static_cast<Falcor::uint4>(value));
+            if (vt == typeid(Falcor::float2)) return vecToJson(static_cast<Falcor::float2>(value));
+            if (vt == typeid(Falcor::float3)) return vecToJson(static_cast<Falcor::float3>(value));
+            if (vt == typeid(Falcor::float4)) return vecToJson(static_cast<Falcor::float4>(value));
+            // return json(value.toJsonString());
+        }
         FALCOR_THROW("Property type '{}' valueToJson(...) conversion not implemented !!!", typeid(T).name());
 #else
         return json(value);
