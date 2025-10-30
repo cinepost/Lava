@@ -78,45 +78,6 @@ class dlldecl ImageIO {
 			*/
 			None
 		};
-
-#ifdef WIN32
-		/** Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
-			Throws an exception if the DDS file is malformed.
-			\param[in] path Path of file to load.
-			\return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
-		*/
-		static Bitmap::UniqueConstPtr loadBitmapFromDDS(const fs::path& path); // top down = true
-
-		/** Load a DDS file to a Texture.
-			Throws an exception if the DDS file is malformed.
-			\param[in] path Path of file to load.
-			\param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
-			\return Texture object containing image data if loading was successful. Otherwise, nullptr.
-		*/
-		static Texture::SharedPtr loadTextureFromDDS(Device::SharedPtr pDevice, const fs::path& path, bool loadAsSrgb);
-
-		/** Saves a bitmap to a DDS file.
-			Throws an exception if path is invalid or the image cannot be saved.
-			\param[in] path Path to save to.
-			\param[in] bitmap Bitmap object to save.
-			\param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-			\param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-		*/
-		static void saveToDDS(const fs::path& path, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None, bool generateMips = false);
-
-		/** Saves a Texture to a DDS file. All mips and array images are saved.
-			Throws an exception if the path is invalid or the image cannot be saved.
-
-			TODO: Support exporting single subresource. Options for one or all are probably enough?
-
-			\param[in] pContext Copy context used to read texture data from the GPU.
-			\param[in] path Path to save to.
-			\param[in] pBitmap Bitmap object to save.
-			\param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-			\param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-		*/
-		static void saveToDDS(CopyContext* pContext, const fs::path& path, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
-#endif  // WIN32
 };
 
 }  // namespace Falcor

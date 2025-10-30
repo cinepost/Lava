@@ -31,6 +31,8 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Math/Vector.h"
 
+#include <nlohmann/json.hpp>
+
 #include <memory>
 #include <unordered_map>
 #include <any>
@@ -40,7 +42,10 @@ namespace Falcor {
     using uint = uint32_t;
 
     class Dictionary {
-     public:
+    public:
+    
+        using json = nlohmann::ordered_json;
+
         class Value {
          public:
             Value() = default;
@@ -60,6 +65,8 @@ namespace Falcor {
             operator std::string() const;
 
             std::string toJsonString() const;
+
+            json toJson() const;
 
             const std::type_info& type() const { return mValue.type(); }
 

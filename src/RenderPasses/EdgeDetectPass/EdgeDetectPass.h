@@ -68,6 +68,7 @@ class PASS_API EdgeDetectPass : public RenderPass {
 	protected:
 		EdgeDetectPass(Device::SharedPtr pDevice, const Properties& props);
 
+		void parseProperties(const Properties& props);
 		void prepareBuffers(RenderContext* pRenderContext, uint2 resolution);
 		void prepareKernelTextures();
 

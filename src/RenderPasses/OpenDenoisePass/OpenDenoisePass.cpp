@@ -139,7 +139,7 @@ Properties OpenDenoisePass::getProperties() const {
 
 void OpenDenoisePass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
-        if (key == kOutputFormat) setOutputFormat(value);
+        if (key == kOutputFormat) setOutputFormat(static_cast<Falcor::ResourceFormat>((uint32_t)value));
         else if (key == kUseAlbedo) useAlbedo(static_cast<bool>(value));
         else if (key == kUseNormal) useNormal(static_cast<bool>(value));
         else if (key == kQuality) setQuality(static_cast<OpenDenoisePass::Quality>((uint32_t)value));

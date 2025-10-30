@@ -124,7 +124,9 @@ void PluginManager::loadAllPlugins() {
     CpuTimer timer;
     timer.update();
 
-    std::ifstream ifs(getRuntimeDirectory() / "plugins" / "plugins.json");
+    const fs::path pluginsListPath = getRuntimeDirectory() / "plugins" / "plugins.json";
+
+    std::ifstream ifs(pluginsListPath.string());
     auto json = nlohmann::json::parse(ifs);
     size_t loadedCount = 0;
     for (const auto& name : json) {

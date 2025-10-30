@@ -96,7 +96,10 @@ class PASS_API AccumulatePass : public RenderPass {
     // Get the number of singular values of a filter according to SVD theorem. This might be an overenginered for our use case.. 
     static size_t pixelFilterSingularValueCountSVD(PixelFilterType pixelFilterType, uint32_t width, uint32_t height);
 
- protected:
+  private:
+    void parseProperties(const Properties& props);
+
+  protected:
     AccumulatePass(Device::SharedPtr pDevice, const Properties& props);
     void prepareBuffers(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void preparePixelFilterKernelTexture(RenderContext* pRenderContext);

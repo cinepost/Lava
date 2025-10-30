@@ -74,7 +74,6 @@ file( GLOB SOURCES
 if(WIN32)
     file( GLOB SOURCES_ARCH
         ./Core/Platform/Windows/Windows.cpp
-        ./Rendering/Utils/*.cpp
     )
 else()
     file( GLOB SOURCES_ARCH

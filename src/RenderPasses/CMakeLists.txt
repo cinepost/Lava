@@ -131,6 +131,9 @@ makeRenderPassLib(NAME "CryptomattePass")
 makeRenderPassLib(NAME "EdgeDetectPass")
 makeRenderPassLib(NAME "ImageLoaderPass")
 makeRenderPassLib(NAME "EnvironmentPass")
+makeRenderPassLib(NAME "GBuffer" DEPS DepthPass TexturesResolvePass)
+
+# Disabled passes
 
 #makeRenderPassLib(NAME "PathTracer")
 #makeRenderPassLib(NAME "RTXDIPass")
@@ -155,6 +158,5 @@ makeRenderPassLib(NAME "EnvironmentPass")
 #makeRenderPassLib(NAME "BlitPass")
 
 # Render passes with dependecies
-makeRenderPassLib(NAME "GBuffer" DEPS DepthPass TexturesResolvePass)
 #makeRenderPassLib(NAME "SSAO" DEPS Utils)
 #makeRenderPassLib(NAME "CSM" DEPS Utils)

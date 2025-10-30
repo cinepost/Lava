@@ -54,14 +54,14 @@ const std::string kDisableAlphaTest = "disableAlphaTest";
 
 void DepthPass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
-        if (key == kDepthFormat) setDepthBufferFormat(value);
+        if (key == kDepthFormat) setDepthBufferFormat(static_cast<Falcor::ResourceFormat>((uint32_t)value));
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
     }
 }
 
 Properties DepthPass::getProperties() const {
     Properties d;
-    d[kDepthFormat] = mDepthFormat;
+    d[kDepthFormat] = static_cast<uint32_t>(mDepthFormat);
     d[kDisableAlphaTest] = mAlphaTestDisabled;
     return d;
 }

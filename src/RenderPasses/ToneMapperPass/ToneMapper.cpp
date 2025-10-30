@@ -93,7 +93,7 @@ void ToneMapperPass::parseProperties(const Properties& props) {
         else if (key == kClamp) setClamp(value);
         else if (key == kWhiteMaxLuminance) setWhiteMaxLuminance(value);
         else if (key == kWhiteScale) setWhiteScale(value);
-        else if (key == kOutputFormat) setOutputFormat(value);
+        else if (key == kOutputFormat) setOutputFormat(static_cast<Falcor::ResourceFormat>((uint32_t)value));
     }
 }
 
@@ -126,7 +126,7 @@ ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, 
 
 Properties ToneMapperPass::getProperties() const {
     Properties props;
-    props[kOutputFormat] = mOutputFormat;
+    props[kOutputFormat] = static_cast<uint32_t>(mOutputFormat);
     props[kExposureCompensation] = mExposureCompensation;
     props[kAutoExposure] = mAutoExposure;
     props[kExposureValue] = mExposureValue;

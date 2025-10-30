@@ -101,7 +101,7 @@ Properties EnvPass::getProperties() const {
     Properties props;
     props[kBackdropImageName] = mpBackdropTexture ? mpBackdropTexture->getSourceFilename() : mBackdropImagePath;
     props[kLoadAsSrgb] = mBackdropImageLoadSrgb;
-    props[kFilter] = mFilter;
+    props[kFilter] = static_cast<uint32_t>(mFilter);
     props[kIntensity] = mIntensity;
     props[kOpacity] = mOpacity;
     props[kUseDOF] = mUseDOF;

@@ -62,7 +62,11 @@ json valueToJson(const T& value) {
     } else if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> || std::is_same_v<T, float4>) {
         return vecToJson(value);
     } else {
+#ifdef _WIN32
+        FALCOR_THROW("Property type '{}' valueToJson(...) conversion not implemented !!!", typeid(T).name());
+#else
         return json(value);
+#endif
     }
 }
 
@@ -110,7 +114,7 @@ T valueFromJson(const json& json, std::string_view name) {
             FALCOR_THROW("Property '{}' is not a string.", name);
         }
         return static_cast<T>(json);
-    } else if constexpr (std::is_same_v<T, std::filesystem::path>) {
+    } else if constexpr (std::is_same_v<T, fs::path>) {
         if (!json.is_string()) {
             FALCOR_THROW("Property '{}' is not a string/path.", name);
         }
@@ -127,6 +131,11 @@ T valueFromJson(const json& json, std::string_view name) {
     } else if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> || std::is_same_v<T, float4>) {
         return vecFromJson<T>(json, name);
     }
+#ifdef _WIN32
+    else {
+       FALCOR_THROW("Property type '{}' valueFromJson(...) conversion not implemented !!!", typeid(T).name());
+    }
+#endif
 }
 
 json pythonToJson(const pybind11::handle& obj) {
@@ -407,7 +416,7 @@ EXPORT_PROPERTY_ACCESSOR(uint64_t)
 EXPORT_PROPERTY_ACCESSOR(float)
 EXPORT_PROPERTY_ACCESSOR(double)
 EXPORT_PROPERTY_ACCESSOR(std::string)
-EXPORT_PROPERTY_ACCESSOR(std::filesystem::path)
+EXPORT_PROPERTY_ACCESSOR(fs::path)
 EXPORT_PROPERTY_ACCESSOR(int2)
 EXPORT_PROPERTY_ACCESSOR(int3)
 EXPORT_PROPERTY_ACCESSOR(int4)
@@ -418,9 +427,6 @@ EXPORT_PROPERTY_ACCESSOR(float2)
 EXPORT_PROPERTY_ACCESSOR(float3)
 EXPORT_PROPERTY_ACCESSOR(float4)
 EXPORT_PROPERTY_ACCESSOR(Properties)
-EXPORT_PROPERTY_ACCESSOR(Dictionary::Value)
-EXPORT_PROPERTY_ACCESSOR(ResourceFormat)
-EXPORT_PROPERTY_ACCESSOR(Sampler::Filter)
 
 #undef EXPORT_PROPERTY_ACCESSOR
 

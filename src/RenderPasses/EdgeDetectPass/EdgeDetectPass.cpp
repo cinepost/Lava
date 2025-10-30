@@ -102,38 +102,40 @@ static inline bool validChannel(uint value) {
     return false;
 }
 
-EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Properties& props) {
-    auto pThis = SharedPtr(new EdgeDetectPass(pRenderContext->getDevice(), props));
-
+void EdgeDetectPass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
-        if (key == kTraceDepth) pThis->setTraceDepth(value);
-        else if (key == kTraceNormal) pThis->setTraceNormal(value);
-        else if (key == kTraceMaterialID) pThis->setTraceMaterialID(value);
-        else if (key == kTraceInstanceID) pThis->setTraceInstanceID(value);
-        else if (key == kIgnoreAlpha) pThis->setTraceAlpha(!value);
-        else if (key == kDepthDistanceRange) pThis->setDepthDistanceRange(value);
-        else if (key == kNormalThresholdRange) pThis->setNormalThresholdRange(value);
+        if (key == kTraceDepth) setTraceDepth(value);
+        else if (key == kTraceNormal) setTraceNormal(value);
+        else if (key == kTraceMaterialID) setTraceMaterialID(value);
+        else if (key == kTraceInstanceID) setTraceInstanceID(value);
+        else if (key == kIgnoreAlpha) setTraceAlpha(!value);
+        else if (key == kDepthDistanceRange) setDepthDistanceRange(value);
+        else if (key == kNormalThresholdRange) setNormalThresholdRange(value);
 
-        else if (key == kDepthKernelSize) pThis->setDepthKernelSize(value);
-        else if (key == kNormalKernelSize) pThis->setNormalKernelSize(value);
-        else if (key == kMaterialKernelSize) pThis->setMaterialKernelSize(value);
-        else if (key == kInstanceKernelSize) pThis->setInstanceKernelSize(value);
+        else if (key == kDepthKernelSize) setDepthKernelSize(value);
+        else if (key == kNormalKernelSize) setNormalKernelSize(value);
+        else if (key == kMaterialKernelSize) setMaterialKernelSize(value);
+        else if (key == kInstanceKernelSize) setInstanceKernelSize(value);
         
-        else if (key == kDepthOuputChannel) pThis->setDepthOutputChannel(value);
-        else if (key == kNormalOuputChannel) pThis->setNormalOutputChannel(value);
-        else if (key == kMaterialOuputChannel) pThis->setMaterialOutputChannel(value);
-        else if (key == kInstanceOuputChannel) pThis->setInstanceOutputChannel(value);
+        else if (key == kDepthOuputChannel) setDepthOutputChannel(value);
+        else if (key == kNormalOuputChannel) setNormalOutputChannel(value);
+        else if (key == kMaterialOuputChannel) setMaterialOutputChannel(value);
+        else if (key == kInstanceOuputChannel) setInstanceOutputChannel(value);
 
-        else if (key == kLowPassFilterSize) pThis->setLowPassFilterSize(uint(value));
+        else if (key == kLowPassFilterSize) setLowPassFilterSize(uint(value));
     }
+}
 
-    return pThis;
+EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Properties& props) {
+    return SharedPtr(new EdgeDetectPass(pRenderContext->getDevice(), props));
 }
 
 EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
     if (!pDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
         FALCOR_THROW("EdgeDetectPass requires Shader Model 6.5 support.");
     }
+
+    parseProperties(props);
 }
 
 Properties EdgeDetectPass::getProperties() const {

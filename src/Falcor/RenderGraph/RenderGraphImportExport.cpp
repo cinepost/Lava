@@ -152,7 +152,7 @@ bool RenderGraphExporter::save(const RenderGraph::SharedPtr& pGraph, fs::path pa
     updateGraphStrings(graphName, path, funcName);
 
     // Save it to file
-    std::ofstream f(path);
+    std::ofstream f(path.string());
     f << ir << std::endl;
     f << graphName << " = " << funcName + "()\n";
     // Try adding it to Mogwai

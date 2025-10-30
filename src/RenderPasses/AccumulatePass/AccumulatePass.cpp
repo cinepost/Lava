@@ -105,24 +105,30 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
     return SharedPtr(new AccumulatePass(pRenderContext->getDevice(), props));
 }
 
-AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
-    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
-        FALCOR_THROW("AccumulatePass requires Shader Model 6.5 support.");
-    }
-
-    // Deserialize pass from dictionary.
+void AccumulatePass::parseProperties(const Properties& props) {
     for (const auto& [key, value] : props) {
         if (key == kEnableAccumulation) mEnableAccumulation = value;
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = static_cast<Precision>((uint32_t)value);
         else if (key == kSubFrameCount) mSubFrameCount = value;
-        else LLOG_WRN << "Unknown field '" << key << "' in AccumulatePass dictionary";
+        else {
+            LLOG_WRN << "Unknown field '" << key << "' in AccumulatePass dictionary";
+        }
+    }
+}
+
+
+AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Properties& props): RenderPass(pDevice) {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5)) {
+        FALCOR_THROW("AccumulatePass requires Shader Model 6.5 support.");
     }
 
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 
     setPixelFilterType(PixelFilterType::Box);
     setPixelFilterSize({1u, 1u});
+
+    parseProperties(props);
 
     // Create accumulation programs.
     // Note only compensated summation needs precise floating-point mode.

@@ -652,7 +652,7 @@ void releaseDll(DllHandle dll) {
     FreeLibrary(dll);
 }
 
-SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path) {
+SharedLibraryHandle loadSharedLibrary(const fs::path& path) {
     return LoadLibraryW(path.c_str());
 }
 

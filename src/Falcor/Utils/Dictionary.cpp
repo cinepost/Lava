@@ -103,6 +103,41 @@ std::string Dictionary::Value::toJsonString() const {
     #endif
 }
 
+
+Dictionary::json Dictionary::Value::toJson() const {
+    using json = Dictionary::json;
+
+    if (mValue.type() == typeid(int)) {
+        return json(std::any_cast<int>(mValue));
+    }
+    if (mValue.type() == typeid(uint)) {
+        return json(std::any_cast<uint>(mValue));
+    }
+    if (mValue.type() == typeid(float)) {
+        return json(std::any_cast<float>(mValue));
+    }
+    if (mValue.type() == typeid(std::string)) {
+        return json(std::any_cast<std::string>(mValue));
+    }
+    if (mValue.type() == typeid(fs::path)) {
+        return json(std::any_cast<fs::path>(mValue).string());
+    }
+    if (mValue.type() == typeid(bool)) {
+        return json(std::any_cast<bool>(mValue));
+    }
+    if (mValue.type() == typeid(std::vector<int>)) {
+        return json(std::any_cast<std::vector<int>>(mValue));
+    }
+    if (mValue.type() == typeid(std::vector<uint>)) {
+        return json(std::any_cast<std::vector<uint>>(mValue));
+    }
+    if (mValue.type() == typeid(std::vector<float>)) {
+        return json(std::any_cast<std::vector<float>>(mValue));
+    }
+    FALCOR_UNREACHABLE();
+    return {};
+}
+
 std::string Dictionary::toJsonString() const {
     std::stringstream ss; ss << "{";
     
