@@ -36,7 +36,7 @@ namespace Falcor {
 
 namespace BlueNoiseTexture {
 
-Texture::SharedPtr create(Device::SharedPtr pDevice);
+	FALCOR_API Texture::SharedPtr create(Device::SharedPtr pDevice);
 
 }
 

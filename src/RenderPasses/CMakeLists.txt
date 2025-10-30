@@ -77,6 +77,7 @@ function (makeRenderPassLib)
         ${ARGS_DEPS}
         lava_utils_lib
         gfx_lib
+        $<$<PLATFORM_ID:Windows>:${EXTERNALS_INSTALL_DIR}/lib/fmt.lib>
     )
 
     # Copy/install all needed shaders

@@ -41,12 +41,12 @@ namespace Falcor {
 
     using uint = uint32_t;
 
-    class Dictionary {
+    class FALCOR_API Dictionary {
     public:
     
         using json = nlohmann::ordered_json;
 
-        class Value {
+        class FALCOR_API Value {
          public:
             Value() = default;
             Value(std::any& value) : mValue(value) {};

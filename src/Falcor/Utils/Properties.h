@@ -338,8 +338,8 @@ private:
 };
 
 #define EXTERN_PROPERTY_ACCESSOR(T)                                                         \
-    extern template FALCOR_API void Properties::setInternal<T>(std::string_view, const T&); \
-    extern template FALCOR_API bool Properties::getInternal<T>(std::string_view, T&) const;
+    extern template void Properties::setInternal<T>(std::string_view, const T&); \
+    extern template bool Properties::getInternal<T>(std::string_view, T&) const;
 
 EXTERN_PROPERTY_ACCESSOR(bool)
 EXTERN_PROPERTY_ACCESSOR(int32_t)

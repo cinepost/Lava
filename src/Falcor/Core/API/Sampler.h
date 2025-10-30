@@ -78,7 +78,7 @@ class FALCOR_API Sampler : public Object {
 
     /** Descriptor used to create a new Sampler object
     */
-    class Desc {
+    class FALCOR_API Desc {
      public:
         friend class Sampler;
 
