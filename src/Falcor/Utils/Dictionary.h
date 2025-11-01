@@ -31,6 +31,7 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Math/Vector.h"
 
+#include <pybind11/pytypes.h>
 #include <nlohmann/json.hpp>
 
 #include <memory>
@@ -56,6 +57,9 @@ namespace Falcor {
 
             template<typename T>
             operator T() const { return std::any_cast<T>(mValue); }
+
+            template<typename T>
+            T get() const { return std::any_cast<T>(mValue); }
 
             bool operator==(const Value& other) const;
             bool operator!=(const Value& other) const { return !(other == *this); }
@@ -103,10 +107,17 @@ namespace Falcor {
 
         bool isEmpty() const { return mContainer.size() == 0; }
 
+        /// Converts the properties to a python dictionary.
+        pybind11::dict toPython() const;
+
         /** Check if a key exists.
         */
         bool keyExists(const std::string& key) const {
             return mContainer.find(key) != mContainer.end();
+        }
+
+        bool has(const std::string& key) const {
+            return keyExists(key);
         }
 
         /** Get value by key. Throws an exception if key does not exist.

@@ -4,6 +4,61 @@
 
 namespace Falcor {
 
+namespace {
+
+pybind11::object jsonToPython(const Dictionary::Value& v) {
+
+    if (v.type() == typeid(int)) {
+        return pybind11::int_(v.get<int>());
+    } else if (v.type() == typeid(uint)) {
+        return pybind11::int_(v.get<uint>());
+    } else if (v.type() == typeid(float)) {
+        return pybind11::float_(v.get<float>());
+    } else if (v.type() == typeid(std::string)) {
+        return pybind11::str(v.get<std::string>());
+    } else if (v.type() == typeid(fs::path)) {
+        return pybind11::str(v.get<fs::path>().string());
+    } else if (v.type() == typeid(bool)) {
+        return pybind11::bool_(v.get<bool>());
+    } else if (v.type() == typeid(std::vector<int>)) {
+        std::vector<int> vec = v.get<std::vector<int>>();
+        pybind11::list obj(vec.size());
+        for (std::size_t i = 0; i < vec.size(); i++) {
+            obj[i] = pybind11::int_(vec[i]);
+        }
+        return std::move(obj);
+    } else if (v.type() == typeid(std::vector<uint>)) {
+        std::vector<uint> vec = v.get<std::vector<uint>>();
+        pybind11::list obj(vec.size());
+        for (std::size_t i = 0; i < vec.size(); i++) {
+            obj[i] = pybind11::int_(vec[i]);
+        }
+        return std::move(obj);
+    } else if (v.type() == typeid(std::vector<float>)) {
+        std::vector<float> vec = v.get<std::vector<float>>();
+        pybind11::list obj(vec.size());
+        for (std::size_t i = 0; i < vec.size(); i++) {
+            obj[i] = pybind11::float_(vec[i]);
+        }
+        return std::move(obj);
+    } else if (v.type() == typeid(Dictionary)) {
+        return v.get<Dictionary>().toPython();
+    } else {
+        LLOG_ERR << "Unsupported Properties::Value type " << v.type().name() << " !!!";
+        return pybind11::none();
+    }
+}
+
+} // namespace
+
+pybind11::dict Dictionary::toPython() const {
+    pybind11::dict obj;
+    for(const auto&[key, value]: mContainer) {
+        obj[pybind11::str(key)] = jsonToPython(value);
+    }
+    return obj;
+}
+
 bool Dictionary::Value::operator==(const Value& other) const { 
     if(type() != other.type()) return false;
     
@@ -143,7 +198,7 @@ std::string Dictionary::toJsonString() const {
     
     size_t i = 0;
     const size_t c_size = mContainer.size();
-    for(const auto[key, value]: mContainer) {
+    for(const auto&[key, value]: mContainer) {
         ss << "\"" << key << "\"" << ":" << value.toJsonString() << ((++i != c_size) ? ",":"");
     }
 
