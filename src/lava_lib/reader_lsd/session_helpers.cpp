@@ -410,8 +410,6 @@ bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameIn
 }
 
 void translateLSDPlanePropertiesToLavaProps(scope::Plane::SharedConstPtr pScope, Falcor::Properties& props) {
-	//pScope->printSummary(std::cout, 4);
-	
 	for (const auto& [key, value] : pScope->to_dict(ast::Style::IMAGE)) {
 		props[key] = value;
 	}

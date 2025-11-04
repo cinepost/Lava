@@ -250,11 +250,13 @@ int main(int argc, char** argv){
       ;
 
     const std::string profilerCaptureDefaultFilename = "lava_profiling_stats.json";
+    const std::string vkValidationDefaultFilename;
+
     std::string vkValidationFilename;
     std::string profilerCaptureFilename;
     po::options_description profiling("Profiling");
     profiling.add_options()
-      ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationFilename), "Output Vulkan validation info")
+      ("vk-validate", po::value<std::string>(&vkValidationFilename)->default_value(vkValidationDefaultFilename), "Output Vulkan validation info")
 #ifdef FALCOR_ENABLE_PROFILER
       ("perf-file", po::value<std::string>(&profilerCaptureFilename)->default_value(profilerCaptureDefaultFilename), "Output profiling file")
 #endif //FALCOR_ENABLE_PROFILER

@@ -3047,16 +3047,16 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
             assert(instanceCount > 0);
             for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
+                
+                #ifdef _DEBUG
                 // Validate that the ordering is matching our expectations:
                 // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-                
-                //#ifdef _DEBUG
                 for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
                     const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
                     assert(instances.size() == instanceCount);
                     assert(instances[instanceIdx] == instanceID + geometryIndex);
                 }
-                //#endif // _DEBUG
+                #endif // _DEBUG
 
                 //const auto& instance = mGeometryInstanceData[instanceID];
                 const auto& instance = mGeometryInstanceData[mMeshIdToInstanceIds[meshID][instanceIdx]];
@@ -3224,6 +3224,12 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayCount, bool per
     RtAccelerationStructureBuildInputs inputs = {};
     inputs.kind = RtAccelerationStructureKind::TopLevel;
     inputs.descCount = (uint32_t)mInstanceDescs.size();
+
+    // WTF !????
+    if(inputs.descCount > 1) {
+        inputs.descCount = 1;
+    }
+
     inputs.flags = RtAccelerationStructureBuildFlags::None;
 
     // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt

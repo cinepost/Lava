@@ -637,6 +637,8 @@ else()
     set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
   endif()
 
+  message("!!!!! DEPS_BUILD_TYPE " ${DEPS_BUILD_TYPE})
+
   if(WIN32)
     set(OPENVDB_CXX_FLAGS "/EHsc")
     if(DEPS_BUILD_TYPE STREQUAL "Release")

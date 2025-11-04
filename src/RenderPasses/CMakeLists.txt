@@ -77,8 +77,15 @@ function (makeRenderPassLib)
         ${ARGS_DEPS}
         lava_utils_lib
         gfx_lib
-        $<$<PLATFORM_ID:Windows>:${EXTERNALS_INSTALL_DIR}/lib/fmt.lib>
     )
+#        $<$<PLATFORM_ID:Windows>:${EXTERNALS_INSTALL_DIR}/lib/fmt.lib>
+    if(WIN32)
+        target_link_libraries(
+            ${PASS_LIB}
+            $<$<CONFIG:Release>:${EXTERNALS_INSTALL_DIR}/lib/fmt.lib>
+            $<$<CONFIG:Debug>:${EXTERNALS_INSTALL_DIR}/lib/fmtd.lib>
+        )
+    endif()
 
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)

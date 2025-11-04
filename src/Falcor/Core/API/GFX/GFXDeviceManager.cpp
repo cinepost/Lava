@@ -146,11 +146,7 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
 bool DeviceManager::init() {
     if (mInitialized) return true;
 
-#ifdef _DEBUG
-    const bool enableValidationLayer = true;
-#else
     const bool enableValidationLayer = mEnableValidationLayer;
-#endif
     
     gVulkanInstance = createVulkanInstance(enableValidationLayer);
     
