@@ -3227,7 +3227,7 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayCount, bool per
 
     // WTF !????
     if(inputs.descCount > 1) {
-        inputs.descCount = 1;
+        //inputs.descCount = 1;
     }
 
     inputs.flags = RtAccelerationStructureBuildFlags::None;

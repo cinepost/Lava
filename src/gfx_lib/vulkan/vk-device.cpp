@@ -2093,9 +2093,9 @@ Result DeviceImpl::createBufferResourceImpl(
 		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
 
-	if (desc.allowedStates.contains(ResourceState::AccelerationStructure)) {
-		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-	}
+	//if (desc.allowedStates.contains(ResourceState::AccelerationStructure)) {
+	//	usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+	//}
 
 	if (initData) {
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -2103,17 +2103,26 @@ Result DeviceImpl::createBufferResourceImpl(
 
 	if (desc.allowedStates.contains(ResourceState::ConstantBuffer) || desc.memoryType == MemoryType::Upload || desc.memoryType == MemoryType::ReadBack) {
 		reqMemoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	} else {
+		reqMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
 
 	RefPtr<BufferResourceImpl> buffer(new BufferResourceImpl(desc, this));
 	if (desc.isShared) {
+		VkExternalMemoryHandleTypeFlagsKHR extMemHandleType
+#if SLANG_WINDOWS_FAMILY
+            = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+#else
+            = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+#endif
+            
 		SLANG_RETURN_ON_FAIL(buffer->m_buffer.init(
 			m_api,
 			desc.sizeInBytes,
 			usage,
 			reqMemoryProperties,
 			desc.isShared,
-			VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT));
+			extMemHandleType));
 	} else {
 		SLANG_RETURN_ON_FAIL(
 			buffer->m_buffer.init(m_api, desc.sizeInBytes, usage, reqMemoryProperties));
