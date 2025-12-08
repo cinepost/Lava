@@ -466,7 +466,7 @@ void VBufferSW::executeCompute(RenderContext* pRenderContext, const RenderData& 
         if(mSampleNumber == 0) {
             SimpleProfiler profile("VBufferSW::createBuffers() setRaytracingShaderData");
             // TODO: update raytracing data once per-frame
-            mpScene->setRaytracingShaderData(pRenderContext, var);
+            mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
         }
     }
 

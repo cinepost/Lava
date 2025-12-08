@@ -66,7 +66,7 @@ class TextureResourceImpl : public TextureResource {
 
         virtual SLANG_NO_THROW Result SLANG_MCALL getSharedHandle(InteropHandle* outHandle) override;
 
-        virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* name) override;
+        virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* pName) override;
 
 };
 

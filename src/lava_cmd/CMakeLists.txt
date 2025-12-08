@@ -57,6 +57,13 @@ if(UNIX)
 	)
 
 	set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
+
+	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  		set(NV_ALLOW_RT_VALIDATE "1")
+	else()
+		set(NV_ALLOW_RT_VALIDATE "0")
+	endif()
+
 	configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
 
 	install(

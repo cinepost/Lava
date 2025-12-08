@@ -60,7 +60,7 @@ void PipelineCommandEncoder::_uploadBufferData(
 	Size size,
 	void* data)
 {
-	auto& api = buffer->m_renderer->m_api;
+	auto& api = buffer->m_device->m_api;
 	IBufferResource* stagingBuffer = nullptr;
 	Offset stagingBufferOffset = 0;
 	transientHeap->allocateStagingBuffer(

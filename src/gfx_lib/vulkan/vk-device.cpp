@@ -187,6 +187,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	
 	VkInstance instance = VK_NULL_HANDLE;
 	if (handles[0].handleValue == 0) {
+		LLOG_WRN << "GFX vulkan instance creation path.";
+
 		VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 		applicationInfo.pApplicationName = "slang-gfx";
 		applicationInfo.pEngineName = "slang-gfx";
@@ -265,16 +267,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 					}
 				}
 			}
-			if (layerNames[0])
-			{
+
+			if (layerNames[0]) {
 				instanceCreateInfo.enabledLayerCount = SLANG_COUNT_OF(layerNames);
 				instanceCreateInfo.ppEnabledLayerNames = layerNames;
 
 				// Include support for printf
-        validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-        validationFeatures.enabledValidationFeatureCount = 1;
-        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
-        instanceCreateInfo.pNext = &validationFeatures;
+				validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+				validationFeatures.enabledValidationFeatureCount = 1;
+				validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+				instanceCreateInfo.pNext = &validationFeatures;
 			}
 		}
 		uint32_t apiVersionsToTry[] = { VK_API_VERSION_1_3, VK_API_VERSION_1_2, VK_API_VERSION_1_1, VK_API_VERSION_1_0 };
@@ -285,6 +287,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			}
 		}
 	} else {
+		LLOG_WRN << "CORE vulkan instance creation path.";
 		instance = (VkInstance)handles[0].handleValue;
 	}
 	
@@ -446,7 +449,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 		
@@ -467,16 +470,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.rayTracingPipelineFeatures;
 
 		// SER features.
-    //extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
-    //deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
+    	//extendedFeatures.rayTracingInvocationReorderFeatures.pNext = deviceFeatures2.pNext;
+    	//deviceFeatures2.pNext = &extendedFeatures.rayTracingInvocationReorderFeatures;
 
 		// Acceleration structure features
 		extendedFeatures.accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
 		// Variable pointer features.
-    extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
-    deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
+    	extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
+    	deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
 
 		// Compute shader derivative features.
 		extendedFeatures.computeShaderDerivativeFeatures.pNext = deviceFeatures2.pNext;
@@ -494,9 +497,9 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
 
-    // clock features
-    extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
-    deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
+    	// clock features
+    	extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
+    	deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
 
 		// Fragment shader barycentrics features
 		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
@@ -539,9 +542,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.fragmentShadingRateFeatures.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.fragmentShadingRateFeatures;
 
+#ifdef _DEBUG
 		// raytracing validation features
-		//extendedFeatures.rayTracingValidationFeatures.pNext = deviceFeatures2.pNext;
-		//deviceFeatures2.pNext = &extendedFeatures.rayTracingValidationFeatures;
+		extendedFeatures.rayTracingValidationFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.rayTracingValidationFeatures;
+#endif
 
 		// Vulkan 1.2 features
 		extendedFeatures.vulkan12Features.samplerFilterMinmax = VK_TRUE;
@@ -550,6 +555,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 
 		m_api.vkGetPhysicalDeviceFeatures2(m_api.m_physicalDevice, &deviceFeatures2);
 
+		 // Confirm that the ray tracing validation feature is supported
+		assert(extendedFeatures.rayTracingValidationFeatures.rayTracingValidation == true);
 
 		// Link into the creation features
 		deviceCreateInfo.pNext = &extendedFeatures.vulkan12Features;
@@ -658,8 +665,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		}
 
 		if (extendedFeatures.accelerationStructureFeatures.accelerationStructure
-				&& extensionNames.contains(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
-        && extensionNames.contains(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)) 
+			&& extensionNames.contains(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
+        	&& extensionNames.contains(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)) 
 		{
 			extendedFeatures.accelerationStructureFeatures.pNext = (void*)vulkan12Features.pNext;
 			vulkan12Features.pNext = &extendedFeatures.accelerationStructureFeatures;

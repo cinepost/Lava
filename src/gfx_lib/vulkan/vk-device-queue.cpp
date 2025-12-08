@@ -108,15 +108,7 @@ void VulkanDeviceQueue::flushStepA() {
     }
 
     Fence& fence = m_fences[m_commandBufferIndex];
-
-    //printf("11\n");
-    //printf("VulkanDeviceQueue signal semaphores count %zu\n", (size_t)submitInfo.signalSemaphoreCount);
-    //for(uint32_t i = 0; i < submitInfo.signalSemaphoreCount; ++i) {
-    //    printf("VulkanDeviceQueue pSignalSemaphores[%zu] = %zu\n",(size_t)i ,(size_t)signalSemaphores[i]);
-    //}
     m_api->vkQueueSubmit(m_queue, 1, &submitInfo, fence.fence);
-    //printf("22\n");
-
     
     // mark signaled fence value
     fence.value = m_nextFenceValue;

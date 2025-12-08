@@ -937,10 +937,10 @@ class FALCOR_API Scene : public Object {
     /** Set the scene ray tracing resources into a shader var.
         The acceleration structure is created lazily, which requires the render context.
         \param[in] pContext Render context.
-        \param[in] var Shader variable to set data into, usually the root var.
+        \param[in] sceneVar Shader variable to set data into, usually the root var.
         \param[in] rayTypeCount Number of ray types in raygen program. Not needed for DXR 1.1.
     */
-    void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
+    void bindShaderDataForRaytracing(RenderContext* pContext, const ShaderVar& bindShaderDataForRaytracing, uint32_t rayTypeCount = 1);
 
     //void setNullRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
 
@@ -1181,12 +1181,12 @@ public:
     /** Generate data for creating a TLAS.
         #SCENE TODO: Add argument to build descs based off a draw list
     */
-    void fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const;
+    void fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayTypeCount, bool perMeshHitEntry) const;
     
     /** Generate top level acceleration structure for the scene. Automatically determines whether to build or refit.
-        \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
+        \param[in] rayTypeCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
     */
-    void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
+    void buildTlas(RenderContext* pContext, uint32_t rayTypeCount, bool perMeshHitEntry);
     
     /** Invalidates the TLAS cache.
     */
@@ -1419,6 +1419,7 @@ public:
                                                         ///< Number of ray types in program affects Shader Table indexing
     Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
     RtAccelerationStructurePrebuildInfo mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
+    uint32_t mTlasLastBuiltRayCount = 0;                ///< RayTypeCount of the last built TLAS, zero if there is none
     bool mRayTraceInitialized = false;
 
     /** Describes one BLAS.
@@ -1444,8 +1445,7 @@ public:
         bool useCompaction = false;                     ///< Whether the BLAS should be compacted after build.
         RtAccelerationStructure::UpdateMode updateMode = RtAccelerationStructure::UpdateMode::Refit;      ///< Update mode this BLAS was created with.
     
-        bool hasDynamicGeometry() const
-        {
+        bool hasDynamicGeometry() const {
             return hasDynamicMesh || hasDynamicCurve;
         }
 

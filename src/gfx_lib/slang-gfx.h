@@ -768,7 +768,7 @@ public:
 	virtual SLANG_NO_THROW Result SLANG_MCALL getNativeResourceHandle(InteropHandle* outHandle) = 0;
 	virtual SLANG_NO_THROW Result SLANG_MCALL getSharedHandle(InteropHandle* outHandle) = 0;
 	
-	virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* name) = 0;
+	virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* pName) = 0;
 	virtual SLANG_NO_THROW const char* SLANG_MCALL getDebugName() = 0;
 
 };

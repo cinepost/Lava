@@ -30,7 +30,7 @@ public:
     virtual SLANG_NO_THROW Result SLANG_MCALL getNativeResourceHandle(InteropHandle* outHandle) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL getSharedHandle(InteropHandle* outHandle) override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* name) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* pName) override;
     virtual SLANG_NO_THROW const char* SLANG_MCALL getDebugName() override;
 };
 

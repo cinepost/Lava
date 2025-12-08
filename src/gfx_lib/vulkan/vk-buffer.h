@@ -45,7 +45,7 @@ public:
 
     ~BufferResourceImpl();
 
-    RefPtr<DeviceImpl> m_renderer;
+    RefPtr<DeviceImpl> m_device;
     VKBufferHandleRAII m_buffer;
     VKBufferHandleRAII m_uploadBuffer;
 
@@ -61,7 +61,7 @@ public:
 
     virtual SLANG_NO_THROW Result SLANG_MCALL unmap(MemoryRange* writtenRange) override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* name) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL setDebugName(const char* pName) override;
 };
 
 } // namespace vk

@@ -122,29 +122,15 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
     submitInfo.pSignalSemaphores = signalSemaphores.getBuffer();
 
     VkFence vkFence = VK_NULL_HANDLE;
-    
     if (count) {
         auto commandBufferImpl = static_cast<CommandBufferImpl*>(commandBuffers[0]);
         vkFence = commandBufferImpl->m_transientHeap->getCurrentFence();
-
-        if(vkFence == VK_NULL_HANDLE) {
-            LLOG_FTL << "CommandQueueImpl::queueSubmitImpl() vkFence == VK_NULL_HANDLE !!!";
-        }
-
-        if(vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence) == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-            LLOG_FTL << "vCommandQueueImpl::queueSubmitImpl() kResetFences() VK_ERROR_OUT_OF_DEVICE_MEMORY !!!";
-        }
+        vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence);
         commandBufferImpl->m_transientHeap->advanceFence();
     }
 
-    //printf("1\n");
-    //printf("CommandQueueImpl signal semaphores count %zu\n", (size_t)signalSemaphores.getCount());
-    //for(uint32_t i = 0; i < submitInfo.signalSemaphoreCount; ++i) {
-    //    printf("CommandQueueImpl pSignalSemaphores[%zu] = %zu\n",(size_t)i ,(size_t)signalSemaphores[i]);
-    //}
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
-    //printf("2\n");
-
+    
     m_pendingWaitSemaphores[0] = m_semaphore;
     m_pendingWaitSemaphores[1] = VK_NULL_HANDLE;
 }

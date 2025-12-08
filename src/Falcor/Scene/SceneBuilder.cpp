@@ -330,8 +330,8 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 	// Prepare displacement maps. This either removes them (if requested in build flags)
 	// or makes sure that normal maps are removed if displacement is in use.
+	
 	prepareDisplacementMaps();
-
 	prepareSceneGraph();
 	prepareMeshes();
 	removeUnusedMeshes();
@@ -340,7 +340,6 @@ Scene::SharedPtr SceneBuilder::getScene() {
 	
 	//pretransformStaticMeshes();
 	//unifyTriangleWinding();
-	
 	optimizeSceneGraph();
 	calculateMeshBoundingBoxes();
 	createMeshGroups();
@@ -370,7 +369,6 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
 	// Create instance data.
 	uint32_t tlasInstanceIndex = 0;
-
 	createMeshInstanceData(tlasInstanceIndex);
 	createCurveInstanceData(tlasInstanceIndex);
 	// Adjust instance indices of SDF grid instances.

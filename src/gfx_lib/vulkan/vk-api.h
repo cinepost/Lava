@@ -22,6 +22,9 @@ namespace gfx {
     x(vkCreateDebugReportCallbackEXT) \
     x(vkDestroyDebugReportCallbackEXT) \
     x(vkDebugReportMessageEXT) \
+    x(vkCreateDebugUtilsMessengerEXT) \
+    x(vkDestroyDebugUtilsMessengerEXT) \
+    x(vkSetDebugUtilsObjectNameEXT) \
     /* */
 
 #define VK_API_INSTANCE_PROCS(x) \
@@ -197,6 +200,7 @@ namespace gfx {
 #else
 #   define VK_API_DEVICE_PLATFORM_OPT_PROCS(x) \
     x(vkGetMemoryFdKHR) \
+    x(vkGetSemaphoreFdKHR) \
     /* */
 #endif
 
@@ -330,7 +334,7 @@ struct VulkanExtendedFeatureProperties {
     VkPhysicalDeviceVulkan12Features vulkan12Features;
 
     // Ray tracing validation features
-    //VkPhysicalDeviceRayTracingValidationFeaturesNV rayTracingValidationFeatures;
+    VkPhysicalDeviceRayTracingValidationFeaturesNV rayTracingValidationFeatures;
 
     VulkanExtendedFeatureProperties() {
         storage16BitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR;
@@ -410,6 +414,9 @@ struct VulkanExtendedFeatureProperties {
         vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         vulkan12Features.pNext = NULL;
 
+        rayTracingValidationFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        rayTracingValidationFeatures.pNext = NULL;
+
     }
 };
 
@@ -445,6 +452,11 @@ struct VulkanApi
 
         /// Given queue required flags, finds a queue
     int findQueue(VkQueueFlags reqFlags) const;
+
+
+    void onCreate();
+
+    void onShutdown();
 
     VmaAllocator& vmaAllocator() { return mVmaAllocator; }
 

@@ -169,7 +169,7 @@ int main(int argc, char** argv){
 
     gExecTimeStart = std::chrono::high_resolution_clock::now();
 
-    uint8_t gpuID = 255; // automatic gpu selection
+    uint32_t gpu_id_value = 255; // automatic gpu selection
 
     bool read_stdin = false;
 
@@ -222,7 +222,7 @@ int main(int argc, char** argv){
     std::string shader_cache_path;
     po::options_description config("Configuration");
     config.add_options()
-      ("device,d", po::value<uint8_t>(&gpuID)->default_value(0), "Use specific device")
+      ("device,d", po::value<uint32_t>(&gpu_id_value)->default_value(0u)->notifier([](uint32_t value){ boost::numeric_cast<uint8_t>(value); } ), "Use specific device")
       ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
       ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
       ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
@@ -349,6 +349,8 @@ int main(int argc, char** argv){
       ReaderLSD::myExtensions, 
       ReaderLSD::myConstructor
     );
+
+    const uint8_t gpuID = static_cast<uint8_t>(gpu_id_value); //was obtained through boost::numeric_cast so it's safe
 
     {
       auto pDeviceManager = DeviceManager::create(enableValidationLayer);

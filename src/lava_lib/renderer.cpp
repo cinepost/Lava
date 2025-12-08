@@ -228,7 +228,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	auto renderRegionDims = frame_info.renderRegionDims();
 	auto pRenderContext = mpDevice->getRenderContext();
 	auto pScene = mpSceneBuilder->getScene();
-
+	
 	assert(pScene);
 
 	// Get one of possible main output channels
@@ -920,6 +920,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	}
 
 	auto renderRegionDims = frame_info.renderRegionDims();
+	
 	finalizeScene(frame_info);
 
 	if(mRenderPassesProps != mPrevRenderPassesProps) {

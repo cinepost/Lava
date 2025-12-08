@@ -43,7 +43,7 @@ Result FenceImpl::init(const IFence::Desc& desc) {
         return SLANG_FAIL;
     }
 
-    //SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateSemaphore(m_device->m_api.m_device, &createInfo, nullptr, &m_semaphore));
+    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateSemaphore(m_device->m_api.m_device, &createInfo, nullptr, &m_semaphore));
 
     return SLANG_OK;
 }
@@ -78,16 +78,26 @@ Result FenceImpl::getSharedHandle(InteropHandle* outHandle) {
     }
 
 #if SLANG_WINDOWS_FAMILY
-    VkSemaphoreGetWin32HandleInfoKHR handleInfo = {
-        VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
+    VkSemaphoreGetWin32HandleInfoKHR handleInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
     handleInfo.pNext = nullptr;
     handleInfo.semaphore = m_semaphore;
     handleInfo.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 
     SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreWin32HandleKHR(
         m_device->m_api.m_device, &handleInfo, (HANDLE*)&outHandle->handleValue));
+#else
+    VkSemaphoreGetFdInfoKHR fdInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR};
+    fdInfo.pNext = nullptr;
+    fdInfo.semaphore = m_semaphore;
+    fdInfo.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+    SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkGetSemaphoreFdKHR(
+        m_device->m_api.m_device,
+        &fdInfo,
+        (int*)&sharedHandle.handleValue));
 #endif
     sharedHandle.api = InteropHandleAPI::Vulkan;
+    *outHandle = sharedHandle;
     return SLANG_OK;
 }
 

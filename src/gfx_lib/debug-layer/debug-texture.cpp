@@ -3,40 +3,34 @@
 
 #include "debug-helper-functions.h"
 
-namespace gfx
-{
+namespace gfx {
+
 using namespace Slang;
 
-namespace debug
-{
+namespace debug {
 
-IResource::Type DebugTextureResource::getType()
-{
+IResource::Type DebugTextureResource::getType() {
     SLANG_GFX_API_FUNC;
     return baseObject->getType();
 }
 
-ITextureResource::Desc* DebugTextureResource::getDesc()
-{
+ITextureResource::Desc* DebugTextureResource::getDesc() {
     SLANG_GFX_API_FUNC;
     return baseObject->getDesc();
 }
 
-Result DebugTextureResource::getNativeResourceHandle(InteropHandle* outHandle)
-{
+Result DebugTextureResource::getNativeResourceHandle(InteropHandle* outHandle) {
     SLANG_GFX_API_FUNC;
     return baseObject->getNativeResourceHandle(outHandle);
 }
 
-Result DebugTextureResource::getSharedHandle(InteropHandle* outHandle)
-{
+Result DebugTextureResource::getSharedHandle(InteropHandle* outHandle) {
     SLANG_GFX_API_FUNC;
     return baseObject->getSharedHandle(outHandle);
 }
 
-Result DebugTextureResource::setDebugName(const char* name)
-{
-    return baseObject->setDebugName(name);
+Result DebugTextureResource::setDebugName(const char* pName) {
+    return baseObject->setDebugName(pName);
 }
 
 bool DebugTextureResource::isSparse() const {

@@ -70,7 +70,7 @@ Result VKBufferHandleRAII::init(
     return SLANG_OK;
 }
 
-BufferResourceImpl::BufferResourceImpl(const IBufferResource::Desc& desc, DeviceImpl* renderer): Parent(desc), m_renderer(renderer) {
+BufferResourceImpl::BufferResourceImpl(const IBufferResource::Desc& desc, DeviceImpl* renderer): Parent(desc), m_device(renderer) {
     assert(renderer);
 }
 
@@ -119,7 +119,22 @@ Result BufferResourceImpl::getSharedHandle(InteropHandle* outHandle) {
     if (!vkCreateSharedHandle) {
         return SLANG_FAIL;
     }
-    SLANG_VK_RETURN_ON_FAIL( vkCreateSharedHandle(api->m_device, &info, (HANDLE*)&outHandle->handleValue));
+    SLANG_VK_RETURN_ON_FAIL(vkCreateSharedHandle(api->m_device, &info, (HANDLE*)&outHandle->handleValue));
+#else
+    VkMemoryGetFdInfoKHR info = {};
+    info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+    info.pNext = nullptr;
+    info.memory =  m_buffer.mAllocationInfo.deviceMemory; //m_buffer.m_memory;
+    info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+    auto api = m_buffer.m_api;
+    PFN_vkGetMemoryFdKHR vkCreateSharedHandle;
+    vkCreateSharedHandle = api->vkGetMemoryFdKHR;
+    if (!vkCreateSharedHandle) {
+        return SLANG_FAIL;
+    }
+    SLANG_VK_RETURN_ON_FAIL(vkCreateSharedHandle(api->m_device, &info, (int*)&outHandle->handleValue));
+
 #endif
     outHandle->api = InteropHandleAPI::Vulkan;
     return SLANG_OK;
@@ -140,18 +155,30 @@ Result BufferResourceImpl::unmap(MemoryRange* writtenRange) {
     return SLANG_OK;
 }
 
-Result BufferResourceImpl::setDebugName(const char* name) {
-    Parent::setDebugName(name);
-    auto api = m_buffer.m_api;
-    if (api->vkDebugMarkerSetObjectNameEXT) {
-        LLOG_TRC << "Buffer debug name: " << std::string(name);
+Result BufferResourceImpl::setDebugName(const char* pName) {
+    assert(pName);
+    Parent::setDebugName(pName);
+    auto& api = m_device->m_api;
+    if (api.vkDebugMarkerSetObjectNameEXT) {
         VkDebugMarkerObjectNameInfoEXT nameDesc = {};
         nameDesc.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
         nameDesc.object = (uint64_t)m_buffer.m_buffer;
         nameDesc.objectType = VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT;
-        nameDesc.pObjectName = name;
-        api->vkDebugMarkerSetObjectNameEXT(api->m_device, &nameDesc);
+        nameDesc.pObjectName = pName;
+        api.vkDebugMarkerSetObjectNameEXT(api.m_device, &nameDesc);
     }
+
+    if (api.vkSetDebugUtilsObjectNameEXT) {
+        const VkDebugUtilsObjectNameInfoEXT bufferNameInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .pNext = NULL,
+            .objectType = VK_OBJECT_TYPE_BUFFER,
+            .objectHandle = (uint64_t)m_buffer.m_buffer,
+            .pObjectName = pName,
+        };
+        api.vkSetDebugUtilsObjectNameEXT(api.m_device, &bufferNameInfo);
+    }
+
     return SLANG_OK;
 }
 

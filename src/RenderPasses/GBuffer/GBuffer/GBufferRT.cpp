@@ -213,7 +213,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
         mpSampleGenerator->bindShaderData(var);
     }
 

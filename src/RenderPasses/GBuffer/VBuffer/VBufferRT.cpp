@@ -233,7 +233,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     ShaderVar var = mpComputePass->getRootVar();
     
     if(mSampleNumber == 0) {
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
     }
 
     bindShaderData(mpComputePass->getRootVar(), renderData);

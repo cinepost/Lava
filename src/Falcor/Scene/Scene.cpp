@@ -537,12 +537,12 @@ void Scene::raytrace(RenderContext* pRenderContext, Program* pProgram, const RtP
     FALCOR_PROFILE(pRenderContext, "raytraceScene");
 
     assert(pRenderContext && pProgram && pVars);
-    if (pVars->getRayTypeCount() > 0 && pVars->getGeometryCount() != getGeometryCount()) {
+    if (pVars->getRayTypeCount() > 0 && pVars->getGeometryCount() != 1 && pVars->getGeometryCount() != getGeometryCount()) {
         throw std::runtime_error("RtProgramVars geometry count mismatch");
     }
 
     uint32_t rayTypeCount = pVars->getRayTypeCount();
-    setRaytracingShaderData(pRenderContext, pVars->getRootVar(), rayTypeCount);
+    bindShaderDataForRaytracing(pRenderContext, pVars->getRootVar()[kParameterBlockName], rayTypeCount);
 
     // Set ray type constant.
     pVars->getRootVar()["DxrPerFrame"]["rayTypeCount"] = rayTypeCount;
@@ -2997,7 +2997,7 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
     }
 }
 
-void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const {
+void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayTypeCount, bool perMeshHitEntry) const {
     instanceDescs.clear();
     uint32_t instanceContributionToHitGroupIndex = 0;
     uint32_t instanceID = 0;
@@ -3015,7 +3015,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         desc.instanceMask = 0xFF;
         desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-        instanceContributionToHitGroupIndex += rayCount * (uint32_t)meshList.size();
+        instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)meshList.size();
 
         // We expect all meshes in a group to have identical triangle winding. Verify that assumption here.
         assert(!meshList.empty());
@@ -3119,7 +3119,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         // Start procedural primitive hit group after the triangle hit groups.
         desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCurveDesc.size();
+        instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mCurveDesc.size();
 
         // For cached curves, the matrices for all curves in an instance are guaranteed to be the same.
         // Just pick the matrix from the first curve.
@@ -3178,7 +3178,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         }
 
         blasDataIndex += (sdfGridInstancesDataHaveUniqueBLASes ? mSDFGrids.size() : 1);
-        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mSDFGridDesc.size();
+        instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mSDFGridDesc.size();
     }
 
     // One instance with identity transform for custom primitives.
@@ -3196,7 +3196,7 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         // Start procedural primitive hit group after the curve hit group.
         desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCustomPrimitiveDesc.size();
+        instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mCustomPrimitiveDesc.size();
 
         float4x4 identityMat = float4x4::identity();
         std::memcpy(desc.transform, &identityMat, sizeof(desc.transform));
@@ -3208,27 +3208,25 @@ void Scene::invalidateTlasCache() {
     for (auto& tlas : mTlasCache) {
         tlas.second.pTlasObject = nullptr;
     }
+    mTlasLastBuiltRayCount = 0;
 }
 
-void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayCount, bool perMeshHitEntry) {
+void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool perMeshHitEntry) {
     FALCOR_PROFILE(pRenderContext, "buildTlas");
 
     TlasData tlas;
-    auto it = mTlasCache.find(rayCount);
+    auto it = mTlasCache.find(rayTypeCount);
     if (it != mTlasCache.end()) tlas = it->second;
 
     // Prepare instance descs.
     // Note if there are no instances, we'll build an empty TLAS.
-    fillInstanceDesc(mInstanceDescs, rayCount, perMeshHitEntry);
+    fillInstanceDesc(mInstanceDescs, rayTypeCount, perMeshHitEntry);
 
     RtAccelerationStructureBuildInputs inputs = {};
     inputs.kind = RtAccelerationStructureKind::TopLevel;
     inputs.descCount = (uint32_t)mInstanceDescs.size();
 
-    // WTF !????
-    if(inputs.descCount > 1) {
-        //inputs.descCount = 1;
-    }
+    LLOG_WRN << "inputs.descCount " << inputs.descCount;
 
     inputs.flags = RtAccelerationStructureBuildFlags::None;
 
@@ -3266,45 +3264,23 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayCount, bool per
                 tlas.pTlasBuffer->setName("Scene TLAS buffer");
             }
         }
-        /*
-        if (!mInstanceDescs.empty()) {
-            // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
-            if (!tlas.pInstanceDescs || tlas.pInstanceDescs->getSize() < mInstanceDescs.size() * sizeof(RtInstanceDesc))
-            {
-                tlas.pInstanceDescs = Buffer::create(mpDevice, (uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
-                tlas.pInstanceDescs->setName("Scene instance descs buffer");
-            } else {
-                tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
-            }
-        }
-        */
 
         RtAccelerationStructure::Desc asCreateDesc = {};
         asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
         asCreateDesc.setBuffer(tlas.pTlasBuffer, 0, mTlasPrebuildInfo.resultDataMaxSize);
         tlas.pTlasObject = RtAccelerationStructure::create(mpDevice, asCreateDesc);
     }
-    // Else update instance descs and barrier TLAS buffers
+    // Else barrier TLAS buffers
     else
     {
         assert(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
         pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
-        pRenderContext->uavBarrier(mpTlasScratch.get());
-        /*
-        if (tlas.pInstanceDescs) {
-            assert(!mInstanceDescs.empty());
-            tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.descCount * sizeof(RtInstanceDesc));
-        }
-        */
+        pRenderContext->uavBarrier(mpTlasScratch.get());        
         asDesc.source = tlas.pTlasObject.get(); // Perform the update in-place
     }
 
     assert(tlas.pTlasBuffer && tlas.pTlasBuffer->getGfxResource() && mpTlasScratch->getGfxResource());
     
-    /*
-    assert(inputs.descCount == 0 || (tlas.pInstanceDescs && tlas.pInstanceDescs->getGfxResource()));
-    asDesc.inputs.instanceDescs = tlas.pInstanceDescs ? tlas.pInstanceDescs->getGpuAddress() : 0;
-    */
      // Upload instance data
     if (inputs.descCount > 0) {
         GpuMemoryHeap::Allocation allocation = mpDevice->getUploadHeap()->allocate(inputs.descCount * sizeof(RtInstanceDesc), sizeof(RtInstanceDesc));
@@ -3322,16 +3298,12 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayCount, bool per
     }
 
     // Create TLAS
-    /*
-    if (tlas.pInstanceDescs) {
-        pRenderContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
-    }
-    */
     pRenderContext->buildAccelerationStructure(asDesc, 0, nullptr);
     pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
 
-    mTlasCache[rayCount] = tlas;
+    mTlasCache[rayTypeCount] = tlas;
     updateRaytracingTLASStats();
+    mTlasLastBuiltRayCount = rayTypeCount;
 }
 
 void Scene::initRayTracing() {
@@ -3382,11 +3354,19 @@ void Scene::setNullRaytracingShaderData(RenderContext* pRenderContext, const Sha
     var[kParameterBlockName] = mpSceneBlock;
 }
 */
-void Scene::setRaytracingShaderData(RenderContext* pRenderContext, const ShaderVar& var, uint32_t rayTypeCount) {
+void Scene::bindShaderDataForRaytracing(RenderContext* pRenderContext, const ShaderVar& sceneVar, uint32_t rayTypeCount) {
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {
         initGeomDesc(pRenderContext);
         buildBlas(pRenderContext);
+    }
+
+    // Find any valid TLAS, if none found, create it for rayTypeCount == 1
+    if (rayTypeCount == 0) {
+        rayTypeCount = mTlasLastBuiltRayCount;
+    }
+    if (rayTypeCount == 0) {
+        rayTypeCount = 1;
     }
 
     // On first execution, when meshes have moved, when there's a new ray type count, or when a BLAS has changed, create/update the TLAS
@@ -3410,7 +3390,7 @@ void Scene::setRaytracingShaderData(RenderContext* pRenderContext, const ShaderV
 
     // Bind Scene parameter block.
     getCamera()->bindShaderData(mpSceneBlock->getRootVar()[kCamera]); // TODO REMOVE: Shouldn't be needed anymore?
-    var[kParameterBlockName] = mpSceneBlock;
+    sceneVar = mpSceneBlock;
 }
 
 std::vector<uint32_t> Scene::getMeshBlasIDs() const {

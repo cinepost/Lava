@@ -13,6 +13,8 @@ export PATH=$PATH:$HFS/bin:$LAVA_HOME/3rdparty/bin:$LAVA_HOME/bin
 export HIH=$HIH
 export HOSTNAME=$HOSTNAME
 
+export NV_ALLOW_RAYTRACING_VALIDATION="@NV_ALLOW_RT_VALIDATE@"
+
 # source virtualenv
 #source @LAVA_INST_DIR@venv/bin/activate
 

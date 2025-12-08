@@ -3,63 +3,53 @@
 
 #include "debug-helper-functions.h"
 
-namespace gfx
-{
+namespace gfx {
+    
 using namespace Slang;
 
-namespace debug
-{
+namespace debug {
 
-IResource::Type DebugBufferResource::getType()
-{
+IResource::Type DebugBufferResource::getType() {
     SLANG_GFX_API_FUNC;
     return baseObject->getType();
 }
 
-IBufferResource::Desc* DebugBufferResource::getDesc()
-{
+IBufferResource::Desc* DebugBufferResource::getDesc() {
     SLANG_GFX_API_FUNC;
     return baseObject->getDesc();
 }
 
-DeviceAddress DebugBufferResource::getDeviceAddress()
-{
+DeviceAddress DebugBufferResource::getDeviceAddress() {
     SLANG_GFX_API_FUNC;
     return baseObject->getDeviceAddress();
 }
 
-Result DebugBufferResource::getNativeResourceHandle(InteropHandle* outHandle)
-{
+Result DebugBufferResource::getNativeResourceHandle(InteropHandle* outHandle) {
     SLANG_GFX_API_FUNC;
     return baseObject->getNativeResourceHandle(outHandle);
 }
 
-Result DebugBufferResource::getSharedHandle(InteropHandle* outHandle)
-{
+Result DebugBufferResource::getSharedHandle(InteropHandle* outHandle) {
     SLANG_GFX_API_FUNC;
     return baseObject->getSharedHandle(outHandle);
 }
 
-Result DebugBufferResource::setDebugName(const char* name)
-{
+Result DebugBufferResource::setDebugName(const char* pName) {
     SLANG_GFX_API_FUNC;
-    return baseObject->setDebugName(name);
+    return baseObject->setDebugName(pName);
 }
 
-const char* DebugBufferResource::getDebugName()
-{
+const char* DebugBufferResource::getDebugName() {
     SLANG_GFX_API_FUNC;
     return baseObject->getDebugName();
 }
 
-Result DebugBufferResource::map(MemoryRange* rangeToRead, void** outPointer)
-{
+Result DebugBufferResource::map(MemoryRange* rangeToRead, void** outPointer) {
     SLANG_GFX_API_FUNC;
     return baseObject->map(rangeToRead, outPointer);
 }
 
-Result DebugBufferResource::unmap(MemoryRange* writtenRange)
-{
+Result DebugBufferResource::unmap(MemoryRange* writtenRange) {
     return baseObject->unmap(writtenRange);
 }
 
