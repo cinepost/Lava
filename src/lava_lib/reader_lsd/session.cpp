@@ -559,7 +559,9 @@ bool Session::cmdRaytrace() {
 			}
 		}
 
-		mpRenderer->getDevice()->getRenderContext()->submit(true);
+		//mpRenderer->getDevice()->getRenderContext()->submit(true);
+		mpRenderer->getDevice()->endFrame();
+
 		renderingTimeReport.measure("Image rendering time");
 		LLOG_INF << renderingTimeReport.printToString();
 		

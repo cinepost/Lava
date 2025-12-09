@@ -2715,7 +2715,7 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
     if (mpMeshVao) {
         const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
-        pRenderContext->resourceBarrier(pVb.get(), Resource::State::NonPixelShader);
+        if (pVb) pRenderContext->resourceBarrier(pVb.get(), Resource::State::NonPixelShader);
         if (pIb) pRenderContext->resourceBarrier(pIb.get(), Resource::State::NonPixelShader);
     }
 
@@ -2863,6 +2863,7 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
 
                     LLOG_DBG << "BLAS build started...";
                     pRenderContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
+                    pRenderContext->submit(true);
                     LLOG_DBG << "BLAS build done.";
                 }
 
