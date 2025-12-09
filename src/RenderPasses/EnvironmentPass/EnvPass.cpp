@@ -172,6 +172,10 @@ void EnvPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     cb_var["gOpacity"] = mOpacity;
     cb_var["lightsCount"] = mpScene->getLightCount();
 
+    // Bind static resources
+    ShaderVar var = mpComputePass->getRootVar();
+    mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
+
     mpComputePass->execute(pRenderContext, frameDim.x, frameDim.y);
     
     mDirty = false;

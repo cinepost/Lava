@@ -668,6 +668,7 @@ Result AccelerationStructureBuildGeometryInfoBuilder::build(
     }
     if (buildInputs.kind == IAccelerationStructure::Kind::BottomLevel)
     {
+        // BLAS
         m_geometryInfos.setCount(buildInputs.descCount);
         primitiveCounts.setCount(buildInputs.descCount);
         memset(
@@ -746,12 +747,10 @@ Result AccelerationStructureBuildGeometryInfoBuilder::build(
         }
         buildInfo.geometryCount = buildInputs.descCount;
         buildInfo.pGeometries = m_geometryInfos.getBuffer();
-    }
-    else
-    {
+    } else {
+        // TLAS
         m_vkInstanceInfo.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-        m_vkInstanceInfo.geometry.instances.sType =
-            VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        m_vkInstanceInfo.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
         m_vkInstanceInfo.geometry.instances.arrayOfPointers = 0;
         m_vkInstanceInfo.geometry.instances.data.deviceAddress = buildInputs.instanceDescs;
         buildInfo.pGeometries = &m_vkInstanceInfo;

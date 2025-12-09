@@ -169,13 +169,12 @@ Result BufferResourceImpl::setDebugName(const char* pName) {
     }
 
     if (api.vkSetDebugUtilsObjectNameEXT) {
-        const VkDebugUtilsObjectNameInfoEXT bufferNameInfo = {
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            .pNext = NULL,
-            .objectType = VK_OBJECT_TYPE_BUFFER,
-            .objectHandle = (uint64_t)m_buffer.m_buffer,
-            .pObjectName = pName,
-        };
+        VkDebugUtilsObjectNameInfoEXT bufferNameInfo = {};
+        bufferNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        bufferNameInfo.pNext = NULL;
+        bufferNameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+        bufferNameInfo.objectHandle = (uint64_t)m_buffer.m_buffer;
+        bufferNameInfo.pObjectName = pName;
         api.vkSetDebugUtilsObjectNameEXT(api.m_device, &bufferNameInfo);
     }
 

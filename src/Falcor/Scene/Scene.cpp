@@ -2861,9 +2861,9 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
                         postbuildInfoDesc.pool = currentSizeInfoPool.get();
                     }
 
-                    LLOG_DBG << "Acceleration structure build started...";
+                    LLOG_DBG << "BLAS build started...";
                     pRenderContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
-                    LLOG_DBG << "Acceleration structure build done.";
+                    LLOG_DBG << "BLAS build done.";
                 }
 
                 // Read back the calculated final size requirements for each BLAS.
@@ -2889,7 +2889,7 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
                     
                     LLOG_TRC << "Calculated blas size is " << byteSize;
 
-                    if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index (byteSize == 0)" + std::to_string(blasId));
+                    if (byteSize == 0) throw std::runtime_error("BLAS build failed for BLAS index (byteSize == 0)" + std::to_string(blasId));
 
                     blas.blasByteSize = align_to(kAccelerationStructureByteAlignment, byteSize);
                     blas.blasByteOffset = group.finalByteSize;
@@ -2989,7 +2989,9 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
                 // We'll rebuild in place. The BLAS should not be compacted, check that size matches prebuild info.
                 assert(blas.blasByteSize == blas.prebuildInfo.resultDataMaxSize);
             }
+            LLOG_DBG << "BLAS update/rebuild started...";
             pRenderContext->buildAccelerationStructure(asDesc, 0, nullptr);
+            LLOG_DBG << "BLAS update/rebuild done.";
         }
 
         // Insert barrier. The BLAS buffer is now ready for use.
@@ -3225,10 +3227,9 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     RtAccelerationStructureBuildInputs inputs = {};
     inputs.kind = RtAccelerationStructureKind::TopLevel;
     inputs.descCount = (uint32_t)mInstanceDescs.size();
+    inputs.flags = RtAccelerationStructureBuildFlags::None;
 
     LLOG_WRN << "inputs.descCount " << inputs.descCount;
-
-    inputs.flags = RtAccelerationStructureBuildFlags::None;
 
     // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
     if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == RtAccelerationStructure::UpdateMode::Refit) {
@@ -3265,6 +3266,16 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
             }
         }
 
+        if (!mInstanceDescs.empty()) {
+            // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
+            if (!tlas.pInstanceDescs || (tlas.pInstanceDescs->getSize() < (mInstanceDescs.size() * sizeof(RtInstanceDesc)))) {
+                tlas.pInstanceDescs = mpDevice->createBuffer((uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mInstanceDescs.data());
+                tlas.pInstanceDescs->setName("Scene TLAS instance descs buffer");
+            } else {
+                tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
+            }
+        }
+
         RtAccelerationStructure::Desc asCreateDesc = {};
         asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
         asCreateDesc.setBuffer(tlas.pTlasBuffer, 0, mTlasPrebuildInfo.resultDataMaxSize);
@@ -3275,20 +3286,18 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     {
         assert(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
         pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
-        pRenderContext->uavBarrier(mpTlasScratch.get());        
+        pRenderContext->uavBarrier(mpTlasScratch.get());
+        if (tlas.pInstanceDescs) {
+            assert(!mInstanceDescs.empty());
+            tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.descCount * sizeof(RtInstanceDesc));
+        }        
         asDesc.source = tlas.pTlasObject.get(); // Perform the update in-place
     }
 
     assert(tlas.pTlasBuffer && tlas.pTlasBuffer->getGfxResource() && mpTlasScratch->getGfxResource());
-    
-     // Upload instance data
-    if (inputs.descCount > 0) {
-        GpuMemoryHeap::Allocation allocation = mpDevice->getUploadHeap()->allocate(inputs.descCount * sizeof(RtInstanceDesc), sizeof(RtInstanceDesc));
-        std::memcpy(allocation.pData, mInstanceDescs.data(), inputs.descCount * sizeof(RtInstanceDesc));
-        asDesc.inputs.instanceDescs = allocation.getGpuAddress();
-        mpDevice->getUploadHeap()->release(allocation);
-    }
+    assert(inputs.descCount == 0 || (tlas.pInstanceDescs && tlas.pInstanceDescs->getGfxResource()));
 
+    asDesc.inputs.instanceDescs = tlas.pInstanceDescs ? tlas.pInstanceDescs->getGpuAddress() : 0;
     asDesc.scratchData = mpTlasScratch->getGpuAddress();
     asDesc.dest = tlas.pTlasObject.get();
 
@@ -3298,8 +3307,14 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     }
 
     // Create TLAS
+    if (tlas.pInstanceDescs) {
+        pRenderContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
+    }
+
+    LLOG_DBG << "TLAS build started...";
     pRenderContext->buildAccelerationStructure(asDesc, 0, nullptr);
     pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
+    LLOG_DBG << "TLAS build done.";
 
     mTlasCache[rayTypeCount] = tlas;
     updateRaytracingTLASStats();

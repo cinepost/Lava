@@ -99,15 +99,13 @@ Result TextureResourceImpl::setDebugName(const char* pName) {
     }
 
     if(api.vkSetDebugUtilsObjectNameEXT) {
-        const VkDebugUtilsObjectNameInfoEXT imageNameInfo = {
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            .pNext = NULL,
-            .objectType = VK_OBJECT_TYPE_IMAGE,
-            .objectHandle = (uint64_t)m_image,
-            .pObjectName = pName,
-        };
+        VkDebugUtilsObjectNameInfoEXT imageNameInfo = {};
+        imageNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        imageNameInfo.pNext = NULL;
+        imageNameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+        imageNameInfo.objectHandle = (uint64_t)m_image;
+        imageNameInfo.pObjectName = pName;
         api.vkSetDebugUtilsObjectNameEXT(api.m_device, &imageNameInfo);
-
     }
 
     return SLANG_OK;

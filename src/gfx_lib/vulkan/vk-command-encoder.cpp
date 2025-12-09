@@ -1259,7 +1259,7 @@ void RayTracingCommandEncoder::_memoryBarrier(
 	ShortList<VkBufferMemoryBarrier> memBarriers;
 	memBarriers.setCount(count);
 
-	for (int i = 0; i < count; ++i) {
+	for (int i = 0; i < count; i++) {
 		memBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 		memBarriers[i].pNext = nullptr;
 		memBarriers[i].dstAccessMask = translateAccelerationStructureAccessFlag(destAccess);
@@ -1367,7 +1367,7 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	m_commandBuffer->m_renderer->m_api.vkCmdBuildAccelerationStructuresKHR(
 		m_commandBuffer->m_commandBuffer, 1, &geomInfoBuilder.buildInfo, &rangeInfoPtr);
 
-	if (propertyQueryCount > 0) {
+	if (propertyQueryCount) {
 		_memoryBarrier(1, &desc.dest, AccessFlag::Write, AccessFlag::Read);
 		_queryAccelerationStructureProperties(1, &desc.dest, propertyQueryCount, queryDescs);
 	}

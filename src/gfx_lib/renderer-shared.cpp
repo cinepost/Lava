@@ -663,9 +663,6 @@ Result RendererBase::createAccelerationStructure(const IAccelerationStructure::C
     SLANG_UNUSED(outView);
     return SLANG_E_NOT_AVAILABLE;
 }
-void RendererBase::destroyAccelerationStructure(IAccelerationStructure* as) {
-    SLANG_UNUSED(as);
-}
 
 Result RendererBase::createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outTable) {
     SLANG_UNUSED(desc);

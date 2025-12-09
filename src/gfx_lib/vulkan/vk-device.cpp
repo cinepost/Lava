@@ -1282,16 +1282,6 @@ Result DeviceImpl::createAccelerationStructure(const IAccelerationStructure::Cre
 	return SLANG_OK;
 }
 
-void DeviceImpl::destroyAccelerationStructure(IAccelerationStructure* as) {
-	auto pAccelerationStructure = static_cast<AccelerationStructureImpl*>(as);
-	if(!pAccelerationStructure) return;
-
-	if(pAccelerationStructure->m_vkHandle != VK_NULL_HANDLE) {
-  	LLOG_DBG << "Destroying acceleration structure";
-  	m_api.vkDestroyAccelerationStructureKHR(m_api.m_device, pAccelerationStructure->m_vkHandle, nullptr);
-	}
-}
-
 void DeviceImpl::_transitionImageLayout(
 	VkCommandBuffer commandBuffer,
 	VkImage image,
@@ -2100,9 +2090,9 @@ Result DeviceImpl::createBufferResourceImpl(
 		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
 
-	//if (desc.allowedStates.contains(ResourceState::AccelerationStructure)) {
-	//	usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-	//}
+	if (desc.allowedStates.contains(ResourceState::AccelerationStructure)) {
+		usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+	}
 
 	if (initData) {
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;

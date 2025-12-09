@@ -149,8 +149,6 @@ public:
 	virtual SLANG_NO_THROW Result SLANG_MCALL createAccelerationStructure(
 		const IAccelerationStructure::CreateDesc& desc, IAccelerationStructure** outView) override;
 
-	virtual SLANG_NO_THROW void SLANG_MCALL destroyAccelerationStructure(IAccelerationStructure* as) override;
-
 	virtual SLANG_NO_THROW Result SLANG_MCALL getTextureAllocationInfo(
 		const ITextureResource::Desc& desc, Size* outSize, Size* outAlignment) override;
 

@@ -10,6 +10,7 @@ namespace Falcor {
 struct TlasData {
     RtAccelerationStructure::SharedPtr pTlasObject;
     Buffer::SharedPtr pTlasBuffer;
+    Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
     RtAccelerationStructure::UpdateMode updateMode = RtAccelerationStructure::UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
 };
 

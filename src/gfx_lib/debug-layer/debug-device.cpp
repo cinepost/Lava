@@ -50,10 +50,6 @@ bool DebugDevice::tailMemoryAllocated(const ITextureResource* pTexture) {
     return baseObject->tailMemoryAllocated(pTexture);
 }
 
-void DebugDevice::destroyAccelerationStructure(IAccelerationStructure* as) {
-    baseObject->destroyAccelerationStructure(as);
-}
-
 SlangResult DebugDevice::queryInterface(SlangUUID const& uuid, void** outObject) noexcept {
     void* intf = getInterface(uuid);
     if (intf) {
