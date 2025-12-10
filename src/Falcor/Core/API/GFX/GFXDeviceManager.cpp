@@ -95,8 +95,11 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
         enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
         enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
         enableLayerIfPresent("VK_LAYER_KHRONOS_shader_object", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_KHRONOS_profiles", layerProperties, requiredLayers);
         
-        //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_LUNARG_crash_diagnostic", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_api_dump", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);

@@ -18,15 +18,24 @@ FenceImpl::~FenceImpl() {
     }
 }
 
+void FenceImpl::setDebugName(const char* pDebugName) {
+    if(pDebugName) {
+        m_debug_name = std::string(pDebugName);
+    }
+}
+
 Result FenceImpl::init(const IFence::Desc& desc) {
-    if (!m_device->m_api.m_extendedFeatures.vulkan12Features.timelineSemaphore)
+    if (!m_device->m_api.m_extendedFeatures.vulkan12Features.timelineSemaphore) {
         return SLANG_E_NOT_AVAILABLE;
+    }
 
     VkSemaphoreTypeCreateInfo timelineCreateInfo;
     timelineCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
     timelineCreateInfo.pNext = nullptr;
     timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
     timelineCreateInfo.initialValue = desc.initialValue;
+
+    printf("FenceImpl::init name %s desc.initialValue %zu\n", m_debug_name.c_str(), timelineCreateInfo.initialValue);
 
     VkSemaphoreCreateInfo createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -37,17 +46,17 @@ Result FenceImpl::init(const IFence::Desc& desc) {
     VkExportSemaphoreWin32HandleInfoKHR exportSemaphoreWin32HandleInfoKHR;
 #endif
     VkExportSemaphoreCreateInfoKHR exportSemaphoreCreateInfo;
-    if (desc.isShared)
-    {
+    if (desc.isShared) {
+
 #if SLANG_WINDOWS_FAMILY
-        exportSemaphoreWin32HandleInfoKHR.sType =
-            VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR;
+        exportSemaphoreWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR;
         exportSemaphoreWin32HandleInfoKHR.pNext = timelineCreateInfo.pNext;
         exportSemaphoreWin32HandleInfoKHR.pAttributes = nullptr;
         exportSemaphoreWin32HandleInfoKHR.dwAccess = GENERIC_ALL;
         exportSemaphoreWin32HandleInfoKHR.name = (LPCWSTR) nullptr;
 #endif
         exportSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR;
+
 #if SLANG_WINDOWS_FAMILY
         exportSemaphoreCreateInfo.pNext = &exportSemaphoreWin32HandleInfoKHR;
         exportSemaphoreCreateInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;

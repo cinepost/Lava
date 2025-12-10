@@ -43,12 +43,16 @@ class TextureResourceImpl : public TextureResource {
 
         VkSparseImageMemoryBind mMipTailimageMemoryBind{};
 
+        VkImageLayout m_image_layout = VK_IMAGE_LAYOUT_GENERAL;
+
         bool mTailMemoryAllocated = false;
         bool mIsSparse = false;
         bool m_isWeakImageReference = false;
         RefPtr<DeviceImpl> m_device;
 
         uint32_t getMemoryTypeIndex() const { return mMemoryTypeIndex; }
+
+        VkImageLayout getImageLayout() const { return m_image_layout; }
 
         const VkSparseImageMemoryRequirements& getSparseImageMemoryRequirements() const { return mSparseImageMemoryRequirements; }
 

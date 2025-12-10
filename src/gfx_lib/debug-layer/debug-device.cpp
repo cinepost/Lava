@@ -652,10 +652,10 @@ Result DebugDevice::createQueryPool(const IQueryPool::Desc& desc, IQueryPool** o
     return SLANG_OK;
 }
 
-Result DebugDevice::createFence(const IFence::Desc& desc, IFence** outFence) {
+Result DebugDevice::createFence(const IFence::Desc& desc, IFence** outFence, const char* pDebugName) {
     SLANG_GFX_API_FUNC;
     RefPtr<DebugFence> result = new DebugFence();
-    SLANG_RETURN_ON_FAIL(baseObject->createFence(desc, result->baseObject.writeRef()));
+    SLANG_RETURN_ON_FAIL(baseObject->createFence(desc, result->baseObject.writeRef(), pDebugName));
     returnComPtr(outFence, result);
     return SLANG_OK;
 }

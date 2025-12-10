@@ -510,12 +510,14 @@ bool Session::cmdRaytrace() {
 	}
 ///////
 
-  	initDisplayTimeReport.addTotal("Display init total time");
-  	initDisplayTimeReport.printToLog();
+  initDisplayTimeReport.addTotal("Display init total time");
+  initDisplayTimeReport.printToLog();
 
-  	// Frame rendering
-  	TimeReport renderingTimeReport;
+  // Frame rendering
+  TimeReport renderingTimeReport;
 	
+  mpRenderer->getDevice()->wait();
+
 	LLOG_INF << "Rendering image started...";
 	setUpCamera(mpRenderer->currentCamera());
 
@@ -548,6 +550,9 @@ bool Session::cmdRaytrace() {
 
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
+			
+			//mpRenderer->getDevice()->wait();
+
 			if (doInteractiveImageUpdates) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
@@ -560,7 +565,7 @@ bool Session::cmdRaytrace() {
 		}
 
 		//mpRenderer->getDevice()->getRenderContext()->submit(true);
-		mpRenderer->getDevice()->endFrame();
+		//mpRenderer->getDevice()->wait();
 
 		renderingTimeReport.measure("Image rendering time");
 		LLOG_INF << renderingTimeReport.printToString();

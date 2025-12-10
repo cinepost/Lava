@@ -108,6 +108,8 @@ void VulkanDeviceQueue::flushStepA() {
     }
 
     Fence& fence = m_fences[m_commandBufferIndex];
+
+    printf("vk-device-queue vkQueueSubmit\n");
     m_api->vkQueueSubmit(m_queue, 1, &submitInfo, fence.fence);
     
     // mark signaled fence value

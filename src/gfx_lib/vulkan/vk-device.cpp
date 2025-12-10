@@ -376,6 +376,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	List<const char*> deviceExtensions;
 	deviceExtensions.add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	deviceExtensions.add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+	deviceExtensions.add(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
 
 	VkDeviceCreateInfo deviceCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 	deviceCreateInfo.queueCreateInfoCount = 1;
@@ -449,7 +450,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		// Get device features
 		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		deviceFeatures2.features.multiViewport = VK_TRUE;
-    	deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+		deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
 		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 		
@@ -478,8 +479,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.accelerationStructureFeatures;
 
 		// Variable pointer features.
-    	extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
-    	deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
+		extendedFeatures.variablePointersFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.variablePointersFeatures;
 
 		// Compute shader derivative features.
 		extendedFeatures.computeShaderDerivativeFeatures.pNext = deviceFeatures2.pNext;
@@ -497,9 +498,9 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		extendedFeatures.robustness2Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.robustness2Features;
 
-    	// clock features
-    	extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
-    	deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
+		// clock features
+		extendedFeatures.clockFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.clockFeatures;
 
 		// Fragment shader barycentrics features
 		extendedFeatures.fragmentShaderBarycentricFeaturesNV.pNext = deviceFeatures2.pNext;
@@ -548,7 +549,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		deviceFeatures2.pNext = &extendedFeatures.rayTracingValidationFeatures;
 #endif
 
+		extendedFeatures.timelineFeatures.pNext = deviceFeatures2.pNext;
+		deviceFeatures2.pNext = &extendedFeatures.timelineFeatures;
+
 		// Vulkan 1.2 features
+		extendedFeatures.vulkan12Features.timelineSemaphore = VK_TRUE;
 		extendedFeatures.vulkan12Features.samplerFilterMinmax = VK_TRUE;
 		extendedFeatures.vulkan12Features.pNext = deviceFeatures2.pNext;
 		deviceFeatures2.pNext = &extendedFeatures.vulkan12Features;
@@ -556,7 +561,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		m_api.vkGetPhysicalDeviceFeatures2(m_api.m_physicalDevice, &deviceFeatures2);
 
 		 // Confirm that the ray tracing validation feature is supported
-		assert(extendedFeatures.rayTracingValidationFeatures.rayTracingValidation == true);
+#ifdef _DEBUG
+		if(!extendedFeatures.rayTracingValidationFeatures.rayTracingValidation) {
+			LLOG_WRN << "RayTracing validation not supported!";
+		}
+#endif
 
 		// Link into the creation features
 		deviceCreateInfo.pNext = &extendedFeatures.vulkan12Features;
@@ -1256,8 +1265,7 @@ Result DeviceImpl::createAccelerationStructure(const IAccelerationStructure::Cre
 	resultAS->m_buffer = static_cast<BufferResourceImpl*>(desc.buffer);
 	resultAS->m_device = this;
 	resultAS->m_desc.type = IResourceView::Type::AccelerationStructure;
-	VkAccelerationStructureCreateInfoKHR createInfo = {
-		VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+	VkAccelerationStructureCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
 	createInfo.buffer = resultAS->m_buffer->m_buffer.m_buffer;
 	createInfo.offset = desc.offset;
 	createInfo.size = desc.size;
@@ -1433,7 +1441,7 @@ Result SLANG_MCALL DeviceImpl::createVirtualTexturePageResource(IVirtualTextureP
 
 	RefPtr<VirtualTexturePageResourceImpl> pPage(new VirtualTexturePageResourceImpl(this, offset, extent, mipLevel, layer));
 	pPage->mDevMemSize = VkDeviceSize(size); // Page memory size in bytes
-    pPage->mMemoryTypeBits = memoryTypeBits;
+	pPage->mMemoryTypeBits = memoryTypeBits;
 
     returnComPtr(outResource, pPage);
 	return SLANG_OK;
@@ -1513,9 +1521,9 @@ Result DeviceImpl::createTextureResource(
 
 	if (sparse) {
 		imageInfo.pQueueFamilyIndices = nullptr;
-    	imageInfo.queueFamilyIndexCount = 0;
+    imageInfo.queueFamilyIndexCount = 0;
 		imageInfo.flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
-		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		//imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		//pTexture->mState.global = Falcor::Resource::State::Undefined;
 	}
 
@@ -1533,14 +1541,14 @@ Result DeviceImpl::createTextureResource(
 		SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateImage(m_device, &imageInfo, nullptr, &texture->m_image));
 	} else {
 		VmaAllocationCreateInfo allocCreateInfo = {};
-    	allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
 		vmaCreateImage(m_api.mVmaAllocator, &imageInfo, &allocCreateInfo, &texture->m_image, &texture->mAllocation, nullptr);
 	}
 
 	if (sparse) {
-  		//pTexture->mState.global = Falcor::Resource::State::Undefined;
-  	}
+  	//pTexture->mState.global = Falcor::Resource::State::Undefined;
+  }
 
   	///////////////////////////////////////
 
@@ -1821,7 +1829,8 @@ Result DeviceImpl::createTextureResource(
 			format,
 			*texture->getDesc(),
 			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+		);
 
 		//pTexture->mState.global = Falcor::Resource::State::CopyDest;
 
@@ -1874,8 +1883,8 @@ Result DeviceImpl::createTextureResource(
 			format,
 			*texture->getDesc(),
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			defaultLayout);
-
+			defaultLayout
+		);
 		//pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 	} else {
 		// No init data non-sparse texture
@@ -1887,7 +1896,8 @@ Result DeviceImpl::createTextureResource(
 					format,
 					*texture->getDesc(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
-					defaultLayout);
+					defaultLayout
+				);
 				//pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 			}
 		}
@@ -2670,10 +2680,13 @@ Result DeviceImpl::createQueryPool(const IQueryPool::Desc& desc, IQueryPool** ou
 	return SLANG_OK;
 }
 
-Result DeviceImpl::createFence(const IFence::Desc& desc, IFence** outFence) {
-	RefPtr<FenceImpl> fence = new FenceImpl(this);
-	SLANG_RETURN_ON_FAIL(fence->init(desc));
-	returnComPtr(outFence, fence);
+Result DeviceImpl::createFence(const IFence::Desc& desc, IFence** outFence, const char* pDebugName) {
+	RefPtr<FenceImpl> pFence = new FenceImpl(this);
+	if(pDebugName) {
+		pFence->setDebugName(pDebugName);
+	}
+	SLANG_RETURN_ON_FAIL(pFence->init(desc));
+	returnComPtr(outFence, pFence);
 	return SLANG_OK;
 }
 

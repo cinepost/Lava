@@ -2847,7 +2847,7 @@ class IDevice: public ISlangUnknown {
 			IAccelerationStructure** outView) = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL
-			createFence(const IFence::Desc& desc, IFence** outFence) = 0;
+			createFence(const IFence::Desc& desc, IFence** outFence, const char* pDebugName = nullptr) = 0;
 
 		/// Wait on the host for the fences to signals.
 		/// `timeout` is in nanoseconds, can be set to `kTimeoutInfinite`.
@@ -3051,31 +3051,3 @@ inline std::string to_string(gfx::ResourceState r) {
   }
 #undef r2s
 }
-
-
-enum class ResourceState
-{
-  Undefined,
-  General,
-  PreInitialized,
-  VertexBuffer,
-  IndexBuffer,
-  ConstantBuffer,
-  StreamOutput,
-  ShaderResource,
-  UnorderedAccess,
-  RenderTarget,
-  DepthRead,
-  DepthWrite,
-  Present,
-  IndirectArgument,
-  CopySource,
-  CopyDestination,
-  ResolveSource,
-  ResolveDestination,
-  AccelerationStructure,
-  AccelerationStructureBuildInput,
-  PixelShaderResource,
-  NonPixelShaderResource,
-  _Count
-};

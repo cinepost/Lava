@@ -982,7 +982,7 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	mDirty = false;
 
 	// Debug test
-	printMemAllocCount();
+	//printMemAllocCount();
 
 	return true;
 }
@@ -1019,6 +1019,9 @@ void Renderer::renderSample() {
 	if (mCurrentSampleNumber % 16 == 0) {
 		//pRenderContext->flush(true);
 	}
+
+	//mpDevice->endFrame();
+	pRenderContext->submit();
 
 	double currentTime = 0;
 	pScene->update(pRenderContext, currentTime);

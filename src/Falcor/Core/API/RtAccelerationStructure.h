@@ -248,7 +248,7 @@ public:
 protected:
 	RtAccelerationStructure(Falcor::SharedPtr<Device>pDevice, const Desc& desc);
 
-	Falcor::SharedPtr<Device> mpDevice ;
+	Falcor::SharedPtr<Device> mpDevice;
 	Desc mDesc;
 
 	Slang::ComPtr<gfx::IAccelerationStructure> mGfxAccelerationStructure;

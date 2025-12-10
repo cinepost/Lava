@@ -93,6 +93,7 @@ void CopyContext::submit(bool wait) {
 
 uint64_t CopyContext::signal(Fence* pFence, uint64_t value) {
     FALCOR_CHECK(pFence, "'fence' must not be null");
+    printf("CopyContext::signal pFence %s currentValue %zu, signaledValue %zu, value %zu\n", pFence->getDebugName().c_str(), pFence->getCurrentValue(), pFence->getSignaledValue(), value);
     uint64_t signalValue = pFence->updateSignaledValue(value);
     mpLowLevelData->getGfxCommandQueue()->executeCommandBuffers(0, nullptr, pFence->getGfxFence(), signalValue);
     return signalValue;
@@ -100,7 +101,7 @@ uint64_t CopyContext::signal(Fence* pFence, uint64_t value) {
 
 void CopyContext::wait(Fence* pFence, uint64_t value) {
     FALCOR_CHECK(pFence, "'fence' must not be null");
-    uint64_t waitValue = value == Fence::kAuto ? pFence->getSignaledValue() : value;
+    uint64_t waitValue = (value == Fence::kAuto) ? pFence->getSignaledValue() : value;
     gfx::IFence* fences[] = {pFence->getGfxFence()};
     uint64_t waitValues[] = {waitValue};
     FALCOR_GFX_CALL(mpLowLevelData->getGfxCommandQueue()->waitForFenceValuesOnDevice(1, fences, waitValues));
@@ -273,7 +274,10 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
     pCtx->setPendingCommands(true);
 
     // Create a fence and signal
-    pThis->mpFence = pCtx->getDevice()->createFence();
+    FenceDesc fenceDesc;
+    fenceDesc.debugName = "read_texture_task_fence";
+
+    pThis->mpFence = pCtx->getDevice()->createFence(fenceDesc);
     pThis->mpFence->breakStrongReferenceToDevice();
     pCtx->submit(false);
     pCtx->signal(pThis->mpFence.get());
@@ -289,28 +293,22 @@ void CopyContext::ReadTextureTask::getData(void* pData, size_t size) const {
     mpFence->wait();
 
     uint8_t* pDst = reinterpret_cast<uint8_t*>(pData);
+    const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
 
-
-    if (mpBuffer->getMemoryType() == MemoryType::DeviceLocal) {
-        mpContext->readBuffer(mpBuffer.get(), pDst, 0, size);
-    } else {
-        const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
-
-        for (uint32_t z = 0; z < mDepth; z++) {
-            const uint8_t* pSrcZ = pSrc + z * (size_t)mRowSize * mRowCount;
-            uint8_t* pDstZ = pDst + z * (size_t)mActualRowSize * mRowCount;
-            for (uint32_t y = 0; y < mRowCount; y++) {
-                const uint8_t* pSrcY = pSrcZ + y * (size_t)mRowSize;
-                uint8_t* pDstY = pDstZ + y * (size_t)mActualRowSize;
-                std::memcpy(pDstY, pSrcY, mActualRowSize);
-                //std::memset(pDstY, y, mActualRowSize);
-            }
+    for (uint32_t z = 0; z < mDepth; z++) {
+        const uint8_t* pSrcZ = pSrc + z * (size_t)mRowSize * mRowCount;
+        uint8_t* pDstZ = pDst + z * (size_t)mActualRowSize * mRowCount;
+        for (uint32_t y = 0; y < mRowCount; y++)
+        {
+            const uint8_t* pSrcY = pSrcZ + y * (size_t)mRowSize;
+            uint8_t* pDstY = pDstZ + y * (size_t)mActualRowSize;
+            std::memcpy(pDstY, pSrcY, mActualRowSize);
         }
-
-        mpBuffer->unmap();
     }
 
+    mpBuffer->unmap();
 }
+
 
 void CopyContext::ReadTextureTask::getData(void* pData) const {
     size_t size = size_t(mRowCount) * mActualRowSize * mDepth;

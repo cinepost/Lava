@@ -16,6 +16,7 @@ class FenceImpl : public FenceBase
 public:
     VkSemaphore m_semaphore = VK_NULL_HANDLE;
     RefPtr<DeviceImpl> m_device;
+    std::string m_debug_name;
 
     FenceImpl(DeviceImpl* device);
 
@@ -31,6 +32,8 @@ public:
 
     virtual SLANG_NO_THROW Result SLANG_MCALL
         getNativeHandle(InteropHandle* outNativeHandle) override;
+
+    void setDebugName(const char* pDebugName);
 };
 
 } // namespace vk

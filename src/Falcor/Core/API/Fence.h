@@ -34,14 +34,16 @@
 #include "Falcor/Core/Object.h"
 
 #include <limits>
+#include <string>
 
 namespace Falcor {
 
 class Device;
 
 struct FenceDesc {
-    bool initialValue{0};
-    bool shared{false};
+    uint64_t initialValue = 0;
+    bool shared = false;
+    std::string debugName;
 };
 
 /**
@@ -122,13 +124,15 @@ public:
 
     Device* getDevice() const { return mpDevice.get(); }
 
+    const std::string& getDebugName() const { return mDesc.debugName; }
+
     void breakStrongReferenceToDevice();
 
 private:
     Falcor::BreakableSharedPtr<Device> mpDevice;
     FenceDesc mDesc;
     Slang::ComPtr<gfx::IFence> mGfxFence;
-    uint64_t mSignaledValue{0};
+    uint64_t mSignaledValue = 0;
 };
 
 } // namespace Falcor

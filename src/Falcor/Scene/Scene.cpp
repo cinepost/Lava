@@ -133,6 +133,7 @@ namespace {
 
 Scene::Scene(Device::SharedPtr pDevice, SceneData&& sceneData): mpDevice(pDevice)
 {
+    LLOG_DBG << "Scene::Scene()";
     mRayTraceInitialized = false;
     //mDebug.setup(mpDevice->getGfxResource()); 
 
@@ -563,6 +564,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     if (ibSize > 0) {
         ResourceBindFlags ibBindFlags = ResourceBindFlags::Index | ResourceBindFlags::ShaderResource;
         pIB = Buffer::create(mpDevice, ibSize, ibBindFlags, Buffer::CpuAccess::None, indexData.data());
+        pIB->setName("Scene mesh index buffer");
         LLOG_TRC << "pIB buffer size " << pIB->getSize();
     }
 
@@ -575,6 +577,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
 
     ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, staticData.data(), false);
+    pStaticBuffer->setName("Scene static data buffer");
     LLOG_TRC << "pStaticBuffer buffer size " << pStaticBuffer->getSize();
 
 
@@ -598,6 +601,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         pDrawIDBuffer = mpDevice->createBuffer(drawCount * sizeof(uint32_t), ResourceBindFlags::Vertex, MemoryType::DeviceLocal, drawIDs.data());
     }
     else should_not_get_here();
+
+    pDrawIDBuffer->setName("Scene draw id buffer");
 
     LLOG_TRC << "pDrawIDBuffer buffer size " << pDrawIDBuffer->getSize();
 
@@ -1310,6 +1315,7 @@ void Scene::updateGeometryTypes() {
 }
 
 void Scene::finalize() {
+    LLOG_DBG << "Scene::finalize()";
     assert(mHas16BitIndices || mHas32BitIndices);
 
     RenderContext* pRenderContext = mpDevice->getRenderContext();
@@ -2630,7 +2636,7 @@ void Scene::preparePrebuildInfo(RenderContext* pRenderContext) {
         blas.resultByteSize = align_to(kAccelerationStructureByteAlignment, blas.prebuildInfo.resultDataMaxSize);
 
         uint64_t scratchByteSize = std::max(blas.prebuildInfo.scratchDataSize, blas.prebuildInfo.updateScratchDataSize);
-        blas.scratchByteSize = align_to(acceleration_structure_scratch_offset_alignment, scratchByteSize);
+        blas.scratchByteSize = align_to(kAccelerationStructureByteAlignment, scratchByteSize);
     }
 }
 
@@ -2841,13 +2847,12 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
                     RtAccelerationStructure::Desc createDesc = {};
                     createDesc.setBuffer(pResultBuffer, blas.resultByteOffset, blas.resultByteSize);
                     createDesc.setKind(RtAccelerationStructureKind::BottomLevel);
-                    auto blasObject = RtAccelerationStructure::create(mpDevice, createDesc);
-                    intermediateBlases[i] = blasObject;
+                    intermediateBlases[i] = RtAccelerationStructure::create(mpDevice, createDesc);
 
                     RtAccelerationStructure::BuildDesc asDesc = {};
                     asDesc.inputs = blas.buildInputs;
                     asDesc.scratchData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
-                    asDesc.dest = blasObject.get();
+                    asDesc.dest = intermediateBlases[i].get();
 
                     // Need to find out the post-build compacted BLAS size to know the final allocation size.
                     RtAccelerationStructurePostBuildInfoDesc postbuildInfoDesc = {};
@@ -2861,10 +2866,10 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
                         postbuildInfoDesc.pool = currentSizeInfoPool.get();
                     }
 
-                    LLOG_DBG << "BLAS build started...";
+                    LLOG_WRN << "BLAS build started...";
                     pRenderContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
                     pRenderContext->submit(true);
-                    LLOG_DBG << "BLAS build done.";
+                    LLOG_WRN << "BLAS build done.";
                 }
 
                 // Read back the calculated final size requirements for each BLAS.
@@ -2993,6 +2998,9 @@ void Scene::buildBlas(RenderContext* pRenderContext) {
             LLOG_DBG << "BLAS update/rebuild started...";
             pRenderContext->buildAccelerationStructure(asDesc, 0, nullptr);
             LLOG_DBG << "BLAS update/rebuild done.";
+
+            pRenderContext->submit();
+            LLOG_WRN << "BLAS build!";
         }
 
         // Insert barrier. The BLAS buffer is now ready for use.
@@ -3012,6 +3020,8 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         assert(mBlasData[i].blasGroupIndex < mBlasGroups.size());
         const auto& pBlas = mBlasGroups[mBlasData[i].blasGroupIndex].pBlas;
         assert(pBlas);
+
+        LLOG_WRN << "Scene::fillInstanceDesc() blasByteOffset " << mBlasData[i].blasByteOffset;
 
         RtInstanceDesc desc = {};
         desc.accelerationStructure = pBlas->getGpuAddress() + mBlasData[i].blasByteOffset;
@@ -3062,17 +3072,25 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 #endif // _DEBUG
 
                 //const auto& instance = mGeometryInstanceData[instanceID];
+
+                LLOG_WRN << "______________________________";
+                LLOG_WRN << "meshID " << meshID;
+
+                auto _instance_id = mMeshIdToInstanceIds[meshID][instanceIdx];
+                LLOG_WRN << "_instance_id " << _instance_id;
+
                 const auto& instance = mGeometryInstanceData[mMeshIdToInstanceIds[meshID][instanceIdx]];
 
-                desc.instanceID = instanceID; //instance.geometryIndex; //instanceID;
+                desc.instanceID = instanceID++; //instance.geometryIndex; //instanceID;
                 desc.instanceMask = 0xFF;
+
+                LLOG_WRN << "desc.instanceID " << desc.instanceID;
 
                 // Instance ray flags
                 if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
                 if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;        
 
-                instanceID++;//= (uint32_t)meshList.size();
-
+                
                 float4x4 transform4x4 = float4x4::identity();
                 if (!isStatic) {
                     // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
@@ -3101,6 +3119,9 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
 
     //#ifdef _DEBUG
     uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mCurveDesc.empty() ? 0 : 1) + getSDFGridGeometryCount() + (mCustomPrimitiveDesc.empty() ? 0 : 1);
+    
+    LLOG_WRN << " Scene::fillInstanceDesc() Total BLAS count " << totalBlasCount;
+
     assert((uint32_t)mBlasData.size() == totalBlasCount);
     //#endif // _DEBUG
 
@@ -3227,8 +3248,19 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
 
     RtAccelerationStructureBuildInputs inputs = {};
     inputs.kind = RtAccelerationStructureKind::TopLevel;
-    inputs.descCount = (uint32_t)mInstanceDescs.size();
+    inputs.descCount = 0;// (uint32_t)mInstanceDescs.size();
     inputs.flags = RtAccelerationStructureBuildFlags::None;
+
+    for(size_t i = 0; i < mInstanceDescs.size(); i++) {
+        const RtInstanceDesc& desc = mInstanceDescs[i];
+        const auto& m = desc.transform;
+        LLOG_WRN << "mInstanceDescs[" << i << "] instance id " << desc.instanceID << " m["
+        << m[0][0] << " " << m[1][0] << " " << m[2][0]
+        << m[0][1] << " " << m[1][1] << " " << m[2][1]
+        << m[0][2] << " " << m[1][2] << " " << m[2][2]
+        << m[0][3] << " " << m[1][3] << " " << m[2][3]
+        << "]";  
+    }
 
     LLOG_WRN << "inputs.descCount " << inputs.descCount;
 
@@ -3249,6 +3281,8 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
         mpTlasScratch = mpDevice->createBuffer(mTlasPrebuildInfo.scratchDataSize, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal);
         mpTlasScratch->setName("Scene::mpTlasScratch");
 
+        LLOG_WRN << "TLAS scratch buffer size " << mpTlasScratch->getSize();
+
         // #SCENE This isn't guaranteed according to the spec, and the scratch buffer being stored should be sized differently depending on update mode
         assert(mTlasPrebuildInfo.updateScratchDataSize <= mTlasPrebuildInfo.scratchDataSize);
     }
@@ -3256,9 +3290,11 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     // Setup GPU buffers
     RtAccelerationStructure::BuildDesc asDesc = {};
     asDesc.inputs = inputs;
+    asDesc.source = nullptr;
 
     // If first time building this TLAS
     if (tlas.pTlasObject == nullptr) {
+        LLOG_WRN << "TLAS create!";
         {
             // Allocate a new buffer for the TLAS only if the existing buffer isn't big enough.
             if (!tlas.pTlasBuffer || tlas.pTlasBuffer->getSize() < mTlasPrebuildInfo.resultDataMaxSize) {
@@ -3269,13 +3305,16 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
 
         if (!mInstanceDescs.empty()) {
             // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
-            if (!tlas.pInstanceDescs || (tlas.pInstanceDescs->getSize() < (mInstanceDescs.size() * sizeof(RtInstanceDesc)))) {
-                tlas.pInstanceDescs = mpDevice->createBuffer((uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mInstanceDescs.data());
-                tlas.pInstanceDescs->setName("Scene TLAS instance descs buffer");
+            if (!tlas.pInstanceDescs || tlas.pInstanceDescs->getSize() < mInstanceDescs.size() * sizeof(RtInstanceDesc))
+            {
+                tlas.pInstanceDescs = mpDevice->createBuffer((uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), ResourceBindFlags::ShaderResource, MemoryType::Upload, mInstanceDescs.data());
+                tlas.pInstanceDescs->setName("Scene instance descs buffer");
             } else {
                 tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
             }
         }
+
+        assert(tlas.pTlasBuffer->getSize() >= mTlasPrebuildInfo.resultDataMaxSize);
 
         RtAccelerationStructure::Desc asCreateDesc = {};
         asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
@@ -3285,13 +3324,14 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     // Else barrier TLAS buffers
     else
     {
+        LLOG_WRN << "TLAS update!";
         assert(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
         pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
         pRenderContext->uavBarrier(mpTlasScratch.get());
         if (tlas.pInstanceDescs) {
             assert(!mInstanceDescs.empty());
             tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.descCount * sizeof(RtInstanceDesc));
-        }        
+        }
         asDesc.source = tlas.pTlasObject.get(); // Perform the update in-place
     }
 
@@ -3302,18 +3342,18 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
     asDesc.scratchData = mpTlasScratch->getGpuAddress();
     asDesc.dest = tlas.pTlasObject.get();
 
-    // Set the source buffer to update in place if this is an update
+     // Set the source buffer to update in place if this is an update
     if ((inputs.flags & RtAccelerationStructureBuildFlags::PerformUpdate) != RtAccelerationStructureBuildFlags::None) {
         asDesc.source = asDesc.dest;
     }
 
-    // Create TLAS
-    if (tlas.pInstanceDescs) {
-        pRenderContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
-    }
+    LLOG_WRN << "TLAS scratchData address " << mpTlasScratch->getGpuAddress();
 
+    // Create TLAS
     LLOG_DBG << "TLAS build started...";
     pRenderContext->buildAccelerationStructure(asDesc, 0, nullptr);
+    //pRenderContext->submit(true);
+    LLOG_WRN << "TLAS pRenderContext submitted!";
     pRenderContext->uavBarrier(tlas.pTlasBuffer.get());
     LLOG_DBG << "TLAS build done.";
 

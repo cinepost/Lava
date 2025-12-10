@@ -1202,7 +1202,7 @@ public:
 
     // Provides a default implementation that returns SLANG_E_NOT_AVAILABLE.
     virtual SLANG_NO_THROW Result SLANG_MCALL
-        createFence(const IFence::Desc& desc, IFence** outFence) override;
+        createFence(const IFence::Desc& desc, IFence** outFence, const char* pDebugName = nullptr) override;
 
     // Provides a default implementation that returns SLANG_E_NOT_AVAILABLE.
     virtual SLANG_NO_THROW Result SLANG_MCALL

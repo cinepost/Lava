@@ -37,7 +37,7 @@ Fence::Fence(Device::SharedPtr pDevice, FenceDesc desc) : mpDevice(pDevice), mDe
     gfx::IFence::Desc gfxDesc = {};
     mSignaledValue = mDesc.initialValue;
     gfxDesc.isShared = mDesc.shared;
-    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFence(gfxDesc, mGfxFence.writeRef()));
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFence(gfxDesc, mGfxFence.writeRef(), mDesc.debugName.c_str()));
 }
 
 Fence::~Fence() = default;
@@ -49,7 +49,7 @@ uint64_t Fence::signal(uint64_t value) {
 }
 
 void Fence::wait(uint64_t value, uint64_t timeoutNs) {
-    uint64_t waitValue = value == kAuto ? mSignaledValue : value;
+    uint64_t waitValue = (value == kAuto) ? mSignaledValue : value;
     uint64_t currentValue = getCurrentValue();
     if (currentValue >= waitValue) {
         return;
@@ -66,7 +66,7 @@ uint64_t Fence::getCurrentValue() {
 }
 
 uint64_t Fence::updateSignaledValue(uint64_t value) {
-    mSignaledValue = value == kAuto ? mSignaledValue + 1 : value;
+    mSignaledValue = (value == kAuto) ? mSignaledValue + 1 : value;
     return mSignaledValue;
 }
 

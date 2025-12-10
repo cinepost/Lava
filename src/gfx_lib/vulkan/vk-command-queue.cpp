@@ -42,7 +42,7 @@ void CommandQueueImpl::waitOnHost() {
 }
 
 Result CommandQueueImpl::getNativeHandle(InteropHandle* outHandle) {
-    outHandle->api = InteropHandleAPI::D3D12;
+    outHandle->api = InteropHandleAPI::Vulkan;
     outHandle->handleValue = (uint64_t)m_queue;
     return SLANG_OK;
 }
@@ -59,7 +59,7 @@ Result CommandQueueImpl::waitForFenceValuesOnDevice(GfxCount fenceCount, IFence*
     return SLANG_OK;
 }
 
-void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* commandBuffers, IFence* fence, uint64_t valueToSignal) {
+void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* commandBuffers, IFence* pFence, uint64_t valueToSignal) {
     auto& vkAPI = m_renderer->m_api;
     m_submitCommandBuffers.clear();
 
@@ -101,9 +101,12 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
     m_pendingWaitFences.clear();
     VkTimelineSemaphoreSubmitInfo timelineSubmitInfo = {VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
     
-    if (fence) {
-        auto fenceImpl = static_cast<FenceImpl*>(fence);
-        signalSemaphores.add(fenceImpl->m_semaphore);
+    std::string fence_debug_name;
+
+    if (pFence) {
+        auto pFenceImpl = static_cast<FenceImpl*>(pFence);
+        fence_debug_name = pFenceImpl->m_debug_name;
+        signalSemaphores.add(pFenceImpl->m_semaphore);
         signalValues.add(valueToSignal);
         submitInfo.pNext = &timelineSubmitInfo;
         timelineSubmitInfo.signalSemaphoreValueCount = (uint32_t)signalValues.getCount();
@@ -129,6 +132,11 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
         commandBufferImpl->m_transientHeap->advanceFence();
     }
 
+    if(pFence) {
+        printf("vk-command-queue vkQueueSubmit(valueToSignal = %zu) fence %s\n", valueToSignal, fence_debug_name.c_str());
+    } else {
+        printf("vk-command-queue vkQueueSubmit(valueToSignal = %zu) no fence\n", valueToSignal);
+    }
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
     
     m_pendingWaitSemaphores[0] = m_semaphore;

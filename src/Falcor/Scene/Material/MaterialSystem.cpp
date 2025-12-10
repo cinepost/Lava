@@ -72,7 +72,10 @@ MaterialSystem::SharedPtr MaterialSystem::create(Device::SharedPtr pDevice) {
 }
 
 MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
-	mpFence = mpDevice->createFence();
+	FenceDesc fenceDesc;
+    fenceDesc.debugName = "material_system_fence";
+
+	mpFence = mpDevice->createFence(fenceDesc);
 	mMaterialCountByType.resize((size_t)MaterialType::BuiltinCount, 0);
 
 	// Create a default texture sampler.

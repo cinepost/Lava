@@ -424,7 +424,9 @@ pybind11::dict Profiler::getPythonEvents() const {
 }
 
 Profiler::Profiler(Device::SharedPtr pDevice): mpDevice(pDevice) {
-    mpFence = mpDevice->createFence();
+    FenceDesc fenceDesc;
+    fenceDesc.debugName = "profiler_fence";
+    mpFence = mpDevice->createFence(fenceDesc);
     mpFence->breakStrongReferenceToDevice();
 }
 

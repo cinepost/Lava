@@ -146,6 +146,8 @@ void Texture::apiInit(const void* pData, bool autoGenMips, bool sparse) {
 	gfx::ITextureResource* ptx = getGfxTextureResource();
 	gfx::vk::TextureResourceImpl* pTextureResourceImpl = static_cast<gfx::vk::TextureResourceImpl*>(ptx);
 
+	setGlobalState(toFalcorState(desc.defaultState));
+
 	if(sparse) {
 		const VkSparseImageMemoryRequirements& sparseImageMemoryRequirements = pTextureResourceImpl->getSparseImageMemoryRequirements();
 

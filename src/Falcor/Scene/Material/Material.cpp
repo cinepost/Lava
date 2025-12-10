@@ -185,9 +185,10 @@ void Material::loadTexture(TextureSlot slot, const fs::path& path, bool useSrgb)
 
     fs::path fullPath;
     if (findFileInDataDirectories(path, fullPath)) {
-        auto texture = Texture::createFromFile(mpDevice, fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
-        if (texture) {
-            setTexture(slot, texture);
+        auto pTexture = Texture::createFromFile(mpDevice, fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
+        if (pTexture) {
+            pTexture->setName(fullPath.string());
+            setTexture(slot, pTexture);
             // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
             // every texture creation is overly conservative, and will likely lead to performance issues
             // due to the forced CPU/GPU sync.

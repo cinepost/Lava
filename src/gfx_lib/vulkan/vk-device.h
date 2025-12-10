@@ -157,7 +157,7 @@ public:
 	virtual SLANG_NO_THROW Result SLANG_MCALL getMinAccelerationStructureScratchOffsetAlignment(uint64_t* outAlignment) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL
-		createFence(const IFence::Desc& desc, IFence** outFence) override;
+		createFence(const IFence::Desc& desc, IFence** outFence, const char* pDebugName = nullptr) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL waitForFences(
 		GfxCount fenceCount,

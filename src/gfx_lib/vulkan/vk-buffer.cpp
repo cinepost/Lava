@@ -56,9 +56,15 @@ Result VKBufferHandleRAII::init(
 
     if (usage & VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) {
         allocInfo.usage = VMA_MEMORY_USAGE_AUTO; //VMA_MEMORY_USAGE_UNKNOWN;
+
+        //allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY; // Or appropriate usage
+        allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT; // Often beneficial for AS
+
     } else {
         allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
+        //allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     }
+
 
     uint32_t memoryTypeIndex = 0;
 
