@@ -3248,7 +3248,7 @@ void Scene::buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool
 
     RtAccelerationStructureBuildInputs inputs = {};
     inputs.kind = RtAccelerationStructureKind::TopLevel;
-    inputs.descCount = 0;// (uint32_t)mInstanceDescs.size();
+    inputs.descCount = 2;//(uint32_t)mInstanceDescs.size();
     inputs.flags = RtAccelerationStructureBuildFlags::None;
 
     for(size_t i = 0; i < mInstanceDescs.size(); i++) {
