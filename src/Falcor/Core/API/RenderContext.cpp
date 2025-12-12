@@ -48,6 +48,8 @@ namespace Falcor {
 namespace {
 
 void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo) {
+    printf("ensureFboAttachmentResourceStates\n");
+
     if (pFbo) {
         for (uint32_t i = 0; i < pFbo->getMaxColorTargetCount(); i++) {
             auto pTexture = pFbo->getColorTexture(i);
@@ -64,6 +66,8 @@ void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo) {
             pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil, &pDSV->getViewInfo());
         }
     }
+
+    printf("ensureFboAttachmentResourceStates done\n");
 }
 
 

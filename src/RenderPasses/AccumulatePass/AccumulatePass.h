@@ -89,7 +89,7 @@ class PASS_API AccumulatePass : public RenderPass {
     void setPixelFilterType(PixelFilterType type);
     void setPixelFilterType(const std::string& typeName);
 
-    const Falcor::ResourceFormat& format() const { return mOutputFormat; }
+    const Falcor::ResourceFormat& getFormat() const { return mOutputFormat; }
 
     virtual void reset() override;
 

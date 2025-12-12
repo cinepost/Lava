@@ -44,6 +44,21 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif  // FALCOR_GCC
 
+#if FALCOR_GCC
+
+#ifndef BREAK_HERE
+
+#ifdef _DEBUG
+#include <signal.h>
+#define BREAK_HERE raise(SIGINT)
+#else
+#define BREAK_HERE {}
+#endif // _DEBUG
+
+#endif // BREAK_HERE
+
+#endif // FALCOR_GCC
+
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
 

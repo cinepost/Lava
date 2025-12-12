@@ -618,6 +618,25 @@ VkImageLayout VulkanUtil::mapResourceStateToLayout(ResourceState state)
     }
 }
 
+std::string VulkanUtil::to_string(VkImageLayout layout) {
+    #define layout_2_string(a) case a: return #a;
+    switch(layout) {
+        layout_2_string(VK_IMAGE_LAYOUT_UNDEFINED);
+        layout_2_string(VK_IMAGE_LAYOUT_GENERAL);
+        layout_2_string(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        layout_2_string(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        layout_2_string(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+        layout_2_string(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        layout_2_string(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        layout_2_string(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        layout_2_string(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        default:
+            assert(!"Unknown VkImageLayout");
+            return "";
+    }
+    #undef layout_2_string
+}
+
 Result AccelerationStructureBuildGeometryInfoBuilder::build(
     const IAccelerationStructure::BuildInputs& buildInputs,
     IDebugCallback* debugCallback)

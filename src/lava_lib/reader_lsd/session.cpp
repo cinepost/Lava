@@ -450,7 +450,7 @@ bool Session::cmdRaytrace() {
     	const bool delayedMainImageFileCreation = mpDisplay->supportsMetaData();
     	auto _openMainImage = [this, imageFileName, userParams, pMainOutputPlane, &hImage]() {
     		bool result = false;
-    		Falcor::ResourceFormat format = pMainOutputPlane->format();
+    		Falcor::ResourceFormat format = pMainOutputPlane->getInfo().format;
     		if(pMainOutputPlane->hasMetaData()) {
     			auto metaData = pMainOutputPlane->getMetaData();	
     			result = mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, hImage, userParams, "C", &metaData);
@@ -483,7 +483,7 @@ bool Session::cmdRaytrace() {
     	auto _openImage = [this, aovImageFileName, userParams, pPlaneDisplay, pPlane, &entry]() {
     		bool result = false;
     		const std::string channel_prefix = pPlane->outputName();
-    		const Falcor::ResourceFormat format = pPlane->format();
+    		const Falcor::ResourceFormat format = pPlane->getInfo().format;
     		if(pPlane->hasMetaData()) {
     			auto metaData = pPlane->getMetaData();
     			result = pPlaneDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, format, entry.first, userParams, channel_prefix, &metaData); 

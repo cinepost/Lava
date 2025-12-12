@@ -156,7 +156,7 @@ class FALCOR_API Resource : public Object {
 
     /** Set the resource name
     */
-    void setName(const std::string& name) { mName = name; apiSetName(); }
+    void setName(std::string_view name) { mName = name; apiSetName(); }
 
     /** Get the resource name
     */
@@ -173,6 +173,8 @@ class FALCOR_API Resource : public Object {
     Falcor::SharedPtr<Texture> asTexture();
     Falcor::SharedPtr<const Texture> asTexture() const;
     Falcor::SharedPtr<Buffer> asBuffer();
+
+    bool isTextureResource() const { return mType != Type::Buffer; }
 
     void breakStrongReferenceToDevice();
 

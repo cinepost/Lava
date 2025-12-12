@@ -157,7 +157,7 @@ Properties AccumulatePass::getProperties() const {
 RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kInputChannel, "Input data to be accumulated").bindFlags(ResourceBindFlags::ShaderResource);
-    reflector.addOutput(kOutputChannel, "Output data that is accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource)
+    reflector.addOutput(kOutputChannel, "Output data that is accumulated").bindFlags(ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource)
         .format(mOutputFormat);
 
     addRenderPassInputs(reflector, kAccumulatePassExtraInputChannels, ResourceBindFlags::ShaderResource);
@@ -444,30 +444,31 @@ void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture
 
     // Allocate/resize/clear buffers for intermedate data. These are different depending on accumulation mode.
     // Buffers that are not used in the current mode are released.
-    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool clearAsDepth = false) {
+    auto prepareBuffer = [&](Texture::SharedPtr& pTex, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool clearAsDepth = false) {
         if (!bufUsed) {
-            pBuf = nullptr;
+            pTex = nullptr;
             return;
         }
 
         // (Re-)create buffer if needed.
-        if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            pBuf = Texture::create2D(pRenderContext->getDevice(), width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-            assert(pBuf);
+        if (!pTex || pTex->getWidth() != width || pTex->getHeight() != height) {
+            pTex = Texture::create2D(pRenderContext->getDevice(), width, height, format, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            assert(pTex);
+            pTex->setName("AccumulatePass::image");
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
         if (clearAsDepth) {
             bool isDepth = isDepthStencilFormat(format);
             if(mPixelFilterType == PixelFilterType::Closest) {
-                if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 1.f, 0);
-                else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f));
+                if (isDepth) pRenderContext->clearDsv(pTex->getDSV().get(), 1.f, 0);
+                else pRenderContext->clearUAV(pTex->getUAV().get(), float4(1.f));
             } else {
-                if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 0.f, 0);
-                else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
+                if (isDepth) pRenderContext->clearDsv(pTex->getDSV().get(), 0.f, 0);
+                else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
             }
         } else {
-            if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
-            else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
+            if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+            else pRenderContext->clearUAV(pTex->getUAV().get(), uint4(0));
         }
     };
 

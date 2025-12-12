@@ -139,7 +139,7 @@ bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
 		return false;
 	}
 
-	auto requestedResourceFormat = format();
+	auto requestedResourceFormat = getInfo().format;
 
 	aov_plane_geometry.width = mpTexture->getWidth(0);
 	aov_plane_geometry.height = mpTexture->getHeight(0);
@@ -189,9 +189,13 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
 	mpAccumulatePass->setPixelFilterType(mInfo.pfilterTypeName);
 	mpAccumulatePass->setPixelFilterSize(mInfo.pfilterSize);
 
-	mFormat = getClosestAvailableFormat(format());
+	const auto requestedResourceFormat = getInfo().format;
 
-	LLOG_DBG << "createAccumulationPass for " << mInfo.name << " requested format " << to_string(format()) << " closest available " << to_string(mFormat);
+	mFormat = getClosestAvailableFormat(requestedResourceFormat);
+
+	if(requestedResourceFormat != mFormat) {
+		LLOG_DBG << "createAccumulationPass for " << mInfo.name << " requested format " << to_string(requestedResourceFormat) << " closest available " << to_string(mFormat);
+	}
 
 	mpAccumulatePass->setOutputFormat(mFormat);
 
@@ -350,7 +354,7 @@ bool AOVPlane::compileInternalRenderGraph(Falcor::RenderContext* pContext) {
 void AOVPlane::setOutputFormat(Falcor::ResourceFormat format) {
 	auto _format = getClosestAvailableFormat(format);
 
-	if (mpAccumulatePass && (mpAccumulatePass->format() != _format)) {
+	if (mpAccumulatePass && (mpAccumulatePass->getFormat() != _format)) {
 		mpAccumulatePass->setOutputFormat(_format);
 		mFormat = _format;
 	}

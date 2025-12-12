@@ -121,6 +121,7 @@ bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t 
     // Create importance map. We have to set the RTV flag to be able to use generateMips().
     mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess);
     assert(mpImportanceMap);
+    mpImportanceMap->setName("EnvMapSampler::mpImportanceMap");
 
     auto var = mpSetupPass->getRootVar();
 

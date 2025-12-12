@@ -187,6 +187,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	
 	VkInstance instance = VK_NULL_HANDLE;
 	if (handles[0].handleValue == 0) {
+		LLOG_FTL << "GFX Vulkan instance creation not supported!";
+		/*
 		LLOG_WRN << "GFX vulkan instance creation path.";
 
 		VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
@@ -286,12 +288,15 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 				break;
 			}
 		}
+		*/
 	} else {
 		LLOG_WRN << "CORE vulkan instance creation path.";
 		instance = (VkInstance)handles[0].handleValue;
 	}
 	
-	if (!instance) return SLANG_FAIL;
+	if (!instance) {
+		return SLANG_FAIL;
+	}
 
 	SLANG_RETURN_ON_FAIL(m_api.initInstanceProcs(instance));
 	
@@ -1555,8 +1560,6 @@ Result DeviceImpl::createTextureResource(
   	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &texture->mMemRequirements);
 	
   	////////////// sparse texture section /////////////////
-
-  	texture->setDebugName(sparse ? "TextureResourceImpl sparse" : "TextureResourceImpl");
 
 	if(sparse) {
 #ifdef _DEBUG

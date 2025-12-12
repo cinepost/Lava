@@ -89,7 +89,7 @@ void Vao::updateVertexBufferData(uint32_t index, const void* pData, size_t offse
 
 	if(!pBuffer || !pData || (size == 0)) return;
     
-  pBuffer->setBlob(pData, offset, size);
+  	pBuffer->setBlob(pData, offset, size);
 }
 
 #ifdef SCRIPTING

@@ -182,8 +182,7 @@ class LAVA_API AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string             outputVariableName() const { return (mInfo.variableName != "") ? mInfo.variableName : "output"; }
     const AOVName&          name() const { return mInfo.name; }
     std::string             outputName() const { return (mInfo.outputOverrideName) != "" ? mInfo.outputOverrideName : std::string(mInfo.name); }
-    Falcor::ResourceFormat  format() const { return mInfo.format; }
-    const AOVPlaneInfo&     info() const { return mInfo; }
+    const AOVPlaneInfo&     getInfo() const { return mInfo; }
     const std::string&      filename() const { return mInfo.filenameOverride; }
 
     void update(const AOVPlaneInfo& info);

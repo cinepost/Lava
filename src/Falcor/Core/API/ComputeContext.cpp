@@ -33,6 +33,7 @@
 #include "ComputeContext.h"
 
 #include "Falcor/Utils/Debug/debug.h"
+#include "gfx_lib/vulkan/vk-util.h"
 
 
 namespace Falcor {
@@ -75,10 +76,33 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& val
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
     resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
 
+    Resource* pResource = pUav->getResource();
+    assert(pResource);
+    
+    gfx::vk::TextureResourceImpl* pTexImpl = nullptr;
+    if(pResource->isTextureResource()) {     
+        pTexImpl = pResource->asTexture()->getGfxVKTextureResource();
+    }
+
+    auto state = pResource->getGlobalState();
+    printf("Resource %s state is %s\n", pResource->getName().c_str(), to_string(state).c_str());
+
+    if(pTexImpl) {
+        auto vk_layout = pTexImpl->getImageLayout(); 
+        printf("Resource %s before vk layout is %s\n", pResource->getName().c_str(), gfx::VulkanUtil::to_string(vk_layout).c_str());
+    }
+
     auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
     gfx::ClearValue clearValue = {};
     memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
     resourceEncoder->clearResourceView(pUav->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::None);
+
+
+    if(pTexImpl) {        
+        auto vk_layout = pTexImpl->getImageLayout(); 
+        printf("Resource %s after vk layout is %s\n", pResource->getName().c_str(), gfx::VulkanUtil::to_string(vk_layout).c_str());
+    }
+
     mCommandsPending = true;
 }
 

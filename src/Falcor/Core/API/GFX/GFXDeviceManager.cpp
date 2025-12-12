@@ -115,7 +115,7 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
         "VK_KHR_get_physical_device_properties2",
     };
 
-    if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
+    if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_utils"); }
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

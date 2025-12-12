@@ -189,6 +189,8 @@ void VBufferRaster::initFineDepth(RenderContext *pContext, const RenderData& ren
 
     if(mHighpDepthEnabled) {
         mpHighpDepth = Texture::create2D(pContext->getDevice(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        assert(mpHighpDepth);
+        mpHighpDepth->setName("VBufferRaster::mpHighpDepth");
         //mpTestTexture = Texture::create2D(pContext->getDevice(), mFrameDim.x, mFrameDim.y, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
     } else {
         mpHighpDepth = nullptr;
@@ -214,8 +216,10 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     auto pDepthInternal = renderData[kDepthName]->asTexture();
 
     // Clear output buffer.
+    printf("VBufferRaster.vbuffer clear UAV!!\n");
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
-    
+    pRenderContext->uavBarrier(pOutput.get());
+
     /// Clear depth if we are using internal one.
     pRenderContext->clearDsv(pDepthInternal->getDSV().get(), 1.f, 0);
 
@@ -393,6 +397,7 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
 
             pBuf = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, bindFlags);
             assert(pBuf);
+            pBuf->setName("VBufferRaster:: quarter buffer");
             mFrameCount = 0;
             mDirty = true;
         }

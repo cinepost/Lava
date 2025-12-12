@@ -441,9 +441,13 @@ void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t 
         return;
     }
 
+    const auto oldState = pBuffer->getGlobalState();
+
     bufferBarrier(pBuffer, Resource::State::CopyDest);
     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     resourceEncoder->uploadBufferData(pBuffer->getGfxBufferResource(), offset, numBytes, (void*)pData);
+
+    bufferBarrier(pBuffer, oldState);
 
     mCommandsPending = true;
 }

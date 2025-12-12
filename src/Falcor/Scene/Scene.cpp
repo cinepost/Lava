@@ -254,8 +254,9 @@ Scene::Scene(Device::SharedPtr pDevice, SceneData&& sceneData): mpDevice(pDevice
     }
 
     // Must be placed after curve data/AABB creation.
+    printf("mpAnimationController->addAnimatedVertexCaches\n");
     mpAnimationController->addAnimatedVertexCaches(std::move(sceneData.cachedCurves), std::move(sceneData.cachedMeshes), sceneData.meshStaticData);
-
+    printf("mpAnimationController->addAnimatedVertexCaches done\n");
 
     // Finalize scene.
     finalize();
@@ -441,7 +442,7 @@ void Scene::rasterize(RenderContext* pRenderContext, GraphicsState* pState, Prog
     // The raytracing shader table has one hit record per ray type and geometry. We need to know the ray type count in order to setup the indexing properly.
     // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
     //
-    int rayTypeCount = 0;
+    int32_t rayTypeCount = 1;
     auto tlasIt = mTlasCache.find(rayTypeCount);
     if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject) {
         // We need a hit entry per mesh right now to pass GeometryIndex()
@@ -552,6 +553,7 @@ void Scene::raytrace(RenderContext* pRenderContext, Program* pProgram, const RtP
 }
 
 void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData) {
+    printf("Scene::createMeshVao\n");
     if (drawCount == 0) return;
 
     // Create the index buffer.
@@ -576,8 +578,22 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     }
 
     ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
-    Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, staticData.data(), false);
-    pStaticBuffer->setName("Scene static data buffer");
+    
+    printf("create static buffer\n");
+    Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, nullptr, false);
+    printf("static buffer created\n");
+    pStaticBuffer->setName("Scene mesh static data buffer");
+    
+    auto oldState = pStaticBuffer->getGlobalState();
+    printf("pStaticBuffer old state %s\n", to_string(oldState).c_str());
+
+    printf("static buffer set blob\n");
+    pStaticBuffer->setBlob(staticData.data(), 0, staticData.size() * sizeof(PackedStaticVertexData));
+    printf("static buffer blob set\n");
+
+    auto newState = pStaticBuffer->getGlobalState();
+    printf("pStaticBuffer new state %s\n", to_string(newState).c_str());
+    
     LLOG_TRC << "pStaticBuffer buffer size " << pStaticBuffer->getSize();
 
 
@@ -630,8 +646,12 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     // Create the VAO objects.
     // Note that the global index buffer can be mixed 16/32-bit format.
     // For drawing the meshes we need separate VAOs for these cases.
+    printf("mpMeshVao create\n");
     mpMeshVao = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
+    printf("mpMeshVao create done\n");
+    printf("mpMeshVao16Bit create\n");
     mpMeshVao16Bit = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R16Uint);
+    printf("mpMeshVao16Bit create done\n");
 }
 
 void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData) {
@@ -659,6 +679,7 @@ void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::ve
     ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
     // Also upload the curve vertex data.
     Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(StaticCurveVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, staticData.data(), false);
+    pStaticBuffer->setName("Scene curve static data buffer");
 
     // Curves do not need DrawIDBuffer.
     Vao::BufferVec pVBs(kVertexBufferCount - 1);

@@ -47,6 +47,8 @@ struct VulkanUtil
 
     static VkImageLayout mapResourceStateToLayout(ResourceState state);
 
+    static std::string to_string(VkImageLayout layout);
+
         /// Returns Slang::Result equivalent of a VkResult
     static Slang::Result toSlangResult(VkResult res);
 

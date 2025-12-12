@@ -1,6 +1,9 @@
 #include <memory>
 #include <string>
+#include <sstream>
 #include <stdexcept>
+#include <ios>
+#include <iomanip>
 
 #include "ut_string.h"
 
@@ -31,6 +34,13 @@ std::vector<std::string> split(const std::string& s, char seperator) {
     }
     output.push_back(s.substr(prev_pos, pos-prev_pos)); // Last word
     return output;
+}
+
+template< typename T >
+std::string int_to_hex(T i) {
+    std::stringstream stream;
+    stream << "0x" << std::setfill ('0') << std::setw(sizeof(T)*2) << std::hex << i;
+    return stream.str();
 }
 
 }}} // namespace lava::ut::string
