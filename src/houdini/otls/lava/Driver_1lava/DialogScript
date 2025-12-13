@@ -785,7 +785,7 @@
                     name    "lv_denoise_use_albedo"
                     label   "Use Albedo"
                     type    toggle
-                    default { "1" }
+                    default { "0" }
                     help    "Use auxilary albedo channel if available."
                     disablewhen "{ lv_postfx_denoise == 0 }"
                     parmtag { "script_callback_language" "python" }
@@ -795,7 +795,7 @@
                     name    "lv_denoise_use_normal"
                     label   "Use Normal"
                     type    toggle
-                    default { "1" }
+                    default { "0" }
                     help    "Use auxilary normal channel if available."
                     disablewhen "{ lv_postfx_denoise == 0 }"
                     parmtag { "script_callback_language" "python" }

@@ -576,7 +576,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     
     assert(vertexCount == staticData.size());
-    Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, nullptr, false);
+    Buffer::SharedPtr pStaticBuffer = mpDevice->createStructuredBuffer(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, MemoryType::DeviceLocal, staticData.data(), false);
     pStaticBuffer->setName("Scene mesh static data buffer");
     
     Vao::BufferVec pVBs(kVertexBufferCount);
@@ -597,8 +597,9 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         std::vector<uint32_t> drawIDs(drawCount);
         for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
         pDrawIDBuffer = mpDevice->createBuffer(drawCount * sizeof(uint32_t), ResourceBindFlags::Vertex, MemoryType::DeviceLocal, drawIDs.data());
+    } else {
+        should_not_get_here();
     }
-    else should_not_get_here();
 
     pDrawIDBuffer->setName("Scene draw id buffer");
 

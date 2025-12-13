@@ -394,12 +394,10 @@ uint64_t AnimationController::getMemoryUsageInBytes() const {
 void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData) {
     if (staticVertexData.empty()) return;
 
-    // We always copy the static data, to initialize the non-skinned vertices.
     assert(mpScene->getMeshVao());
     const Buffer::SharedPtr& pVB = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
-    assert(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
-    pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
-
+    assert(pVB->getElementCount() == staticVertexData.size());
+    
     if (!skinningVertexData.empty()) {
         mSkinningMatrices.resize(mpScene->mSceneGraph.size());
         mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
