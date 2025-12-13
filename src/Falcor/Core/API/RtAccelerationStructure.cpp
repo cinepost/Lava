@@ -83,12 +83,6 @@ RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, cons
 }
 
 RtAccelerationStructure::~RtAccelerationStructure() {
-
-    if(mDesc.mKind == RtAccelerationStructureKind::BottomLevel) {
-        printf("RtAccelerationStructure::~RtAccelerationStructure() of type BottomLevel called!\n");
-    } else {
-        printf("RtAccelerationStructure::~RtAccelerationStructure() of type TopLevel called!\n");
-    }
     mpDevice->releaseResource(mGfxAccelerationStructure);
 }
 

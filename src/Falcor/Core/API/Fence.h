@@ -67,6 +67,7 @@ class FALCOR_API Fence : public Object {
     FALCOR_OBJECT(Fence)
 public:
     static constexpr uint64_t kAuto = std::numeric_limits<uint64_t>::max();
+    //static constexpr uint64_t kAuto = 2147483647;
     static constexpr uint64_t kTimeoutInfinite = std::numeric_limits<uint64_t>::max();
 
     /// Constructor.

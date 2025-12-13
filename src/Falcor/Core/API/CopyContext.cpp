@@ -93,7 +93,6 @@ void CopyContext::submit(bool wait) {
 
 uint64_t CopyContext::signal(Fence* pFence, uint64_t value) {
     FALCOR_CHECK(pFence, "'fence' must not be null");
-    printf("CopyContext::signal pFence %s currentValue %zu, signaledValue %zu, value %zu\n", pFence->getDebugName().c_str(), pFence->getCurrentValue(), pFence->getSignaledValue(), value);
     uint64_t signalValue = pFence->updateSignaledValue(value);
     mpLowLevelData->getGfxCommandQueue()->executeCommandBuffers(0, nullptr, pFence->getGfxFence(), signalValue);
     return signalValue;
@@ -275,7 +274,9 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 
     // Create a fence and signal
     FenceDesc fenceDesc;
-    fenceDesc.debugName = "read_texture_task_fence";
+    fenceDesc.debugName = "CopyContext::ReadTextureTask::mpFence";
+    fenceDesc.initialValue = 0;
+    fenceDesc.shared = false;
 
     pThis->mpFence = pCtx->getDevice()->createFence(fenceDesc);
     pThis->mpFence->breakStrongReferenceToDevice();

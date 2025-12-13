@@ -97,7 +97,14 @@ void PixelDebug::endFrame(RenderContext* pRenderContext) {
         pRenderContext->copyBufferRegion(mpDataBuffer.get(), mpPixelLog->getSize(), mpAssertLog.get(), 0, mpAssertLog->getSize());
 
         // Create fence first time we need it.
-        if (!mpFence) mpFence = mpDevice->createFence();
+        if (!mpFence) {
+            FenceDesc fenceDesc;
+            fenceDesc.debugName = "PixelDebug::mpFence";
+            fenceDesc.initialValue = 0;
+            fenceDesc.shared = false;
+
+            mpFence = mpDevice->createFence(fenceDesc);
+        }
 
         // Submit command list and insert signal.
         pRenderContext->submit(false);

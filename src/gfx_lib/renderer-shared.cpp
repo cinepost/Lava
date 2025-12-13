@@ -380,13 +380,11 @@ IDevice* gfx::RendererBase::getInterface(const Guid& guid) {
 SLANG_NO_THROW Result SLANG_MCALL RendererBase::setShaderCache(const IDevice::ShaderCacheDesc& desc) {
     if(persistentShaderCache) {
         // Cache already exist !
-        printf("PersistentCache already exist!\n");
         return SLANG_FAIL;
     }
 
     if(!desc.shaderCachePath) {
         // No shader cache path specified !
-        printf("PersistentCache no shader cache path specified !\n");
         return SLANG_FAIL;
     }
 

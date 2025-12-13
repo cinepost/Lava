@@ -165,15 +165,6 @@ Result BufferResourceImpl::setDebugName(const char* pName) {
     assert(pName);
     Parent::setDebugName(pName);
     auto& api = m_device->m_api;
-    if (api.vkDebugMarkerSetObjectNameEXT) {
-        VkDebugMarkerObjectNameInfoEXT nameDesc = {};
-        nameDesc.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
-        nameDesc.object = (uint64_t)m_buffer.m_buffer;
-        nameDesc.objectType = VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT;
-        nameDesc.pObjectName = pName;
-        api.vkDebugMarkerSetObjectNameEXT(api.m_device, &nameDesc);
-    }
-
     if (api.vkSetDebugUtilsObjectNameEXT) {
         VkDebugUtilsObjectNameInfoEXT bufferNameInfo = {};
         bufferNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;

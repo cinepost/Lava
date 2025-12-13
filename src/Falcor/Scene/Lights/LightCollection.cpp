@@ -71,7 +71,12 @@ LightCollection::LightCollection(Device::SharedPtr pDevice, RenderContext* pRend
     mpTrianglePositionUpdater = ComputePass::create(mpDevice, kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
     mpFinalizeIntegration = ComputePass::create(mpDevice, kFinalizeIntegrationFile, "finalizeIntegration", defines);
 
-    mpStagingFence = mpDevice->createFence();
+    FenceDesc fenceDesc;
+    fenceDesc.debugName = "LightCollection::mpStagingFence";
+    fenceDesc.initialValue = 0;
+    fenceDesc.shared = false;
+
+    mpStagingFence = mpDevice->createFence(fenceDesc);
 
     // Now build the mesh light data.
     build(pRenderContext, *mpScene);

@@ -290,7 +290,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		}
 		*/
 	} else {
-		LLOG_WRN << "CORE vulkan instance creation path.";
+		LLOG_DBG << "CORE vulkan instance creation path.";
 		instance = (VkInstance)handles[0].handleValue;
 	}
 	
@@ -301,7 +301,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 	SLANG_RETURN_ON_FAIL(m_api.initInstanceProcs(instance));
 	
 	if (!validationLayerOuputFilename.empty() && m_api.vkCreateDebugReportCallbackEXT) {
-		LLOG_WRN << "Vulkan validation layer enabled !";
+		LLOG_INF << "Vulkan validation layer enabled !";
 
 		VkDebugReportFlagsEXT debugFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
 		VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT };
@@ -320,6 +320,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 		debugCreateInfo.flags = debugFlags;
 
 		SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateDebugReportCallbackEXT( instance, &debugCreateInfo, nullptr, &m_debugReportCallback));
+	} else {
+#ifdef _DEBUG
+		LLOG_WRN << "Vulkan validation disabled !";
+#endif
 	}
 
 	m_physicalDevice = VK_NULL_HANDLE;
@@ -858,13 +862,13 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, con
 			m_features.add("conservative-rasterization-1");
 		}
 		
-		if (extensionNames.contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
-			deviceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-		}
+//		if (extensionNames.contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
+//			deviceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+//		}
 
-		if (extensionNames.contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
-			deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-		}
+//		if (extensionNames.contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
+//			deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+//		}
 
 		if (extensionNames.contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
@@ -1303,8 +1307,9 @@ void DeviceImpl::_transitionImageLayout(
 	VkImageLayout oldLayout,
 	VkImageLayout newLayout)
 {
-	if (oldLayout == newLayout)
+	if (oldLayout == newLayout) {
 		return;
+	}
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1555,12 +1560,8 @@ Result DeviceImpl::createTextureResource(
   	//pTexture->mState.global = Falcor::Resource::State::Undefined;
   }
 
-  	///////////////////////////////////////
-
-  	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &texture->mMemRequirements);
-	
-  	////////////// sparse texture section /////////////////
-
+  m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &texture->mMemRequirements);	
+  	
 	if(sparse) {
 #ifdef _DEBUG
 		LLOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
@@ -1605,10 +1606,6 @@ Result DeviceImpl::createTextureResource(
 				texture->mMipTailInfo.mipTailStart = reqs.imageMipTailFirstLod;
 				texture->mSparseImageMemoryRequirements = reqs;
 
-				//assert(sizeof(reqs) == sizeof(texture->mSparseImageMemoryRequirements));
-				//::memcpy(&texture->mSparseImageMemoryRequirements, &reqs, sizeof(reqs));
-
-
 				colorAspectFound = true;
 				break;
 			}
@@ -1644,63 +1641,6 @@ Result DeviceImpl::createTextureResource(
 		texture->mMipTailInfo.alignedMipSize = sparseImageMemoryRequirements.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
 
 		uint32_t sparseDataPagesCapacity = 0;
-/**
-		uint32_t pageIndex = 0;
-		// Sparse bindings for each mip level of all layers outside of the mip tail
-		for (uint32_t layer = 0; layer < texture->getArraySize(); ++layer) {
-
-			// sparseImageMemoryRequirements.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
-			uint32_t currentMipBase = 0;
-			for (uint32_t mipLevel = 0; mipLevel < sparseImageMemoryRequirements.imageMipTailFirstLod; ++mipLevel) {
-				VkExtent3D extent;
-				extent.width = std::max(imageInfo.extent.width >> mipLevel, 1u);
-				extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
-				extent.depth = std::max(imageInfo.extent.depth >> mipLevel, 1u);
-
-				LLOG_DBG << "Mip level " << mipLevel << " width " << extent.width << " height " << extent.height;
-
-				// Aligned sizes by image granularity
-				VkExtent3D imageGranularity = sparseImageMemoryRequirements.formatProperties.imageGranularity;
-				Falcor::uint3 sparseBindCounts = alignedDivision(extent, imageGranularity);
-				Falcor::uint3 lastBlockExtent;
-				lastBlockExtent.x = (extent.width % imageGranularity.width) ? extent.width % imageGranularity.width : imageGranularity.width;
-				lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
-				lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
-
-				LLOG_DBG << "Mip level " << mipLevel << " sparse binds count: " <<  sparseBindCounts.x << " " << sparseBindCounts.y << " " << sparseBindCounts.z;
-
-				// @todo: Comment
-				for (uint32_t z = 0; z < sparseBindCounts.z; ++z) {
-					for (uint32_t y = 0; y < sparseBindCounts.y; ++y) {
-						for (uint32_t x = 0; x < sparseBindCounts.x; ++x) {
-							// Offset
-							VkOffset3D offset;
-							offset.x = x * imageGranularity.width;
-							offset.y = y * imageGranularity.height;
-							offset.z = z * imageGranularity.depth;
-							
-							// Size of the page
-							VkExtent3D extent;
-							extent.width = (x == sparseBindCounts.x - 1) ? lastBlockExtent.x : imageGranularity.width;
-							extent.height = (y == sparseBindCounts.y - 1) ? lastBlockExtent.y : imageGranularity.height;
-							extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
-
-							// Add new virtual page
-							pTexture->addTexturePage(pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, texture->mMemRequirements.alignment, texture->mMemRequirements.memoryTypeBits, mipLevel, layer);
-						}
-					}
-				}
-				texture->mipBases()[mipLevel] = currentMipBase;
-				
-				currentMipBase += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
-			}
-
-			// @todo: proper comment
-			// @todo: store in mip tail and properly release
-			// @todo: Only one block for single mip tail
-			
-		} // end layers and mips
-**/
 		auto layerCount = texture->getArraySize();
 
 		//sparseDataPagesCapacity += currentMipBase;
@@ -1712,38 +1652,8 @@ Result DeviceImpl::createTextureResource(
 		LLOG_DBG << "\tMip tail start: " << texture->mSparseImageMemoryRequirements.imageMipTailFirstLod;
 		LLOG_DBG << "\tMip tail size: " << texture->mSparseImageMemoryRequirements.imageMipTailSize;
 
-		// Create signal semaphore for sparse binding
-		//VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-		//semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		//semaphoreCreateInfo.pNext = NULL;
-		//semaphoreCreateInfo.flags = 0;
-
-		//if ( m_api.vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &texture->mBindSparseSemaphore) != VK_SUCCESS ) {
-		//	LLOG_ERR << "Could not create semaphore !!!";
-		//	return SLANG_FAIL;
-		//}
-
 		allocateTailMemory(texture, false /* don't force*/);
-
-		//updateSparseBindInfo(texture);
-
-		//m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, &texture->mBindSparseInfo, VK_NULL_HANDLE);
-		//m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
 	}
-
-	/*
-	if(!sparse) {
-		// Allocate the memory
-		VkMemoryPropertyFlags reqMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		int memoryTypeIndex = m_api.findMemoryTypeIndex(pTexture->mMemRequirements.memoryTypeBits, reqMemoryProperties);
-		assert(memoryTypeIndex >= 0);
-
-		VmaAllocationCreateInfo createInfo = {};
-		createInfo.usage = VMA_MEMORY_USAGE_AUTO; //VMA_MEMORY_USAGE_GPU_ONLY;
-		SLANG_VK_RETURN_ON_FAIL(vmaAllocateMemory(m_api.mVmaAllocator, &pTexture->mMemRequirements, &createInfo, &texture->mAllocation, &texture->mAllocationInfo));
-		vmaBindImageMemory(m_api.mVmaAllocator, texture->mAllocation, texture->m_image);	
-	}
-	*/
 
 	if (initData && !sparse) {
 		VKBufferHandleRAII uploadBuffer;
@@ -1823,7 +1733,6 @@ Result DeviceImpl::createTextureResource(
 				}
 			}
 
-			//m_api.vkUnmapMemory(m_device, uploadBuffer.m_memory);
 			vmaUnmapMemory(m_api.mVmaAllocator, uploadBuffer.mAllocation);
 		}
 
@@ -1901,13 +1810,12 @@ Result DeviceImpl::createTextureResource(
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					defaultLayout
 				);
-				//pTexture->mState.global = VulkanUtil::toFalcorState(desc.defaultState);
 			}
 		}
 	}
 
 #ifdef _DEBUG
-	LLOG_WRN << "!!!!! DON'T FORGET TO CHANGE Falcor::Texture::mState.global according to vk-device !!!!!!";
+	LLOG_WRN << "Developer reminder: Don't forget to check Falcor::Texture::mState.global state is aligned with TextureResourceImpl VkImageLayout.";
 #endif
 
 	m_deviceQueue.flushAndWait();

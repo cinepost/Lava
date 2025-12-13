@@ -4,6 +4,8 @@
 #include "vk-device.h"
 #include "vk-util.h"
 
+#include <signal.h>
+
 namespace gfx {
 
 using namespace Slang;
@@ -35,37 +37,14 @@ Result FenceImpl::init(const IFence::Desc& desc) {
     timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
     timelineCreateInfo.initialValue = desc.initialValue;
 
-    printf("FenceImpl::init name %s desc.initialValue %zu\n", m_debug_name.c_str(), timelineCreateInfo.initialValue);
+    if(desc.initialValue > 100) {
+        LLOG_FTL << "FenceImpl::init desc.initialValue " << desc.initialValue;
+    }
 
     VkSemaphoreCreateInfo createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     createInfo.pNext = &timelineCreateInfo;
     createInfo.flags = 0;
-
-#if SLANG_WINDOWS_FAMILY
-    VkExportSemaphoreWin32HandleInfoKHR exportSemaphoreWin32HandleInfoKHR;
-#endif
-    VkExportSemaphoreCreateInfoKHR exportSemaphoreCreateInfo;
-    if (desc.isShared) {
-
-#if SLANG_WINDOWS_FAMILY
-        exportSemaphoreWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR;
-        exportSemaphoreWin32HandleInfoKHR.pNext = timelineCreateInfo.pNext;
-        exportSemaphoreWin32HandleInfoKHR.pAttributes = nullptr;
-        exportSemaphoreWin32HandleInfoKHR.dwAccess = GENERIC_ALL;
-        exportSemaphoreWin32HandleInfoKHR.name = (LPCWSTR) nullptr;
-#endif
-        exportSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR;
-
-#if SLANG_WINDOWS_FAMILY
-        exportSemaphoreCreateInfo.pNext = &exportSemaphoreWin32HandleInfoKHR;
-        exportSemaphoreCreateInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-#else
-        exportSemaphoreCreateInfo.pNext = timelineCreateInfo.pNext;
-        exportSemaphoreCreateInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
-#endif
-        timelineCreateInfo.pNext = &exportSemaphoreCreateInfo;
-    }
 
     SLANG_VK_RETURN_ON_FAIL(m_device->m_api.vkCreateSemaphore(
         m_device->m_api.m_device,

@@ -374,7 +374,7 @@ protected:
 public:
     ComPtr<slang::ISession> m_slangSession;
 
-    ShaderObjectContainerType getContainerType() { return m_containerType; }
+    ShaderObjectContainerType getContainerType() const { return m_containerType; }
 
     static slang::TypeLayoutReflection* _unwrapParameterGroups(slang::TypeLayoutReflection* typeLayout, ShaderObjectContainerType& outContainerType) {
         outContainerType = ShaderObjectContainerType::None;

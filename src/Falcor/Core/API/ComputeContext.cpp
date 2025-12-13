@@ -75,7 +75,7 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& val
 
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
     resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
-
+/*
     Resource* pResource = pUav->getResource();
     assert(pResource);
     
@@ -91,18 +91,17 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& valu
         auto vk_layout = pTexImpl->getImageLayout(); 
         printf("Resource %s before vk layout is %s\n", pResource->getName().c_str(), gfx::VulkanUtil::to_string(vk_layout).c_str());
     }
-
+*/
     auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
     gfx::ClearValue clearValue = {};
     memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
     resourceEncoder->clearResourceView(pUav->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::None);
-
-
+/*
     if(pTexImpl) {        
         auto vk_layout = pTexImpl->getImageLayout(); 
         printf("Resource %s after vk layout is %s\n", pResource->getName().c_str(), gfx::VulkanUtil::to_string(vk_layout).c_str());
     }
-
+*/
     mCommandsPending = true;
 }
 

@@ -2,10 +2,6 @@
 #include "vk-resource-views.h"
 
 #include "lava_utils_lib/logging.h"
-#include <signal.h>
-
-
-#define BREAK_HERE raise(SIGINT)
 
 namespace gfx {
 
@@ -14,7 +10,6 @@ using namespace Slang;
 namespace vk {
 
 TextureResourceViewImpl::~TextureResourceViewImpl() {
-    //BREAK_HERE;
     m_device->m_api.vkDestroyImageView(m_device->m_api.m_device, m_view, nullptr);
 }
 

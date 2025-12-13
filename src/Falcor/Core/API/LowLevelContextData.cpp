@@ -36,7 +36,9 @@ namespace Falcor{
 
 LowLevelContextData::LowLevelContextData(Device* pDevice, gfx::ICommandQueue* pQueue) : mpDevice(pDevice), mpGfxCommandQueue(pQueue) {
     FenceDesc fenceDesc;
-    fenceDesc.debugName = "low_level_ctx_data_fence";
+    fenceDesc.debugName = "LowLevelContextData::mpFence";
+    fenceDesc.initialValue = 0;
+    fenceDesc.shared = false;
 
     mpFence = mpDevice->createFence(fenceDesc);
     mpFence->breakStrongReferenceToDevice();

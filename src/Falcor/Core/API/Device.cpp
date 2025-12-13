@@ -197,12 +197,6 @@ Fence::SharedPtr Device::createFence(const FenceDesc& desc) {
     return make_shared_ptr<Fence>(Device::SharedPtr(this), desc);
 }
 
-Fence::SharedPtr Device::createFence(bool shared) {
-    FenceDesc desc;
-    desc.shared = shared;
-    return createFence(desc);
-}
-
 Buffer::SharedPtr Device::createTypedBuffer(
     ResourceFormat format,
     uint32_t elementCount,
@@ -350,36 +344,25 @@ const Falcor::SharedPtr<Sampler>& Device::getDefaultSampler() const {
 }
 
 void Device::endFrame() {
-    printf("1\n");
     mpRenderContext->submit();
-    printf("2\n");
     // Wait on past frames.
-    //if (mpFrameFence->getSignaledValue() > kInFlightFrameCount) {
-    //    mpFrameFence->wait(mpFrameFence->getSignaledValue() - kInFlightFrameCount);
-    //}
-    printf("3\n");
+    if (mpFrameFence->getSignaledValue() > kInFlightFrameCount) {
+        mpFrameFence->wait(mpFrameFence->getSignaledValue() - kInFlightFrameCount);
+    }
     // Flush ray tracing validation if enabled
     flushRaytracingValidation();
-    printf("4\n");
     // Switch to next transient resource heap.
     getCurrentTransientResourceHeap()->finish();
-    printf("5\n");
     mCurrentTransientResourceHeapIndex = (mCurrentTransientResourceHeapIndex + 1) % kInFlightFrameCount;
     
-    printf("6\n");
     mpRenderContext->getLowLevelData()->closeCommandBuffer();
-    printf("7\n");
     getCurrentTransientResourceHeap()->synchronizeAndReset();
-    printf("8\n");
     mpRenderContext->getLowLevelData()->openCommandBuffer();
 
-    printf("9\n");
     // Signal frame fence for new frame.
     mpRenderContext->signal(mpFrameFence.get());
-    printf("10\n");
     // Release resources from past frames.
     executeDeferredReleases();
-    printf("11\n");
 }
 
 void Device::flushRaytracingValidation() {
@@ -457,19 +440,13 @@ bool Device::isFeatureSupported(SupportedFeatures flags) const {
 }
 
 void Device::executeDeferredReleases() {
-    printf("_1\n");
     mpUploadHeap->executeDeferredReleases();
-    printf("_2\n");
     mpReadBackHeap->executeDeferredReleases();
-    printf("_3\n");
-
+    
     uint64_t currentValue = mpFrameFence->getCurrentValue();
-
     while (mDeferredReleases.size() && mDeferredReleases.front().fenceValue <= currentValue) {
-        printf("mDeferredReleases size %zu, front faceValue %zu, currentValue %zu\n", mDeferredReleases.size(), mDeferredReleases.front().fenceValue, currentValue);
         mDeferredReleases.pop();
     }
-    printf("_4\n");
 }
 
 void Device::toggleVSync(bool enable) {
@@ -478,14 +455,9 @@ void Device::toggleVSync(bool enable) {
 
 void Device::wait() {
     assert(mpRenderContext); 
-
-    printf("!1\n");
     mpRenderContext->submit(true);
-    printf("!2\n");
     mpRenderContext->signal(mpFrameFence.get());
-    printf("!3\n");
     executeDeferredReleases();
-    printf("!4\n");
 }
 
 Falcor::SharedPtr<ComputeStateObject> Device::createComputeStateObject(const ComputeStateObjectDesc& desc) {
@@ -505,7 +477,7 @@ size_t Device::getBufferDataAlignment(ResourceBindFlags bindFlags) {
         return kConstantBufferDataPlacementAlignment;
     if (is_set(bindFlags, ResourceBindFlags::Index))
         return kIndexBufferDataPlacementAlignment;
-    return 1;
+    return 256;
 }
 
 bool Device::isShaderModelSupported(ShaderModel shaderModel) const {

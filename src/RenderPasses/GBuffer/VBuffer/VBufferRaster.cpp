@@ -216,7 +216,6 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     auto pDepthInternal = renderData[kDepthName]->asTexture();
 
     // Clear output buffer.
-    printf("VBufferRaster.vbuffer clear UAV!!\n");
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
     pRenderContext->uavBarrier(pOutput.get());
 

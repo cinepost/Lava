@@ -1021,7 +1021,7 @@ void Renderer::renderSample() {
 	}
 
 	//mpDevice->endFrame();
-	pRenderContext->submit();
+	//pRenderContext->submit();
 
 	double currentTime = 0;
 	pScene->update(pRenderContext, currentTime);

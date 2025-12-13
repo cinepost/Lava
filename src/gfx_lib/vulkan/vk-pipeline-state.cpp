@@ -340,6 +340,7 @@ Result PipelineStateImpl::ensureAPIPipelineStateCreated()
         return SLANG_FAIL;
     }
 }
+
 SLANG_NO_THROW Result SLANG_MCALL PipelineStateImpl::getNativeHandle(InteropHandle* outHandle)
 {
     SLANG_RETURN_ON_FAIL(ensureAPIPipelineStateCreated());

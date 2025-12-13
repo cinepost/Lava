@@ -687,7 +687,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     bool useColumnMajor = is_set(compilerFlags, SlangCompilerFlags::MatrixLayoutColumnMajor);
     addIntOption(useColumnMajor ? slang::CompilerOptionName::MatrixLayoutColumn : slang::CompilerOptionName::MatrixLayoutRow, 1);
 
-#ifndef _DEBUG
+#ifndef QQ_DEBUG
     // New versions of slang default to short-circuiting for logical and/or operators.
     // Facor is still written with the assumption that these operators do not short-circuit.
     // We want to transition to the new behavior, but for now we disable it.
@@ -718,7 +718,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     pSlangSession->createCompileRequest(&pSlangRequest);
     FALCOR_ASSERT(pSlangRequest);
 
-#ifndef _DEBUG
+#ifndef QQ_DEBUG
     // Disable noisy warnings enabled in newer slang versions.
     spOverrideDiagnosticSeverity(pSlangRequest, 15602, SLANG_SEVERITY_DISABLED); // #pragma once in modules
     spOverrideDiagnosticSeverity(pSlangRequest, 30056, SLANG_SEVERITY_DISABLED); // non-short-circuiting `?:` operator is deprecated, use 'select' instead

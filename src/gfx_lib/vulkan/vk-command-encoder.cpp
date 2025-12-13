@@ -147,7 +147,7 @@ Result PipelineCommandEncoder::bindRootShaderObjectImpl(RootShaderObjectImpl* ro
       descriptorSetsStorage.getBuffer(),
       0,
       nullptr);
-}
+	}
 
   return SLANG_OK;
 }
@@ -183,7 +183,11 @@ Result PipelineCommandEncoder::bindRenderState(VkPipelineBindPoint pipelineBindP
 
   auto pipelineBindPointId = getBindPointIndex(pipelineBindPoint);
   if (m_boundPipelines[pipelineBindPointId] != newPipelineImpl->m_pipeline) {
-      api.vkCmdBindPipeline(m_vkCommandBuffer, pipelineBindPoint, newPipelineImpl->m_pipeline);
+      api.vkCmdBindPipeline(
+      	m_vkCommandBuffer, 
+      	pipelineBindPoint, 
+      	newPipelineImpl->m_pipeline
+      );
       m_boundPipelines[pipelineBindPointId] = newPipelineImpl->m_pipeline;
   }
   
@@ -1367,8 +1371,9 @@ void RayTracingCommandEncoder::buildAccelerationStructure(
 	m_commandBuffer->m_renderer->m_api.vkCmdBuildAccelerationStructuresKHR(
 		m_commandBuffer->m_commandBuffer, 1, &geomInfoBuilder.buildInfo, &rangeInfoPtr);
 
+	
 	if (propertyQueryCount) {
-		_memoryBarrier(1, &desc.dest, AccessFlag::Write, AccessFlag::Read);
+		_memoryBarrier(1, &desc.dest, AccessFlag::Write, AccessFlag::Read);	
 		_queryAccelerationStructureProperties(1, &desc.dest, propertyQueryCount, queryDescs);
 	}
 }

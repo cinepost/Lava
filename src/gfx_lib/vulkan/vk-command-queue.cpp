@@ -63,6 +63,10 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
     auto& vkAPI = m_renderer->m_api;
     m_submitCommandBuffers.clear();
 
+    if(valueToSignal > 100) {
+        LLOG_FTL << "CommandQueueImpl::queueSubmitImpl valueToSignal is " << valueToSignal;
+    }
+
     for (uint32_t i = 0; i < count; i++) {
         auto cmdBufImpl = static_cast<CommandBufferImpl*>(commandBuffers[i]);
         if (!cmdBufImpl->m_isPreCommandBufferEmpty) {
@@ -105,6 +109,14 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
 
     if (pFence) {
         auto pFenceImpl = static_cast<FenceImpl*>(pFence);
+        
+        uint64_t fence_value = 2147483647;
+        pFenceImpl->getCurrentValue(&fence_value);
+
+        if(fence_value > 100) {
+            LLOG_FTL << "CommandQueueImpl::queueSubmitImpl fence value is " << fence_value;
+        }
+
         fence_debug_name = pFenceImpl->m_debug_name;
         signalSemaphores.add(pFenceImpl->m_semaphore);
         signalValues.add(valueToSignal);
@@ -128,15 +140,24 @@ void CommandQueueImpl::queueSubmitImpl(uint32_t count, ICommandBuffer* const* co
     if (count) {
         auto commandBufferImpl = static_cast<CommandBufferImpl*>(commandBuffers[0]);
         vkFence = commandBufferImpl->m_transientHeap->getCurrentFence();
-        vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence);
+
+        if(vkFence == VK_NULL_HANDLE) {
+            LLOG_FTL << "CommandQueueImpl::queueSubmitImpl() vkFence == VK_NULL_HANDLE !!!";
+        }
+
+        auto result = vkAPI.vkResetFences(vkAPI.m_device, 1, &vkFence);
+
+        if(result != VK_SUCCESS) {
+            if(result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+                LLOG_FTL << "vCommandQueueImpl::queueSubmitImpl() vkResetFences() VK_ERROR_OUT_OF_DEVICE_MEMORY !!!";
+            } else {
+                LLOG_FTL << "vCommandQueueImpl::queueSubmitImpl() vkResetFences() error !!!";
+            }
+        }
+
         commandBufferImpl->m_transientHeap->advanceFence();
     }
 
-    if(pFence) {
-        printf("vk-command-queue vkQueueSubmit(valueToSignal = %zu) fence %s\n", valueToSignal, fence_debug_name.c_str());
-    } else {
-        printf("vk-command-queue vkQueueSubmit(valueToSignal = %zu) no fence\n", valueToSignal);
-    }
     vkAPI.vkQueueSubmit(m_queue, 1, &submitInfo, vkFence);
     
     m_pendingWaitSemaphores[0] = m_semaphore;

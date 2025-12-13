@@ -105,6 +105,7 @@ namespace gfx {
     x(vkCmdBeginRenderPass) \
     x(vkCmdEndRenderPass) \
     x(vkCmdPipelineBarrier) \
+    x(vkCmdPipelineBarrier2) \
     x(vkCmdCopyBufferToImage)\
     x(vkCmdCopyImage) \
     x(vkCmdCopyImageToBuffer) \

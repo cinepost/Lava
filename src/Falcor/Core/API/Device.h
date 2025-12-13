@@ -421,12 +421,6 @@ class FALCOR_API Device: public Object {
      */
     Falcor::SharedPtr<Fence> createFence(const FenceDesc& desc);
 
-    /**
-     * Create a new fence object.
-     * @return A new object, or throws an exception if creation failed.
-     */
-    Falcor::SharedPtr<Fence> createFence(bool shared = false);
-
     /// Create a compute state object.
     Falcor::SharedPtr<ComputeStateObject> createComputeStateObject(const ComputeStateObjectDesc& desc);
 
