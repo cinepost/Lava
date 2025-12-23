@@ -355,6 +355,7 @@ elseif(WIN32)
     install(
         TARGETS falcor_lib
         RUNTIME DESTINATION bin
+        ARCHIVE DESTINATION lib
     )
     install(
         IMPORTED_RUNTIME_ARTIFACTS 

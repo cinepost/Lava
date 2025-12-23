@@ -302,7 +302,16 @@ if(WIN32)
     DESTINATION 
       bin
     FILES_MATCHING PATTERN "*.dll"
-    PATTERN "*.lib" EXCLUDE
+    PATTERN "cmake" EXCLUDE
+    PATTERN "pkgconfig" EXCLUDE
+    PATTERN "libpng" EXCLUDE
+  )
+  install(
+    DIRECTORY
+      ${EXTERNALS_INSTALL_DIR}/lib/
+    DESTINATION
+     lib/3rdparty
+    FILES_MATCHING PATTERN "*.lib"
     PATTERN "cmake" EXCLUDE
     PATTERN "pkgconfig" EXCLUDE
     PATTERN "libpng" EXCLUDE

@@ -68,6 +68,7 @@ elseif(WIN32)
     install( 
         TARGETS lava_utils_lib 
         RUNTIME DESTINATION bin 
+        ARCHIVE DESTINATION lib
     )
     install(
         IMPORTED_RUNTIME_ARTIFACTS 

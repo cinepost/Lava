@@ -94,5 +94,6 @@ if(UNIX)
 elseif(WIN32)
     install(TARGETS lava_lib
         RUNTIME DESTINATION bin
+        ARCHIVE DESTINATION lib
     )
 endif()
