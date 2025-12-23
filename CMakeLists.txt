@@ -220,7 +220,7 @@ elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 
-  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=1) # -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
